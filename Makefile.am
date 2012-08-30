@@ -47,6 +47,24 @@ BISONXX_FILES =
 PROTOBUF_FILES =
 
 ## -----------------------------------------------------------------------------
+## --SECTION--                                                             PATHS
+## -----------------------------------------------------------------------------
+
+if ENABLE_RELATIVE
+
+TRI_SBINDIR = ${abs_builddir}/bin
+TRI_DATABASEDIR = 
+TRI_PKGDATADIR = .
+
+else
+
+TRI_SBINDIR = ${sbindir}
+TRI_DATABASEDIR = ${localstatedir}/${PACKAGE_TARNAME}
+TRI_PKGDATADIR = ${pkgdatadir}
+
+endif
+
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                             FLAGS
 ## -----------------------------------------------------------------------------
 
@@ -273,6 +291,7 @@ include Makefile.files
 include lib/Makefile.files
 include arangod/Makefile.files
 include arangosh/Makefile.files
+include utils/Makefile.files
 
 if ENABLE_MRUBY
 include arangoirb/Makefile.files
@@ -317,66 +336,6 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
-
-################################################################################
-### @brief arango password
-################################################################################
-
-# exclude arango skripts from sources list
-bin_arango_password_SOURCES =
-
-bin/arango-password: utils/arango-password.in
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-
-CLEANUP += bin/arango-password
-
-################################################################################
-### @brief arango upgrade
-################################################################################
-
-# exclude arango skripts from sources list
-bin_arango_upgrade_SOURCES =
-
-bin/arango-upgrade: bin/arango-upgrade.in
-if ENABLE_RELATIVE_DEVEL
-	sed \
-		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-else   
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-endif
-
-CLEANUP += bin/arango-upgrade
-
-################################################################################
-### @brief arango datafile debugger
-################################################################################
-
-# exclude arango skrips from sources list
-bin_arango_dfdb_SOURCES =
-
-bin/arango-dfdb: utils/arango-dfdb.in
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-
-CLEANUP += bin/arango-dfdb
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                      DEPENDENCIES

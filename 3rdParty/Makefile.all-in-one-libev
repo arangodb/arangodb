@@ -10,9 +10,9 @@
 
 BUILT_SOURCES += @LIBEV_LIBS@
 
-@LIBEV_LIBS@: .libev-build-@TRI_BITS@
+@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 
-.libev-build-@TRI_BITS@:
+@srcdir@/.libev-build-@TRI_BITS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING LIBEV"
@@ -23,7 +23,7 @@ BUILT_SOURCES += @LIBEV_LIBS@
 	cd @top_srcdir@/3rdParty/libev/BUILD && ../configure --disable-shared
 	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE)
 
-	touch .libev-build-@TRI_BITS@
+	touch @srcdir@/.libev-build-@TRI_BITS@
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"

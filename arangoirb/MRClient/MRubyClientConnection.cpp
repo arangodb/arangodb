@@ -41,13 +41,12 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantString.h"
-
-#include "json.h"
 
 extern "C" {
 #include "mruby/array.h"

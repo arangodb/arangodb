@@ -76,6 +76,11 @@ function main (argv) {
   
   var hash = internal.sha256(password);
 
+  if (username == "" ) {
+    internal.output("username must not be empty\n");
+    return 1;
+  }
+
   var user = users.firstExample({ user: username });
 
   if (user == null) {
