@@ -1,31 +1,36 @@
 # -*- mode: Makefile; -*-
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                             MRUBY
+## --SECTION--                                               CONFIGURATION FILES
 ## -----------------------------------------------------------------------------
 
-################################################################################
-### @brief sets up the directories
-################################################################################
-
-BUILT_SOURCES += @builddir@/.setup-mr-directories
-
-@builddir@/.setup-mr-directories:
-	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
-	@test -d mr/server || mkdir -p mr/server
-	@touch $@
-
-mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
-	@top_srcdir@/config/mr2c.sh $< > $@
-
-mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
-	@top_srcdir@/config/mr2c.sh $< > $@
+BUILT_SOURCES += \
+	etc/arangodb/arangod.conf \
+	etc/arangodb/arangosh.conf
 
 ################################################################################
-### @brief cleanup
+### @brief server config
 ################################################################################
 
-CLEANUP += $(MRUBY_HEADER) .setup-mr-directories
+etc/arangodb/arangod.conf: etc/arangodb/arangod.conf.in Makefile
+	@test -d etc/arangodb || mkdir -p etc/arangodb
+	sed \
+		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@LOGDIR@%${TRI_LOGDIR}%g' \
+		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		$< > $@
+
+################################################################################
+### @brief client config
+################################################################################
+
+etc/arangodb/arangosh.conf: etc/arangodb/arangosh.conf.in Makefile
+	@test -d etc/arangodb || mkdir -p etc/arangodb
+	sed \
+		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@LOGDIR@%${TRI_LOGDIR}%g' \
+		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		$< > $@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

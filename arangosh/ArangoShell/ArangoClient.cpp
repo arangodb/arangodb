@@ -522,7 +522,7 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-    cout << endl << "Bye Bye! Auf Wiedersehen! さようなら" << endl;
+    cout << endl << "Bye Bye! Auf Wiedersehen! До свидания! さようなら" << endl;
   }
 }
 

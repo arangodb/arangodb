@@ -1,21 +1,20 @@
 # -*- mode: Makefile; -*-
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                        JAVASCRIPT
-################################################################################
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
 
-BUILT_SOURCES += .setup-js-directories
+BUILT_SOURCES += @builddir@/.setup-js-directories
 
-.setup-js-directories:
-	@test -d html/admin/js/modules || mkdir html/admin/js/modules
-	@test -d js || mkdir js
-	@test -d js/client || mkdir js/client
-	@test -d js/common/bootstrap || mkdir js/common/bootstrap
-	@test -d js/server || mkdir js/server
+@builddir@/.setup-js-directories:
+	@test -d html/admin/js/modules || mkdir -p html/admin/js/modules
+	@test -d js/common/bootstrap || mkdir -p js/common/bootstrap
+	@test -d js/client || mkdir -p js/client
+	@test -d js/server || mkdir -p js/server
 	@touch $@
 
 ################################################################################
@@ -46,9 +45,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 
 CLEANUP += $(JAVASCRIPT_HEADER) .setup-js-directories
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
-################################################################################
+## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor
