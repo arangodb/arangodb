@@ -1,6 +1,9 @@
 not released yet
 ----------------
 
+* fix for issue #177: a misleading error message was returned if unknown variables
+  were used in certain positions in an AQL query.
+
 * added program arango-upgrade. This program must be run after installing ArangoDB
   and after upgrading from a previous version of ArangoDB. The arango-upgrade script
   will ensure all system collections are created and present in the correct state.
