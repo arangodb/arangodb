@@ -43,6 +43,10 @@
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        INSTALLING
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page InstallingTOC
 ///
@@ -80,7 +84,6 @@
 ///
 /// @LIT{http://www.arangodb.org/repositories/}
 ///
-///
 /// @subsection InstallingLinuxPackageManager Using a Package Manager to install ArangoDB
 /////////////////////////////////////////////////////////////////////////////////////////
 ///
@@ -95,6 +98,7 @@
 /// @endcode
 ///
 /// Add a repository file @LIT{/etc/yum.repos.d/arangodb.repo}
+///
 /// @code
 /// [ArangoDB]
 /// name=ArangoDB Repository for CentOS
@@ -105,7 +109,7 @@
 /// gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-www.arangodb.org
 /// @endcode
 ///
-/// Update repository data:
+/// Update the repository data:
 ///
 /// @code
 /// yum clean metadata
@@ -181,7 +185,7 @@
 /// zypper addrepo -f -t YUM http://www.arangodb.org/repositories/openSUSE-12.1 ArangoDB
 /// @endcode
 ///
-/// Update repository data:
+/// Update the repository data:
 ///
 /// @code
 /// zypper refresh
@@ -236,7 +240,8 @@
 /// <ul>
 ///  <li>@ref Compiling
 ///   <ul>
-///    <li>@ref CompilingAmazonMicroInstance</li>
+///    <li>@ref CompilingAmazonMicroInstance
+///    </li>
 ///    <li>@ref CompilingAIO
 ///     <ul>
 ///      <li>@ref CompilingAIOPrerequisites
@@ -300,7 +305,7 @@
 /// @section CompilingAmazonMicroInstance Amazon Micro Instance
 ///////////////////////////////////////////////////////////////
 ///
-/// \@sohgoh has reported that it is very easy to install ArangoDB on a 
+/// @@sohgoh has reported that it is very easy to install ArangoDB on a 
 /// Amazon Micro Instance:
 ///
 /// @code
@@ -309,6 +314,8 @@
 /// > make
 /// > make install
 /// @endcode
+///
+/// For detailed instructions the following section.
 ///
 /// @section CompilingAIO All-In-One Version
 ////////////////////////////////////////////
@@ -343,11 +350,15 @@
 ///
 /// Switch into the ArangoDB directory
 ///
-/// @LIT{cd ArangoDB}
+/// @code
+/// cd ArangoDB
+/// @endcode
 ///
 /// In order to configure the build environment execute
 ///
-/// @LIT{./configure}
+/// @code
+/// ./configure
+/// @endcode
 ///
 /// to setup the makefiles. This will check the various system characteristics
 /// and installed libraries.
@@ -357,18 +368,24 @@
 ///
 /// Compile the program by executing
 ///
-/// @LIT{make}
+/// @code
+/// make
+/// @endcode
 ///
 /// This will compile the ArangoDB and create a binary of the server in
 ///
-/// @LIT{./bin/arangod}
+/// @code
+/// ./bin/arangod
+/// @endcode
 ///
 /// @subsection CompilingAIOTest Test
 /////////////////////////////////////
 ///
 /// Check the binary by starting it using the command line.
 ///
-/// @LIT{./arangod --server.endpoint tcp://127.0.0.1:12345 /tmp/vocbase}
+/// @code
+/// ./arangod --server.endpoint tcp://127.0.0.1:12345 /tmp/vocbase
+/// @endcode
 ///
 /// This will start up the ArangoDB and listen for HTTP requests on port 12345
 /// bound to IP address 127.0.0.1. You should see the startup messages
@@ -377,11 +394,15 @@
 ///
 /// Use your favorite browser to access the URL
 ///
-/// @LIT{http://127.0.0.1:12345/version}
+/// @code
+/// http://127.0.0.1:12345/version
+/// @endcode
 ///
 /// This should produce a JSON object like
 ///
-/// @LIT{\{"server":"arango"\,"version":"1.x.y"\}}
+/// @code
+/// {"server" : "arango", "version" : "1.x.y"}
+/// @endcode
 ///
 /// as result.
 ///
@@ -394,26 +415,36 @@
 ///
 /// Install everything by executing
 ///
-/// @LIT{make install}
+/// @code
+/// make install
+/// @endcode
 ///
 /// You must be root to do this or at least have write permission to the
 /// corresponding directories.
 ///
 /// The server will by default be installed in
 ///
-/// @LIT{/usr/sbin/arangod}
+/// @code
+/// /usr/sbin/arangod
+/// @endcode
 ///
 /// The configuration file will be installed in
 ///
-/// @LIT{/etc/arangodb/arangod.conf}
+/// @code
+/// /etc/arangodb/arangod.conf
+/// @endcode
 ///
 /// The database will be installed in
 ///
-/// @LIT{/var/arangodb}
+/// @code
+/// /var/arangodb
+/// @endcode
 ///
 /// The arango shell will be installed in
 ///
-/// @LIT{/usr/bin/arangosh}
+/// @code
+/// /usr/bin/arangosh
+/// @endcode
 ///
 /// @section CompilingDevel Devel Version
 /////////////////////////////////////////
@@ -459,20 +490,26 @@
 ///
 /// Download the latest source using GIT:
 ///
-/// @LIT{git clone git://github.com/triAGENS/ArangoDB.git}
+/// @code
+/// git clone git://github.com/triAGENS/ArangoDB.git
+/// @endcode
 ///
 /// @subsection CompilingDevelSetup Setup
 /////////////////////////////////////////
 ///
 /// Switch into the ArangoDB directory
 ///
-/// @LIT{cd ArangoDB}
+/// @code
+/// cd ArangoDB
+/// @endcode
 ///
 /// The source tarball contains a pre-generated "configure" script. You can
 /// regenerate this script by using the GNU auto tools. In order to do so,
 /// execute
 ///
-/// @LIT{make setup}
+/// @code
+/// make setup
+/// @endcode
 ///
 /// This will call aclocal, autoheader, automake, and autoconf in the correct
 /// order.
@@ -482,18 +519,42 @@
 ///
 /// In order to configure the build environment execute
 ///
-/// @LIT{./configure --disable-all-in-one --enable-bison --enable-flex}
+/// @code
+/// ./configure --disable-all-in-one-v8 --disable-all-in-one-libev --enable-bison --enable-flex
+/// @endcode
 ///
 /// to setup the makefiles. This will check for the various system
 /// characteristics and installed libraries. If the configure scripts fail to
 /// find the boost library, check that C++ is installed and working and that the
 /// boost-devel package was successfully installed.
 ///
-/// Specifying @LIT{disable-all-in-one} will tell the build system
-/// to use the installed system versions of boost, V8, and libev
-/// instead of compiling these libaries in the make run.
-///
 /// Now continue with @ref CompilingAIOCompile.
+/// 
+/// The following configuration options exists:
+///
+/// @LIT{--disable-all-in-one-boost} tells the build system to use the
+/// installed system version of BOOST instead of the supplied files in
+/// the 3rdParty directory.
+///
+/// @LIT{--disable-all-in-one-libev} tells the build system to use the
+/// installed system version of LIBEV instead of compiling the
+/// supplied version from the 3rdParty disable in the make run.
+///
+/// @LIT{--disable-all-in-one-protobuf} tells the build system to use the
+/// installed system version of protocol buffers instead of compiling the
+/// supplied version from the 3rdParty disable in the make run.
+///
+/// @LIT{--disable-all-in-one-v8} tells the build system to use the
+/// installed system version of V8 instead of compiling the
+/// supplied version from the 3rdParty disable in the make run.
+///
+/// @LIT{--enable-bison} tells the build system to use the BISON to regenerate
+/// the parser files. If disabled, the supplied files be used and you cannot
+/// make changes to the parser files. You need at least BISON 2.4.1.
+///
+/// @LIT{--enable-flex} tells the build system to use the FLEX to regenerate
+/// the scanner files. If disabled, the supplied files be used and you cannot
+/// make changes to the scanner files. You need at least FLEX 2.5.35.
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

@@ -1,18 +1,18 @@
 # -*- mode: Makefile; -*-
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                             MRUBY
-################################################################################
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
 
-BUILT_SOURCES += .setup-mr-directories
+BUILT_SOURCES += @builddir@/.setup-mr-directories
 
-.setup-mr-directories:
-	@test -d mr || mkdir mr
-	@test -d mr/common/bootstrap || mkdir mr/common/bootstrap
+@builddir@/.setup-mr-directories:
+	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
+	@test -d mr/server || mkdir -p mr/server
 	@touch $@
 
 mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
@@ -27,9 +27,9 @@ mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
 
 CLEANUP += $(MRUBY_HEADER) .setup-mr-directories
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
-################################################################################
+## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor

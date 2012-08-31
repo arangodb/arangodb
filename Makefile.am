@@ -1,14 +1,8 @@
 # -*- mode: Makefile; -*-
 
 ## -----------------------------------------------------------------------------
-## --SECTION--                                                 FLAGS & VARIABLES
+## --SECTION--                                                             FILES
 ## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief m4 directory
-################################################################################
-
-ACLOCAL_AMFLAGS = -I m4
 
 ################################################################################
 ### @brief source to build before compile
@@ -52,6 +46,36 @@ BISONXX_FILES =
 
 PROTOBUF_FILES =
 
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             PATHS
+## -----------------------------------------------------------------------------
+
+if ENABLE_RELATIVE
+
+TRI_DATABASEDIR = 
+TRI_LOGDIR = /tmp
+TRI_PKGDATADIR = .
+TRI_SBINDIR = ${abs_builddir}/bin
+
+else
+
+TRI_DATABASEDIR = ${localstatedir}/${PACKAGE_TARNAME}
+TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
+TRI_PKGDATADIR = ${pkgdatadir}
+TRI_SBINDIR = ${sbindir}
+
+endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             FLAGS
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief m4 directory
+################################################################################
+
+ACLOCAL_AMFLAGS = -I m4
+
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
@@ -68,6 +92,7 @@ AM_CPPFLAGS = \
 	@PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
+
 if ENABLE_ZEROMQ
 
 AM_CPPFLAGS += \
@@ -76,39 +101,17 @@ AM_CPPFLAGS += \
 endif
 
 
-
-if ENABLE_RELATIVE_SYSTEM
-
-TRI_LOG_DIR=$(prefix)/var/log/$(PACKAGE_TARNAME)
-TRI_PKGDATA_DIR=$(prefix)/share/$(PACKAGE_TARNAME)
-TRI_SBIN_DIR=${prefix}/sbin
-TRI_SYSCONF_DIR=${prefix}/etc/$(PACKAGE_TARNAME)
-
-else
-if ENABLE_RELATIVE_DEVEL
-
-TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
-TRI_LOG_DIR=/tmp
-TRI_PKGDATA_DIR=.
-TRI_SBIN_DIR=bin
+if ENABLE_RELATIVE
 
 AM_CPPFLAGS += \
-	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"'
+	-D_SYSCONFDIR_='"etc/relative"'
+
 
 else
 
-TRI_DATABASE_DIR=$(localstatedir)/$(PACKAGE_TARNAME)
-TRI_LOG_DIR=$(localstatedir)/log/$(PACKAGE_TARNAME)
-TRI_PKGDATA_DIR=${pkgdatadir}
-TRI_SBIN_DIR=${sbindir}
-TRI_SYSCONF_DIR=$(sysconfdir)/$(PACKAGE_TARNAME)
-
 AM_CPPFLAGS += \
-	-D_DATABASEDIR_='"${TRI_DATABASE_DIR}"' \
-	-D_PKGDATADIR_='"${TRI_PKGDATA_DIR}"' \
-	-D_SYSCONFDIR_='"${TRI_SYSCONF_DIR}"'
+	-D_SYSCONFDIR_='"${sysconfdir}/${PACKAGE_TARNAME}"'
 
-endif
 endif
 
 ################################################################################
@@ -176,10 +179,7 @@ noinst_LIBRARIES = \
 ################################################################################
 
 sbin_PROGRAMS = \
-	bin/arangod \
-        bin/arango-password \
-        bin/arango-upgrade \
-	bin/arango-dfdb
+	bin/arangod
 
 ################################################################################
 ### @brief /bin programs
@@ -219,17 +219,8 @@ endif
 ################################################################################
 
 arangosysconfdir=$(sysconfdir)/$(PACKAGE_TARNAME)
-arangosysconf_DATA = Installation/arangod.conf
 
-BUILT_SOURCES += Installation/arangod.conf
-
-Installation/arangod.conf: Installation/arangod.conf.in Makefile
-	@test -d Installation || mkdir Installation
-	sed \
-		-e 's%@LOGDIR@%${TRI_LOG_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
+arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*.conf" -print)
 
 ################################################################################
 ### @brief /share data
@@ -261,7 +252,7 @@ endif
 if ENABLE_INSTALL_DBDIR
 
 install-data-local:
-	test -d $(DESTDIR)$(TRI_DATABASE_DIR) || mkdir -p $(DESTDIR)$(TRI_DATABASE_DIR)
+	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
 
 endif
 
@@ -280,7 +271,7 @@ build.h: configure.ac
 ### @brief local modifications
 ################################################################################
 
--include Makefile.local
+-include Installation/Makefile.local
 
 ################################################################################
 ### @brief source files
@@ -290,6 +281,8 @@ include Makefile.files
 include lib/Makefile.files
 include arangod/Makefile.files
 include arangosh/Makefile.files
+include etc/Makefile.files
+include utils/Makefile.files
 
 if ENABLE_MRUBY
 include arangoirb/Makefile.files
@@ -335,142 +328,82 @@ clean-local:
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
-################################################################################
-### @brief arango password
-################################################################################
-
-# exclude arango skripts from sources list
-bin_arango_password_SOURCES =
-
-bin/arango-password: bin/arango-password.in
-if ENABLE_RELATIVE_DEVEL
-	sed \
-		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-else   
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-endif
-
-CLEANUP += bin/arango-password
-
-################################################################################
-### @brief arango upgrade
-################################################################################
-
-# exclude arango skripts from sources list
-bin_arango_upgrade_SOURCES =
-
-bin/arango-upgrade: bin/arango-upgrade.in
-if ENABLE_RELATIVE_DEVEL
-	sed \
-		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-else   
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-endif
-
-CLEANUP += bin/arango-upgrade
-
-################################################################################
-### @brief arango datafile debugger
-################################################################################
-
-# exclude arango skrips from sources list
-bin_arango_dfdb_SOURCES =
-
-bin/arango-dfdb: bin/arango-dfdb.in
-if ENABLE_RELATIVE_DEVEL
-	sed \
-		-e 's%@SBINDIR@%bin%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-else   
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBIN_DIR}%g' \
-		-e 's%@DATABASE@%${TRI_DATABASE_DIR}%g' \
-		-e 's%@STATICFILES@%${TRI_PKGDATA_DIR}%g' \
-		$< > $@
-	chmod 755 $@
-endif
-
-CLEANUP += bin/arango-dfdb
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                      DEPENDENCIES
 ## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief documentation
+################################################################################
+
+include Documentation/Makefile.doxygen
+
+################################################################################
+### @brief javascript
+################################################################################
+
+include js/Makefile.javascript
 
 ################################################################################
 ### @brief mruby
 ################################################################################
 
 if ENABLE_MRUBY
-include m4/Makefile.mruby
+include mr/Makefile.mruby
 endif
 
-################################################################################
-### @brief documentation
-################################################################################
-
-include Doxygen/Makefile.doxygen
+## -----------------------------------------------------------------------------
+## --SECTION--                                                   GENERATED FILES
+## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief javascript
-################################################################################
-
-include m4/Makefile.javascript
-
-################################################################################
-### @brief flex
+### @brief generate all flex files
 ################################################################################
 
 if ENABLE_FLEX
-include m4/Makefile.flex
+include lib/Makefile.flex
 endif
 
 ################################################################################
-### @brief bison
+### @brief generate all bison files
 ################################################################################
 
 if ENABLE_BISON
-include m4/Makefile.bison
+include lib/Makefile.bison
 endif
 
 ################################################################################
-### @brief protocol buffers
+### @brief generate all protocol buffers
 ################################################################################
 
-include m4/Makefile.all-in-one-protobuf
-include m4/Makefile.protobuf
+include lib/Makefile.protobuf
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                EXTERNAL LIBRARIES
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief libev and V8
+### @brief libev
 ################################################################################
 
-if ENABLE_ALL_IN_ONE
-include m4/Makefile.all-in-one-libev
-include m4/Makefile.all-in-one-v8
+if ENABLE_ALL_IN_ONE_LIBEV
+include 3rdParty/Makefile.all-in-one-libev
+endif
+
+################################################################################
+### @brief protcol buffers
+################################################################################
+
+if ENABLE_ALL_IN_ONE_PROTOBUF
+include 3rdParty/Makefile.all-in-one-protobuf
+endif
+
+################################################################################
+### @brief V8
+################################################################################
+
+if ENABLE_ALL_IN_ONE_V8
+include 3rdParty/Makefile.all-in-one-v8
 endif
 
 ################################################################################
@@ -478,7 +411,7 @@ endif
 ################################################################################
 
 if ENABLE_MRUBY
-include m4/Makefile.all-in-one-mruby
+include 3rdParty/Makefile.all-in-one-mruby
 endif
 
 ################################################################################
@@ -486,7 +419,7 @@ endif
 ################################################################################
 
 if ENABLE_ZEROMQ
-include m4/Makefile.all-in-one-zeromq
+include 3rdParty/Makefile.all-in-one-zeromq
 endif
 
 ## -----------------------------------------------------------------------------

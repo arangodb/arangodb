@@ -1,5 +1,9 @@
 # -*- mode: Makefile; -*-
 
+## -----------------------------------------------------------------------------
+## --SECTION--                                                     CONFIGURATION
+## -----------------------------------------------------------------------------
+
 FORCE = 0
 SKIP_BOOST = 0
 SKIP_GEO = 0
@@ -10,6 +14,9 @@ USERNAME = root
 PASSWORD =
 PROTO = http
 
+## -----------------------------------------------------------------------------
+## --SECTION--                                                         UNITTESTS
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ## unittests target
@@ -27,7 +34,6 @@ unittests-brief: \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client 
-
 
 unittests-verbose:
 	@echo "################################################################################"
@@ -56,14 +62,32 @@ PIDFILE := /tmp/arango.$(PID).pid
 VOCDIR := /tmp/vocdir.$(PID)
 VOCPORT := $(shell printf "3%04d" `expr $(PID) % 10000`)
 VOCHOST := 127.0.0.1
-SERVER_START := 
-SERVER_OPT := --configuration none --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules --javascript.action-directory @top_srcdir@/js/actions/system --database.maximal-journal-size 1048576 --javascript.gc-interval 1 --server.threads 4 $(SERVER_START)
-CLIENT_OPT := --javascript.startup-directory @top_srcdir@/js --javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules --no-colors --quiet
 STARTFILE := $(VOCDIR)/startup
 CURL := curl
 CURL_OPT := --basic --user "$(USERNAME):$(PASSWORD)"
-CERT_FILE := @srcdir@/UnitTests/server.pem
+CERT_FILE := @top_srcdir@/UnitTests/server.pem
 
+SERVER_START := 
+
+SERVER_OPT := \
+	--configuration none \
+	--database.maximal-journal-size 1048576 \
+	--javascript.action-directory @top_srcdir@/js/actions/system \
+	--javascript.gc-interval 1 \
+	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
+	--javascript.startup-directory @top_srcdir@/js \
+	--ruby.action-directory @top_srcdir@/mr/actions/system \
+	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
+	--server.threads 4 \
+	--server.admin-directory ./html/admin \
+	$(SERVER_START)
+
+CLIENT_OPT := \
+	--configuration none \
+	--javascript.startup-directory @top_srcdir@/js \
+	--javascript.modules-path @top_srcdir@/js/client/modules:@top_srcdir@/js/common/modules \
+	--no-colors \
+	--quiet
 
 .PHONY: start-server
 
@@ -142,7 +166,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 
-UnitTests_geo_suite_CPPFLAGS = -I@top_builddir@/arangod -I@top_builddir@/lib
+UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib
 UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
 UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
@@ -169,16 +193,16 @@ endif
 ## SHELL SERVER TESTS (BASICS)
 ################################################################################
 
-SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
-               @srcdir@/js/common/tests/shell-edge.js \
-               @srcdir@/js/common/tests/shell-compactor.js \
-               @srcdir@/js/common/tests/shell-collection.js \
-               @srcdir@/js/common/tests/shell-simple-query.js \
-               @srcdir@/js/common/tests/shell-index.js \
-               @srcdir@/js/common/tests/shell-index-geo.js \
-               @srcdir@/js/common/tests/shell-cap-constraint.js \
-               @srcdir@/js/common/tests/shell-unique-constraint.js \
-               @srcdir@/js/common/tests/shell-hash-index.js
+SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
+               @top_srcdir@/js/common/tests/shell-edge.js \
+               @top_srcdir@/js/common/tests/shell-compactor.js \
+               @top_srcdir@/js/common/tests/shell-collection.js \
+               @top_srcdir@/js/common/tests/shell-simple-query.js \
+               @top_srcdir@/js/common/tests/shell-index.js \
+               @top_srcdir@/js/common/tests/shell-index-geo.js \
+               @top_srcdir@/js/common/tests/shell-cap-constraint.js \
+               @top_srcdir@/js/common/tests/shell-unique-constraint.js \
+               @top_srcdir@/js/common/tests/shell-hash-index.js
 
 SHELL_SERVER = $(SHELL_COMMON)
 
@@ -206,47 +230,47 @@ unittests-shell-server:
 ## SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 
-SHELL_SERVER_AHUACATL = @srcdir@/js/server/tests/ahuacatl-ranges.js \
-			@srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
-			@srcdir@/js/server/tests/ahuacatl-escaping.js \
-			@srcdir@/js/server/tests/ahuacatl-functions.js \
-			@srcdir@/js/server/tests/ahuacatl-variables.js \
-			@srcdir@/js/server/tests/ahuacatl-bind.js \
-			@srcdir@/js/server/tests/ahuacatl-complex.js \
-			@srcdir@/js/server/tests/ahuacatl-logical.js \
-			@srcdir@/js/server/tests/ahuacatl-arithmetic.js \
-			@srcdir@/js/server/tests/ahuacatl-relational.js \
-			@srcdir@/js/server/tests/ahuacatl-ternary.js \
-			@srcdir@/js/server/tests/ahuacatl-parse.js \
-			@srcdir@/js/server/tests/ahuacatl-hash.js \
-			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
-			@srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
-			@srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-			@srcdir@/js/server/tests/ahuacatl-skiplist.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-simple.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-variables.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-geo.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		        @srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
-		        @srcdir@/js/server/tests/ahuacatl-operators.js
+SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/ahuacatl-escaping.js \
+			@top_srcdir@/js/server/tests/ahuacatl-functions.js \
+			@top_srcdir@/js/server/tests/ahuacatl-variables.js \
+			@top_srcdir@/js/server/tests/ahuacatl-bind.js \
+			@top_srcdir@/js/server/tests/ahuacatl-complex.js \
+			@top_srcdir@/js/server/tests/ahuacatl-logical.js \
+			@top_srcdir@/js/server/tests/ahuacatl-arithmetic.js \
+			@top_srcdir@/js/server/tests/ahuacatl-relational.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ternary.js \
+			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
+			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
+			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
+			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
+			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
+			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
-			@srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js 
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-1.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-2.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-3.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-4.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-5.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-6.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-7.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-8.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-9.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js 
 
 .PHONY: unittests-shell-server-ahuacatl
 
@@ -273,7 +297,7 @@ unittests-shell-server-ahuacatl:
 ## SHELL CLIENT TESTS
 ################################################################################
 
-SHELL_CLIENT = $(SHELL_COMMON) js/client/tests/client.js
+SHELL_CLIENT = $(SHELL_COMMON) @top_srcdir@/js/client/tests/client.js
 
 .PHONY: unittests-shell-client
 
@@ -313,7 +337,7 @@ unittests-http-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=0 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -339,7 +363,7 @@ unittests-ssl-server:
 	@echo "================================================================================"
 	@echo
 
-	cd @srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=1 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
+	cd @top_srcdir@/UnitTests/HttpInterface && ARANGO_SERVER="$(VOCHOST):$(VOCPORT)" ARANGO_SSL=1 ARANGO_USER="$(USERNAME)" ARANGO_PASSWORD="$(PASSWORD)" ./run-tests || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
@@ -354,7 +378,7 @@ unittests-ssl-server:
 ## BITARRAY INDEXES TESTS
 ################################################################################
 
-BITARRAY_COMMON = @srcdir@/js/common/tests/shell-bitarray-index.js
+BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
 
 .PHONY:	unittests-bitarray-index
 
