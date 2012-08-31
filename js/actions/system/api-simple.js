@@ -46,12 +46,12 @@ var API = "_api/simple/";
 ///
 /// @REST{PUT /_api/simple/all}
 ///
-/// Returns all documents of a collections. The call expects an JSON object
+/// Returns all documents of a collections. The call expects a JSON object
 /// as body with the following attributes:
 ///
 /// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - @LIT{skip}: The number of documents to skip in the query (optional).
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip}
 ///   is applied before the @LIT{limit} restriction. (optional)
@@ -60,7 +60,7 @@ var API = "_api/simple/";
 ///
 /// @EXAMPLES
 ///
-/// Limit the amount of documents using
+/// Limit the amount of documents using @LIT{limit}
 ///
 /// @verbinclude api-simple-all-skip-limit
 ////////////////////////////////////////////////////////////////////////////////
