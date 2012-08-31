@@ -422,11 +422,10 @@ bool RestImportHandler::createByList () {
       // got a json document or list
       
       // build the json object from the list
-      json = createJsonObject(keys, values);
+      json = createJsonObject(keys, values, line);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
         
       if (!json) {
-        LOGGER_WARNING << "no valid JSON data in line: " << line;            
         ++numError;          
         continue;
       }
@@ -496,17 +495,23 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
   return json;
 }
 
-TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values) {
+TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line) {
   
   if (values->_type != TRI_JSON_LIST) {
+    LOGGER_WARNING << "no valid JSON list data in line: " << line;            
     return 0;
   }
   
   if (keys->_value._objects._length !=  values->_value._objects._length) {
+    LOGGER_WARNING << "wrong number of JSON values in line: " << line;            
     return 0;
   }
   
   TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (result == 0) {
+    LOGGER_ERROR << "out of memory";
+    return 0;
+  }
   
   size_t n = keys->_value._objects._length;
 
