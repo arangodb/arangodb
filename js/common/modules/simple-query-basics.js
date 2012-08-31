@@ -205,6 +205,7 @@ function SimpleQuery () {
   this._limit = null;
   this._countQuery = null;
   this._countTotal = null;
+  this._batchSize = null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,6 +389,34 @@ SimpleQuery.prototype.toArray = function () {
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the batch size
+///
+/// @FUN{@FA{query}.getBatchSize()}
+///
+/// Returns the batch size for queries. If the returned value is undefined, the
+/// server will determine a sensible batch size for any following requests.
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuery.prototype.getBatchSize = function () {
+  return this._batchSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the batch size for any following requests
+///
+/// @FUN{@FA{query}.setBatchSize(@FA{number})}
+///
+/// Sets the batch size for queries. The batch size determines how many results
+/// are at most transferred from the server to the client in one chunk.
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuery.prototype.setBatchSize = function (value) {
+  if (value >= 1) {
+    this._batchSize = value;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
