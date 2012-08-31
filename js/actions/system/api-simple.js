@@ -141,7 +141,7 @@ actions.defineHttp({
 /// - @LIT{distance}: If given, the attribute key used to store the
 ///   distance. (optional)
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - @LIT{skip}: The number of documents to skip in the query. (optional)
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip} is
 ///   applied before the @LIT{limit} restriction. The default is 100. (optional)
@@ -254,10 +254,10 @@ actions.defineHttp({
 ///
 /// - @LIT{longitude}: The longitude of the coordinate.
 ///
-/// - @LIT{radius}: The maximal radius.
+/// - @LIT{radius}: The maximal radius (in meters).
 ///
-/// - @LIT{distance}: If given, the attribute key used to store the
-///   distance. (optional)
+/// - @LIT{distance}: If given, the result attribute key used to store the
+///   distance values (optional). If specified, distances are returned in meters.
 ///
 /// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
