@@ -92,6 +92,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _handlerFactory(0), 
     _servers(),
     _endpointList(),
+    _httpPort(),
     _endpoints(),
     _disableAuthentication(false),
     _keepAliveTimeout(300.0),
@@ -214,6 +215,11 @@ bool ApplicationEndpointServer::buildServers () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
+  // issue #175: add deprecated hidden option for downwards compatibility
+  options[ApplicationServer::OPTIONS_HIDDEN]
+    ("server.http-port", &_httpPort, "http port for client requests (deprecated)")
+  ;
+
   options[ApplicationServer::OPTIONS_SERVER]
     ("server.endpoint", &_endpoints, "endpoint for client requests")
   ;
@@ -243,6 +249,12 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
 
   if (! ok) {
     return false;
+  }
+
+  if (_httpPort != "") {
+    // issue #175: add hidden option --server.http-port for downwards-compatibility
+    string httpEndpoint("tcp://" + _httpPort);
+    _endpoints.push_back(httpEndpoint);
   }
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
