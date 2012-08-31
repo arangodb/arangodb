@@ -164,3 +164,4 @@ UnitTests/Philadelphia/Runner.cpp
 .v8-build-*
 VC++
 .zeromq-build-*
+etc/arangodb/*.conf
