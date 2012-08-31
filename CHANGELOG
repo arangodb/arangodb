@@ -1,8 +1,23 @@
 not released yet
 ----------------
 
-* fix for issue #177: a misleading error message was returned if unknown variables
+* fixed issue #179: strange text in import manual
+
+* fixed issue #178: test for aragoimp is missing
+
+* fixed issue #177: a misleading error message was returned if unknown variables
   were used in certain positions in an AQL query.
+
+* fixed issue #176: explain how to use AQL from the arangosh
+
+* issue #175: re-added hidden (and deprecated) option --server.http-port. This 
+  option is only there to be downwards-compatible to Arango 1.0.
+
+* fixed issue #174: missing Documentation for `within`
+
+* fixed issue #170: add db.<coll_name>.all().toArray() to arangosh help screen
+
+* fixed issue #169: missing argument in Simple Queries
 
 * added program arango-upgrade. This program must be run after installing ArangoDB
   and after upgrading from a previous version of ArangoDB. The arango-upgrade script
