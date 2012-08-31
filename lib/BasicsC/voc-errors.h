@@ -153,6 +153,9 @@ extern "C" {
 ///   Will be raised when an invalid variable name is used.
 /// - 1511: @CODE{variable '\%s' is assigned multiple times}
 ///   Will be raised when a variable gets re-assigned in a query.
+/// - 1512: @CODE{unknown variable '\%s'}
+///   Will be raised when an unknown variable is used or the variable is
+///   undefined the context it is used.
 /// - 1520: @CODE{unable to open collection '\%s'}
 ///   Will be raised when one of the collections referenced in the query was
 ///   not found.
@@ -992,6 +995,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_VARIABLE_REDECLARED                               (1511)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1512: ERROR_QUERY_VARIABLE_NAME_UNKNOWN
+///
+/// unknown variable '%s'
+///
+/// Will be raised when an unknown variable is used or the variable is
+/// undefined the context it is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             (1512)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1520: ERROR_QUERY_COLLECTION_NOT_FOUND
