@@ -36,6 +36,7 @@
 
 #include "build.h"
 
+#include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -66,46 +67,6 @@ using namespace triagens::mrclient;
 #include "mr/common/bootstrap/mr-error.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection default values
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t const  DEFAULT_RETRIES = 2;
-static int64_t const DEFAULT_CONNECTION_TIMEOUT = 3;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief colors for output
-////////////////////////////////////////////////////////////////////////////////
-
-static char const DEF_RED[6]         = "\x1b[31m";
-// static char const DEF_BOLD_RED[8]    = "\x1b[1;31m";
-static char const DEF_GREEN[6]       = "\x1b[32m";
-// static char const DEF_BOLD_GREEN[8]  = "\x1b[1;32m";
-// static char const DEF_BLUE[6]        = "\x1b[34m";
-// static char const DEF_BOLD_BLUE[8]   = "\x1b[1;34m";
-// static char const DEF_YELLOW[8]      = "\x1b[1;33m";
-// static char const DEF_WHITE[6]       = "\x1b[37m";
-// static char const DEF_BOLD_WHITE[8]  = "\x1b[1;37m";
-// static char const DEF_BLACK[6]       = "\x1b[30m";
-// static char const DEF_BOLD_BLACK[8]  = "\x1b[1;39m";
-// static char const DEF_BLINK[5]       = "\x1b[5m";
-// static char const DEF_BRIGHT[5]      = "\x1b[1m";
-static char const DEF_RESET[5]       = "\x1b[0m";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -115,88 +76,16 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief configuration file
+/// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ConfigFile = "";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a password was specified on the command line
-////////////////////////////////////////////////////////////////////////////////
-
-static bool HasPassword = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static Endpoint* EndpointServer = 0;
+ArangoClient BaseClient;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
 MRubyClientConnection* ClientConnection = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connect timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disable auto completion
-////////////////////////////////////////////////////////////////////////////////
-
-static bool NoAutoComplete = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deactivate colors
-////////////////////////////////////////////////////////////////////////////////
-
-static bool NoColors = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the output pager
-////////////////////////////////////////////////////////////////////////////////
-
-static string OutputPager = "less -X -R -F -L";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use pretty print
-////////////////////////////////////////////////////////////////////////////////
-
-static bool PrettyPrint = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quiet start
-////////////////////////////////////////////////////////////////////////////////
-
-static bool Quiet = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint to connect to
-////////////////////////////////////////////////////////////////////////////////
-
-static string EndpointServerString;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user to send to endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static string Username = "root";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief password to send to endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-static string Password = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup MR files
@@ -215,12 +104,6 @@ static string StartupModules = "";
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StartupPath = "";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use pager
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UsePager = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -287,12 +170,12 @@ static mrb_value ClientConnection_httpGet (mrb_state* mrb, mrb_value self) {
   
 static MRubyClientConnection* createConnection (MR_state_t* mrs) {
   return new MRubyClientConnection(mrs,
-                                   EndpointServer,
-                                   Username,
-                                   Password, 
-                                   (double) RequestTimeout, 
-                                   (double) ConnectTimeout, 
-                                   DEFAULT_RETRIES,
+                                   BaseClient.endpointServer(),
+                                   BaseClient.username(),
+                                   BaseClient.password(), 
+                                   BaseClient.requestTimeout(), 
+                                   BaseClient.connectTimeout(), 
+                                   ArangoClient::DEFAULT_RETRIES,
                                    false);
 }
 
@@ -301,19 +184,8 @@ static MRubyClientConnection* createConnection (MR_state_t* mrs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseProgramOptions (int argc, char* argv[]) {
-  string level = "info";
-
   ProgramOptionsDescription description("STANDARD options");
   ProgramOptionsDescription ruby("RUBY options");
-  ProgramOptionsDescription client("CLIENT options");
-  ProgramOptionsDescription logging("LOGGING options");
-  ProgramOptionsDescription hidden("HIDDEN options");
-
-  hidden
-    ("auto-complete", "enable auto completion, use no-auto-complete to disable")
-    ("colors", "activate color support")
-    ("no-pretty-print", "disable pretty printting")          
-  ;
 
   ruby
     ("ruby.directory", &StartupPath, "startup paths containing the Ruby files; multiple directories can be separated by cola")
@@ -321,126 +193,20 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ;
 
   description
-    ("configuration,c", &ConfigFile, "read configuration file")
-    ("help,h", "help message")
-    ("no-auto-complete", "disable auto completion")
-    ("no-colors", "deactivate color support")
-    ("pager", &OutputPager, "output pager")
-    ("pretty-print", "pretty print values")          
-    ("quiet,s", "no banner")
-    ("use-pager", "use pager")
-    (client, false)
-    (javascript, false)
-    (logging, false)
-    (hidden, true)
+    (ruby, false)
   ;
 
+  // fill in used options
+  BaseClient.setupGeneral(description);
+  BaseClient.setupServer(description);
+
+  // and parse the command line and config file
   ProgramOptions options;
-
-  if (! options.parse(description, argc, argv)) {
-    cerr << options.lastError() << "\n";
-    exit(EXIT_FAILURE);
-  }
-
-  // check for help
-  set<string> help = options.needHelp("help");
-
-  if (! help.empty()) {
-    cout << description.usage(help) << endl;
-    exit(EXIT_SUCCESS);
-  }
-
-  // set the logging
-  TRI_SetLogLevelLogging(level.c_str());
-  TRI_CreateLogAppenderFile("-");
-  
-  // parse config file
-  string configFile = "";
-
-#ifdef _SYSCONFDIR_
-
-  string sysDir = string(_SYSCONFDIR_);
-  string systemConfigFile = "arangosh.conf";
-
-  if (! sysDir.empty()) {
-    if (sysDir[sysDir.size() - 1] != '/') {
-      sysDir += "/" + systemConfigFile;
-    }
-    else {
-      sysDir += systemConfigFile;
-    }
-
-    if (FileUtils::exists(sysDir)) {
-      configFile = sysDir;
-    }
-    else {
-      LOGGER_DEBUG << "no system init file '" << sysDir << "'";
-    }
-  }
-  
-#endif
-
-  if (! ConfigFile.empty()) {
-    if (StringUtils::tolower(ConfigFile) == string("none")) {
-      LOGGER_INFO << "using no init file at all";
-    }
-    else {
-      configFile = ConfigFile;
-    }
-  }
-
-  if (! configFile.empty()) {
-    LOGGER_DEBUG << "using init file '" << configFile << "'";
-
-    if (! options.parse(description, configFile)) {
-      cout << "cannot parse config file '" << configFile << "': " << options.lastError() << endl;
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  // check if have a password
-  HasPassword =  options.has("server.password");
-
-  // set colors
-  if (options.has("colors")) {
-    NoColors = false;
-  }
-
-  if (options.has("no-colors")) {
-    NoColors = true;
-  }
-
-  // set auto-completion
-  if (options.has("auto-complete")) {
-    NoAutoComplete = false;
-  }
-
-  if (options.has("no-auto-complete")) {
-    NoAutoComplete = true;
-  }
-
-  // set pretty print
-  if (options.has("pretty-print")) {
-    PrettyPrint = true;
-  }
-
-  if (options.has("no-pretty-print")) {
-    PrettyPrint = false;
-  }
-
-  // set pager
-  if (options.has("use-pager")) {
-    UsePager = true;
-  }
-
-  // set quiet
-  if (options.has("quiet")) {
-    Quiet = true;
-  }
+  BaseClient.parse(options, description, argc, argv, "arangoirb.conf");
 
   // check module path
   if (StartupModules.empty()) {
-    LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
+    LOGGER_FATAL << "module path not known, please use '--ruby.modules-path'";
     exit(EXIT_FAILURE);
   }
 }
@@ -528,9 +294,8 @@ static void RunShell (MR_state_t* mrs) {
   console->close();
 
   cout << endl;
-  if (! Quiet) {
-    cout << endl << "Bye Bye! Auf Wiedersehen! さようなら" << endl;
-  }
+
+  BaseClient.printByeBye();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,44 +322,13 @@ int main (int argc, char* argv[]) {
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
-  EndpointServerString = Endpoint::getDefaultEndpoint();
+  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 
   // .............................................................................
   // parse the program options
   // .............................................................................
   
   ParseProgramOptions(argc, argv);
-  
-  // check connection args
-  if (ConnectTimeout <= 0) {
-    cerr << "invalid value for --server.connect-timeout" << endl;
-    exit(EXIT_FAILURE);
-  }
-
-  if (RequestTimeout <= 0) {
-    cerr << "invalid value for --server.request-timeout" << endl;
-    exit(EXIT_FAILURE);
-  }
-  
-  if (Username.size() == 0) {
-    // must specify a user name
-    cerr << "no value specified for --server.username" << endl;
-    exit(EXIT_FAILURE);
-  }
-
-  if (! HasPassword) {
-    // no password given on command-line
-    cout << "Please specify a password:" << endl;
-    // now prompt for it
-#ifdef TRI_HAVE_TERMIOS_H
-    TRI_SetStdinVisibility(false);
-    getline(cin, Password);
-
-    TRI_SetStdinVisibility(true);
-#else
-    getline(cin, Password);
-#endif
-  }
   
   // .............................................................................
   // set-up MRuby objects
@@ -604,25 +338,22 @@ int main (int argc, char* argv[]) {
   MR_state_t* mrs = MR_OpenShell();
 
   TRI_InitMRUtils(mrs);
-
   
   // .............................................................................
   // set-up client connection
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (EndpointServerString != "none");
+  bool useServer = (BaseClient.endpointString() != "none");
 
   if (useServer) {
-    EndpointServer = Endpoint::clientFactory(EndpointServerString);
+    BaseClient.createEndpoint();
 
-    if (EndpointServer == 0) {
-      cerr << "invalid value for --server.endpoint ('" << EndpointServerString.c_str() << "')" << endl;
+    if (BaseClient.endpointServer() == 0) {
+      cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
       exit(EXIT_FAILURE);
     }
 
-    assert(EndpointServer);
-   
     ClientConnection = createConnection(mrs);
     InitMRClientConnection(&mrs->_mrb, ClientConnection);
   }
@@ -632,12 +363,12 @@ int main (int argc, char* argv[]) {
   // .............................................................................  
 
   // http://www.network-science.de/ascii/   Font: ogre
-  if (! Quiet) {
-    char const* g = DEF_GREEN;
-    char const* r = DEF_RED;
-    char const* z = DEF_RESET;
+  if (! BaseClient.quiet()) {
+    char const* g = ArangoClient::COLOR_GREEN;
+    char const* r = ArangoClient::COLOR_RED;
+    char const* z = ArangoClient::COLOR_RESET;
 
-    if (NoColors) {
+    if (! BaseClient.colors()) {
       g = "";
       r = "";
       z = "";
@@ -662,22 +393,17 @@ int main (int argc, char* argv[]) {
 
     cout << endl;
 
-    if (UsePager) {
-      cout << "Using pager '" << OutputPager << "' for output buffering." << endl;
-    }
- 
-    if (PrettyPrint) {
-      cout << "Pretty print values." << endl;    
-    }
+    BaseClient.printWelcomeInfo();
 
     if (useServer) {
       if (ClientConnection->isConnected()) {
-        if (! Quiet) {
-          cout << "Connected to ArangoDB '" << EndpointServer->getSpecification() << "' Version " << ClientConnection->getVersion() << endl; 
+        if (! BaseClient.quiet()) {
+          cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+               << "' Version " << ClientConnection->getVersion() << endl; 
         }
       }
       else {
-        cerr << "Could not connect to endpoint '" << EndpointServerString << "'" << endl;
+        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "'" << endl;
         cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
       }
     }

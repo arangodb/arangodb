@@ -162,7 +162,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description.arguments(&arguments);
   
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv);
+  BaseClient.parse(options, description, argc, argv, "arangoimp.conf");
   
   if (FileName == "" && arguments.size() > 0) {
     FileName = arguments[0];

@@ -738,9 +738,11 @@ bin_arangoimp_OBJECTS = $(am_bin_arangoimp_OBJECTS)
 bin_arangoimp_DEPENDENCIES = lib/libarango_v8.a lib/libarango_client.a \
 	lib/libarango.a $(am__DEPENDENCIES_2)
 am__bin_arangoirb_SOURCES_DIST =  \
+	arangosh/ArangoShell/ArangoClient.cpp \
 	arangoirb/MRClient/MRubyClientConnection.cpp \
 	arangoirb/MRClient/arangoirb.cpp
-@ENABLE_MRUBY_TRUE@am_bin_arangoirb_OBJECTS = arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@am_bin_arangoirb_OBJECTS = arangosh/ArangoShell/bin_arangoirb-ArangoClient.$(OBJEXT) \
+@ENABLE_MRUBY_TRUE@	arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.$(OBJEXT) \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/bin_arangoirb-arangoirb.$(OBJEXT)
 bin_arangoirb_OBJECTS = $(am_bin_arangoirb_OBJECTS)
 @ENABLE_MRUBY_TRUE@bin_arangoirb_DEPENDENCIES = lib/libarango_mruby.a \
@@ -1010,8 +1012,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(MRUBY_HEADER) etc/arangodb/arangod.conf \
-	etc/arangodb/arangosh.conf $(am__append_16) \
-	Documentation/.setup-directories \
+	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
+	$(am__append_16) Documentation/.setup-directories \
 	@builddir@/.setup-js-directories $(am__append_17) \
 	$(am__append_19) $(am__append_21) $(PROTOBUF_FILES) \
 	$(am__append_23) $(am__append_24) $(am__append_25) \
@@ -1527,6 +1529,7 @@ bin_arango_upgrade_SOURCES =
 bin_arango_dfdb_SOURCES = 
 @ENABLE_MRUBY_TRUE@bin_arangoirb_CPPFLAGS = \
 @ENABLE_MRUBY_TRUE@	-I@top_srcdir@/arangoirb \
+@ENABLE_MRUBY_TRUE@	-I@top_srcdir@/arangosh \
 @ENABLE_MRUBY_TRUE@	$(AM_CPPFLAGS) 
 
 @ENABLE_MRUBY_TRUE@bin_arangoirb_LDADD = \
@@ -1537,6 +1540,7 @@ bin_arango_dfdb_SOURCES =
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
 @ENABLE_MRUBY_TRUE@bin_arangoirb_SOURCES = \
+@ENABLE_MRUBY_TRUE@	arangosh/ArangoShell/ArangoClient.cpp \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/MRubyClientConnection.cpp \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/arangoirb.cpp
 
@@ -2779,6 +2783,9 @@ arangosh/V8Client/bin_arangoimp-arangoimp.$(OBJEXT):  \
 bin/arangoimp$(EXEEXT): $(bin_arangoimp_OBJECTS) $(bin_arangoimp_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangoimp$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangoimp_OBJECTS) $(bin_arangoimp_LDADD) $(LIBS)
+arangosh/ArangoShell/bin_arangoirb-ArangoClient.$(OBJEXT):  \
+	arangosh/ArangoShell/$(am__dirstamp) \
+	arangosh/ArangoShell/$(DEPDIR)/$(am__dirstamp)
 arangoirb/MRClient/$(am__dirstamp):
 	@$(MKDIR_P) arangoirb/MRClient
 	@: > arangoirb/MRClient/$(am__dirstamp)
@@ -2921,6 +2928,7 @@ mostlyclean-compile:
 	-rm -f arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.$(OBJEXT)
 	-rm -f arangoirb/MRClient/bin_arangoirb-arangoirb.$(OBJEXT)
 	-rm -f arangosh/ArangoShell/bin_arangoimp-ArangoClient.$(OBJEXT)
+	-rm -f arangosh/ArangoShell/bin_arangoirb-ArangoClient.$(OBJEXT)
 	-rm -f arangosh/ArangoShell/bin_arangosh-ArangoClient.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangoimp-ImportHelper.$(OBJEXT)
 	-rm -f arangosh/V8Client/bin_arangoimp-V8ClientConnection.$(OBJEXT)
@@ -3185,6 +3193,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-MRubyClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-arangoirb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangoimp-ArangoClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/ArangoShell/$(DEPDIR)/bin_arangosh-ArangoClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-ImportHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangosh/V8Client/$(DEPDIR)/bin_arangoimp-V8ClientConnection.Po@am__quote@
@@ -4608,6 +4617,22 @@ arangosh/V8Client/bin_arangoimp-arangoimp.obj: arangosh/V8Client/arangoimp.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoimp_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangoimp-arangoimp.obj `if test -f 'arangosh/V8Client/arangoimp.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangoimp.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangoimp.cpp'; fi`
 
+arangosh/ArangoShell/bin_arangoirb-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangoirb-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangoirb-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangoirb-ArangoClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangoirb-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+
+arangosh/ArangoShell/bin_arangoirb-ArangoClient.obj: arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangoirb-ArangoClient.obj -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangoirb-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangoirb-ArangoClient.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangoirb-ArangoClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangoirb-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+
 arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.o: arangoirb/MRClient/MRubyClientConnection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangoirb_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.o -MD -MP -MF arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-MRubyClientConnection.Tpo -c -o arangoirb/MRClient/bin_arangoirb-MRubyClientConnection.o `test -f 'arangoirb/MRClient/MRubyClientConnection.cpp' || echo '$(srcdir)/'`arangoirb/MRClient/MRubyClientConnection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-MRubyClientConnection.Tpo arangoirb/MRClient/$(DEPDIR)/bin_arangoirb-MRubyClientConnection.Po
@@ -5251,22 +5276,10 @@ build.h: configure.ac
 ################################################################################
 
 ################################################################################
-### @brief server config
+### @brief config
 ################################################################################
 
-etc/arangodb/arangod.conf: etc/arangodb/arangod.conf.in Makefile
-	@test -d etc/arangodb || mkdir -p etc/arangodb
-	sed \
-		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
-		-e 's%@LOGDIR@%${TRI_LOGDIR}%g' \
-		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
-		$< > $@
-
-################################################################################
-### @brief client config
-################################################################################
-
-etc/arangodb/arangosh.conf: etc/arangodb/arangosh.conf.in Makefile
+etc/arangodb/%.conf: etc/arangodb/%.conf.in Makefile
 	@test -d etc/arangodb || mkdir -p etc/arangodb
 	sed \
 		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \

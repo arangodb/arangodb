@@ -314,7 +314,11 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 /// @brief parses command line and config file and prepares logging
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::parse (ProgramOptions& options, ProgramOptionsDescription& description, int argc, char* argv[]) {
+void ArangoClient::parse (ProgramOptions& options,
+                          ProgramOptionsDescription& description, 
+                          int argc,
+                          char* argv[],
+                          string const& initFilename) {
   if (! options.parse(description, argc, argv)) {
     cerr << options.lastError() << "\n";
     exit(EXIT_FAILURE);
@@ -349,7 +353,7 @@ void ArangoClient::parse (ProgramOptions& options, ProgramOptionsDescription& de
 
   else {
     string sysDir = string(_SYSCONFDIR_);
-    string systemConfigFile = "arangosh.conf";
+    string systemConfigFile = initFilename;
 
     if (! sysDir.empty()) {
       if (sysDir[sysDir.size() - 1] != '/') {
