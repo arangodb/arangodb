@@ -1119,6 +1119,8 @@ int main (int argc, char* argv[]) {
       z = "";
     }
 
+    cout << endl;
+
     printf("%s                                  %s     _     %s\n", g, r, z);
     printf("%s  __ _ _ __ __ _ _ __   __ _  ___ %s ___| |__  %s\n", g, r, z);
     printf("%s / _` | '__/ _` | '_ \\ / _` |/ _ \\%s/ __| '_ \\ %s\n", g, r, z);
