@@ -629,7 +629,7 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = \
-	./Doxygen/js \
+	./Documentation/js \
 	./arangod \
 	./lib
 
@@ -698,10 +698,10 @@ EXCLUDE_SYMBOLS        =
 # the \include command).
 
 EXAMPLE_PATH           = \
-	./Doxygen/Examples.Ahuacatl \
-	./Doxygen/Examples.ArangoDB \
-	./Doxygen/Examples.Durham \
-	./Doxygen/Examples.Fyn \
+	./Documentation/Examples.Ahuacatl \
+	./Documentation/Examples.ArangoDB \
+	./Documentation/Examples.Durham \
+	./Documentation/Examples.Fyn \
 	./Demos/Scripts
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
@@ -864,13 +864,13 @@ HTML_FILE_EXTENSION    = .html
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard header.
 
-HTML_HEADER            = ./Doxygen/Scripts/arangodb_header.html
+HTML_HEADER            = ./Documentation/Scripts/arangodb_header.html
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard footer.
 
-HTML_FOOTER            = ./Doxygen/Scripts/arangodb_footer.html
+HTML_FOOTER            = ./Documentation/Scripts/arangodb_footer.html
 
 # The HTML_STYLESHEET tag can be used to specify a user-defined cascading
 # style sheet that is used by each HTML page. It can be used to
@@ -879,7 +879,7 @@ HTML_FOOTER            = ./Doxygen/Scripts/arangodb_footer.html
 # the style sheet file to the HTML output directory, so don't put your own
 # stylesheet in the HTML output directory as well, or it will be erased!
 
-HTML_STYLESHEET        = ./Doxygen/Scripts/arangodb.css
+HTML_STYLESHEET        = ./Documentation/Scripts/arangodb.css
 
 # The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
 # Doxygen will adjust the colors in the stylesheet and background images
