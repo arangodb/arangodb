@@ -2,23 +2,22 @@
 [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png)](http://travis-ci.org/triAGENS/ArangoDB)
  
 We recently started a new open source project - a nosql database
-called AvocadoDB which became ArangoDB in May 2012.  ArangoDB is
-currently available as a beta version. 
-We want to have a stable version 1 ready soon. A multi server version is planned 
+called AvocadoDB which became ArangoDB in May 2012.  The current
+stable version of ArangoDB is 1.0. A multi server version is planned 
 for the end of 2012. For details see the roadmap.
 
 Key features include:
 
-* Schema-free schemata let you combine the space efficiency of MySQL with the performance power of NoSQL
-* Use ArangoDB as an application server and fuse your application and database together for maximal throughput
-* JavaScript for all: no language zoo, you can use one language from your browser to your back-end
-* ArangoDB is multi-threaded - exploit the power of all your cores
-* Flexible data modeling: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
-* Free index choice: use the correct index for your problem, be it a skip list or a n-gram search
-* Configurable durability: let the application decide if it needs more durability or more performance
-* No-nonsense storage: ArangoDB uses all of the power of modern storage hardware, like SSD and large caches
-* Powerful query language (AQL) to retrieve data 
-* It is open source (Apache Licence 2.0)
+* **Schema-free schemata** let you combine the space efficiency of MySQL with the performance power of NoSQL
+* Use ArangoDB as an **application server** and fuse your application and database together for maximal throughput
+* JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
+* ArangoDB is **multi-threaded** - exploit the power of all your cores
+* **Flexible data modeling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
+* Free **index choice**: use the correct index for your problem, be it a skip list or a n-gram search
+* Configurable **durability**: let the application decide if it needs more durability or more performance
+* No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
+* **Powerful query language** (AQL) to retrieve data 
+* It is **open source** (Apache Licence 2.0)
 
 For more in-depth information
 
@@ -28,8 +27,9 @@ For more in-depth information
 
 ## Compilation
 
-Please check the <a href="https://github.com/triAGENS/ArangoDB/wiki">wiki</a>
-for installation and compilation instructions:
+Please check the
+[Installation Manual](http://www.arangodb.org/manuals/1.0.0/InstallManual.html)
+for installation and compilation instructions.
 
 ### Mac OS X Hints
 
@@ -82,7 +82,7 @@ Start the shell in another windows:
 ## Caveat
 
 Please note that this is a very early version of ArangoDB. There will be
-bugs and we'd really appreciate it if you 
-<a href="https://github.com/triAGENS/ArangoDB/issues">report</a> them:
+bugs and we'd really appreciate it if you [report](https://github.com/triAGENS/ArangoDB/issues")
+them:
 
   https://github.com/triAGENS/ArangoDB/issues

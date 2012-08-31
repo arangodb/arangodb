@@ -50,4 +50,3 @@ if [ "$TAG" == "1" ];  then
   git tag "v$VERSION"
   git push --tags
 fi
-

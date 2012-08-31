@@ -1,0 +1,5 @@
+[server]
+endpoint = tcp://localhost:8529
+
+[ruby]
+modules-path = @PKGDATADIR@/mr/client/modules;@PKGDATADIR@/mr/common/modules

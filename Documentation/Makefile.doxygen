@@ -1,0 +1,127 @@
+# -*- mode: Makefile; -*-
+
+################################################################################
+## --SECTION--                                                           DOXYGEN
+################################################################################
+
+################################################################################
+### @brief directory setup
+################################################################################
+
+.PHONY: Documentation/js Documentation/js/system Documentation/js/modules
+
+BUILT_SOURCES += Documentation/.setup-directories
+
+Documentation/.setup-directories:
+	@test -d Documentation/js || mkdir Documentation/js
+	@test -d Documentation/js/actions || mkdir Documentation/js/actions
+	@test -d Documentation/js/actions/system || mkdir Documentation/js/actions/system
+	@test -d Documentation/js/common || mkdir Documentation/js/common
+	@test -d Documentation/js/common/bootstrap || mkdir Documentation/js/common/bootstrap
+	@test -d Documentation/js/common/modules || mkdir Documentation/js/common/modules
+	@test -d Documentation/js/server || mkdir Documentation/js/server
+	@test -d Documentation/js/server/modules || mkdir Documentation/js/server/modules
+	@test -d Documentation/js/client || mkdir Documentation/js/client
+	@test -d Documentation/web || mkdir Documentation/web
+	@touch $@
+
+Documentation/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
+
+Documentation/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
+
+Documentation/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
+
+Documentation/js/server/%.c: @srcdir@/js/server/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
+
+Documentation/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Documentation/.setup-directories
+	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
+
+Documentation/xml/%.md: Documentation/xml/%.xml
+	@python @top_srcdir@/Documentation/Scripts/xml2md.py $< > $@
+
+################################################################################
+### @brief doxygen
+################################################################################
+
+.PHONY: doxygen
+
+Documentation/arango-html.doxy: Documentation/arango.template
+	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
+
+doxygen: Documentation/arango-html.doxy $(DOXYGEN)
+	doxygen Documentation/arango-html.doxy > /dev/null
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Documentation/html/$$w.html Documentation/web/$$w.html; done
+
+################################################################################
+### @brief wiki
+################################################################################
+
+.PHONY: wiki wiki2
+
+Documentation/arango-xml.doxy: Documentation/arango.template
+	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
+
+wiki: wiki2 
+	@test -d Documentation/wiki || mkdir Documentation/wiki
+	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Documentation/xml/$$w.xml > Documentation/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Documentation/xml/$$w.md; done
+
+wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
+	doxygen Documentation/arango-xml.doxy > /dev/null
+
+################################################################################
+### @brief latex
+################################################################################
+
+.PHONY: latex
+
+Documentation/arango-latex.doxy: Documentation/arango.template
+	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
+
+latex: Documentation/arango-latex.doxy $(DOXYGEN)
+	doxygen Documentation/arango-latex.doxy > /dev/null
+
+	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Documentation/latex/version.tex
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/InstallManual.tex > Documentation/latex/InstallManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode install-manual.tex || true
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/UserManual.tex > Documentation/latex/UserManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode user-manual.tex || true
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/ImplementorManual.tex > Documentation/latex/ImplementorManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode implementor-manual.tex || true
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/RefManual.tex > Documentation/latex/RefManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode ref-manual.tex || true
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/DbaManual.tex > Documentation/latex/DbaManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode dba-manual.tex || true
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/ImpManual.tex > Documentation/latex/ImpManual.inc.tex
+	cd Documentation/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
+################################################################################
+### @brief cleanup
+################################################################################
+
+CLEANUP += \
+	$(DOXYGEN) \
+	$(addsuffix .md,$(addprefix Documentation/xml/,$(WIKI))) \
+	$(addsuffix .md,$(addprefix Documentation/wiki/,$(WIKI)))
+
+################################################################################
+## --SECTION--                                                       END-OF-FILE
+################################################################################
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

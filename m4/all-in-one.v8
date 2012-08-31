@@ -1,8 +1,8 @@
 dnl -*- mode: Autoconf; -*-
 
-dnl -----------------------------------------------------------------------------------------
-dnl option for V8 support
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                               V8
+dnl ----------------------------------------------------------------------------
 
 V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
@@ -28,9 +28,9 @@ fi
 
 TRI_V8_VERSION="3.9.4"
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl add substitutions
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
 AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
@@ -39,18 +39,24 @@ AC_SUBST(V8_TARGET)
 
 V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl informational output
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
+LIB_INFO="$LIB_INFO|V8: 3rdParty version"
 LIB_INFO="$LIB_INFO|V8 VERSION: ${TRI_V8_VERSION}"
 
-FLAG_INFO="$FLAG_INFO|V8_TARGET:   ${V8_TARGET}"
-FLAG_INFO="$FLAG_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|V8_LIBS:     ${V8_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
+LIB_INFO="$LIB_INFO|V8_TARGET:   ${V8_TARGET}"
 
+LIB_INFO="$LIB_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
+LIB_INFO="$LIB_INFO|V8_LIBS:     ${V8_LIBS}"
+
+dnl LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
 
 dnl Local Variables:
 dnl mode: outline-minor

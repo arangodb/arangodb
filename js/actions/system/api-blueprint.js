@@ -222,7 +222,7 @@ function postVertex(req, res) {
       id = json["$id"];
     }
 
-    var v = g.addVertex(id, body);      
+    var v = g.addVertex(id, json);      
 
     if (v == undefined || v._properties == undefined) {
       throw "could not create vertex";
