@@ -3810,9 +3810,6 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
