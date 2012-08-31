@@ -206,6 +206,7 @@ function SimpleQuery () {
   this._limit = null;
   this._countQuery = null;
   this._countTotal = null;
+  this._batchSize = null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,6 +268,27 @@ SimpleQuery.prototype.clone = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query
+///
+/// @FUN{@FA{query}.execute(@FA{batchSize})}
+///
+/// Executes a simple query. If the optional @FA{batchSize} value is specified,
+/// the server will return at most @FN{batchSize} values in one roundtrip.
+/// The @FA{batchSize} cannot be adjusted after the query is first executed.
+///
+/// Note that there is no need to explicitly call the execute method if another
+/// means of fetching the query results is chosen. The following two approaches
+/// lead to the same result:
+/// @code
+/// result = db.users.all().toArray();
+/// q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+/// @endcode
+///
+/// The following two alternatives both use a @FA{batchSize} and return the same
+/// result:
+/// @code
+/// q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
+/// q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.execute = function () {
@@ -392,6 +414,34 @@ SimpleQuery.prototype.toArray = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the batch size
+///
+/// @FUN{@FA{cursor}.getBatchSize()}
+///
+/// Returns the batch size for queries. If the returned value is undefined, the
+/// server will determine a sensible batch size for any following requests.
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuery.prototype.getBatchSize = function () {
+  return this._batchSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the batch size for any following requests
+///
+/// @FUN{@FA{cursor}.setBatchSize(@FA{number})}
+///
+/// Sets the batch size for queries. The batch size determines how many results
+/// are at most transferred from the server to the client in one chunk.
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuery.prototype.setBatchSize = function (value) {
+  if (value >= 1) {
+    this._batchSize = value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents
 ///
 /// @FUN{@FA{cursor}.count()}
@@ -471,7 +521,7 @@ SimpleQuery.prototype.hasNext = function () {
 /// @verbinclude simple5
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuery.prototype.next = function() {
+SimpleQuery.prototype.next = function () {
   this.execute();
 
   return this._execution.next();

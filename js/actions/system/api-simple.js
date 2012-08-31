@@ -63,6 +63,10 @@ var API = "_api/simple/";
 /// Limit the amount of documents using @LIT{limit}
 ///
 /// @verbinclude api-simple-all-skip-limit
+/// 
+/// Using a @LIT{batchSize} value
+///
+/// @verbinclude api-simple-all-batch
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -102,7 +106,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -220,7 +224,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -337,7 +341,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
           
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -426,7 +430,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -640,7 +644,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);

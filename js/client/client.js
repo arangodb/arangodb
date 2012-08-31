@@ -1062,7 +1062,7 @@ function ArangoCollection (database, data) {
   '  document(<id>)                  get document by handle            ' + "\n" +
   '  replace(<id>, <data>,           overwrite document                ' + "\n" +
   '          <overwrite>)                                              ' + "\n" +
-  '  update(<id>, <data>,            update document                   ' + "\n" +
+  '  update(<id>, <data>,            partially update document         ' + "\n" +
   '         <overwrite>, <keepNull>)                                   ' + "\n" +
   '  delete(<id>)                    delete document                   ' + "\n" +
   '                                                                    ' + "\n" +
@@ -2623,6 +2623,8 @@ function ArangoDatabase (connection) {
   ' > id = db.<coll_name>.save({ ... });    save a document            ' + "\n" +
   ' > db.<coll_name>.remove(<_id>);         delete a document          ' + "\n" +
   ' > db.<coll_name>.document(<_id>);       get a document             ' + "\n" +
+  ' > db.<coll_name>.replace(<_id>, {...}); overwrite a document       ' + "\n" +
+  ' > db.<coll_name>.update(<_id>, {...});  partially update a document' + "\n" +
   ' > help                                  show help pages            ' + "\n" +
   ' > exit                                                             ' + "\n" +
   'Note: collection names may be cached in arangosh. To refresh them, issue: ' + "\n" +

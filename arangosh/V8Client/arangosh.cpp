@@ -792,12 +792,12 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
     string i = triagens::basics::StringUtils::trim(input);
 
-    if (i == "exit" || i == "quit") {
+    if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       break;
     }
 
-    if (i == "help") {
+    if (i == "help" || i == "help;") {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       input = TRI_DuplicateString("help()");
     }
