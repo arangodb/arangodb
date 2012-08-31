@@ -268,7 +268,8 @@ namespace triagens {
         void parse (triagens::basics::ProgramOptions&,
                     triagens::basics::ProgramOptionsDescription& description,
                     int argc,
-                    char* argv[]);
+                    char* argv[],
+                    string const& initFilename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts pager

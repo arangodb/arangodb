@@ -399,7 +399,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   // and parse the command line and config file
   ProgramOptions options;
-  BaseClient.parse(options, description, argc, argv);
+  BaseClient.parse(options, description, argc, argv, "arangosh.conf");
 
   // set V8 options
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
