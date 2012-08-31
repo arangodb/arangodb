@@ -1,0 +1,5 @@
+[server]
+endpoint = tcp://localhost:8529
+
+[javascript]
+modules-path = @PKGDATADIR@/js/client/modules;@PKGDATADIR@/js/common/modules

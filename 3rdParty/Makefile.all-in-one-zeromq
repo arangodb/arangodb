@@ -1,8 +1,8 @@
 # -*- mode: Makefile; -*-
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                           LIBRARY
-################################################################################
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief ZeroMQ
@@ -11,9 +11,9 @@
 BUILT_SOURCES += @ZEROMQ_LIBS@
 ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 
-@ZEROMQ_LIBS@: .zeromq-build-@TRI_BITS@ .czmq-build-@TRI_BITS@
+@ZEROMQ_LIBS@: @srcdir@/.zeromq-build-@TRI_BITS@ @srcdir@/.czmq-build-@TRI_BITS@
 
-.zeromq-build-@TRI_BITS@:
+@srcdir@/.zeromq-build-@TRI_BITS@:
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING ZEROMQ"
@@ -28,7 +28,7 @@ ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 			--libdir=$(ZMQDIR)/lib@TRI_BITS@
 	cd @top_srcdir@/3rdParty/zeromq-2.2.0 && $(MAKE) install
 
-	touch .zeromq-build-@TRI_BITS@
+	touch @srcdir@/.zeromq-build-@TRI_BITS@
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -36,7 +36,7 @@ ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-.czmq-build-@TRI_BITS@: .zeromq-build-@TRI_BITS@
+@srcdir@/.czmq-build-@TRI_BITS@: .zeromq-build-@TRI_BITS@
 	@echo
 	@echo "--------------------------------------------------------------------------------"
 	@echo "BUILDING CZMQ"
@@ -54,7 +54,7 @@ ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 			LIBS="-luuid -lrt -lstdc++"
 	cd @top_srcdir@/3rdParty/czmq-1.1.0 && $(MAKE) install
 
-	touch .czmq-build-@TRI_BITS@
+	touch @srcdir@/.czmq-build-@TRI_BITS@
 
 	@echo
 	@echo "--------------------------------------------------------------------------------"
@@ -62,9 +62,9 @@ ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
-################################################################################
+## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor

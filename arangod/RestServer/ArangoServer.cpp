@@ -201,7 +201,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationUserManager(0),
     _dispatcherThreads(8),
-    _databasePath("/var/lib/arangodb"),
+    _databasePath(),
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
@@ -223,15 +223,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   // set working directory and database directory
   _workingDirectory = "/var/tmp";
-  
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-  _workingDirectory = _binaryPath + "/../tmp";
-  _databasePath = _binaryPath + "/../var/arangodb";
-#endif
-
-#ifdef _DATABASEDIR_
-  _databasePath = _DATABASEDIR_;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +243,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
+  map<string, ProgramOptionsDescription> additional;
+
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
+  _applicationServer->setSystemConfigFile("arangod.conf");
   _applicationServer->setUserConfigFile(".arango/arangod.conf");
 
   // .............................................................................
@@ -282,6 +276,17 @@ void ArangoServer::buildApplicationServer () {
   _applicationMR = new ApplicationMR(_binaryPath);
   _applicationServer->addFeature(_applicationMR);
 
+#else
+
+  string ignoreOpt;
+
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("ruby.gc-interval", &ignoreOpt, "Ruby garbage collection interval (each x requests)")
+    ("ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")
+    ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
+    ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
+  ;
+
 #endif
 
   // .............................................................................
@@ -304,6 +309,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("arango", TRIAGENS_VERSION);
+  _applicationAdminServer->allowAdminDirectory(); // might be changed later
 
   // .............................................................................
   // build the application user manager
@@ -311,7 +317,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationUserManager = new ApplicationUserManager();
   _applicationServer->addFeature(_applicationUserManager);
-
+  
   // create manager role
   vector<right_t> rightsManager;
   rightsManager.push_back(RIGHT_TO_MANAGE_USER);
@@ -342,49 +348,12 @@ void ArangoServer::buildApplicationServer () {
   _applicationUserManager->setAnonymousRights(rightsAnonymous);
 
   // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
-  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc/arangodb");
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_HTML_ADMIN_PATH
-  _applicationAdminServer->allowAdminDirectory(TRI_HTML_ADMIN_PATH);
-#else
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../html/admin");
-#endif
-
-#else
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-  _applicationServer->setSystemConfigFile("arangod.conf");
-  _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
-
-#endif
-#endif
-  
-  // .............................................................................
   // define server options
   // .............................................................................
 
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
-
-  map<string, ProgramOptionsDescription> additional;
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
@@ -499,6 +468,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
+
     ApplicationUserManager::unloadUsers();
     ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
@@ -507,21 +477,36 @@ void ArangoServer::buildApplicationServer () {
     _databasePath = arguments[0];
   }
 
+  if (_databasePath.empty()) {
+    LOGGER_FATAL << "no database path has been supplied, giving up";
+    LOGGER_INFO << "please use the '--database.directory' option";
+
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
+    exit(EXIT_FAILURE);
+  }
+
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+
   if (mode == OperationMode::MODE_CONSOLE || 
       mode == OperationMode::MODE_UNITTESTS ||
       mode == OperationMode::MODE_JSLINT ||
       mode == OperationMode::MODE_SCRIPT) {
     int res = executeConsole(mode);
+
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(res);
   }
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
+
+    ApplicationUserManager::unloadUsers();
+    ApplicationUserManager::unloadRoles();
     exit(res);
   }
 #endif
-
 
   // .............................................................................
   // sanity checks
@@ -535,24 +520,17 @@ void ArangoServer::buildApplicationServer () {
     _supervisorMode = true;
   }
 
-  if (_daemonMode) {
+  if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
-      LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
-      cerr << "no pid-file defined, but daemon mode requested\n";
+      cerr << "no pid-file defined, but daemon or supervisor mode requested, giving up\n";
+
+      LOGGER_FATAL << "no pid-file defined, but daemon or supervisor mode was requested";
       LOGGER_INFO << "please use the '--pid-file' option";
+
       ApplicationUserManager::unloadUsers();
       ApplicationUserManager::unloadRoles();
       exit(EXIT_FAILURE);
     }
-  }
-
-  if (_databasePath.empty()) {
-    LOGGER_FATAL << "no database path has been supplied, giving up";
-    cerr << "no database path has been supplied, giving up\n";
-    LOGGER_INFO << "please use the '--database.directory' option";
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
-    exit(EXIT_FAILURE);
   }
 }
 
