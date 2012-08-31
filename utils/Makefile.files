@@ -10,9 +10,8 @@
 
 sbin_PROGRAMS += \
         bin/arango-password \
-	bin/arango-dfdb
-
-#        bin/arango-upgrade 
+	bin/arango-dfdb \
+        bin/arango-upgrade 
 
 ################################################################################
 ### @brief arango password
@@ -38,7 +37,7 @@ CLEANUP += bin/arango-password
 # exclude arango skripts from sources list
 bin_arango_upgrade_SOURCES =
 
-bin/arango-upgrade: bin/arango-upgrade.in
+bin/arango-upgrade: utils/arango-upgrade.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
 		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \

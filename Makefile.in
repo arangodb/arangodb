@@ -192,7 +192,7 @@ target_triplet = @target@
 @ENABLE_MRUBY_TRUE@am__append_5 = @MRUBY_CPPFLAGS@ @MRUBY_LDFLAGS@
 @ENABLE_MRUBY_TRUE@am__append_6 = @MRUBY_LIBS@
 sbin_PROGRAMS = bin/arangod$(EXEEXT) bin/arango-password$(EXEEXT) \
-	bin/arango-dfdb$(EXEEXT)
+	bin/arango-dfdb$(EXEEXT) bin/arango-upgrade$(EXEEXT)
 bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 	$(am__EXEEXT_1)
 noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
@@ -594,6 +594,9 @@ bin_arango_dfdb_LDADD = $(LDADD)
 am_bin_arango_password_OBJECTS =
 bin_arango_password_OBJECTS = $(am_bin_arango_password_OBJECTS)
 bin_arango_password_LDADD = $(LDADD)
+am_bin_arango_upgrade_OBJECTS =
+bin_arango_upgrade_OBJECTS = $(am_bin_arango_upgrade_OBJECTS)
+bin_arango_upgrade_LDADD = $(LDADD)
 am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
@@ -800,10 +803,10 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_v8_a_SOURCES) \
 	$(UnitTests_basics_suite_SOURCES) \
 	$(UnitTests_geo_suite_SOURCES) $(bin_arango_dfdb_SOURCES) \
-	$(bin_arango_password_SOURCES) $(bin_arangod_SOURCES) \
-	$(bin_arangoimp_SOURCES) $(bin_arangoirb_SOURCES) \
-	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
-	$(bin_zserver_SOURCES)
+	$(bin_arango_password_SOURCES) $(bin_arango_upgrade_SOURCES) \
+	$(bin_arangod_SOURCES) $(bin_arangoimp_SOURCES) \
+	$(bin_arangoirb_SOURCES) $(bin_arangosh_SOURCES) \
+	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
 DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) \
@@ -812,9 +815,10 @@ DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(am__UnitTests_basics_suite_SOURCES_DIST) \
 	$(am__UnitTests_geo_suite_SOURCES_DIST) \
 	$(bin_arango_dfdb_SOURCES) $(bin_arango_password_SOURCES) \
-	$(am__bin_arangod_SOURCES_DIST) $(bin_arangoimp_SOURCES) \
-	$(am__bin_arangoirb_SOURCES_DIST) $(bin_arangosh_SOURCES) \
-	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
+	$(bin_arango_upgrade_SOURCES) $(am__bin_arangod_SOURCES_DIST) \
+	$(bin_arangoimp_SOURCES) $(am__bin_arangoirb_SOURCES_DIST) \
+	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
+	$(bin_zserver_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -1504,8 +1508,6 @@ bin_arangoimp_SOURCES = \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangoimp.cpp
 
-
-#        bin/arango-upgrade 
 
 ################################################################################
 ### @brief arango password
@@ -5295,7 +5297,7 @@ bin/arango-password: utils/arango-password.in
 		$< > $@
 	chmod 755 $@
 
-bin/arango-upgrade: bin/arango-upgrade.in
+bin/arango-upgrade: utils/arango-upgrade.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
 		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
