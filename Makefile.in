@@ -5158,7 +5158,6 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
-@ENABLE_INSTALL_DBDIR_FALSE@install-data-local:
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-local \
@@ -5184,8 +5183,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-arangosysconfDATA install-data-local \
-	install-nobase_pkgdataDATA
+install-data-am: install-arangosysconfDATA install-nobase_pkgdataDATA
 
 install-dvi: install-dvi-am
 
@@ -5246,24 +5244,17 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-arangosysconfDATA install-binPROGRAMS install-data \
-	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man \
-	install-nobase_pkgdataDATA install-pdf install-pdf-am \
-	install-ps install-ps-am install-sbinPROGRAMS install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-nobase_pkgdataDATA \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-sbinPROGRAMS install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
-
-################################################################################
-### @brief /var data
-################################################################################
-
-@ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
-@ENABLE_INSTALL_DBDIR_TRUE@	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
 
 ################################################################################
 ### @brief version number
