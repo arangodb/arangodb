@@ -1,13 +1,17 @@
 dnl -*- mode: Autoconf; -*-
 
-dnl -----------------------------------------------------------------------------------------
-dnl checks for dot
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                              DOT
+dnl ----------------------------------------------------------------------------
 
 AC_ARG_WITH(dot,
 	    AS_HELP_STRING([--with-dot=DIR], [where the dot executable is located]),
 	    tr_DOT_PATH="$withval",
             tr_DOT_PATH="$PATH")
+
+dnl ----------------------------------------------------------------------------
+dnl checks for dot
+dnl ----------------------------------------------------------------------------
 
 AC_PATH_PROG([DOT_PATH], [dot], [], [$tr_DOT_PATH])
 
@@ -21,12 +25,21 @@ fi
 
 AC_SUBST(HAVE_DOT)
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl informational output
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
 if test "x$HAVE_DOT" = xyes;  then
-  TOOL_INFO="$TOOL_INFO|DOT support: enabled ($DOT_PATH)"
+  BASIC_INFO="$BASIC_INFO|DOT support: enabled ($DOT_PATH)"
 else
-  TOOL_INFO="$TOOL_INFO|DOT support: disabled"
+  BASIC_INFO="$BASIC_INFO|DOT support: disabled"
 fi
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
+
+dnl Local Variables:
+dnl mode: outline-minor
+dnl outline-regexp: "^\\(dnl --SECTION--\\)"
+dnl End:

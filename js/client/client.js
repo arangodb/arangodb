@@ -91,7 +91,7 @@ function ArangoError (error) {
   ArangoError.prototype.toString = function() {
     var result = "";
 
-    if (typeof(internal.COLOR_BRIGHT) !== "undefined") {
+    if (internal.COLOR_OUTPUT) {
       result = internal.COLOR_BRIGHT + "Error: " + internal.COLOR_OUTPUT_RESET;
     }
     else  {
@@ -252,15 +252,12 @@ ModuleCache["/arangosh"] = new Module("/arangosh");
 
 function print_plain (data) {
   var internal = require("internal");
+
   var p = internal.PRETTY_PRINT;
   internal.PRETTY_PRINT = false;
 
-  var c = undefined;
-
-  if (typeof(internal.COLOR_OUTPUT) !== "undefined") {
-    c = internal.COLOR_OUTPUT;
-    internal.COLOR_OUTPUT = undefined;
-  }
+  var c = internal.COLOR_OUTPUT;
+  internal.COLOR_OUTPUT = false;
   
   try {
     internal.print(data);
@@ -330,14 +327,16 @@ function start_color_print (color) {
   var internal = require("internal");
 
   if (typeof(color) === "string") {
-    internal.COLOR_OUTPUT = color;
+    internal.COLOR_OUTPUT_DEFAULT = color;
   }
   else {
-    internal.COLOR_OUTPUT = internal.COLOR_BRIGHT;
+    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;
   }
 
+  internal.COLOR_OUTPUT = true;
+
   internal.print("start "
-                 + internal.COLOR_OUTPUT 
+                 + internal.COLOR_OUTPUT_DEFAULT
                  + "color" 
                  + internal.COLOR_OUTPUT_RESET
                  + " printing");
@@ -351,7 +350,7 @@ function stop_color_print () {
   var internal = require("internal");
 
   internal.print("stop color printing");
-  internal.COLOR_OUTPUT = undefined;
+  internal.COLOR_OUTPUT = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

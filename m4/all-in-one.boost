@@ -1,8 +1,8 @@
 dnl -*- mode: Autoconf; -*-
 
-dnl -----------------------------------------------------------------------------------------
-dnl option for BOOST support
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                            BOOST
+dnl ----------------------------------------------------------------------------
 
 BOOST_CPPFLAGS="-I${srcdir}/3rdParty/boost_1_48_0/include"
 BOOST_LDFLAGS=""
@@ -10,9 +10,9 @@ BOOST_LIBS=""
 
 TRI_BOOST_VERSION="1.48.0"
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl add substitutions
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
 AC_SUBST(BOOST_CPPFLAGS)
 AC_SUBST(BOOST_LDFLAGS)
@@ -20,16 +20,22 @@ AC_SUBST(BOOST_LIBS)
 
 BOOST_CPPFLAGS="${BOOST_CPPFLAGS} -DTRI_BOOST_VERSION='\"${TRI_BOOST_VERSION}\"'"
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl informational output
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
+LIB_INFO="$LIB_INFO|BOOST: 3rdParty version"
 LIB_INFO="$LIB_INFO|BOOST VERSION: $TRI_BOOST_VERSION"
 
-FLAG_INFO="$FLAG_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
-FLAG_INFO="$FLAG_INFO|BOOST_LDFLAGS:  ${BOOST_LDFLAGS}"
-FLAG_INFO="$FLAG_INFO|BOOST_LIBS:     ${BOOST_LIBS}"
-FLAG_INFO="$FLAG_INFO|."
+LIB_INFO="$LIB_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|BOOST_LDFLAGS:  ${BOOST_LDFLAGS}"
+LIB_INFO="$LIB_INFO|BOOST_LIBS:     ${BOOST_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
 
 dnl Local Variables:
 dnl mode: outline-minor

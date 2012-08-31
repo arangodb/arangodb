@@ -1,0 +1,75 @@
+# -*- mode: Makefile; -*-
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                      UTIL SCRIPTS
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief /sbin programs
+################################################################################
+
+sbin_PROGRAMS += \
+        bin/arango-password \
+	bin/arango-dfdb
+
+#        bin/arango-upgrade 
+
+################################################################################
+### @brief arango password
+################################################################################
+
+# exclude arango skripts from sources list
+bin_arango_password_SOURCES =
+
+bin/arango-password: utils/arango-password.in
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
+		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		$< > $@
+	chmod 755 $@
+
+CLEANUP += bin/arango-password
+
+################################################################################
+### @brief arango upgrade
+################################################################################
+
+# exclude arango skripts from sources list
+bin_arango_upgrade_SOURCES =
+
+bin/arango-upgrade: bin/arango-upgrade.in
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
+		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		$< > $@
+	chmod 755 $@
+
+CLEANUP += bin/arango-upgrade
+
+################################################################################
+### @brief arango datafile debugger
+################################################################################
+
+# exclude arango skrips from sources list
+bin_arango_dfdb_SOURCES =
+
+bin/arango-dfdb: utils/arango-dfdb.in
+	sed \
+		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
+		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
+		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
+		$< > $@
+	chmod 755 $@
+
+CLEANUP += bin/arango-dfdb
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

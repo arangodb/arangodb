@@ -103,8 +103,9 @@ namespace {
 ApplicationV8::ApplicationV8 (string const& binaryPath)
   : ApplicationFeature("V8"),
     _startupPath(),
-    _startupModules("js/modules"),
+    _startupModules(),
     _actionPath(),
+    _useActions(true),
     _gcInterval(1000),
     _startupLoader(),
     _actionLoader(),
@@ -115,54 +116,6 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _freeContexts(),
     _dirtyContexts(),
     _stopping(0) {
-
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
-    _actionPath = binaryPath + "/../share/arango/js/actions/system";
-    _startupModules = binaryPath + "/../share/arango/js/server/modules"
-                + ";" + binaryPath + "/../share/arango/js/common/modules";
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_SYSTEM_ACTION_PATH
-    _actionPath = TRI_SYSTEM_ACTION_PATH;
-#else
-    _actionPath = binaryPath + "/../js/actions/system";
-#endif
-
-#ifdef TRI_STARTUP_MODULES_PATH
-    _startupModules = TRI_STARTUP_MODULES_PATH;
-#else
-    _startupModules = binaryPath + "/../js/server/modules"
-                + ";" + binaryPath + "/../js/common/modules";
-#endif
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-#else
-
-#ifdef _PKGDATADIR_
-
-    _actionPath = string(_PKGDATADIR_) + "/js/actions/system";
-    _startupModules = string(_PKGDATADIR_) + "/js/server/modules"
-              + ";" + string(_PKGDATADIR_) + "/js/common/modules";
-
-#endif
-
-#endif
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +257,7 @@ void ApplicationV8::collectGarbage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::disableActions () {
-  _actionPath.clear();
+  _useActions = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,7 +294,15 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
-  LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+
+  // check the startup modules
+  if (_startupModules.empty()) {
+    LOGGER_FATAL << "no 'javascript.modules-path' has been supplied, giving up";
+    exit(EXIT_FAILURE);
+  }
+  else {
+    LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+  }
 
   // set up the startup loader
   if (_startupPath.empty()) {
@@ -360,10 +321,16 @@ bool ApplicationV8::prepare () {
   }
 
   // set up action loader
-  if (! _actionPath.empty()) {
-    LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";
+  if (_useActions) {
+    if (_actionPath.empty()) {
+      LOGGER_FATAL << "no 'javascript.action-directory' has been supplied, giving up";
+      exit(EXIT_FAILURE);
+    }
+    else {
+      LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";
 
-    _actionLoader.setDirectory(_actionPath);
+      _actionLoader.setDirectory(_actionPath);
+    }
   }
 
   // setup instances
@@ -466,7 +433,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   TRI_InitV8VocBridge(context->_context, _vocbase);
   TRI_InitV8Queries(context->_context);
 
-  if (! _actionPath.empty()) {
+  if (_useActions) {
     TRI_InitV8Actions(context->_context, this);
   }
 
@@ -490,7 +457,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   }
 
   // load all actions
-  if (! _actionPath.empty()) {
+  if (_useActions) {
     bool ok = _actionLoader.executeAllScripts(context->_context);
 
     if (! ok) {
