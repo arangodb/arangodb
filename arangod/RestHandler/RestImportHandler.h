@@ -145,7 +145,7 @@ namespace triagens {
 /// @brief builds a TRI_json_t object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
       
-      TRI_json_t* createJsonObject (TRI_json_t* keys, TRI_json_t* values);
+      TRI_json_t* createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line);
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.
