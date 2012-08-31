@@ -62,6 +62,9 @@
 ///     <ul>
 ///      <li>@ref SimpleQueryHasNext "query.hasNext"</li>
 ///      <li>@ref SimpleQueryNext "query.next"</li>
+///      <li>@ref SimpleQuerySetBatchSize "query.setBatchSize"</li>
+///      <li>@ref SimpleQueryGetBatchSize "query.getBatchSize"</li>
+///      <li>@ref SimpleQueryExecute "query.execute"</li>
 ///      <li>@ref SimpleQueryDispose "query.dispose"</li>
 ///      <li>@ref SimpleQueryCount "query.count"</li>
 ///     </ul>
@@ -196,6 +199,18 @@
 /// @CLEARPAGE
 /// @anchor SimpleQueryNext
 /// @copydetails JSF_SimpleQuery_prototype_next
+///
+/// @CLEARPAGE
+/// @anchor SimpleQuerySetBatchSize
+/// @copydetails JSF_SimpleQuery_prototype_setBatchSize
+///
+/// @CLEARPAGE
+/// @anchor SimpleQueryGetBatchSize
+/// @copydetails JSF_SimpleQuery_prototype_getBatchSize
+///
+/// @CLEARPAGE
+/// @anchor SimpleQueryExecute
+/// @copydetails JSF_SimpleQuery_prototype_execute
 ///
 /// @CLEARPAGE
 /// @anchor SimpleQueryDispose
