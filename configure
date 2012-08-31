@@ -758,8 +758,6 @@ build_cpu
 build
 ENABLE_RELATIVE_FALSE
 ENABLE_RELATIVE_TRUE
-ENABLE_INSTALL_DBDIR_FALSE
-ENABLE_INSTALL_DBDIR_TRUE
 ENABLE_ALL_IN_ONE_V8_FALSE
 ENABLE_ALL_IN_ONE_V8_TRUE
 ENABLE_ALL_IN_ONE_PROTOBUF_FALSE
@@ -817,7 +815,6 @@ enable_all_in_one_boost
 enable_all_in_one_libev
 enable_all_in_one_protobuf
 enable_all_in_one_v8
-enable_install_dbdir
 enable_relative
 enable_silent_rules
 enable_dependency_tracking
@@ -1501,7 +1498,6 @@ Optional Features:
   --enable-all-in-one-protobuf
                           use supplied PROTOBUF from 3rdParty directory
   --enable-all-in-one-v8  use supplied V8 from 3rdParty directory
-  --enable-install-dbdir  install an empty database directory
   --enable-relative       all path are relative to the binary (default: no)
   --enable-silent-rules          less verbose build output (undo: `make V=1')
   --disable-silent-rules         verbose build output (undo: `make V=0')
@@ -2684,25 +2680,6 @@ else
   ENABLE_ALL_IN_ONE_V8_FALSE=
 fi
 
-
-
-
-# Check whether --enable-install-dbdir was given.
-if test "${enable_install_dbdir+set}" = set; then :
-  enableval=$enable_install_dbdir; tr_DBDIR="${enableval:-yes}"
-else
-  tr_DBDIR=yes
-
-fi
-
-
- if test "x$tr_DBDIR" = xyes; then
-  ENABLE_INSTALL_DBDIR_TRUE=
-  ENABLE_INSTALL_DBDIR_FALSE='#'
-else
-  ENABLE_INSTALL_DBDIR_TRUE='#'
-  ENABLE_INSTALL_DBDIR_FALSE=
-fi
 
 
 
@@ -10129,10 +10106,6 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_ALL_IN_ONE_V8_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_V8_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE_V8\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_INSTALL_DBDIR\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_RELATIVE_TRUE}" && test -z "${ENABLE_RELATIVE_FALSE}"; then

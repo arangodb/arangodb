@@ -93,18 +93,6 @@ dnl --SECTION--                                                          OPTIONS
 dnl ============================================================================
 
 dnl ----------------------------------------------------------------------------
-dnl INSTALL EMPTY DATABASE
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(install-dbdir,
-  AS_HELP_STRING([--enable-install-dbdir], [install an empty database directory]),
-  [tr_DBDIR="${enableval:-yes}"],
-  [tr_DBDIR=yes]
-)
-
-AM_CONDITIONAL(ENABLE_INSTALL_DBDIR, test "x$tr_DBDIR" = xyes)
-
-dnl ----------------------------------------------------------------------------
 dnl RELATIVE PATH
 dnl ----------------------------------------------------------------------------
 
