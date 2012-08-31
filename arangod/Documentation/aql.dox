@@ -33,6 +33,8 @@
 ///   <ul>
 ///    <li>@ref AqlPurpose
 ///    </li>
+///    <li>@ref AqlHowToUse
+///    </li>
 ///    <li>@ref AqlQueryResults
 ///    </li>
 ///    <li>@ref AqlBasics
@@ -107,6 +109,60 @@
 /// currently not supported.
 ///
 /// For some example queries, please refer to the page @ref AqlExamples.
+///
+/// @section AqlHowToUse How to invoke AQL
+///
+/// You can run AQL queries from your application via the HTTP REST API. The 
+/// full API description is available at @ref HttpCursor.
+/// 
+/// You can also run AQL queries from arangosh. To do so, first create an ArangoStatement
+/// object as follows:
+/// @code
+/// arangosh> stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
+/// [object ArangoStatement]
+/// @endcode
+///
+/// To execute the query, use the @LIT{execute} method:
+/// @code
+/// arangosh> c = stmt.execute();
+/// [object ArangoQueryCursor]
+/// @endcode
+/// This has executed the query. The query results are available in a cursor now. The
+/// cursor can return all its results at once using the @LIT{elements} method:
+/// @code
+/// arangosh> c.elements();
+/// [2, 4]
+/// @endcode
+///
+/// To execute a query using bind parameters, you need to create a statement first and
+/// then bind the parameters to it before execution:
+/// @code
+/// arangosh> stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
+/// [object ArangoStatement]
+/// arangosh> stmt.bind("one", 1);
+/// arangosh> stmt.bind("two", 2);
+/// arangosh> c = stmt.execute();
+/// [object ArangoQueryCursor]
+/// @endcode
+/// The cursor results can then be dumped or traversed:
+/// @code
+/// arangosh> while (c.hasNext()) { print(c.next()); }
+/// 2
+/// 4
+/// @endcode
+/// Please note that each cursor can be used exactly once as they are forward-only. 
+/// Once all cursor results have been dumped or iterated, the cursor is empty. To iterate
+/// through the results again, the query needs to be re-executed.
+///
+/// Please also note that when using bind parameters, you must not re-declare an existing
+/// bind parameter because this will be considered an error:
+/// @code
+/// arangosh> stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
+/// [object ArangoStatement]
+/// arangosh> stmt.bind("one", 1);
+/// arangosh> stmt.bind("one", 1);
+/// JavaScript exception in file 'client/client.js' at 771,9: redeclaration of bind parameter
+/// @endcode
 ///
 /// @section AqlQueryResults Query results
 ///

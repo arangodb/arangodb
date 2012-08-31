@@ -470,7 +470,7 @@ function ArangoQueryCursor (database, data) {
   'ArangoQueryCursor constructor:                                      ' + "\n" +
   ' > cu1 = qi1.execute();                                             ' + "\n" +
   'Functions:                                                          ' + "\n" +
-  '  hasMore();                            returns true if there       ' + "\n" +
+  '  hasNext();                            returns true if there       ' + "\n" +
   '                                        are more results            ' + "\n" +
   '  next();                               returns the next document   ' + "\n" +
   '  elements();                           returns all documents       ' + "\n" +

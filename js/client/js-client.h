@@ -471,7 +471,7 @@ static string JS_client_client =
   "  'ArangoQueryCursor constructor:                                      ' + \"\\n\" +\n"
   "  ' > cu1 = qi1.execute();                                             ' + \"\\n\" +\n"
   "  'Functions:                                                          ' + \"\\n\" +\n"
-  "  '  hasMore();                            returns true if there       ' + \"\\n\" +\n"
+  "  '  hasNext();                            returns true if there       ' + \"\\n\" +\n"
   "  '                                        are more results            ' + \"\\n\" +\n"
   "  '  next();                               returns the next document   ' + \"\\n\" +\n"
   "  '  elements();                           returns all documents       ' + \"\\n\" +\n"
