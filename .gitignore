@@ -101,6 +101,7 @@ Documentation/.setup-directories
 Documentation/web/*.html
 Documentation/wiki/
 Documentation/xml/
+Doxygen/
 .DS_Store
 *.gcda
 *.gcno
