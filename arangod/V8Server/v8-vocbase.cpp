@@ -2069,7 +2069,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   const uint32_t argc = argv.Length();
 
   if (argc < 1 || argc > 5) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <max>, <allowDirectReturn>)")));
+    return scope.Close(v8::ThrowException(v8::String::New("usage: AHUACATL_RUN(<querystring>, <bindvalues>, <doCount>, <batchSize>, <allowDirectReturn>)")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
