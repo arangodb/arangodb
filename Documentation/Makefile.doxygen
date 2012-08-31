@@ -23,8 +23,8 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
 	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/web || mkdir Doxygen/web
-	@test -d Doxygen/web/images || mkdir Doxygen/web/images
+	@test -d Doxygen/doc || mkdir Doxygen/doc
+	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
@@ -60,8 +60,8 @@ Documentation/arango-html.doxy: Documentation/arango.template
 
 doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
 	doxygen Documentation/arango-html.doxy > /dev/null
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
-	cp -R @top_srcdir@/Documentation/web/images/* Doxygen/web/images
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
+	cp -R @top_srcdir@/Documentation/doc/images/* Doxygen/doc/images
 
 ################################################################################
 ### @brief wiki
