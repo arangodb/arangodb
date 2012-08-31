@@ -1017,7 +1017,7 @@ top_srcdir = @top_srcdir@
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(MRUBY_HEADER) etc/arangodb/arangod.conf \
 	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
-	$(am__append_16) Documentation/.setup-directories \
+	$(am__append_16) Doxygen/.setup-directories \
 	@builddir@/.setup-js-directories $(am__append_17) \
 	$(am__append_19) $(am__append_21) $(PROTOBUF_FILES) \
 	$(am__append_23) $(am__append_24) $(am__append_25) \
@@ -1039,11 +1039,10 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 ### @brief cleanup
 ################################################################################
 CLEANUP = bin/arango-password bin/arango-upgrade bin/arango-dfdb \
-	$(DOXYGEN) $(addsuffix .md,$(addprefix \
-	Documentation/xml/,$(WIKI))) $(addsuffix .md,$(addprefix \
-	Documentation/wiki/,$(WIKI))) $(JAVASCRIPT_HEADER) \
-	.setup-js-directories $(am__append_18) $(am__append_20) \
-	$(am__append_22) $(PROTOBUF_FILES)
+	$(DOXYGEN) $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
+	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
+	$(JAVASCRIPT_HEADER) .setup-js-directories $(am__append_18) \
+	$(am__append_20) $(am__append_22) $(PROTOBUF_FILES)
 
 ################################################################################
 ### @brief flex files
@@ -1190,22 +1189,22 @@ MRUBY_HEADER = \
 ### @brief JavaScript files
 ################################################################################
 DOXYGEN = \
-	Doxygen/js/actions/system/api-collection.c \
-	Doxygen/js/actions/system/api-cursor.c \
-	Doxygen/js/actions/system/api-edges.c \
-	Doxygen/js/actions/system/api-explain.c \
-	Doxygen/js/actions/system/api-index.c \
-	Doxygen/js/actions/system/api-query.c \
-	Doxygen/js/actions/system/api-simple.c \
-	Doxygen/js/actions/system/api-system.c \
-	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/bootstrap/print.c \
-	Doxygen/js/common/modules/graph.c \
-	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/simple-query-basics.c \
-	Doxygen/js/server/modules/actions.c \
-	Doxygen/js/server/modules/simple-query.c \
-	Doxygen/js/server/server.c
+	Documentation/js/actions/system/api-collection.c \
+	Documentation/js/actions/system/api-cursor.c \
+	Documentation/js/actions/system/api-edges.c \
+	Documentation/js/actions/system/api-explain.c \
+	Documentation/js/actions/system/api-index.c \
+	Documentation/js/actions/system/api-query.c \
+	Documentation/js/actions/system/api-simple.c \
+	Documentation/js/actions/system/api-system.c \
+	Documentation/js/common/bootstrap/modules.c \
+	Documentation/js/common/bootstrap/print.c \
+	Documentation/js/common/modules/graph.c \
+	Documentation/js/common/modules/jsunity.c \
+	Documentation/js/common/modules/simple-query-basics.c \
+	Documentation/js/server/modules/actions.c \
+	Documentation/js/server/modules/simple-query.c \
+	Documentation/js/server/server.c
 
 
 ################################################################################
@@ -5571,38 +5570,43 @@ clean-local:
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
-.PHONY: Documentation/js Documentation/js/system Documentation/js/modules
+.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 
-Documentation/.setup-directories:
-	@test -d Documentation/js || mkdir Documentation/js
-	@test -d Documentation/js/actions || mkdir Documentation/js/actions
-	@test -d Documentation/js/actions/system || mkdir Documentation/js/actions/system
-	@test -d Documentation/js/common || mkdir Documentation/js/common
-	@test -d Documentation/js/common/bootstrap || mkdir Documentation/js/common/bootstrap
-	@test -d Documentation/js/common/modules || mkdir Documentation/js/common/modules
-	@test -d Documentation/js/server || mkdir Documentation/js/server
-	@test -d Documentation/js/server/modules || mkdir Documentation/js/server/modules
-	@test -d Documentation/js/client || mkdir Documentation/js/client
-	@test -d Documentation/web || mkdir Documentation/web
+Doxygen/.setup-directories:
+	@test -d Doxygen || mkdir Doxygen
+	@test -d Doxygen/js || mkdir Doxygen/js
+	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
+	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
+	@test -d Doxygen/js/common || mkdir Doxygen/js/common
+	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
+	@test -d Doxygen/js/server || mkdir Doxygen/js/server
+	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
+	@test -d Doxygen/js/client || mkdir Doxygen/js/client
+	@test -d Doxygen/web || mkdir Doxygen/web
+	@test -d Doxygen/web/images || mkdir Doxygen/web/images
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@test -d Doxygen/latex || mkdir Doxygen/latex
+	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
 	@touch $@
 
-Documentation/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Documentation/.setup-directories
+Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Documentation/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Documentation/.setup-directories
+Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Documentation/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Documentation/.setup-directories
+Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Documentation/js/server/%.c: @srcdir@/js/server/%.js Documentation/.setup-directories
+Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Documentation/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Documentation/.setup-directories
+Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
 	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
 
-Documentation/xml/%.md: Documentation/xml/%.xml
-	@python @top_srcdir@/Documentation/Scripts/xml2md.py $< > $@
+Doxygen/xml/%.md: Doxygen/xml/%.xml
+	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
 ### @brief doxygen
@@ -5614,9 +5618,10 @@ Documentation/arango-html.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-doxygen: Documentation/arango-html.doxy $(DOXYGEN)
+doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
 	doxygen Documentation/arango-html.doxy > /dev/null
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Documentation/html/$$w.html Documentation/web/$$w.html; done
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
+	cp -R @top_srcdir@/Documentation/web/images/* Doxygen/web/images
 
 ################################################################################
 ### @brief wiki
@@ -5629,9 +5634,9 @@ Documentation/arango-xml.doxy: Documentation/arango.template
 	$(MAKE) lib/BasicsC/voc-errors.h
 
 wiki: wiki2 
-	@test -d Documentation/wiki || mkdir Documentation/wiki
-	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Documentation/xml/$$w.xml > Documentation/xml/$$w.md; done
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Documentation/xml/$$w.md; done
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
 wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
 	doxygen Documentation/arango-xml.doxy > /dev/null
@@ -5646,28 +5651,31 @@ Documentation/arango-latex.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-latex: Documentation/arango-latex.doxy $(DOXYGEN)
+latex: Doxygen/.setup-directories Documentation/arango-latex.doxy $(DOXYGEN)
 	doxygen Documentation/arango-latex.doxy > /dev/null
 
-	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Documentation/latex/version.tex
+	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/InstallManual.tex > Documentation/latex/InstallManual.inc.tex
-	cd Documentation/latex && pdflatex -interaction batchmode install-manual.tex || true
+	cp -R Documentation/latex/*.tex Doxygen/latex
+	cp -R Documentation/latex/images Doxygen/latex/images
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/UserManual.tex > Documentation/latex/UserManual.inc.tex
-	cd Documentation/latex && pdflatex -interaction batchmode user-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/ImplementorManual.tex > Documentation/latex/ImplementorManual.inc.tex
-	cd Documentation/latex && pdflatex -interaction batchmode implementor-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/RefManual.tex > Documentation/latex/RefManual.inc.tex
-	cd Documentation/latex && pdflatex -interaction batchmode ref-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/DbaManual.tex > Documentation/latex/DbaManual.inc.tex
-	cd Documentation/latex && pdflatex -interaction batchmode dba-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
 
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Documentation/latex/ImpManual.tex > Documentation/latex/ImpManual.inc.tex
-	cd Documentation/latex && pdflatex -interaction batchmode imp-manual.tex || true
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
+
+	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
+	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
 
 ################################################################################
 ################################################################################

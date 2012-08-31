@@ -9,10 +9,13 @@ OUTPUT_FOLDER="Doxygen/manuals/$(PACKAGE_VERSION)"
 ## publish
 ################################################################################
 
-.PHONY: publish publish-wiki publish-html publish-pdf
+.PHONY: publish publish-prepare publish-wiki publish-html publish-pdf
 
-publish: publish-wiki publish-html publish-pdf
+publish: publish-prepare publish-wiki publish-html publish-pdf
 	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
+
+publish-prepare:
+	@test -d $(OUTPUT_FOLDER) || mkdir -p $(OUTPUT_FOLDER)
 
 publish-wiki:
 	(cd Doxygen/wiki && git checkout --force -- . && git clean -f -d -x && git pull)
@@ -36,4 +39,4 @@ publish-pdf: $(OUTPUT_FOLDER)
 	scp arangod/Documentation/arangodb_1.0_shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 $(OUTPUT_FOLDER):
-	mkdir  -p $(OUTPUT_FOLDER)/images
+	mkdir -p $(OUTPUT_FOLDER)/images
