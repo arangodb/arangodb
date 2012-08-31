@@ -139,8 +139,8 @@ function POST_api_cursor(req, res) {
     if (json.query != undefined) {
       cursor = AHUACATL_RUN(json.query, 
                             json.bindVars, 
-                            (json.count != undefined ? json.count : false), 
-                            (json.batchSize != undefined ? json.batchSize : 1000),
+                            (json.count != undefined ? json.count : false),
+                            json.batchSize, 
                             (json.batchSize == undefined));  
     }
     else {
