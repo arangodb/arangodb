@@ -500,7 +500,7 @@ SimpleQuery.prototype.hasNext = function () {
 /// @verbinclude simple5
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuery.prototype.next = function() {
+SimpleQuery.prototype.next = function () {
   this.execute();
 
   return this._execution.next();
