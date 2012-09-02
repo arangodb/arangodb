@@ -59,7 +59,7 @@ TRI_SBINDIR = ${abs_builddir}/bin
 
 else
 
-TRI_DATABASEDIR = ${localstatedir}/${PACKAGE_TARNAME}
+TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
 TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
 TRI_PKGDATADIR = ${pkgdatadir}
 TRI_SBINDIR = ${sbindir}
