@@ -1116,7 +1116,7 @@ BISONXX_FILES = lib/JsonParserX/JsonParserX.cpp
 ### @brief protocol buffers
 ################################################################################
 PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
-@ENABLE_RELATIVE_FALSE@TRI_DATABASEDIR = ${localstatedir}/${PACKAGE_TARNAME}
+@ENABLE_RELATIVE_FALSE@TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
 @ENABLE_RELATIVE_TRUE@TRI_DATABASEDIR = 
 @ENABLE_RELATIVE_FALSE@TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
 @ENABLE_RELATIVE_TRUE@TRI_LOGDIR = /tmp
