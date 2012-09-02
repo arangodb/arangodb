@@ -5549,12 +5549,12 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 .PHONY: doxygen
 
-Documentation/arango-html.doxy: Documentation/arango.template
+Doxygen/arango-html.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
-	doxygen Documentation/arango-html.doxy > /dev/null
+doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 
@@ -5564,7 +5564,7 @@ doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
 
 .PHONY: wiki wiki2
 
-Documentation/arango-xml.doxy: Documentation/arango.template
+Doxygen/arango-xml.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
@@ -5573,8 +5573,8 @@ wiki: wiki2
 	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
-wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
-	doxygen Documentation/arango-xml.doxy > /dev/null
+wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
 ### @brief latex
@@ -5582,12 +5582,12 @@ wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
 
 .PHONY: latex
 
-Documentation/arango-latex.doxy: Documentation/arango.template
+Doxygen/arango-latex.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-latex: Doxygen/.setup-directories Documentation/arango-latex.doxy $(DOXYGEN)
-	doxygen Documentation/arango-latex.doxy > /dev/null
+latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
