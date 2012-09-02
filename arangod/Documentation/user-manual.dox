@@ -226,8 +226,8 @@
 ///
 /// @LIT{http://localhost:8529/}.
 ///
-/// @htmlonly <img src="images/fe1.png" alt="ArangoDB Front-End">@endhtmlonly
-/// @latexonly\includegraphics[width=12cm]{images/fe1.png}@endlatexonly
+/// @htmlonly <img src="images/front-end-example-1.png" alt="ArangoDB Front-End">@endhtmlonly
+/// @latexonly\includegraphics[width=12cm]{images/front-end-example-1.png}@endlatexonly
 ///
 /// The front-end allows you the browser through the collections and
 /// documents. If you need to administrate the database, please use

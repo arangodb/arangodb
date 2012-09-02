@@ -61,7 +61,7 @@ Documentation/arango-html.doxy: Documentation/arango.template
 doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
 	doxygen Documentation/arango-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
-	cp -R @top_srcdir@/Documentation/doc/images/* Doxygen/doc/images
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 
 ################################################################################
 ### @brief wiki
@@ -97,7 +97,7 @@ latex: Doxygen/.setup-directories Documentation/arango-latex.doxy $(DOXYGEN)
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
 	cp -R Documentation/latex/*.tex Doxygen/latex
-	cp -R Documentation/latex/images Doxygen/latex/images
+	cp -R Documentation/images Doxygen/latex/images
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
