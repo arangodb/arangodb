@@ -38,6 +38,10 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
+        
+double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
+double const ArangoClient::DEFAULT_REQUEST_TIMEOUT = 300.0;
+size_t const ArangoClient::DEFAULT_RETRIES = 2;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoClient
