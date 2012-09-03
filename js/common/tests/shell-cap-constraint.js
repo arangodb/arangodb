@@ -70,7 +70,7 @@ function CapConstraintSuite() {
     collection.unload();
     internal.wait(0.25);
     collection.drop();
-    internal.wait(0.5);
+    internal.wait(1);
 
     if (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
       console.log("collection '%s' has not finished unloading.", cn);
