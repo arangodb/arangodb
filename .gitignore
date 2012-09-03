@@ -103,6 +103,11 @@ Documentation/xml/
 Doxygen/*.doxy
 Doxygen/html
 Doxygen/js
+Doxygen/latex
+Doxygen/man
+Doxygen/web
+Doxygen/wiki
+Doxygen/xml
 Doxygen/.setup-directories
 .DS_Store
 etc/arangodb/*.conf
