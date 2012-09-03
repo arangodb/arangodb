@@ -1,6 +1,12 @@
 not released yet
 ----------------
 
+* fixed issue #183: strange unittest error
+
+* fixed issue #182: manual pages
+
+* fixed issue #181: use getaddrinfo
+
 * moved default database directory to "/var/lib/arangodb" in accordance with 
   http://www.pathname.com/fhs/pub/fhs-2.3.html
 
