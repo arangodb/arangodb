@@ -46,12 +46,12 @@ var API = "_api/simple/";
 ///
 /// @REST{PUT /_api/simple/all}
 ///
-/// Returns all documents of a collections. The call expects an JSON object
+/// Returns all documents of a collections. The call expects a JSON object
 /// as body with the following attributes:
 ///
 /// - @LIT{collection}: The identifier or name of the collection to query.
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - @LIT{skip}: The number of documents to skip in the query (optional).
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip}
 ///   is applied before the @LIT{limit} restriction. (optional)
@@ -60,9 +60,13 @@ var API = "_api/simple/";
 ///
 /// @EXAMPLES
 ///
-/// Limit the amount of documents using
+/// Limit the amount of documents using @LIT{limit}
 ///
 /// @verbinclude api-simple-all-skip-limit
+/// 
+/// Using a @LIT{batchSize} value
+///
+/// @verbinclude api-simple-all-batch
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -102,7 +106,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -141,7 +145,7 @@ actions.defineHttp({
 /// - @LIT{distance}: If given, the attribute key used to store the
 ///   distance. (optional)
 ///
-/// - @LIT{skip}: The documents to skip in the query. (optional)
+/// - @LIT{skip}: The number of documents to skip in the query. (optional)
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. The @LIT{skip} is
 ///   applied before the @LIT{limit} restriction. The default is 100. (optional)
@@ -220,7 +224,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -254,10 +258,10 @@ actions.defineHttp({
 ///
 /// - @LIT{longitude}: The longitude of the coordinate.
 ///
-/// - @LIT{radius}: The maximal radius.
+/// - @LIT{radius}: The maximal radius (in meters).
 ///
-/// - @LIT{distance}: If given, the attribute key used to store the
-///   distance. (optional)
+/// - @LIT{distance}: If given, the result attribute key used to store the
+///   distance values (optional). If specified, distances are returned in meters.
 ///
 /// - @LIT{skip}: The documents to skip in the query. (optional)
 ///
@@ -337,7 +341,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
           
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -426,7 +430,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);
@@ -640,7 +644,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true));
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
         catch (err) {
           actions.resultException(req, res, err);

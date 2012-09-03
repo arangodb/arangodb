@@ -4,7 +4,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cap constraint
@@ -35,6 +35,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -65,7 +66,15 @@ function CapConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   tearDown : function () {
+    console.log("waiting for collection '%s' to drop.", cn);
+    collection.unload();
+    internal.wait(0.25);
     collection.drop();
+    internal.wait(1);
+
+    if (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
+      console.log("collection '%s' has not finished unloading.", cn);
+    }
   },
 
 ////////////////////////////////////////////////////////////////////////////////

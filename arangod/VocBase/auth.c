@@ -253,7 +253,7 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     return;
   }
 
-  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (! TRI_IS_SIMPLE_COLLECTION(doc->base._type)) {
     TRI_ReleaseCollectionVocBase(vocbase, collection);
     LOG_FATAL("collection '_users' has an unknown collection type");
     return;

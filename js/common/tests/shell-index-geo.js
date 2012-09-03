@@ -4,7 +4,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -65,7 +65,15 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
   tearDown : function () {
+    console.log("waiting for collection '%s' to drop.", cn);
+    collection.unload();
+    internal.wait(0.25);
     collection.drop();
+    internal.wait(1);
+
+    if (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
+      console.log("collection '%s' has not finished unloading.", cn);
+    }
   },
 
 ////////////////////////////////////////////////////////////////////////////////

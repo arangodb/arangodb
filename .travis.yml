@@ -1,0 +1,9 @@
+language: c
+before_script: "bash -c 'cd UnitTests/HttpInterface && bundle'"
+script: "./configure && make && ./unittests.sh"
+
+branches: 
+  only:
+    - master
+    - 1.0
+    - 1.1

@@ -57,6 +57,8 @@ using namespace triagens::rest;
 #define YYSTYPE NAME_SPACE::JsonParserX::semantic_type
 #define YYLTYPE NAME_SPACE::location
 
+#define YY_NO_INPUT 1
+
 /* NOT USABLE HERE too MANY THREADS std::string buffer; */
 %}
 

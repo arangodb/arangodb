@@ -159,10 +159,9 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
+  int res = useCollection(collection, getCollectionType(), create);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 

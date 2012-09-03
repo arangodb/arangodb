@@ -1310,6 +1310,14 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     return scope.Close(v8::ThrowException(err));
   }
 
+  if (collection->_type != TRI_COL_TYPE_SIMPLE_EDGE) {
+    TRI_ReleaseCollection(collection);
+
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+                                             "invalid collection type for edge query")));
+  }
+
   // first and only argument schould be a list of document idenfifier
   if (argv.Length() != 1) {
     TRI_ReleaseCollection(collection);
@@ -2209,25 +2217,9 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-
-  // .............................................................................
-  // generate the TRI_vocbase_col_t template for edges
-  // .............................................................................
-
-  rt = v8g->EdgesColTempl;
-
-  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
-  rt->Set(ByConditionBitarrayFuncName, v8::FunctionTemplate::New(JS_ByConditionBitarray));
-  rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
-  rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
-  rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
-  rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
-  rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
-  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
-  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

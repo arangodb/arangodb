@@ -47,6 +47,7 @@
 ///     <ul>
 ///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
 ///      <li>@ref CommandLineArangoDisableAuthentication "server.disable-authentication"</li>
+///      <li>@ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"</li>
 ///      <li>@ref CommandLineArangoKeyFile "server.keyfile"</li>
 ///      <li>@ref CommandLineArangoCaFile "server.cafile"</li>
 ///      <li>@ref CommandLineArangoSslProtocol "server.ssl-protocol"</li>
@@ -56,6 +57,7 @@
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
+///      <li>@ref CommandLineArangoForceSyncShapes "database.force-sync-shapes"</li>
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
 ///     </ul>
 ///    </li>
@@ -167,7 +169,10 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 ///
 /// @anchor CommandLineArangoDisableAuthentication
-/// @copydetails triagens::arango::ArangoServer::_disableAuthentication
+/// @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
+///
+/// @anchor CommandLineArangoKeepAliveTimeout
+/// @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 ///
 /// @anchor CommandLineArangoKeyFile
 /// @copydetails triagens::rest::ApplicationEndpointServer::_httpsKeyfile
@@ -188,10 +193,11 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
-/// @CMDOPT{--server.disable-admin-interface}
+/// @CMDOPT{--disable-admin-interface @CA{value}}
 ///
-/// If this option is specified, then the HTML admininstration interface at 
-/// URL http://server:port/ will be disabled and cannot used by any user at all.
+/// If this option is specified and @CA{value} is @LIT{true}, then the HTML
+/// administration interface at URL @LIT{http://server:port/} will be disabled
+/// and cannot used by any user at all.
 ///
 /// @anchor CommandLineArangoDirectory
 /// @copydetails triagens::arango::ArangoServer::_databasePath
@@ -201,6 +207,9 @@
 ///
 /// @anchor CommandLineArangoWaitForSync
 /// @copydetails triagens::arango::ArangoServer::_defaultWaitForSync
+///
+/// @anchor CommandLineArangoForceSyncShapes
+/// @copydetails triagens::arango::ArangoServer::_forceSyncShapes
 ///
 /// @anchor CommandLineArangoRemoveOnDrop
 /// @copydetails triagens::arango::ArangoServer::_removeOnDrop

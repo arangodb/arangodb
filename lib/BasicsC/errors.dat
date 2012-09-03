@@ -88,6 +88,7 @@ ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a
 ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,1215,"cap constraint already defined","Will be raised when a cap constraint was already defined."
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
 ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
+ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -108,6 +109,7 @@ ERROR_QUERY_SCRIPT,1503,"runtime error '%s'","Will be raised when a runtime erro
 ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number out of range","Will be raised when a number is outside the expected range."
 ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
+ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
 ERROR_QUERY_COLLECTION_NOT_FOUND,1520,"unable to open collection '%s'","Will be raised when one of the collections referenced in the query was not found."
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1521,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
 ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."

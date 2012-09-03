@@ -47,7 +47,7 @@
 /// @brief compactify interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const COMPACTOR_INTERVAL = 5 * 1000 * 1000;
+static int const COMPACTOR_INTERVAL = 1 * 1000 * 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -196,6 +196,7 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
     }
   }
 
+  TRI_FreeDatafile(datafile);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 }
 
@@ -216,7 +217,9 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   sim = data;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || marker->_type == TRI_DOC_MARKER_EDGE) {
+  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
+      marker->_type == TRI_DOC_MARKER_EDGE ||
+      marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
     TRI_doc_document_marker_t const* d;
     size_t markerSize;
 
@@ -225,6 +228,9 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
     else if (marker->_type == TRI_DOC_MARKER_EDGE) {
       markerSize = sizeof(TRI_doc_edge_marker_t);
+    }
+    else if (marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
+      markerSize = sizeof(TRI_doc_attachment_marker_t);
     }
     else {
       LOG_FATAL("unknown marker type %d", (int) marker->_type);
@@ -452,19 +458,29 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CleanupSimCollection (TRI_sim_collection_t* sim) {
-  TRI_barrier_list_t* container;
-  TRI_barrier_t* element;
-  bool deleted;
+  // loop until done
+  while (true) {
+    TRI_barrier_list_t* container;
+    TRI_barrier_t* element;
+    bool hasUnloaded = false;
 
-  container = &sim->base._barrierList;
-  element = NULL;
+    container = &sim->base._barrierList;
+    element = NULL;
 
-  // check and remove a callback elements at the beginning of the list
-  TRI_LockSpin(&container->_lock);
+    // check and remove a callback elements at the beginning of the list
+    TRI_LockSpin(&container->_lock);
 
-  if (container->_begin != NULL && container->_begin->_type != TRI_BARRIER_ELEMENT) {
+    if (container->_begin == NULL || container->_begin->_type == TRI_BARRIER_ELEMENT) {
+      // did not find anything on top of the barrier list or found an element marker
+      // this means we must exit
+      TRI_UnlockSpin(&container->_lock);
+      return;
+    }
+
     element = container->_begin;
+    assert(element);
 
+    // found an element to go on with
     container->_begin = element->_next;
 
     if (element->_next == NULL) {
@@ -473,43 +489,52 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
     else {
       element->_next->_prev = NULL;
     }
-  }
 
-  TRI_UnlockSpin(&container->_lock);
+    TRI_UnlockSpin(&container->_lock);
 
-  if (element == NULL) {
-    return;
-  }
+    // execute callback, sone of the callbacks might delete or free our collection
+    if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
+      TRI_barrier_datafile_cb_t* de;
 
-  // the callback might delete our collection
-  deleted = false;
+      de = (TRI_barrier_datafile_cb_t*) element;
 
-  // execute callback
-  if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
-    TRI_barrier_datafile_cb_t* de;
+      de->callback(de->_datafile, de->_data);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+      // next iteration
+    }
+    else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
+      // collection is unloaded
+      TRI_barrier_collection_cb_t* ce;
 
-    de = (TRI_barrier_datafile_cb_t*) element;
+      ce = (TRI_barrier_collection_cb_t*) element;
+      hasUnloaded = ce->callback(ce->_collection, ce->_data);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+      
+      if (hasUnloaded) {
+        // this has unloaded and freed the collection
+        return;
+      }
+    }
+    else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
+      // collection is dropped
+      TRI_barrier_collection_cb_t* ce;
 
-    de->callback(de->_datafile, de->_data);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-  }
-  else if (element->_type == TRI_BARRIER_COLLECTION_CALLBACK) {
-    TRI_barrier_collection_cb_t* ce;
+      ce = (TRI_barrier_collection_cb_t*) element;
+      hasUnloaded = ce->callback(ce->_collection, ce->_data);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
-    ce = (TRI_barrier_collection_cb_t*) element;
-    deleted = ce->callback(ce->_collection, ce->_data);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-  }
-  else {
-    LOG_FATAL("unknown barrier type '%d'", (int) element->_type);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-  }
+      if (hasUnloaded) {
+        // this has dropped the collection
+        return;
+      }
+    }
+    else {
+      // unknown type
+      LOG_FATAL("unknown barrier type '%d'", (int) element->_type);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    }
 
-  // try again
-  if (! deleted) {
-    // TODO FIXME: this might lead to infinite recursion
-    // can this be replaced with     while (++iterations < MAX_ITERATIONS) { /* do cleanup */ } ?
-    CleanupSimCollection(sim);
+    // next iteration
   }
 }
 
@@ -590,7 +615,7 @@ void TRI_CompactorVocBase (void* data) {
       type = doc->base._type;
 
       // for simple document collection, compactify datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      if (TRI_IS_SIMPLE_COLLECTION(type)) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
           CompactifySimCollection((TRI_sim_collection_t*) doc);
         }
@@ -599,7 +624,7 @@ void TRI_CompactorVocBase (void* data) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // now release the lock and maybe unload the collection or some datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      if (TRI_IS_SIMPLE_COLLECTION(type)) {
         CleanupSimCollection((TRI_sim_collection_t*) doc);
       }
     }

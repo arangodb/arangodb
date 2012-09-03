@@ -47,10 +47,14 @@ var SQ = require("simple-query-basics");
 /// @brief executes an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryAll.prototype.execute = function () {
+SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
+    if (batchSize != undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }
+
     var data = {
       collection : this._collection._id
     }  
@@ -61,6 +65,10 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 
     if (this._skip !== null) {
       data.skip = this._skip;
+    }
+
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
     }
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/all", JSON.stringify(data));
@@ -96,10 +104,14 @@ SQ.SimpleQueryAll.prototype.execute = function () {
 /// @brief executes a query-by-example
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryByExample.prototype.execute = function () {
+SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
+    if (batchSize != undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }  
+
     var data = {
       collection : this._collection._id,
       example : this._example
@@ -111,6 +123,10 @@ SQ.SimpleQueryByExample.prototype.execute = function () {
 
     if (this._skip !== null) {
       data.skip = this._skip;
+    }
+    
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
     }
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/by-example", JSON.stringify(data));
@@ -177,8 +193,6 @@ ArangoCollection.prototype.firstExample = function () {
   return requestResult.document;
 }
 
-ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstExample;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,10 +214,14 @@ ArangoEdgesCollection.prototype.firstExample = ArangoCollection.prototype.firstE
 /// @brief executes a range query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryRange.prototype.execute = function () {
+SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
+    if (batchSize != undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }
+
     var data = {
       collection : this._collection._id,
       attribute : this._attribute,
@@ -218,6 +236,10 @@ SQ.SimpleQueryRange.prototype.execute = function () {
 
     if (this._skip !== null) {
       data.skip = this._skip;
+    }
+    
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
     }
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/range", JSON.stringify(data));
@@ -253,10 +275,14 @@ SQ.SimpleQueryRange.prototype.execute = function () {
 /// @brief executes an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryNear.prototype.execute = function () {
+SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
+    if (batchSize != undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }
+
     var data = {
       collection : this._collection._id,
       latitude : this._latitude,
@@ -277,6 +303,10 @@ SQ.SimpleQueryNear.prototype.execute = function () {
   
     if (this._distance !== null) {
       data.distance = this._distance;
+    }
+    
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
     }
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/near", JSON.stringify(data));
@@ -312,10 +342,14 @@ SQ.SimpleQueryNear.prototype.execute = function () {
 /// @brief executes an all query
 ////////////////////////////////////////////////////////////////////////////////
 
-SQ.SimpleQueryWithin.prototype.execute = function () {
+SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
   var documents;
 
   if (this._execution === null) {
+    if (batchSize != undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }
+
     var data = {
       collection : this._collection._id,
       latitude : this._latitude,
@@ -337,6 +371,10 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
   
     if (this._distance !== null) {
       data.distance = this._distance;
+    }
+    
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
     }
   
     var requestResult = this._collection._database._connection.PUT("/_api/simple/within", JSON.stringify(data));

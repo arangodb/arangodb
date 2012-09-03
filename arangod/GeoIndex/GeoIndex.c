@@ -1130,7 +1130,7 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
             {
                 slot=gp->points[i];
                 snmd=GeoSNMD(&gd,gix->gc+slot);
-                if(snmd>maxsnmd) continue;
+                if(snmd > (maxsnmd * 1.00000000000001)) continue;
                 r = GeoResultsGrow(gres);
                 if(r==-1)
                 {

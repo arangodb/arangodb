@@ -86,9 +86,10 @@ namespace triagens {
 
         HttpCommTask (S* server, 
                       socket_t fd, 
-                      ConnectionInfo const& info) 
+                      ConnectionInfo const& info,
+                      double keepAliveTimeout) 
         : Task("HttpCommTask"),
-          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info) {
+          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -197,6 +198,7 @@ namespace triagens {
 
                 case HttpRequest::HTTP_REQUEST_POST:
                 case HttpRequest::HTTP_REQUEST_PUT:
+                case HttpRequest::HTTP_REQUEST_PATCH:
                   this->_bodyLength = this->_request->contentLength();
 
                   if (this->_bodyLength > 0) {
@@ -283,6 +285,11 @@ namespace triagens {
               // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
               // we should close the connection
               LOGGER_DEBUG << "no keep-alive, connection close requested by client";
+              this->_closeRequested = true;
+            }
+            else if (this->_keepAliveTimeout <= 0.0) {
+              // if keepAliveTimeout was set to 0.0, we'll close even keep-alive connections immediately
+              LOGGER_DEBUG << "keep-alive disabled by admin";
               this->_closeRequested = true;
             }
             // we keep the connection open in all other cases (HTTP 1.1 or Keep-Alive header sent)

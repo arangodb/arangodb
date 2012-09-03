@@ -1948,7 +1948,7 @@ static string JS_server_ahuacatl =
   "  }\n"
   "\n"
   "  var searchAttributes = { \n"
-  "    \"edgeCollection\" : internal.edges[edgeCollection],\n"
+  "    \"edgeCollection\" : internal.db[edgeCollection],\n"
   "    \"minLength\" : minLength, \n"
   "    \"maxLength\" : maxLength, \n"
   "    \"direction\" : searchDirection,\n"

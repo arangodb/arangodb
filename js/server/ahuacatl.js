@@ -1947,7 +1947,7 @@ function AHUACATL_GRAPH_PATHS () {
   }
 
   var searchAttributes = { 
-    "edgeCollection" : internal.edges[edgeCollection],
+    "edgeCollection" : internal.db[edgeCollection],
     "minLength" : minLength, 
     "maxLength" : maxLength, 
     "direction" : searchDirection,

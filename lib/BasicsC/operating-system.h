@@ -86,6 +86,7 @@
 
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
+#define TRI_HAVE_NCURSES                    1
 #define TRI_HAVE_POSIX_THREADS              1
 
 #define TRI_HAVE_GETPPID                    1
@@ -147,6 +148,7 @@
 #define TRI_HAVE_UNISTD_H                   1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
+#define TRI_HAVE_NCURSES                    1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 
@@ -220,6 +222,7 @@
 
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
+#define TRI_HAVE_NCURSES                    1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 

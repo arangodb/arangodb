@@ -100,7 +100,7 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationServer::ApplicationServer (string const& title, string const& version)
+ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -109,6 +109,7 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
     _exitOnParentDeath(false),
     _watchParent(0),
     _stopping(0),
+    _name(name),
     _title(title),
     _version(version),
     _configFile(),
@@ -188,6 +189,14 @@ void ApplicationServer::setSystemConfigFile (string const& name) {
 
 void ApplicationServer::setUserConfigFile (string const& name) {
   _userConfigFile = name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the application
+////////////////////////////////////////////////////////////////////////////////
+
+string const& ApplicationServer::getName () const {
+  return _name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +313,7 @@ bool ApplicationServer::parse (int argc,
   bool ok = _options.parse(_description, argc, argv);
 
   if (! ok) {
-    cout << _options.lastError() << endl;
+    cout << "cannot parse command line: " << _options.lastError() << endl;
     return false;
   }
 
@@ -805,7 +814,7 @@ bool ApplicationServer::readConfigurationFile () {
     // but for some reason can not be parsed. Best to report an error.
 
     if (! ok) {
-      cout << _options.lastError() << endl;
+      cout << "cannot parse config file '" << _configFile << "': " << _options.lastError() << endl;
     }
 
     return ok;
@@ -838,7 +847,7 @@ bool ApplicationServer::readConfigurationFile () {
         // but for some reason can not be parsed. Best to report an error.
 
         if (! ok) {
-          cout << _options.lastError() << endl;
+          cout << "cannot parse config file '" << homeDir << "': " << _options.lastError() << endl;
         }
 
         return ok;
@@ -882,7 +891,7 @@ bool ApplicationServer::readConfigurationFile () {
           // but for some reason can not be parsed. Best to report an error.
 
           if (! ok) {
-            cout << _options.lastError() << endl;
+            cout << "cannot parse config file '" << sysDir << "': " << _options.lastError() << endl;
           }
 
           return ok;
@@ -912,7 +921,7 @@ bool ApplicationServer::readConfigurationFile () {
         // but for some reason can not be parsed. Best to report an error.
 
         if (! ok) {
-          cout << _options.lastError() << endl;
+          cout << "cannot parse config file '" << sysDir << "': " << _options.lastError() << endl;
         }
 
         return ok;

@@ -41,14 +41,13 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "V8/v8-conv.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantString.h"
-
-#include "json.h"
-#include "V8/v8-conv.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -241,6 +240,16 @@ v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
                                                    std::string const& body, 
                                                    map<string, string> const& headerFields) {
   return requestData(SimpleHttpClient::PUT, location, body, headerFields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "PATCH" request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location,
+                                                     std::string const& body, 
+                                                     map<string, string> const& headerFields) {
+  return requestData(SimpleHttpClient::PATCH, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

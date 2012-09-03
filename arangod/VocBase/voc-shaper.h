@@ -92,7 +92,8 @@ TRI_df_shape_marker_t;
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*,
                                    char const* path,
-                                   char const* name);
+                                   char const* name,
+                                   const bool waitForSync);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an persistent shaper, but does not free the pointer

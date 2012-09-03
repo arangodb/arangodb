@@ -533,6 +533,7 @@ exports.GET                     = "GET";
 exports.HEAD                    = "HEAD";
 exports.POST                    = "POST";
 exports.PUT                     = "PUT";
+exports.PATCH                   = "PATCH";
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;

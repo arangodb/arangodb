@@ -1,0 +1,22 @@
+[database]
+directory= @DATABASEDIR@
+# maximal-journal-size=33554432
+# remove-on-drop=true
+
+[server]
+endpoint = tcp://localhost:8529
+disable-admin-interface = no
+admin-directory= @PKGDATADIR@/html/admin
+threads = 5
+
+[scheduler]
+threads = 3
+
+[javascript]
+action-directory= @PKGDATADIR@/js/actions/system
+modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules
+
+[log]
+level = info
+severity = human
+file = @LOGDIR@/arangod.log

@@ -1,0 +1,10 @@
+curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?type=documents&collection=test&createCollection=true"
+{ "name" : "test", "gender" : "male", "age" : 39 }
+{ "type" : "bird", "name" : "robin" }
+
+HTTP/1.1 201 Created
+server: triagens GmbH High-Performance HTTP Server
+connection: Keep-Alive
+content-type: application/json; charset=utf-8
+
+{"error":false,"created":2,"errors":0}

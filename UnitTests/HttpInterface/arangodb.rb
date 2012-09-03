@@ -22,8 +22,9 @@ class ArangoDB
 ## create a collection
 ################################################################################
 
-  def self.create_collection (name, wait_for_sync = true)
-    body = "{ \"name\" : \"#{name}\", \"waitForSync\" : #{wait_for_sync} }"
+  def self.create_collection (name, wait_for_sync = true, type = 2)
+    # type 2 means "document collection"
+    body = "{ \"name\" : \"#{name}\", \"waitForSync\" : #{wait_for_sync}, \"type\" : #{type} }"
 
     doc = self.post("/_api/collection", :body => body)
 

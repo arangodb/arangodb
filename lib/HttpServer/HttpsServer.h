@@ -56,8 +56,8 @@ namespace triagens {
 /// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsServer : public GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >,
-                        public GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> > {
+    class HttpsServer : public GeneralSslServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >,
+                        public GeneralHttpServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> > {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -80,11 +80,12 @@ namespace triagens {
 
         HttpsServer (Scheduler* scheduler,
                      Dispatcher* dispatcher,
+                     double keepAliveTimeout,
                      HttpHandlerFactory* handlerFactory,
                      SSL_CTX* ctx) 
-        : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler),
-          GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory, ctx), 
-          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, handlerFactory) {
+        : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, keepAliveTimeout),
+          GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory, ctx), 
+          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +115,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         void handleConnected (socket_t socket, ConnectionInfo& info) {
-          GeneralSslServer::handleConnected(socket, info);
+          GeneralSslServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >::handleConnected(socket, info);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

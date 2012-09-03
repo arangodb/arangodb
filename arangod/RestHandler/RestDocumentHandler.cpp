@@ -29,6 +29,8 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
@@ -103,6 +105,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   static LoggerData::Task const logUpdate(DOCUMENT_PATH + " [update]");
   static LoggerData::Task const logDelete(DOCUMENT_PATH + " [delete]");
   static LoggerData::Task const logHead(DOCUMENT_PATH + " [head]");
+  static LoggerData::Task const logPatch(DOCUMENT_PATH + " [patch]");
   static LoggerData::Task const logIllegal(DOCUMENT_PATH + " [illegal]");
 
   LoggerData::Task const * task = &logCreate;
@@ -114,6 +117,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
     case HttpRequest::HTTP_REQUEST_PUT: task = &logUpdate; break;
+    case HttpRequest::HTTP_REQUEST_PATCH: task = &logUpdate; break;
   }
 
   _timing << *task;
@@ -127,7 +131,8 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
     case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
     case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT: res = replaceDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PATCH: res = updateDocument(); break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
       res = false;
@@ -259,10 +264,9 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
+  int res = useCollection(collection, getCollectionType(), create);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -282,7 +286,7 @@ bool RestDocumentHandler::createDocument () {
   // outside write transaction
   // .............................................................................
 
-  // release collection and free json
+  // release collection
   releaseCollection();
 
   // generate result
@@ -403,11 +407,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   string collection = suffix[0];
   string did = suffix[1];
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -492,16 +495,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
-
   // extract the cid
   bool found;
   string collection = _request->value("collection", found);
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -610,21 +611,20 @@ bool RestDocumentHandler::checkDocument () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document
+/// @brief replaces a document
 ///
 /// @RESTHEADER{PUT /_api/document,updates a document}
 ///
 /// @REST{PUT /_api/document/@FA{document-handle}}
 ///
-/// Updates the document identified by @FA{document-handle}. If the document exists
-/// and can be updated, then a @LIT{HTTP 201} is returned and the "ETag" header
-/// field contains the new revision of the document.
+/// Completely updates (i.e. replaces) the document identified by @FA{document-handle}. 
+/// If the document exists and can be updated, then a @LIT{HTTP 201} is returned 
+/// and the "ETag" header field contains the new revision of the document.
 ///
-/// Note the updated document passed in the body of the request normally also
-/// contains the @FA{document-handle} in the attribute @LIT{_id} and the
-/// revision in @LIT{_rev}. These attributes, however, are ignored. Only the URI
-/// and the "ETag" header are relevant in order to avoid confusion when using
-/// proxies.
+/// If the new document passed in the body of the request contains the
+/// @FA{document-handle} in the attribute @LIT{_id} and the revision in @LIT{_rev},
+/// these attributes will be ignored. Only the URI and the "ETag" header are 
+/// relevant in order to avoid confusion when using proxies.
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute @LIT{_id} contains the known
@@ -673,7 +673,53 @@ bool RestDocumentHandler::checkDocument () {
 /// @verbinclude rest-update-document-rev-other
 ////////////////////////////////////////////////////////////////////////////////
 
+bool RestDocumentHandler::replaceDocument () {
+  return modifyDocument(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document
+///
+/// @RESTHEADER{PATCH /_api/document,patches a document}
+///
+/// @REST{PATCH /_api/document/@FA{document-handle}}
+///
+/// Partially updates the document identified by @FA{document-handle}. 
+/// The body of the request must contain a JSON document with the attributes
+/// to patch (the patch document). All attributes from the patch document will
+/// be added to the existing document if they do not yet exist, and overwritten 
+/// in the existing document if they do exist there. 
+///
+/// Setting an attribute value to @LIT{null} in the patch document will cause a 
+/// value of @LIT{null} be saved for the attribute by default. If the intention
+/// is to delete existing attributes with the patch command, the URL parameter 
+/// @LIT{keepNull} can be used with a value of @LIT{false}.
+/// This will modify the behavior of the patch command to remove any attributes 
+/// from the existing document that are contained in the patch document with an 
+/// attribute value of @LIT{null}.
+///
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision.  The attribute @LIT{_id} contains the known
+/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// contains the new document revision.
+///
+/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// body of the response contains an error document.
+///
+/// @EXAMPLES
+///
+/// @verbinclude rest-patch-document
+////////////////////////////////////////////////////////////////////////////////
+
 bool RestDocumentHandler::updateDocument () {
+  return modifyDocument(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for replaceDocument and updateDocument
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestDocumentHandler::modifyDocument (bool isPatch) {
   vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
@@ -703,11 +749,10 @@ bool RestDocumentHandler::updateDocument () {
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -721,7 +766,43 @@ bool RestDocumentHandler::updateDocument () {
   TRI_voc_rid_t rid = 0;
   TRI_voc_cid_t cid = _documentCollection->base._cid;
 
-  TRI_doc_mptr_t const mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
+  // init target document
+  TRI_doc_mptr_t mptr;
+
+  if (isPatch) {
+    // patching an existing document
+    bool nullMeansRemove;
+    bool found;
+
+    char const* valueStr = _request->value("keepNull", found);
+    if (!found || StringUtils::boolean(valueStr)) {
+      // default: null values are saved as Null
+      nullMeansRemove = false;
+    }
+    else {
+      // delete null attributes
+      nullMeansRemove = true;
+    }
+
+    // read the existing document
+    TRI_doc_mptr_t document = _documentCollection->read(_documentCollection, did);
+    TRI_json_t* old = TRI_JsonShapedJson(_documentCollection->_shaper, &document._document);
+  
+    if (old != 0) {
+      TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+      TRI_FreeJson(_documentCollection->_shaper->_memoryZone, old);
+
+      if (patchedJson != 0) {
+        mptr = _documentCollection->updateJson(_documentCollection, patchedJson, did, revision, &rid, policy, true);
+
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+      }
+    }
+  }
+  else {
+    // replacing an existing document
+    mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
+  }
   res = mptr._did == 0 ? TRI_errno() : 0;
 
   // .............................................................................
@@ -848,11 +929,10 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  int res = useCollection(collection, getCollectionType());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 

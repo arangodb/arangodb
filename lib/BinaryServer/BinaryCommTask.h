@@ -86,9 +86,10 @@ namespace triagens {
 
         BinaryCommTask (S* server, 
                         socket_t fd, 
-                        ConnectionInfo const& info) 
+                        ConnectionInfo const& info,
+                        double keepAliveTimeout) 
         : Task("BinaryCommTask"),
-          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info) {
+          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 

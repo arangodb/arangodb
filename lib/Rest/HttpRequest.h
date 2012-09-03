@@ -84,6 +84,7 @@ namespace triagens {
           HTTP_REQUEST_HEAD,
           HTTP_REQUEST_POST,
           HTTP_REQUEST_PUT,
+          HTTP_REQUEST_PATCH,
           HTTP_REQUEST_ILLEGAL
         };
 

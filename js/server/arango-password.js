@@ -45,9 +45,9 @@ function main (argv) {
 
   users = db._collection("_users");
 
-  if (db._collection("_users") == null) {
-    console.log("creating users collection '_users'");
-    users = db._create("_users", { isSystem: true, waitForSync: true });
+  if (users == null) {
+    console.error("users collection '_users' not available. please run arango-upgrade.");
+    return 2;
   }
 
   internal.output("\n");
@@ -75,6 +75,11 @@ function main (argv) {
   }
   
   var hash = internal.sha256(password);
+
+  if (username == "" ) {
+    internal.output("username must not be empty\n");
+    return 1;
+  }
 
   var user = users.firstExample({ user: username });
 

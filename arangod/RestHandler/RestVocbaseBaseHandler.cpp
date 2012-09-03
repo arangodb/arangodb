@@ -493,48 +493,6 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief uses a collection, loading or manifesting and locking it
-////////////////////////////////////////////////////////////////////////////////
-
-int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
-  _collection = 0;
-  _documentCollection = 0;
-
-  // sanity check
-  if (name.empty()) {
-    generateError(HttpResponse::BAD, 
-                  TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "collection identifier is empty");
-    return TRI_set_errno(TRI_ERROR_HTTP_CORRUPTED_JSON);
-  }
-
-  // try to find the collection
-  if (isdigit(name[0])) {
-    TRI_voc_cid_t id = StringUtils::uint64(name);
-
-    _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
-  }
-  else {
-    _collection = TRI_FindCollectionByNameVocBase(_vocbase, name.c_str(), create);
-  }
-
-  if (_collection == 0) {
-    generateCollectionNotFound(name);
-    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  // and use the collection
-  int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _documentCollection = _collection->_collection;
-    assert(_documentCollection != 0);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -644,6 +602,57 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
   did = TRI_UInt64String(split[1].c_str());
 
   return TRI_errno();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses a collection, loading or manifesting and locking it
+////////////////////////////////////////////////////////////////////////////////
+
+int RestVocbaseBaseHandler::useCollection (string const& name, 
+                                           TRI_col_type_e type, 
+                                           bool create) {
+  _collection = 0;
+  _documentCollection = 0;
+
+  // sanity check
+  if (name.empty()) {
+    generateError(HttpResponse::BAD, 
+                  TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "collection identifier is empty");
+    return TRI_set_errno(TRI_ERROR_HTTP_CORRUPTED_JSON);
+  }
+
+  // try to find the collection
+  if (isdigit(name[0])) {
+    TRI_voc_cid_t id = StringUtils::uint64(name);
+
+    _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
+  }
+  else {
+    if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      _collection = TRI_FindDocumentCollectionByNameVocBase(_vocbase, name.c_str(), create);
+    }
+    else if (type == TRI_COL_TYPE_SIMPLE_EDGE) {
+      _collection = TRI_FindEdgeCollectionByNameVocBase(_vocbase, name.c_str(), create);
+    }
+  }
+
+  if (_collection == 0) {
+    generateCollectionNotFound(name);
+    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  // and use the collection
+  int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    assert(_collection != 0);
+
+    _documentCollection = _collection->_collection;
+    assert(_documentCollection != 0);
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
