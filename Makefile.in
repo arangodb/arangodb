@@ -1053,8 +1053,8 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 ### @brief install man pages
 ################################################################################
 dist_man_MANS = Doxygen/man/man1/arangoimp.1 \
-	Doxygen/man/man1/arangosh.1 Doxygen/man/man8/arangod.8 \
-	Doxygen/man/man8/arango-dfdb.8 \
+	Doxygen/man/man1/arangosh.1 Doxygen/man/man8/rcarangod.8 \
+	Doxygen/man/man8/arangod.8 Doxygen/man/man8/arango-dfdb.8 \
 	Doxygen/man/man8/arango-password.8 \
 	Doxygen/man/man8/arango-upgrade.8
 
@@ -5828,7 +5828,7 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 .PHONY: man
 
 man: Doxygen/.setup-directories
-	for section in 1 8; do for i in `ls arangod/Documentation/man$$section`; do sed -f Documentation/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" arangod/Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
+	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
 
 ################################################################################
 ################################################################################

@@ -6,6 +6,7 @@
 /\<EXAMPLES\>/s/^\(.*\)$/\.SH \1/
 /FILES/s/^\(.*\)$/\.SH \1/
 /AUTHOR/s/^\(.*\)$/\.SH \1/
+/SEE ALSO/s/^\(.*\)$/\.SH \1/
 s/\<OPTION\>/\.IP/g
 s/\<ENDOPTION\>//g
 s/\<EXAMPLE\>/\.EX\nshell>/g
