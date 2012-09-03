@@ -33,6 +33,20 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function importTestSuite () {
+  var errors = internal.errors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the error code from a result
+////////////////////////////////////////////////////////////////////////////////
+
+  function getErrorCode (fn) {
+    try {
+      fn();
+    }
+    catch (e) {
+      return e.errorNum;
+    }
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query
@@ -40,6 +54,10 @@ function importTestSuite () {
 
   function executeQuery (query) {
     var statement = internal.db._createStatement({"query": query});
+    if (statement instanceof ArangoError) {
+      return statement;
+    }
+
     var cursor = statement.execute();
     return cursor;
   }
@@ -126,9 +144,7 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImport2 : function () {
-      var expected = [ ]; // should be empty!
-      var actual = getQueryResults("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i");
-      assertEqual(expected, actual);
+      assertEqual(errors.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
     }
 
   }
