@@ -5602,6 +5602,8 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 Doxygen/.setup-directories:
 	@test -d Doxygen || mkdir Doxygen
+	@test -d Doxygen/doc || mkdir Doxygen/doc
+	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
 	@test -d Doxygen/js || mkdir Doxygen/js
 	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
 	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
@@ -5611,11 +5613,11 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
 	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/doc || mkdir Doxygen/doc
-	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
+	@test -d Doxygen/man || mkdir Doxygen/man
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@test -d Doxygen/xml || mkdir Doxygen/xml
 	@touch $@
 
 Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
@@ -5650,6 +5652,19 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-html.doxy > /dev/null
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
+
+################################################################################
+### @brief man pages
+################################################################################
+
+.PHONY: man
+
+Doxygen/arango-man.doxy: Documentation/arango.template
+	sed -e 's:GENERATE_MAN *= *NO:GENERATE_MAN = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = MAN:' < $< > $@
+	$(MAKE) lib/BasicsC/voc-errors.h
+
+man: Doxygen/.setup-directories Doxygen/arango-man.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-man.doxy > /dev/null
 
 ################################################################################
 ### @brief wiki
