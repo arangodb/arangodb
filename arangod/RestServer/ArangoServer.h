@@ -94,7 +94,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief UnviversalVoc constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
         ArangoServer (int argc, char** argv);
@@ -210,6 +210,12 @@ namespace triagens {
         char** _argv;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief are we running under valgrind?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _runningOnValgrind;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path to binary
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -266,20 +272,6 @@ namespace triagens {
 #ifdef TRI_ENABLE_ZEROMQ
         rest::ApplicationZeroMQ* _applicationZeroMQ;
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disable authentication for ALL client requests
-///
-/// @CMDOPT{--server.disable-authentication @CA{value}}
-///
-/// Setting @CA{value} to true will turn off authentication on the server side
-/// so all clients can execute any action without authorisation and privilege
-/// checks.
-///
-/// The default value is @LIT{false}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _disableAuthentication;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
@@ -358,9 +350,9 @@ namespace triagens {
         uint64_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default journal size
+/// @brief default wait for sync behavior
 ///
-/// @CMDOPT{--database.wait-for-size @CA{boolean}}
+/// @CMDOPT{--database.wait-for-sync @CA{boolean}}
 ///
 /// Default wait-for-sync value. Can be overwritten when creating a new
 /// collection.
@@ -369,6 +361,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _defaultWaitForSync;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief force sync shapes
+///
+/// @CMDOPT{--database.force-sync-shapes @CA{boolean}}
+///
+/// Force synching of shape data to disk when writing shape information. 
+/// If turned off, synching will still happen for shapes of collections that
+/// have a waitForSync value of @LIT{true}. If turned on, synching of shape data
+/// will always happen, regards of the value of waitForSync.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _forceSyncShapes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests

@@ -1,0 +1,18 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index?collection=95560976
+{ "type" : "geo", "fields" : [ "b" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "code": 201,
+  "geoJson": false,
+  "fields": [
+    "b"
+  ],
+  "id": "95560976/162222265",
+  "type": "geo1",
+  "constraint" : false,
+  "isNewlyCreated": true,
+  "error": false
+}

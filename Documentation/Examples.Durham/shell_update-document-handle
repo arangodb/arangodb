@@ -1,0 +1,2 @@
+arango> a6 = db.example.update("17170323/18612115", { "x" : 1, "y" : 2 });
+{ error : false, _id : "17170323/18612115", _rev : 19595155 }

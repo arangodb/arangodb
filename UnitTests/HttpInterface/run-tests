@@ -8,6 +8,7 @@ rspec --format d \
 	rest-update-document-spec.rb \
 	rest-delete-document-spec.rb \
 	rest-edge-spec.rb \
+	api-import-spec.rb \
 	api-index-spec.rb \
 	api-index-hash-spec.rb \
 	api-index-skiplist-spec.rb \

@@ -354,6 +354,7 @@ typedef struct TRI_vocbase_s {
   bool _removeOnDrop; // wipe collection from disk after dropping
   bool _removeOnCompacted; // wipe datafile from disk after compaction
   bool _defaultWaitForSync;
+  bool _forceSyncShapes; // force synching of shape data to disk
   TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;
@@ -493,10 +494,22 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const
 TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a (document) collection by name
+/// @brief finds a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a document collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an edge collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set

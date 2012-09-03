@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ImpManual ArangoDB Importer Manual
+/// @page ImpManual ArangoDB Importer Manual (@VERSION)
 ///
 /// @if LATEX
 /// <ul>
@@ -97,7 +97,7 @@
 /// As the import file already contains the data in JSON format, attribute names
 /// and data types are fully preserved. As can be seen in the example data,
 /// there is no need for all data records to have the same attribute names or
-/// types. Records can be homogenous.
+/// types. Records can be inhomogenous.
 ///
 /// @section ImpManualBasicsCsv Importing CSV Data
 ///

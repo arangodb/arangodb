@@ -27,6 +27,8 @@
 
 #include "BasicsC/common.h"
 
+#include "BasicsC/logging.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -63,6 +65,12 @@ static TRI_memory_zone_t TriCoreMemZone;
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_memory_zone_t TriUnknownMemZone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief memory reserve for core memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+static void* CoreReserve;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -176,8 +184,23 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
       return NULL;
     }
 
-    printf("PANIC: failed to allocate memory in zone '%d', giving up!", zone->_zid);
-    exit(EXIT_FAILURE);
+    if (CoreReserve == NULL) {
+      printf("FATAL: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+      exit(EXIT_FAILURE);
+    }
+
+    free(CoreReserve);
+    CoreReserve = NULL;
+
+    LOG_FATAL("failed to allocate memory in zone '%d' of size '%ld', retrying!",
+              (int) zone->_zid,
+              (unsigned long) n);
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+    return TRI_AllocateZ(zone, n, set, file, line);
+#else
+    return TRI_Allocate(zone, n, set);
+#endif
   }
 #ifdef TRI_ENABLE_ZONE_DEBUG
   else if (set) {
@@ -256,8 +279,23 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
       return NULL;
     }
 
-    printf("PANIC: failed to allocate memory in zone '%d', giving up!", zone->_zid);
-    exit(EXIT_FAILURE);
+    if (CoreReserve == NULL) {
+      printf("FATAL: failed to allocate memory in zone '%d', giving up!", zone->_zid);
+      exit(EXIT_FAILURE);
+    }
+
+    free(CoreReserve);
+    CoreReserve = NULL;
+
+    LOG_FATAL("failed to allocate memory in zone '%d' of size '%ld', retrying!",
+              (int) zone->_zid,
+              (unsigned long) n);
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+    return TRI_ReallocateZ(zone, m, n, file, line);
+#else
+    return TRI_Reallocate(zone, m, n);
+#endif
   }
 
   return p;
@@ -297,6 +335,7 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 
 void TRI_InitialiseMemory () {
   static bool initialised = false;
+  static size_t const reserveSize = 1024 * 1024 * 10;
 
   if (! initialised) {
     TriCoreMemZone._zid = 0;
@@ -305,7 +344,14 @@ void TRI_InitialiseMemory () {
 
     TriUnknownMemZone._zid = 1;
     TriUnknownMemZone._failed = false;
-    TriUnknownMemZone._failable = true;
+    TriUnknownMemZone._failable = false;
+
+    CoreReserve = malloc(reserveSize);
+
+    if (CoreReserve == NULL) {
+      fprintf(stderr, "FATAL: cannot allocate initial core reserve of size %ld, giving up!\n",
+              (unsigned long) reserveSize);
+    }
   }
 }
 

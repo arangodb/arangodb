@@ -118,6 +118,7 @@ HttpHandler::status_e RestActionHandler::execute () {
   static LoggerData::Task const logIllegal("ACTION [illegal]");
   static LoggerData::Task const logPost("ACTION [post]");
   static LoggerData::Task const logPut("ACTION [put]");
+  static LoggerData::Task const logPatch("ACTION [patch]");
 
   LoggerData::Task const * task = &logIllegal;
 
@@ -146,6 +147,7 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_POST: task = &logPost; break;
       case HttpRequest::HTTP_REQUEST_PUT: task = &logPut; break;
       case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
+      case HttpRequest::HTTP_REQUEST_PATCH: task = &logPatch; break;
       case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     }
 
@@ -159,6 +161,7 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
       case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
       case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_PATCH: res = executeAction(); break;
 
       default:
         res = false;

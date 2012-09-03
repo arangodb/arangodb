@@ -66,6 +66,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
@@ -74,6 +75,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number out of range");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
+  REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_NOT_FOUND, "unable to open collection '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
   REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");

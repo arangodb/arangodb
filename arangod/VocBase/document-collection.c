@@ -69,7 +69,7 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
   TRI_doc_mptr_t result;
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
- 
+
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
   if (shaped == 0) {
@@ -150,7 +150,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a json document given the identifier
+/// @brief deletes a json document given the identifier under a write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DestroyLock (TRI_doc_collection_t* document,

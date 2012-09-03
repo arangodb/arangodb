@@ -133,6 +133,8 @@ extern "C" {
 /// - 1217: @CODE{collection must be unloaded}
 ///   Will be raised when a collection should be unloaded, but has a different
 ///   status.
+/// - 1218: @CODE{collection type invalid}
+///   Will be raised when an invalid collection type is used in a request.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -151,6 +153,9 @@ extern "C" {
 ///   Will be raised when an invalid variable name is used.
 /// - 1511: @CODE{variable '\%s' is assigned multiple times}
 ///   Will be raised when a variable gets re-assigned in a query.
+/// - 1512: @CODE{unknown variable '\%s'}
+///   Will be raised when an unknown variable is used or the variable is
+///   undefined the context it is used.
 /// - 1520: @CODE{unable to open collection '\%s'}
 ///   Will be raised when one of the collections referenced in the query was
 ///   not found.
@@ -902,6 +907,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED                          (1217)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1218: ERROR_ARANGO_COLLECTION_TYPE_INVALID
+///
+/// collection type invalid
+///
+/// Will be raised when an invalid collection type is used in a request.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          (1218)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -980,6 +995,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_VARIABLE_REDECLARED                               (1511)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1512: ERROR_QUERY_VARIABLE_NAME_UNKNOWN
+///
+/// unknown variable '%s'
+///
+/// Will be raised when an unknown variable is used or the variable is
+/// undefined the context it is used.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             (1512)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1520: ERROR_QUERY_COLLECTION_NOT_FOUND

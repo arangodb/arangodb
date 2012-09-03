@@ -1,3 +1,141 @@
+not released yet
+----------------
+
+* moved default database directory to "/var/lib/arangodb" in accordance with 
+  http://www.pathname.com/fhs/pub/fhs-2.3.html
+
+* fixed issue #179: strange text in import manual
+
+* fixed issue #178: test for aragoimp is missing
+
+* fixed issue #177: a misleading error message was returned if unknown variables
+  were used in certain positions in an AQL query.
+
+* fixed issue #176: explain how to use AQL from the arangosh
+
+* issue #175: re-added hidden (and deprecated) option --server.http-port. This 
+  option is only there to be downwards-compatible to Arango 1.0.
+
+* fixed issue #174: missing Documentation for `within`
+
+* fixed issue #170: add db.<coll_name>.all().toArray() to arangosh help screen
+
+* fixed issue #169: missing argument in Simple Queries
+
+* added program arango-upgrade. This program must be run after installing ArangoDB
+  and after upgrading from a previous version of ArangoDB. The arango-upgrade script
+  will ensure all system collections are created and present in the correct state.
+  It will also perform any necessary data updates.
+
+* issue #153: edge collection should be a flag for a collection
+  collections now have a type: the type can be queried in Javascript using the 
+  <collection>.type() method. When new collections are created using 
+  db._create(), they will be document collections by default. To explicitly
+  create a document collection, use db._createDocumentCollection(). To
+  create an edge collection, use db._createEdgeCollection(). The previous
+  functionality to create edge collections via edges._create() has been removed.
+  The distinction between document and edge collections is now done at runtime
+  using a collection's type value, and not by addressing collections via two 
+  different base objects (db.* and edges.*).
+  The Javascript objects ArangoEdges and ArangoEdgesCollection have been removed
+  completely.
+  All internal and test code has been adjusted for this, however, client code
+  that uses edges.* must be adjusted to use db.* instead.
+
+* issue #110: added support for partial updates
+
+  The REST API for documents now offers a HTTP PATCH method to partially update
+  documents. Overwriting/replacing documents is still available via the HTTP PUT method
+  as before. The Javascript API in the shell also offers a new update() method in extension to
+  the previously existing replace() method.
+
+v1.0.1 (2012-XX-XX)
+-------------------
+
+* fix for issue #163: server cannot create collection because of abandoned files
+
+v1.0.0 (2012-08-17)
+-------------------
+
+* fix for issue #157: check for readline and ncurses headers, not only libraries
+
+
+v1.0.beta4 (2012-08-15)
+-----------------------
+
+* fix for issue #152: fix memleak for barriers
+
+
+v1.0.beta3 (2012-08-10)
+-----------------------
+
+* fix for issue #151: Memleak, collection data not removed
+
+* fix for issue #149: Inconsistent port for admin interface
+
+* fix for issue #163: server cannot create collection because of abandoned files
+
+* fix for issue #157: check for readline and ncurses headers, not only libraries
+
+* fix for issue #108: db.<collection>.truncate() inefficient
+
+* fix for issue #109: added startup note about cached collection names and how to
+  refresh them
+
+* fix for issue #156: fixed memleaks in /_api/import
+
+* fix for issue #59: added tests for /_api/import
+
+* modified return value for calls to /_api/import: now, the attribute "empty" is 
+  returned as well, stating the number of empty lines in the input. Also changed the
+  return value of the error code attribute ("errorNum") from 1100 ("corrupted datafile")
+  to 400 ("bad request") in case invalid/unexpected JSON data was sent to the server. 
+  This error code is more appropriate as no datafile is broken but just input data is
+  incorrect.
+
+* fix for issue #152: Memleak for barriers
+
+* fix for issue #151: Memleak, collection data not removed
+
+* value of --database.maximal-journal-size parameter is now validated on startup. If
+  value is smaller than the minimum value (currently 1048576), an error is thrown and
+  the server will not start. Before this change, the global value of maximal journal 
+  size was not validated at server start, but only on collection level
+
+* increased sleep value in statistics creation loop from 10 to 500 microseconds. This
+  reduces accuracy of statistics values somewhere after the decimal points but saves
+  CPU time.
+
+* avoid additional sync() calls when writing partial shape data (attribute name data) 
+  to disk. sync() will still be called when the shape marker (will be written after
+  the attributes) is written to disk 
+
+* issue #147: added flag --database.force-sync-shapes to force synching of shape data
+  to disk. The default value is true so it is the same behavior as in version 1.0.
+  if set to false, shape data is synched to disk if waitForSync for the collection is
+  set to true, otherwise, shape data is not synched.
+  
+* fix for issue #145: strange issue on Travis: added epsilon for numeric comparion in
+  geo index
+
+* fix for issue #136: adjusted message during indexing
+
+* issue #131: added timeout for HTTP keep-alive connections. The default value is 300 
+  seconds. There is a startup parameter server.keep-alive-timeout to configure the value. 
+  Setting it to 0 will disable keep-alive entirely on the server.
+
+* fix for issue #137: AQL optimizer should use indexes for ref accesses with 
+  2 named attributes
+
+
+v1.0.beta2 (2012-08-03)
+-----------------------
+
+* fix for issue #134: improvements for centos RPM
+
+* fixed problem with disable-admin-interface in config file
+
+
 v1.0.beta1 (2012-07-29)
 -----------------------
 
@@ -98,6 +236,7 @@ v1.0.beta1 (2012-07-29)
   behavior
 
 * renamed "--unit-tests" to "--javascript.unit-tests"
+
 
 v1.0.alpha3 (2012-06-30)
 ------------------------

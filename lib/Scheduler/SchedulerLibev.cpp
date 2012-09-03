@@ -475,14 +475,14 @@ void SchedulerLibev::sendAsync (EventToken token) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, double offset, double intervall) {
+EventToken SchedulerLibev::installPeriodicEvent (EventLoop loop, Task* task, double offset, double interval) {
   PeriodicWatcher* watcher = new PeriodicWatcher;
   watcher->loop = (struct ev_loop*) lookupLoop(loop);
   watcher->task = task;
   watcher->token = registerWatcher(watcher, EVENT_PERIODIC);
   
   ev_periodic* w = (ev_periodic*) watcher;
-  ev_periodic_init(w, periodicCallback, offset, intervall, 0);
+  ev_periodic_init(w, periodicCallback, offset, interval, 0);
   ev_periodic_start(watcher->loop, w);
   
   return watcher->token;

@@ -26,7 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page Home ArangoDB
+/// @page Home ArangoDB (@VERSION)
+///
+/// @if XML
+/// @section ArangoDBVersion ArangoDB Version @VERSION
+/// @endif
 ///
 /// My colleagues and I started developing a document-store, which focuses on
 /// durability of the data taking advantage of new technologies like SSD,
@@ -40,72 +44,44 @@
 /// @xmlonly The HTML and PDF versions of the manual can be found <ulink url="http://www.arangodb.org/manuals">here</ulink>. @endxmlonly
 ///
 /// @warning
-/// ArangoDB is currently pre-alpha. We want to have a version 1 ready by end
-/// of May 2012, a multi server version is planned for the third quarter of
-/// 2012. The document is still far from complete. Please contact
-/// <a href="http://www.arangodb.org/connect">us</a>, if you have any questions.
+/// The documentation is still far from complete. Please contact <a
+/// href="http://www.arangodb.org/connect">us</a>, if you have any
+/// questions.
 ///
-/// @section ArangoDBUserManual ArgangoDB's User Manuals (Version @VERSION)
-///////////////////////////////////////////////////////////////////////////
+/// @section ArangoDBUserManual ArgangoDB's User Manuals
+////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref UserManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/user-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref DbaManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/dba-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref ImpManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/imp-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref UserManual @ifnot XML @SPC[<a href="user-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref DbaManual @ifnot XML @SPC[<a href="dba-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref ImpManual @ifnot XML @SPC[<a href="imp-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref Glossary</li>
+///   @ifnot XML <li><a href="arangodb_1.0_shell_reference_card.pdf">Cheat Sheet</a></li> @endif
+/// </ul>
+/// 
+/// @section ArangoDBAdminManual ArangoDB's Administrator Manuals
+/////////////////////////////////////////////////////////////////
+/// 
+/// <ul>
+///   <li>@ref InstallManual @ifnot XML @SPC[<a href="install-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
-/// @section ArangoDBAdminManual ArangoDB's Administrator Manuals (Version @VERSION)
-////////////////////////////////////////////////////////////////////////////////////
+/// @section ArangoDBAPIManual ArangoDB's Developer Manuals
+///////////////////////////////////////////////////////////
 /// 
 /// <ul>
-///   <li>@ref InstallManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/install-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref Glossary</li>
-/// </ul>
-/// 
-/// @section ArangoDBAPIManual ArangoDB's Developer Manuals (Version @VERSION)
-//////////////////////////////////////////////////////////////////////////////
-/// 
-/// <ul>
-///   <li>@ref ImplementorManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/implementor-manual.pdf">pdf</a>) @endif</li>
-///   <li>@ref RefManual @ifnot XML @SPC(<a href="http://www.arangodb.org/manuals/ref-manual.pdf">pdf</a>) @endif</li>
+///   <li>@ref ImplementorManual @ifnot XML @SPC[<a href="implementor-manual.pdf">pdf</a>] @endif</li>
+///   <li>@ref RefManual @ifnot XML @SPC[<a href="ref-manual.pdf">pdf</a>] @endif</li>
 ///   <li>@ref Glossary</li>
 /// </ul>
 /// 
 /// @section HomeApi API
 ////////////////////////
 /// 
-/// @subsection HomeCLINQ C\# / LINQ
-///
-/// @subsection HomeNodeJS Node.JS
-///
-/// There is a Node.JS client from Anders Elo available in a separate project:
-/// https://github.com/kaerus/arango-client
-/// 
-/// @subsection HomePerl Perl
-///
-/// @@hide_o_55 is currently developing a Perl client.
-///
-/// @subsection HomePHP PHP
-/// 
-/// There is a PHP client available in a separate project:
-/// https://github.com/triAGENS/ArangoDB-PHP
-///
-/// See also Packagist:
-/// http://packagist.org/packages/triagens/ArangoDb
-/// 
-/// @subsection HomePython Python
-///
-/// There is a Python client available in a separate project:
-/// https://github.com/joymax/arango-python
-/// 
-/// @subsection HomeRuby Ruby
-///
-/// There is a Ruby client available in a separate project:
-/// https://github.com/triAGENS/Ashikawa
-///
-/// A discussion group can be found here:
-/// https://groups.google.com/forum/#!forum/ashikawa
+/// Though arangoDB is yet a young project, a couple of people started
+/// to add APIs for different programming languages/frameworks. See
+/// http://www.arangodb.org/api
 ///
 /// @section HomeStayInContact Stay in Contact
 //////////////////////////////////////////////

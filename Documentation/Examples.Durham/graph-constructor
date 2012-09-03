@@ -1,0 +1,7 @@
+arango> var Graph = require("graph").Graph;
+
+arango> new Graph("graph", db.vertices, db.edges);
+Graph("graph")
+
+arango> new Graph("graph", "vertices", "edges");
+Graph("graph")

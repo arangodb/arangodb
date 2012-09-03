@@ -39,17 +39,18 @@
 #ifndef TRIAGENS_V8_CLIENT_IMPORT_HELPER_H
 #define TRIAGENS_V8_CLIENT_IMPORT_HELPER_H 1
 
+#include "Basics/Common.h"
+
+#include <regex.h>
+
 #include <string>
 #include <map>
 #include <sstream>
 
-#include "regex.h"
-
-#include <Basics/Common.h>
 #include <v8.h>
-#include <csv.h>
 
-#include <Basics/StringBuffer.h>
+#include "BasicsC/csv.h"
+#include "Basics/StringBuffer.h"
 
 namespace triagens {
   namespace httpclient {

@@ -73,8 +73,8 @@ typedef enum {
   TRI_AQL_ACCESS_LIST,             // a list of values is accessed
   TRI_AQL_ACCESS_RANGE_SINGLE,     // a range with one boundary is accessed
   TRI_AQL_ACCESS_RANGE_DOUBLE,     // a two bounded range is accessed
-  TRI_AQL_ACCESS_REFERENCE_EXACT,  // a reference can be used for eq access (a.x == b.x)
-  TRI_AQL_ACCESS_REFERENCE_RANGE,  // a reference can be used for rahe access (a.x > b.x)
+  TRI_AQL_ACCESS_REFERENCE,        // a reference can be used for eq access (a.x == b.x)
+                                   // or range access (a.x > b.x)
   TRI_AQL_ACCESS_ALL               // all values must be accessed (full scan)
 }
 TRI_aql_access_e;
@@ -92,6 +92,16 @@ typedef enum {
 TRI_aql_range_e;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief access types, sorted from best (most efficient) to last
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_AQL_REFERENCE_VARIABLE,        // reference to a variable 
+  TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS // reference to an attribute access
+}
+TRI_aql_reference_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief range type (consisting of range type & range bound value)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,23 +117,30 @@ TRI_aql_range_t;
 
 typedef struct TRI_aql_field_access_s {
   char* _fullName;
-  size_t _variableNameLength; // length of variable name part (upto '.') in _fullName
+  size_t _variableNameLength;     // length of variable name part (upto '.') in _fullName
   TRI_aql_access_e _type;
 
   union {
     TRI_json_t* _value;           // used for TRI_AQL_ACCESS_EXACT, TRI_AQL_ACCESS_LIST
+
     TRI_aql_range_t _singleRange; // used for TRI_AQL_ACCESS_RANGE_SINGLE
+
     struct {
       TRI_aql_range_t _lower;     // lower bound
       TRI_aql_range_t _upper;     // upper bound
     }
     _between;                     // used for TRI_AQL_ACCESS_RANGE_DOUBLE
-    char* _name;                  // used for TRI_AQL_ACCESS_REFERENCE_EXACT
+
     struct {
-      char* _name;
-      TRI_aql_node_type_e _type; 
+      union {
+        char* _name;
+        TRI_aql_node_t* _node;
+      }
+      _ref;
+      TRI_aql_reference_e _type;
+      TRI_aql_node_type_e _operator; 
     }
-    _referenceRange;              // used for TRI_AQL_ACCESS_REFERENCE_RANGE
+    _reference;                   // used for TRI_AQL_ACCESS_REFERENCE
   } 
   _value;
 }
@@ -225,6 +242,12 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 const char* TRI_RangeOperatorAql (const TRI_aql_range_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the range operator string for a comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+const char* TRI_ComparisonOperatorAql (const TRI_aql_node_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief track and optimise attribute accesses for a given node and subnodes

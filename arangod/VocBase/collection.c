@@ -35,6 +35,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "VocBase/simple-collection.h"
+#include "VocBase/blob-collection.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -454,11 +456,12 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
                                   TRI_col_parameter_t* parameter,
                                   char const* name,
+                                  TRI_col_type_e type,
                                   TRI_voc_size_t maximalSize) {
   assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_parameter_t));
 
-  parameter->_type = TRI_COL_TYPE_SIMPLE_DOCUMENT;
+  parameter->_type = type;
 
   parameter->_waitForSync = vocbase->_defaultWaitForSync;
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
@@ -508,15 +511,38 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // blob collection use the name
   if (parameter->_type == TRI_COL_TYPE_BLOB) {
     filename = TRI_Concatenate2File(path, parameter->_name);
-    /* TODO FIXME: memory allocation might fail */
+    if (filename == NULL) {
+    
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+      return NULL;
+    }
   }
 
   // simple collection use the collection identifier
-  else if (parameter->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  else if (TRI_IS_SIMPLE_COLLECTION(parameter->_type)) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
+    if (tmp1 == NULL) {
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
+
     tmp2 = TRI_Concatenate2String("collection-", tmp1);
+    if (tmp2 == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
 
     filename = TRI_Concatenate2File(path, tmp2);
+    if (filename == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
@@ -573,7 +599,13 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   // create collection structure
   if (collection == NULL) {
     collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
-    /* TODO FIXME: memory allocation might fail */
+    if (collection == NULL) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      LOG_ERROR("cannot create collection '%s', out of memory", path);
+
+      return NULL;
+    }
   }
 
   InitCollection(vocbase, collection, filename, parameter);
@@ -640,7 +672,11 @@ int TRI_LoadParameterInfoCollection (char const* path, TRI_col_info_t* parameter
 
   // find parameter file
   filename = TRI_Concatenate2File(path, TRI_COL_PARAMETER_FILE);
-  // TODO: memory allocation might fail
+  if (filename == NULL) {
+    LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
+
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   if (! TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -728,6 +764,14 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 
   // create a json info object
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (json == NULL) {
+    // out of memory
+    LOG_ERROR("cannot save info block '%s': out of memory", filename);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
@@ -759,10 +803,12 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection, TRI_col_parameter_t const* parameter) {
+int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase, 
+                                       TRI_collection_t* collection, 
+                                       TRI_col_parameter_t const* parameter) {
   TRI_col_info_t info;
 
-  if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (TRI_IS_SIMPLE_COLLECTION(collection->_type)) {
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
   }
 
@@ -788,7 +834,17 @@ int TRI_UpdateParameterInfoCollection (TRI_collection_t* collection, TRI_col_par
     info._waitForSync = collection->_waitForSync;
   }
 
-  if (collection->_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+  if (TRI_IS_SIMPLE_COLLECTION(collection->_type)) {
+    TRI_sim_collection_t* simCollection = (TRI_sim_collection_t*) collection;
+
+    if (simCollection->base._shaper != NULL) {
+      TRI_blob_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_sim_collection_t*) collection)->base._shaper);
+
+      if (shapeCollection != NULL) {
+        // adjust wait for sync value of underlying blob collection
+        shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+      }
+    }
     TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
   }
 
@@ -981,7 +1037,13 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   // create collection
   if (collection == NULL) {
     collection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false);
-    /* TODO FIXME: memory allocation might fail */
+
+    if (collection == NULL) {
+      LOG_ERROR("cannot open '%s', out of memory", path);
+
+      return NULL;
+    }
+
     freeCol = true;
   }
 

@@ -67,6 +67,7 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
   }
 
   result.status = collection.status();
+  result.type = collection.type();
 
   return result;
 }
@@ -130,6 +131,7 @@ function POST_api_collection (req, res) {
   var name = body.name;
   var parameter = { waitForSync : false };
   var cid = undefined;
+  var type = ArangoCollection.TYPE_DOCUMENT;
 
   if (body.hasOwnProperty("waitForSync")) {
     parameter.waitForSync = body.waitForSync;
@@ -147,8 +149,19 @@ function POST_api_collection (req, res) {
     cid = body._id;
   }
 
+  if (body.hasOwnProperty("type")) {
+    type = body.type;
+  }
+
   try {
-    var collection = internal.db._create(name, parameter, cid);
+    var collection;
+
+    if (type == ArangoCollection.TYPE_EDGE) {
+      collection = internal.db._createEdgeCollection(name, parameter, cid);
+    }
+    else {
+      collection = internal.db._createDocumentCollection(name, parameter, cid);
+    }
 
     var result = {};
     var headers = {};
@@ -157,6 +170,7 @@ function POST_api_collection (req, res) {
     result.name = collection.name();
     result.waitForSync = parameter.waitForSync;
     result.status = collection.status();
+    result.type = collection.type();
 
     headers.location = "/" + API + "/" + collection._id;
       
@@ -227,6 +241,10 @@ function GET_api_collections (req, res) {
 ///  - 5: deleted
 ///
 /// Every other status indicates a corrupted collection.
+///
+/// - @LIT{type}: The type of the collection as number.
+///   - 2: document collection (normal case)
+///   - 3: edges collection
 ///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
 /// returned.

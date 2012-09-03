@@ -150,6 +150,10 @@ void HttpRequestPlain::write (TRI_string_buffer_t* buffer) const {
     case HTTP_REQUEST_HEAD:
       TRI_AppendString2StringBuffer(buffer, "HEAD ", 5);
       break;
+    
+    case HTTP_REQUEST_PATCH:
+      TRI_AppendString2StringBuffer(buffer, "PATCH ", 6);
+      break;
 
     default:
       TRI_AppendString2StringBuffer(buffer, "UNKNOWN ", 8);
@@ -405,6 +409,12 @@ HttpRequest::HttpRequestType HttpRequestPlain::getRequestType (const char* ptr, 
         return HTTP_REQUEST_HEAD;
       }
       break;
+    
+    case 5:
+      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') { 
+        return HTTP_REQUEST_PATCH;
+      }
+      break;
 
     case 6:
       if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' && ptr[4] == 't' && ptr[5] == 'e') { 
@@ -511,7 +521,7 @@ void HttpRequestPlain::parseHeader (char* ptr, size_t length) {
                 ++e;
               }
 
-              if (end - e > strlen("http/1.x")) {
+              if ((size_t)(end - e) > strlen("http/1.x")) {
                 if ((e[0] == 'h' || e[0] == 'H') &&
                     (e[1] == 't' || e[1] == 'T') &&
                     (e[2] == 't' || e[2] == 'T') &&

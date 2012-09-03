@@ -4,7 +4,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for bitarray indexes
@@ -35,6 +35,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -68,14 +69,18 @@ function BitarrayIndexSuite() {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-  // ...........................................................................
-  // jsunity automatically calls this property at the end of each test for you
-  // ...........................................................................
-  
   tearDown : function () {
-    collection.drop();
-  },
+    collection.unload();
 
+    console.log("waiting for collection '%s' to drop.", cn);
+    internal.wait(0.25);
+    collection.drop();
+    internal.wait(1);
+
+    if (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
+      console.log("collection '%s' has not finished unloading.", cn);
+    }
+  },
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: bitarray index creation type 1

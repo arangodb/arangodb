@@ -1,8 +1,8 @@
 # -*- mode: Makefile; -*-
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                           LIBRARY
-################################################################################
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief library "libarango.a"
@@ -162,7 +162,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/ResultGenerator/XmlResultGenerator.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
-	lib/Scheduler/ConnectionTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
 	lib/Scheduler/PeriodicTask.cpp \
 	lib/Scheduler/Scheduler.cpp \
@@ -240,9 +239,9 @@ BISONXX_FILES += \
 PROTOBUF_FILES += \
 	lib/ProtocolBuffers/arangodb.pb.cpp
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
-################################################################################
+## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor

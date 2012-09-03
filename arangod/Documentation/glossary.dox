@@ -80,8 +80,9 @@
 /// @GE{Collection Name}: A collection name identifies a collection in a
 /// database. It is an string and is unique within the database. Unlike the
 /// collection identifier it is supplied by the creator of the collection.  The
-/// collection name can consist of letters, digits and the characters @LIT{_} and
-/// @LIT{-}. However, the first character must be a letter.
+/// collection name can consist of letters, digits and the characters @LIT{_}
+/// (underscore) and @LIT{-} (dash). However, the first character must be a
+/// letter.
 ///
 /// @page GlossaryDocument
 //////////////////////////

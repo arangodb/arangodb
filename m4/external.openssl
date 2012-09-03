@@ -148,7 +148,7 @@ main () {
 _ACEOF
 AC_MSG_CHECKING([OPENSSL version])
 eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 " " $5 " " $6 " " $7 " " $8 " " $9}' > conftest.output
-TRI_OPENSSL_VERSION=`cat conftest.output`
+TRI_OPENSSL_VERSION=`head -1 conftest.output | sed -e 's: *$::'`
 AC_MSG_RESULT([$TRI_OPENSSL_VERSION])
 rm -f conftest*
 
@@ -169,13 +169,14 @@ dnl ----------------------------------------------------------------------------
 if test "x$tr_OPENSSL" = xyes;  then
   LIB_INFO="$LIB_INFO|OPENSSL VERSION: ${TRI_OPENSSL_VERSION}"
 
-  FLAG_INFO="$FLAG_INFO|OPENSSL_CPPFLAGS: ${OPENSSL_CPPFLAGS}"
-  FLAG_INFO="$FLAG_INFO|OPENSSL_LDFLAGS:  ${OPENSSL_LDFLAGS}"
-  FLAG_INFO="$FLAG_INFO|OPENSSL_LIBS:     ${OPENSSL_LIBS}"
-  FLAG_INFO="$FLAG_INFO|."
+  LIB_INFO="$LIB_INFO|OPENSSL_CPPFLAGS: ${OPENSSL_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|OPENSSL_LDFLAGS:  ${OPENSSL_LDFLAGS}"
+  LIB_INFO="$LIB_INFO|OPENSSL_LIBS:     ${OPENSSL_LIBS}"
 else
   LIB_INFO="$LIB_INFO|OPENSSL VERSION: disabled"
 fi
+
+LIB_INFO="$LIB_INFO|."
 
 dnl Local Variables:
 dnl mode: outline-minor

@@ -243,6 +243,9 @@ namespace triagens {
         case DELETE:
           _writeBuffer.appendText("DELETE ");
           break;
+        case PATCH:
+          _writeBuffer.appendText("PATCH ");
+          break;
         case HEAD:
           _writeBuffer.appendText("HEAD ");
           break;

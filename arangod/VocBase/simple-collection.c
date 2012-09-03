@@ -330,6 +330,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 
   // get a new header pointer
   header = sim->_headers->request(sim->_headers);
+  // TODO: header might be NULL and must be checked
 
   if (did > 0 && rid > 0) {
     // use existing document id & revision id
@@ -495,7 +496,7 @@ static void UpdateHeader (TRI_doc_collection_t* c,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief roll backs an update
+/// @brief rolls back an update
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
@@ -503,13 +504,13 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
                                       TRI_df_marker_t const* originalMarker,
                                       TRI_df_marker_t** result) {
   TRI_doc_document_marker_t* marker;
-  TRI_doc_document_marker_t documentUpdate;
-  TRI_doc_edge_marker_t edgeUpdate;
   char* data;
   size_t dataLength;
   size_t markerLength;
 
   if (originalMarker->_type == TRI_DOC_MARKER_DOCUMENT) {
+    TRI_doc_document_marker_t documentUpdate;
+
     memcpy(&documentUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
     marker = &documentUpdate;
     markerLength = sizeof(TRI_doc_document_marker_t);
@@ -517,11 +518,22 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
     dataLength = originalMarker->_size - sizeof(TRI_doc_document_marker_t);
   }
   else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
+    TRI_doc_edge_marker_t edgeUpdate;
+
     memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
     marker = &edgeUpdate.base;
     markerLength = sizeof(TRI_doc_edge_marker_t);
     data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
     dataLength = originalMarker->_size - sizeof(TRI_doc_edge_marker_t);
+  }
+  else if (originalMarker->_type == TRI_DOC_MARKER_ATTACHMENT) {
+    TRI_doc_attachment_marker_t attachmentUpdate;
+
+    memcpy(&attachmentUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
+    marker = &attachmentUpdate.base;
+    markerLength = sizeof(TRI_doc_attachment_marker_t);
+    data = ((char*) originalMarker) + sizeof(TRI_doc_attachment_marker_t);
+    dataLength = originalMarker->_size - sizeof(TRI_doc_attachment_marker_t);
   }
   else {
     TRI_doc_mptr_t mptr;
@@ -1024,6 +1036,32 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
                           rid,
                           release);
   }
+  else if (type == TRI_DOC_MARKER_ATTACHMENT) {
+    TRI_doc_attachment_marker_t marker;
+    TRI_sim_attachment_t const* attachment;
+
+    attachment = data;
+
+    memset(&marker, 0, sizeof(marker));
+
+    marker.base.base._size = sizeof(marker) + json->_data.length;
+    marker.base.base._type = type;
+
+    marker.base._sid = 0;
+    marker.base._shape = json->_sid;
+
+    marker._toCid = attachment->_toCid;
+    marker._toDid = attachment->_toDid;
+
+    return CreateDocument(collection,
+                          &marker.base, sizeof(marker),
+                          json->_data.data, json->_data.length,
+                          &result,
+                          data,
+                          did,
+                          rid,
+                          release);
+  }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
     exit(EXIT_FAILURE);
@@ -1134,6 +1172,38 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
     marker._fromDid = originalEdge->_fromDid;
     marker._toCid = originalEdge->_toCid;
     marker._toDid = originalEdge->_toDid;
+
+    return UpdateDocument(collection,
+                          header,
+                          &marker.base, sizeof(marker),
+                          json->_data.data, json->_data.length,
+                          rid,
+                          oldRid,
+                          policy,
+                          &result,
+                          release,
+                          true);
+  }
+  
+  // the original is an attachment
+  else if (original->_type == TRI_DOC_MARKER_ATTACHMENT) {
+    TRI_doc_attachment_marker_t marker;
+    TRI_doc_attachment_marker_t const* originalAttachment;
+
+    originalAttachment = header->_data;
+
+    // create an update
+    memset(&marker, 0, sizeof(marker));
+
+    marker.base.base._size = sizeof(marker) + json->_data.length;
+    marker.base.base._type = original->_type;
+
+    marker.base._did = did;
+    marker.base._sid = 0;
+    marker.base._shape = json->_sid;
+
+    marker._toCid = originalAttachment->_toCid;
+    marker._toDid = originalAttachment->_toDid;
 
     return UpdateDocument(collection,
                           header,
@@ -1297,7 +1367,9 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_doc_datafile_info_t* dfi;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || marker->_type == TRI_DOC_MARKER_EDGE) {
+  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
+      marker->_type == TRI_DOC_MARKER_EDGE ||
+      marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
     TRI_doc_document_marker_t const* d = (TRI_doc_document_marker_t const*) marker;
     size_t markerSize;
 
@@ -1323,6 +1395,18 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       markerSize = sizeof(TRI_doc_edge_marker_t);
     }
+    else if (marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
+      TRI_doc_attachment_marker_t const* a = (TRI_doc_attachment_marker_t const*) marker;
+
+      LOG_TRACE("edge: fid %lu, did %lu, rid %lu, attachment (%lu,%lu)",
+                (unsigned long) datafile->_fid,
+                (unsigned long) d->_did,
+                (unsigned long) d->_rid,
+                (unsigned long) a->_toCid,
+                (unsigned long) a->_toDid);
+
+      markerSize = sizeof(TRI_doc_attachment_marker_t);
+    }
     else {
       LOG_FATAL("unknown marker type %lu", (unsigned long) marker->_type);
       exit(EXIT_FAILURE);
@@ -1339,6 +1423,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
+      // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
@@ -1420,6 +1505,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
+      // TODO: header might be NULL and must be checked
       header = collection->_headers->verify(collection->_headers, header);
 
       header->_did = d->_did;
@@ -1672,7 +1758,9 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   
   // create primary index
   primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
-  /* TODO FIXME: memory allocation might fail */
+  if (primary == NULL) {
+    return false;
+  }
 
   id = TRI_DuplicateString("_id");
 
@@ -1765,6 +1853,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
+  bool waitForSync;
 
   memset(&info, 0, sizeof(info));
   info._version = TRI_COL_VERSION;
@@ -1799,7 +1888,8 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   }
 
   // then the shape collection
-  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES");
+  waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");
@@ -1811,7 +1901,14 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   }
 
   // create document collection and shaper
-  InitSimCollection(doc, shaper);
+  if (false == InitSimCollection(doc, shaper)) {
+    LOG_ERROR("cannot initialise shapes collection");
+
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection); // will free doc
+
+    return NULL;
+  }
 
   return doc;
 }
@@ -1904,6 +2001,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
+  TRI_blob_collection_t* shapeCollection;
   char* shapes;
 
   // first open the document collection
@@ -1943,7 +2041,21 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   }
 
   // create document collection and shaper
-  InitSimCollection(doc, shaper);
+  if (false == InitSimCollection(doc, shaper)) {
+    LOG_ERROR("cannot initialise shapes collection");
+
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection);
+
+    return NULL;
+  }
+  
+  assert(shaper);
+  shapeCollection = TRI_CollectionVocShaper(shaper);
+  if (shapeCollection != NULL) {
+    shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || collection->_waitForSync);
+  }
+
 
   // read all documents and fill indexes
   TRI_IterateCollection(collection, OpenIterator, collection);
@@ -1957,7 +2069,6 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
 
     collection->_maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
   }
-
 
   TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 
@@ -2174,6 +2285,11 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
 
   // add a new header
   found = TRI_InsertKeyAssociativePointer(&sim->_primaryIndex, &header->_did, header, false);
+
+  // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL. 
+  // in case the call succeeds but does not find any previous value, it also returns NULL
+  // this function here will continue happily in both cases.
+  // These two cases must be distinguishable in order to notify the caller about an error
 
   if (found != NULL) {
     LOG_ERROR("document %lu already existed with revision %lu while creating revision %lu",
@@ -2481,6 +2597,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   size_t n;
   size_t scanned;
+  size_t inserted;
   void** end;
   void** ptr;
   int res;
@@ -2491,6 +2608,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
   end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
 
   scanned = 0;
+  inserted = 0;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr != NULL) {
@@ -2509,10 +2627,16 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
 
           return res;
         }
+
+        ++inserted;
+
+        if (inserted % 10000 == 0) {
+          LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) collection->base.base._cid);
+        }
       }
 
       if (scanned % 10000 == 0) {
-        LOG_INFO("indexed %ld of %ld documents", scanned, n);
+        LOG_TRACE("scanned %ld of %ld datafile entries of collection %lu", scanned, n, (unsigned long) collection->base.base._cid);
       }
     }
   }

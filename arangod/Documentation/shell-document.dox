@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                HANDLING DOCUMENTS
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellDocumentTOC
 ///
@@ -119,6 +123,7 @@
 /// Each document also has a document revision or etag with is returned
 /// in the @LIT{_rev} field when requesting a document.
 ///
+/// @CLEARPAGE
 /// @section ShellDocumentShell Working with Documents
 //////////////////////////////////////////////////////
 ///
@@ -128,27 +133,37 @@
 /// @anchor ShellDocumentRead
 /// @copydetails JS_DocumentVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellDocumentCreate
 /// @copydetails JS_SaveVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellDocumentUpdate
 /// @copydetails JS_ReplaceVocbaseCol
 ///
+/// @CLEARPAGE
 /// @anchor ShellDocumentDelete
 /// @copydetails JS_RemoveVocbaseCol
 ///
+/// @CLEARPAGE
 /// @subsection ShellDocumentDatabaseMethods Database Methods
 /////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellDocumentDbRead
 /// @copydetails JS_DocumentVocbase
 ///
+/// @CLEARPAGE
 /// @anchor ShellDocumentDbUpdate
 /// @copydetails JS_ReplaceVocbase
 ///
+/// @CLEARPAGE
 /// @anchor ShellDocumentDbDelete
 /// @copydetails JS_RemoveVocbase
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: c++
