@@ -236,12 +236,12 @@ TRI_doc_collection_info_t;
 ///
 /// Deletes an existing document from the given collection and returns @ref
 /// TRI_ERROR_NO_ERROR in case of success. Otherwise, an error is returned and
-/// the "TRI_errno()" is accordingly. The function DOES NOT acquire a write
+/// the "TRI_errno()" is set accordingly. The function DOES NOT acquire a write
 /// lock.  However, if @FA{release} is true, it will release the write lock as
 /// soon as possible.
 ///
 /// If the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_ERROR" and the
-/// reivision is given, than it must match the current revision of the
+/// revision is given, then it must match the current revision of the
 /// document. If the delete was executed, than @FA{current} contains the last
 /// valid revision of the document. If the delete was aborted, than @FA{current}
 /// contains the revision of the still alive document.

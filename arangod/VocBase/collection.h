@@ -44,10 +44,10 @@ extern "C" {
 ///
 /// Data is stored in datafiles. A set of datafiles forms a collection. A
 /// datafile can be read-only and sealed or read-write. All datafiles of a
-/// collections are stored in a directory. This directory contains the following
+/// collection are stored in a directory. This directory contains the following
 /// files:
 ///
-/// - parameter.json: The parameter of a collection.
+/// - parameter.json: The parameters of a collection.
 ///
 /// - datafile-NNN.db: A read-only datafile. The number NNN is the datafile
 ///     identifier, see @ref TRI_datafile_t.
