@@ -68,15 +68,13 @@ function UniqueConstraintSuite() {
   tearDown : function () {
     collection.unload();
 
-    console.log("waiting for collection '%s' to drop", cn);
-    while (collection.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-      internal.wait(0.25);
-    }
-
+    console.log("waiting for collection '%s' to drop.", cn);
+    internal.wait(0.25);
     collection.drop();
+    internal.wait(0.5);
 
-    while (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
-      internal.wait(0.25);
+    if (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
+      console.log("collection '%s' has not finished unloading.", cn);
     }
   },
 

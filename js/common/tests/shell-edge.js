@@ -72,32 +72,26 @@ function CollectionEdgeSuiteErrorHandling () {
 
     tearDown : function () {
       edge.unload();
-
       console.log("waiting for collection '%s' to drop", en);
-      while (edge.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-        internal.wait(0.25);
-      }
-
+      internal.wait(0.25);
       edge.drop();
+      internal.wait(1);
 
-      while (edge.status() != internal.ArangoCollection.STATUS_DELETED) {
-        internal.wait(0.25);
+      if (edge.status() != internal.ArangoCollection.STATUS_DELETED) {
+        console.log("collection '%s' has not finished unloading", en);
       }
-
       edge = null;
 
       vertex.unload();
-
       console.log("waiting for collection '%s' to drop", vn);
-      while (vertex.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-        internal.wait(0.25);
-      }
-
+      internal.wait(0.25);
       vertex.drop();
+      internal.wait(1);
 
-      while (vertex.status() != internal.ArangoCollection.STATUS_DELETED) {
-        internal.wait(0.25);
+      if (vertex.status() != internal.ArangoCollection.STATUS_DELETED) {
+        console.log("collection '%s' has not finished unloading", vn);
       }
+      vertex = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
