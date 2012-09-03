@@ -1,0 +1,25 @@
+COMMAND SECTION "DATE" "" "ArangoDB"
+NAME
+COMMAND - upgrade script for the ArangoDB database server
+SYNOPSIS
+COMMAND --database.directory database-directory
+DESCRIPTION
+The COMMAND command can be used to perform any necessary system
+data modification in an ArangoDB database after a version upgrade.
+The command must be run with exclusive access to the server's data directory, 
+that means the ArangoDB server must not be running and accessing the
+datafiles in the specified data directory.
+
+The COMMAND command will print a list of tasks it executes and a 
+success/failure status for each. If some task cannot be accomplished
+successfully, the root cause must be fixed and the COMMAND command be
+run again afterwards.
+OPTIONS
+The COMMAND binary the following option:
+
+OPTION "--database.directory <string>"
+path to the database directory ENDOPTION
+EXAMPLES
+EXAMPLE COMMAND --database.directory /data/arangodb
+starts the upgrade script with database directory /data/arangodb ENDEXAMPLE
+AUTHOR
