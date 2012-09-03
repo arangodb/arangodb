@@ -59,7 +59,7 @@ TRI_SBINDIR = ${abs_builddir}/bin
 
 else
 
-TRI_DATABASEDIR = ${localstatedir}/${PACKAGE_TARNAME}
+TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
 TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
 TRI_PKGDATADIR = ${pkgdatadir}
 TRI_SBINDIR = ${sbindir}
@@ -245,17 +245,6 @@ nobase_pkgdata_DATA += \
 
 endif
 
-################################################################################
-### @brief /var data
-################################################################################
-
-if ENABLE_INSTALL_DBDIR
-
-install-data-local:
-	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
-
-endif
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
 ## -----------------------------------------------------------------------------
@@ -355,6 +344,22 @@ endif
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   GENERATED FILES
 ## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief generate readme
+################################################################################
+
+if ENABLE_MARKDOWN
+if ENABLE_HTML2TEXT
+
+BUILT_SOURCES += README
+
+README: README.md
+	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
+	mv $@.tmp $@
+
+endif
+endif
 
 ################################################################################
 ### @brief generate all flex files
