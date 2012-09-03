@@ -137,10 +137,10 @@ man: Doxygen/.setup-directories
 dist_man_MANS += \
 	Doxygen/man/man1/arangoimp.1 \
 	Doxygen/man/man1/arangosh.1 \
-        Doxygen/man/man1/arangod.8 \
-        Doxygen/man/man1/arango-dfdb.8 \
-        Doxygen/man/man1/arango-password.8 \
-        Doxygen/man/man1/arango-upgrade.8 
+        Doxygen/man/man8/arangod.8 \
+        Doxygen/man/man8/arango-dfdb.8 \
+        Doxygen/man/man8/arango-password.8 \
+        Doxygen/man/man8/arango-upgrade.8 
 
 ################################################################################
 ### @brief cleanup
