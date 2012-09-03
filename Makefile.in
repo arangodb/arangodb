@@ -5616,6 +5616,8 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
 	@test -d Doxygen/man || mkdir Doxygen/man
+	@test -d Doxygen/man/man1 || mkdir Doxygen/man/man1
+	@test -d Doxygen/man/man8 || mkdir Doxygen/man/man8
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@test -d Doxygen/xml || mkdir Doxygen/xml
 	@touch $@
@@ -5659,12 +5661,8 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 
 .PHONY: man
 
-Doxygen/arango-man.doxy: Documentation/arango.template
-	sed -e 's:GENERATE_MAN *= *NO:GENERATE_MAN = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = MAN:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
-
-man: Doxygen/.setup-directories Doxygen/arango-man.doxy $(DOXYGEN)
-	doxygen Doxygen/arango-man.doxy > /dev/null
+man: Doxygen/.setup-directories
+	sed -f Documentation/man.sed -e "s/DATE/`date`/g" arangod/Documentation/arangod > Doxygen/man/man8/arangod.8
 
 ################################################################################
 ### @brief wiki
