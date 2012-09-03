@@ -32,9 +32,6 @@ internal.db._drop("UnitTestsImportJson2");
 internal.db._drop("UnitTestsImportCsv1");
 internal.db._drop("UnitTestsImportCsv2");
 
-internal.db._create("UnitTestsImportJson1");
-internal.db._create("UnitTestsImportJson2");
-
 return true;
 
 // Local Variables:
