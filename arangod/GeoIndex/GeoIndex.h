@@ -29,6 +29,8 @@
 /* Version 2.1   8.1.2012   R. A. Parker             */
 
 #include "BasicsC/common.h"
+#include "IndexIterators/index-iterator.h"
+#include "IndexOperators/index-operator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,21 +80,29 @@ typedef unsigned int GeoFix;
 /* set to 2.                                        */
 #define TRI_GEO_DEBUG 1
 
-typedef struct
-{
-    double latitude;
-    double longitude;
-    void * data;
-}       GeoCoordinate;
+typedef struct {
+  double latitude;
+  double longitude;
+  void * data;
+}  GeoCoordinate;
 
-typedef struct
-{
-    size_t length;
-    GeoCoordinate * coordinates;
-    double * distances;
-}       GeoCoordinates;
+typedef struct {
+  size_t length;
+  GeoCoordinate * coordinates;
+  double * distances;
+} GeoCoordinates;
 
 typedef char GeoIndex;   /* to keep the structure private  */
+
+
+int GeoIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+// Allows one or more call back functions to be assigned
+///////////////////////////////////////////////////////////////////////////////////////
+
+int GeoIndexIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 GeoIndex * GeoIndex_new(void);
 void GeoIndex_free(GeoIndex * gi);
