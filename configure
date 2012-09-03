@@ -663,8 +663,17 @@ GCOV_CFLAGS
 GCOV_CXXFLAGS
 ENABLE_GCOV_FALSE
 ENABLE_GCOV_TRUE
-HAVE_DOT
+ENABLE_HTML2TEXT_FALSE
+ENABLE_HTML2TEXT_TRUE
+HTML2TEXT_EXEC
+ENABLE_MARKDOWN_FALSE
+ENABLE_MARKDOWN_TRUE
+MARKDOWN_EXEC
+ENABLE_DOT_FALSE
+ENABLE_DOT_TRUE
 DOT_PATH
+HAVE_DOT
+DOT_EXEC
 PTHREAD_CFLAGS
 PTHREAD_LIBS
 PTHREAD_CC
@@ -749,8 +758,6 @@ build_cpu
 build
 ENABLE_RELATIVE_FALSE
 ENABLE_RELATIVE_TRUE
-ENABLE_INSTALL_DBDIR_FALSE
-ENABLE_INSTALL_DBDIR_TRUE
 ENABLE_ALL_IN_ONE_V8_FALSE
 ENABLE_ALL_IN_ONE_V8_TRUE
 ENABLE_ALL_IN_ONE_PROTOBUF_FALSE
@@ -808,7 +815,6 @@ enable_all_in_one_boost
 enable_all_in_one_libev
 enable_all_in_one_protobuf
 enable_all_in_one_v8
-enable_install_dbdir
 enable_relative
 enable_silent_rules
 enable_dependency_tracking
@@ -1492,7 +1498,6 @@ Optional Features:
   --enable-all-in-one-protobuf
                           use supplied PROTOBUF from 3rdParty directory
   --enable-all-in-one-v8  use supplied V8 from 3rdParty directory
-  --enable-install-dbdir  install an empty database directory
   --enable-relative       all path are relative to the binary (default: no)
   --enable-silent-rules          less verbose build output (undo: `make V=1')
   --disable-silent-rules         verbose build output (undo: `make V=0')
@@ -2675,25 +2680,6 @@ else
   ENABLE_ALL_IN_ONE_V8_FALSE=
 fi
 
-
-
-
-# Check whether --enable-install-dbdir was given.
-if test "${enable_install_dbdir+set}" = set; then :
-  enableval=$enable_install_dbdir; tr_DBDIR="${enableval:-yes}"
-else
-  tr_DBDIR=yes
-
-fi
-
-
- if test "x$tr_DBDIR" = xyes; then
-  ENABLE_INSTALL_DBDIR_TRUE=
-  ENABLE_INSTALL_DBDIR_FALSE='#'
-else
-  ENABLE_INSTALL_DBDIR_TRUE='#'
-  ENABLE_INSTALL_DBDIR_FALSE=
-fi
 
 
 
@@ -6537,17 +6523,24 @@ else
 fi
 
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: ................................................................................" >&5
+$as_echo "$as_me: ................................................................................" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR DOCUMENTATION UTILS" >&5
+$as_echo "$as_me: CHECKING FOR DOCUMENTATION UTILS" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: ................................................................................" >&5
+$as_echo "$as_me: ................................................................................" >&6;}
+
 
 # Extract the first word of "dot", so it can be a program name with args.
 set dummy dot; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_path_DOT_PATH+:} false; then :
+if ${ac_cv_path_DOT_EXEC+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  case $DOT_PATH in
+  case $DOT_EXEC in
   [\\/]* | ?:[\\/]*)
-  ac_cv_path_DOT_PATH="$DOT_PATH" # Let the user override the test with a path.
+  ac_cv_path_DOT_EXEC="$DOT_EXEC" # Let the user override the test with a path.
   ;;
   *)
   as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
@@ -6557,7 +6550,7 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
-    ac_cv_path_DOT_PATH="$as_dir/$ac_word$ac_exec_ext"
+    ac_cv_path_DOT_EXEC="$as_dir/$ac_word$ac_exec_ext"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -6568,10 +6561,10 @@ IFS=$as_save_IFS
   ;;
 esac
 fi
-DOT_PATH=$ac_cv_path_DOT_PATH
-if test -n "$DOT_PATH"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $DOT_PATH" >&5
-$as_echo "$DOT_PATH" >&6; }
+DOT_EXEC=$ac_cv_path_DOT_EXEC
+if test -n "$DOT_EXEC"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $DOT_EXEC" >&5
+$as_echo "$DOT_EXEC" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
@@ -6579,9 +6572,9 @@ fi
 
 
 
-if test -n "$DOT_PATH";  then
+if test -n "$DOT_EXEC";  then
   HAVE_DOT="YES"
-  DOT_PATH=`dirname "$DOT_PATH"`
+  DOT_PATH=`dirname "$DOT_EXEC"`
 else
   HAVE_DOT="NO"
   DOT_PATH=""
@@ -6589,11 +6582,150 @@ fi
 
 
 
+ if test "x$HAVE_DOT" = xYES; then
+  ENABLE_DOT_TRUE=
+  ENABLE_DOT_FALSE='#'
+else
+  ENABLE_DOT_TRUE='#'
+  ENABLE_DOT_FALSE=
+fi
 
-if test "x$HAVE_DOT" = xyes;  then
-  BASIC_INFO="$BASIC_INFO|DOT support: enabled ($DOT_PATH)"
+
+
+# Extract the first word of "markdown", so it can be a program name with args.
+set dummy markdown; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_MARKDOWN_EXEC+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $MARKDOWN_EXEC in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_MARKDOWN_EXEC="$MARKDOWN_EXEC" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_MARKDOWN_EXEC="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+MARKDOWN_EXEC=$ac_cv_path_MARKDOWN_EXEC
+if test -n "$MARKDOWN_EXEC"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $MARKDOWN_EXEC" >&5
+$as_echo "$MARKDOWN_EXEC" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+if test -n "$MARKDOWN_EXEC";  then
+  HAVE_MARKDOWN="YES"
+else
+  HAVE_MARKDOWN="NO"
+fi
+
+
+
+ if test "x$HAVE_MARKDOWN" = xYES; then
+  ENABLE_MARKDOWN_TRUE=
+  ENABLE_MARKDOWN_FALSE='#'
+else
+  ENABLE_MARKDOWN_TRUE='#'
+  ENABLE_MARKDOWN_FALSE=
+fi
+
+
+
+# Extract the first word of "html2text", so it can be a program name with args.
+set dummy html2text; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_HTML2TEXT_EXEC+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $HTML2TEXT_EXEC in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_HTML2TEXT_EXEC="$HTML2TEXT_EXEC" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_HTML2TEXT_EXEC="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+HTML2TEXT_EXEC=$ac_cv_path_HTML2TEXT_EXEC
+if test -n "$HTML2TEXT_EXEC"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $HTML2TEXT_EXEC" >&5
+$as_echo "$HTML2TEXT_EXEC" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+if test -n "$HTML2TEXT_EXEC";  then
+  HAVE_HTML2TEXT="YES"
+else
+  HAVE_HTML2TEXT="NO"
+fi
+
+
+
+ if test "x$HAVE_HTML2TEXT" = xYES; then
+  ENABLE_HTML2TEXT_TRUE=
+  ENABLE_HTML2TEXT_FALSE='#'
+else
+  ENABLE_HTML2TEXT_TRUE='#'
+  ENABLE_HTML2TEXT_FALSE=
+fi
+
+
+
+if test "x$HAVE_DOT" = xYES;  then
+  BASIC_INFO="$BASIC_INFO|DOT support: enabled ($DOT_EXEC)"
 else
   BASIC_INFO="$BASIC_INFO|DOT support: disabled"
+fi
+
+if test "x$HAVE_MARKDOWN" = xYES;  then
+  BASIC_INFO="$BASIC_INFO|MARKDOWN support: enabled ($MARKDOWN_EXEC)"
+else
+  BASIC_INFO="$BASIC_INFO|MARKDOWN support: disabled"
+fi
+
+if test "x$HAVE_HTML2TEXT" = xYES;  then
+  BASIC_INFO="$BASIC_INFO|HTML2TEXT support: enabled ($HTML2TEXT_EXEC)"
+else
+  BASIC_INFO="$BASIC_INFO|HTML2TEXT support: disabled"
 fi
 
 
@@ -9976,10 +10108,6 @@ if test -z "${ENABLE_ALL_IN_ONE_V8_TRUE}" && test -z "${ENABLE_ALL_IN_ONE_V8_FAL
   as_fn_error $? "conditional \"ENABLE_ALL_IN_ONE_V8\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${ENABLE_INSTALL_DBDIR_TRUE}" && test -z "${ENABLE_INSTALL_DBDIR_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_INSTALL_DBDIR\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${ENABLE_RELATIVE_TRUE}" && test -z "${ENABLE_RELATIVE_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_RELATIVE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
@@ -10034,6 +10162,18 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_FIGURES_TRUE}" && test -z "${ENABLE_FIGURES_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_FIGURES\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_DOT_TRUE}" && test -z "${ENABLE_DOT_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_DOT\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_MARKDOWN_TRUE}" && test -z "${ENABLE_MARKDOWN_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_MARKDOWN\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_HTML2TEXT_TRUE}" && test -z "${ENABLE_HTML2TEXT_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_HTML2TEXT\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_GCOV_TRUE}" && test -z "${ENABLE_GCOV_FALSE}"; then

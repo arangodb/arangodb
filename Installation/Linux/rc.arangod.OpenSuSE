@@ -11,11 +11,12 @@
 #
 ### BEGIN INIT INFO
 # Provides: arangod
-# Required-Start: $network
-# Required-Stop: $network
+# Required-Start: $network $remote_fs
+# Required-Stop: $network $remote_fs
 # Default-Start: 3 5
 # Default-Stop: 0 1 2 6
-# Description: Start the session voc daemon
+# Short-Description: Start the ArangoDB daemon
+# Description: Start the Arango Database Server daemon.
 ### END INIT INFO
 
 ARANGO_BIN=/usr/sbin/arangod

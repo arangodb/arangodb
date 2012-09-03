@@ -24,9 +24,6 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-################################################################################
-
-################################################################################
 ### @brief JavaScript source code as header
 ################################################################################
 
@@ -209,7 +206,7 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 @ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
-DIST_COMMON = $(am__configure_deps) \
+DIST_COMMON = README $(am__configure_deps) \
 	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
 	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
 	$(srcdir)/3rdParty/Makefile.all-in-one-protobuf \
@@ -261,23 +258,40 @@ DIST_COMMON = $(am__configure_deps) \
 ### @brief cleanup
 ################################################################################
 @ENABLE_MRUBY_TRUE@am__append_18 = $(MRUBY_HEADER) .setup-mr-directories
-@ENABLE_FLEX_TRUE@am__append_19 = $(FLEX_FILES) $(FLEXXX_FILES)
+
+################################################################################
+### @brief documentation
+################################################################################
+
+################################################################################
+### @brief javascript
+################################################################################
+
+################################################################################
+### @brief mruby
+################################################################################
+
+################################################################################
+### @brief generate readme
+################################################################################
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_19 = README
+@ENABLE_FLEX_TRUE@am__append_20 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_20 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_BISON_TRUE@am__append_21 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_21 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ### @brief CLEANUP
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_23 = @LIBEV_LIBS@
-@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_24 = @PROTOBUF_LIBS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_25 = @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_26 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_27 = @ZEROMQ_LIBS@
+@ENABLE_BISON_TRUE@am__append_23 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_24 = @LIBEV_LIBS@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_25 = @PROTOBUF_LIBS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_26 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_27 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_28 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -289,7 +303,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.logging \
 	$(top_srcdir)/m4/configure.largefile \
 	$(top_srcdir)/m4/configure.threads \
-	$(top_srcdir)/m4/configure.dot \
+	$(top_srcdir)/m4/configure.documentation \
 	$(top_srcdir)/m4/configure.coverage \
 	$(top_srcdir)/m4/configure.flex \
 	$(top_srcdir)/m4/configure.bison \
@@ -878,6 +892,7 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT_EXEC = @DOT_EXEC@
 DOT_PATH = @DOT_PATH@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
@@ -890,6 +905,7 @@ GCOV_LDFLAGS = @GCOV_LDFLAGS@
 GCOV_LIBS = @GCOV_LIBS@
 GREP = @GREP@
 HAVE_DOT = @HAVE_DOT@
+HTML2TEXT_EXEC = @HTML2TEXT_EXEC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -912,6 +928,7 @@ LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MARKDOWN_EXEC = @MARKDOWN_EXEC@
 MATH_CPPFLAGS = @MATH_CPPFLAGS@
 MATH_LDFLAGS = @MATH_LDFLAGS@
 MATH_LIBS = @MATH_LIBS@
@@ -1019,9 +1036,9 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
 	$(am__append_16) Doxygen/.setup-directories \
 	@builddir@/.setup-js-directories $(am__append_17) \
-	$(am__append_19) $(am__append_21) $(PROTOBUF_FILES) \
-	$(am__append_23) $(am__append_24) $(am__append_25) \
-	$(am__append_26) $(am__append_27)
+	$(am__append_19) $(am__append_20) $(am__append_22) \
+	$(PROTOBUF_FILES) $(am__append_24) $(am__append_25) \
+	$(am__append_26) $(am__append_27) $(am__append_28)
 
 ################################################################################
 ### @brief files to cleanup
@@ -1042,7 +1059,7 @@ CLEANUP = bin/arango-password bin/arango-upgrade bin/arango-dfdb \
 	$(DOXYGEN) $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
 	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
 	$(JAVASCRIPT_HEADER) .setup-js-directories $(am__append_18) \
-	$(am__append_20) $(am__append_22) $(PROTOBUF_FILES)
+	$(am__append_21) $(am__append_23) $(PROTOBUF_FILES)
 
 ################################################################################
 ### @brief flex files
@@ -1099,7 +1116,7 @@ BISONXX_FILES = lib/JsonParserX/JsonParserX.cpp
 ### @brief protocol buffers
 ################################################################################
 PROTOBUF_FILES = lib/ProtocolBuffers/arangodb.pb.cpp
-@ENABLE_RELATIVE_FALSE@TRI_DATABASEDIR = ${localstatedir}/${PACKAGE_TARNAME}
+@ENABLE_RELATIVE_FALSE@TRI_DATABASEDIR = ${localstatedir}/lib/${PACKAGE_TARNAME}
 @ENABLE_RELATIVE_TRUE@TRI_DATABASEDIR = 
 @ENABLE_RELATIVE_FALSE@TRI_LOGDIR = ${localstatedir}/log/${PACKAGE_TARNAME}
 @ENABLE_RELATIVE_TRUE@TRI_LOGDIR = /tmp
@@ -1172,18 +1189,12 @@ JAVASCRIPT_BROWSER = \
 
 
 ################################################################################
-################################################################################
-
-################################################################################
 ### @brief MRuby source code as header
 ################################################################################
 MRUBY_HEADER = \
 	mr/common/bootstrap/mr-error.h \
 	mr/server/mr-server.h
 
-
-################################################################################
-################################################################################
 
 ################################################################################
 ### @brief JavaScript files
@@ -5147,7 +5158,6 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
-@ENABLE_INSTALL_DBDIR_FALSE@install-data-local:
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-local \
@@ -5173,8 +5183,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-arangosysconfDATA install-data-local \
-	install-nobase_pkgdataDATA
+install-data-am: install-arangosysconfDATA install-nobase_pkgdataDATA
 
 install-dvi: install-dvi-am
 
@@ -5235,24 +5244,17 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-arangosysconfDATA install-binPROGRAMS install-data \
-	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man \
-	install-nobase_pkgdataDATA install-pdf install-pdf-am \
-	install-ps install-ps-am install-sbinPROGRAMS install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-nobase_pkgdataDATA \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-sbinPROGRAMS install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
-
-################################################################################
-### @brief /var data
-################################################################################
-
-@ENABLE_INSTALL_DBDIR_TRUE@install-data-local:
-@ENABLE_INSTALL_DBDIR_TRUE@	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
 
 ################################################################################
 ### @brief version number
@@ -5266,9 +5268,6 @@ build.h: configure.ac
 ################################################################################
 
 -include Installation/Makefile.local
-
-################################################################################
-################################################################################
 
 ################################################################################
 ################################################################################
@@ -5612,8 +5611,8 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
 	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/web || mkdir Doxygen/web
-	@test -d Doxygen/web/images || mkdir Doxygen/web/images
+	@test -d Doxygen/doc || mkdir Doxygen/doc
+	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
@@ -5643,14 +5642,14 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 
 .PHONY: doxygen
 
-Documentation/arango-html.doxy: Documentation/arango.template
+Doxygen/arango-html.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
-	doxygen Documentation/arango-html.doxy > /dev/null
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/web/$$w.html; done
-	cp -R @top_srcdir@/Documentation/web/images/* Doxygen/web/images
+doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-html.doxy > /dev/null
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 
 ################################################################################
 ### @brief wiki
@@ -5658,7 +5657,7 @@ doxygen: Doxygen/.setup-directories Documentation/arango-html.doxy $(DOXYGEN)
 
 .PHONY: wiki wiki2
 
-Documentation/arango-xml.doxy: Documentation/arango.template
+Doxygen/arango-xml.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
@@ -5667,8 +5666,8 @@ wiki: wiki2
 	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
-wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
-	doxygen Documentation/arango-xml.doxy > /dev/null
+wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
 ### @brief latex
@@ -5676,17 +5675,17 @@ wiki2: Documentation/arango-xml.doxy $(DOXYGEN)
 
 .PHONY: latex
 
-Documentation/arango-latex.doxy: Documentation/arango.template
+Doxygen/arango-latex.doxy: Documentation/arango.template
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
 	$(MAKE) lib/BasicsC/voc-errors.h
 
-latex: Doxygen/.setup-directories Documentation/arango-latex.doxy $(DOXYGEN)
-	doxygen Documentation/arango-latex.doxy > /dev/null
+latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
+	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
 
 	cp -R Documentation/latex/*.tex Doxygen/latex
-	cp -R Documentation/latex/images Doxygen/latex/images
+	cp -R Documentation/images Doxygen/latex/images
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
@@ -5748,6 +5747,10 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 
 @ENABLE_MRUBY_TRUE@mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
 @ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
+
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@README: README.md
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	mv $@.tmp $@
 
 ################################################################################
 ### @brief flex
@@ -5919,18 +5922,6 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ZEROMQ_TRUE@	@echo "BUILD CZMQ FINISHED"
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ZEROMQ_TRUE@	@echo
-
-################################################################################
-### @brief documentation
-################################################################################
-
-################################################################################
-### @brief javascript
-################################################################################
-
-################################################################################
-### @brief mruby
-################################################################################
 
 ################################################################################
 ### @brief generate all flex files
