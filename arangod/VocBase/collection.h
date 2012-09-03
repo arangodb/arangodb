@@ -115,7 +115,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_IS_SIMPLE_COLLECTION(type) \
-  ((type) == TRI_COL_TYPE_SIMPLE_DOCUMENT || (type) == TRI_COL_TYPE_SIMPLE_EDGE || (type) == TRI_COL_TYPE_SIMPLE_ATTACHMENT)
+  ((type) == TRI_COL_TYPE_SIMPLE_DOCUMENT || (type) == TRI_COL_TYPE_SIMPLE_EDGE)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -168,8 +168,7 @@ typedef uint32_t TRI_col_version_t;
 typedef enum {
   TRI_COL_TYPE_BLOB = 1,
   TRI_COL_TYPE_SIMPLE_DOCUMENT = 2,
-  TRI_COL_TYPE_SIMPLE_EDGE = 3,
-  TRI_COL_TYPE_SIMPLE_ATTACHMENT = 4
+  TRI_COL_TYPE_SIMPLE_EDGE = 3
 }
 TRI_col_type_e;
 
