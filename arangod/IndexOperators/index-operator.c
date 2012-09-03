@@ -162,7 +162,8 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
     case TRI_GT_INDEX_OPERATOR: 
     case TRI_NE_INDEX_OPERATOR: 
     case TRI_LE_INDEX_OPERATOR: 
-    case TRI_LT_INDEX_OPERATOR: {
+    case TRI_LT_INDEX_OPERATOR:
+    case TRI_IN_INDEX_OPERATOR: {
       size_t i;
 
       relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
@@ -183,6 +184,7 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator);
       break;
     }    
+
   } // end of switch statement
 }
 
@@ -232,7 +234,8 @@ TRI_index_operator_t* TRI_CopyIndexOperator(TRI_index_operator_t* indexOperator)
     case TRI_GT_INDEX_OPERATOR: 
     case TRI_NE_INDEX_OPERATOR: 
     case TRI_LE_INDEX_OPERATOR: 
-    case TRI_LT_INDEX_OPERATOR: {
+    case TRI_LT_INDEX_OPERATOR: 
+    case TRI_IN_INDEX_OPERATOR: {
     
       oldRelationOperator = (TRI_relation_index_operator_t*)(indexOperator);
       newRelationOperator = (TRI_relation_index_operator_t*) (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_relation_index_operator_t), false));
