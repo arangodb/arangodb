@@ -206,7 +206,7 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 @ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
-DIST_COMMON = README $(am__configure_deps) \
+DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
 	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
 	$(srcdir)/3rdParty/Makefile.all-in-one-protobuf \
@@ -561,6 +561,7 @@ am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
 lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__EXEEXT_1 = bin/arangoirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
+	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"
 @ENABLE_ZEROMQ_TRUE@am__EXEEXT_2 = bin/zclient$(EXEEXT) \
 @ENABLE_ZEROMQ_TRUE@	bin/zserver$(EXEEXT)
@@ -854,6 +855,10 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+man1dir = $(mandir)/man1
+man8dir = $(mandir)/man8
+NROFF = nroff
+MANS = $(dist_man_MANS)
 DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA)
 ETAGS = etags
 CTAGS = ctags
@@ -1039,6 +1044,19 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(am__append_19) $(am__append_20) $(am__append_22) \
 	$(PROTOBUF_FILES) $(am__append_24) $(am__append_25) \
 	$(am__append_26) $(am__append_27) $(am__append_28)
+
+################################################################################
+### @brief man pages to install
+################################################################################
+
+################################################################################
+### @brief install man pages
+################################################################################
+dist_man_MANS = Doxygen/man/man1/arangoimp.1 \
+	Doxygen/man/man1/arangosh.1 Doxygen/man/man1/arangod.8 \
+	Doxygen/man/man1/arango-dfdb.8 \
+	Doxygen/man/man1/arango-password.8 \
+	Doxygen/man/man1/arango-upgrade.8
 
 ################################################################################
 ### @brief files to cleanup
@@ -4788,6 +4806,82 @@ PerfTests/bin_zserver-zserver.obj: PerfTests/zserver.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zserver.cpp' object='PerfTests/bin_zserver-zserver.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zserver-zserver.obj `if test -f 'PerfTests/zserver.cpp'; then $(CYGPATH_W) 'PerfTests/zserver.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zserver.cpp'; fi`
+install-man1: $(dist_man_MANS)
+	@$(NORMAL_INSTALL)
+	test -z "$(man1dir)" || $(MKDIR_P) "$(DESTDIR)$(man1dir)"
+	@list=''; test -n "$(man1dir)" || exit 0; \
+	{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
+	} | while read p; do \
+	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; echo "$$p"; \
+	done | \
+	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
+	sed 'N;N;s,\n, ,g' | { \
+	list=; while read file base inst; do \
+	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
+	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
+	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst" || exit $$?; \
+	  fi; \
+	done; \
+	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
+	while read files; do \
+	  test -z "$$files" || { \
+	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man1dir)'"; \
+	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man1dir)" || exit $$?; }; \
+	done; }
+
+uninstall-man1:
+	@$(NORMAL_UNINSTALL)
+	@list=''; test -n "$(man1dir)" || exit 0; \
+	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
+	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
+	test -z "$$files" || { \
+	  echo " ( cd '$(DESTDIR)$(man1dir)' && rm -f" $$files ")"; \
+	  cd "$(DESTDIR)$(man1dir)" && rm -f $$files; }
+install-man8: $(dist_man_MANS)
+	@$(NORMAL_INSTALL)
+	test -z "$(man8dir)" || $(MKDIR_P) "$(DESTDIR)$(man8dir)"
+	@list=''; test -n "$(man8dir)" || exit 0; \
+	{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.8[a-z]*$$/p'; \
+	} | while read p; do \
+	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; echo "$$p"; \
+	done | \
+	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
+	sed 'N;N;s,\n, ,g' | { \
+	list=; while read file base inst; do \
+	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
+	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man8dir)/$$inst'"; \
+	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man8dir)/$$inst" || exit $$?; \
+	  fi; \
+	done; \
+	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
+	while read files; do \
+	  test -z "$$files" || { \
+	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man8dir)'"; \
+	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man8dir)" || exit $$?; }; \
+	done; }
+
+uninstall-man8:
+	@$(NORMAL_UNINSTALL)
+	@list=''; test -n "$(man8dir)" || exit 0; \
+	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.8[a-z]*$$/p'; \
+	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
+	test -z "$$files" || { \
+	  echo " ( cd '$(DESTDIR)$(man8dir)' && rm -f" $$files ")"; \
+	  cd "$(DESTDIR)$(man8dir)" && rm -f $$files; }
 install-arangosysconfDATA: $(arangosysconf_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(arangosysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(arangosysconfdir)"
@@ -4885,6 +4979,19 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
 distdir: $(DISTFILES)
+	@list='$(MANS)'; if test -n "$$list"; then \
+	  list=`for p in $$list; do \
+	    if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	    if test -f "$$d$$p"; then echo "$$d$$p"; else :; fi; done`; \
+	  if test -n "$$list" && \
+	    grep 'ab help2man is required to generate this page' $$list >/dev/null; then \
+	    echo "error: found man pages containing the \`missing help2man' replacement text:" >&2; \
+	    grep -l 'ab help2man is required to generate this page' $$list | sed 's/^/         /' >&2; \
+	    echo "       to fix them, install help2man, remove and regenerate the man pages;" >&2; \
+	    echo "       typically \`make maintainer-clean' will remove them" >&2; \
+	    exit 1; \
+	  else :; fi; \
+	else :; fi
 	$(am__remove_distdir)
 	test -d "$(distdir)" || mkdir "$(distdir)"
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -5034,9 +5141,9 @@ distcleancheck: distclean
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
-all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(DATA)
+all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -5183,7 +5290,8 @@ info: info-am
 
 info-am:
 
-install-data-am: install-arangosysconfDATA install-nobase_pkgdataDATA
+install-data-am: install-arangosysconfDATA install-man \
+	install-nobase_pkgdataDATA
 
 install-dvi: install-dvi-am
 
@@ -5199,7 +5307,7 @@ install-info: install-info-am
 
 install-info-am:
 
-install-man:
+install-man: install-man1 install-man8
 
 install-pdf: install-pdf-am
 
@@ -5231,7 +5339,10 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
-	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
+	uninstall-man uninstall-nobase_pkgdataDATA \
+	uninstall-sbinPROGRAMS
+
+uninstall-man: uninstall-man1 uninstall-man8
 
 .MAKE: all check install install-am install-strip
 
@@ -5246,13 +5357,14 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	install-arangosysconfDATA install-binPROGRAMS install-data \
 	install-data-am install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-nobase_pkgdataDATA \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-info-am install-man install-man1 install-man8 \
+	install-nobase_pkgdataDATA install-pdf install-pdf-am \
+	install-ps install-ps-am install-sbinPROGRAMS install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
+	uninstall-man uninstall-man1 uninstall-man8 \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
@@ -5656,15 +5768,6 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 
 ################################################################################
-### @brief man pages
-################################################################################
-
-.PHONY: man
-
-man: Doxygen/.setup-directories
-	for section in 1 8; do for i in `ls arangod/Documentation/man$$section`; do sed -f Documentation/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" arangod/Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
-
-################################################################################
 ### @brief wiki
 ################################################################################
 
@@ -5717,6 +5820,15 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
+################################################################################
+### @brief man pages
+################################################################################
+
+.PHONY: man
+
+man: Doxygen/.setup-directories
+	for section in 1 8; do for i in `ls arangod/Documentation/man$$section`; do sed -f Documentation/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" arangod/Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
 
 ################################################################################
 ################################################################################
