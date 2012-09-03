@@ -3,8 +3,9 @@
 # Placeholders starting with @ will be replaced by make
 
 ARANGOD="@SBINDIR@/arangod"
-DATABASE="@DATABASE@"
-SCRIPT="@STATICFILES@/js/server/arango-upgrade.js"
+DATABASE="@DATABASEDIR@"
+MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules"
+SCRIPT="@PKGDATADIR@/js/server/arango-upgrade.js"
 
 if [ "$#" -lt 1 ];  then
   echo "usage: $0 [--database <path>]"
@@ -22,4 +23,8 @@ if test ! -d "$DATABASE";  then
   exit 1
 fi
 
-$ARANGOD -c none --database.directory "$DATABASE" --javascript.script "$SCRIPT"
+$ARANGOD \
+    -c none \
+    --database.directory "$DATABASE" \
+    --javascript.script "$SCRIPT" \
+    --javascript.modules-path "$MODULESPATH" 
