@@ -526,15 +526,6 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
     data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
     dataLength = originalMarker->_size - sizeof(TRI_doc_edge_marker_t);
   }
-  else if (originalMarker->_type == TRI_DOC_MARKER_ATTACHMENT) {
-    TRI_doc_attachment_marker_t attachmentUpdate;
-
-    memcpy(&attachmentUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
-    marker = &attachmentUpdate.base;
-    markerLength = sizeof(TRI_doc_attachment_marker_t);
-    data = ((char*) originalMarker) + sizeof(TRI_doc_attachment_marker_t);
-    dataLength = originalMarker->_size - sizeof(TRI_doc_attachment_marker_t);
-  }
   else {
     TRI_doc_mptr_t mptr;
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -1036,32 +1027,6 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
                           rid,
                           release);
   }
-  else if (type == TRI_DOC_MARKER_ATTACHMENT) {
-    TRI_doc_attachment_marker_t marker;
-    TRI_sim_attachment_t const* attachment;
-
-    attachment = data;
-
-    memset(&marker, 0, sizeof(marker));
-
-    marker.base.base._size = sizeof(marker) + json->_data.length;
-    marker.base.base._type = type;
-
-    marker.base._sid = 0;
-    marker.base._shape = json->_sid;
-
-    marker._toCid = attachment->_toCid;
-    marker._toDid = attachment->_toDid;
-
-    return CreateDocument(collection,
-                          &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
-                          &result,
-                          data,
-                          did,
-                          rid,
-                          release);
-  }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
     exit(EXIT_FAILURE);
@@ -1185,38 +1150,6 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
                           true);
   }
   
-  // the original is an attachment
-  else if (original->_type == TRI_DOC_MARKER_ATTACHMENT) {
-    TRI_doc_attachment_marker_t marker;
-    TRI_doc_attachment_marker_t const* originalAttachment;
-
-    originalAttachment = header->_data;
-
-    // create an update
-    memset(&marker, 0, sizeof(marker));
-
-    marker.base.base._size = sizeof(marker) + json->_data.length;
-    marker.base.base._type = original->_type;
-
-    marker.base._did = did;
-    marker.base._sid = 0;
-    marker.base._shape = json->_sid;
-
-    marker._toCid = originalAttachment->_toCid;
-    marker._toDid = originalAttachment->_toDid;
-
-    return UpdateDocument(collection,
-                          header,
-                          &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
-                          rid,
-                          oldRid,
-                          policy,
-                          &result,
-                          release,
-                          true);
-  }
-
   // do not know
   else {
     if (release) {
@@ -1368,8 +1301,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
-      marker->_type == TRI_DOC_MARKER_EDGE ||
-      marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
+      marker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_document_marker_t const* d = (TRI_doc_document_marker_t const*) marker;
     size_t markerSize;
 
@@ -1394,18 +1326,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long) e->_toDid);
 
       markerSize = sizeof(TRI_doc_edge_marker_t);
-    }
-    else if (marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
-      TRI_doc_attachment_marker_t const* a = (TRI_doc_attachment_marker_t const*) marker;
-
-      LOG_TRACE("edge: fid %lu, did %lu, rid %lu, attachment (%lu,%lu)",
-                (unsigned long) datafile->_fid,
-                (unsigned long) d->_did,
-                (unsigned long) d->_rid,
-                (unsigned long) a->_toCid,
-                (unsigned long) a->_toDid);
-
-      markerSize = sizeof(TRI_doc_attachment_marker_t);
     }
     else {
       LOG_FATAL("unknown marker type %lu", (unsigned long) marker->_type);

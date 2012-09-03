@@ -218,8 +218,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
-      marker->_type == TRI_DOC_MARKER_EDGE ||
-      marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
+      marker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_document_marker_t const* d;
     size_t markerSize;
 
@@ -228,9 +227,6 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
     else if (marker->_type == TRI_DOC_MARKER_EDGE) {
       markerSize = sizeof(TRI_doc_edge_marker_t);
-    }
-    else if (marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
-      markerSize = sizeof(TRI_doc_attachment_marker_t);
     }
     else {
       LOG_FATAL("unknown marker type %d", (int) marker->_type);
