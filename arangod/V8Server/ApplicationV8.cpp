@@ -261,6 +261,7 @@ void ApplicationV8::collectGarbage () {
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {
+        // check whether we got a wait timeout or a signal
         gotSignal = guard.wait(waitTime);
       }
 
@@ -270,8 +271,8 @@ void ApplicationV8::collectGarbage () {
       }
 
       if (context == 0 && ! gotSignal && ! _freeContexts.empty()) {
-        // we did not find a dirty context
-        // so we'll pop one of the free contexts and clean it up
+        // we timed out waiting for a signal
+        // so we'll pop one of the free contexts and clean it up pro-actively
         context = _freeContexts.back();
         if (context != 0) {
           _freeContexts.pop_back();
