@@ -696,7 +696,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
   var predecessors = target_vertex.determinePredecessors(this, options || {});
-  return target_vertex.pathesForTree(predecessors);
+  return (predecessors ? target_vertex.pathesForTree(predecessors) : []);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -738,7 +738,8 @@ Vertex.prototype.determinePredecessors = function (source, options) {
     todo_list = [source_id],    // [ID]
     distances = {},             // { ID => Number }
     current_vertex,             // Vertex
-    current_vertex_id;          // ID
+    current_vertex_id,          // ID
+    return_value = false;       // { ID => [ID]}
   distances[source_id] = 0;
 
   if (options.cached) {
@@ -752,6 +753,7 @@ Vertex.prototype.determinePredecessors = function (source, options) {
       current_vertex = this._graph.getVertex(current_vertex_id);
 
       if (current_vertex_id === this.getId()) {
+        return_value = predecessors;
         break;
       } else {
         todo_list.removeLastOccurrenceOf(current_vertex_id);
@@ -768,7 +770,7 @@ Vertex.prototype.determinePredecessors = function (source, options) {
     graph.setCachedPredecessors(this, source, predecessors);
   }
 
-  return predecessors;
+  return return_value;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -962,46 +964,38 @@ Vertex.prototype.outDegree = function () {
 ///
 /// @FUN{@FA{vertex}.measurement(@FA{measurement})}
 ///
-/// Calculates the eccentricity or closeness of the vertex
+/// Calculates the eccentricity, betweenness or closeness of the vertex
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.measurement = function (measurement) {
   var graph = this._graph,
     source = this,
-    vertices,
-    value,
-    options;
+    value;
 
   if (measurement === "betweenness") {
-    options = { grouped: true, threshold: true };
-
-    value = graph.geodesics(options).reduce(function (count, geodesic_group) {
+    value = graph.geodesics({
+      grouped: true,
+      threshold: true
+    }).reduce(function (count, geodesic_group) {
       var included = geodesic_group.filter(function (geodesic) {
         return geodesic.slice(1, -1).indexOf(source.getId()) > -1;
       });
 
       return (included ? count + (included.length / geodesic_group.length) : count);
     }, 0);
-  } else {
-    vertices = graph._vertices.toArray();
-
-    value = vertices.reduce(function (calculated, target) {
+  } else if (measurement === "eccentricity") {
+    value = graph._vertices.toArray().reduce(function (calculated, target) {
       var distance = source.distanceTo(graph.getVertex(target._id));
-
-      switch (measurement) {
-      case "eccentricity":
-        calculated = Math.max(calculated, distance);
-        break;
-      case "closeness":
-        calculated += distance;
-        break;
-      default:
-        throw "Unknown Measurement '" + measurement + "'";
-      }
-
-      return calculated;
+      return Math.max(calculated, distance);
     }, 0);
+  } else if (measurement === "closeness") {
+    value = graph._vertices.toArray().reduce(function (calculated, target) {
+      var distance = source.distanceTo(graph.getVertex(target._id));
+      return calculated + distance;
+    }, 0);
+  } else {
+    throw "Unknown Measurement '" + measurement + "'";
   }
 
   return value;
@@ -1616,9 +1610,9 @@ Graph.prototype.geodesics = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate a measurement
 ///
-/// @FUN{@FA{vertex}.measurement(@FA{measurement})}
+/// @FUN{@FA{graph}.measurement(@FA{measurement})}
 ///
-/// Calculates the eccentricity or closeness of the vertex
+/// Calculates the diameter or radius of a graph
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1652,6 +1646,56 @@ Graph.prototype.measurement = function (measurement) {
 
     return calculated;
   }, start_value);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate a normalized measurement
+///
+/// @FUN{@FA{graph}.normalizedMeasurement(@FA{measurement})}
+///
+/// Calculates the normalized degree, closeness, betweenness or eccentricity
+/// of all vertices in a graph
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.normalizedMeasurement = function (measurement) {
+  var graph = this,
+    vertices = graph._vertices.toArray(),
+    vertex_map,
+    max = 0;
+
+  vertex_map = vertices.reduce(function (map, raw_vertex) {
+    var vertex = graph.constructVertex(raw_vertex._id),
+      measured;
+
+    switch(measurement) {
+      case "closeness":
+        measured = 1 / vertex.measurement("closeness");
+        break;
+      case "betweenness":
+        measured = vertex.measurement("betweenness");
+        break;
+      case "eccentricity":
+        measured = 1 / vertex.measurement("eccentricity");
+        break;
+      default:
+        throw "Unknown measurement";
+    }
+
+    if (measured > max) {
+      max = measured;
+    }
+
+    map[vertex.getId()] = measured;
+
+    return map;
+  }, {});
+
+  Object.keys(vertex_map).forEach(function(key) {
+    vertex_map[key] = vertex_map[key] / max;
+  });
+
+  return vertex_map;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
