@@ -61,11 +61,11 @@ extern "C" {
 ///
 /// The structure @ref TRI_collection_t is abstract. Currently, there are
 /// two concrete sub-classes @ref TRI_sim_collection_t and
-/// @ref TRI_blob_collection_t.
+/// @ref TRI_shape_collection_t.
 ///
-/// @section BlobCollection Blob Collection
+/// @section ShapeCollection Shape Collection
 ///
-/// @copydetails TRI_blob_collection_t
+/// @copydetails TRI_shape_collection_t
 ///
 /// @section DocCollection Document Collection
 ///
@@ -166,7 +166,7 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_TYPE_BLOB = 1,
+  TRI_COL_TYPE_SHAPE = 1,
   TRI_COL_TYPE_SIMPLE_DOCUMENT = 2,
   TRI_COL_TYPE_SIMPLE_EDGE = 3
 }

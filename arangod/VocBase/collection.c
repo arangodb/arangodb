@@ -35,7 +35,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "VocBase/simple-collection.h"
-#include "VocBase/blob-collection.h"
+#include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -508,8 +508,8 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  // blob collection use the name
-  if (parameter->_type == TRI_COL_TYPE_BLOB) {
+  // shape collection use the name
+  if (parameter->_type == TRI_COL_TYPE_SHAPE) {
     filename = TRI_Concatenate2File(path, parameter->_name);
     if (filename == NULL) {
     
@@ -838,10 +838,10 @@ int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase,
     TRI_sim_collection_t* simCollection = (TRI_sim_collection_t*) collection;
 
     if (simCollection->base._shaper != NULL) {
-      TRI_blob_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_sim_collection_t*) collection)->base._shaper);
+      TRI_shape_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_sim_collection_t*) collection)->base._shaper);
 
       if (shapeCollection != NULL) {
-        // adjust wait for sync value of underlying blob collection
+        // adjust wait for sync value of underlying shape collection
         shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
       }
     }

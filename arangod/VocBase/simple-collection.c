@@ -1921,7 +1921,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
-  TRI_blob_collection_t* shapeCollection;
+  TRI_shape_collection_t* shapeCollection;
   char* shapes;
 
   // first open the document collection
