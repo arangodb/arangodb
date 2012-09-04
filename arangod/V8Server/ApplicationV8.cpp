@@ -269,7 +269,7 @@ void ApplicationV8::collectGarbage () {
         _dirtyContexts.pop_back();
       }
 
-      if (context == 0 && ! gotSignal) {
+      if (context == 0 && ! gotSignal && ! _freeContexts.empty()) {
         // we did not find a dirty context
         // so we'll pop one of the free contexts and clean it up
         context = _freeContexts.back();
