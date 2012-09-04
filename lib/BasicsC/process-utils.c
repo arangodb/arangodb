@@ -258,7 +258,9 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     process_state_t st;
     size_t n;
 
-    n = read(fd, str, 1024);
+    memset(&str, 0, sizeof(str));
+
+    n = read(fd, str, sizeof(str));
     close(fd);
 
     if (n == 0) {
