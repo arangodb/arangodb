@@ -282,7 +282,6 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     cnv.c = found;
     cnv.v->_fid = datafile->_fid;
     cnv.v->_data = result;
-    cnv.v->_document._data.data = ((char*) cnv.v->_data) + markerSize;
 
     // update datafile info
     dfi->_numberAlive += 1;

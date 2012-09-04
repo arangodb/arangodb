@@ -78,8 +78,7 @@ typedef struct TRI_doc_mptr_s {
 
   TRI_voc_tick_t _deletion; // this is the deletion time
 
-  void const* _data;                    // this is the pointer to the raw marker
-  struct TRI_shaped_json_s _document;   // this is the pointer to the json document
+  void const* _data; // this is the pointer to the raw marker
 }
 TRI_doc_mptr_t;
 
@@ -450,6 +449,12 @@ bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_MarkerMasterPointer (void const*, TRI_doc_mptr_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the data length from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
