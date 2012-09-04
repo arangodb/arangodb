@@ -1248,7 +1248,6 @@ WIKI = \
 	DbaManualAuthentication \
 	DbaManualDatafileDebugger \
 	DefineAction \
-	ExamplesSetup \
 	FirstStepsArangoDB \
 	Glossary \
 	Graphs \
