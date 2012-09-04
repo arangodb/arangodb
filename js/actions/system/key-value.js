@@ -50,7 +50,7 @@ function formatTimeStamp (timestamp) {
     var date =  d.getUTCDate();
 
     if (month < 10) month = "0" + month;
-    if (date < 10) hour = "0" + date;
+    if (date < 10) date = "0" + date;
 
     var hour = d.getUTCHours();
     var minutes = d.getUTCMinutes();
