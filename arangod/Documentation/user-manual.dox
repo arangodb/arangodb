@@ -182,12 +182,26 @@
 ///
 /// To start the server at system boot time, you should use one of the 
 /// pre-rolled packages that will install the necessary start / stop
-/// scripts for ArangoDB.
+/// scripts for ArangoDB. To start and stop the server manually, you can
+/// use the start / stop script like this (provided the start / stop script
+/// is located in /etc/init.d/arangod, the command actual name and invocation are
+/// platform-dependent):
 ///
-/// If you started the server process manually, you can stop the database
-/// server gracefully by either pressing CTRL-C or by sending the SIGINT
-/// signal to the server process. On many systems, this can be achieved with
-/// the following command:
+/// @LIT{/etc/init.d/arangod start}
+/// 
+/// To stop the server, you can use the command
+///
+/// @LIT{/etc/init.d/arangod stop}
+///
+/// You may require root privileges to execute these commands.
+///
+/// If you compiled ArangoDB from source and did not use any installation
+/// package, or you are using non-default locations and/or multiple ArangoDB
+/// instances on the same host, you may want to start the server process 
+/// manually. You can do so by invoking the arangod binary from the command
+/// line as shown before. To stop the database server gracefully, you can
+/// either pressCTRL-C or by send the SIGINT signal to the server process. 
+/// On many systems, this can be achieved with the following command:
 ///
 /// @LIT{kill -2 `pidof arangod`}
 ///
