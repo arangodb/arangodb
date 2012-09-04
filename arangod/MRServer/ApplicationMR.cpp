@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief MR enigne configuration
+/// @brief MR engine configuration
 ///
 /// @file
 ///
@@ -28,6 +28,8 @@
 #include "ApplicationMR.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "MRServer/mr-actions.h"
 #include "VocBase/vocbase.h"
@@ -58,16 +60,42 @@ namespace {
     public:
       MRGcThread (ApplicationMR* applicationMR) 
         : Thread("mr-gc"),
-          _applicationMR(applicationMR) {
+          _applicationMR(applicationMR),
+          _lock(),
+          _lastGcStamp(TRI_microtime()) {
       }
 
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect garbage in an endless loop (main functon of GC thread)
+////////////////////////////////////////////////////////////////////////////////
+
       void run () {
         _applicationMR->collectGarbage();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the timestamp of the last GC
+////////////////////////////////////////////////////////////////////////////////
+
+      double getLastGcStamp () {
+        READ_LOCKER(_lock);
+        return _lastGcStamp;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the global GC timestamp 
+////////////////////////////////////////////////////////////////////////////////
+
+      void updateGcStamp (double value) {
+        WRITE_LOCKER(_lock);
+      }
+
     private:
       ApplicationMR* _applicationMR;
+      ReadWriteLock _lock;
+      double _lastGcStamp;
   };
 
 }
@@ -99,6 +127,7 @@ ApplicationMR::ApplicationMR (string const& binaryPath)
     _startupModules(),
     _actionPath(),
     _gcInterval(1000),
+    _gcFrequency(10.0),
     _startupLoader(),
     _actionLoader(),
     _vocbase(0),
@@ -171,16 +200,25 @@ ApplicationMR::MRContext* ApplicationMR::enterContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationMR::exitContext (MRContext* context) {
+  MRGcThread* gc = dynamic_cast<MRGcThread*>(_gcThread);
+  assert(gc != 0);
+  double lastGc = gc->getLastGcStamp();
+
   ++context->_dirt;
 
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    if (context->_dirt < _gcInterval) {
-      _freeContexts.push_back(context);
+    if (context->_lastGcStamp + _gcFrequency < lastGc) {
+      LOGGER_TRACE << "periodic gc interval reached";
+      _dirtyContexts.push_back(context);
+    }
+    else if (context->_dirt >= _gcInterval) {
+      LOGGER_TRACE << "maximum number of requests reached";
+      _dirtyContexts.push_back(context);
     }
     else {
-      _dirtyContexts.push_back(context);
+      _freeContexts.push_back(context);
     }
 
     guard.broadcast();
@@ -194,21 +232,39 @@ void ApplicationMR::exitContext (MRContext* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationMR::collectGarbage () {
+  MRGcThread* gc = dynamic_cast<MRGcThread*>(_gcThread);
+  assert(gc != 0);
+  uint64_t waitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+
   while (_stopping == 0) {
     MRContext* context = 0;
+    bool gotSignal = false;
 
     {
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {
-        guard.wait();
+        gotSignal = guard.wait(waitTime);
       }
 
       if (! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
       }
+
+      if (context == 0 && ! gotSignal) {
+        // we did not find a dirty context
+        // so we'll pop one of the free contexts and clean it up
+        context = _freeContexts.back();
+        if (context != 0) {
+          _freeContexts.pop_back();
+        }
+      }
     }
+
+    // update last gc time   
+    double lastGc = TRI_microtime();
+    gc->updateGcStamp(lastGc);
 
     if (context != 0) {
       LOGGER_TRACE << "collecting MR garbage";
@@ -216,6 +272,7 @@ void ApplicationMR::collectGarbage () {
       // TODO
 
       context->_dirt = 0;
+      context->_lastGcStamp = lastGc;
 
       {
         CONDITION_LOCKER(guard, _contextCondition);
@@ -254,7 +311,8 @@ void ApplicationMR::disableActions () {
 
 void ApplicationMR::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   options["RUBY Options:help-admin"]
-    ("ruby.gc-interval", &_gcInterval, "Ruby garbage collection interval (each x requests)")
+    ("ruby.gc-interval", &_gcInterval, "Ruby request-based garbage collection interval (each x requests)")
+    ("ruby.gc-frequency", &_gcFrequency, "Ruby time-based garbage collection frequency (each x seconds)")
   ;
 
   options["RUBY Options:help-admin"]
@@ -406,6 +464,8 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
       return false;
     }
   }
+
+  context->_lastGcStamp = TRI_microtime();
 
   // and return from the context
   LOGGER_TRACE << "initialised MR context #" << i;

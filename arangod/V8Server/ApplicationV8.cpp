@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 enigne configuration
+/// @brief V8 engine configuration
 ///
 /// @file
 ///
@@ -28,6 +28,8 @@
 #include "ApplicationV8.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -65,16 +67,43 @@ namespace {
     public:
       V8GcThread (ApplicationV8* applicationV8) 
         : Thread("v8-gc"),
-          _applicationV8(applicationV8) {
+          _applicationV8(applicationV8),
+          _lock(),
+          _lastGcStamp(TRI_microtime()) {
       }
 
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect garbage in an endless loop (main functon of GC thread)
+////////////////////////////////////////////////////////////////////////////////
+
       void run () {
         _applicationV8->collectGarbage();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the timestamp of the last GC
+////////////////////////////////////////////////////////////////////////////////
+
+      double getLastGcStamp () {
+        READ_LOCKER(_lock);
+        return _lastGcStamp;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the global GC timestamp 
+////////////////////////////////////////////////////////////////////////////////
+
+      void updateGcStamp (double value) {
+        WRITE_LOCKER(_lock);
+        _lastGcStamp = value;
+      }
+
     private:
       ApplicationV8* _applicationV8;
+      ReadWriteLock _lock;
+      double _lastGcStamp;
   };
 
 }
@@ -107,6 +136,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _actionPath(),
     _useActions(true),
     _gcInterval(1000),
+    _gcFrequency(10.0),
     _startupLoader(),
     _actionLoader(),
     _vocbase(0),
@@ -183,20 +213,29 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::exitContext (V8Context* context) {
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  assert(gc != 0);
+  double lastGc = gc->getLastGcStamp();
+        
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
-
+  
   ++context->_dirt;
 
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    if (context->_dirt < _gcInterval) {
-      _freeContexts.push_back(context);
+    if (context->_lastGcStamp + _gcFrequency < lastGc) {
+      LOGGER_TRACE << "periodic gc interval reached";
+      _dirtyContexts.push_back(context);
+    }
+    else if (context->_dirt >= _gcInterval) {
+      LOGGER_TRACE << "maximum number of requests reached";
+      _dirtyContexts.push_back(context);
     }
     else {
-      _dirtyContexts.push_back(context);
+      _freeContexts.push_back(context);
     }
 
     guard.broadcast();
@@ -210,21 +249,39 @@ void ApplicationV8::exitContext (V8Context* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::collectGarbage () {
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  assert(gc != 0);
+  uint64_t waitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+
   while (_stopping == 0) {
     V8Context* context = 0;
+    bool gotSignal = false;
 
     {
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {
-        guard.wait();
+        gotSignal = guard.wait(waitTime);
       }
 
       if (! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
       }
+
+      if (context == 0 && ! gotSignal) {
+        // we did not find a dirty context
+        // so we'll pop one of the free contexts and clean it up
+        context = _freeContexts.back();
+        if (context != 0) {
+          _freeContexts.pop_back();
+        }
+      }
     }
+   
+    // update last gc time   
+    double lastGc = TRI_microtime();
+    gc->updateGcStamp(lastGc);
 
     if (context != 0) {
       LOGGER_TRACE << "collecting V8 garbage";
@@ -241,6 +298,7 @@ void ApplicationV8::collectGarbage () {
       delete context->_locker;
 
       context->_dirt = 0;
+      context->_lastGcStamp = lastGc;
 
       {
         CONDITION_LOCKER(guard, _contextCondition);
@@ -279,7 +337,8 @@ void ApplicationV8::disableActions () {
 
 void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   options["JAVASCRIPT Options:help-admin"]
-    ("javascript.gc-interval", &_gcInterval, "JavaScript garbage collection interval (each x requests)")
+    ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
+    ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
   ;
 
   options["JAVASCRIPT Options:help-admin"]
@@ -475,6 +534,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
+
+  context->_lastGcStamp = TRI_microtime();
   
   LOGGER_TRACE << "initialised V8 context #" << i;
 
