@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief blob collection
+/// @brief (binary) shape collection
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_BLOB_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_BLOB_COLLECTION_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_SHAPE_COLLECTION_H
+#define TRIAGENS_DURHAM_VOC_BASE_SHAPE_COLLECTION_H 1
 
 #include <BasicsC/common.h>
 
@@ -47,24 +47,24 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief blob collection
+/// @brief shape collection
 ///
-/// A blob collection is a collection of blobs. There is no versioning or
-/// relationship between the blobs. The data is directly synced to disks.
+/// A shape collection is a collection of binary shapes. There is no versioning 
+/// or relationship between the shapes. The data is directly synced to disks.
 /// Therefore no special management thread is needed. It is not possible to
 /// delete entries, once they are created. The only query supported is a
 /// full scan.
 ///
-/// Calls to @ref TRI_WriteBlobCollection are synchronised using the _lock
-/// of a blob collection.
+/// Calls to @ref TRI_WriteShapeCollection are synchronised using the _lock
+/// of a shape collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_blob_collection_s {
+typedef struct TRI_shape_collection_s {
   TRI_collection_t base;
 
   TRI_mutex_t _lock;
 }
-TRI_blob_collection_t;
+TRI_shape_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -83,9 +83,9 @@ TRI_blob_collection_t;
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t*,
-                                                 char const* path,
-                                                 TRI_col_parameter_t* parameter);
+TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t*,
+                                                   char const* path,
+                                                   TRI_col_parameter_t* parameter);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -93,13 +93,13 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t*,
 /// Note that the collection must be closed first.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlobCollection (TRI_blob_collection_t*);
+void TRI_DestroyShapeCollection (TRI_shape_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBlobCollection (TRI_blob_collection_t* collection);
+void TRI_FreeShapeCollection (TRI_shape_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -118,25 +118,25 @@ void TRI_FreeBlobCollection (TRI_blob_collection_t* collection);
 /// @brief writes an element splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
-                             TRI_df_marker_t* marker,
-                             TRI_voc_size_t markerSize,
-                             void const* body,
-                             TRI_voc_size_t bodySize,
-                             TRI_df_marker_t** result);
+int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
+                              TRI_df_marker_t* marker,
+                              TRI_voc_size_t markerSize,
+                              void const* body,
+                              TRI_voc_size_t bodySize,
+                              TRI_df_marker_t** result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t*,
-                                               char const* path);
+TRI_shape_collection_t* TRI_OpenShapeCollection (TRI_vocbase_t*,
+                                                 char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseBlobCollection (TRI_blob_collection_t* collection);
+bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
