@@ -786,7 +786,9 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
     // read the existing document
     TRI_doc_mptr_t document = _documentCollection->read(_documentCollection, did);
-    TRI_json_t* old = TRI_JsonShapedJson(_documentCollection->_shaper, &document._document);
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
+    TRI_json_t* old = TRI_JsonShapedJson(_documentCollection->_shaper, &shapedJson);
   
     if (old != 0) {
       TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);

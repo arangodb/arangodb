@@ -40,6 +40,7 @@
 #include "Variant/VariantString.h"
 #include "Variant/VariantUInt64.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/simple-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -398,7 +399,9 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   // convert object to string
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
+  TRI_shaped_json_t shapedJson;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+  TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
 
