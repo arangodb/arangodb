@@ -33,7 +33,6 @@
 #include <BasicsC/associative.h>
 
 #include "VocBase/vocbase.h"
-#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -252,106 +251,6 @@ TRI_shadow_t* TRI_StoreShadowData (TRI_shadow_store_t* const,
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-// -----------------------------------------------------------------------------
-// --SECTION--                                  UNUSED AND UNTESTED CODE FOLLOWS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  SHADOW DOCUMENTS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shadow document
-////////////////////////////////////////////////////////////////////////////////
-  
-typedef struct TRI_shadow_document_s {
-  TRI_shadow_t* _base;
-
-  TRI_voc_cid_t _cid;
-  TRI_voc_did_t _did;
-  TRI_voc_rid_t _rid;
-}
-TRI_shadow_document_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shadow document storage
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_shadow_document_store_s {
-  TRI_shadow_store_t* _base;
-
-  void* (*createShadow) (struct TRI_shadow_document_store_s*, struct TRI_doc_collection_s*, struct TRI_doc_mptr_s const*);
-  bool (*verifyShadow) (struct TRI_shadow_document_store_s*, struct TRI_doc_collection_s*, struct TRI_doc_mptr_s const*, void*);
-  void (*destroyShadow) (struct TRI_shadow_document_store_s*, TRI_shadow_document_t*);
-}
-TRI_shadow_document_store_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a shadow document storage
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shadow_document_store_t* TRI_CreateShadowDocumentStore (
-  void* (*create) (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*),
-  bool (*verify) (TRI_shadow_document_store_t*, TRI_doc_collection_t*, TRI_doc_mptr_t const*, void*),
-  void (*destroy) (TRI_shadow_document_store_t*, TRI_shadow_document_t*));
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shadow document storage
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeShadowDocumentStore (TRI_shadow_document_store_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up or creates a shadow document
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shadow_document_t* TRI_FindShadowDocument (TRI_shadow_document_store_t* const, 
-                                               TRI_vocbase_t*, 
-                                               TRI_voc_cid_t,
-                                               TRI_voc_did_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases a shadow document
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ReleaseShadowDocument (TRI_shadow_document_store_t* const, 
-                                TRI_shadow_document_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enumerate all shadows and remove them if expired
-/// 
-/// The max age must be specified in seconds
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CleanupShadowDocuments (TRI_shadow_document_store_t* const, const double);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-*/
 #ifdef __cplusplus
 }
 #endif
