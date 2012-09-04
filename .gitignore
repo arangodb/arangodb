@@ -104,7 +104,6 @@ Doxygen/*.doxy
 Doxygen/html
 Doxygen/js
 Doxygen/latex
-Doxygen/web
 Doxygen/wiki
 Doxygen/xml
 Doxygen/.setup-directories
