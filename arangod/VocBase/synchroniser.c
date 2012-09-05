@@ -174,17 +174,21 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
   }
 
   if (base->_journals._length == 0) {
-    worked = true;
-
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     journal = TRI_CreateJournalSimCollection(sim);
 
     if (journal != NULL) {
+      worked = true;
       LOG_DEBUG("created new journal '%s'", journal->_filename);
+
+      TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    }
+    else {
+      // an error occurred when creating the journal file
+      LOG_ERROR("could not create journal file");
     }
 
-    TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
     TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
@@ -298,17 +302,21 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
   }
 
   if (base->_compactors._length == 0) {
-    worked = true;
-
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     compactor = TRI_CreateCompactorDocCollection(&sim->base);
 
     if (compactor != NULL) {
+      worked = true;
       LOG_DEBUG("created new compactor '%s'", compactor->_filename);
+    
+      TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    }
+    else {
+      // an error occurred when creating the compactor file
+      LOG_ERROR("could not create compactor file");
     }
 
-    TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
     TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 

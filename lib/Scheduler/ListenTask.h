@@ -52,7 +52,7 @@ namespace triagens {
 /// @brief maximal number of failed connects
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const MAX_ACCEPT_ERRORS = 1000;
+        static size_t const MAX_ACCEPT_ERRORS = 128;
 
       public:
 
