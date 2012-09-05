@@ -297,9 +297,6 @@ static void CreateHeader (TRI_doc_collection_t* c,
   header->_fid = datafile->_fid;
   header->_deletion = 0;
   header->_data = marker;
-  header->_document._sid = marker->_shape;
-  header->_document._data.length = marker->base._size - markerSize;
-  header->_document._data.data = ((char*) marker) + markerSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +381,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
     dfi = TRI_FindDatafileInfoDocCollection(&sim->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
-      dfi->_sizeAlive += header->_document._data.length;
+      dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
     }
 
     // update immediate indexes
@@ -490,9 +487,6 @@ static void UpdateHeader (TRI_doc_collection_t* c,
   update->_rid = marker->_rid;
   update->_fid = datafile->_fid;
   update->_data = marker;
-  update->_document._sid = marker->_shape;
-  update->_document._data.length = marker->base._size - markerSize;
-  update->_document._data.data = ((char*) marker) + markerSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -664,17 +658,19 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
     if (dfi != NULL) {
+      size_t length = TRI_LengthDataMasterPointer(header);
+
       dfi->_numberAlive -= 1;
-      dfi->_sizeAlive -= header->_document._data.length;
+      dfi->_sizeAlive -= length;
 
       dfi->_numberDead += 1;
-      dfi->_sizeDead += header->_document._data.length;
+      dfi->_sizeDead += length;
     }
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
-      dfi->_sizeAlive += update._document._data.length;
+      dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
     }
 
     // update immediate indexes
@@ -826,11 +822,13 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
     if (dfi != NULL) {
+      size_t length = TRI_LengthDataMasterPointer(header);
+
       dfi->_numberAlive -= 1;
-      dfi->_sizeAlive -= header->_document._data.length;
+      dfi->_sizeAlive -= length;
 
       dfi->_numberDead += 1;
-      dfi->_sizeDead += header->_document._data.length;
+      dfi->_sizeDead += length;
     }
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
@@ -1354,7 +1352,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += header->_document._data.length;
+        dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
       }
 
       // update immediate indexes
@@ -1377,18 +1375,20 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
 
       if (dfi != NULL) {
+        size_t length = TRI_LengthDataMasterPointer(found);
+
         dfi->_numberAlive -= 1;
-        dfi->_sizeAlive -= found->_document._data.length;
+        dfi->_sizeAlive -= length;
 
         dfi->_numberDead += 1;
-        dfi->_sizeDead += found->_document._data.length;
+        dfi->_sizeDead += length;
       }
 
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += update._document._data.length;
+        dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
       }
 
       // update immediate indexes
@@ -1401,7 +1401,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberDead += 1;
-        dfi->_sizeDead += found->_document._data.length;
+        dfi->_sizeDead += TRI_LengthDataMasterPointer(found);
       }
     }
   }
@@ -1432,8 +1432,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header->_rid = d->_rid;
       header->_deletion = marker->_tick;
       header->_data = 0;
-      header->_document._data.length = 0;
-      header->_document._data.data = 0;
 
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
@@ -1458,11 +1456,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
 
       if (dfi != NULL) {
+        size_t length = TRI_LengthDataMasterPointer(found);
+
         dfi->_numberAlive -= 1;
-        dfi->_sizeAlive -= found->_document._data.length;
+        dfi->_sizeAlive -= length;
 
         dfi->_numberDead += 1;
-        dfi->_sizeDead += found->_document._data.length;
+        dfi->_sizeDead += length; 
       }
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
 
@@ -2342,7 +2342,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   size_t n;
 
   // get the old document
-  old = header->_document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(old, header->_data);
 
   // .............................................................................
   // update primary index
@@ -2357,7 +2357,6 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   change.v->_deletion = update->_deletion;
 
   change.v->_data = update->_data;
-  change.v->_document = update->_document;
 
   // .............................................................................
   // update all the other indices
@@ -4722,20 +4721,20 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
                             size_t len, 
                             TRI_shape_pid_t* pids,
                             TRI_shaped_json_t** values) {
-  TRI_shaped_json_t const* document;
+  TRI_shaped_json_t document;
   TRI_shaped_json_t* example;
   TRI_shaped_json_t result;
   TRI_shape_t const* shape;
   bool ok;
   size_t i;
 
-  document = &doc->_document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->_data);
 
   for (i = 0;  i < len;  ++i) {
     example = values[i];
 
     ok = TRI_ExtractShapedJsonVocShaper(shaper,
-                                        document,
+                                        &document,
                                         example->_sid,
                                         pids[i],
                                         &result,

@@ -154,14 +154,18 @@
 ///////////////////////////////////////////////////////////////////
 ///
 /// The ArangoDB database server has two modes of operation: as server, where it
-/// will answer to client requests and an emergency console, in which you can
+/// will answer to client requests, and an emergency console, in which you can
 /// access the database directly. The latter - as the name suggests - should 
 /// only be used in case of an emergency, for example, a corrupted
 /// collection. Using the emergency console allows you to issue all commands
-/// normally available in actions and transactions.
+/// normally available in actions and transactions. When starting the server in
+/// emergency console mode, the server cannot handle any client requests.
 ///
-/// You should never start more than one server for the same database,
-/// independent from the mode of operation.
+/// You should never start more than one server using the same database directory,
+/// independent from the mode of operation. Normally ArangoDB will prevent
+/// you from doing this by placing a lockfile in the database directory and
+/// not allowing a second ArangoDB instance to use the same database directory
+/// if a lockfile is already present.
 ///
 /// The following command starts the ArangoDB database in server mode. You will
 /// be able to access the server using HTTP requests on port 8529. See @ref
@@ -175,6 +179,31 @@
 /// @LIT{http://localhost:8529/}
 ///
 /// to access the administration front-end.
+///
+/// To start the server at system boot time, you should use one of the 
+/// pre-rolled packages that will install the necessary start / stop
+/// scripts for ArangoDB. To start and stop the server manually, you can
+/// use the start / stop script like this (provided the start / stop script
+/// is located in /etc/init.d/arangod, the command actual name and invocation are
+/// platform-dependent):
+///
+/// @LIT{/etc/init.d/arangod start}
+/// 
+/// To stop the server, you can use the command
+///
+/// @LIT{/etc/init.d/arangod stop}
+///
+/// You may require root privileges to execute these commands.
+///
+/// If you compiled ArangoDB from source and did not use any installation
+/// package, or you are using non-default locations and/or multiple ArangoDB
+/// instances on the same host, you may want to start the server process 
+/// manually. You can do so by invoking the arangod binary from the command
+/// line as shown before. To stop the database server gracefully, you can
+/// either pressCTRL-C or by send the SIGINT signal to the server process. 
+/// On many systems, this can be achieved with the following command:
+///
+/// @LIT{kill -2 `pidof arangod`}
 ///
 /// @subsection UserManualServerStartStopOptions Frequently Used Options
 ////////////////////////////////////////////////////////////////////////

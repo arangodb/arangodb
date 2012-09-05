@@ -68,6 +68,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
 #include "UserManager/ApplicationUserManager.h"
+#include "UserManager/Session.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -1102,6 +1103,7 @@ void ArangoServer::openDatabase () {
 
     ApplicationUserManager::unloadUsers();
     ApplicationUserManager::unloadRoles();
+    Session::unloadSessions();
     exit(EXIT_FAILURE);
   }
 
@@ -1119,6 +1121,7 @@ void ArangoServer::openDatabase () {
 void ArangoServer::closeDatabase () {
   ApplicationUserManager::unloadUsers();
   ApplicationUserManager::unloadRoles();
+  Session::unloadSessions();
 
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);

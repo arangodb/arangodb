@@ -928,7 +928,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
 
   TRI_voc_rid_t oldRid = 0;
   TRI_doc_mptr_t document = doc->read(doc, did);
-  TRI_json_t* old = TRI_JsonShapedJson(doc->_shaper, &document._document);
+  TRI_shaped_json_t shapedJson;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
+  TRI_json_t* old = TRI_JsonShapedJson(doc->_shaper, &shapedJson);
 
   if (old != 0) {
     TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
