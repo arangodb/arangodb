@@ -1,4 +1,4 @@
-.TH arangod 8 "Mo 3. Sep 15:33:27 CEST 2012" "" "ArangoDB"
+.TH arangod 8 "Di 4. Sep 11:48:54 CEST 2012" "" "ArangoDB"
 .SH NAME
 arangod - the ArangoDB database server
 .SH SYNOPSIS
@@ -10,6 +10,8 @@ clients to connect to it via the network. The server also has
 an emergency console mode that can be used for any sort of
 maintenance operations. In the emergency console mode, the 
 server does not allow any clients to connect.
+The server can be stopped gracefully at any time by pressing 
+CTRL-C or by sending the SIGINT signal to the process.
 .SH OPTIONS
 The arangod binary has many options that can be used to control
 its behavior. 

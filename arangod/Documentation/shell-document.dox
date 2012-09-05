@@ -88,9 +88,6 @@
 /// All documents contain two special fields, the document handle in @LIT{_id}
 /// and the etag aka document revision in @LIT{_rev}.
 ///
-/// Some examples in the manual assume that you have created some example
-/// collections, see @ref ExamplesSetup.
-///
 /// @copydoc GlossaryDocumentHandle
 ///
 /// @copydoc GlossaryDocumentIdentifier
