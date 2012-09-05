@@ -649,10 +649,17 @@ int RestVocbaseBaseHandler::useCollection (string const& name,
   int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
 
   if (res == TRI_ERROR_NO_ERROR) {
+    // when we get here, this will have acquired the read-lock TRI_READ_LOCK_STATUS_VOCBASE_COL(collection)
+    // that must later be unlocked by the caller
     assert(_collection != 0);
 
     _documentCollection = _collection->_collection;
     assert(_documentCollection != 0);
+  }
+  else {
+    // reset collection to 0, otherwise the read-lock would be released later and this would be invalid
+    _collection = 0;
+    generateError(HttpResponse::SERVER_ERROR, res);
   }
 
   return res;
