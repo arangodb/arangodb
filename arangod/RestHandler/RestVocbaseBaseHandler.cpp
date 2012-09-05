@@ -146,6 +146,8 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
   }
 
   LOGGER_REQUEST_IN_END_I(_timing) << _timingResult;
+
+  releaseCollection();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,6 +507,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
   }
 
   TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+  _collection = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
