@@ -1298,6 +1298,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
   if (!json) {
+    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
