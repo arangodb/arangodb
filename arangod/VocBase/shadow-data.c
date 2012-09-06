@@ -255,7 +255,7 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
   assert(store);
 
   // force deletion of all remaining shadows
-  TRI_CleanupShadowData(store, 0, true); 
+  TRI_CleanupShadowData(store, 0.0, true); 
 
   TRI_DestroyMutex(&store->_lock);
   TRI_DestroyAssociativePointer(&store->_ids);
