@@ -82,13 +82,14 @@ static TRI_shadow_t* CreateShadow (const void* const data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
-  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
+  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu to %d", 
             shadow, 
             shadow->_data, 
-            (unsigned long) shadow->_id);
+            (unsigned long) shadow->_id,
+            (int) (shadow->_rc - 1));
 
   if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
-    LOG_TRACE("deleting shadow %p", shadow);
+    LOG_TRACE("deleting transient shadow %p", shadow);
 
     TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
     TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
@@ -102,10 +103,11 @@ static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* con
 ////////////////////////////////////////////////////////////////////////////////
 
 static void IncreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
-  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
+  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu to %d", 
             shadow, 
             shadow->_data, 
-            (unsigned long) shadow->_id);
+            (unsigned long) shadow->_id,
+            (int) (shadow->_rc + 1));
 
   if (++shadow->_rc <= 0) {
     // should not be less or equal to 0 now
@@ -551,8 +553,13 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
       if (shadow->_rc < 1 || force) {
         if (shadow->_type == SHADOW_TRANSIENT || 
             shadow->_timestamp < compareStamp || 
+            shadow->_deleted || 
             force) {
-          LOG_TRACE("cleaning expired shadow %p", shadow);
+          LOG_TRACE("cleaning shadow %p, rc: %d, expired: %d, deleted: %d", 
+                    shadow, 
+                    (int) shadow->_rc, 
+                    (int) (shadow->_timestamp < compareStamp), 
+                    (int) shadow->_deleted);
 
           TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
           TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
