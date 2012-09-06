@@ -1,102 +1,40 @@
-diff --git a/UnitTests/HttpInterface/api-cursor-spec.rb b/UnitTests/HttpInterface/api-cursor-spec.rb
-index 7247152..493af19 100644
---- a/UnitTests/HttpInterface/api-cursor-spec.rb
-+++ b/UnitTests/HttpInterface/api-cursor-spec.rb
-@@ -170,6 +170,42 @@ describe ArangoDB do
- 	doc.parsed_response['code'].should eq(400)
-       end
+diff --git a/lib/Basics/ConditionLocker.cpp b/lib/Basics/ConditionLocker.cpp
+index e9469e6..097ef7b 100644
+--- a/lib/Basics/ConditionLocker.cpp
++++ b/lib/Basics/ConditionLocker.cpp
+@@ -96,6 +96,14 @@ void ConditionLocker::wait () {
+ }
  
-+      it "creates a cursor and deletes it in the middle" do
-+	cmd = api
-+	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
-+	doc = ArangoDB.log_post("#{prefix}-create-for-limit-return", cmd, :body => body)
-+	
-+	doc.code.should eq(201)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(false)
-+	doc.parsed_response['code'].should eq(201)
-+	doc.parsed_response['id'].should be_kind_of(Integer)
-+	doc.parsed_response['hasMore'].should eq(true)
-+	doc.parsed_response['count'].should eq(5)
-+	doc.parsed_response['result'].length.should eq(2)
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief waits for an event to occur, with a timeout
++////////////////////////////////////////////////////////////////////////////////
 +
-+	id = doc.parsed_response['id']
++bool ConditionLocker::wait (uint64_t delay) {
++  return _conditionVariable->wait(delay);
++}
 +
-+	cmd = api + "/#{id}"
-+	doc = ArangoDB.log_put("#{prefix}-create-for-limit-return-cont", cmd)
-+	
-+	doc.code.should eq(200)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(false)
-+	doc.parsed_response['code'].should eq(200)
-+	doc.parsed_response['hasMore'].should eq(true)
-+	doc.parsed_response['count'].should eq(5)
-+	doc.parsed_response['result'].length.should eq(2)
-+
-+	cmd = api + "/#{id}"
-+	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
-+
-+	doc.code.should eq(202)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(false)
-+	doc.parsed_response['code'].should eq(202)
-+      end
-+
-       it "deleting a cursor" do
- 	cmd = api
- 	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
-@@ -194,6 +230,51 @@ describe ArangoDB do
- 	doc.parsed_response['error'].should eq(false)
- 	doc.parsed_response['code'].should eq(202)
-       end
-+
-+      it "deleting a deleted cursor" do
-+	cmd = api
-+	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
-+	doc = ArangoDB.post(cmd, :body => body)
-+	
-+	doc.code.should eq(201)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(false)
-+	doc.parsed_response['code'].should eq(201)
-+	doc.parsed_response['id'].should be_kind_of(Integer)
-+	doc.parsed_response['hasMore'].should eq(true)
-+	doc.parsed_response['count'].should eq(5)
-+	doc.parsed_response['result'].length.should eq(2)
-+
-+	id = doc.parsed_response['id']
-+
-+	cmd = api + "/#{id}"
-+	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
-+
-+	doc.code.should eq(202)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(false)
-+	doc.parsed_response['code'].should eq(202)
-+	
-+        doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
-+
-+	doc.code.should eq(400)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(true)
-+	doc.parsed_response['errorNum'].should eq(1600);
-+	doc.parsed_response['code'].should eq(400)
-+      end
-+
-+      it "deleting an invalid cursor" do
-+	cmd = api
-+	cmd = api + "/999999" # we assume this cursor id is invalid
-+	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
-+
-+	doc.code.should eq(400)
-+	doc.headers['content-type'].should eq("application/json")
-+	doc.parsed_response['error'].should eq(true);
-+	doc.parsed_response['errorNum'].should eq(1600);
-+	doc.parsed_response['code'].should eq(400)
-+      end
-     end
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief broadcasts an event
+ ////////////////////////////////////////////////////////////////////////////////
  
- ################################################################################
+diff --git a/lib/Basics/ConditionLocker.h b/lib/Basics/ConditionLocker.h
+index 4114fe3..543f389 100644
+--- a/lib/Basics/ConditionLocker.h
++++ b/lib/Basics/ConditionLocker.h
+@@ -139,6 +139,12 @@ namespace triagens {
+         void wait ();
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief waits for an event to occur, using a timeout
++////////////////////////////////////////////////////////////////////////////////
++
++        bool wait (uint64_t);
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief broadcasts an event
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
 index d200d55..c65fa15 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
