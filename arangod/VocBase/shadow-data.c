@@ -376,7 +376,7 @@ void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
   TRI_LockMutex(&store->_lock);
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
-  if (shadow && !shadow->_deleted) {
+  if (shadow) {
     DecreaseRefCount(store, shadow); // this might delete the shadow
   } 
 
@@ -522,6 +522,14 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
 
   // we need an exclusive lock on the index
   TRI_LockMutex(&store->_lock);
+
+  if (store->_ids._nrUsed == 0) {
+    // store is empty, nothing to do!
+    TRI_UnlockMutex(&store->_lock);
+    return;
+  }
+   
+  LOG_TRACE("cleaning shadows");
 
   // loop until there's nothing to delete or 
   // we have deleted SHADOW_MAX_DELETE elements 

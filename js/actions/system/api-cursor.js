@@ -214,10 +214,17 @@ function PUT_api_cursor(req, res) {
     if (!(cursor instanceof ArangoCursor)) {
       actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
-    } 
+    }
+    
+    try { 
+      // note: this might dispose or persist the cursor
+      actions.resultCursor(req, res, cursor, actions.HTTP_OK);
+    }
+    catch (e) {
+    }
 
-    // note: this might dispose or persist the cursor
-    actions.resultCursor(req, res, cursor, actions.HTTP_OK);
+    cursor.unuse();
+    cursor = null;
   }
   catch (err) {
     actions.resultException(req, res, err);
@@ -269,7 +276,9 @@ function DELETE_api_cursor(req, res) {
     }
 
     cursor.dispose();
+    cursor = null;
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
+    internal.wait(0.0);
   }
   catch (err) {
     actions.resultException(req, res, err);

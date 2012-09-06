@@ -227,11 +227,11 @@ void ApplicationV8::exitContext (V8Context* context) {
     CONDITION_LOCKER(guard, _contextCondition);
 
     if (context->_lastGcStamp + _gcFrequency < lastGc) {
-      LOGGER_TRACE << "periodic gc interval reached";
+      LOGGER_TRACE << "V8 context has reached GC timeout threshold and will be scheduled for GC";
       _dirtyContexts.push_back(context);
     }
     else if (context->_dirt >= _gcInterval) {
-      LOGGER_TRACE << "maximum number of requests reached";
+      LOGGER_TRACE << "V8 context has reached maximum number of requests and will be scheduled for GC";
       _dirtyContexts.push_back(context);
     }
     else {
@@ -245,13 +245,80 @@ void ApplicationV8::exitContext (V8Context* context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine which of the free contexts should be picked for the GC
+////////////////////////////////////////////////////////////////////////////////
+
+ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
+  size_t n = _freeContexts.size();
+
+  if (n == 0) {
+    // this is easy...
+    return 0;
+  }
+
+  V8Context* context = 0;
+
+  if (n == 1) {
+    // only one free context, so we'll always choose it
+    context = _freeContexts.back();
+    if (context != 0) {
+      _freeContexts.pop_back();
+    }
+    return context;
+  }
+
+  // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
+  size_t pickedContextNr = 0; // index of context with lowest GC stamp
+  
+  for (size_t i = 0; i < n; ++i) {
+    // compare last GC stamp
+    if (_freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
+      pickedContextNr = i;
+    }
+  }
+  // we now have the context to clean up in pickedContextNr
+    
+  // this is the context to clean up
+  context = _freeContexts[pickedContextNr];
+  assert(context != 0);
+
+  // now compare its last GC timestamp with the last global GC stamp
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
+    // no need yet to clean up the context
+    return 0;
+  }
+
+  // we'll pop the context from the vector. the context might be at any position in the vector
+  // so we need to move the other elements around
+  for (size_t i = pickedContextNr; i < n - 1; ++i) {
+    _freeContexts[i] = _freeContexts[i + 1];
+  }
+  _freeContexts.pop_back();
+
+  return context;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the garbage collection
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::collectGarbage () {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   assert(gc != 0);
-  uint64_t waitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+
+  // this flag will be set to true if we timed out waiting for a GC signal
+  // if set to true, the next cycle will use a reduced wait time so the GC
+  // can be performed more early for all dirty contexts. The flag is set
+  // to false again once all contexts have been cleaned up and there is nothing
+  // more to do
+  bool useReducedWait = false;
+
+  // the time we'll wait for a signal
+  uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+
+  // the time we'll wait for a signal when the previous wait timed out
+  uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
 
   while (_stopping == 0) {
     V8Context* context = 0;
@@ -261,25 +328,33 @@ void ApplicationV8::collectGarbage () {
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {
-        // check whether we got a wait timeout or a signal
+        uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
+        // we'll wait for a signal or a timeout
         gotSignal = guard.wait(waitTime);
+
+        // use a reduced wait time in the next round because we seem to be idle
+        // the reduced wait time will allow use to perfom GC for more contexts
+        useReducedWait = ! gotSignal;
       }
 
       if (! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
+        useReducedWait = false;
       }
+      else if (! gotSignal && ! _freeContexts.empty()) {
+        // we timed out waiting for a signal, so we have idle time that we can
+        // spend on running the GC pro-actively
+        // We'll pick one of the free contexts and clean it up
+        context = pickContextForGc();
 
-      if (context == 0 && ! gotSignal && ! _freeContexts.empty()) {
-        // we timed out waiting for a signal
-        // so we'll pop one of the free contexts and clean it up pro-actively
-        context = _freeContexts.back();
-        if (context != 0) {
-          _freeContexts.pop_back();
-        }
+        // there is no context to clean up, probably they all have been cleaned up
+        // already. increase the wait time so we don't cycle to much in the GC loop
+        // and waste CPU unnecessary
+        useReducedWait =  (context != 0);
       }
     }
-   
+
     // update last gc time   
     double lastGc = TRI_microtime();
     gc->updateGcStamp(lastGc);
