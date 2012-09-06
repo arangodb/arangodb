@@ -256,16 +256,8 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
     return 0;
   }
 
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   V8Context* context = 0;
-
-  if (n == 1) {
-    // only one free context, so we'll always choose it
-    context = _freeContexts.back();
-    if (context != 0) {
-      _freeContexts.pop_back();
-    }
-    return context;
-  }
 
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
   size_t pickedContextNr = 0; // index of context with lowest GC stamp
@@ -283,7 +275,6 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
   assert(context != 0);
 
   // now compare its last GC timestamp with the last global GC stamp
-  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
     // no need yet to clean up the context
     return 0;
@@ -291,8 +282,10 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
 
   // we'll pop the context from the vector. the context might be at any position in the vector
   // so we need to move the other elements around
-  for (size_t i = pickedContextNr; i < n - 1; ++i) {
-    _freeContexts[i] = _freeContexts[i + 1];
+  if (n > 1) {
+    for (size_t i = pickedContextNr; i < n - 1; ++i) {
+      _freeContexts[i] = _freeContexts[i + 1];
+    }
   }
   _freeContexts.pop_back();
 
