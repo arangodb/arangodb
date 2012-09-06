@@ -107,7 +107,10 @@ static void IncreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* con
             shadow->_data, 
             (unsigned long) shadow->_id);
 
-  ++shadow->_rc;
+  if (++shadow->_rc <= 0) {
+    // should not be less or equal to 0 now
+    shadow->_rc = 1;
+  }
   UpdateTimestampShadow(shadow);
 }
 
