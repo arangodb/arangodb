@@ -1640,9 +1640,7 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
     return scope.Close(v8::True());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1703,7 +1701,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   if (cursor) {
-    size_t  length = (size_t) cursor->_length;
+    size_t length = (size_t) cursor->_length;
     TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
     return scope.Close(v8::Number::New(length));
   }
@@ -2001,6 +1999,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
   return scope.Close(v8::ThrowException(
                        TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
                                              "disposed or unknown cursor")));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unuse a general cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(
+          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+            "usage: unuse()")));
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (!vocbase) {
+    return scope.Close(v8::ThrowException(
+          TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
+            "corrupted vocbase")));
+  }
+
+  TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5172,6 +5196,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
   v8::Handle<v8::String> TypeFuncName = v8::Persistent<v8::String>::New(v8::String::New("type"));
   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
+  v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
   v8::Handle<v8::String> UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("update"));
   v8::Handle<v8::String> VersionFuncName = v8::Persistent<v8::String>::New(v8::String::New("version"));
 
@@ -5365,11 +5390,16 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
   rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
+  rt->Set(UnuseFuncName, v8::FunctionTemplate::New(JS_UnuseGeneralCursor));
 
   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("ArangoCursor"), ft->GetFunction());
+  
+  // .............................................................................
+  // generate the global functions
+  // .............................................................................
 
   context->Global()->Set(v8::String::New("CURSOR"),
                          v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),
