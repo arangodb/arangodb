@@ -74,7 +74,7 @@ bin_arangod_SOURCES = \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c \
-	arangod/VocBase/shape-collection.c \
+	arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c \
 	arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
@@ -83,6 +83,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \
 	arangod/VocBase/shadow-data.c \
+	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/voc-shaper.c \
