@@ -44,10 +44,6 @@
 #include "BasicsC/json.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantBoolean.h"
-#include "Variant/VariantInt64.h"
-#include "Variant/VariantString.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -75,6 +71,8 @@ namespace triagens {
     }
 
     ImportHelper::~ImportHelper () {
+      regfree(&_doubleRegex);
+      regfree(&_intRegex);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -404,35 +402,52 @@ namespace triagens {
         return;
       }
 
-      VariantArray* va = result->getBodyAsVariantArray();
+      stringstream& r = result->getBody();
+      
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, r.str().c_str());
 
-      if (va) {
-        VariantBoolean* vb = va->lookupBoolean("error");
-        if (vb && vb->getValue()) {
-          // is error
-          _hasError = true;
-          VariantString* vs = va->lookupString("errorMessage");
-          if (vs) {
-            _errorMessage = vs->getValue();
+      if (json) {
+        // get the "error" flag. This returns a pointer, not a copy
+        TRI_json_t* error = TRI_LookupArrayJson(json, "error");
+
+        if (error) {
+          if (error->_type == TRI_JSON_BOOLEAN && error->_value._boolean) {
+            _hasError = true;
+
+            // get the error message. This returns a pointer, not a copy
+            TRI_json_t* errorMessage = TRI_LookupArrayJson(json, "errorMessage");
+            if (errorMessage) {
+              if (errorMessage->_type == TRI_JSON_STRING) {
+                _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length);
+              }
+            }
           }
         }
 
-        VariantInt64* vi = va->lookupInt64("created");
-        if (vi && vi->getValue() > 0) {
-          _numberOk += (size_t) vi->getValue();
+        TRI_json_t* importResult;
+        
+        // look up the "created" flag. This returns a pointer, not a copy
+        importResult= TRI_LookupArrayJson(json, "created");
+        if (importResult) {
+          if (importResult->_type == TRI_JSON_NUMBER) {
+            _numberOk += (size_t) importResult->_value._number;
+          }
         }
-
-        vi = va->lookupInt64("errors");
-        if (vi && vi->getValue() > 0) {
-          _numberError += (size_t) vi->getValue();
+        
+        // look up the "errors" flag. This returns a pointer, not a copy
+        importResult= TRI_LookupArrayJson(json, "errors");
+        if (importResult) {
+          if (importResult->_type == TRI_JSON_NUMBER) {
+            _numberError += (size_t) importResult->_value._number;
+          }
         }
-
-        delete va;
+     
+        // this will free the json struct will a sub-elements 
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
 
       delete result;
     }
-
 
   }
 }
