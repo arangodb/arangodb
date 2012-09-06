@@ -1,6 +1,13 @@
 not released yet
 ----------------
 
+* fixed issue #188: intermittent issues with 1.0.0
+  (server-side cursors not cleaned up in all cases)
+
+* issue #189: key store should use ISO datetime format bug 
+
+* issue #187: run arango-upgrade on server start 
+
 * fixed issue #183: strange unittest error
 
 * fixed issue #182: manual pages
@@ -48,9 +55,11 @@ not released yet
   All internal and test code has been adjusted for this, however, client code
   that uses edges.* must be adjusted to use db.* instead.
 
+* issue #150: call V8 garbage collection on server periodically
+
 * issue #110: added support for partial updates
 
-  The REST API for documents now offers a HTTP PATCH method to partially update
+  The REST API for documents now offers an HTTP PATCH method to partially update
   documents. Overwriting/replacing documents is still available via the HTTP PUT method
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
