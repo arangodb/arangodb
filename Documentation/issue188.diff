@@ -1,5 +1,104 @@
+diff --git a/UnitTests/HttpInterface/api-cursor-spec.rb b/UnitTests/HttpInterface/api-cursor-spec.rb
+index 7247152..493af19 100644
+--- a/UnitTests/HttpInterface/api-cursor-spec.rb
++++ b/UnitTests/HttpInterface/api-cursor-spec.rb
+@@ -170,6 +170,42 @@ describe ArangoDB do
+ 	doc.parsed_response['code'].should eq(400)
+       end
+ 
++      it "creates a cursor and deletes it in the middle" do
++	cmd = api
++	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
++	doc = ArangoDB.log_post("#{prefix}-create-for-limit-return", cmd, :body => body)
++	
++	doc.code.should eq(201)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(false)
++	doc.parsed_response['code'].should eq(201)
++	doc.parsed_response['id'].should be_kind_of(Integer)
++	doc.parsed_response['hasMore'].should eq(true)
++	doc.parsed_response['count'].should eq(5)
++	doc.parsed_response['result'].length.should eq(2)
++
++	id = doc.parsed_response['id']
++
++	cmd = api + "/#{id}"
++	doc = ArangoDB.log_put("#{prefix}-create-for-limit-return-cont", cmd)
++	
++	doc.code.should eq(200)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(false)
++	doc.parsed_response['code'].should eq(200)
++	doc.parsed_response['hasMore'].should eq(true)
++	doc.parsed_response['count'].should eq(5)
++	doc.parsed_response['result'].length.should eq(2)
++
++	cmd = api + "/#{id}"
++	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
++
++	doc.code.should eq(202)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(false)
++	doc.parsed_response['code'].should eq(202)
++      end
++
+       it "deleting a cursor" do
+ 	cmd = api
+ 	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
+@@ -194,6 +230,51 @@ describe ArangoDB do
+ 	doc.parsed_response['error'].should eq(false)
+ 	doc.parsed_response['code'].should eq(202)
+       end
++
++      it "deleting a deleted cursor" do
++	cmd = api
++	body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
++	doc = ArangoDB.post(cmd, :body => body)
++	
++	doc.code.should eq(201)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(false)
++	doc.parsed_response['code'].should eq(201)
++	doc.parsed_response['id'].should be_kind_of(Integer)
++	doc.parsed_response['hasMore'].should eq(true)
++	doc.parsed_response['count'].should eq(5)
++	doc.parsed_response['result'].length.should eq(2)
++
++	id = doc.parsed_response['id']
++
++	cmd = api + "/#{id}"
++	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
++
++	doc.code.should eq(202)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(false)
++	doc.parsed_response['code'].should eq(202)
++	
++        doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
++
++	doc.code.should eq(400)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(true)
++	doc.parsed_response['errorNum'].should eq(1600);
++	doc.parsed_response['code'].should eq(400)
++      end
++
++      it "deleting an invalid cursor" do
++	cmd = api
++	cmd = api + "/999999" # we assume this cursor id is invalid
++	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
++
++	doc.code.should eq(400)
++	doc.headers['content-type'].should eq("application/json")
++	doc.parsed_response['error'].should eq(true);
++	doc.parsed_response['errorNum'].should eq(1600);
++	doc.parsed_response['code'].should eq(400)
++      end
+     end
+ 
+ ################################################################################
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
-index e1b246d..c381f4e 100644
+index d200d55..c65fa15 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
 +++ b/arangod/V8Server/ApplicationV8.cpp
 @@ -1,5 +1,5 @@
@@ -63,15 +162,15 @@ index e1b246d..c381f4e 100644
    };
  
  }
-@@ -107,6 +136,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
+@@ -106,6 +135,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
+     _startupModules("js/modules"),
      _actionPath(),
-     _useActions(true),
      _gcInterval(1000),
 +    _gcFrequency(10.0),
      _startupLoader(),
      _actionLoader(),
      _vocbase(0),
-@@ -183,21 +213,30 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
+@@ -230,21 +260,30 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
  ////////////////////////////////////////////////////////////////////////////////
  
  void ApplicationV8::exitContext (V8Context* context) {
@@ -106,13 +205,77 @@ index e1b246d..c381f4e 100644
  
      guard.broadcast();
    }
-@@ -210,21 +249,40 @@ void ApplicationV8::exitContext (V8Context* context) {
+@@ -253,25 +292,112 @@ void ApplicationV8::exitContext (V8Context* context) {
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief determine which of the free contexts should be picked for the GC
++////////////////////////////////////////////////////////////////////////////////
++
++ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
++  size_t n = _freeContexts.size();
++
++  if (n == 0) {
++    // this is easy...
++    return 0;
++  }
++
++  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
++  V8Context* context = 0;
++
++  // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
++  size_t pickedContextNr = 0; // index of context with lowest GC stamp
++  
++  for (size_t i = 0; i < n; ++i) {
++    // compare last GC stamp
++    if (_freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
++      pickedContextNr = i;
++    }
++  }
++  // we now have the context to clean up in pickedContextNr
++    
++  // this is the context to clean up
++  context = _freeContexts[pickedContextNr];
++  assert(context != 0);
++  
++  // now compare its last GC timestamp with the last global GC stamp
++  if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
++    // no need yet to clean up the context
++    return 0;
++  }
++
++  // we'll pop the context from the vector. the context might be at any position in the vector
++  // so we need to move the other elements around
++  if (n > 1) {
++    for (size_t i = pickedContextNr; i < n - 1; ++i) {
++      _freeContexts[i] = _freeContexts[i + 1];
++    }
++  }
++  _freeContexts.pop_back();
++
++  return context;
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief runs the garbage collection
  ////////////////////////////////////////////////////////////////////////////////
  
  void ApplicationV8::collectGarbage () {
 +  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
 +  assert(gc != 0);
-+  uint64_t waitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
++  
++  // this flag will be set to true if we timed out waiting for a GC signal
++  // if set to true, the next cycle will use a reduced wait time so the GC
++  // can be performed more early for all dirty contexts. The flag is set
++  // to false again once all contexts have been cleaned up and there is nothing
++  // more to do
++  bool useReducedWait = false;
++
++  // the time we'll wait for a signal
++  uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
++
++  // the time we'll wait for a signal when the previous wait timed out
++  uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
 +
    while (_stopping == 0) {
      V8Context* context = 0;
@@ -123,23 +286,31 @@ index e1b246d..c381f4e 100644
  
        if (_dirtyContexts.empty()) {
 -        guard.wait();
-+        // check whether we got a wait timeout or a signal
++        uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
++        // we'll wait for a signal or a timeout 
 +        gotSignal = guard.wait(waitTime);
++        
++        // use a reduced wait time in the next round because we seem to be idle
++        // the reduced wait time will allow use to perfom GC for more contexts
++        useReducedWait = ! gotSignal;
        }
  
        if (! _dirtyContexts.empty()) {
          context = _dirtyContexts.back();
          _dirtyContexts.pop_back();
-       }
-+
-+      if (context == 0 && ! gotSignal && ! _freeContexts.empty()) {
-+        // we timed out waiting for a signal
-+        // so we'll pop one of the free contexts and clean it up pro-actively
-+        context = _freeContexts.back();
-+        if (context != 0) {
-+          _freeContexts.pop_back();
-+        }
++        useReducedWait = false;
 +      }
++      else if (! gotSignal && ! _freeContexts.empty()) {
++        // we timed out waiting for a signal, so we have idle time that we can
++        // spend on running the GC pro-actively
++        // We'll pick one of the free contexts and clean it up
++        context = pickContextForGc();
++
++        // there is no context to clean up, probably they all have been cleaned up
++        // already. increase the wait time so we don't cycle to much in the GC loop
++        // and waste CPU unnecessary
++        useReducedWait =  (context != 0);
+       }
      }
 +   
 +    // update last gc time   
@@ -148,7 +319,7 @@ index e1b246d..c381f4e 100644
  
      if (context != 0) {
        LOGGER_TRACE << "collecting V8 garbage";
-@@ -241,6 +299,7 @@ void ApplicationV8::collectGarbage () {
+@@ -288,6 +414,7 @@ void ApplicationV8::collectGarbage () {
        delete context->_locker;
  
        context->_dirt = 0;
@@ -156,7 +327,7 @@ index e1b246d..c381f4e 100644
  
        {
          CONDITION_LOCKER(guard, _contextCondition);
-@@ -279,7 +338,8 @@ void ApplicationV8::disableActions () {
+@@ -326,7 +453,8 @@ void ApplicationV8::disableActions () {
  
  void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
    options["JAVASCRIPT Options:help-admin"]
@@ -166,7 +337,7 @@ index e1b246d..c381f4e 100644
    ;
  
    options["JAVASCRIPT Options:help-admin"]
-@@ -475,6 +535,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
+@@ -527,6 +655,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
    context->_context->Exit();
    context->_isolate->Exit();
    delete context->_locker;
@@ -176,7 +347,7 @@ index e1b246d..c381f4e 100644
    LOGGER_TRACE << "initialised V8 context #" << i;
  
 diff --git a/arangod/V8Server/ApplicationV8.h b/arangod/V8Server/ApplicationV8.h
-index a4fa6bd..e91304d 100644
+index 62b0474..f6d485e 100644
 --- a/arangod/V8Server/ApplicationV8.h
 +++ b/arangod/V8Server/ApplicationV8.h
 @@ -91,7 +91,19 @@ namespace triagens {
@@ -199,7 +370,20 @@ index a4fa6bd..e91304d 100644
          };
  
  ////////////////////////////////////////////////////////////////////////////////
-@@ -306,6 +318,18 @@ namespace triagens {
+@@ -241,6 +253,12 @@ namespace triagens {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief determine which of the free contexts should be picked for the GC
++////////////////////////////////////////////////////////////////////////////////
++
++        V8Context* pickContextForGc ();
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief prepares a V8 instance
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+@@ -312,6 +330,18 @@ namespace triagens {
          uint64_t _gcInterval;
  
  ////////////////////////////////////////////////////////////////////////////////
@@ -218,39 +402,224 @@ index a4fa6bd..e91304d 100644
  /// @brief V8 startup loader
  ////////////////////////////////////////////////////////////////////////////////
  
-diff --git a/lib/Basics/ConditionLocker.cpp b/lib/Basics/ConditionLocker.cpp
-index e9469e6..097ef7b 100644
---- a/lib/Basics/ConditionLocker.cpp
-+++ b/lib/Basics/ConditionLocker.cpp
-@@ -96,6 +96,14 @@ void ConditionLocker::wait () {
+diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
+index 9bd6923..6b06bfe 100755
+--- a/arangod/V8Server/v8-vocbase.cpp
++++ b/arangod/V8Server/v8-vocbase.cpp
+@@ -1299,12 +1299,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
+   bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+ 
+   if (found) {
+-    return scope.Close(v8::True());
+-  }
+-
+-  return scope.Close(v8::ThrowException(
+-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+-                                             "disposed or unknown cursor")));
++     return scope.Close(v8::True());
++   }
++ 
++  return scope.Close(v8::False()); 
  }
  
  ////////////////////////////////////////////////////////////////////////////////
-+/// @brief waits for an event to occur, with a timeout
+@@ -1365,7 +1363,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
+   cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+ 
+   if (cursor) {
+-    size_t  length = (size_t) cursor->_length;
++    size_t length = (size_t) cursor->_length;
+     TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+     return scope.Close(v8::Number::New(length));
+   }
+@@ -1666,6 +1664,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief unuse a general cursor
 +////////////////////////////////////////////////////////////////////////////////
 +
-+bool ConditionLocker::wait (uint64_t delay) {
-+  return _conditionVariable->wait(delay);
++static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  if (argv.Length() != 0) {
++    return scope.Close(v8::ThrowException(
++                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
++                                               "usage: unuse()")));
++  }
++
++  TRI_vocbase_t* vocbase = GetContextVocBase();
++
++  if (!vocbase) {
++    return scope.Close(v8::ThrowException(
++                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
++                                               "corrupted vocbase")));
++  }
++
++  TRI_EndUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
++
++  return scope.Close(v8::Undefined());
 +}
 +
 +////////////////////////////////////////////////////////////////////////////////
- /// @brief broadcasts an event
+ /// @brief get a (persistent) cursor by its id
  ////////////////////////////////////////////////////////////////////////////////
  
-diff --git a/lib/Basics/ConditionLocker.h b/lib/Basics/ConditionLocker.h
-index 4114fe3..543f389 100644
---- a/lib/Basics/ConditionLocker.h
-+++ b/lib/Basics/ConditionLocker.h
-@@ -139,6 +139,12 @@ namespace triagens {
-         void wait ();
+@@ -1707,7 +1731,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
+                          TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                                "disposed or unknown cursor")));
+   }
+-
++  
+   return scope.Close(WrapGeneralCursor(cursor));
+ }
  
+@@ -4907,6 +4931,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
+   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
+   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
++  v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
+ 
+   v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
+   v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
+@@ -5165,12 +5190,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
+   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
+   rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
++  rt->Set(UnuseFuncName, v8::FunctionTemplate::New(JS_UnuseGeneralCursor));
+ 
+   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+ 
+   // must come after SetInternalFieldCount
+   context->Global()->Set(v8::String::New("ArangoCursor"), ft->GetFunction());
+ 
++  // .............................................................................
++  // create some global functions
++  // .............................................................................
++  
+   context->Global()->Set(v8::String::New("CURSOR"),
+                          v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),
+                          v8::ReadOnly);
+diff --git a/arangod/VocBase/shadow-data.c b/arangod/VocBase/shadow-data.c
+index b664156..b70ff5e 100644
+--- a/arangod/VocBase/shadow-data.c
++++ b/arangod/VocBase/shadow-data.c
+@@ -82,13 +82,14 @@ static TRI_shadow_t* CreateShadow (const void* const data) {
  ////////////////////////////////////////////////////////////////////////////////
-+/// @brief waits for an event to occur, using a timeout
-+////////////////////////////////////////////////////////////////////////////////
+ 
+ static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+-  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
++  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu to %d", 
+             shadow, 
+             shadow->_data, 
+-            (unsigned long) shadow->_id);
++            (unsigned long) shadow->_id,
++            (int) (shadow->_rc - 1));
+ 
+   if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
+-    LOG_TRACE("deleting shadow %p", shadow);
++    LOG_TRACE("deleting transient shadow %p", shadow);
+ 
+     TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+     TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+@@ -102,12 +103,15 @@ static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* con
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static void IncreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+-  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
++  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu to %d", 
+             shadow, 
+             shadow->_data, 
+-            (unsigned long) shadow->_id);
++            (unsigned long) shadow->_id,
++            (int) (shadow->_rc + 1));
+ 
+-  ++shadow->_rc;
++  if (++shadow->_rc <= 0) {
++    shadow->_rc = 1;
++  }
+   UpdateTimestampShadow(shadow);
+ }
+ 
+@@ -255,7 +259,7 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
+   assert(store);
+ 
+   // force deletion of all remaining shadows
+-  TRI_CleanupShadowData(store, 0, true); 
++  TRI_CleanupShadowData(store, 0.0, true); 
+ 
+   TRI_DestroyMutex(&store->_lock);
+   TRI_DestroyAssociativePointer(&store->_ids);
+@@ -376,7 +380,7 @@ void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
+   TRI_LockMutex(&store->_lock);
+   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+ 
+-  if (shadow && !shadow->_deleted) {
++  if (shadow) {
+     DecreaseRefCount(store, shadow); // this might delete the shadow
+   } 
+ 
+@@ -523,6 +527,14 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
+   // we need an exclusive lock on the index
+   TRI_LockMutex(&store->_lock);
+ 
++  if (store->_ids._nrUsed == 0) {
++    // store is empty, nothing to do!
++    TRI_UnlockMutex(&store->_lock);
++    return;
++  }
++  
++  LOG_TRACE("cleaning shadows");
 +
-+        bool wait (uint64_t);
-+
-+////////////////////////////////////////////////////////////////////////////////
- /// @brief broadcasts an event
- ////////////////////////////////////////////////////////////////////////////////
+   // loop until there's nothing to delete or 
+   // we have deleted SHADOW_MAX_DELETE elements 
+   while (deleteCount++ < SHADOW_MAX_DELETE || force) {
+@@ -539,9 +551,14 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
+       // check if shadow is unused and expired
+       if (shadow->_rc < 1 || force) {
+         if (shadow->_type == SHADOW_TRANSIENT || 
+-            shadow->_timestamp < compareStamp || 
++            shadow->_timestamp < compareStamp ||
++            shadow->_deleted || 
+             force) {
+-          LOG_TRACE("cleaning expired shadow %p", shadow);
++          LOG_TRACE("cleaning shadow %p, rc: %d, expired: %d, deleted: %d", 
++                    shadow, 
++                    (int) shadow->_rc, 
++                    (int) (shadow->_timestamp < compareStamp), 
++                    (int) shadow->_deleted);
  
+           TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+           TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+diff --git a/js/actions/system/api-cursor.js b/js/actions/system/api-cursor.js
+index c2d1107..6b1ec42 100644
+--- a/js/actions/system/api-cursor.js
++++ b/js/actions/system/api-cursor.js
+@@ -216,8 +216,15 @@ function PUT_api_cursor(req, res) {
+       return;
+     } 
+ 
+-    // note: this might dispose or persist the cursor
+-    actions.resultCursor(req, res, cursor, actions.HTTP_OK);
++    try {
++      // note: this might dispose or persist the cursor
++      actions.resultCursor(req, res, cursor, actions.HTTP_OK);
++    }
++    catch (e) {
++    }
++    cursor.unuse();
++    cursor = null;
++    internal.wait(0.0);
+   }
+   catch (err) {
+     actions.resultException(req, res, err);
+@@ -269,7 +276,9 @@ function DELETE_api_cursor(req, res) {
+     }
+ 
+     cursor.dispose();
++    cursor = null;
+     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
++    internal.wait(0.0);
+   }
+   catch (err) {
+     actions.resultException(req, res, err);
