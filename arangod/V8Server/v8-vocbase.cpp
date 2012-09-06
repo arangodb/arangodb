@@ -2010,19 +2010,19 @@ static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-            "usage: unuse()")));
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: unuse()")));
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (!vocbase) {
     return scope.Close(v8::ThrowException(
-          TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-            "corrupted vocbase")));
+                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
+                                               "corrupted vocbase")));
   }
 
-  TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
+  TRI_EndUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   return scope.Close(v8::Undefined());
 }
@@ -5196,8 +5196,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
   v8::Handle<v8::String> TypeFuncName = v8::Persistent<v8::String>::New(v8::String::New("type"));
   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
-  v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
   v8::Handle<v8::String> UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("update"));
+  v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
   v8::Handle<v8::String> VersionFuncName = v8::Persistent<v8::String>::New(v8::String::New("version"));
 
   v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));

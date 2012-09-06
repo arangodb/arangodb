@@ -225,6 +225,7 @@ function PUT_api_cursor(req, res) {
 
     cursor.unuse();
     cursor = null;
+    internal.wait(0.0);
   }
   catch (err) {
     actions.resultException(req, res, err);
