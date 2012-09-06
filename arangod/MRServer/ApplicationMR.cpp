@@ -252,14 +252,16 @@ void ApplicationMR::collectGarbage () {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
       }
-
-      if (context == 0 && ! gotSignal && ! _freeContexts.empty()) {
+      else if (! gotSignal && ! _freeContexts.empty()) {
         // we timed out waiting for a signal
-        // so we'll pop one of the free contexts and clean it up pro-actively
-        context = _freeContexts.back();
-        if (context != 0) {
-          _freeContexts.pop_back();
-        }
+
+        // do nothing for now
+        // TODO: fix this if MRuby needs some proactive GC
+        context = 0;
+
+        // TODO: pick one of the free contexts to clean up, based on its last GC stamp
+        // this is already implemented in ApplicationV8::pickContextForFc()
+        // if necessary for MRuby, the code in pickContextForGc() can be used as a prototype
       }
     }
 
