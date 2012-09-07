@@ -972,6 +972,8 @@ size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const a
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
+///
+/// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AddNewElementSynced (TRI_associative_synced_t* array, void* element) {
@@ -996,6 +998,8 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the array
+/// 
+/// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
