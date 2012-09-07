@@ -2616,7 +2616,6 @@ function drawRequests (placeholder, granularity) {
         for (i=0; i < data.start.length; i++) {
           arraySent.push([data.start[i]*1000,data.bytesSent.mean[i]]);
           arrayReceived.push([data.start[i]*1000,data.bytesReceived.mean[i]]);
-          console.log(data.bytesReceived); 
         }
         var stack = 0, bars = true, lines = true, steps = true;
         var options = {
