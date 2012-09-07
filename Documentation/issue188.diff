@@ -1,3 +1,37 @@
+diff --git a/arangod/Ahuacatl/ahuacatl-codegen.c b/arangod/Ahuacatl/ahuacatl-codegen.c
+index 737ea0f..29ebec7 100644
+--- a/arangod/Ahuacatl/ahuacatl-codegen.c
++++ b/arangod/Ahuacatl/ahuacatl-codegen.c
+@@ -2253,9 +2253,12 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
+   char* code;
+ 
+   assert(context);
++    
++  TRI_AQL_LOG("generating code");
+ 
+   generator = CreateGenerator(context);
+   if (generator == NULL) {
++    TRI_AQL_LOG("could not create code generator");
+     return NULL;
+   }
+ 
+@@ -2272,6 +2275,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
+   OutputString(&generator->_buffer, "})()");
+ 
+   if (generator->_error) {
++    TRI_AQL_LOG("generating code failed");
+     FreeGenerator(generator);
+ 
+     return NULL;
+@@ -2286,6 +2290,8 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
+     TRI_AQL_DUMP("generated code: %s\n", code);
+   }
+ 
++  TRI_AQL_LOG("generating code successful");
++
+   return code;
+ }
+ 
 diff --git a/arangod/Ahuacatl/ahuacatl-collections.c b/arangod/Ahuacatl/ahuacatl-collections.c
 index 3113434..6ec924a 100644
 --- a/arangod/Ahuacatl/ahuacatl-collections.c
@@ -25,6 +59,133 @@ index 3113434..6ec924a 100644
        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
        break;
      }
+diff --git a/arangod/Ahuacatl/ahuacatl-context.c b/arangod/Ahuacatl/ahuacatl-context.c
+index b4a426c..b5e107a 100644
+--- a/arangod/Ahuacatl/ahuacatl-context.c
++++ b/arangod/Ahuacatl/ahuacatl-context.c
+@@ -279,21 +279,30 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
+ ////////////////////////////////////////////////////////////////////////////////
+   
+ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
++  TRI_AQL_LOG("validating query context");
++
+   if (context->_parser->_length == 0) {
+     // query is empty, no need to parse it
++    TRI_AQL_LOG("validating query context failed");
+     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_EMPTY, NULL);
+     return false;
+   }
++    
++  TRI_AQL_LOG("validating query context parse");
+ 
+   // parse the query
+   if (!TRI_ParseAql(context)) {
+     // lexing/parsing failed
++    TRI_AQL_LOG("validating query context parse failed");
+     return false;
+   }
+ 
+   if (context->_error._code) {
++    TRI_AQL_LOG("validating query context failed with error %d", (int) context->_error._code);
+     return false;
+   }
++  
++  TRI_AQL_LOG("validating query context successful");
+ 
+   return true;
+ }
+@@ -335,19 +344,26 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
++  TRI_AQL_LOG("performing query optimisations");
++
+   // do some basic optimisations in the AST
+   if (!TRI_OptimiseAql(context)) {
+-    // constant folding failed
++    // optimisations failed
++    TRI_AQL_LOG("performing query optimisations failed");
++
+     return false;
+   }
+ 
+   if (context->_error._code) {
++    TRI_AQL_LOG("performing query optimisations failed with error code %d", (int) context->_error._code);
+     return false;
+   }
+ 
++  TRI_AQL_LOG("performing query optimisations compacting");
+   TRI_CompactStatementListAql(context->_statements);
++  TRI_AQL_LOG("performing query optimisations compacting successful");
+ 
+-  // TRI_DumpStatementsAql(context->_statements);
++  TRI_AQL_LOG("performing query optimisations successful");
+ 
+   return true;
+ }
+@@ -357,24 +373,35 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
++  TRI_AQL_LOG("performing query locking");
++
+   // mark all used collections as being used
+   if (!TRI_LockCollectionsAql(context)) {
+     return false;
+   }
+ 
++  TRI_AQL_LOG("performing query locking read");
++
+   // acquire read locks on all collections used
+   if (!TRI_ReadLockCollectionsAql(context)) {
++    TRI_AQL_LOG("performing query locking read failed");
+     return false;
+   }
+   
++  TRI_AQL_LOG("performing query locking barrier");
++
+   // add barriers for all collections used
+   if (!TRI_AddBarrierCollectionsAql(context)) {
++    TRI_AQL_LOG("performing query locking barrier failed");
+     return false;
+   }
+   
+   if (context->_error._code) {
++    TRI_AQL_LOG("performing query locking failed with error code %d", (int) context->_error._code);
+     return false;
+   }
++ 
++  TRI_AQL_LOG("performing query locking successful");
+ 
+   return true;
+ }
+diff --git a/arangod/Ahuacatl/ahuacatl-optimiser.c b/arangod/Ahuacatl/ahuacatl-optimiser.c
+index 49437aa..43d905b 100644
+--- a/arangod/Ahuacatl/ahuacatl-optimiser.c
++++ b/arangod/Ahuacatl/ahuacatl-optimiser.c
+@@ -1076,14 +1076,22 @@ static bool DetermineIndexes (TRI_aql_context_t* const context) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ bool TRI_OptimiseAql (TRI_aql_context_t* const context) {
++  LOG_TRACE("optimising");
++
++  LOG_TRACE("optimising AST");
+   if (!OptimiseAst(context)) {
++    LOG_TRACE("optimising AST failed");
+     return false;
+   }
+ 
++  LOG_TRACE("determining indexes");
+   if (!DetermineIndexes(context)) {
++    LOG_TRACE("determining indexes failed");
+     return false;
+   }
+ 
++  LOG_TRACE("optimising successful");
++
+   return true;
+ }
+ 
 diff --git a/arangod/RestHandler/RestDocumentHandler.cpp b/arangod/RestHandler/RestDocumentHandler.cpp
 index e8fb467..21c5851 100644
 --- a/arangod/RestHandler/RestDocumentHandler.cpp
@@ -399,7 +560,7 @@ index 62b0474..f6d485e 100644
  ////////////////////////////////////////////////////////////////////////////////
  
 diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
-index 9bd6923..7fa8afb 100755
+index 9bd6923..8b7aad7 100755
 --- a/arangod/V8Server/v8-vocbase.cpp
 +++ b/arangod/V8Server/v8-vocbase.cpp
 @@ -48,6 +48,7 @@
@@ -482,12 +643,50 @@ index 9bd6923..7fa8afb 100755
  // --SECTION--                                                  HELPER FUNCTIONS
  // -----------------------------------------------------------------------------
  
-@@ -1048,14 +1114,17 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1006,6 +1072,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
+                                                          const TRI_json_t* const parameters) {
+   v8::HandleScope scope;
+ 
++  LOGGER_DEBUG << "executing native query";
+   // parse & validate
+   // bind values
+   // optimise
+@@ -1014,21 +1081,28 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
+       !TRI_BindQueryContextAql(context, parameters) ||
+       !TRI_LockQueryContextAql(context) ||
+       !TRI_OptimiseQueryContextAql(context)) {
++    LOGGER_DEBUG << "executing native query failed";
+     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
++  LOGGER_DEBUG << "generating code for native query";
+   // generate code
+   char* code = TRI_GenerateCodeAql(context);
++  LOGGER_DEBUG << "generating code finished";
+   if (!code) {
++    LOGGER_DEBUG << "generating code failed";
+     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
++  LOGGER_DEBUG << "generating code succeeded";
+ 
+   // execute code
++  LOGGER_DEBUG << "executing generated Javascript code";
+   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(code), v8::String::New("query"), false);
++  LOGGER_DEBUG << "finished executing generated Javascript code";
+   TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
+ 
+   // return the result as a javascript array
+@@ -1048,14 +1122,18 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    v8::HandleScope scope;
    v8::TryCatch tryCatch;
  
 +  LOGGER_DEBUG << "executing query cursor";
    v8::Handle<v8::Value> result = ExecuteQueryNativeAhuacatl(context, parameters);
++  LOGGER_DEBUG << "finished executing query cursor";
  
    if (tryCatch.HasCaught()) {
 +    LOGGER_DEBUG << "executing query cursor failed";
@@ -500,7 +699,7 @@ index 9bd6923..7fa8afb 100755
      return scope.Close(result);
    }
  
-@@ -1063,6 +1132,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1063,6 +1141,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    TRI_json_t* json = TRI_JsonObject(result);
  
    if (!json) {
@@ -508,7 +707,7 @@ index 9bd6923..7fa8afb 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1073,6 +1143,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1073,6 +1152,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    if (!cursorResult) {
      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
  
@@ -516,7 +715,7 @@ index 9bd6923..7fa8afb 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1083,6 +1154,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1083,6 +1163,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
      TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
  
@@ -524,7 +723,7 @@ index 9bd6923..7fa8afb 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1091,6 +1163,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1091,6 +1172,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    assert(cursor);
    TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
  
@@ -532,7 +731,7 @@ index 9bd6923..7fa8afb 100755
    return scope.Close(WrapGeneralCursor(cursor));
  }
  
-@@ -1299,12 +1372,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
+@@ -1299,12 +1381,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
    bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (found) {
@@ -549,7 +748,7 @@ index 9bd6923..7fa8afb 100755
  }
  
  ////////////////////////////////////////////////////////////////////////////////
-@@ -1365,7 +1436,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
+@@ -1365,7 +1445,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
    cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (cursor) {
@@ -558,7 +757,7 @@ index 9bd6923..7fa8afb 100755
      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
      return scope.Close(v8::Number::New(length));
    }
-@@ -1666,6 +1737,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
+@@ -1666,6 +1746,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
  }
  
  ////////////////////////////////////////////////////////////////////////////////
@@ -591,7 +790,7 @@ index 9bd6923..7fa8afb 100755
  /// @brief get a (persistent) cursor by its id
  ////////////////////////////////////////////////////////////////////////////////
  
-@@ -1707,7 +1804,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
+@@ -1707,7 +1813,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
                           TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
                                                 "disposed or unknown cursor")));
    }
@@ -600,7 +799,7 @@ index 9bd6923..7fa8afb 100755
    return scope.Close(WrapGeneralCursor(cursor));
  }
  
-@@ -1776,16 +1873,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+@@ -1776,16 +1882,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
    // bind parameters
    triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
  
@@ -621,7 +820,7 @@ index 9bd6923..7fa8afb 100755
  
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-@@ -1798,6 +1895,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+@@ -1798,6 +1904,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
      return scope.Close(v8::ThrowException(errorObject));
    }
  
@@ -630,7 +829,7 @@ index 9bd6923..7fa8afb 100755
    return scope.Close(result);
  }
  
-@@ -1834,8 +1933,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1834,8 +1942,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
    // bind parameters
    triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
  
@@ -641,7 +840,7 @@ index 9bd6923..7fa8afb 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1849,13 +1948,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1849,13 +1957,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
  
    TRI_json_t* explain = 0;
  
@@ -661,7 +860,7 @@ index 9bd6923..7fa8afb 100755
      return scope.Close(v8::ThrowException(errorObject));
    }
  
-@@ -1863,8 +1961,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1863,8 +1970,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
  
    v8::Handle<v8::Value> result;
    result = TRI_ObjectJson(explain);
@@ -671,7 +870,7 @@ index 9bd6923..7fa8afb 100755
  
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-@@ -1906,17 +2004,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+@@ -1906,17 +2013,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
    }
    string queryString = TRI_ObjectToString(queryArg);
  
@@ -693,7 +892,7 @@ index 9bd6923..7fa8afb 100755
  
      return scope.Close(v8::ThrowException(errorObject));
    }
-@@ -1927,11 +2024,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+@@ -1927,11 +2033,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
    result->Set(v8::String::New("parsed"), v8::True());
  
    // return the bind parameter names
@@ -707,7 +906,7 @@ index 9bd6923..7fa8afb 100755
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
        // we already have an ArangoError object
-@@ -4907,6 +5003,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -4907,6 +5012,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
    v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
    v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
@@ -715,7 +914,7 @@ index 9bd6923..7fa8afb 100755
  
    v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
    v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
-@@ -5165,12 +5262,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -5165,12 +5271,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
    rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
    rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
