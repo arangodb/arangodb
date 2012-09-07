@@ -224,13 +224,17 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   aids = TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false);
 
   if (aids == NULL) {
+    TRI_UnlockMutex(&shaper->_attributePathLock);
+    LOG_ERROR("out of memory in shaper");
     return 0;
   }
 
   buffer = ptr = TRI_DuplicateString2Z(shaper->_memoryZone, name, len);
 
   if (buffer == NULL) {
+    TRI_UnlockMutex(&shaper->_attributePathLock);
     TRI_Free(shaper->_memoryZone, aids);
+    LOG_ERROR("out of memory in shaper");
     return 0;
   }
 
@@ -256,6 +260,8 @@ static TRI_shape_pid_t FindNameAttributePath (TRI_shaper_t* shaper, char const* 
   result = TRI_Allocate(shaper->_memoryZone, total, false);
 
   if (result == NULL) {
+    TRI_UnlockMutex(&shaper->_attributePathLock);
+    LOG_ERROR("out of memory in shaper");
     return 0;
   }
 
