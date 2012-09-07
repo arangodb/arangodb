@@ -255,7 +255,7 @@ index e8fb467..21c5851 100644
    TRI_voc_rid_t rid = 0;
    TRI_voc_cid_t cid = _documentCollection->base._cid;
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
-index d200d55..c65fa15 100644
+index d200d55..80185d3 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
 +++ b/arangod/V8Server/ApplicationV8.cpp
 @@ -1,5 +1,5 @@
@@ -494,7 +494,15 @@ index d200d55..c65fa15 100644
    ;
  
    options["JAVASCRIPT Options:help-admin"]
-@@ -527,6 +655,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
+@@ -341,6 +469,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ bool ApplicationV8::prepare () {
++  LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
+   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+ 
+   // set up the startup loader
+@@ -527,6 +656,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
    context->_context->Exit();
    context->_isolate->Exit();
    delete context->_locker;
