@@ -37,11 +37,16 @@ index 737ea0f..f390315 100644
  }
  
 diff --git a/arangod/Ahuacatl/ahuacatl-collections.c b/arangod/Ahuacatl/ahuacatl-collections.c
-index 3113434..6ec924a 100644
+index 3113434..4d63eb8 100644
 --- a/arangod/Ahuacatl/ahuacatl-collections.c
 +++ b/arangod/Ahuacatl/ahuacatl-collections.c
-@@ -402,12 +402,14 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
+@@ -399,15 +399,19 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
+ 
+     TRI_AQL_LOG("read-locking collection '%s'", collection->_name);
+ 
++    LOG_TRACE("before beginRead");
      lockResult = documentCollection->beginRead(documentCollection);
++    LOG_TRACE("after beginRead");
      if (lockResult != TRI_ERROR_NO_ERROR) {
        // couldn't acquire the read lock
 +      LOG_WARNING("read-locking collection '%s' failed", collection->_name);
@@ -55,7 +60,17 @@ index 3113434..6ec924a 100644
      }
    }
  
-@@ -484,6 +486,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
+@@ -447,7 +451,9 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
+ 
+     TRI_AQL_LOG("read-unlocking collection '%s'", collection->_name);
+ 
++    LOG_TRACE("before endRead");
+     documentCollection->endRead(documentCollection);
++    LOG_TRACE("after endRead");
+     collection->_readLocked = false;
+   }
+ }
+@@ -484,6 +490,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
      if (!ce) {
        // couldn't create the barrier
        result = false;
@@ -215,15 +230,17 @@ index 49437aa..43d905b 100644
  }
  
 diff --git a/arangod/RestHandler/RestDocumentHandler.cpp b/arangod/RestHandler/RestDocumentHandler.cpp
-index e8fb467..b860cf3 100644
+index e8fb467..026654d 100644
 --- a/arangod/RestHandler/RestDocumentHandler.cpp
 +++ b/arangod/RestHandler/RestDocumentHandler.cpp
-@@ -270,13 +270,16 @@ bool RestDocumentHandler::createDocument () {
+@@ -270,13 +270,18 @@ bool RestDocumentHandler::createDocument () {
    // inside write transaction
    // .............................................................................
  
 -  _documentCollection->beginWrite(_documentCollection);
++  LOG_TRACE("before beginWrite");
 +  int lockResult = _documentCollection->beginWrite(_documentCollection);
++  LOG_TRACE("after beginWrite");
 +  LOGGER_TRACE << "result of beginWrite: " << lockResult;
  
    bool waitForSync = _documentCollection->base._waitForSync;
@@ -236,7 +253,7 @@ index e8fb467..b860cf3 100644
  
    // .............................................................................
    // outside write transaction
-@@ -284,6 +287,7 @@ bool RestDocumentHandler::createDocument () {
+@@ -284,6 +289,7 @@ bool RestDocumentHandler::createDocument () {
  
    // release collection and free json
    releaseCollection();
@@ -244,60 +261,95 @@ index e8fb467..b860cf3 100644
  
    // generate result
    if (mptr._did != 0) {
-@@ -415,12 +419,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
+@@ -415,12 +421,17 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
    // inside read transaction
    // .............................................................................
  
 -  _documentCollection->beginRead(_documentCollection);
++  LOG_TRACE("before beginRead");
 +  int lockResult = _documentCollection->beginRead(_documentCollection);
++  LOG_TRACE("after beginRead");
 +  LOGGER_TRACE << "result of beginRead: " << lockResult;
  
    TRI_voc_cid_t cid = _documentCollection->base._cid;
    TRI_doc_mptr_t const document = findDocument(did);
  
++  LOG_TRACE("before endRead");
    _documentCollection->endRead(_documentCollection);
-+  LOGGER_TRACE << "endRead";
++  LOG_TRACE("after endRead");
  
    // .............................................................................
    // outside read transaction
-@@ -511,7 +517,8 @@ bool RestDocumentHandler::readAllDocuments () {
+@@ -511,7 +522,10 @@ bool RestDocumentHandler::readAllDocuments () {
  
    vector<TRI_voc_did_t> ids;
  
 -  _documentCollection->beginRead(_documentCollection);
++  LOG_DEBUG("before beginRead");
 +  int lockResult = _documentCollection->beginRead(_documentCollection);
++  LOG_DEBUG("after beginRead");
 +  LOGGER_TRACE << "result of beginRead: " << lockResult;
  
    TRI_voc_cid_t cid = _documentCollection->base._cid;
  
-@@ -538,6 +545,7 @@ bool RestDocumentHandler::readAllDocuments () {
+@@ -537,7 +551,9 @@ bool RestDocumentHandler::readAllDocuments () {
+     // necessary so we will always remove the read lock
    }
    
++  LOG_TRACE("before endRead");
    _documentCollection->endRead(_documentCollection);
-+  LOGGER_TRACE << "endRead";
++  LOG_TRACE("after endRead");
  
    // .............................................................................
    // outside read transaction
-@@ -715,7 +723,8 @@ bool RestDocumentHandler::updateDocument () {
+@@ -715,7 +731,10 @@ bool RestDocumentHandler::updateDocument () {
    // inside write transaction
    // .............................................................................
  
 -  _documentCollection->beginWrite(_documentCollection);
++  LOG_DEBUG("before beginWrite");
 +  int lockResult = _documentCollection->beginWrite(_documentCollection);
++  LOG_DEBUG("after beginWrite");
 +  LOGGER_TRACE << "result of beginWrite: " << lockResult;
  
    // unlocking is performed in updateJson()
    TRI_voc_rid_t rid = 0;
-@@ -860,7 +869,8 @@ bool RestDocumentHandler::deleteDocument () {
+@@ -860,7 +879,10 @@ bool RestDocumentHandler::deleteDocument () {
    // inside write transaction
    // .............................................................................
  
 -  _documentCollection->beginWrite(_documentCollection);
++  LOG_TRACE("before beginWrite");
 +  int lockResult = _documentCollection->beginWrite(_documentCollection);
++  LOG_TRACE("after beginWrite");
 +  LOGGER_TRACE << "result of beginWrite: " << lockResult;
  
    TRI_voc_rid_t rid = 0;
    TRI_voc_cid_t cid = _documentCollection->base._cid;
+diff --git a/arangod/RestHandler/RestVocbaseBaseHandler.cpp b/arangod/RestHandler/RestVocbaseBaseHandler.cpp
+index de40357..6e04545 100644
+--- a/arangod/RestHandler/RestVocbaseBaseHandler.cpp
++++ b/arangod/RestHandler/RestVocbaseBaseHandler.cpp
+@@ -600,7 +600,9 @@ TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
+   // inside read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   _documentCollection->beginRead(_documentCollection);
++  LOG_TRACE("after beginRead");
+ 
+   document = _documentCollection->read(_documentCollection, id);
+ 
+@@ -609,7 +611,9 @@ TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
+     _barrier = TRI_CreateBarrierElement(&_documentCollection->_barrierList);
+   }
+ 
++  LOG_TRACE("before endRead");
+   _documentCollection->endRead(_documentCollection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside read transaction
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
 index d200d55..80185d3 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
@@ -612,7 +664,7 @@ index 62b0474..f6d485e 100644
  ////////////////////////////////////////////////////////////////////////////////
  
 diff --git a/arangod/V8Server/v8-query.cpp b/arangod/V8Server/v8-query.cpp
-index 0ca033a..e737007 100755
+index 0ca033a..0cad75a 100755
 --- a/arangod/V8Server/v8-query.cpp
 +++ b/arangod/V8Server/v8-query.cpp
 @@ -35,6 +35,7 @@
@@ -623,7 +675,134 @@ index 0ca033a..e737007 100755
  
  // -----------------------------------------------------------------------------
  // --SECTION--                                                  HELPER FUNCTIONS
-@@ -1210,6 +1211,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+@@ -639,20 +640,26 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   // extract the index
+   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+ 
+   if (idx == 0) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+@@ -668,7 +675,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   }
+ 
+   if (!skiplistOperator) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+@@ -699,7 +708,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+     }
+   }
+ 
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -836,7 +847,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+ 
+   // .............................................................................
+@@ -846,7 +859,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+ 
+   if (idx == 0) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(err));
+@@ -854,7 +869,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   
+   
+   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+@@ -872,7 +889,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+ 
+   
+   if (indexOperator == 0) { // something wrong
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+@@ -925,7 +944,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+     LOG_WARNING("index iterator returned with a NULL value in ExecuteBitarrayQuery");
+   }
+   
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -1097,7 +1118,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   TRI_barrier_t* barrier = 0;
+   uint32_t count = 0;
+@@ -1157,7 +1180,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+         TRI_ReleaseCollection(vertexCollection);
+       }
+ 
++      LOG_TRACE("before endRead");
+       collection->_collection->endRead(collection->_collection);
++      LOG_TRACE("after endRead");
+ 
+       TRI_ReleaseCollection(collection);
+       return scope.Close(v8::ThrowException(errMsg));
+@@ -1180,7 +1205,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+     TRI_DestroyVectorPointer(&edges);
+   }
+ 
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -1210,6 +1237,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
  static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
    v8::HandleScope scope;
  
@@ -631,13 +810,15 @@ index 0ca033a..e737007 100755
    // extract and use the simple collection
    v8::Handle<v8::Object> err;
    TRI_vocbase_col_t const* collection;
-@@ -1243,10 +1245,15 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+@@ -1243,10 +1271,17 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
    // inside a read transaction
    // .............................................................................
  
 -  collection->_collection->beginRead(collection->_collection);
 +  LOGGER_TRACE << "acquiring lock in allquery";
++  LOG_TRACE("before beginRead");
 +  int lockResult = collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
 +  LOGGER_TRACE << "result of beginRead: " << lockResult;
  
    size_t total = sim->_primaryIndex._nrUsed;
@@ -648,7 +829,7 @@ index 0ca033a..e737007 100755
  
    if (0 < total && 0 < limit) {
      TRI_barrier_t* barrier = 0;
-@@ -1254,6 +1261,9 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+@@ -1254,6 +1289,9 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
      void** beg = sim->_primaryIndex._table;
      void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
      void** ptr = beg;
@@ -658,7 +839,7 @@ index 0ca033a..e737007 100755
  
      // skip from the beginning
      if (0 < skip) {
-@@ -1291,6 +1301,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+@@ -1291,6 +1329,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
        }
      }
  
@@ -666,20 +847,164 @@ index 0ca033a..e737007 100755
      // limit
      for (;  ptr < end && count < limit;  ++ptr) {
        if (*ptr) {
-@@ -1307,9 +1318,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+@@ -1307,9 +1346,12 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
          }
        }
      }
 +    LOGGER_TRACE << "finished extraction. count is " << count;
    }
  
++  LOG_TRACE("before endRead");
    collection->_collection->endRead(collection->_collection);
-+  LOGGER_TRACE << "endRead";
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -1386,7 +1428,9 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   // find documents by example
+   TRI_vector_t filtered = TRI_SelectByExample(sim, n,  pids, values);
+@@ -1418,7 +1462,9 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
+ 
+   TRI_DestroyVector(&filtered);
+ 
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -1483,20 +1529,26 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   // extract the index
+   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+ 
+   if (idx == 0) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a hash index")));
+@@ -1512,7 +1564,9 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+   int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, &err);
+ 
+   if (res != TRI_ERROR_NO_ERROR) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(err));
+@@ -1542,7 +1596,9 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+     }
+   }
+ 
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -1667,20 +1723,26 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   // extract the index
+   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+ 
+   if (idx == 0) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
+@@ -1708,7 +1770,9 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+     StoreGeoResult(collection, cors, documents, distances);
+   }
+ 
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -1769,20 +1833,26 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   // extract the index
+   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+ 
+   if (idx == 0) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
++    LOG_TRACE("before endRead");
+     collection->_collection->endRead(collection->_collection);
++    LOG_TRACE("after endRead");
+ 
+     TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
+@@ -1809,8 +1879,10 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+   if (cors != 0) {
+     StoreGeoResult(collection, cors, documents, distances);
+   }
+-
++  
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after endRead");
  
    // .............................................................................
    // outside a write transaction
 diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
-index 9bd6923..8b7aad7 100755
+index 9bd6923..4b37d5d 100755
 --- a/arangod/V8Server/v8-vocbase.cpp
 +++ b/arangod/V8Server/v8-vocbase.cpp
 @@ -48,6 +48,7 @@
@@ -762,7 +1087,37 @@ index 9bd6923..8b7aad7 100755
  // --SECTION--                                                  HELPER FUNCTIONS
  // -----------------------------------------------------------------------------
  
-@@ -1006,6 +1072,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
+@@ -513,7 +579,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+   // inside a read transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginRead");
+   collection->_collection->beginRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   document = collection->_collection->read(collection->_collection, did);
+ 
+@@ -524,7 +592,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+     result = TRI_WrapShapedJson(collection, &document, barrier);
+   }
+ 
++  LOG_TRACE("before endRead");
+   collection->_collection->endRead(collection->_collection);
++  LOG_TRACE("after beginRead");
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -610,7 +680,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
+   // inside a write transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginWrite");
+   collection->_collection->beginWrite(collection->_collection);
++  LOG_TRACE("after beginWrite");
+ 
+   TRI_voc_rid_t oldRid = 0;
+   TRI_doc_mptr_t mptr = doc->update(doc, shaped, did, rid, &oldRid, policy, true);
+@@ -1006,6 +1078,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
                                                           const TRI_json_t* const parameters) {
    v8::HandleScope scope;
  
@@ -770,7 +1125,7 @@ index 9bd6923..8b7aad7 100755
    // parse & validate
    // bind values
    // optimise
-@@ -1014,21 +1081,28 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
+@@ -1014,21 +1087,28 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
        !TRI_BindQueryContextAql(context, parameters) ||
        !TRI_LockQueryContextAql(context) ||
        !TRI_OptimiseQueryContextAql(context)) {
@@ -799,7 +1154,7 @@ index 9bd6923..8b7aad7 100755
    TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
  
    // return the result as a javascript array
-@@ -1048,14 +1122,18 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1048,14 +1128,18 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    v8::HandleScope scope;
    v8::TryCatch tryCatch;
  
@@ -818,7 +1173,7 @@ index 9bd6923..8b7aad7 100755
      return scope.Close(result);
    }
  
-@@ -1063,6 +1141,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1063,6 +1147,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    TRI_json_t* json = TRI_JsonObject(result);
  
    if (!json) {
@@ -826,7 +1181,7 @@ index 9bd6923..8b7aad7 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1073,6 +1152,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1073,6 +1158,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    if (!cursorResult) {
      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
  
@@ -834,7 +1189,7 @@ index 9bd6923..8b7aad7 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1083,6 +1163,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1083,6 +1169,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
      TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
  
@@ -842,7 +1197,7 @@ index 9bd6923..8b7aad7 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1091,6 +1172,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+@@ -1091,6 +1178,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
    assert(cursor);
    TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
  
@@ -850,7 +1205,7 @@ index 9bd6923..8b7aad7 100755
    return scope.Close(WrapGeneralCursor(cursor));
  }
  
-@@ -1299,12 +1381,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
+@@ -1299,12 +1387,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
    bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (found) {
@@ -867,7 +1222,7 @@ index 9bd6923..8b7aad7 100755
  }
  
  ////////////////////////////////////////////////////////////////////////////////
-@@ -1365,7 +1445,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
+@@ -1365,7 +1451,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
    cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (cursor) {
@@ -876,7 +1231,7 @@ index 9bd6923..8b7aad7 100755
      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
      return scope.Close(v8::Number::New(length));
    }
-@@ -1666,6 +1746,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
+@@ -1666,6 +1752,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
  }
  
  ////////////////////////////////////////////////////////////////////////////////
@@ -909,7 +1264,7 @@ index 9bd6923..8b7aad7 100755
  /// @brief get a (persistent) cursor by its id
  ////////////////////////////////////////////////////////////////////////////////
  
-@@ -1707,7 +1813,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
+@@ -1707,7 +1819,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
                           TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
                                                 "disposed or unknown cursor")));
    }
@@ -918,7 +1273,7 @@ index 9bd6923..8b7aad7 100755
    return scope.Close(WrapGeneralCursor(cursor));
  }
  
-@@ -1776,16 +1882,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+@@ -1776,16 +1888,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
    // bind parameters
    triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
  
@@ -939,7 +1294,7 @@ index 9bd6923..8b7aad7 100755
  
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-@@ -1798,6 +1904,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+@@ -1798,6 +1910,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
      return scope.Close(v8::ThrowException(errorObject));
    }
  
@@ -948,7 +1303,7 @@ index 9bd6923..8b7aad7 100755
    return scope.Close(result);
  }
  
-@@ -1834,8 +1942,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1834,8 +1948,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
    // bind parameters
    triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
  
@@ -959,7 +1314,7 @@ index 9bd6923..8b7aad7 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1849,13 +1957,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1849,13 +1963,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
  
    TRI_json_t* explain = 0;
  
@@ -979,7 +1334,7 @@ index 9bd6923..8b7aad7 100755
      return scope.Close(v8::ThrowException(errorObject));
    }
  
-@@ -1863,8 +1970,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1863,8 +1976,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
  
    v8::Handle<v8::Value> result;
    result = TRI_ObjectJson(explain);
@@ -989,7 +1344,7 @@ index 9bd6923..8b7aad7 100755
  
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-@@ -1906,17 +2013,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+@@ -1906,17 +2019,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
    }
    string queryString = TRI_ObjectToString(queryArg);
  
@@ -1011,7 +1366,7 @@ index 9bd6923..8b7aad7 100755
  
      return scope.Close(v8::ThrowException(errorObject));
    }
-@@ -1927,11 +2033,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+@@ -1927,11 +2039,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
    result->Set(v8::String::New("parsed"), v8::True());
  
    // return the bind parameter names
@@ -1025,7 +1380,41 @@ index 9bd6923..8b7aad7 100755
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
        // we already have an ArangoError object
-@@ -4907,6 +5012,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -2987,9 +3098,13 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
+ 
+   TRI_doc_collection_t* doc = collection->_collection;
+ 
++  LOG_TRACE("before beginRead");
+   doc->beginRead(doc);
++  LOG_TRACE("after beginRead");
+   TRI_doc_collection_info_t* info = doc->figures(doc);
++  LOG_TRACE("before endRead");
+   doc->endRead(doc);
++  LOG_TRACE("after endRead");
+ 
+   if (info == NULL) {
+     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+@@ -3464,7 +3579,9 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
+   // inside a write transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginWrite");
+   collection->_collection->beginWrite(collection->_collection);
++  LOG_TRACE("after beginWrite");
+ 
+   // the lock is freed in create
+   TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true);
+@@ -3705,7 +3822,9 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
+   // inside a write transaction
+   // .............................................................................
+ 
++  LOG_TRACE("before beginWrite");
+   collection->_collection->beginWrite(collection->_collection);
++  LOG_TRACE("after beginWrite");
+ 
+   TRI_doc_mptr_t mptr = doc->create(doc, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true);
+ 
+@@ -4907,6 +5026,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
    v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
    v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
@@ -1033,7 +1422,7 @@ index 9bd6923..8b7aad7 100755
  
    v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
    v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
-@@ -5165,12 +5271,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -5165,12 +5285,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
    rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
    rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
@@ -1051,8 +1440,21 @@ index 9bd6923..8b7aad7 100755
    context->Global()->Set(v8::String::New("CURSOR"),
                           v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),
                           v8::ReadOnly);
+diff --git a/arangod/VocBase/compactor.c b/arangod/VocBase/compactor.c
+index 2809b17..206d9ec 100644
+--- a/arangod/VocBase/compactor.c
++++ b/arangod/VocBase/compactor.c
+@@ -538,8 +538,6 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
+-  LOG_TRACE("cleaning shadows");
+-  
+   // clean unused cursors
+   TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, force);
+ }
 diff --git a/arangod/VocBase/shadow-data.c b/arangod/VocBase/shadow-data.c
-index b664156..b70ff5e 100644
+index b664156..1d08927 100644
 --- a/arangod/VocBase/shadow-data.c
 +++ b/arangod/VocBase/shadow-data.c
 @@ -82,13 +82,14 @@ static TRI_shadow_t* CreateShadow (const void* const data) {
@@ -1120,7 +1522,7 @@ index b664156..b70ff5e 100644
 +    return;
 +  }
 +  
-+  LOG_TRACE("cleaning shadows");
++  LOG_TRACE("cleaning shadows. in store: %ld", (unsigned long) store->_ids._nrUsed);
 +
    // loop until there's nothing to delete or 
    // we have deleted SHADOW_MAX_DELETE elements 
@@ -1142,6 +1544,339 @@ index b664156..b70ff5e 100644
  
            TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
            TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+diff --git a/arangod/VocBase/simple-collection.c b/arangod/VocBase/simple-collection.c
+index 3e28a19..d4c44e3 100644
+--- a/arangod/VocBase/simple-collection.c
++++ b/arangod/VocBase/simple-collection.c
+@@ -323,6 +323,8 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
+   TRI_voc_size_t total;
+   TRI_doc_datafile_info_t* dfi;
+   int res;
++
++  LOG_TRACE("CreateDocument. release flag is: %d", (int) release);
+   
+   // .............................................................................
+   // create header
+@@ -349,7 +351,9 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
+ 
+   if (journal == NULL) {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       sim->base.endWrite(&sim->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     memset(&mptr, 0, sizeof(mptr));
+@@ -440,7 +444,9 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
+ 
+       // release lock, header might be invalid after this
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         sim->base.endWrite(&sim->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       // wait for sync
+@@ -451,7 +457,9 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
+     }
+     else {
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         sim->base.endWrite(&sim->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       mptr._did = 0;
+@@ -461,7 +469,9 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
+   }
+   else {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       sim->base.endWrite(&sim->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     LOG_ERROR("cannot write element: %s", TRI_last_error());
+@@ -565,6 +575,8 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+   TRI_doc_mptr_t resUpd;
+   TRI_voc_size_t total;
+   int res;
++  
++  LOG_TRACE("UpdateDocument. release flag is: %d", (int) release);
+ 
+   originalMarker = header->_data;
+ 
+@@ -581,7 +593,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+       if (rid != 0) {
+         if (rid != header->_rid) {
+           if (release) {
++            LOG_DEBUG("before endWrite");
+             collection->base.endWrite(&collection->base);
++            LOG_DEBUG("after endWrite");
+           }
+ 
+           TRI_set_errno(TRI_ERROR_ARANGO_CONFLICT);
+@@ -597,7 +611,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+ 
+     case TRI_DOC_UPDATE_CONFLICT:
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         collection->base.endWrite(&collection->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
+@@ -606,7 +622,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+ 
+     case TRI_DOC_UPDATE_ILLEGAL:
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         collection->base.endWrite(&collection->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       TRI_set_errno(TRI_ERROR_INTERNAL);
+@@ -629,7 +647,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+     collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+ 
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       collection->base.endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     mptr._did = 0;
+@@ -699,7 +719,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+ 
+       // release lock, header might be invalid after this
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         collection->base.endWrite(&collection->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       // wait for sync
+@@ -710,7 +732,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+     }
+     else {
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         collection->base.endWrite(&collection->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       mptr._did = 0;
+@@ -720,7 +744,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+   }
+   else {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       collection->base.endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     LOG_ERROR("cannot write element");
+@@ -744,13 +770,17 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
+   TRI_doc_mptr_t const* header;
+   TRI_voc_size_t total;
+   int res;
++  
++  LOG_TRACE("DeleteDocument. release flag is: %d", (int) release);
+ 
+   // get an existing header pointer
+   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &marker->_did);
+ 
+   if (header == NULL || header->_deletion != 0) {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       collection->base.endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+@@ -766,7 +796,9 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
+       if (rid != 0) {
+         if (rid != header->_rid) {
+           if (release) {
++            LOG_DEBUG("before endWrite");
+             collection->base.endWrite(&collection->base);
++            LOG_DEBUG("after endWrite");
+           }
+ 
+           return TRI_set_errno(TRI_ERROR_ARANGO_CONFLICT);
+@@ -780,14 +812,18 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
+ 
+     case TRI_DOC_UPDATE_CONFLICT:
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         collection->base.endWrite(&collection->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       return TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
+ 
+     case TRI_DOC_UPDATE_ILLEGAL:
+       if (release) {
++        LOG_DEBUG("before endWrite");
+         collection->base.endWrite(&collection->base);
++        LOG_DEBUG("after endWrite");
+       }
+ 
+       return TRI_set_errno(TRI_ERROR_INTERNAL);
+@@ -804,7 +840,9 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
+     collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+ 
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       collection->base.endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     return TRI_ERROR_ARANGO_NO_JOURNAL;
+@@ -840,7 +878,9 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
+ 
+     // release lock
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       collection->base.endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     // wait for sync
+@@ -848,7 +888,9 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
+   }
+   else {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       collection->base.endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     LOG_ERROR("cannot delete element");
+@@ -973,6 +1015,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
+                                         bool release) {
+   TRI_df_marker_t* result;
+   TRI_sim_collection_t* collection;
++  
++  LOG_TRACE("CreateShapedJson. release flag is: %d", (int) release);
+ 
+   collection = (TRI_sim_collection_t*) document;
+ 
+@@ -1069,6 +1113,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
+   TRI_doc_mptr_t mptr;
+   TRI_doc_mptr_t const* header;
+   TRI_sim_collection_t* collection;
++  
++  LOG_TRACE("UpdateShapedJson. release flag is: %d", (int) release);
+ 
+   collection = (TRI_sim_collection_t*) document;
+ 
+@@ -1077,7 +1123,9 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
+ 
+   if (header == NULL || header->_deletion != 0) {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       document->endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+@@ -1150,7 +1198,9 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
+   // do not know
+   else {
+     if (release) {
++      LOG_DEBUG("before endWrite");
+       document->endWrite(&collection->base);
++      LOG_DEBUG("after endWrite");
+     }
+ 
+     LOG_FATAL("unknown marker type %lu", (unsigned long) original->_type);
+@@ -1170,6 +1220,8 @@ static int DeleteShapedJson (TRI_doc_collection_t* doc,
+                              bool release) {
+   TRI_sim_collection_t* sim;
+   TRI_doc_deletion_marker_t marker;
++  
++  LOG_TRACE("DeleteShapedJson. release flag is: %d", (int) release);
+ 
+   sim = (TRI_sim_collection_t*) doc;
+ 
+@@ -1191,6 +1243,7 @@ static int DeleteShapedJson (TRI_doc_collection_t* doc,
+ static int BeginRead (TRI_doc_collection_t* doc) {
+   TRI_sim_collection_t* sim;
+ 
++  LOG_TRACE("BeginRead %p", doc);
+   sim = (TRI_sim_collection_t*) doc;
+   TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+ 
+@@ -1204,6 +1257,7 @@ static int BeginRead (TRI_doc_collection_t* doc) {
+ static int EndRead (TRI_doc_collection_t* doc) {
+   TRI_sim_collection_t* sim;
+ 
++  LOG_TRACE("EndRead %p", doc);
+   sim = (TRI_sim_collection_t*) doc;
+   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+ 
+@@ -1217,6 +1271,7 @@ static int EndRead (TRI_doc_collection_t* doc) {
+ static int BeginWrite (TRI_doc_collection_t* doc) {
+   TRI_sim_collection_t* sim;
+ 
++  LOG_TRACE("BeginWrite %p", doc);
+   sim = (TRI_sim_collection_t*) doc;
+   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+ 
+@@ -1230,6 +1285,7 @@ static int BeginWrite (TRI_doc_collection_t* doc) {
+ static int EndWrite (TRI_doc_collection_t* document) {
+   TRI_sim_collection_t* sim;
+ 
++  LOG_TRACE("EndWrite %p", document);
+   sim = (TRI_sim_collection_t*) document;
+   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+ 
+diff --git a/arangod/VocBase/simple-collection.h b/arangod/VocBase/simple-collection.h
+index 1a8c2e7..5385cc8 100644
+--- a/arangod/VocBase/simple-collection.h
++++ b/arangod/VocBase/simple-collection.h
+@@ -85,28 +85,36 @@ extern "C" {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ #define TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+-  TRI_ReadLockReadWriteLock(&(a)->_lock)
++  LOG_TRACE("RWLock READ-LOCK %p", a); \
++  TRI_ReadLockReadWriteLock(&(a)->_lock); \
++  LOG_TRACE("RWLock READ-LOCK %p SUCCESS", a)
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief read unlocks the documents and indexes
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ #define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
++  LOG_TRACE("RWLock READ-UNLOCK %p", a); \
++  TRI_ReadUnlockReadWriteLock(&(a)->_lock); \
++  LOG_TRACE("RWLock READ-UNLOCK %p SUCCESS", a)
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief write locks the documents and indexes
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ #define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+-  TRI_WriteLockReadWriteLock(&(a)->_lock)
++  LOG_TRACE("RWLock WRITE-LOCK %p", a); \
++  TRI_WriteLockReadWriteLock(&(a)->_lock); \
++  LOG_TRACE("RWLock WRITE-LOCK %p SUCCESS", a)
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief write unlocks the documents and indexes
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ #define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(a) \
+-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
++  LOG_TRACE("RWLock WRITE-UNLOCK %p", a); \
++  TRI_WriteUnlockReadWriteLock(&(a)->_lock); \
++  LOG_TRACE("RWLock WRITE-UNLOCK %p SUCCESS", a)
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief locks the journal entries
 diff --git a/html/admin/js/modules/simple-query-basics.js b/html/admin/js/modules/simple-query-basics.js
 index fcbe6f4..5f6b0ca 100644
 --- a/html/admin/js/modules/simple-query-basics.js
@@ -1307,4 +2042,16 @@ index 4114fe3..543f389 100644
 +////////////////////////////////////////////////////////////////////////////////
  /// @brief broadcasts an event
  ////////////////////////////////////////////////////////////////////////////////
+ 
+diff --git a/lib/BasicsC/memory.c b/lib/BasicsC/memory.c
+index 71b4d69..12b53a6 100644
+--- a/lib/BasicsC/memory.c
++++ b/lib/BasicsC/memory.c
+@@ -181,6 +181,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
+ 
+   if (m == NULL) {
+     if (zone->_failable) {
++      LOG_TRACE("malloc returned 0");
+       return NULL;
+     }
  
