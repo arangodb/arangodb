@@ -27,7 +27,7 @@
 
 #include "v8-vocbase.h"
 
-#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-explain.h"
@@ -118,6 +118,65 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    HELPER CLASSES
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              AhuacatlContextGuard
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scope guard for a TRI_aql_context_t*
+////////////////////////////////////////////////////////////////////////////////
+
+class AhuacatlContextGuard {
+  public:
+    AhuacatlContextGuard (TRI_vocbase_t* vocbase, const string& query) : 
+      _context(0) {
+      _context = TRI_CreateContextAql(vocbase, query.c_str());
+  
+      if (_context == 0) {
+        LOGGER_DEBUG << "failed to create context for query %s" << query;
+      }
+    }
+
+    ~AhuacatlContextGuard () {
+      this->free();
+    }
+
+    void free () {
+      if (_context != 0) {
+        TRI_FreeContextAql(_context);
+        _context = 0;
+      }
+    }
+    
+    inline TRI_aql_context_t* operator() () const {
+      return _context;
+    }
+    
+    inline TRI_aql_context_t* ptr () const {
+      return _context;
+    }
+    
+    inline const TRI_aql_context_t* const_ptr () const {
+      return _context;
+    }
+
+    inline const bool valid () const {
+      return _context != 0;
+    }
+
+  private:
+    TRI_aql_context_t* _context;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -2138,16 +2197,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   // bind parameters
   triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
 
-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
-  if (!context) {
+  AhuacatlContextGuard context(vocbase, queryString);
+  if (! context.valid()) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
 
     return scope.Close(v8::ThrowException(errorObject));
   }
 
   v8::Handle<v8::Value> result;
-  result = ExecuteQueryCursorAhuacatl(vocbase, context, parameters.ptr(), doCount, batchSize, allowDirectReturn);
-  TRI_FreeContextAql(context);
+  result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters.ptr(), doCount, batchSize, allowDirectReturn);
+  context.free();
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
@@ -2196,8 +2255,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   // bind parameters
   triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
 
-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
-  if (!context) {
+  AhuacatlContextGuard context(vocbase, queryString);
+  if (! context.valid()) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -2211,13 +2270,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   TRI_json_t* explain = 0;
 
-  if (!TRI_ValidateQueryContextAql(context) ||
-      !TRI_BindQueryContextAql(context, parameters.ptr()) ||
-      !TRI_LockQueryContextAql(context) ||
-      (performOptimisations && !TRI_OptimiseQueryContextAql(context)) ||
-      !(explain = TRI_ExplainAql(context))) {
-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
-    TRI_FreeContextAql(context);
+  if (!TRI_ValidateQueryContextAql(context.ptr()) ||
+      !TRI_BindQueryContextAql(context.ptr(), parameters.ptr()) ||
+      !TRI_LockQueryContextAql(context.ptr()) ||
+      (performOptimisations && !TRI_OptimiseQueryContextAql(context.ptr())) ||
+      !(explain = TRI_ExplainAql(context.ptr()))) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
     return scope.Close(v8::ThrowException(errorObject));
   }
 
@@ -2225,7 +2283,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> result;
   result = TRI_ObjectJson(explain);
-  TRI_FreeContextAql(context);
+  context.free();
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, explain);
 
   if (tryCatch.HasCaught()) {
@@ -2268,17 +2326,17 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   }
   string queryString = TRI_ObjectToString(queryArg);
 
-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
-  if (!context) {
+ 
+  AhuacatlContextGuard context(vocbase, queryString);
+  if (! context.valid()) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
 
     return scope.Close(v8::ThrowException(errorObject));
   }
 
   // parse & validate
-  if (!TRI_ValidateQueryContextAql(context)) {
-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
-    TRI_FreeContextAql(context);
+  if (!TRI_ValidateQueryContextAql(context.ptr())) {
+    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2289,11 +2347,11 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   result->Set(v8::String::New("parsed"), v8::True());
 
   // return the bind parameter names
-  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&context->_parameters._names));
+  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&(context.ptr())->_parameters._names));
   // return the collection names
-  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&context->_collectionNames));
+  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&(context.ptr())->_collectionNames));
+  context.free();
 
-  TRI_FreeContextAql(context);
   if (tryCatch.HasCaught()) {
     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
       // we already have an ArangoError object
