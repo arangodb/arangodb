@@ -402,12 +402,15 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
     lockResult = documentCollection->beginRead(documentCollection);
     if (lockResult != TRI_ERROR_NO_ERROR) {
       // couldn't acquire the read lock
+      LOG_WARNING("couldn't acquire read-lock on collection '%s'", collection->_name);
+
       result = false;
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
       break;
     }
     else {
       collection->_readLocked = true;
+      TRI_AQL_LOG("read-locked collection '%s'", collection->_name);
     }
   }
 
@@ -449,6 +452,7 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
 
     documentCollection->endRead(documentCollection);
     collection->_readLocked = false;
+    TRI_AQL_LOG("read-unlocked collection '%s'", collection->_name);
   }
 }
 
