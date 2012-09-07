@@ -25,6 +25,74 @@ index 3113434..6ec924a 100644
        TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
        break;
      }
+diff --git a/arangod/RestHandler/RestDocumentHandler.cpp b/arangod/RestHandler/RestDocumentHandler.cpp
+index e8fb467..21c5851 100644
+--- a/arangod/RestHandler/RestDocumentHandler.cpp
++++ b/arangod/RestHandler/RestDocumentHandler.cpp
+@@ -270,7 +270,8 @@ bool RestDocumentHandler::createDocument () {
+   // inside write transaction
+   // .............................................................................
+ 
+-  _documentCollection->beginWrite(_documentCollection);
++  int lockResult = _documentCollection->beginWrite(_documentCollection);
++  LOGGER_TRACE << "result of beginWrite: " << lockResult;
+ 
+   bool waitForSync = _documentCollection->base._waitForSync;
+   TRI_voc_cid_t cid = _documentCollection->base._cid;
+@@ -415,12 +416,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
+   // inside read transaction
+   // .............................................................................
+ 
+-  _documentCollection->beginRead(_documentCollection);
++  int lockResult = _documentCollection->beginRead(_documentCollection);
++  LOGGER_TRACE << "result of beginRead: " << lockResult;
+ 
+   TRI_voc_cid_t cid = _documentCollection->base._cid;
+   TRI_doc_mptr_t const document = findDocument(did);
+ 
+   _documentCollection->endRead(_documentCollection);
++  LOGGER_TRACE << "endRead";
+ 
+   // .............................................................................
+   // outside read transaction
+@@ -511,7 +514,8 @@ bool RestDocumentHandler::readAllDocuments () {
+ 
+   vector<TRI_voc_did_t> ids;
+ 
+-  _documentCollection->beginRead(_documentCollection);
++  int lockResult = _documentCollection->beginRead(_documentCollection);
++  LOGGER_TRACE << "result of beginRead: " << lockResult;
+ 
+   TRI_voc_cid_t cid = _documentCollection->base._cid;
+ 
+@@ -538,6 +542,7 @@ bool RestDocumentHandler::readAllDocuments () {
+   }
+   
+   _documentCollection->endRead(_documentCollection);
++  LOGGER_TRACE << "endRead";
+ 
+   // .............................................................................
+   // outside read transaction
+@@ -715,7 +720,8 @@ bool RestDocumentHandler::updateDocument () {
+   // inside write transaction
+   // .............................................................................
+ 
+-  _documentCollection->beginWrite(_documentCollection);
++  int lockResult = _documentCollection->beginWrite(_documentCollection);
++  LOGGER_TRACE << "result of beginWrite: " << lockResult;
+ 
+   // unlocking is performed in updateJson()
+   TRI_voc_rid_t rid = 0;
+@@ -860,7 +866,8 @@ bool RestDocumentHandler::deleteDocument () {
+   // inside write transaction
+   // .............................................................................
+ 
+-  _documentCollection->beginWrite(_documentCollection);
++  int lockResult = _documentCollection->beginWrite(_documentCollection);
++  LOGGER_TRACE << "result of beginWrite: " << lockResult;
+ 
+   TRI_voc_rid_t rid = 0;
+   TRI_voc_cid_t cid = _documentCollection->base._cid;
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
 index d200d55..c65fa15 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
@@ -331,10 +399,18 @@ index 62b0474..f6d485e 100644
  ////////////////////////////////////////////////////////////////////////////////
  
 diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
-index 9bd6923..2f25c90 100755
+index 9bd6923..7fa8afb 100755
 --- a/arangod/V8Server/v8-vocbase.cpp
 +++ b/arangod/V8Server/v8-vocbase.cpp
-@@ -119,6 +119,65 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
+@@ -48,6 +48,7 @@
+ #include "VocBase/general-cursor.h"
+ #include "VocBase/simple-collection.h"
+ #include "VocBase/voc-shaper.h"
++#include "Logger/Logger.h"
+ 
+ using namespace std;
+ using namespace triagens::basics;
+@@ -119,6 +120,71 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
  ////////////////////////////////////////////////////////////////////////////////
  
  // -----------------------------------------------------------------------------
@@ -358,11 +434,17 @@ index 9bd6923..2f25c90 100755
 +  public:
 +    AhuacatlContextGuard (TRI_vocbase_t* vocbase, const string& query) : 
 +      _context(0) {
++      LOGGER_DEBUG << "context guard created";
 +      _context = TRI_CreateContextAql(vocbase, query.c_str());
++  
++      if (_context == 0) {
++        LOGGER_DEBUG << "failed to create context for query %s" << query;
++      }
 +    }
 +
 +    ~AhuacatlContextGuard () {
 +      this->free();
++      LOGGER_DEBUG << "context guard destroyed";
 +    }
 +
 +    void free () {
@@ -400,7 +482,57 @@ index 9bd6923..2f25c90 100755
  // --SECTION--                                                  HELPER FUNCTIONS
  // -----------------------------------------------------------------------------
  
-@@ -1299,12 +1358,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
+@@ -1048,14 +1114,17 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+   v8::HandleScope scope;
+   v8::TryCatch tryCatch;
+ 
++  LOGGER_DEBUG << "executing query cursor";
+   v8::Handle<v8::Value> result = ExecuteQueryNativeAhuacatl(context, parameters);
+ 
+   if (tryCatch.HasCaught()) {
++    LOGGER_DEBUG << "executing query cursor failed";
+     return scope.Close(v8::ThrowException(tryCatch.Exception()));
+   }
+ 
+   if (allowDirectReturn || !result->IsArray()) {
+     // return the value we got as it is. this is a performance optimisation
++    LOGGER_DEBUG << "executing query cursor returned directly";
+     return scope.Close(result);
+   }
+ 
+@@ -1063,6 +1132,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+   TRI_json_t* json = TRI_JsonObject(result);
+ 
+   if (!json) {
++    LOGGER_DEBUG << "executing query cursor failed with out-of-memory";
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+@@ -1073,6 +1143,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+   if (!cursorResult) {
+     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
++    LOGGER_DEBUG << "executing query cursor failed with out-of-memory at cursor result";
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+@@ -1083,6 +1154,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
++    LOGGER_DEBUG << "creating general cursor failed";
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+@@ -1091,6 +1163,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
+   assert(cursor);
+   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
+ 
++  LOGGER_DEBUG << "returning general cursor";
+   return scope.Close(WrapGeneralCursor(cursor));
+ }
+ 
+@@ -1299,12 +1372,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
    bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (found) {
@@ -417,7 +549,7 @@ index 9bd6923..2f25c90 100755
  }
  
  ////////////////////////////////////////////////////////////////////////////////
-@@ -1365,7 +1422,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
+@@ -1365,7 +1436,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
    cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (cursor) {
@@ -426,7 +558,7 @@ index 9bd6923..2f25c90 100755
      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
      return scope.Close(v8::Number::New(length));
    }
-@@ -1666,6 +1723,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
+@@ -1666,6 +1737,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
  }
  
  ////////////////////////////////////////////////////////////////////////////////
@@ -459,7 +591,7 @@ index 9bd6923..2f25c90 100755
  /// @brief get a (persistent) cursor by its id
  ////////////////////////////////////////////////////////////////////////////////
  
-@@ -1707,7 +1790,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
+@@ -1707,7 +1804,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
                           TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
                                                 "disposed or unknown cursor")));
    }
@@ -468,7 +600,7 @@ index 9bd6923..2f25c90 100755
    return scope.Close(WrapGeneralCursor(cursor));
  }
  
-@@ -1776,16 +1859,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+@@ -1776,16 +1873,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
    // bind parameters
    triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
  
@@ -489,7 +621,16 @@ index 9bd6923..2f25c90 100755
  
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-@@ -1834,8 +1917,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1798,6 +1895,8 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
++  LOGGER_DEBUG << "returning cursor result";
++
+   return scope.Close(result);
+ }
+ 
+@@ -1834,8 +1933,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
    // bind parameters
    triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
  
@@ -500,7 +641,7 @@ index 9bd6923..2f25c90 100755
      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
  
      return scope.Close(v8::ThrowException(errorObject));
-@@ -1849,13 +1932,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1849,13 +1948,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
  
    TRI_json_t* explain = 0;
  
@@ -520,7 +661,7 @@ index 9bd6923..2f25c90 100755
      return scope.Close(v8::ThrowException(errorObject));
    }
  
-@@ -1863,8 +1945,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+@@ -1863,8 +1961,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
  
    v8::Handle<v8::Value> result;
    result = TRI_ObjectJson(explain);
@@ -530,7 +671,7 @@ index 9bd6923..2f25c90 100755
  
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-@@ -1906,17 +1988,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+@@ -1906,17 +2004,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
    }
    string queryString = TRI_ObjectToString(queryArg);
  
@@ -552,7 +693,7 @@ index 9bd6923..2f25c90 100755
  
      return scope.Close(v8::ThrowException(errorObject));
    }
-@@ -1927,11 +2008,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+@@ -1927,11 +2024,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
    result->Set(v8::String::New("parsed"), v8::True());
  
    // return the bind parameter names
@@ -566,7 +707,7 @@ index 9bd6923..2f25c90 100755
    if (tryCatch.HasCaught()) {
      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
        // we already have an ArangoError object
-@@ -4907,6 +4987,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -4907,6 +5003,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
    v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
    v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
@@ -574,7 +715,7 @@ index 9bd6923..2f25c90 100755
  
    v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
    v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
-@@ -5165,12 +5246,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -5165,12 +5262,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
    rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
    rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
