@@ -1,40 +1,30 @@
-diff --git a/lib/Basics/ConditionLocker.cpp b/lib/Basics/ConditionLocker.cpp
-index e9469e6..097ef7b 100644
---- a/lib/Basics/ConditionLocker.cpp
-+++ b/lib/Basics/ConditionLocker.cpp
-@@ -96,6 +96,14 @@ void ConditionLocker::wait () {
- }
+diff --git a/arangod/Ahuacatl/ahuacatl-collections.c b/arangod/Ahuacatl/ahuacatl-collections.c
+index 3113434..6ec924a 100644
+--- a/arangod/Ahuacatl/ahuacatl-collections.c
++++ b/arangod/Ahuacatl/ahuacatl-collections.c
+@@ -402,12 +402,14 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
+     lockResult = documentCollection->beginRead(documentCollection);
+     if (lockResult != TRI_ERROR_NO_ERROR) {
+       // couldn't acquire the read lock
++      LOG_WARNING("read-locking collection '%s' failed", collection->_name);
+       result = false;
+       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
+       break;
+     }
+     else {
+       collection->_readLocked = true;
++      TRI_AQL_LOG("read-locked collection '%s'", collection->_name);
+     }
+   }
  
- ////////////////////////////////////////////////////////////////////////////////
-+/// @brief waits for an event to occur, with a timeout
-+////////////////////////////////////////////////////////////////////////////////
-+
-+bool ConditionLocker::wait (uint64_t delay) {
-+  return _conditionVariable->wait(delay);
-+}
-+
-+////////////////////////////////////////////////////////////////////////////////
- /// @brief broadcasts an event
- ////////////////////////////////////////////////////////////////////////////////
- 
-diff --git a/lib/Basics/ConditionLocker.h b/lib/Basics/ConditionLocker.h
-index 4114fe3..543f389 100644
---- a/lib/Basics/ConditionLocker.h
-+++ b/lib/Basics/ConditionLocker.h
-@@ -139,6 +139,12 @@ namespace triagens {
-         void wait ();
- 
- ////////////////////////////////////////////////////////////////////////////////
-+/// @brief waits for an event to occur, using a timeout
-+////////////////////////////////////////////////////////////////////////////////
-+
-+        bool wait (uint64_t);
-+
-+////////////////////////////////////////////////////////////////////////////////
- /// @brief broadcasts an event
- ////////////////////////////////////////////////////////////////////////////////
- 
-
+@@ -484,6 +486,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
+     if (!ce) {
+       // couldn't create the barrier
+       result = false;
++      LOG_WARNING("adding barrier for collection '%s' failed", collection->_name);
+       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+       break;
+     }
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
 index d200d55..c65fa15 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
@@ -341,10 +331,76 @@ index 62b0474..f6d485e 100644
  ////////////////////////////////////////////////////////////////////////////////
  
 diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
-index 9bd6923..6b06bfe 100755
+index 9bd6923..2f25c90 100755
 --- a/arangod/V8Server/v8-vocbase.cpp
 +++ b/arangod/V8Server/v8-vocbase.cpp
-@@ -1299,12 +1299,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
+@@ -119,6 +119,65 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ // -----------------------------------------------------------------------------
++// --SECTION--                                                    HELPER CLASSES
++// -----------------------------------------------------------------------------
++
++// -----------------------------------------------------------------------------
++// --SECTION--                                             AhuacatlContextHolder
++// -----------------------------------------------------------------------------
++
++////////////////////////////////////////////////////////////////////////////////
++/// @addtogroup VocBase
++/// @{
++////////////////////////////////////////////////////////////////////////////////
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief wraps a C++ into a v8::Object
++////////////////////////////////////////////////////////////////////////////////
++
++class AhuacatlContextGuard {
++  public:
++    AhuacatlContextGuard (TRI_vocbase_t* vocbase, const string& query) : 
++      _context(0) {
++      _context = TRI_CreateContextAql(vocbase, query.c_str());
++    }
++
++    ~AhuacatlContextGuard () {
++      this->free();
++    }
++
++    void free () {
++      if (_context != 0) {
++        TRI_FreeContextAql(_context);
++        _context = 0;
++      }
++    }
++    
++    inline TRI_aql_context_t* operator() () const {
++      return _context;
++    }
++    
++    inline TRI_aql_context_t* ptr () const {
++      return _context;
++    }
++    
++    inline const TRI_aql_context_t* const_ptr () const {
++      return _context;
++    }
++
++    inline const bool valid () const {
++      return _context != 0;
++    }
++
++  private:
++    TRI_aql_context_t* _context;
++};
++
++////////////////////////////////////////////////////////////////////////////////
++/// @}
++////////////////////////////////////////////////////////////////////////////////
++
++// -----------------------------------------------------------------------------
+ // --SECTION--                                                  HELPER FUNCTIONS
+ // -----------------------------------------------------------------------------
+ 
+@@ -1299,12 +1358,10 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
    bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (found) {
@@ -361,7 +417,7 @@ index 9bd6923..6b06bfe 100755
  }
  
  ////////////////////////////////////////////////////////////////////////////////
-@@ -1365,7 +1363,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
+@@ -1365,7 +1422,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
    cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
  
    if (cursor) {
@@ -370,7 +426,7 @@ index 9bd6923..6b06bfe 100755
      TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
      return scope.Close(v8::Number::New(length));
    }
-@@ -1666,6 +1664,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
+@@ -1666,6 +1723,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
  }
  
  ////////////////////////////////////////////////////////////////////////////////
@@ -403,7 +459,7 @@ index 9bd6923..6b06bfe 100755
  /// @brief get a (persistent) cursor by its id
  ////////////////////////////////////////////////////////////////////////////////
  
-@@ -1707,7 +1731,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
+@@ -1707,7 +1790,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
                           TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
                                                 "disposed or unknown cursor")));
    }
@@ -412,7 +468,105 @@ index 9bd6923..6b06bfe 100755
    return scope.Close(WrapGeneralCursor(cursor));
  }
  
-@@ -4907,6 +4931,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -1776,16 +1859,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+   // bind parameters
+   triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
+ 
+-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
+-  if (!context) {
++  AhuacatlContextGuard context(vocbase, queryString);
++  if (! context.valid()) {
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+   v8::Handle<v8::Value> result;
+-  result = ExecuteQueryCursorAhuacatl(vocbase, context, parameters.ptr(), doCount, batchSize, allowDirectReturn);
+-  TRI_FreeContextAql(context);
++  result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters.ptr(), doCount, batchSize, allowDirectReturn);
++  context.free();
+ 
+   if (tryCatch.HasCaught()) {
+     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+@@ -1834,8 +1917,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+   // bind parameters
+   triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
+ 
+-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
+-  if (!context) {
++  AhuacatlContextGuard context(vocbase, queryString);
++  if (! context.valid()) {
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+@@ -1849,13 +1932,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+ 
+   TRI_json_t* explain = 0;
+ 
+-  if (!TRI_ValidateQueryContextAql(context) ||
+-      !TRI_BindQueryContextAql(context, parameters.ptr()) ||
+-      !TRI_LockQueryContextAql(context) ||
+-      (performOptimisations && !TRI_OptimiseQueryContextAql(context)) ||
+-      !(explain = TRI_ExplainAql(context))) {
+-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+-    TRI_FreeContextAql(context);
++  if (!TRI_ValidateQueryContextAql(context.ptr()) ||
++      !TRI_BindQueryContextAql(context.ptr(), parameters.ptr()) ||
++      !TRI_LockQueryContextAql(context.ptr()) ||
++      (performOptimisations && !TRI_OptimiseQueryContextAql(context.ptr())) ||
++      !(explain = TRI_ExplainAql(context.ptr()))) {
++    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+@@ -1863,8 +1945,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+ 
+   v8::Handle<v8::Value> result;
+   result = TRI_ObjectJson(explain);
+-  TRI_FreeContextAql(context);
+   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, explain);
++  context.free();
+ 
+   if (tryCatch.HasCaught()) {
+     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+@@ -1906,17 +1988,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+   }
+   string queryString = TRI_ObjectToString(queryArg);
+ 
+-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
+-  if (!context) {
++  AhuacatlContextGuard context(vocbase, queryString);
++  if (! context.valid()) {
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+   // parse & validate
+-  if (!TRI_ValidateQueryContextAql(context)) {
+-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+-    TRI_FreeContextAql(context);
++  if (!TRI_ValidateQueryContextAql(context.ptr())) {
++    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+@@ -1927,11 +2008,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+   result->Set(v8::String::New("parsed"), v8::True());
+ 
+   // return the bind parameter names
+-  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&context->_parameters._names));
++  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&(context.ptr())->_parameters._names));
+   // return the collection names
+-  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&context->_collectionNames));
++  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&(context.ptr())->_collectionNames));
+ 
+-  TRI_FreeContextAql(context);
+   if (tryCatch.HasCaught()) {
+     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+       // we already have an ArangoError object
+@@ -4907,6 +4987,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
    v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
    v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
@@ -420,7 +574,7 @@ index 9bd6923..6b06bfe 100755
  
    v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
    v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
-@@ -5165,12 +5190,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+@@ -5165,12 +5246,17 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
    rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
    rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
    rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
@@ -561,3 +715,39 @@ index c2d1107..6b1ec42 100644
    }
    catch (err) {
      actions.resultException(req, res, err);
+diff --git a/lib/Basics/ConditionLocker.cpp b/lib/Basics/ConditionLocker.cpp
+index e9469e6..097ef7b 100644
+--- a/lib/Basics/ConditionLocker.cpp
++++ b/lib/Basics/ConditionLocker.cpp
+@@ -96,6 +96,14 @@ void ConditionLocker::wait () {
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief waits for an event to occur, with a timeout
++////////////////////////////////////////////////////////////////////////////////
++
++bool ConditionLocker::wait (uint64_t delay) {
++  return _conditionVariable->wait(delay);
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief broadcasts an event
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+diff --git a/lib/Basics/ConditionLocker.h b/lib/Basics/ConditionLocker.h
+index 4114fe3..543f389 100644
+--- a/lib/Basics/ConditionLocker.h
++++ b/lib/Basics/ConditionLocker.h
+@@ -139,6 +139,12 @@ namespace triagens {
+         void wait ();
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief waits for an event to occur, using a timeout
++////////////////////////////////////////////////////////////////////////////////
++
++        bool wait (uint64_t);
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief broadcasts an event
+ ////////////////////////////////////////////////////////////////////////////////
+ 
