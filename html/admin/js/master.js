@@ -947,7 +947,6 @@ var logTable = $('#logTableID').dataTable({
       });
     }
     else {
-
       try {
         var collectionID = location.hash.substr(12, location.hash.length); 
         var collID = collectionID.split("="); 
