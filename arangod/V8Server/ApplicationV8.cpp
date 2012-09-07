@@ -422,6 +422,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
+  LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
 
   // check the startup modules
   if (_startupModules.empty()) {
