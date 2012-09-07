@@ -1,5 +1,5 @@
 diff --git a/arangod/Ahuacatl/ahuacatl-codegen.c b/arangod/Ahuacatl/ahuacatl-codegen.c
-index 737ea0f..29ebec7 100644
+index 737ea0f..f390315 100644
 --- a/arangod/Ahuacatl/ahuacatl-codegen.c
 +++ b/arangod/Ahuacatl/ahuacatl-codegen.c
 @@ -2253,9 +2253,12 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
@@ -23,8 +23,12 @@ index 737ea0f..29ebec7 100644
      FreeGenerator(generator);
  
      return NULL;
-@@ -2286,6 +2290,8 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
-     TRI_AQL_DUMP("generated code: %s\n", code);
+@@ -2283,9 +2287,11 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
+   FreeGenerator(generator);
+ 
+   if (code) {
+-    TRI_AQL_DUMP("generated code: %s\n", code);
++    TRI_AQL_LOG("generated code: %s\n", code);
    }
  
 +  TRI_AQL_LOG("generating code successful");
@@ -159,6 +163,30 @@ index b4a426c..b5e107a 100644
  
    return true;
  }
+diff --git a/arangod/Ahuacatl/ahuacatl-log.h b/arangod/Ahuacatl/ahuacatl-log.h
+index f8e92b7..aa5cf5e 100644
+--- a/arangod/Ahuacatl/ahuacatl-log.h
++++ b/arangod/Ahuacatl/ahuacatl-log.h
+@@ -35,7 +35,7 @@ extern "C" {
+ #endif
+ 
+ #undef TRI_DEBUG_AQL  
+-//#define TRI_DEBUG_AQL 1
++#define TRI_DEBUG_AQL 1
+ 
+ // -----------------------------------------------------------------------------
+ // --SECTION--                                                     public macros
+@@ -52,10 +52,8 @@ extern "C" {
+ 
+ #ifdef TRI_DEBUG_AQL
+ #define TRI_AQL_LOG(...) LOG_INFO(__VA_ARGS__);
+-#define TRI_AQL_DUMP(format, ...) printf(format, __VA_ARGS__);
+ #else
+ #define TRI_AQL_LOG(...) LOG_TRACE(__VA_ARGS__);
+-#define TRI_AQL_DUMP(...) { };
+ #endif
+ 
+ ////////////////////////////////////////////////////////////////////////////////
 diff --git a/arangod/Ahuacatl/ahuacatl-optimiser.c b/arangod/Ahuacatl/ahuacatl-optimiser.c
 index 49437aa..43d905b 100644
 --- a/arangod/Ahuacatl/ahuacatl-optimiser.c
@@ -567,6 +595,73 @@ index 62b0474..f6d485e 100644
  /// @brief V8 startup loader
  ////////////////////////////////////////////////////////////////////////////////
  
+diff --git a/arangod/V8Server/v8-query.cpp b/arangod/V8Server/v8-query.cpp
+index 0ca033a..e737007 100755
+--- a/arangod/V8Server/v8-query.cpp
++++ b/arangod/V8Server/v8-query.cpp
+@@ -35,6 +35,7 @@
+ #include "V8/v8-conv.h"
+ #include "V8/v8-utils.h"
+ #include "V8Server/v8-vocbase.h"
++#include "Logger/Logger.h"
+ 
+ // -----------------------------------------------------------------------------
+ // --SECTION--                                                  HELPER FUNCTIONS
+@@ -1210,6 +1211,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+   v8::HandleScope scope;
+ 
++  LOGGER_TRACE << "executing ALL query";
+   // extract and use the simple collection
+   v8::Handle<v8::Object> err;
+   TRI_vocbase_col_t const* collection;
+@@ -1243,10 +1245,15 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+   // inside a read transaction
+   // .............................................................................
+ 
+-  collection->_collection->beginRead(collection->_collection);
++  LOGGER_TRACE << "acquiring lock in allquery";
++  int lockResult = collection->_collection->beginRead(collection->_collection);
++  LOGGER_TRACE << "result of beginRead: " << lockResult;
+ 
+   size_t total = sim->_primaryIndex._nrUsed;
+   uint32_t count = 0;
++  LOGGER_TRACE << "number of documents: " << total;
++  LOGGER_TRACE << "skip: " << skip;
++  LOGGER_TRACE << "limit: " << limit;
+ 
+   if (0 < total && 0 < limit) {
+     TRI_barrier_t* barrier = 0;
+@@ -1254,6 +1261,9 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+     void** beg = sim->_primaryIndex._table;
+     void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+     void** ptr = beg;
++    LOGGER_TRACE << "nrAlloc: " << sim->_primaryIndex._nrAlloc;
++    LOGGER_TRACE << "begin: " << beg;
++    LOGGER_TRACE << "end: " << beg;
+ 
+     // skip from the beginning
+     if (0 < skip) {
+@@ -1291,6 +1301,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+       }
+     }
+ 
++    LOGGER_TRACE << "beginning extraction. ptr: " << ptr << ", end: " << end << ", range: " << (end - ptr) << ", count: " << count << ", limit: " << limit;
+     // limit
+     for (;  ptr < end && count < limit;  ++ptr) {
+       if (*ptr) {
+@@ -1307,9 +1318,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+         }
+       }
+     }
++    LOGGER_TRACE << "finished extraction. count is " << count;
+   }
+ 
+   collection->_collection->endRead(collection->_collection);
++  LOGGER_TRACE << "endRead";
+ 
+   // .............................................................................
+   // outside a write transaction
 diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
 index 9bd6923..8b7aad7 100755
 --- a/arangod/V8Server/v8-vocbase.cpp
@@ -1031,6 +1126,38 @@ index b664156..b70ff5e 100644
  
            TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
            TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+diff --git a/html/admin/js/modules/simple-query-basics.js b/html/admin/js/modules/simple-query-basics.js
+index fcbe6f4..5f6b0ca 100644
+--- a/html/admin/js/modules/simple-query-basics.js
++++ b/html/admin/js/modules/simple-query-basics.js
+@@ -151,6 +151,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ GeneralArrayCursor.prototype.hasNext = function () {
++  require("console").log("hasNext called. current: " + this._current + ", stop: " + this._stop);
+   return this._current < this._stop;
+ }
+ 
+@@ -177,7 +178,8 @@ GeneralArrayCursor.prototype.dispose = function() {
+   this._limit = null;
+   this._countTotal = null;
+   this._countQuery = null;
+-  this.current = null;
++  this._current = null;
++  this._stop = null;
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -664,7 +666,9 @@ SimpleQueryArray.prototype.execute = function () {
+       this._skip = 0;
+     }
+ 
++    require("console").log("creating GeneralArrayCursor with " + this._documents.length + " docs, skip: " + this._skip + ", limit: " + this._limit);
+     this._execution = new GeneralArrayCursor(this._documents, this._skip, this._limit);
++    require("console").log("created GeneralArrayCursor");
+   }
+ }
+ 
 diff --git a/js/actions/system/api-cursor.js b/js/actions/system/api-cursor.js
 index c2d1107..6b1ec42 100644
 --- a/js/actions/system/api-cursor.js
@@ -1063,6 +1190,72 @@ index c2d1107..6b1ec42 100644
    }
    catch (err) {
      actions.resultException(req, res, err);
+diff --git a/js/common/modules/simple-query-basics.js b/js/common/modules/simple-query-basics.js
+index 0840c2c..ed5daa1 100644
+--- a/js/common/modules/simple-query-basics.js
++++ b/js/common/modules/simple-query-basics.js
+@@ -150,6 +150,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ GeneralArrayCursor.prototype.hasNext = function () {
++  require("console").log("hasNext called. current: " + this._current + ", stop: " + this._stop);
+   return this._current < this._stop;
+ }
+ 
+@@ -176,7 +177,8 @@ GeneralArrayCursor.prototype.dispose = function() {
+   this._limit = null;
+   this._countTotal = null;
+   this._countQuery = null;
+-  this.current = null;
++  this._current = null;
++  this._stop = null;
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -663,7 +665,9 @@ SimpleQueryArray.prototype.execute = function () {
+       this._skip = 0;
+     }
+ 
++    require("console").log("creating GeneralArrayCursor with " + this._documents.length + " docs, skip: " + this._skip + ", limit: " + this._limit);
+     this._execution = new GeneralArrayCursor(this._documents, this._skip, this._limit);
++    require("console").log("created GeneralArrayCursor");
+   }
+ }
+ 
+diff --git a/js/server/ahuacatl.js b/js/server/ahuacatl.js
+index 665f723..1707ab4 100644
+--- a/js/server/ahuacatl.js
++++ b/js/server/ahuacatl.js
+@@ -385,7 +385,11 @@ function AHUACATL_LIST (value) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ function AHUACATL_GET_DOCUMENTS (collection) {
+-  return internal.db[collection].all().toArray();
++  require("console").log("AHUACATL_GET_DOCUMENTS called for " + collection);
++  var result = internal.db[collection].ALL(0, null).documents;
++  require("console").log("AHUACATL_GET_DOCUMENTS finished for " + collection);
++
++  return result;
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+diff --git a/js/server/js-ahuacatl.h b/js/server/js-ahuacatl.h
+index 7bf2dd5..7ab98bc 100644
+--- a/js/server/js-ahuacatl.h
++++ b/js/server/js-ahuacatl.h
+@@ -386,7 +386,11 @@ static string JS_server_ahuacatl =
+   "////////////////////////////////////////////////////////////////////////////////\n"
+   "\n"
+   "function AHUACATL_GET_DOCUMENTS (collection) {\n"
+-  "  return internal.db[collection].all().toArray();\n"
++  "  require(\"console\").log(\"AHUACATL_GET_DOCUMENTS called for \" + collection);\n"
++  "  var result = internal.db[collection].ALL(0, null).documents;\n"
++  "  require(\"console\").log(\"AHUACATL_GET_DOCUMENTS finished for \" + collection);\n"
++  "\n"
++  "  return result;\n"
+   "}\n"
+   "\n"
+   "////////////////////////////////////////////////////////////////////////////////\n"
 diff --git a/lib/Basics/ConditionLocker.cpp b/lib/Basics/ConditionLocker.cpp
 index e9469e6..097ef7b 100644
 --- a/lib/Basics/ConditionLocker.cpp
