@@ -215,10 +215,10 @@ index 49437aa..43d905b 100644
  }
  
 diff --git a/arangod/RestHandler/RestDocumentHandler.cpp b/arangod/RestHandler/RestDocumentHandler.cpp
-index e8fb467..21c5851 100644
+index e8fb467..b860cf3 100644
 --- a/arangod/RestHandler/RestDocumentHandler.cpp
 +++ b/arangod/RestHandler/RestDocumentHandler.cpp
-@@ -270,7 +270,8 @@ bool RestDocumentHandler::createDocument () {
+@@ -270,13 +270,16 @@ bool RestDocumentHandler::createDocument () {
    // inside write transaction
    // .............................................................................
  
@@ -228,7 +228,23 @@ index e8fb467..21c5851 100644
  
    bool waitForSync = _documentCollection->base._waitForSync;
    TRI_voc_cid_t cid = _documentCollection->base._cid;
-@@ -415,12 +416,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
+ 
+   // note: unlocked is performed by createJson()
++  LOGGER_TRACE << "creating document";
+   TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, true);
++  LOGGER_TRACE << "finished creating document";
+ 
+   // .............................................................................
+   // outside write transaction
+@@ -284,6 +287,7 @@ bool RestDocumentHandler::createDocument () {
+ 
+   // release collection and free json
+   releaseCollection();
++  LOGGER_TRACE << "released collection again";
+ 
+   // generate result
+   if (mptr._did != 0) {
+@@ -415,12 +419,14 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
    // inside read transaction
    // .............................................................................
  
@@ -244,7 +260,7 @@ index e8fb467..21c5851 100644
  
    // .............................................................................
    // outside read transaction
-@@ -511,7 +514,8 @@ bool RestDocumentHandler::readAllDocuments () {
+@@ -511,7 +517,8 @@ bool RestDocumentHandler::readAllDocuments () {
  
    vector<TRI_voc_did_t> ids;
  
@@ -254,7 +270,7 @@ index e8fb467..21c5851 100644
  
    TRI_voc_cid_t cid = _documentCollection->base._cid;
  
-@@ -538,6 +542,7 @@ bool RestDocumentHandler::readAllDocuments () {
+@@ -538,6 +545,7 @@ bool RestDocumentHandler::readAllDocuments () {
    }
    
    _documentCollection->endRead(_documentCollection);
@@ -262,7 +278,7 @@ index e8fb467..21c5851 100644
  
    // .............................................................................
    // outside read transaction
-@@ -715,7 +720,8 @@ bool RestDocumentHandler::updateDocument () {
+@@ -715,7 +723,8 @@ bool RestDocumentHandler::updateDocument () {
    // inside write transaction
    // .............................................................................
  
@@ -272,7 +288,7 @@ index e8fb467..21c5851 100644
  
    // unlocking is performed in updateJson()
    TRI_voc_rid_t rid = 0;
-@@ -860,7 +866,8 @@ bool RestDocumentHandler::deleteDocument () {
+@@ -860,7 +869,8 @@ bool RestDocumentHandler::deleteDocument () {
    // inside write transaction
    // .............................................................................
  
