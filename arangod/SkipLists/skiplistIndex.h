@@ -40,6 +40,7 @@
 
 #include <BasicsC/common.h>
 #include "SkipLists/skiplist.h"
+#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
@@ -142,6 +143,8 @@ void SkiplistIndex_free (SkiplistIndex*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

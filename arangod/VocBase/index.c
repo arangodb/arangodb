@@ -1023,7 +1023,8 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
                                   bool ignoreNull) {
   TRI_geo_index_t* geo;
   char* ln;
-
+  int result;
+  
   geo = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_geo_index_t), false);
 
   if (geo == NULL) {
@@ -1053,13 +1054,32 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
 
   geo->_constraint = constraint;
   geo->_geoIndex = GeoIndex_new();
-
+  
+  if (geo->_geoIndex == NULL) { // oops out of memory?
+    LOG_WARNING("geo index creation failed -- internal error when creating new goe index structure");
+    TRI_DestroyVectorString(&geo->base._fields);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    return NULL;
+  }
+  
   geo->_variant = geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
   geo->_location = location;
   geo->_latitude = 0;
   geo->_longitude = 0;
   geo->_geoJson = geoJson;
-
+  
+  result = GeoIndex_assignMethod(&(geo->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorString(&geo->base._fields);
+    GeoIndex_free(geo->_geoIndex); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    LOG_WARNING("geo index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+  
   return &geo->base;
 }
 
@@ -1077,7 +1097,8 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s* collection,
   TRI_geo_index_t* geo;
   char* lat;
   char* lon;
-
+  int result;
+  
   geo = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_geo_index_t), false);
 
   if (geo == NULL) {
@@ -1109,11 +1130,30 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s* collection,
   geo->_constraint = constraint;
   geo->_geoIndex = GeoIndex_new();
 
+  if (geo->_geoIndex == NULL) { // oops out of memory?
+    LOG_WARNING("geo index creation failed -- internal error when creating new goe index structure");
+    TRI_DestroyVectorString(&geo->base._fields);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    return NULL;
+  }
+  
   geo->_variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
   geo->_location = 0;
   geo->_latitude = latitude;
   geo->_longitude = longitude;
 
+  result = GeoIndex_assignMethod(&(geo->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+    
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorString(&geo->base._fields);
+    GeoIndex_free(geo->_geoIndex); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    LOG_WARNING("geo index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+  
   return &geo->base;
 }
 
@@ -1692,6 +1732,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
                                   TRI_vector_t* paths,
                                   bool unique) {
   TRI_hash_index_t* hashIndex;
+  int result;
   size_t j;
 
   hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hash_index_t), false);
@@ -1740,12 +1781,30 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
     hashIndex->_hashIndex = MultiHashIndex_new();
   }  
   
-  if (hashIndex->_hashIndex == NULL) {
+  if (hashIndex->_hashIndex == NULL) { // oops out of memory?
     TRI_DestroyVector(&hashIndex->_paths); 
     TRI_DestroyVectorString(&hashIndex->base._fields); 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
     return NULL;
   }
+  
+  // ...........................................................................
+  // Assign the function calls used by the query engine
+  // ...........................................................................
+  
+  result = HashIndex_assignMethod(&(hashIndex->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || HashIndex_assignMethod(&(hashIndex->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || HashIndex_assignMethod(&(hashIndex->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVector(&hashIndex->_paths); 
+    TRI_DestroyVectorString(&hashIndex->base._fields); 
+    HashIndex_free(hashIndex->_hashIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
+    LOG_WARNING("hash index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+    
   
   return &hashIndex->base;
 }
@@ -2625,15 +2684,16 @@ PQIndexElements* TRI_LookupPriorityQueueIndex(TRI_index_t* idx, TRI_json_t* para
 // .............................................................................
 
 
-static void FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_collection_t* collection) {
+static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_collection_t* collection) {
   TRI_json_t*                    jsonObject;
   TRI_shaped_json_t*             shapedObject;
   TRI_relation_index_operator_t* relationOperator;
   TRI_logical_index_operator_t*  logicalOperator;
   size_t j;
+  int result;
   
   if (slOperator == NULL) {
-    return;
+    return TRI_ERROR_INTERNAL;
   }
   
   switch (slOperator->_type) {
@@ -2642,8 +2702,13 @@ static void FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_colle
     case TRI_OR_INDEX_OPERATOR: {
     
       logicalOperator = (TRI_logical_index_operator_t*)(slOperator);
-      FillLookupSLOperator(logicalOperator->_left,collection);
-      FillLookupSLOperator(logicalOperator->_right,collection);
+      result = FillLookupSLOperator(logicalOperator->_left,collection);
+      if (result == TRI_ERROR_NO_ERROR) {
+        result = FillLookupSLOperator(logicalOperator->_right,collection);
+      }
+      if (result != TRI_ERROR_NO_ERROR) {
+        return result;
+      }        
       break;
     }
     
@@ -2673,7 +2738,106 @@ static void FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_colle
       }        
       break;
     }
+    
+    // .........................................................................
+    // This index operator is special
+    // The parameters are given to us as a list of json objects for EQ(...),
+    // however for the IN(...) operator each parameter in the parameters list
+    // is itself a list. For skiplists, the number of parameters is a 
+    // decreasing sequence. That is, for a skiplist with 3 attributes,
+    // the parameters [ ["a","b","c","d"],["x","y"],[0] ] are allowed, whereas
+    // the parameters [ ["a","b","c"], ["x","y"], [0,1,2] ] are not allowed.
+    // .........................................................................
+    
+    case TRI_IN_INDEX_OPERATOR: {
+      int maxEntries;
+    
+      relationOperator = (TRI_relation_index_operator_t*)(slOperator);
+      relationOperator->_numFields  = 0;
+      relationOperator->_collection = collection;
+      relationOperator->_fields     = NULL;
+      
+      // .......................................................................
+      // check that the parameters field is not null
+      // .......................................................................
+
+      if (relationOperator->_parameters == NULL) {
+        LOG_WARNING("No parameters given when using Skiplist lookup index");
+        return TRI_ERROR_INTERNAL;
+      }
+
+      
+      // .......................................................................
+      // check that the parameters json object is of the type list
+      // .......................................................................
+      
+      if (relationOperator->_parameters->_type != TRI_JSON_LIST) {
+        LOG_WARNING("Format of parameters given when using Skiplist lookup index are invalid (a)");
+        return TRI_ERROR_INTERNAL;
+      }
+      
+      // .......................................................................
+      // Each entry in the list is itself a list
+      // .......................................................................
+      
+      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
+      relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+      if (relationOperator->_fields == NULL) {
+        relationOperator->_numFields = 0; // out of memory?
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+      
+      result     = 0;
+      maxEntries = -1;
+      
+      for (j = 0; j < relationOperator->_numFields; ++j) {
+        jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
+        
+        if (jsonObject == NULL) {
+          result = -1;
+          break;
+        }  
+        
+        if (jsonObject->_type != TRI_JSON_LIST) {
+          result = -2;
+          break;
+        }
+
+        // check and see that entries are non-increasing
+        if (jsonObject->_value._objects._length > maxEntries) {
+          if (maxEntries > 0) {
+            result = -3;
+            break;
+          }
+          maxEntries = jsonObject->_value._objects._length;
+        }
+                
+        // convert json to shaped json
+        shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+        if (shapedObject == NULL) {
+          result = -4;
+          break;
+        }  
+      
+        // store shaped json list
+        relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
+      }
+      
+      if (result != 0) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE,relationOperator->_fields);
+        relationOperator->_fields = NULL;
+        relationOperator->_numFields = 0;
+        LOG_WARNING("Format of parameters given when using Skiplist lookup index are invalid (b)");
+        return TRI_ERROR_INTERNAL;
+      }  
+      
+    }    
+    
+    
   }
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2689,7 +2853,8 @@ static void FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_colle
 
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_operator_t* slOperator) {
   TRI_skiplist_index_t*    skiplistIndex;
-  TRI_skiplist_iterator_t* result;
+  TRI_skiplist_iterator_t* iteratorResult;
+  int                      errorResult;
   
   skiplistIndex = (TRI_skiplist_index_t*)(idx);
   
@@ -2699,13 +2864,16 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_ope
   // received from a user for query the skiplist.
   // .........................................................................
   
-  FillLookupSLOperator(slOperator, skiplistIndex->base._collection); 
+  errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection); 
+  if (errorResult != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
   
   if (skiplistIndex->base._unique) {
-    result = SkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
+    iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
   }
   else {
-    result = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
+    iteratorResult = MultiSkiplistIndex_find(skiplistIndex->_skiplistIndex, &skiplistIndex->_paths, slOperator);
   }
 
   // .........................................................................
@@ -2714,7 +2882,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex(TRI_index_t* idx, TRI_index_ope
   
   TRI_FreeIndexOperator(slOperator); 
   
-  return result;  
+  return iteratorResult;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3325,6 +3493,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
                                       TRI_vector_t* paths,
                                       bool unique) {
   TRI_skiplist_index_t* skiplistIndex;
+  int result;
   size_t j;
 
   skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
@@ -3369,6 +3538,33 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
   else {
     skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new();
   }  
+  
+  if (skiplistIndex->_skiplistIndex == NULL) {
+    TRI_DestroyVector(&skiplistIndex->_paths);
+    TRI_DestroyVectorString(&skiplistIndex->base._fields);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    LOG_WARNING("skiplist index creation failed -- internal error when creating skiplist structure");
+    return NULL;
+  }  
+  
+  
+  // ...........................................................................
+  // Assign the function calls used by the query engine
+  // ...........................................................................
+  
+  result = SkiplistIndex_assignMethod(&(skiplistIndex->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || SkiplistIndex_assignMethod(&(skiplistIndex->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || SkiplistIndex_assignMethod(&(skiplistIndex->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVector(&skiplistIndex->_paths);
+    TRI_DestroyVectorString(&skiplistIndex->base._fields);
+    SkiplistIndex_free(skiplistIndex->_skiplistIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+    
   
   return &skiplistIndex->base;
 }
@@ -3430,13 +3626,12 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // Helper function for TRI_LookupBitarrayIndex
 // .............................................................................
 
-
-static void FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_doc_collection_t* collection) {
+static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_doc_collection_t* collection) {
   TRI_relation_index_operator_t* relationOperator;
   TRI_logical_index_operator_t*  logicalOperator;
   
   if (indexOperator == NULL) {
-    return;
+    return TRI_ERROR_INTERNAL;
   }
   
   switch (indexOperator->_type) {
@@ -3459,12 +3654,55 @@ static void FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_
     
       relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_collection = collection;
-      relationOperator->_fields     = NULL; // we use json rather than shaped_json 
+      relationOperator->_collection = collection;      
+      relationOperator->_fields     = NULL; // bitarray indexes need only the json representation of values
+      
+      // even tough we use the json representation of the values sent by the client
+      // for a bitarray index, we still require the shaped_json values for later
+      // if we intend to force a bitarray index to return a result set irrespective
+      // of whether the index can do this efficiently, then we will require the shaped json
+      // representation of the values to apply any filter condition. Note that
+      // for skiplist indexes, we DO NOT use the json representation, rather the shaped json
+      // representation of the values is used since for skiplists we are ALWAYS required to
+      // go to the document and make comparisons with the document values and the client values
+      
+
+      // when you are ready to use the shaped json values -- uncomment the follow
+      /*      
+      relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
+      if (relationOperator->_fields != NULL) {
+        int j;
+        TRI_json_t* jsonObject;
+        TRI_shaped_json_t* shapedObject;
+        for (j = 0; j < relationOperator->_numFields; ++j) {
+          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
+          shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
+          if (shapedObject) {
+            relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
+          }
+        }
+      }  
+      else {
+        relationOperator->_numFields = 0; // out of memory?
+      }        
+      */
+      
       break;
       
     }
+
+    
+    // .........................................................................
+    // This index operator is special
+    // .........................................................................
+    
+    case TRI_IN_INDEX_OPERATOR: {
+      assert(false);
+    }  
   }
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3482,7 +3720,8 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex(TRI_index_t* idx,
                                               TRI_index_operator_t* indexOperator, 
                                               bool (*filter) (TRI_index_iterator_t*)) {
   TRI_bitarray_index_t* baIndex;
-  TRI_index_iterator_t* result;
+  TRI_index_iterator_t* iteratorResult;
+  int                   errorResult;
   
   baIndex = (TRI_bitarray_index_t*)(idx);
   
@@ -3492,13 +3731,17 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex(TRI_index_t* idx,
   // was received from a client for querying the bitarray index.
   // .........................................................................
   
-  FillLookupBitarrayOperator(indexOperator, baIndex->base._collection); 
+  errorResult = FillLookupBitarrayOperator(indexOperator, baIndex->base._collection); 
+  if (errorResult != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }  
   
-  result = BitarrayIndex_find(baIndex->_bitarrayIndex, indexOperator, &baIndex->_paths, idx, NULL);
+  
+  iteratorResult = BitarrayIndex_find(baIndex->_bitarrayIndex, indexOperator, &baIndex->_paths, idx, NULL);
 
   TRI_FreeIndexOperator(indexOperator); 
   
-  return result;  
+  return iteratorResult;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3875,6 +4118,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // ............................................................................
   // Obtain the bitarray index structure
   // ............................................................................
+  
   baIndex = (TRI_bitarray_index_t*) idx;
   if (idx == NULL) {
     LOG_WARNING("internal error in RemoveBitarrayIndex");
@@ -4208,7 +4452,6 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   createContext = NULL;
   
 
-
   // ...........................................................................
   // Check that the attributes have not been repeated
   // ...........................................................................
@@ -4225,7 +4468,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
     size_t numValues;
 
     if (value == NULL) {    
-      TRI_FreeBitarrayIndex(&baIndex->base);
+      TRI_DestroyVector(&baIndex->_paths);
+      TRI_DestroyVector(&baIndex->_values);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     }      
@@ -4248,20 +4493,40 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   // ...........................................................................
     
   if (cardinality > 64) {
-    TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_DestroyVector(&baIndex->_paths);
+    TRI_DestroyVector(&baIndex->_values);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- more than 64 possible values");
     return NULL;
   }
     
     
   if (cardinality < 1 ) {
-    TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_DestroyVector(&baIndex->_paths);
+    TRI_DestroyVector(&baIndex->_values);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- no index values defined");
     return NULL;
   }
     
  
+
+  // ...........................................................................
+  // Assign the function calls used by the query engine
+  // ...........................................................................
   
+  result = BittarrayIndex_assignMethod(&(baIndex->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || BittarrayIndex_assignMethod(&(baIndex->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || BittarrayIndex_assignMethod(&(baIndex->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVector(&baIndex->_paths);
+    TRI_DestroyVector(&baIndex->_values);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
+    LOG_WARNING("bitarray index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+    
   
   // ...........................................................................
   // attempt to create a new bitarray index
@@ -4270,7 +4535,10 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   result = BitarrayIndex_new(&(baIndex->_bitarrayIndex),TRI_UNKNOWN_MEM_ZONE, cardinality, 
                              &baIndex->_values, supportUndef, createContext);  
   if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVector(&baIndex->_paths);
+    TRI_DestroyVector(&baIndex->_values);
     TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
     return NULL;
   }  

@@ -73,6 +73,15 @@ static void  BitarrayIndex_insertMaskSet              (TRI_bitarray_mask_set_t*,
 
 
 // .............................................................................
+// forward declaration of static functions which are used by the query engine
+// .............................................................................
+
+static int                   BitarrayIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
+static TRI_index_iterator_t* BitarrayIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
+static int                   BitarrayIndex_freeMethodCall   (void*, void*);
+
+
+// .............................................................................
 // forward declaration of static functions used for debugging callbacks
 // comment out to suppress compile warnings -- todo add preprocessor directives
 // .............................................................................
@@ -136,6 +145,41 @@ void BitarrayIndex_free(BitarrayIndex* baIndex) {
 //------------------------------------------------------------------------------
 // Public Methods 
 //------------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Assigns a static function call to a function pointer used by Query Engine
+////////////////////////////////////////////////////////////////////////////////
+
+int BittarrayIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+  switch (methodType) {
+  
+    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
+      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
+      *call = BitarrayIndex_freeMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
+      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
+      *call = BitarrayIndex_queryMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
+      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
+      *call = BitarrayIndex_resultMethodCall;
+      break;
+    }
+
+    default : {
+      assert(false);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a new bitarray index. Failure will return an appropriate error code
@@ -1025,12 +1069,10 @@ int BitarrayIndex_generateInsertBitMask(BitarrayIndex* baIndex, const BitarrayIn
   for (j = 0; j < baIndex->_values._length; ++j) {
     TRI_json_t* valueList;
     TRI_json_t* value;
-    uint64_t    other;    
     uint64_t    tempMask;
     
     value      = TRI_JsonShapedJson(shaper, &(element->fields[j])); // from shaped json to simple json   
     valueList  = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
-    other      = 0;
     tempMask   = 0;
     
     
@@ -1225,6 +1267,39 @@ static void  BitarrayIndex_insertMaskSet(TRI_bitarray_mask_set_t* maskSet, TRI_b
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared query engine callback functions
+////////////////////////////////////////////////////////////////////////////////////////
+
+static int BitarrayIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                         TRI_index_challenge_t* challenge, void* data) {
+  BitarrayIndex* baIndex = (BitarrayIndex*)(theIndex);
+  if (baIndex == NULL || indexOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+static TRI_index_iterator_t* BitarrayIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                          void* data, bool (*filter) (TRI_index_iterator_t*)) {
+  BitarrayIndex* baIndex = (BitarrayIndex*)(theIndex);
+  if (baIndex == NULL || indexOperator == NULL) {
+    return NULL;
+  }
+  assert(false);
+  return NULL;
+}
+
+static int BitarrayIndex_freeMethodCall(void* theIndex, void* data) {
+  BitarrayIndex* baIndex = (BitarrayIndex*)(theIndex);
+  if (baIndex == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Implementation of forward declared debug functions

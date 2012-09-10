@@ -104,11 +104,11 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
                                    TRI_aql_index_t* pickedIndex, 
                                    const TRI_index_t* const idx,
                                    TRI_vector_pointer_t* fieldAccesses) {
-  bool isBetter;
+  bool isBetter = false;
 
   assert(idx);
   assert(fieldAccesses);
-
+  
   if (pickedIndex == NULL) {
     pickedIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_index_t), false);
     pickedIndex->_idx = NULL;
@@ -121,21 +121,98 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
     return NULL;
   }
 
+  
+  // ...........................................................................
+  // If we do not have an index yet, then this index will do. As has been said
+  // before 'any index is better than none'
+  // ...........................................................................
+  
   if (pickedIndex->_idx == NULL) {
-    // any index is better than none
+    pickedIndex->_idx = (TRI_index_t*) idx;
+    pickedIndex->_fieldAccesses = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, fieldAccesses);
+    return pickedIndex;
+  }
+  
+  
+  // ...........................................................................
+  // We have previously selected an index, if it happens to be the primary then
+  // we stick with it.
+  // ...........................................................................
+  
+  if (pickedIndex->_idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return pickedIndex;
+  }
+  
+    
+  // ...........................................................................
+  // Now go through the various possibilities if we have not located something
+  // better.
+  // ...........................................................................
+  
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) ) {  
+    // .........................................................................
+    // If we can used the primary index, then this is better than any other
+    // index so use it. 
+    // .........................................................................
+    isBetter = true;
+  }  
+  
+
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {  
+    // .........................................................................
+    // If the index type is a hash index, use this -- but only if we have NOT
+    // located something better BEFORE.
+    // .........................................................................
     isBetter = true;
   }
-  else {
-    isBetter = idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || // primary index is better than any others
-               (idx->_type == TRI_IDX_TYPE_HASH_INDEX && pickedIndex->_idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || // hash is better than skiplist
-               (idx->_unique && !pickedIndex->_idx->_unique) || // unique indexes are better than non-unique ones 
-               (fieldAccesses->_length < pickedIndex->_fieldAccesses->_length && idx->_unique) || // shorter indexes are better if unique
-               (fieldAccesses->_length > pickedIndex->_fieldAccesses->_length && !idx->_unique); // longer indexes are better if non-unique
-
-    // if we have already picked the primary index, we won't overwrite it with any other index
-    isBetter &= (pickedIndex->_idx->_type != TRI_IDX_TYPE_PRIMARY_INDEX);
+  
+  
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && 
+       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX) ) {  
+    // .........................................................................
+    // If the index type is a skiplist index, use this -- but only if we have NOT
+    // located something better BEFORE.
+    // .........................................................................
+    isBetter = true;
+  }
+  
+  
+  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) && 
+       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX)              &&  
+       (pickedIndex->_idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) ) {  
+    // .........................................................................
+    // If the index type is a bitarray index, use this -- but only if we have NOT
+    // located something better BEFORE.
+    // .........................................................................
+    isBetter = true;
+  }
+  
+  
+  if ( (isBetter == false) && (idx->_unique == true) && (pickedIndex->_idx->_unique == false) ) {  
+    // .........................................................................
+    // If the index is a unique one and the picked index is non-unique, then
+    // replace it with the unique overriding the preferences above. E.g. if
+    // we have a non-unique hash index (which we have chosen) and now we are
+    // testing a unique skiplist, replace it with the skiplist.
+    // .........................................................................
+    isBetter = true;
   }
 
+  
+  if ( (isBetter == false) && 
+       (fieldAccesses->_length < pickedIndex->_fieldAccesses->_length ) &&
+       (idx->_unique == true) ) {  
+    isBetter = true;       
+  }
+  
+  
+  if ( (isBetter == false) && 
+       (fieldAccesses->_length >  pickedIndex->_fieldAccesses->_length ) &&
+       (idx->_unique == false) ) {  
+    isBetter = true;       
+  }
+  
+  
   if (isBetter) { 
     if (pickedIndex->_fieldAccesses != NULL) {
       TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, pickedIndex->_fieldAccesses);
@@ -189,7 +266,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   assert(context);
   assert(collectionName);
   assert(candidates);
-
+  
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
@@ -207,12 +284,12 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       case TRI_IDX_TYPE_GEO2_INDEX:
       case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
       case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      case TRI_IDX_TYPE_BITARRAY_INDEX:
         // ignore all these index types for now
         continue;
       case TRI_IDX_TYPE_PRIMARY_INDEX:
       case TRI_IDX_TYPE_HASH_INDEX:
       case TRI_IDX_TYPE_SKIPLIST_INDEX:
+      case TRI_IDX_TYPE_BITARRAY_INDEX:
         // these indexes are valid candidates
         break;
     }
@@ -239,6 +316,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
       
+        
         if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE || 
             candidate->_type == TRI_AQL_ACCESS_ALL) {
           // wrong index type, doesn't help us at all
@@ -260,6 +338,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           
           TRI_PushBackVectorPointer(&matches, candidate);
         }
+        
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
           if (!IsExactCandidate(candidate)) {
             // wrong access type for hash index
@@ -273,6 +352,21 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           
           TRI_PushBackVectorPointer(&matches, candidate);
         }
+        
+        else if (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) {
+          if (!IsExactCandidate(candidate)) {
+            // wrong access type for hash index
+            continue;
+          }
+          
+          if (candidate->_type == TRI_AQL_ACCESS_LIST) {
+            // we found a list, but the index covers multiple attributes. that means we cannot use list access
+            continue;
+          }
+
+          TRI_PushBackVectorPointer(&matches, candidate);
+        }
+        
         else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
           bool candidateIsExact;
 

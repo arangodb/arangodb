@@ -143,6 +143,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container, TRI_barrier_type_e 
 
   while (ptr != NULL) {
     if (ptr->_type == type) {
+      TRI_UnlockSpin(&container->_lock);
       return true;
     }
     ptr = ptr->_next;

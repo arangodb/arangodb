@@ -85,7 +85,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
   collectionName = TRI_AQL_NODE_STRING(nameNode);
   assert(collectionName);
-
+  
   hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
   if (hint == NULL) {
@@ -93,7 +93,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
     return;
   }
-
+  
   if (hint->_ranges == NULL) {
     // no ranges found to be used as indexes
 

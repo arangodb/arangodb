@@ -519,54 +519,51 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
   // Check the various operator conditions
   // ........................................................................
 
+  
+  // ........................................................................
+  // Check for an 'AND' condition. The following are acceptable: '&', '&&' 'and'
+  // ........................................................................
   if (condition->HasOwnProperty(v8::String::New("&"))) {  
+    operatorType = TRI_AND_INDEX_OPERATOR;
     value = condition->Get(v8::String::New("&"));
-    operatorType = TRI_AND_INDEX_OPERATOR;
-    if (!value->IsArray()) { 
-      // wrong data type for AND condition -- we require [leftOperation,rightOperation]
-      return 0;    
-    }    
   }
-  if (condition->HasOwnProperty(v8::String::New("and"))) {  
+  else if (condition->HasOwnProperty(v8::String::New("&&"))) {  
+    operatorType = TRI_AND_INDEX_OPERATOR;
+    value = condition->Get(v8::String::New("&&"));
+  }  
+  else if (condition->HasOwnProperty(v8::String::New("and"))) {  
+    operatorType = TRI_AND_INDEX_OPERATOR;
     value = condition->Get(v8::String::New("and"));
-    operatorType = TRI_AND_INDEX_OPERATOR;
-    if (!value->IsArray()) { 
-      // wrong data type for AND condition -- we require [leftOperation,rightOperation]
-      return 0;    
-    }    
-  }
+  }  
+  // ........................................................................
+  // Check for an 'OR' condition. The following are acceptable: '|', '||' 'or'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New("|"))) {  
     value = condition->Get(v8::String::New("|"));
     operatorType = TRI_OR_INDEX_OPERATOR;
-    if (!value->IsArray()) { 
-      // wrong data type for OR condition -- we require [leftOperation,rightOperation]
-      return 0;    
-    }    
+  }
+  else if (condition->HasOwnProperty(v8::String::New("||"))) {  
+    value = condition->Get(v8::String::New("||"));
+    operatorType = TRI_OR_INDEX_OPERATOR;
   }
   else if (condition->HasOwnProperty(v8::String::New("or"))) {  
     value = condition->Get(v8::String::New("or"));
     operatorType = TRI_OR_INDEX_OPERATOR;
-    if (!value->IsArray()) { 
-      // wrong data type for OR condition -- we require [leftOperation,rightOperation]
-      return 0;    
-    }    
   }
+  // ........................................................................
+  // Check for an 'NOT' condition. The following are acceptable: '!', 'not'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New("!"))) {  
     value = condition->Get(v8::String::New("!"));
     operatorType = TRI_NOT_INDEX_OPERATOR;
-    if (!value->IsObject()) { 
-      // wrong data type for NOT condition -- we require {condition...} ]
-      return 0;    
-    }    
   }
   else if (condition->HasOwnProperty(v8::String::New("not"))) {  
-    value = condition->Get(v8::String::New("!"));
+    value = condition->Get(v8::String::New("not"));
     operatorType = TRI_NOT_INDEX_OPERATOR;
-    if (!value->IsObject()) { 
-      // wrong data type for NOT condition -- we require {condition...} ]
-      return 0;    
-    }    
   }
+  // ........................................................................
+  // Check for an 'EQUAL' condition. The following are acceptable: '=', '==', 'eq'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New("=="))) {  
     value = condition->Get(v8::String::New("=="));
     operatorType = TRI_EQ_INDEX_OPERATOR;
@@ -575,33 +572,79 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
     value = condition->Get(v8::String::New("="));
     operatorType = TRI_EQ_INDEX_OPERATOR;
   }
+  else if (condition->HasOwnProperty(v8::String::New("eq"))) {  
+    value = condition->Get(v8::String::New("eq"));
+    operatorType = TRI_EQ_INDEX_OPERATOR;
+  }
+  // ........................................................................
+  // Check for an 'NOT EQUAL' condition. The following are acceptable: '!=', '<>, 'ne'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New("!="))) {  
     value = condition->Get(v8::String::New("!="));
     operatorType = TRI_NE_INDEX_OPERATOR;
   }
+  else if (condition->HasOwnProperty(v8::String::New("<>"))) {  
+    value = condition->Get(v8::String::New("<>"));
+    operatorType = TRI_NE_INDEX_OPERATOR;
+  }
+  else if (condition->HasOwnProperty(v8::String::New("ne"))) {  
+    value = condition->Get(v8::String::New("ne"));
+    operatorType = TRI_NE_INDEX_OPERATOR;
+  }
+  // ........................................................................
+  // Check for an 'LESS THAN OR EQUAL' condition. The following are acceptable: '<=', 'le'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New("<="))) {  
     value = condition->Get(v8::String::New("<="));
     operatorType = TRI_LE_INDEX_OPERATOR;
   }
+  else if (condition->HasOwnProperty(v8::String::New("le"))) {  
+    value = condition->Get(v8::String::New("le"));
+    operatorType = TRI_LE_INDEX_OPERATOR;
+  }
+  // ........................................................................
+  // Check for an 'LESS THAN ' condition. The following are acceptable: '<', 'lt'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New("<"))) {  
     value = condition->Get(v8::String::New("<"));
     operatorType = TRI_LT_INDEX_OPERATOR;
   }
+  else if (condition->HasOwnProperty(v8::String::New("lt"))) {  
+    value = condition->Get(v8::String::New("lt"));
+    operatorType = TRI_LT_INDEX_OPERATOR;
+  }
+  // ........................................................................
+  // Check for an 'GREATER THAN OR EQUAL' condition. The following are acceptable: '>=', 'ge'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New(">="))) {  
     value = condition->Get(v8::String::New(">="));
     operatorType = TRI_GE_INDEX_OPERATOR;
   }
+  else if (condition->HasOwnProperty(v8::String::New("ge"))) {  
+    value = condition->Get(v8::String::New("ge"));
+    operatorType = TRI_GE_INDEX_OPERATOR;
+  }
+  // ........................................................................
+  // Check for an 'GREATER THAN ' condition. The following are acceptable: '>', 'gt'
+  // ........................................................................
   else if (condition->HasOwnProperty(v8::String::New(">"))) {  
     value = condition->Get(v8::String::New(">"));
     operatorType = TRI_GT_INDEX_OPERATOR;
   }
+  else if (condition->HasOwnProperty(v8::String::New("gt"))) {  
+    value = condition->Get(v8::String::New("gt"));
+    operatorType = TRI_GT_INDEX_OPERATOR;
+  }
+  // ........................................................................
+  // We received an invalid condition. Most likely we are really expressing
+  // a condition {"x":1} which should be BY_EXAMPLE rather than BY_CONDITION
+  // ........................................................................
   else { // invalid operator index condition
     return 0;                                                      
   }  
-
-
+  
   // ........................................................................
-  // Since we have a valid condition condition, act upon it
+  // Since we have a valid condition, act upon it
   // may require recursion
   // ........................................................................
   
@@ -609,7 +652,41 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
   
     case TRI_AND_INDEX_OPERATOR: 
     case TRI_OR_INDEX_OPERATOR: {
+    
+      // ....................................................................
+      // For both the 'AND' and 'OR' index operators, we require an array
+      // with 2 elements for the value of the condition object. E.g. we 
+      // expect: {"&": [{"x":0},{"x":1}]} <-- this is a special "and" call
+      //                                      see the ensureBitarray doc for
+      //                                      more information.
+      // More common is 
+      // expect: {"or": [{"x":0},{"x":1}]} <-- which means return all docs
+      //                                       where attribute "x" has the
+      //                                       value of 0 or 1.
+      // To have "x" = 0 or "x" = 1 or "x" = 2 we expect:
+      // {"or":[{"x":0},{"or":[{"x":1},{"x":2}]}]} or any valid iteration
+      // of this. TODO: shortcut this with the "list" index operator
+      // ....................................................................
+      
+      // ....................................................................
+      // wrong data type for this condition -- we require [leftOperation,rightOperation]
+      // ....................................................................
+
+      if (!value->IsArray()) {  
+        return 0;    
+      }    
+      
       v8::Handle<v8::Array> andValues  = v8::Handle<v8::Array>::Cast(value);
+
+      
+      // ....................................................................
+      // Check the length of the array to ensure that it is exactly 2
+      // ....................................................................
+      
+      if (andValues->Length() != 2) {
+        return 0;    
+      }
+      
       v8::Handle<v8::Value> leftValue  = andValues->Get(0);
       v8::Handle<v8::Value> rightValue = andValues->Get(1);
       
@@ -619,6 +696,11 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
       
       v8::Handle<v8::Object> leftObject  = v8::Handle<v8::Object>::Cast(leftValue);
       v8::Handle<v8::Object> rightObject = v8::Handle<v8::Object>::Cast(rightValue);
+      
+      
+      // ....................................................................
+      // recurse the left and right operators
+      // ....................................................................
       
       TRI_index_operator_t* leftOp  = SetupConditionsBitarrayHelper(idx, shaper, leftObject);
       TRI_index_operator_t* rightOp = SetupConditionsBitarrayHelper(idx, shaper, rightObject);
@@ -634,7 +716,22 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
     }
   
     case TRI_NOT_INDEX_OPERATOR: {
+    
+      // ....................................................................
+      // wrong data type for this condition -- we require {...} which becomes
+      // the left object for not operator.
+      // ....................................................................
+
+      if (!value->IsObject()) { 
+        return 0;    
+      }    
+    
       v8::Handle<v8::Object> leftObject  = v8::Handle<v8::Object>::Cast(value);
+
+      
+      // ....................................................................
+      // recurse the left and only operator
+      // ....................................................................
       TRI_index_operator_t* leftOp  = SetupConditionsBitarrayHelper(idx, shaper, leftObject);
       
       if (leftOp == 0) {
@@ -651,6 +748,7 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
     case TRI_LT_INDEX_OPERATOR: 
     case TRI_GE_INDEX_OPERATOR: 
     case TRI_GT_INDEX_OPERATOR: {
+    
       v8::Handle<v8::Object> leftObject  = v8::Handle<v8::Object>::Cast(value);
       TRI_json_t* parameters = SetupBitarrayAttributeValuesHelper(idx, leftObject); 
       
@@ -667,7 +765,7 @@ static TRI_index_operator_t* SetupConditionsBitarrayHelper (TRI_index_t* idx,
     }  
     
   } // end of switch (operatorType)
-  
+    
   return indexOperator;
 }
 
@@ -1209,6 +1307,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   
   else {
     LOG_WARNING("index iterator returned with a NULL value in ExecuteBitarrayQuery");
+    // return an empty list
   }
  
   if (lock) { 
