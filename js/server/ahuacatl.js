@@ -456,6 +456,40 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a bitarray
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_BITARRAY (collection, idx, example) {
+  return internal.db[collection].BY_CONDITION_BITARRAY(idx, example).documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using a bitarray
+/// (multiple index values) TODO: replace by 'IN index operator'
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
+  var result = [ ];
+
+  for (var i in values) {
+    var value = values[i];
+    var example = { };
+
+    example[attribute] = value;
+
+    var documents = internal.db[collection].BY_EXAMPLE_BITARRAY(idx, example).documents;
+    for (var j in documents) {
+      result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get documents from the specified collection using a skiplist
 ////////////////////////////////////////////////////////////////////////////////
 

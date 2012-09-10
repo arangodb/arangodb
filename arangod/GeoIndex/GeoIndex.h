@@ -102,7 +102,7 @@ int GeoIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 // Allows one or more call back functions to be assigned
 ///////////////////////////////////////////////////////////////////////////////////////
 
-int GeoIndexIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
+int GeoIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 GeoIndex * GeoIndex_new(void);
 void GeoIndex_free(GeoIndex * gi);

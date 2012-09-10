@@ -335,6 +335,7 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
+
   // do some basic optimisations in the AST
   if (!TRI_OptimiseAql(context)) {
     // constant folding failed
