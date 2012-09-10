@@ -10,7 +10,7 @@ describe ArangoDB do
   context "dealing with collections:" do
 
 ################################################################################
-## reading all collection
+## reading all collections
 ################################################################################
 
     context "all collections:" do
