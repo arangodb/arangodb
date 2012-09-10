@@ -308,7 +308,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.flex \
 	$(top_srcdir)/m4/configure.bison \
 	$(top_srcdir)/m4/external.math \
-	$(top_srcdir)/m4/external.ncurses \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
 	$(top_srcdir)/m4/all-in-one.boost \
@@ -930,8 +929,8 @@ LIBOBJS = @LIBOBJS@
 ################################################################################
 ### @brief libraries
 ################################################################################
-LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @NCURSES_LIBS@ \
-	@OPENSSL_LIBS@ @PROTOBUF_LIBS@ @READLINE_LIBS@ $(am__append_6)
+LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ \
+	@PROTOBUF_LIBS@ @READLINE_LIBS@ $(am__append_6)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -943,10 +942,6 @@ MKDIR_P = @MKDIR_P@
 MRUBY_CPPFLAGS = @MRUBY_CPPFLAGS@
 MRUBY_LDFLAGS = @MRUBY_LDFLAGS@
 MRUBY_LIBS = @MRUBY_LIBS@
-NCURSES_CONFIG = @NCURSES_CONFIG@
-NCURSES_CPPFLAGS = @NCURSES_CPPFLAGS@
-NCURSES_LDFLAGS = @NCURSES_LDFLAGS@
-NCURSES_LIBS = @NCURSES_LIBS@
 OBJEXT = @OBJEXT@
 OPENSSL_CPPFLAGS = @OPENSSL_CPPFLAGS@
 OPENSSL_LDFLAGS = @OPENSSL_LDFLAGS@
@@ -1154,17 +1149,17 @@ ACLOCAL_AMFLAGS = -I m4
 ### @brief preprocessor flags
 ################################################################################
 AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ @NCURSES_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ \
-	@V8_CPPFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3) \
+	@LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
+	@READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ \
+	$(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_5)
 
 ################################################################################
 ### @brief linker flags
 ################################################################################
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
-	@NCURSES_LDFLAGS@ @OPENSSL_LDFLAGS@ @READLINE_LDFLAGS@ \
-	@PROTOBUF_LDFLAGS@ @V8_LDFLAGS@ $(am__append_4)
+	@OPENSSL_LDFLAGS@ @READLINE_LDFLAGS@ @PROTOBUF_LDFLAGS@ \
+	@V8_LDFLAGS@ $(am__append_4)
 
 ################################################################################
 ### @brief auxiliary libraries
