@@ -71,7 +71,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case PAYMENT:              return "402 Payment Required";
     case FORBIDDEN:            return "403 Forbidden";
     case NOT_FOUND:            return "404 Not Found";
-    case METHOD_NOT_ALLOWED:   return "405 Method";
+    case METHOD_NOT_ALLOWED:   return "405 Method Not Supported";
     case CONFLICT:             return "409 Conflict";
     case PRECONDITION_FAILED:  return "412 Precondition Failed";
     case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
