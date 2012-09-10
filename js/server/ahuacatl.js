@@ -70,7 +70,7 @@ function AHUACATL_THROW (error, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_INDEX (collection, indexTypes) {
-  var indexes = collection.getIndexes();
+  var indexes = collection.getIndexesNL();
 
   for (var i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
@@ -385,7 +385,7 @@ function AHUACATL_LIST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS (collection) {
-  return internal.db[collection].all().toArray();
+  return internal.db[collection].ALL_NL(0, null).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -395,7 +395,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 
 function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
   try {
-    return [ internal.db[collection].document(id) ];
+    return [ internal.db[collection].document_nl(id) ];
   }
   catch (e) {
     return [ ];
@@ -413,7 +413,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
   for (var i in values) {
     var id = values[i];
     try {
-      var d = internal.db[collection].document(id);
+      var d = internal.db[collection].document_nl(id);
       result.push(d);
     }
     catch (e) {
@@ -429,7 +429,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
-  return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+  return internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,7 +446,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+    var documents = internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -460,7 +460,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
-  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;
+  return internal.db[collection].BY_CONDITION_SKIPLIST_NL(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +477,7 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST_NL(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -1850,7 +1850,7 @@ function AHUACATL_GEO_NEAR () {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
+  var result = internal.db[collection].NEAR_NL(idx, latitude, longitude, limit);
   if (distanceAttribute == null) {
     return result.documents;
   }
@@ -1882,7 +1882,7 @@ function AHUACATL_GEO_WITHIN () {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
+  var result = internal.db[collection].WITHIN_NL(idx, latitude, longitude, radius);
   if (distanceAttribute == null) {
     return result.documents;
   }
@@ -2027,7 +2027,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
       var clonedEdges = AHUACATL_CLONE(edges);
       var clonedVertices = AHUACATL_CLONE(vertices);
       clonedEdges.push(subEdge);
-      clonedVertices.push(internal.db._document(targetId));
+      clonedVertices.push(internal.db._document_nl(targetId));
       
       var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
       for (k = 0; k < connected.length; ++k) {
