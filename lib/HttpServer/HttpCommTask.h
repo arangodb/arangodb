@@ -89,7 +89,8 @@ namespace triagens {
                       ConnectionInfo const& info,
                       double keepAliveTimeout) 
         : Task("HttpCommTask"),
-          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout) {
+          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout),
+          _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -180,8 +181,12 @@ namespace triagens {
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
 
-              // and different methods
-              switch (this->_request->requestType()) {
+              // store the original request's type. we need it later when responding
+              // (original request objects gets deleted before responding)
+              this->_requestType = this->_request->requestType();
+
+              // handle different HTTP methods
+              switch (this->_requestType) {
                 case HttpRequest::HTTP_REQUEST_GET:
                 case HttpRequest::HTTP_REQUEST_DELETE:
                 case HttpRequest::HTTP_REQUEST_HEAD:
@@ -359,10 +364,17 @@ namespace triagens {
             // keep-alive is the default
             response->setHeader("connection", strlen("connection"), "Keep-Alive");
           }
+          
+          if (this->_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
+            // clear body if this is an HTTP HEAD request
+            // HEAD must not return a body
+            response->headResponse(response->bodySize());
+          }
 
           // save header
           buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
           response->writeHeader(buffer);
+
           buffer->appendText(response->body());
 
           this->_writeBuffers.push_back(buffer);
@@ -381,6 +393,23 @@ namespace triagens {
           // start output
           this->fillWriteBuffer();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HttpServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        HttpRequest::HttpRequestType _requestType;
     };
   }
 }

@@ -2,6 +2,7 @@
 test -d logs || mkdir logs
 
 rspec --format d \
+	api-http-spec.rb \
 	api-collection-spec.rb \
 	rest-create-document-spec.rb \
 	rest-read-document-spec.rb \
