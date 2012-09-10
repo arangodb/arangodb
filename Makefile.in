@@ -363,7 +363,7 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/socket-utils.c lib/BasicsC/string-buffer.c \
 	lib/BasicsC/strings.c lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
-	lib/BasicsC/terminal-utils-ncurses.c \
+	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
 	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
 	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
@@ -434,7 +434,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/string-buffer.$(OBJEXT) \
 	lib/BasicsC/strings.$(OBJEXT) lib/BasicsC/structures.$(OBJEXT) \
 	lib/BasicsC/system-functions.$(OBJEXT) \
-	lib/BasicsC/terminal-utils-ncurses.$(OBJEXT) \
+	lib/BasicsC/terminal-utils-posix.$(OBJEXT) \
 	lib/BasicsC/terminal-utils.$(OBJEXT) \
 	lib/BasicsC/threads-posix.$(OBJEXT) \
 	lib/BasicsC/vector.$(OBJEXT) lib/BasicsC/voc-errors.$(OBJEXT) \
@@ -1319,7 +1319,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/socket-utils.c lib/BasicsC/string-buffer.c \
 	lib/BasicsC/strings.c lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
-	lib/BasicsC/terminal-utils-ncurses.c \
+	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
 	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
 	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
@@ -1909,7 +1909,7 @@ lib/BasicsC/structures.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/system-functions.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
-lib/BasicsC/terminal-utils-ncurses.$(OBJEXT):  \
+lib/BasicsC/terminal-utils-posix.$(OBJEXT):  \
 	lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/terminal-utils.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
@@ -3021,7 +3021,7 @@ mostlyclean-compile:
 	-rm -f lib/BasicsC/strings.$(OBJEXT)
 	-rm -f lib/BasicsC/structures.$(OBJEXT)
 	-rm -f lib/BasicsC/system-functions.$(OBJEXT)
-	-rm -f lib/BasicsC/terminal-utils-ncurses.$(OBJEXT)
+	-rm -f lib/BasicsC/terminal-utils-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/terminal-utils.$(OBJEXT)
 	-rm -f lib/BasicsC/threads-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/vector.$(OBJEXT)
@@ -3287,7 +3287,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/strings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/structures.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/system-functions.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils-ncurses.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/threads-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/vector.Po@am__quote@
