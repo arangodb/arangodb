@@ -4947,8 +4947,6 @@ TRI_sim_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
                                                    TRI_vocbase_col_t const*& collection,
                                                    v8::Handle<v8::Object>* err) {
   // extract the collection
-  v8::Handle<v8::Object> operand = argv.Holder();
-
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
   if (col == 0 || col->_collection == 0) {
     return 0;
@@ -4975,9 +4973,7 @@ TRI_sim_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments const& ar
                                                          TRI_vocbase_col_t const*& collection,
                                                          v8::Handle<v8::Object>* err) {
   // extract the collection
-  v8::Handle<v8::Object> operand = argv.Holder();
-
-  collection = UseCollection(operand, err);
+  collection = UseCollection(argv.Holder(), err);
 
   if (collection == 0) {
     return 0;
