@@ -44,10 +44,10 @@ extern "C" {
 ///
 /// Data is stored in datafiles. A set of datafiles forms a collection. A
 /// datafile can be read-only and sealed or read-write. All datafiles of a
-/// collections are stored in a directory. This directory contains the following
+/// collection are stored in a directory. This directory contains the following
 /// files:
 ///
-/// - parameter.json: The parameter of a collection.
+/// - parameter.json: The parameters of a collection.
 ///
 /// - datafile-NNN.db: A read-only datafile. The number NNN is the datafile
 ///     identifier, see @ref TRI_datafile_t.
@@ -61,11 +61,11 @@ extern "C" {
 ///
 /// The structure @ref TRI_collection_t is abstract. Currently, there are
 /// two concrete sub-classes @ref TRI_sim_collection_t and
-/// @ref TRI_blob_collection_t.
+/// @ref TRI_shape_collection_t.
 ///
-/// @section BlobCollection Blob Collection
+/// @section ShapeCollection Shape Collection
 ///
-/// @copydetails TRI_blob_collection_t
+/// @copydetails TRI_shape_collection_t
 ///
 /// @section DocCollection Document Collection
 ///
@@ -89,7 +89,7 @@ extern "C" {
 /// @brief collection version
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_VERSION         (1)
+#define TRI_COL_VERSION         (2)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection meta info filename
@@ -115,7 +115,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_IS_SIMPLE_COLLECTION(type) \
-  ((type) == TRI_COL_TYPE_SIMPLE_DOCUMENT || (type) == TRI_COL_TYPE_SIMPLE_EDGE || (type) == TRI_COL_TYPE_SIMPLE_ATTACHMENT)
+  ((type) == TRI_COL_TYPE_SIMPLE_DOCUMENT || (type) == TRI_COL_TYPE_SIMPLE_EDGE)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -166,10 +166,9 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_TYPE_BLOB = 1,
+  TRI_COL_TYPE_SHAPE = 1,
   TRI_COL_TYPE_SIMPLE_DOCUMENT = 2,
-  TRI_COL_TYPE_SIMPLE_EDGE = 3,
-  TRI_COL_TYPE_SIMPLE_ATTACHMENT = 4
+  TRI_COL_TYPE_SIMPLE_EDGE = 3
 }
 TRI_col_type_e;
 

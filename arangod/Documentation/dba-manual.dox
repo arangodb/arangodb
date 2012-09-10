@@ -84,8 +84,12 @@
 ///////////////////////////////////////////////////////////////
 ///
 /// Database documents are stored in memory-mapped files. Per default, these
-/// memory-mapped files are synced frequently - storing all documents securely
-/// at once (durability).
+/// memory-mapped files are synced regularly but not instantly. This is often a
+/// good tradeoff between storage performance and durability. If this level of
+/// durabiity is too low for an application, the server can also sync all
+/// modifications to disk instantly. This will give full durability but will come
+/// with a performance penalty as each data modification will trigger a sync
+/// I/O operation.
 ///
 /// @section DbaManualBasicsMvcc AppendOnly/MVCC
 ////////////////////////////////////////////////
@@ -163,14 +167,14 @@
 ///
 /// @EMBEDTOC{DbaManualDatafileDebuggerTOC}
 ///
-/// AranagoDB uses append-only journals. The corruption should only occur when
-/// the database server is kill. In this case, the corruption should only
+/// AranagoDB uses append-only journals. Data corruption should only occur when
+/// the database server is killed. In this case, the corruption should only
 /// occur in the last object(s) being written to the journal.
 ///
 /// If a corruption occurs within a normal datafile, then this can only happen
 /// if a hardware fault occurred.
 ///
-/// If a journal or datafile is corrupt, shutdown the database server and start
+/// If a journal or datafile is corrupt, shut down the database server and start
 /// the program
 ///
 /// @LIT{arango-dfdb}

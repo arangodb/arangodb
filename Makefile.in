@@ -206,7 +206,7 @@ noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
 @ENABLE_MRUBY_TRUE@am__append_10 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
-DIST_COMMON = README $(am__configure_deps) \
+DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
 	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
 	$(srcdir)/3rdParty/Makefile.all-in-one-protobuf \
@@ -561,6 +561,7 @@ am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
 lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__EXEEXT_1 = bin/arangoirb$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
+	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"
 @ENABLE_ZEROMQ_TRUE@am__EXEEXT_2 = bin/zclient$(EXEEXT) \
 @ENABLE_ZEROMQ_TRUE@	bin/zserver$(EXEEXT)
@@ -659,12 +660,13 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
-	arangod/VocBase/barrier.c arangod/VocBase/blob-collection.c \
+	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
 	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c arangod/MRServer/ApplicationMR.cpp \
@@ -726,7 +728,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/V8Server/bin_arangod-v8-vocbase.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-auth.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-barrier.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-blob-collection.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-cleanup.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-compactor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-datafile.$(OBJEXT) \
@@ -735,6 +737,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-headers.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-index.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT) \
@@ -854,6 +857,10 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+man1dir = $(mandir)/man1
+man8dir = $(mandir)/man8
+NROFF = nroff
+MANS = $(dist_man_MANS)
 DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA)
 ETAGS = etags
 CTAGS = ctags
@@ -1039,6 +1046,19 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(am__append_19) $(am__append_20) $(am__append_22) \
 	$(PROTOBUF_FILES) $(am__append_24) $(am__append_25) \
 	$(am__append_26) $(am__append_27) $(am__append_28)
+
+################################################################################
+### @brief man pages to install
+################################################################################
+
+################################################################################
+### @brief install man pages
+################################################################################
+dist_man_MANS = Doxygen/man/man1/arangoimp.1 \
+	Doxygen/man/man1/arangosh.1 Doxygen/man/man8/rcarangod.8 \
+	Doxygen/man/man8/arangod.8 Doxygen/man/man8/arango-dfdb.8 \
+	Doxygen/man/man8/arango-password.8 \
+	Doxygen/man/man8/arango-upgrade.8
 
 ################################################################################
 ### @brief files to cleanup
@@ -1230,7 +1250,6 @@ WIKI = \
 	DbaManualAuthentication \
 	DbaManualDatafileDebugger \
 	DefineAction \
-	ExamplesSetup \
 	FirstStepsArangoDB \
 	Glossary \
 	Graphs \
@@ -1471,12 +1490,13 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-objects.cpp arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
-	arangod/VocBase/barrier.c arangod/VocBase/blob-collection.c \
+	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
 	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
 	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c $(am__append_13)
@@ -2714,7 +2734,7 @@ arangod/VocBase/bin_arangod-auth.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-barrier.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/bin_arangod-blob-collection.$(OBJEXT):  \
+arangod/VocBase/bin_arangod-cleanup.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-collection.$(OBJEXT):  \
@@ -2739,6 +2759,9 @@ arangod/VocBase/bin_arangod-index.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT):  \
@@ -2924,7 +2947,7 @@ mostlyclean-compile:
 	-rm -f arangod/V8Server/bin_arangod-v8-vocbase.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-auth.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-barrier.$(OBJEXT)
-	-rm -f arangod/VocBase/bin_arangod-blob-collection.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-cleanup.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-compactor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-datafile.$(OBJEXT)
@@ -2933,6 +2956,7 @@ mostlyclean-compile:
 	-rm -f arangod/VocBase/bin_arangod-headers.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-index.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT)
@@ -3189,7 +3213,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/V8Server/$(DEPDIR)/bin_arangod-v8-vocbase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-auth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-barrier.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-compactor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-datafile.Po@am__quote@
@@ -3198,6 +3222,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-synchroniser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-voc-shaper.Po@am__quote@
@@ -3987,21 +4012,21 @@ arangod/VocBase/bin_arangod-barrier.obj: arangod/VocBase/barrier.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-barrier.obj `if test -f 'arangod/VocBase/barrier.c'; then $(CYGPATH_W) 'arangod/VocBase/barrier.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/barrier.c'; fi`
 
-arangod/VocBase/bin_arangod-blob-collection.o: arangod/VocBase/blob-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-blob-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Tpo -c -o arangod/VocBase/bin_arangod-blob-collection.o `test -f 'arangod/VocBase/blob-collection.c' || echo '$(srcdir)/'`arangod/VocBase/blob-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Po
+arangod/VocBase/bin_arangod-cleanup.o: arangod/VocBase/cleanup.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-cleanup.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Tpo -c -o arangod/VocBase/bin_arangod-cleanup.o `test -f 'arangod/VocBase/cleanup.c' || echo '$(srcdir)/'`arangod/VocBase/cleanup.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/blob-collection.c' object='arangod/VocBase/bin_arangod-blob-collection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/cleanup.c' object='arangod/VocBase/bin_arangod-cleanup.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-blob-collection.o `test -f 'arangod/VocBase/blob-collection.c' || echo '$(srcdir)/'`arangod/VocBase/blob-collection.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-cleanup.o `test -f 'arangod/VocBase/cleanup.c' || echo '$(srcdir)/'`arangod/VocBase/cleanup.c
 
-arangod/VocBase/bin_arangod-blob-collection.obj: arangod/VocBase/blob-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-blob-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Tpo -c -o arangod/VocBase/bin_arangod-blob-collection.obj `if test -f 'arangod/VocBase/blob-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/blob-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/blob-collection.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-blob-collection.Po
+arangod/VocBase/bin_arangod-cleanup.obj: arangod/VocBase/cleanup.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-cleanup.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Tpo -c -o arangod/VocBase/bin_arangod-cleanup.obj `if test -f 'arangod/VocBase/cleanup.c'; then $(CYGPATH_W) 'arangod/VocBase/cleanup.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/cleanup.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-cleanup.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/blob-collection.c' object='arangod/VocBase/bin_arangod-blob-collection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/cleanup.c' object='arangod/VocBase/bin_arangod-cleanup.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-blob-collection.obj `if test -f 'arangod/VocBase/blob-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/blob-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/blob-collection.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-cleanup.obj `if test -f 'arangod/VocBase/cleanup.c'; then $(CYGPATH_W) 'arangod/VocBase/cleanup.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/cleanup.c'; fi`
 
 arangod/VocBase/bin_arangod-collection.o: arangod/VocBase/collection.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-collection.Tpo -c -o arangod/VocBase/bin_arangod-collection.o `test -f 'arangod/VocBase/collection.c' || echo '$(srcdir)/'`arangod/VocBase/collection.c
@@ -4130,6 +4155,22 @@ arangod/VocBase/bin_arangod-shadow-data.obj: arangod/VocBase/shadow-data.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/shadow-data.c' object='arangod/VocBase/bin_arangod-shadow-data.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-shadow-data.obj `if test -f 'arangod/VocBase/shadow-data.c'; then $(CYGPATH_W) 'arangod/VocBase/shadow-data.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shadow-data.c'; fi`
+
+arangod/VocBase/bin_arangod-shape-collection.o: arangod/VocBase/shape-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shape-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Tpo -c -o arangod/VocBase/bin_arangod-shape-collection.o `test -f 'arangod/VocBase/shape-collection.c' || echo '$(srcdir)/'`arangod/VocBase/shape-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/shape-collection.c' object='arangod/VocBase/bin_arangod-shape-collection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-shape-collection.o `test -f 'arangod/VocBase/shape-collection.c' || echo '$(srcdir)/'`arangod/VocBase/shape-collection.c
+
+arangod/VocBase/bin_arangod-shape-collection.obj: arangod/VocBase/shape-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shape-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Tpo -c -o arangod/VocBase/bin_arangod-shape-collection.obj `if test -f 'arangod/VocBase/shape-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/shape-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shape-collection.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/shape-collection.c' object='arangod/VocBase/bin_arangod-shape-collection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-shape-collection.obj `if test -f 'arangod/VocBase/shape-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/shape-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shape-collection.c'; fi`
 
 arangod/VocBase/bin_arangod-simple-collection.o: arangod/VocBase/simple-collection.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-simple-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Tpo -c -o arangod/VocBase/bin_arangod-simple-collection.o `test -f 'arangod/VocBase/simple-collection.c' || echo '$(srcdir)/'`arangod/VocBase/simple-collection.c
@@ -4788,6 +4829,82 @@ PerfTests/bin_zserver-zserver.obj: PerfTests/zserver.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zserver.cpp' object='PerfTests/bin_zserver-zserver.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zserver-zserver.obj `if test -f 'PerfTests/zserver.cpp'; then $(CYGPATH_W) 'PerfTests/zserver.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zserver.cpp'; fi`
+install-man1: $(dist_man_MANS)
+	@$(NORMAL_INSTALL)
+	test -z "$(man1dir)" || $(MKDIR_P) "$(DESTDIR)$(man1dir)"
+	@list=''; test -n "$(man1dir)" || exit 0; \
+	{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
+	} | while read p; do \
+	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; echo "$$p"; \
+	done | \
+	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
+	sed 'N;N;s,\n, ,g' | { \
+	list=; while read file base inst; do \
+	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
+	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
+	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst" || exit $$?; \
+	  fi; \
+	done; \
+	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
+	while read files; do \
+	  test -z "$$files" || { \
+	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man1dir)'"; \
+	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man1dir)" || exit $$?; }; \
+	done; }
+
+uninstall-man1:
+	@$(NORMAL_UNINSTALL)
+	@list=''; test -n "$(man1dir)" || exit 0; \
+	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
+	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
+	test -z "$$files" || { \
+	  echo " ( cd '$(DESTDIR)$(man1dir)' && rm -f" $$files ")"; \
+	  cd "$(DESTDIR)$(man1dir)" && rm -f $$files; }
+install-man8: $(dist_man_MANS)
+	@$(NORMAL_INSTALL)
+	test -z "$(man8dir)" || $(MKDIR_P) "$(DESTDIR)$(man8dir)"
+	@list=''; test -n "$(man8dir)" || exit 0; \
+	{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.8[a-z]*$$/p'; \
+	} | while read p; do \
+	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; echo "$$p"; \
+	done | \
+	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
+	sed 'N;N;s,\n, ,g' | { \
+	list=; while read file base inst; do \
+	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
+	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man8dir)/$$inst'"; \
+	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man8dir)/$$inst" || exit $$?; \
+	  fi; \
+	done; \
+	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
+	while read files; do \
+	  test -z "$$files" || { \
+	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man8dir)'"; \
+	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man8dir)" || exit $$?; }; \
+	done; }
+
+uninstall-man8:
+	@$(NORMAL_UNINSTALL)
+	@list=''; test -n "$(man8dir)" || exit 0; \
+	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.8[a-z]*$$/p'; \
+	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
+	test -z "$$files" || { \
+	  echo " ( cd '$(DESTDIR)$(man8dir)' && rm -f" $$files ")"; \
+	  cd "$(DESTDIR)$(man8dir)" && rm -f $$files; }
 install-arangosysconfDATA: $(arangosysconf_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(arangosysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(arangosysconfdir)"
@@ -4885,6 +5002,19 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
 distdir: $(DISTFILES)
+	@list='$(MANS)'; if test -n "$$list"; then \
+	  list=`for p in $$list; do \
+	    if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	    if test -f "$$d$$p"; then echo "$$d$$p"; else :; fi; done`; \
+	  if test -n "$$list" && \
+	    grep 'ab help2man is required to generate this page' $$list >/dev/null; then \
+	    echo "error: found man pages containing the \`missing help2man' replacement text:" >&2; \
+	    grep -l 'ab help2man is required to generate this page' $$list | sed 's/^/         /' >&2; \
+	    echo "       to fix them, install help2man, remove and regenerate the man pages;" >&2; \
+	    echo "       typically \`make maintainer-clean' will remove them" >&2; \
+	    exit 1; \
+	  else :; fi; \
+	else :; fi
 	$(am__remove_distdir)
 	test -d "$(distdir)" || mkdir "$(distdir)"
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -5034,9 +5164,9 @@ distcleancheck: distclean
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
-all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(DATA)
+all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -5183,7 +5313,8 @@ info: info-am
 
 info-am:
 
-install-data-am: install-arangosysconfDATA install-nobase_pkgdataDATA
+install-data-am: install-arangosysconfDATA install-man \
+	install-nobase_pkgdataDATA
 
 install-dvi: install-dvi-am
 
@@ -5199,7 +5330,7 @@ install-info: install-info-am
 
 install-info-am:
 
-install-man:
+install-man: install-man1 install-man8
 
 install-pdf: install-pdf-am
 
@@ -5231,7 +5362,10 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
-	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
+	uninstall-man uninstall-nobase_pkgdataDATA \
+	uninstall-sbinPROGRAMS
+
+uninstall-man: uninstall-man1 uninstall-man8
 
 .MAKE: all check install install-am install-strip
 
@@ -5246,13 +5380,14 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	install-arangosysconfDATA install-binPROGRAMS install-data \
 	install-data-am install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-nobase_pkgdataDATA \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-info-am install-man install-man1 install-man8 \
+	install-nobase_pkgdataDATA install-pdf install-pdf-am \
+	install-ps install-ps-am install-sbinPROGRAMS install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
+	uninstall-man uninstall-man1 uninstall-man8 \
 	uninstall-nobase_pkgdataDATA uninstall-sbinPROGRAMS
 
 
@@ -5371,6 +5506,7 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
+	$(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
 	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
 
 	@test "$(PROTO)" == "unix" || (rm -f "$(STARTFILE)"; while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done)
@@ -5428,6 +5564,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
+	$(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
@@ -5445,6 +5582,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
+	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
 	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
 
@@ -5560,6 +5698,7 @@ unittests-bitarray-index:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
+	$(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_BITARRAY) || test "x$(FORCE)" == "x1"
 
 	@ rm -rf "$(VOCDIR)"
@@ -5602,6 +5741,8 @@ built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
 
 Doxygen/.setup-directories:
 	@test -d Doxygen || mkdir Doxygen
+	@test -d Doxygen/doc || mkdir Doxygen/doc
+	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
 	@test -d Doxygen/js || mkdir Doxygen/js
 	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
 	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
@@ -5611,11 +5752,13 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
 	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/doc || mkdir Doxygen/doc
-	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
+	@test -d Doxygen/man || mkdir Doxygen/man
+	@test -d Doxygen/man/man1 || mkdir Doxygen/man/man1
+	@test -d Doxygen/man/man8 || mkdir Doxygen/man/man8
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@test -d Doxygen/xml || mkdir Doxygen/xml
 	@touch $@
 
 Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
@@ -5704,6 +5847,15 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
+################################################################################
+### @brief man pages
+################################################################################
+
+.PHONY: man
+
+man: Doxygen/.setup-directories
+	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
 
 ################################################################################
 ################################################################################

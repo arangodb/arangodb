@@ -897,13 +897,23 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
 /// @brief execute a skiplist query (by condition or by example)
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, std::string const& signature, const query_t type) {
+static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, 
+                                                   std::string const& signature, 
+                                                   const query_t type, 
+                                                   const bool lock) {
   v8::HandleScope scope;
 
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_sim_collection_t* sim = 0;
+  
+  if (lock) {
+    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  }
+  else {
+    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  }
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -911,7 +921,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
 
   // expecting index, example, skip, and limit
   if (argv.Length() < 2) {
-    TRI_ReleaseCollection(collection);
+    if (lock) {
+      TRI_ReleaseCollection(collection);
+    }
 
     std::string usage("Usage: ");
     usage += signature;
@@ -921,7 +933,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   }
 
   if (! argv[1]->IsObject()) {
-    TRI_ReleaseCollection(collection);
+    if (lock) {
+      TRI_ReleaseCollection(collection);
+    }
     std::string msg;
 
     if (type == QUERY_EXAMPLE) {
@@ -952,7 +966,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   // inside a read transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
+  if (lock) {
+    collection->_collection->beginRead(collection->_collection);
+  }
 
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
@@ -960,14 +976,18 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   if (idx == 0) {
     collection->_collection->endRead(collection->_collection);
 
-    TRI_ReleaseCollection(collection);
+    if (lock) {
+      TRI_ReleaseCollection(collection);
+    }
     return scope.Close(v8::ThrowException(err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    collection->_collection->endRead(collection->_collection);
+    if (lock) {
+      collection->_collection->endRead(collection->_collection);
 
-    TRI_ReleaseCollection(collection);
+      TRI_ReleaseCollection(collection);
+    }
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
   }
 
@@ -981,9 +1001,11 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   }
 
   if (!skiplistOperator) {
-    collection->_collection->endRead(collection->_collection);
+    if (lock) {
+      collection->_collection->endRead(collection->_collection);
 
-    TRI_ReleaseCollection(collection);
+      TRI_ReleaseCollection(collection);
+    }
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
   }
 
@@ -1023,7 +1045,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
     }
   }
 
-  collection->_collection->endRead(collection->_collection);
+  if (lock) {
+    collection->_collection->endRead(collection->_collection);
+  }
 
   // .............................................................................
   // outside a write transaction
@@ -1035,7 +1059,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
-  TRI_ReleaseCollection(collection);
+  if (lock) {
+    TRI_ReleaseCollection(collection);
+  }
 
   if (error) {
     scope.Close(result);
@@ -1044,12 +1070,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
   return scope.Close(result);
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a bitarray index query (by condition or by example)
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Example of a filter associated with an interator
@@ -1083,7 +1106,10 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   return true;
 }
 
-static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, std::string const& signature, const query_t type) {
+static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, 
+                                                   std::string const& signature, 
+                                                   const query_t type, 
+                                                   const bool lock) {
   v8::HandleScope scope;
   v8::Handle<v8::Object> err;
   const TRI_vocbase_col_t* collection;
@@ -1094,8 +1120,14 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   // extract and use the simple collection
   // ...........................................................................
 
-  
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  TRI_sim_collection_t* sim = 0;
+  if (lock) {  
+    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  }
+  else {
+    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  }
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1109,7 +1141,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   // ...........................................................................
 
   if (argv.Length() < 2) {
-    TRI_ReleaseCollection(collection);
+    if (lock) {
+      TRI_ReleaseCollection(collection);
+    }
 
     std::string usage("Usage: ");
     usage += signature;
@@ -1122,7 +1156,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   // ...........................................................................
   
   if (! argv[1]->IsObject()) {
-    TRI_ReleaseCollection(collection);
+    if (lock) {
+      TRI_ReleaseCollection(collection);
+    }
     std::string msg;
 
     if (type == QUERY_EXAMPLE) {
@@ -1164,8 +1200,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   // inside a read transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
-
+  if (lock) {
+    collection->_collection->beginRead(collection->_collection);
+  }
 
   // .............................................................................
   // extract the index
@@ -1176,15 +1213,19 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   if (idx == 0) {
     collection->_collection->endRead(collection->_collection);
 
-    TRI_ReleaseCollection(collection);
+    if (lock) {
+      TRI_ReleaseCollection(collection);
+    }
     return scope.Close(v8::ThrowException(err));
   }
   
   
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
-    collection->_collection->endRead(collection->_collection);
+    if (lock) {
+      collection->_collection->endRead(collection->_collection);
 
-    TRI_ReleaseCollection(collection);
+      TRI_ReleaseCollection(collection);
+    }
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
   }
 
@@ -1200,9 +1241,11 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
 
   
   if (indexOperator == 0) { // something wrong
-    collection->_collection->endRead(collection->_collection);
+    if (lock) {
+      collection->_collection->endRead(collection->_collection);
 
-    TRI_ReleaseCollection(collection);
+      TRI_ReleaseCollection(collection);
+    }
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up bitarray index operator failed")));
   }
 
@@ -1266,8 +1309,10 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
     LOG_WARNING("index iterator returned with a NULL value in ExecuteBitarrayQuery");
     // return an empty list
   }
-  
-  collection->_collection->endRead(collection->_collection);
+ 
+  if (lock) { 
+    collection->_collection->endRead(collection->_collection);
+  }
 
   // .............................................................................
   // outside a write transaction
@@ -1277,7 +1322,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
-  TRI_ReleaseCollection(collection);
+  if (lock) {
+    TRI_ReleaseCollection(collection);
+  }
 
   if (error) {
     return scope.Close(v8::Null());
@@ -1285,7 +1332,6 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
   
   return scope.Close(result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts geo coordinates
@@ -1469,7 +1515,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       TRI_voc_rid_t rid;
 
       TRI_vocbase_col_t const* vertexCollection = 0;
-      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, vertices->Get(i));
+      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, true, vertices->Get(i));
 
       if (! errMsg.IsEmpty()) {
         if (vertexCollection != 0) {
@@ -1516,7 +1562,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     TRI_voc_rid_t rid;
 
     TRI_vocbase_col_t const* vertexCollection = 0;
-    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, argv[0]);
+    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, true, argv[0]);
 
     if (! errMsg.IsEmpty()) {
       if (vertexCollection != 0) {
@@ -1585,24 +1631,18 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects all elements
+/// @brief executes an ALL query, without any locking
+///
+/// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> AllQuery (TRI_sim_collection_t* sim, 
+                                       TRI_vocbase_col_t const* collection,
+                                       v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-  if (sim == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
+  
   // expecting two arguments
   if (argv.Length() != 2) {
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: ALL(<skip>, <limit>)")));
@@ -1619,12 +1659,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
-
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
 
   size_t total = sim->_primaryIndex._nrUsed;
   uint32_t count = 0;
@@ -1700,21 +1734,71 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     }
   }
 
+  result->Set(v8::String::New("total"), v8::Number::New((double) total));
+  result->Set(v8::String::New("count"), v8::Number::New(count));
+  
+  if (error) {
+    return scope.Close(v8::Null());
+  }
+  
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects all elements, acquiring all required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+  
+  collection->_collection->beginRead(collection->_collection);
+
+  v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
+
   collection->_collection->endRead(collection->_collection);
 
   // .............................................................................
   // outside a write transaction
   // .............................................................................
 
-  result->Set(v8::String::New("total"), v8::Number::New((double) total));
-  result->Set(v8::String::New("count"), v8::Number::New(count));
-
   TRI_ReleaseCollection(collection);
   
-  if (error) {
-    return scope.Close(v8::Null());
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects all elements, without acquiring any locks
+///
+/// It is the callers responsibility to acquire and free the required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AllNLQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
   }
-  
+
+  v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
+
   return scope.Close(result);
 }
 
@@ -1845,23 +1929,18 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example using a hash index
+///
+/// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_sim_collection_t* sim,
+                                                      TRI_vocbase_col_t const* collection,
+                                                      v8::Handle<v8::Object>* err,
+                                                      v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-  if (sim == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
 
   // expecting index, example, skip, and limit
   if (argv.Length() < 2) {
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: BY_EXAMPLE_HASH(<index>, <example>, <skip>, <limit>)")));
@@ -1869,7 +1948,6 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   // extract the example
   if (! argv[1]->IsObject()) {
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "<example> must be an object")));
@@ -1889,26 +1967,14 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
-
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
 
   if (idx == 0) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(*err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a hash index")));
   }
 
@@ -1919,13 +1985,10 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   TRI_shaped_json_t** values;
 
   TRI_shaper_t* shaper = sim->base._shaper;
-  int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, &err);
+  int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(*err));
   }
 
   // find the matches
@@ -1963,12 +2026,6 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
     }
   }
 
-  collection->_collection->endRead(collection->_collection);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
   // free data allocated by hash index result
   TRI_FreeResultHashIndex(idx, list);
 
@@ -1977,12 +2034,68 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   CleanupExampleObject(shaper, n, 0, values);
 
-  TRI_ReleaseCollection(collection);
-
   if (error) {
     return scope.Close(v8::Null());
   }
   
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example using a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+  
+  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(sim, collection, &err, argv);
+
+  collection->_collection->endRead(collection->_collection);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  TRI_ReleaseCollection(collection);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example using a hash index
+///
+/// It is the callers responsibility to acquire and free the required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByExampleNLHashIndex (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(sim, collection, &err, argv);
+
   return scope.Close(result);
 }
 
@@ -1993,7 +2106,17 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
   std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
   
-  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
+  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by condition using a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByConditionNLSkiplist (v8::Arguments const& argv) {
+  std::string signature("BY_CONDITION_SKIPLIST_NL(<index>, <conditions>, <skip>, <limit>)");
+  
+  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2003,9 +2126,18 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) 
 static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
   std::string signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
 
-  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
+  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE, true);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects elements by example using a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ByExampleNLSkiplist (v8::Arguments const& argv) {
+  std::string signature("BY_EXAMPLE_SKIPLIST_NL(<index>, <example>, <skip>, <limit>)");
+
+  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE, false);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example using a bitarray index
@@ -2014,15 +2146,26 @@ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
   std::string signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
 
-  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE);
+  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE, true);
+}
+
+static v8::Handle<v8::Value> JS_ByExampleNLBitarray (v8::Arguments const& argv) {
+  std::string signature("BY_EXAMPLE_BITARRAYNL(<index>, <example>, <skip>, <limit>)");
+
+  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE, false);
 }
 
 static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) {
   std::string signature("BY_CONDITION_BITARRAY(<index>, <conditions>, <skip>, <limit>)");
 
-  return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
+  return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION, true);
 }
 
+static v8::Handle<v8::Value> JS_ByConditionNLBitarray (v8::Arguments const& argv) {
+  std::string signature("BY_CONDITION_BITARRAY_NL(<index>, <conditions>, <skip>, <limit>)");
+
+  return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION, false);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all edges for a set of vertices
@@ -2070,48 +2213,31 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects points near a given coordinate
+///
+/// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> NearQuery (TRI_sim_collection_t* sim,
+                                        TRI_vocbase_col_t const* collection,
+                                        v8::Handle<v8::Object>* err,
+                                        v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-  if (sim == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
 
   // expect: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: NEAR(<index-handle>, <latitude>, <longitude>, <limit>)")));
   }
 
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
-
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
 
   if (idx == 0) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(*err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
 
@@ -2137,6 +2263,33 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
     StoreGeoResult(collection, cors, documents, distances);
   }
 
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects points near a given coordinate
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+
+  v8::Handle<v8::Value> result = NearQuery(sim, collection, &err, argv);
+  
   collection->_collection->endRead(collection->_collection);
 
   // .............................................................................
@@ -2144,6 +2297,29 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   TRI_ReleaseCollection(collection);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects points near a given coordinate
+///
+/// It is the callers responsibility to acquire and free the required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_NearNLQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  v8::Handle<v8::Value> result = NearQuery(sim, collection, &err, argv);
 
   return scope.Close(result);
 }
@@ -2172,48 +2348,31 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects points within a given radius
+///
+/// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> WithinQuery (TRI_sim_collection_t* sim,
+                                          TRI_vocbase_col_t const* collection,
+                                          v8::Handle<v8::Object>* err,
+                                          v8::Arguments const& argv) {
   v8::HandleScope scope;
-
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-  if (sim == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
 
   // expect: WITHIN(<index-handle>, <latitude>, <longitude>, <limit>)
   if (argv.Length() != 4) {
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)")));
   }
 
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
-
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
 
   if (idx == 0) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(err));
+    return scope.Close(v8::ThrowException(*err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
-    collection->_collection->endRead(collection->_collection);
-
-    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
   }
 
@@ -2239,6 +2398,33 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
     StoreGeoResult(collection, cors, documents, distances);
   }
 
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects points within a given radius
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  collection->_collection->beginRead(collection->_collection);
+  
+  v8::Handle<v8::Value> result = WithinQuery(sim, collection, &err, argv);
+
   collection->_collection->endRead(collection->_collection);
 
   // .............................................................................
@@ -2246,6 +2432,30 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // .............................................................................
 
   TRI_ReleaseCollection(collection);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects points within a given radius
+///
+/// It is the callers responsibility to acquire and free the required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WithinNLQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  v8::Handle<v8::Value> result = WithinQuery(sim, collection, &err, argv);
+
   return scope.Close(result);
 }
 
@@ -2287,19 +2497,28 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   // .............................................................................
   // local function names
   // .............................................................................
-
+  
+  // the _NL functions are the same as their unsuffixed counterparts, just without any locking 
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
+  v8::Handle<v8::String> AllNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL_NL"));
   v8::Handle<v8::String> ByConditionBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_BITARRAY"));
+  v8::Handle<v8::String> ByConditionBitarrayNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_BITARRAY_NL"));
   v8::Handle<v8::String> ByConditionSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST"));
+  v8::Handle<v8::String> ByConditionSkiplistNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST_NL"));
   v8::Handle<v8::String> ByExampleFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE"));
   v8::Handle<v8::String> ByExampleBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY"));
+  v8::Handle<v8::String> ByExampleBitarrayNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY_NL"));
   v8::Handle<v8::String> ByExampleHashFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH"));
+  v8::Handle<v8::String> ByExampleHashNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH_NL"));
   v8::Handle<v8::String> ByExampleSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST"));
+  v8::Handle<v8::String> ByExampleSkiplistNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST_NL"));
   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
+  v8::Handle<v8::String> NearNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR_NL"));
   v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
+  v8::Handle<v8::String> WithinNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN_NL"));
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -2308,14 +2527,22 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt = v8g->VocbaseColTempl;
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
+  rt->Set(AllNLFuncName, v8::FunctionTemplate::New(JS_AllNLQuery));
   rt->Set(ByConditionBitarrayFuncName, v8::FunctionTemplate::New(JS_ByConditionBitarray));
+  rt->Set(ByConditionBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLBitarray));
   rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
+  rt->Set(ByConditionSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLSkiplist));
   rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
+  rt->Set(ByExampleBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLBitarray));
   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
+  rt->Set(ByExampleHashNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLHashIndex));
   rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
+  rt->Set(ByExampleSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLSkiplist));
   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
+  rt->Set(NearNLFuncName, v8::FunctionTemplate::New(JS_NearNLQuery));
   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
+  rt->Set(WithinNLFuncName, v8::FunctionTemplate::New(JS_WithinNLQuery));
   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));

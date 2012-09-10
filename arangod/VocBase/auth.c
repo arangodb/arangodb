@@ -276,10 +276,12 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
       TRI_vocbase_auth_t* auth;
       TRI_vocbase_auth_t* old;
       TRI_doc_mptr_t const* d;
+      TRI_shaped_json_t shapedJson;
 
       d = (TRI_doc_mptr_t const*) *ptr;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-      auth = ConvertAuthInfo(vocbase, doc, &d->_document);
+      auth = ConvertAuthInfo(vocbase, doc, &shapedJson);
 
       if (auth != NULL) {
         old = TRI_InsertElementAssociativePointer(&vocbase->_authInfo, auth, true);

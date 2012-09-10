@@ -14,6 +14,8 @@ BUILT_SOURCES += Doxygen/.setup-directories
 
 Doxygen/.setup-directories:
 	@test -d Doxygen || mkdir Doxygen
+	@test -d Doxygen/doc || mkdir Doxygen/doc
+	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
 	@test -d Doxygen/js || mkdir Doxygen/js
 	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
 	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
@@ -23,11 +25,13 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
 	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/doc || mkdir Doxygen/doc
-	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
+	@test -d Doxygen/man || mkdir Doxygen/man
+	@test -d Doxygen/man/man1 || mkdir Doxygen/man/man1
+	@test -d Doxygen/man/man8 || mkdir Doxygen/man/man8
+	@test -d Doxygen/wiki || mkdir Doxygen/wiki
+	@test -d Doxygen/xml || mkdir Doxygen/xml
 	@touch $@
 
 Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
@@ -116,6 +120,28 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 
 	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImpManual.tex > Doxygen/latex/ImpManual.inc.tex
 	cd Doxygen/latex && pdflatex -interaction batchmode imp-manual.tex || true
+
+################################################################################
+### @brief man pages
+################################################################################
+
+.PHONY: man
+
+man: Doxygen/.setup-directories
+	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
+
+################################################################################
+### @brief install man pages
+################################################################################
+
+dist_man_MANS += \
+	Doxygen/man/man1/arangoimp.1 \
+	Doxygen/man/man1/arangosh.1 \
+        Doxygen/man/man8/rcarangod.8 \
+        Doxygen/man/man8/arangod.8 \
+        Doxygen/man/man8/arango-dfdb.8 \
+        Doxygen/man/man8/arango-password.8 \
+        Doxygen/man/man8/arango-upgrade.8 
 
 ################################################################################
 ### @brief cleanup

@@ -78,8 +78,7 @@ typedef struct TRI_doc_mptr_s {
 
   TRI_voc_tick_t _deletion; // this is the deletion time
 
-  void const* _data;                    // this is the pointer to the raw marker
-  struct TRI_shaped_json_s _document;   // this is the pointer to the json document
+  void const* _data; // this is the pointer to the raw marker
 }
 TRI_doc_mptr_t;
 
@@ -236,12 +235,12 @@ TRI_doc_collection_info_t;
 ///
 /// Deletes an existing document from the given collection and returns @ref
 /// TRI_ERROR_NO_ERROR in case of success. Otherwise, an error is returned and
-/// the "TRI_errno()" is accordingly. The function DOES NOT acquire a write
+/// the "TRI_errno()" is set accordingly. The function DOES NOT acquire a write
 /// lock.  However, if @FA{release} is true, it will release the write lock as
 /// soon as possible.
 ///
 /// If the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_ERROR" and the
-/// reivision is given, than it must match the current revision of the
+/// revision is given, then it must match the current revision of the
 /// document. If the delete was executed, than @FA{current} contains the last
 /// valid revision of the document. If the delete was aborted, than @FA{current}
 /// contains the revision of the still alive document.
@@ -327,20 +326,6 @@ typedef struct TRI_doc_edge_marker_s {
   // char data[]
 }
 TRI_doc_edge_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attachment datafile marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_attachment_marker_s {
-  TRI_doc_document_marker_t base;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_did_t _toDid;
-
-  // char data[]
-}
-TRI_doc_attachment_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile deletion marker
@@ -464,6 +449,12 @@ bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_MarkerMasterPointer (void const*, TRI_doc_mptr_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the data length from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

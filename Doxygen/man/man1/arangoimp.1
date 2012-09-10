@@ -1,0 +1,37 @@
+.TH arangoimp 1 "Di 4. Sep 11:48:53 CEST 2012" "" "ArangoDB"
+.SH NAME
+arangoimp - a bulk importer for the ArangoDB database
+.SH SYNOPSIS
+arangoimp [options] 
+.SH DESCRIPTION
+The arangoimp binary can be used to bulk import data from a file into the
+ArangoDB database. Input data be present in the input file in either CSV
+format with column headlines, or in JSON format. If JSON format is used,
+each line in the input file must contain exactly one JSON document with 
+the attribute name/value pairs to import.
+.SH OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+.IP "--configuration <string>"
+read configuration from file <string> 
+.IP "--collection <string>"
+name of collection to import into 
+.IP "--create-collection <bool>"
+set to "true" if collection should be created by the import 
+.IP "--file <string>"
+input file with the data to import 
+.IP "--type <string>"
+set to "json" or "csv", depending on the input file format 
+.IP "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port 
+.IP "--server.username <string>"
+username to use when connecting (default "root") 
+.IP "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt 
+.SH EXAMPLES
+
+.SH AUTHOR
+	    Copyright 2012, triAGENS GmbH, Cologne, Germany

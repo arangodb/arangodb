@@ -1,10 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief terimnal utilities using ncurses
+/// @brief cleanup thread
 ///
 /// @file
+///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,52 +21,62 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Esteban Lombeyda
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/terminal-utils.h"
+#ifndef TRIAGENS_DURHAM_VOC_BASE_CLEANUP_H
+#define TRIAGENS_DURHAM_VOC_BASE_CLEANUP_H 1
 
-#ifdef HAVE_NCURSES
+#include <BasicsC/common.h>
 
-#include <term.h>
-#include <curses.h>
+#include <VocBase/vocbase.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum age for cursor shadows (in seconds)
+////////////////////////////////////////////////////////////////////////////////
+
+#define SHADOW_CURSOR_MAX_AGE 120
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Terminal
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the columns width
+/// @brief cleanup event loop
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ColumnsWidth () {
-  union { char * a; char const * b; } c;
-
-  int ret;
-
-  // initializing terminfo
-  ret = setupterm(NULL, fileno(stdin), NULL);
-
-  if (ret != 0) {
-    return TRI_DEFAULT_COLUMNS;
-  }
-
-  // and extract the columns
-  c.b = "cols";
-  ret = tigetnum(c.a);
-
-  return ret == -1 ? TRI_DEFAULT_COLUMNS : ret;
-}
+void TRI_CleanupVocBase (void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
@@ -73,3 +84,4 @@ int TRI_ColumnsWidth () {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+

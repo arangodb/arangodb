@@ -34,7 +34,7 @@
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/blob-collection.h"
+#include "VocBase/shape-collection.h"
 #include "VocBase/datafile.h"
 
 #ifdef __cplusplus
@@ -124,7 +124,7 @@ void TRI_FreeVocShaper (TRI_shaper_t*);
 /// @brief returns the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t*);
+TRI_shape_collection_t* TRI_CollectionVocShaper (TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a persistent shaper

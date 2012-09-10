@@ -297,9 +297,6 @@ static void CreateHeader (TRI_doc_collection_t* c,
   header->_fid = datafile->_fid;
   header->_deletion = 0;
   header->_data = marker;
-  header->_document._sid = marker->_shape;
-  header->_document._data.length = marker->base._size - markerSize;
-  header->_document._data.data = ((char*) marker) + markerSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +381,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
     dfi = TRI_FindDatafileInfoDocCollection(&sim->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
-      dfi->_sizeAlive += header->_document._data.length;
+      dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
     }
 
     // update immediate indexes
@@ -490,9 +487,6 @@ static void UpdateHeader (TRI_doc_collection_t* c,
   update->_rid = marker->_rid;
   update->_fid = datafile->_fid;
   update->_data = marker;
-  update->_document._sid = marker->_shape;
-  update->_document._data.length = marker->base._size - markerSize;
-  update->_document._data.data = ((char*) marker) + markerSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,15 +519,6 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
     markerLength = sizeof(TRI_doc_edge_marker_t);
     data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
     dataLength = originalMarker->_size - sizeof(TRI_doc_edge_marker_t);
-  }
-  else if (originalMarker->_type == TRI_DOC_MARKER_ATTACHMENT) {
-    TRI_doc_attachment_marker_t attachmentUpdate;
-
-    memcpy(&attachmentUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
-    marker = &attachmentUpdate.base;
-    markerLength = sizeof(TRI_doc_attachment_marker_t);
-    data = ((char*) originalMarker) + sizeof(TRI_doc_attachment_marker_t);
-    dataLength = originalMarker->_size - sizeof(TRI_doc_attachment_marker_t);
   }
   else {
     TRI_doc_mptr_t mptr;
@@ -673,17 +658,19 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
     if (dfi != NULL) {
+      size_t length = TRI_LengthDataMasterPointer(header);
+
       dfi->_numberAlive -= 1;
-      dfi->_sizeAlive -= header->_document._data.length;
+      dfi->_sizeAlive -= length;
 
       dfi->_numberDead += 1;
-      dfi->_sizeDead += header->_document._data.length;
+      dfi->_sizeDead += length;
     }
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
-      dfi->_sizeAlive += update._document._data.length;
+      dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
     }
 
     // update immediate indexes
@@ -835,11 +822,13 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
     // update the datafile info
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
     if (dfi != NULL) {
+      size_t length = TRI_LengthDataMasterPointer(header);
+
       dfi->_numberAlive -= 1;
-      dfi->_sizeAlive -= header->_document._data.length;
+      dfi->_sizeAlive -= length;
 
       dfi->_numberDead += 1;
-      dfi->_sizeDead += header->_document._data.length;
+      dfi->_sizeDead += length;
     }
 
     dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
@@ -1036,32 +1025,6 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
                           rid,
                           release);
   }
-  else if (type == TRI_DOC_MARKER_ATTACHMENT) {
-    TRI_doc_attachment_marker_t marker;
-    TRI_sim_attachment_t const* attachment;
-
-    attachment = data;
-
-    memset(&marker, 0, sizeof(marker));
-
-    marker.base.base._size = sizeof(marker) + json->_data.length;
-    marker.base.base._type = type;
-
-    marker.base._sid = 0;
-    marker.base._shape = json->_sid;
-
-    marker._toCid = attachment->_toCid;
-    marker._toDid = attachment->_toDid;
-
-    return CreateDocument(collection,
-                          &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
-                          &result,
-                          data,
-                          did,
-                          rid,
-                          release);
-  }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
     exit(EXIT_FAILURE);
@@ -1185,38 +1148,6 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
                           true);
   }
   
-  // the original is an attachment
-  else if (original->_type == TRI_DOC_MARKER_ATTACHMENT) {
-    TRI_doc_attachment_marker_t marker;
-    TRI_doc_attachment_marker_t const* originalAttachment;
-
-    originalAttachment = header->_data;
-
-    // create an update
-    memset(&marker, 0, sizeof(marker));
-
-    marker.base.base._size = sizeof(marker) + json->_data.length;
-    marker.base.base._type = original->_type;
-
-    marker.base._did = did;
-    marker.base._sid = 0;
-    marker.base._shape = json->_sid;
-
-    marker._toCid = originalAttachment->_toCid;
-    marker._toDid = originalAttachment->_toDid;
-
-    return UpdateDocument(collection,
-                          header,
-                          &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
-                          rid,
-                          oldRid,
-                          policy,
-                          &result,
-                          release,
-                          true);
-  }
-
   // do not know
   else {
     if (release) {
@@ -1368,8 +1299,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
-      marker->_type == TRI_DOC_MARKER_EDGE ||
-      marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
+      marker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_document_marker_t const* d = (TRI_doc_document_marker_t const*) marker;
     size_t markerSize;
 
@@ -1394,18 +1324,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long) e->_toDid);
 
       markerSize = sizeof(TRI_doc_edge_marker_t);
-    }
-    else if (marker->_type == TRI_DOC_MARKER_ATTACHMENT) {
-      TRI_doc_attachment_marker_t const* a = (TRI_doc_attachment_marker_t const*) marker;
-
-      LOG_TRACE("edge: fid %lu, did %lu, rid %lu, attachment (%lu,%lu)",
-                (unsigned long) datafile->_fid,
-                (unsigned long) d->_did,
-                (unsigned long) d->_rid,
-                (unsigned long) a->_toCid,
-                (unsigned long) a->_toDid);
-
-      markerSize = sizeof(TRI_doc_attachment_marker_t);
     }
     else {
       LOG_FATAL("unknown marker type %lu", (unsigned long) marker->_type);
@@ -1434,7 +1352,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += header->_document._data.length;
+        dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
       }
 
       // update immediate indexes
@@ -1457,18 +1375,20 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
 
       if (dfi != NULL) {
+        size_t length = TRI_LengthDataMasterPointer(found);
+
         dfi->_numberAlive -= 1;
-        dfi->_sizeAlive -= found->_document._data.length;
+        dfi->_sizeAlive -= length;
 
         dfi->_numberDead += 1;
-        dfi->_sizeDead += found->_document._data.length;
+        dfi->_sizeDead += length;
       }
 
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += update._document._data.length;
+        dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
       }
 
       // update immediate indexes
@@ -1481,7 +1401,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberDead += 1;
-        dfi->_sizeDead += found->_document._data.length;
+        dfi->_sizeDead += TRI_LengthDataMasterPointer(found);
       }
     }
   }
@@ -1512,8 +1432,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header->_rid = d->_rid;
       header->_deletion = marker->_tick;
       header->_data = 0;
-      header->_document._data.length = 0;
-      header->_document._data.data = 0;
 
       // update immediate indexes
       CreateImmediateIndexes(collection, header);
@@ -1538,11 +1456,13 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
 
       if (dfi != NULL) {
+        size_t length = TRI_LengthDataMasterPointer(found);
+
         dfi->_numberAlive -= 1;
-        dfi->_sizeAlive -= found->_document._data.length;
+        dfi->_sizeAlive -= length;
 
         dfi->_numberDead += 1;
-        dfi->_sizeDead += found->_document._data.length;
+        dfi->_sizeDead += length; 
       }
       dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
 
@@ -1759,6 +1679,7 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   // create primary index
   primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
   if (primary == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -2001,7 +1922,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_sim_collection_t* doc;
-  TRI_blob_collection_t* shapeCollection;
+  TRI_shape_collection_t* shapeCollection;
   char* shapes;
 
   // first open the document collection
@@ -2422,7 +2343,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   size_t n;
 
   // get the old document
-  old = header->_document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(old, header->_data);
 
   // .............................................................................
   // update primary index
@@ -2437,7 +2358,6 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
   change.v->_deletion = update->_deletion;
 
   change.v->_data = update->_data;
-  change.v->_document = update->_document;
 
   // .............................................................................
   // update all the other indices
@@ -2990,7 +2910,8 @@ static int ComparePidName (void const* left, void const* right) {
 /// @brief returns a description of all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
+                                                const bool lock) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
@@ -3006,7 +2927,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   // inside read-lock
   // .............................................................................
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  if (lock) {
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  }
 
   n = sim->_indexes._length;
 
@@ -3023,7 +2946,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
     }
   }
 
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  if (lock) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  }
 
   // .............................................................................
   // outside read-lock
@@ -4806,20 +4731,20 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
                             size_t len, 
                             TRI_shape_pid_t* pids,
                             TRI_shaped_json_t** values) {
-  TRI_shaped_json_t const* document;
+  TRI_shaped_json_t document;
   TRI_shaped_json_t* example;
   TRI_shaped_json_t result;
   TRI_shape_t const* shape;
   bool ok;
   size_t i;
 
-  document = &doc->_document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->_data);
 
   for (i = 0;  i < len;  ++i) {
     example = values[i];
 
     ok = TRI_ExtractShapedJsonVocShaper(shaper,
-                                        document,
+                                        &document,
                                         example->_sid,
                                         pids[i],
                                         &result,
