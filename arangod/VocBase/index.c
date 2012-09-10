@@ -1017,7 +1017,8 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
                                   bool ignoreNull) {
   TRI_geo_index_t* geo;
   char* ln;
-
+  int result;
+  
   geo = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_geo_index_t), false);
 
   if (geo == NULL) {
@@ -1047,13 +1048,32 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
 
   geo->_constraint = constraint;
   geo->_geoIndex = GeoIndex_new();
-
+  
+  if (geo->_geoIndex == NULL) { // oops out of memory?
+    LOG_WARNING("geo index creation failed -- internal error when creating new goe index structure");
+    TRI_DestroyVectorString(&geo->base._fields);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    return NULL;
+  }
+  
   geo->_variant = geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
   geo->_location = location;
   geo->_latitude = 0;
   geo->_longitude = 0;
   geo->_geoJson = geoJson;
-
+  
+  result = GeoIndex_assignMethod(&(geo->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+  
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorString(&geo->base._fields);
+    GeoIndex_free(geo->_geoIndex); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    LOG_WARNING("geo index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+  
   return &geo->base;
 }
 
@@ -1071,7 +1091,8 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s* collection,
   TRI_geo_index_t* geo;
   char* lat;
   char* lon;
-
+  int result;
+  
   geo = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_geo_index_t), false);
 
   if (geo == NULL) {
@@ -1103,11 +1124,30 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s* collection,
   geo->_constraint = constraint;
   geo->_geoIndex = GeoIndex_new();
 
+  if (geo->_geoIndex == NULL) { // oops out of memory?
+    LOG_WARNING("geo index creation failed -- internal error when creating new goe index structure");
+    TRI_DestroyVectorString(&geo->base._fields);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    return NULL;
+  }
+  
   geo->_variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
   geo->_location = 0;
   geo->_latitude = latitude;
   geo->_longitude = longitude;
 
+  result = GeoIndex_assignMethod(&(geo->base.indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
+  result = result || GeoIndex_assignMethod(&(geo->base.indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
+    
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyVectorString(&geo->base._fields);
+    GeoIndex_free(geo->_geoIndex); 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    LOG_WARNING("geo index creation failed -- internal error when assigning function calls");
+    return NULL;
+  }
+  
   return &geo->base;
 }
 
@@ -1732,7 +1772,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
     hashIndex->_hashIndex = MultiHashIndex_new();
   }  
   
-  if (hashIndex->_hashIndex == NULL) {
+  if (hashIndex->_hashIndex == NULL) { // oops out of memory?
     TRI_DestroyVector(&hashIndex->_paths); 
     TRI_DestroyVectorString(&hashIndex->base._fields); 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
@@ -1750,7 +1790,8 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&hashIndex->_paths); 
     TRI_DestroyVectorString(&hashIndex->base._fields); 
-    TRI_FreeBitarrayIndex(&hashIndex->base);
+    HashIndex_free(hashIndex->_hashIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
     LOG_WARNING("hash index creation failed -- internal error when assigning function calls");
     return NULL;
   }
@@ -3484,6 +3525,15 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
     skiplistIndex->_skiplistIndex = MultiSkiplistIndex_new();
   }  
   
+  if (skiplistIndex->_skiplistIndex == NULL) {
+    TRI_DestroyVector(&skiplistIndex->_paths);
+    TRI_DestroyVectorString(&skiplistIndex->base._fields);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+    LOG_WARNING("skiplist index creation failed -- internal error when creating skiplist structure");
+    return NULL;
+  }  
+  
+  
   // ...........................................................................
   // Assign the function calls used by the query engine
   // ...........................................................................
@@ -3495,7 +3545,8 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&skiplistIndex->_paths);
     TRI_DestroyVectorString(&skiplistIndex->base._fields);
-    TRI_FreeBitarrayIndex(&skiplistIndex->base);
+    SkiplistIndex_free(skiplistIndex->_skiplistIndex);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
     return NULL;
   }
@@ -4384,7 +4435,6 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   createContext = NULL;
   
 
-
   // ...........................................................................
   // Check that the attributes have not been repeated
   // ...........................................................................
@@ -4403,7 +4453,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
     if (value == NULL) {    
       TRI_DestroyVector(&baIndex->_paths);
       TRI_DestroyVector(&baIndex->_values);
-      TRI_FreeBitarrayIndex(&baIndex->base);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     }      
@@ -4428,7 +4478,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   if (cardinality > 64) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- more than 64 possible values");
     return NULL;
   }
@@ -4437,7 +4487,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   if (cardinality < 1 ) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- no index values defined");
     return NULL;
   }
@@ -4455,7 +4505,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
-    TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- internal error when assigning function calls");
     return NULL;
   }
@@ -4471,6 +4521,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
     TRI_DestroyVector(&baIndex->_paths);
     TRI_DestroyVector(&baIndex->_values);
     TRI_FreeBitarrayIndex(&baIndex->base);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE,baIndex);
     LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
     return NULL;
   }  

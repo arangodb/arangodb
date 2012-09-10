@@ -1338,6 +1338,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   // bind values
   // optimise
   // lock
+  
   if (!TRI_ValidateQueryContextAql(context) ||
       !TRI_BindQueryContextAql(context, parameters) ||
       !TRI_LockQueryContextAql(context) ||
@@ -2088,7 +2089,6 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   const string queryString = TRI_ObjectToString(queryArg);
-
   // return number of total records in cursor?
   bool doCount = false;
   // maximum number of results to return at once
@@ -2781,7 +2781,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if ( (argv.Length() < 2) || (argv.Length() % 2 != 0) ) {
     LOG_WARNING("bitarray index creation failed -- invalid parameters (require key_1,values_1,...,key_n,values_n)");
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureBitarray(<path>, <list of values>, ...)")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureBitarray(path 1, <list of values 1>, <path 2>, <list of values 2>, ...)")));
   }
 
   

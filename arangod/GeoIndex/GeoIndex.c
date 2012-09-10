@@ -96,17 +96,16 @@ typedef struct
 /* "points" lists the slotid of the points.  This is   */
 /* only used for a leaf pot.                           */
 /* =================================================== */
-typedef struct
-{
-    int LorLeaf;
-    int RorPoints;
-    GeoString middle;
-    GeoFix  maxdist[GeoIndexFIXEDPOINTS];
-    GeoString start;
-    GeoString end;
-    int level;
-    int points[GeoIndexPOTSIZE];
-}       GeoPot;
+typedef struct {
+  int LorLeaf;
+  int RorPoints;
+  GeoString middle;
+  GeoFix  maxdist[GeoIndexFIXEDPOINTS];
+  GeoString start;
+  GeoString end;
+  int level;
+  int points[GeoIndexPOTSIZE];
+} GeoPot;
 /* =================================================== */
 /*                 GeoIx structure                     */
 /* This is the REAL GeoIndex structure - the one in    */
@@ -125,14 +124,13 @@ typedef struct
 /* There is no provision at present for the index to   */
 /* get smaller when the majority of points are deleted */
 /* =================================================== */
-typedef struct
-{
-    GeoIndexFixed fixed;  /* fixed point data          */
-    int potct;            /* pots allocated            */
-    int slotct;           /* slots allocated           */
-    GeoPot * pots;        /* the pots themselves       */
-    GeoCoordinate * gc;   /* the slots themselves      */
-}       GeoIx;
+typedef struct {
+  GeoIndexFixed fixed;  /* fixed point data          */
+  int potct;            /* pots allocated            */
+  int slotct;           /* slots allocated           */
+  GeoPot * pots;        /* the pots themselves       */
+  GeoCoordinate * gc;   /* the slots themselves      */
+} GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
 /* The routine GeoMkDetail is given a point - really   */
@@ -369,15 +367,14 @@ int GeoIndexNewPot(GeoIx * gix)
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIndex * GeoIndex_new(void)
-{
+GeoIndex * GeoIndex_new(void) {
     GeoIx * gix;
     int i,j;
     double lat, lon, x, y, z;
 
     gix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false);
 
-    if(gix == NULL) {
+    if (gix == NULL) {
       return (GeoIndex *) gix;
     }
 
@@ -576,8 +573,7 @@ GeoIndex * GeoIndex_new(void)
 /* objects that may have been pointed to by the user's */
 /* data pointers are (of course) not freed by this call*/
 /* =================================================== */
-void GeoIndex_free(GeoIndex * gi)
-{
+void GeoIndex_free(GeoIndex * gi) {
     GeoIx * gix;
 
     if (gi == NULL) {
@@ -2275,6 +2271,7 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
 ////////////////////////////////////////////////////////////////////////////////
 
 int GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+
   switch (methodType) {
   
     case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
