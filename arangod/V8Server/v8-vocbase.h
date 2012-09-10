@@ -42,6 +42,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the collection, but doesn't lock it
+///
+/// it is the caller's responsibility to acquire and release the required locks
+/// the collection must also have the correct status already. don't use this
+/// function if you're unsure about it!
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_sim_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
+                                                   TRI_vocbase_col_t const*& collection,
+                                                   v8::Handle<v8::Object>* err);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts and locks the collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,6 +75,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                          TRI_vocbase_col_t const*& collection,
                                                          TRI_voc_did_t& did,
                                                          TRI_voc_rid_t& rid,
+                                                         const bool lock,
                                                          v8::Handle<v8::Value> val);
 
 ////////////////////////////////////////////////////////////////////////////////
