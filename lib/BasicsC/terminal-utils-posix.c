@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief terimnal utilities using ncurses
+/// @brief terminal utilities using posix functions
 ///
 /// @file
 /// DISCLAIMER
