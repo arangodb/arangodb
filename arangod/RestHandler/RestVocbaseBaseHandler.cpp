@@ -40,6 +40,7 @@
 #include "Variant/VariantString.h"
 #include "Variant/VariantUInt64.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/simple-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -145,6 +146,8 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
   }
 
   LOGGER_REQUEST_IN_END_I(_timing) << _timingResult;
+
+  releaseCollection();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,7 +401,9 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   // convert object to string
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
+  TRI_shaped_json_t shapedJson;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+  TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
 
@@ -502,6 +507,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
   }
 
   TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+  _collection = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -646,10 +652,17 @@ int RestVocbaseBaseHandler::useCollection (string const& name,
   int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
 
   if (res == TRI_ERROR_NO_ERROR) {
+    // when we get here, this will have acquired the read-lock TRI_READ_LOCK_STATUS_VOCBASE_COL(collection)
+    // that must later be unlocked by the caller
     assert(_collection != 0);
 
     _documentCollection = _collection->_collection;
     assert(_documentCollection != 0);
+  }
+  else {
+    // reset collection to 0, otherwise the read-lock would be released later and this would be invalid
+    _collection = 0;
+    generateError(HttpResponse::SERVER_ERROR, res);
   }
 
   return res;

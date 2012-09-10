@@ -607,7 +607,6 @@ bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
 
 void TRI_MarkerMasterPointer (void const* data, TRI_doc_mptr_t* header) {
   TRI_doc_document_marker_t const* marker;
-  size_t markerSize = sizeof(TRI_doc_document_marker_t);
   marker = (TRI_doc_document_marker_t const*) data;
 
   header->_did = marker->_did;
@@ -615,9 +614,25 @@ void TRI_MarkerMasterPointer (void const* data, TRI_doc_mptr_t* header) {
   header->_fid = 0; // should be datafile->_fid, but we do not have this info here
   header->_deletion = 0;
   header->_data = data;
-  header->_document._sid = marker->_shape;
-  header->_document._data.length = marker->base._size - markerSize;
-  header->_document._data.data = ((char*) marker) + markerSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the data length from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
+  if (mptr != NULL) {
+    void const* data = mptr->_data;
+
+    if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_DOCUMENT) {
+      return ((TRI_df_marker_t*) data)->_size - sizeof(TRI_doc_document_marker_t);
+    }
+    else if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_EDGE) {
+      return ((TRI_df_marker_t*) data)->_size - sizeof(TRI_doc_edge_marker_t);
+    }
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

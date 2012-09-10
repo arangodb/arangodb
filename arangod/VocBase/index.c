@@ -667,6 +667,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
+  TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
   TRI_shaper_t* shaper;
   bool missing;
@@ -677,19 +678,20 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   geo = (TRI_geo_index_t*) idx;
   shaper = geo->base._collection->_shaper;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_data);
 
   // lookup latitude and longitude
   if (geo->_location != 0) {
     if (geo->_geoJson) {
-      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &longitude, &latitude, &missing);
+      ok = ExtractDoubleList(shaper, &shapedJson, geo->_location, &longitude, &latitude, &missing);
     }
     else {
-      ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude, &missing);
+      ok = ExtractDoubleList(shaper, &shapedJson, geo->_location, &latitude, &longitude, &missing);
     }
   }
   else {
-    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude, &missing);
-    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude, &missing);
+    ok = ExtractDoubleArray(shaper, &shapedJson, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, &shapedJson, geo->_longitude, &longitude, &missing);
   }
 
   if (! ok) {
@@ -745,6 +747,7 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
+  TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
   TRI_shaper_t* shaper;
   bool missing;
@@ -755,6 +758,7 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 
   geo = (TRI_geo_index_t*) idx;
   shaper = geo->base._collection->_shaper;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_data);
 
   // lookup OLD latitude and longitude
   if (geo->_location != 0) {
@@ -782,11 +786,11 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 
   // create new entry with new coordinates
   if (geo->_location != 0) {
-    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude, &missing);
+    ok = ExtractDoubleList(shaper, &shapedJson, geo->_location, &latitude, &longitude, &missing);
   }
   else {
-    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude, &missing);
-    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude, &missing);
+    ok = ExtractDoubleArray(shaper, &shapedJson, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, &shapedJson, geo->_longitude, &longitude, &missing);
   }
 
   if (! ok) {
@@ -842,6 +846,7 @@ static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_sha
 static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
+  TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
   TRI_shaper_t* shaper;
   bool missing;
@@ -852,14 +857,15 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   geo = (TRI_geo_index_t*) idx;
   shaper = geo->base._collection->_shaper;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_data);
 
   // lookup OLD latitude and longitude
   if (geo->_location != 0) {
-    ok = ExtractDoubleList(shaper, &doc->_document, geo->_location, &latitude, &longitude, &missing);
+    ok = ExtractDoubleList(shaper, &shapedJson, geo->_location, &latitude, &longitude, &missing);
   }
   else {
-    ok = ExtractDoubleArray(shaper, &doc->_document, geo->_latitude, &latitude, &missing);
-    ok = ok && ExtractDoubleArray(shaper, &doc->_document, geo->_longitude, &longitude, &missing);
+    ok = ExtractDoubleArray(shaper, &shapedJson, geo->_latitude, &latitude, &missing);
+    ok = ok && ExtractDoubleArray(shaper, &shapedJson, geo->_longitude, &longitude, &missing);
   }
 
   // and remove old entry
@@ -1275,10 +1281,13 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   // .............................................................................
 
   else if (document != NULL) {
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+
     cnv.c = document;
     hashElement->data = cnv.p;
 
-    shapedDoc = &document->_document;
+    shapedDoc = &shapedJson;
   }
 
   else {
@@ -2045,6 +2054,7 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
     pqElement->data = cnv.p;
  
     for (j = 0; j < pqIndex->_paths._length; ++j) {
+      TRI_shaped_json_t shapedJson;
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&pqIndex->_paths,j)));
       
       // ..........................................................................
@@ -2052,7 +2062,8 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // It is not an error if the document DOES NOT have the particular shape
       // ..........................................................................
 
-      acc = TRI_ShapeAccessor(pqIndex->base._collection->_shaper, document->_document._sid, shape);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+      acc = TRI_ShapeAccessor(pqIndex->base._collection->_shaper, shapedJson._sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
@@ -2073,7 +2084,7 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // Extract the field
       // ..........................................................................    
 
-      if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
+      if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
         return TRI_set_errno(TRI_ERROR_INTERNAL);
       }
@@ -2941,13 +2952,16 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
  
     
     for (j = 0; j < skiplistIndex->_paths._length; ++j) {
+      TRI_shaped_json_t shapedJson;
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths,j)));
       
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+
       // ..........................................................................
       // Determine if document has that particular shape 
       // ..........................................................................
 
-      acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, document->_document._sid, shape);
+      acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
@@ -2959,7 +2973,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
       // Extract the field
       // ..........................................................................    
 
-      if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
+      if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
         // TRI_Free(skiplistElement->fields); memory deallocated in the calling procedure
         return TRI_ERROR_INTERNAL;
       }
@@ -3805,13 +3819,16 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
  
     
     for (j = 0; j < baIndex->_paths._length; ++j) {
+      TRI_shaped_json_t shapedJson;
       TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
       
       // ..........................................................................
       // Determine if document has that particular shape 
       // ..........................................................................
       
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, document->_document._sid, shape);      
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+      
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);      
 
       if (acc == NULL || acc->_shape == NULL) {
         return TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING;
@@ -3821,7 +3838,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Extract the field
       // ..........................................................................    
       
-      if (! TRI_ExecuteShapeAccessor(acc, &(document->_document), &shapedObject)) {
+      if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
         return TRI_ERROR_INTERNAL;
       }
 

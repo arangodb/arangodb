@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief blob collection
+/// @brief (binary) shape collection
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "blob-collection.h"
+#include "shape-collection.h"
 
 #include <BasicsC/conversions.h>
 #include <BasicsC/files.h>
@@ -45,7 +45,7 @@
 /// @brief creates a journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateJournal (TRI_blob_collection_t* collection) {
+static bool CreateJournal (TRI_shape_collection_t* collection) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
@@ -153,7 +153,7 @@ static bool CreateJournal (TRI_blob_collection_t* collection) {
 /// @brief closes a journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* journal) {
+static bool CloseJournal (TRI_shape_collection_t* collection, TRI_datafile_t* journal) {
   bool ok;
   char* dname;
   char* filename;
@@ -214,7 +214,7 @@ static bool CloseJournal (TRI_blob_collection_t* collection, TRI_datafile_t* jou
 /// @brief selects a journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
+static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
                                       TRI_voc_size_t size,
                                       TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
@@ -272,7 +272,7 @@ static TRI_datafile_t* SelectJournal (TRI_blob_collection_t* collection,
 /// @brief writes an element to a given position
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteElement (TRI_blob_collection_t* collection,
+static int WriteElement (TRI_shape_collection_t* collection,
                          TRI_datafile_t* journal,
                          TRI_df_marker_t* position,
                          TRI_df_marker_t* marker,
@@ -321,37 +321,37 @@ static int WriteElement (TRI_blob_collection_t* collection,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
-                                                 char const* path,
-                                                 TRI_col_parameter_t* parameter) {
+TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
+                                                   char const* path,
+                                                   TRI_col_parameter_t* parameter) {
   TRI_col_info_t info;
-  TRI_blob_collection_t* blob;
+  TRI_shape_collection_t* shape;
   TRI_collection_t* collection;
 
-  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t), false);
+  shape = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_collection_t), false);
 
-  if (blob == NULL) {
+  if (shape == NULL) {
     return NULL;
   }
 
   memset(&info, 0, sizeof(info));
   info._version = TRI_COL_VERSION;
-  info._type = TRI_COL_TYPE_BLOB;
+  info._type = TRI_COL_TYPE_SHAPE;
   info._cid = TRI_NewTickVocBase();
   TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
   info._maximalSize = parameter->_maximalSize;
   info._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
 
-  collection = TRI_CreateCollection(vocbase, &blob->base, path, &info);
+  collection = TRI_CreateCollection(vocbase, &shape->base, path, &info);
 
   if (collection == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, blob);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return NULL;
   }
 
-  TRI_InitMutex(&blob->_lock);
+  TRI_InitMutex(&shape->_lock);
 
-  return blob;
+  return shape;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,7 +360,7 @@ TRI_blob_collection_t* TRI_CreateBlobCollection (TRI_vocbase_t* vocbase,
 /// Note that the collection must be closed first.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlobCollection (TRI_blob_collection_t* collection) {
+void TRI_DestroyShapeCollection (TRI_shape_collection_t* collection) {
   assert(collection);
 
   TRI_DestroyMutex(&collection->_lock);
@@ -371,10 +371,10 @@ void TRI_DestroyBlobCollection (TRI_blob_collection_t* collection) {
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBlobCollection (TRI_blob_collection_t* collection) {
+void TRI_FreeShapeCollection (TRI_shape_collection_t* collection) {
   assert(collection);
 
-  TRI_DestroyBlobCollection(collection);
+  TRI_DestroyShapeCollection(collection);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
@@ -395,12 +395,12 @@ void TRI_FreeBlobCollection (TRI_blob_collection_t* collection) {
 /// @brief writes an element splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
-                             TRI_df_marker_t* marker,
-                             TRI_voc_size_t markerSize,
-                             void const* body,
-                             TRI_voc_size_t bodySize,
-                             TRI_df_marker_t** result) {
+int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
+                              TRI_df_marker_t* marker,
+                              TRI_voc_size_t markerSize,
+                              void const* body,
+                              TRI_voc_size_t bodySize,
+                              TRI_df_marker_t** result) {
   TRI_datafile_t* journal;
   int res;
 
@@ -431,7 +431,7 @@ int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  // and write marker and blob
+  // and write marker and shape
   res = WriteElement(collection, journal, *result, marker, markerSize, body, bodySize);
 
   // release lock on collection
@@ -444,34 +444,34 @@ int TRI_WriteBlobCollection (TRI_blob_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_OpenBlobCollection (TRI_vocbase_t* vocbase,
-                                               char const* path) {
-  TRI_blob_collection_t* blob;
+TRI_shape_collection_t* TRI_OpenShapeCollection (TRI_vocbase_t* vocbase,
+                                                 char const* path) {
+  TRI_shape_collection_t* shape;
   TRI_collection_t* collection;
 
-  blob = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_blob_collection_t), false);
+  shape = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_collection_t), false);
 
-  if (blob == NULL) {
+  if (shape == NULL) {
     return NULL;
   }
 
-  collection = TRI_OpenCollection(vocbase, &blob->base, path);
+  collection = TRI_OpenCollection(vocbase, &shape->base, path);
 
   if (collection == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, blob);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return NULL;
   }
 
-  TRI_InitMutex(&blob->_lock);
+  TRI_InitMutex(&shape->_lock);
 
-  return blob;
+  return shape;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseBlobCollection (TRI_blob_collection_t* collection) {
+bool TRI_CloseShapeCollection (TRI_shape_collection_t* collection) {
   return TRI_CloseCollection(&collection->base);
 }
 

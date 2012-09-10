@@ -16,3 +16,7 @@ setup:
 	@echo AUTOCONF
 	@autoconf -I m4
 	@echo auto system configured, proceed with configure
+
+setup-git: setup
+	@echo adding changes to GIT
+	git add Makefile.in aclocal.m4 config/compile config/config.guess config/config.sub config/depcomp config/install-sh config/missing

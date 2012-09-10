@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 enigne configuration
+/// @brief V8 engine configuration
 ///
 /// @file
 ///
@@ -28,6 +28,8 @@
 #include "ApplicationV8.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -65,16 +67,43 @@ namespace {
     public:
       V8GcThread (ApplicationV8* applicationV8) 
         : Thread("v8-gc"),
-          _applicationV8(applicationV8) {
+          _applicationV8(applicationV8),
+          _lock(),
+          _lastGcStamp(TRI_microtime()) {
       }
 
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect garbage in an endless loop (main functon of GC thread)
+////////////////////////////////////////////////////////////////////////////////
+
       void run () {
         _applicationV8->collectGarbage();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the timestamp of the last GC
+////////////////////////////////////////////////////////////////////////////////
+
+      double getLastGcStamp () {
+        READ_LOCKER(_lock);
+        return _lastGcStamp;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the global GC timestamp 
+////////////////////////////////////////////////////////////////////////////////
+
+      void updateGcStamp (double value) {
+        WRITE_LOCKER(_lock);
+        _lastGcStamp = value;
+      }
+
     private:
       ApplicationV8* _applicationV8;
+      ReadWriteLock _lock;
+      double _lastGcStamp;
   };
 
 }
@@ -107,6 +136,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _actionPath(),
     _useActions(true),
     _gcInterval(1000),
+    _gcFrequency(10.0),
     _startupLoader(),
     _actionLoader(),
     _vocbase(0),
@@ -183,20 +213,29 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::exitContext (V8Context* context) {
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  assert(gc != 0);
+  double lastGc = gc->getLastGcStamp();
+        
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
-
+  
   ++context->_dirt;
 
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    if (context->_dirt < _gcInterval) {
-      _freeContexts.push_back(context);
+    if (context->_lastGcStamp + _gcFrequency < lastGc) {
+      LOGGER_TRACE << "V8 context has reached GC timeout threshold and will be scheduled for GC";
+      _dirtyContexts.push_back(context);
+    }
+    else if (context->_dirt >= _gcInterval) {
+      LOGGER_TRACE << "V8 context has reached maximum number of requests and will be scheduled for GC";
+      _dirtyContexts.push_back(context);
     }
     else {
-      _dirtyContexts.push_back(context);
+      _freeContexts.push_back(context);
     }
 
     guard.broadcast();
@@ -206,25 +245,112 @@ void ApplicationV8::exitContext (V8Context* context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine which of the free contexts should be picked for the GC
+////////////////////////////////////////////////////////////////////////////////
+
+ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
+  size_t n = _freeContexts.size();
+
+  if (n == 0) {
+    // this is easy...
+    return 0;
+  }
+
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  V8Context* context = 0;
+
+  // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
+  size_t pickedContextNr = 0; // index of context with lowest GC stamp
+  
+  for (size_t i = 0; i < n; ++i) {
+    // compare last GC stamp
+    if (_freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
+      pickedContextNr = i;
+    }
+  }
+  // we now have the context to clean up in pickedContextNr
+    
+  // this is the context to clean up
+  context = _freeContexts[pickedContextNr];
+  assert(context != 0);
+
+  // now compare its last GC timestamp with the last global GC stamp
+  if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
+    // no need yet to clean up the context
+    return 0;
+  }
+
+  // we'll pop the context from the vector. the context might be at any position in the vector
+  // so we need to move the other elements around
+  if (n > 1) {
+    for (size_t i = pickedContextNr; i < n - 1; ++i) {
+      _freeContexts[i] = _freeContexts[i + 1];
+    }
+  }
+  _freeContexts.pop_back();
+
+  return context;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the garbage collection
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::collectGarbage () {
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  assert(gc != 0);
+
+  // this flag will be set to true if we timed out waiting for a GC signal
+  // if set to true, the next cycle will use a reduced wait time so the GC
+  // can be performed more early for all dirty contexts. The flag is set
+  // to false again once all contexts have been cleaned up and there is nothing
+  // more to do
+  bool useReducedWait = false;
+
+  // the time we'll wait for a signal
+  uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+
+  // the time we'll wait for a signal when the previous wait timed out
+  uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
+
   while (_stopping == 0) {
     V8Context* context = 0;
+    bool gotSignal = false;
 
     {
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {
-        guard.wait();
+        uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
+        // we'll wait for a signal or a timeout
+        gotSignal = guard.wait(waitTime);
+
+        // use a reduced wait time in the next round because we seem to be idle
+        // the reduced wait time will allow use to perfom GC for more contexts
+        useReducedWait = ! gotSignal;
       }
 
       if (! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
+        useReducedWait = false;
+      }
+      else if (! gotSignal && ! _freeContexts.empty()) {
+        // we timed out waiting for a signal, so we have idle time that we can
+        // spend on running the GC pro-actively
+        // We'll pick one of the free contexts and clean it up
+        context = pickContextForGc();
+
+        // there is no context to clean up, probably they all have been cleaned up
+        // already. increase the wait time so we don't cycle to much in the GC loop
+        // and waste CPU unnecessary
+        useReducedWait =  (context != 0);
       }
     }
+
+    // update last gc time   
+    double lastGc = TRI_microtime();
+    gc->updateGcStamp(lastGc);
 
     if (context != 0) {
       LOGGER_TRACE << "collecting V8 garbage";
@@ -241,6 +367,7 @@ void ApplicationV8::collectGarbage () {
       delete context->_locker;
 
       context->_dirt = 0;
+      context->_lastGcStamp = lastGc;
 
       {
         CONDITION_LOCKER(guard, _contextCondition);
@@ -279,7 +406,8 @@ void ApplicationV8::disableActions () {
 
 void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   options["JAVASCRIPT Options:help-admin"]
-    ("javascript.gc-interval", &_gcInterval, "JavaScript garbage collection interval (each x requests)")
+    ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
+    ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
   ;
 
   options["JAVASCRIPT Options:help-admin"]
@@ -294,6 +422,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
+  LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
 
   // check the startup modules
   if (_startupModules.empty()) {
@@ -475,6 +604,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
+
+  context->_lastGcStamp = TRI_microtime();
   
   LOGGER_TRACE << "initialised V8 context #" << i;
 

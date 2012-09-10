@@ -135,6 +135,8 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       return true;
     }
     
+    acceptFailures = 0;
+    
     struct sockaddr_in addr_out;
     socklen_t len_out = sizeof(addr_out);
 
@@ -149,9 +151,6 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       
       return true;
     }
-
-    acceptFailures = 0;
-   
  
     // disable nagle's algorithm, set to non-blocking and close-on-exec  
     bool result = _endpoint->initIncoming(connfd); 
