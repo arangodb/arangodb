@@ -52,6 +52,29 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    private macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief macro to check duplicate allocation of _response object, resulting in
+/// memleaks
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_RESPONSE \
+  if (_response != 0) { \
+    LOG_WARNING("multi responses created in the same handler. potential memleak"); \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
 
@@ -168,6 +191,7 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateOk () {
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::NO_CONTENT);
 }
 
@@ -181,6 +205,7 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::CREATED);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -205,6 +230,7 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::ACCEPTED);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -229,6 +255,7 @@ void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::OK);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -251,6 +278,7 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::OK);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -320,6 +348,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
 
   VariantArray* result = new VariantArray();
@@ -349,6 +378,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (string const& etag) {
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::NOT_MODIFIED);
 
   _response->setHeader("ETag", "\"" + etag + "\"");
@@ -416,6 +446,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   }
 
   // and generate a response
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
