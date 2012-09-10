@@ -176,7 +176,8 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._limit = null;
   this._countTotal = null;
   this._countQuery = null;
-  this.current = null;
+  this._current = null;
+  this._stop = null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
