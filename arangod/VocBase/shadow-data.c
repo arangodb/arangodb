@@ -534,7 +534,7 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
     return;
   }
    
-  LOG_TRACE("cleaning shadows");
+  LOG_TRACE("cleaning shadows. in store: %ld", (unsigned long) store->_ids._nrUsed);
 
   // loop until there's nothing to delete or 
   // we have deleted SHADOW_MAX_DELETE elements 
