@@ -3111,6 +3111,10 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 
     // combine name and pid
     pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
+    if (pidnames == NULL) {
+      LOG_ERROR("out of memory in TRI_PidNamesByAttributeNames");
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
     
     for (j = 0;  j < attributes->_length;  ++j) {
       pidnames[j]._name = attributes->_buffer[j];

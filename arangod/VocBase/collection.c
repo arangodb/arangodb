@@ -589,9 +589,8 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   res = TRI_SaveParameterInfoCollection(filename, parameter);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
     LOG_ERROR("cannot save collection parameter '%s': '%s'", filename, TRI_last_error());
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return NULL;
   }
