@@ -28,6 +28,7 @@
 
 #include "HttpResponse.h"
 
+#include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "ProtocolBuffers/arangodb.pb.h"
@@ -532,11 +533,11 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     }
     
     // ignore content-length
-    if (*key == 'c' && (strcmp(key, "content-length") == 0)) {
+    if (*key == 'c' && TRI_EqualString(key, "content-length")) {
       continue;
     }
     
-    if (*key == 't' && (strcmp(key, "transfer-encoding") == 0)) {
+    if (*key == 't' && TRI_EqualString(key, "transfer-encoding")) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
@@ -559,7 +560,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendText(transferEncoding);
       output->appendText("\r\n");
     }
-    
+   
     output->appendText("content-length: ");
     
     if (_isHeadResponse) {

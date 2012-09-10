@@ -1,8 +1,10 @@
 not released yet
 ----------------
 
+* fixed issue #193: REST API HEAD request returns a message body on 404
+
 * fixed issue #188: intermittent issues with 1.0.0
-  (server-side cursors not cleaned up in all cases)
+  (server-side cursors not cleaned up in all cases, pthreads deadlock issue)
 
 * issue #189: key store should use ISO datetime format bug 
 
