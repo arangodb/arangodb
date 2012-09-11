@@ -423,6 +423,11 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
+  
+  if (_gcFrequency < 1) {
+    // use a minimum of 1 second for GC
+    _gcFrequency = 1;
+  }
 
   // check the startup modules
   if (_startupModules.empty()) {
