@@ -34,7 +34,6 @@
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-node.h"
-#include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
 #ifdef __cplusplus

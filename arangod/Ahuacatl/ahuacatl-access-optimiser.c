@@ -40,34 +40,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_DEBUG_AQL
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name of an access type
-////////////////////////////////////////////////////////////////////////////////
-
-static char* AccessName (const TRI_aql_access_e type) {
-  switch (type) {
-    case TRI_AQL_ACCESS_IMPOSSIBLE: 
-      return "impossible";
-    case TRI_AQL_ACCESS_EXACT: 
-      return "exact";
-    case TRI_AQL_ACCESS_LIST: 
-      return "list";
-    case TRI_AQL_ACCESS_RANGE_SINGLE: 
-      return "single range";
-    case TRI_AQL_ACCESS_RANGE_DOUBLE: 
-      return "double range";
-    case TRI_AQL_ACCESS_REFERENCE: 
-      return "reference";
-    case TRI_AQL_ACCESS_ALL: 
-      return "all";
-  }
-
-  assert(false);
-  return NULL;
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the length of the variable name for a field access struct
 ////////////////////////////////////////////////////////////////////////////////
@@ -2339,61 +2311,6 @@ int TRI_PickAccessAql (const TRI_aql_field_access_t* const lhs,
   // we cannot determine which side is better. let the client decide
   return 0;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump a single acces for debugging purposes
-////////////////////////////////////////////////////////////////////////////////
-
-#if TRI_DEBUG_AQL
-void TRI_DumpAccessAql (const TRI_aql_field_access_t* const fieldAccess) {
-  printf("\nFIELD ACCESS\n- FIELD: %s\n",fieldAccess->_fullName);
-  printf("- TYPE: %s\n", AccessName(fieldAccess->_type));
-  
-  if (fieldAccess->_type == TRI_AQL_ACCESS_EXACT || fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-    TRI_string_buffer_t b;
-    TRI_InitStringBuffer(&b, TRI_UNKNOWN_MEM_ZONE);
-    TRI_StringifyJson(&b, fieldAccess->_value._value);
-
-    printf("- VALUE: %s\n", b._buffer);
-    TRI_DestroyStringBuffer(&b);
-  }
-  else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
-    TRI_string_buffer_t b;
-    TRI_InitStringBuffer(&b, TRI_UNKNOWN_MEM_ZONE);
-    TRI_StringifyJson(&b, fieldAccess->_value._singleRange._value);
-
-    printf("- VALUE: %s\n", b._buffer);
-    TRI_DestroyStringBuffer(&b);
-  }
-  else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
-    TRI_string_buffer_t b;
-    TRI_InitStringBuffer(&b, TRI_UNKNOWN_MEM_ZONE);
-    TRI_StringifyJson(&b, fieldAccess->_value._between._lower._value);
-    TRI_AppendStringStringBuffer(&b, ", ");
-    TRI_StringifyJson(&b, fieldAccess->_value._between._upper._value);
-
-    printf("- VALUE: %s\n", b._buffer);
-    TRI_DestroyStringBuffer(&b);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump ranges found for debugging purposes
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DumpAccessesAql (const TRI_vector_pointer_t* const ranges) {
-  size_t i, n; 
-  
-  assert(ranges);
-   
-  n = ranges->_length;
-  for (i = 0; i < n; ++i) {
-    TRI_aql_field_access_t* fieldAccess = TRI_AtVectorPointer(ranges, i);
-
-    TRI_DumpAccessesAql(fieldAccess);
-  }
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all field access structs in a vector
