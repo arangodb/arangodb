@@ -134,14 +134,18 @@ static void PersistShadow (TRI_shadow_t* const shadow) {
 /// @brief set the deleted flag for a shadow
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DeleteShadow (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+static void DeleteShadow (TRI_shadow_store_t* const store, 
+                          TRI_shadow_t* const shadow,
+                          const bool decreaseRefCount) {
   LOG_TRACE("setting deleted flag for shadow %p with data ptr %p and id %lu", 
             shadow, 
             shadow->_data, 
             (unsigned long) shadow->_id);
 
   shadow->_deleted = true;
-  DecreaseRefCount(store, shadow);
+  if (decreaseRefCount) {
+    DecreaseRefCount(store, shadow);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,7 +480,7 @@ bool TRI_DeleteDataShadowData (TRI_shadow_store_t* const store,
     shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
     if (shadow && !shadow->_deleted) {
-      DeleteShadow(store, shadow);
+      DeleteShadow(store, shadow, true);
       found = true;
     } 
 
@@ -501,7 +505,7 @@ bool TRI_DeleteIdShadowData (TRI_shadow_store_t* const store,
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
 
   if (shadow && !shadow->_deleted) {
-    DeleteShadow(store, shadow);
+    DeleteShadow(store, shadow, false);
     found = true;
   } 
 
