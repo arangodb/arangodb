@@ -744,7 +744,7 @@ static int InsertGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief updates a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int  UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+static int UpdateGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
   union { void* p; void const* c; } cnv;
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
@@ -1259,6 +1259,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   union { void* p; void const* c; } cnv;
   TRI_shape_access_t const* acc;
   TRI_shaped_json_t shapedObject;
+  TRI_shaped_json_t shapedJson;
   TRI_shaper_t* shaper;
   int res;
   size_t j;
@@ -1281,7 +1282,6 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   // .............................................................................
 
   else if (document != NULL) {
-    TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
 
     cnv.c = document;
@@ -2945,7 +2945,7 @@ static int SkiplistIndexHelper(const TRI_skiplist_index_t* skiplistIndex,
   
     // ..........................................................................
     // Assign the document to the SkiplistIndexElement structure so that it can 
-    // be retreived later.
+    // be retrieved later.
     // ..........................................................................
     cnv.c = document;
     skiplistElement->data = cnv.p;
