@@ -485,7 +485,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     FreeCollectionPath(collection);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 
-    LOG_ERROR("duplicate entry for name '%s'", name);
+    LOG_ERROR("duplicate entry for collection name '%s'", name);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
 
     return NULL;
@@ -858,7 +858,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    // TODO: might this cause endless recursion in some obscure cases??
     return LoadCollectionVocBase(vocbase, collection);
   }
 
