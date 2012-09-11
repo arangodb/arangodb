@@ -404,10 +404,15 @@ static bool CompactifySimCollection (TRI_sim_collection_t* sim) {
   size_t i;
   bool worked = false;
 
-  TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
+  // if we cannot acquire the read lock instantly, we will exit directly.
+  // otherwise we'll risk a multi-thread deadlock between synchroniser,
+  // compactor and data-modification threads (e.g. POST /_api/document)
+  if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(sim)) {
+    return worked;
+  }
 
   // copy datafile information
-  TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(sim);
+  TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
   n = sim->base.base._datafiles._length;
 

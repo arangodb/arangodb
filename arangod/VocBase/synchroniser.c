@@ -374,7 +374,12 @@ void TRI_SynchroniserVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      // if we cannot acquire the read lock instantly, we will continue.
+      // otherwise we'll risk a multi-thread deadlock between synchroniser,
+      // compactor and data-modification threads (e.g. POST /_api/document)
+      if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(collection)) {
+        continue;
+      }
 
       if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
