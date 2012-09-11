@@ -269,15 +269,11 @@ function DELETE_api_cursor(req, res) {
 
   try {
     var cursorId = decodeURIComponent(req.suffix[0]);
-    var cursor = CURSOR(cursorId);
-
-    if (! (cursor instanceof ArangoCursor)) {
+    if (! DELETE_CURSOR(cursorId)) {
       actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
       return;
     }
 
-    cursor.dispose();
-    cursor = null;
     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
     internal.wait(0.0);
   }
