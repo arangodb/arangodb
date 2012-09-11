@@ -506,14 +506,18 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
+  // stop GC
   _gcThread->shutdown();
-  delete _gcThread;
 
+  // shutdown all action threads
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownV8Instance(i);
   }
 
   delete[] _contexts;
+
+  // delete GC thread after all action threads have been stopped
+  delete _gcThread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
