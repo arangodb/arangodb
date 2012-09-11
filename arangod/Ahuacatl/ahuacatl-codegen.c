@@ -1700,7 +1700,6 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " = ");
   ScopeOutputRegister(generator, subQueryRegister);
   ScopeOutput(generator, "; /* subquery */\n");
-  ScopeOutput(generator, ";\n");
     
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
@@ -2021,7 +2020,6 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
   // var row = ...;
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = [ ]; /* return empty */\n");
-  ScopeOutput(generator, " = [ ];\n");
   
   generator->_lastResultRegister = resultRegister;
   
