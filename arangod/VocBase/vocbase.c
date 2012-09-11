@@ -551,9 +551,13 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     char* file;
 
     name = files._buffer[i];
+    assert(name);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
-      LOG_DEBUG("ignoring file/directory '%s'", name);
+      // do not issue a notice about the "lock" file
+      if (! TRI_EqualString(name, "lock")) {
+        LOG_DEBUG("ignoring file/directory '%s'", name);
+      }
       continue;
     }
 
