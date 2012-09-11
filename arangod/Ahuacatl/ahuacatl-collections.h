@@ -37,7 +37,6 @@
 #include "VocBase/document-collection.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-index.h"
 
 #ifdef __cplusplus

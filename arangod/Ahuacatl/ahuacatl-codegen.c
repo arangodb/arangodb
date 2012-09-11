@@ -455,13 +455,11 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   // push the scope on the stack
   TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
 
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope start (");
   ScopeOutput(generator, TRI_TypeNameScopeAql(scope->_type));
   ScopeOutput(generator, ", resultRegister: ");
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ") */\n");
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,11 +470,9 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_register_t i, n;
   
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope end (");
   ScopeOutput(generator, TRI_TypeNameScopeAql(scope->_type));
   ScopeOutput(generator, ") */\n");
-#endif
 
   n = generator->_scopes._length;
   assert(n > 0);
@@ -643,7 +639,7 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
 
   if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false)) {
     // variable already exists in symbol table. this should never happen
-    TRI_AQL_LOG("variable already registered: %s", name);
+    LOG_TRACE("variable already registered: %s", name);
     generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_REDECLARED;
     generator->_errorValue = (char*) name;
   }
@@ -673,7 +669,7 @@ static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const gene
   }
 
   // variable not found. this should never happen
-  TRI_AQL_LOG("variable not found: %s", name);
+  LOG_TRACE("variable not found: %s", name);
   generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN;
   generator->_errorValue = (char*) name;
 
@@ -1703,11 +1699,8 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = ");
   ScopeOutputRegister(generator, subQueryRegister);
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "; /* subquery */\n");
-#else
   ScopeOutput(generator, ";\n");
-#endif
     
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
@@ -2027,11 +2020,8 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
   
   // var row = ...;
   ScopeOutputRegister(generator, resultRegister);
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, " = [ ]; /* return empty */\n");
-#else
   ScopeOutput(generator, " = [ ];\n");
-#endif
   
   generator->_lastResultRegister = resultRegister;
   
@@ -2366,7 +2356,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
     // put everything together
     code = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, generator->_functionBuffer._buffer, generator->_buffer._buffer);
     if (code) {
-      TRI_AQL_LOG("generated code: %s\n", code);
+      LOG_TRACE("generated code: %s\n", code);
     }
     else {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
