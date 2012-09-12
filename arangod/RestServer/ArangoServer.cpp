@@ -67,7 +67,6 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
-#include "UserManager/ApplicationUserManager.h"
 #include "UserManager/Session.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
@@ -150,7 +149,6 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
-                                 ApplicationUserManager* user,
                                  TRI_vocbase_t* vocbase) {
 
   // add "/version" handler
@@ -158,7 +156,6 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
-  user->addHandlers(factory, "/_admin");
 
   // add statistics
   factory->addHandler("/_admin/connection-statistics",
@@ -200,7 +197,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
-    _applicationUserManager(0),
     _dispatcherThreads(8),
     _databasePath(),
     _removeOnDrop(true),
@@ -313,42 +309,6 @@ void ArangoServer::buildApplicationServer () {
   _applicationAdminServer->allowAdminDirectory(); // might be changed later
 
   // .............................................................................
-  // build the application user manager
-  // .............................................................................
-
-  _applicationUserManager = new ApplicationUserManager();
-  _applicationServer->addFeature(_applicationUserManager);
-  
-  // create manager role
-  vector<right_t> rightsManager;
-  rightsManager.push_back(RIGHT_TO_MANAGE_USER);
-  rightsManager.push_back(RIGHT_TO_MANAGE_ADMIN);
-
-  _applicationUserManager->createRole("manager", rightsManager, 0);
-
-  // create admin role
-  vector<right_t> rightsAdmin;
-  rightsAdmin.push_back(RIGHT_TO_MANAGE_USER);
-  rightsAdmin.push_back(RIGHT_TO_BE_DELETED);
-
-  _applicationUserManager->createRole("admin", rightsAdmin, RIGHT_TO_MANAGE_ADMIN);
-
-  // create user role
-  vector<right_t> rightsUser;
-  rightsUser.push_back(RIGHT_TO_BE_DELETED);
-
-  _applicationUserManager->createRole("user", rightsUser, RIGHT_TO_MANAGE_USER);
-
-  // create a standard user
-  _applicationUserManager->createUser("manager", "manager");
-
-  // added a anonymous right for session which are not logged in
-  vector<right_t> rightsAnonymous;
-  rightsAnonymous.push_back(RIGHT_TO_LOGIN);
-
-  _applicationUserManager->setAnonymousRights(rightsAnonymous);
-
-  // .............................................................................
   // define server options
   // .............................................................................
 
@@ -440,8 +400,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
   
@@ -456,8 +414,6 @@ void ArangoServer::buildApplicationServer () {
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     // validate journal size
     LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -469,9 +425,6 @@ void ArangoServer::buildApplicationServer () {
 
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
-
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
   else if (1 == arguments.size()) {
@@ -481,9 +434,6 @@ void ArangoServer::buildApplicationServer () {
   if (_databasePath.empty()) {
     LOGGER_FATAL << "no database path has been supplied, giving up";
     LOGGER_INFO << "please use the '--database.directory' option";
-
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 

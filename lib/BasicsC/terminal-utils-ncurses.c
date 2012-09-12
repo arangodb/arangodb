@@ -26,7 +26,7 @@
 
 #include "BasicsC/terminal-utils.h"
 
-#ifdef HAVE_NCURSES
+#ifdef TRI_HAVE_NCURSES
 
 #include <term.h>
 #include <curses.h>

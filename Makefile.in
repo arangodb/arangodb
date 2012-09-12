@@ -366,10 +366,7 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/terminal-utils-ncurses.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
 	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
-	lib/JsonParserX/JsonParserX.cpp \
-	lib/JsonParserX/JsonParserXDriver.cpp \
-	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
+	lib/JsonParser/json-parser.c lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
@@ -439,10 +436,6 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/threads-posix.$(OBJEXT) \
 	lib/BasicsC/vector.$(OBJEXT) lib/BasicsC/voc-errors.$(OBJEXT) \
 	lib/JsonParser/json-parser.$(OBJEXT) \
-	lib/JsonParserX/InputParser.$(OBJEXT) \
-	lib/JsonParserX/JsonParserX.$(OBJEXT) \
-	lib/JsonParserX/JsonParserXDriver.$(OBJEXT) \
-	lib/JsonParserX/JsonScannerX.$(OBJEXT) \
 	lib/Logger/Logger.$(OBJEXT) lib/Logger/LoggerData.$(OBJEXT) \
 	lib/Logger/LoggerInfo.$(OBJEXT) \
 	lib/Logger/LoggerStream.$(OBJEXT) \
@@ -538,7 +531,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/UserManager/ApplicationUserManager.$(OBJEXT) \
 	lib/UserManager/Role.$(OBJEXT) \
 	lib/UserManager/Session.$(OBJEXT) \
-	lib/UserManager/SessionHandler.$(OBJEXT) \
 	lib/UserManager/User.$(OBJEXT) \
 	lib/UserManager/UserHandler.$(OBJEXT) \
 	lib/UserManager/UsersHandler.$(OBJEXT)
@@ -1106,7 +1098,7 @@ FLEX_FILES = lib/JsonParser/json-parser.c \
 ################################################################################
 ### @brief flex++
 ################################################################################
-FLEXXX_FILES = lib/V8/v8-json.cpp lib/JsonParserX/JsonScannerX.cpp
+FLEXXX_FILES = lib/V8/v8-json.cpp
 
 ################################################################################
 ### @brief bison files
@@ -1120,11 +1112,7 @@ BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.c
 ################################################################################
 ### @brief bison++ files
 ################################################################################
-
-################################################################################
-### @brief bison++
-################################################################################
-BISONXX_FILES = lib/JsonParserX/JsonParserX.cpp
+BISONXX_FILES = 
 
 ################################################################################
 ### @brief protocol buffers files
@@ -1320,10 +1308,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/terminal-utils-ncurses.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
 	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
-	lib/JsonParserX/JsonParserX.cpp \
-	lib/JsonParserX/JsonParserXDriver.cpp \
-	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
+	lib/JsonParser/json-parser.c lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
@@ -1406,7 +1391,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/UserManager/ApplicationUserManager.cpp \
 	lib/UserManager/Role.cpp \
 	lib/UserManager/Session.cpp \
-	lib/UserManager/SessionHandler.cpp \
 	lib/UserManager/User.cpp \
 	lib/UserManager/UserHandler.cpp \
 	lib/UserManager/UsersHandler.cpp
@@ -1738,6 +1722,11 @@ UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 ################################################################################
 BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
 UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
+
+################################################################################
+### @brief tags file
+################################################################################
+GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 @ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_ZEROMQ_TRUE@ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 all: $(BUILT_SOURCES)
@@ -1925,24 +1914,6 @@ lib/JsonParser/$(DEPDIR)/$(am__dirstamp):
 	@: > lib/JsonParser/$(DEPDIR)/$(am__dirstamp)
 lib/JsonParser/json-parser.$(OBJEXT): lib/JsonParser/$(am__dirstamp) \
 	lib/JsonParser/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/$(am__dirstamp):
-	@$(MKDIR_P) lib/JsonParserX
-	@: > lib/JsonParserX/$(am__dirstamp)
-lib/JsonParserX/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/JsonParserX/$(DEPDIR)
-	@: > lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/InputParser.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/JsonParserX.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/JsonParserXDriver.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/JsonScannerX.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
 lib/Logger/$(am__dirstamp):
 	@$(MKDIR_P) lib/Logger
 	@: > lib/Logger/$(am__dirstamp)
@@ -2278,9 +2249,6 @@ lib/UserManager/ApplicationUserManager.$(OBJEXT):  \
 lib/UserManager/Role.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
 	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
 lib/UserManager/Session.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/SessionHandler.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
 	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
 lib/UserManager/User.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
 	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
@@ -3031,10 +2999,6 @@ mostlyclean-compile:
 	-rm -f lib/HttpServer/RedirectHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT)
 	-rm -f lib/JsonParser/json-parser.$(OBJEXT)
-	-rm -f lib/JsonParserX/InputParser.$(OBJEXT)
-	-rm -f lib/JsonParserX/JsonParserX.$(OBJEXT)
-	-rm -f lib/JsonParserX/JsonParserXDriver.$(OBJEXT)
-	-rm -f lib/JsonParserX/JsonScannerX.$(OBJEXT)
 	-rm -f lib/Logger/Logger.$(OBJEXT)
 	-rm -f lib/Logger/LoggerData.$(OBJEXT)
 	-rm -f lib/Logger/LoggerInfo.$(OBJEXT)
@@ -3090,7 +3054,6 @@ mostlyclean-compile:
 	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
 	-rm -f lib/UserManager/Role.$(OBJEXT)
 	-rm -f lib/UserManager/Session.$(OBJEXT)
-	-rm -f lib/UserManager/SessionHandler.$(OBJEXT)
 	-rm -f lib/UserManager/User.$(OBJEXT)
 	-rm -f lib/UserManager/UserHandler.$(OBJEXT)
 	-rm -f lib/UserManager/UsersHandler.$(OBJEXT)
@@ -3296,10 +3259,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/RedirectHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ServiceUnavailableHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParser/$(DEPDIR)/json-parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/InputParser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonParserX.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonParserXDriver.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonScannerX.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/Logger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/LoggerData.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
@@ -3355,7 +3314,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Session.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/SessionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/User.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
@@ -4969,11 +4927,6 @@ CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	  || $(CTAGS) $(CTAGSFLAGS) $(AM_CTAGSFLAGS) $(CTAGS_ARGS) \
 	     $$unique
 
-GTAGS:
-	here=`$(am__cd) $(top_builddir) && pwd` \
-	  && $(am__cd) $(top_srcdir) \
-	  && gtags -i $(GTAGS_ARGS) "$$here"
-
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
@@ -5227,8 +5180,6 @@ distclean-generic:
 	-rm -f lib/HttpServer/$(am__dirstamp)
 	-rm -f lib/JsonParser/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/JsonParser/$(am__dirstamp)
-	-rm -f lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/JsonParserX/$(am__dirstamp)
 	-rm -f lib/Logger/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Logger/$(am__dirstamp)
 	-rm -f lib/MRuby/$(DEPDIR)/$(am__dirstamp)
@@ -5272,7 +5223,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5321,7 +5272,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5708,6 +5659,9 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+
+GTAGS:
+	echo $(GTAGS_FILES) | tr " " "\n" | gtags -i -f -
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 

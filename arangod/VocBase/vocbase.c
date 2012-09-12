@@ -1821,9 +1821,9 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
   // check that we have an existing name
   // .............................................................................
 
-  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   collection = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   if (collection == NULL) {
     LOG_DEBUG("unknown collection '%s'", name);

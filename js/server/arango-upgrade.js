@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    arango-upgrade
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
@@ -56,6 +60,7 @@ function main (argv) {
 
     if (users == null) {
       users = db._create("_users", { isSystem: true, waitForSync: true });
+
       if (users == null) {
         console.error("creating users collection '_users' failed");
         return false;
@@ -68,6 +73,7 @@ function main (argv) {
   // create a unique index on username attribute in _users
   addTask("create index on username attribute in _users collection", function () {
     var users = db._collection("_users");
+
     if (users == null) {
       return false;
     }
@@ -80,13 +86,14 @@ function main (argv) {
   // add a default root user with no passwd
   addTask("add default root user", function () {
     var users = db._collection("_users");
+
     if (users == null) {
       return false;
     }
 
     if (users.count() == 0) {
       // only add account if user has not created his/her own accounts already
-      users.save({ user: "root", password: internal.sha256(""), active: true });
+      users.save({ user: "root", password: internal.encodePassword(""), active: true });
     }
 
     return true;
@@ -98,6 +105,7 @@ function main (argv) {
 
     if (graphs == null) {
       graphs = db._create("_graphs", { isSystem: true, waitForSync: true });
+
       if (graphs == null) {
         console.error("creating graphs collection '_graphs' failed");
         return false;
@@ -110,6 +118,7 @@ function main (argv) {
   // create a unique index on name attribute in _graphs
   addTask("create index on name attribute in _graphs collection", function () {
     var graphs = db._collection("_graphs");
+
     if (graphs == null) {
       return false;
     }
@@ -142,6 +151,7 @@ function main (argv) {
           var isEdge = true;
           // check the 1st 50 documents from a collection
           var documents = collection.ALL(0, 50);
+
           for (var j in documents) {
             var doc = documents[j];
   
@@ -179,6 +189,7 @@ function main (argv) {
     console.log("Executing task #" + i + ": " + task.description);
 
     var result = task.code();
+
     if (! result) {
       console.error("Task failed. Aborting upgrade script.");
       console.error("Please fix the problem and try running the upgrade script again.");
@@ -197,6 +208,10 @@ function main (argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

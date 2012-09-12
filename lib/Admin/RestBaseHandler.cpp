@@ -217,23 +217,6 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a request body in json given a description
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestBaseHandler::parseBody (InputParser::ObjectDescription& desc) {
-  boost::scoped_ptr<VariantArray> json(InputParser::jsonArray(_request));
-  bool ok = desc.parse(json.get());
-
-  if (! ok) {
-    generateError(HttpResponse::BAD, 
-                  TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  desc.lastError());
-  }
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief selects an output format
 ////////////////////////////////////////////////////////////////////////////////
 
