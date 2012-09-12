@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief terimnal utilities using ncurses
+/// @brief terminal utilities using posix functions
 ///
 /// @file
 /// DISCLAIMER
@@ -26,10 +26,9 @@
 
 #include "BasicsC/terminal-utils.h"
 
-#ifdef TRI_HAVE_NCURSES
+#ifdef TRI_HAVE_SYS_IOCTL_H
 
-#include <term.h>
-#include <curses.h>
+#include <sys/ioctl.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -45,22 +44,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ColumnsWidth () {
-  union { char * a; char const * b; } c;
+  unsigned short values[4];
 
   int ret;
+  
+  ret = ioctl(0, TIOCGWINSZ, &values);    
 
-  // initializing terminfo
-  ret = setupterm(NULL, fileno(stdin), NULL);
-
-  if (ret != 0) {
-    return TRI_DEFAULT_COLUMNS;
-  }
-
-  // and extract the columns
-  c.b = "cols";
-  ret = tigetnum(c.a);
-
-  return ret == -1 ? TRI_DEFAULT_COLUMNS : ret;
+  return ret == -1 ? TRI_DEFAULT_COLUMNS : values[1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////

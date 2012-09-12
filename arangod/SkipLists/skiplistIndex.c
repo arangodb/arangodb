@@ -45,10 +45,21 @@
 //------------------------------------------------------------------------------
 
 
-// forward declaration
-static bool skiplistIndex_findHelperIntervalValid(SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
-static bool multiSkiplistIndex_findHelperIntervalValid(SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
+// .............................................................................
+// forward declaration - some helper methods
+// .............................................................................
 
+static bool skiplistIndex_findHelperIntervalValid      (SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
+static bool multiSkiplistIndex_findHelperIntervalValid (SkiplistIndex*, TRI_skiplist_iterator_interval_t*);
+
+
+// .............................................................................
+// forward declaration of static functions which are used by the query engine
+// .............................................................................
+
+static int                   SkiplistIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
+static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
+static int                   SkiplistIndex_freeMethodCall   (void*, void*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,6 +483,41 @@ static void* SkiplistPrevsIterationCallback(TRI_skiplist_iterator_t* iterator, i
 /// @addtogroup skiplistIndex
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Assigns a static function call to a function pointer used by Query Engine
+////////////////////////////////////////////////////////////////////////////////
+
+int SkiplistIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+  switch (methodType) {
+  
+    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
+      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
+      *call = SkiplistIndex_freeMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
+      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
+      *call = SkiplistIndex_queryMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
+      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
+      *call = SkiplistIndex_resultMethodCall;
+      break;
+    }
+
+    default : {
+      assert(false);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free a skiplist iterator
@@ -1346,6 +1392,39 @@ bool MultiSkiplistIndex_update(SkiplistIndex* skiplistIndex, SkiplistIndexElemen
   assert(false); // should never be called directly
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared query engine callback functions
+////////////////////////////////////////////////////////////////////////////////////////
+
+static int SkiplistIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                         TRI_index_challenge_t* challenge, void* data) {
+  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
+  if (slIndex == NULL || indexOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+static TRI_index_iterator_t* SkiplistIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                          void* data, bool (*filter) (TRI_index_iterator_t*)) {
+  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
+  if (slIndex == NULL || indexOperator == NULL) {
+    return NULL;
+  }
+  assert(false);
+  return NULL;
+}
+
+static int SkiplistIndex_freeMethodCall(void* theIndex, void* data) {
+  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
+  if (slIndex == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

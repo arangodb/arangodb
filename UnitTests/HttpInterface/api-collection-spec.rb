@@ -10,7 +10,7 @@ describe ArangoDB do
   context "dealing with collections:" do
 
 ################################################################################
-## reading all collection
+## reading all collections
 ################################################################################
 
     context "all collections:" do
@@ -39,7 +39,14 @@ describe ArangoDB do
 	collections = doc.parsed_response['collections']
 	names = doc.parsed_response['names']
 
-	collections.length.should eq(3)
+        found = 0
+        for n in names do
+          if n[0] == "units" or n[0] == "employees" or n[0] == "locations"
+            found = found + 1
+          end
+        end
+
+        found.should eq(3)
 
 	for collection in collections do
 	  names[collection['name']].should eq(collection)

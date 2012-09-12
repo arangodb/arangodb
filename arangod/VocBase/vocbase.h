@@ -86,6 +86,13 @@ struct TRI_shadow_store_s;
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to read lock the vocbase collection status
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) \
+  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the vocbase collection status
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -368,13 +375,21 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t _authInfo;
   TRI_read_write_lock_t _authInfoLock;
 
-  sig_atomic_t _active; // 0 = inactive, 1 = normal operation, 2 = in shutdown process
+  // state of the database
+  // 0 = inactive
+  // 1 = normal operation/running
+  // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
+  // 3 = shutdown in progress/waiting for cleanup thread to finish
+  sig_atomic_t _state; 
+
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
+  TRI_thread_t _cleanup;
 
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions; 
 
+  TRI_condition_t _cleanupCondition;
   TRI_condition_t _syncWaitersCondition;
   int64_t _syncWaiters;  
 }

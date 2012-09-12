@@ -1,5 +1,5 @@
 diff --git a/arangod/V8Server/ApplicationV8.cpp b/arangod/V8Server/ApplicationV8.cpp
-index e1b246d..c381f4e 100644
+index d200d55..629fe3f 100644
 --- a/arangod/V8Server/ApplicationV8.cpp
 +++ b/arangod/V8Server/ApplicationV8.cpp
 @@ -1,5 +1,5 @@
@@ -63,29 +63,26 @@ index e1b246d..c381f4e 100644
    };
  
  }
-@@ -107,6 +136,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
+@@ -106,6 +135,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
+     _startupModules("js/modules"),
      _actionPath(),
-     _useActions(true),
      _gcInterval(1000),
 +    _gcFrequency(10.0),
      _startupLoader(),
      _actionLoader(),
      _vocbase(0),
-@@ -183,21 +213,30 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
+@@ -230,6 +260,10 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
  ////////////////////////////////////////////////////////////////////////////////
  
  void ApplicationV8::exitContext (V8Context* context) {
 +  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
 +  assert(gc != 0);
 +  double lastGc = gc->getLastGcStamp();
-+        
++
    context->_context->Exit();
    context->_isolate->Exit();
    delete context->_locker;
--
-+  
-   ++context->_dirt;
- 
+@@ -239,12 +273,17 @@ void ApplicationV8::exitContext (V8Context* context) {
    {
      CONDITION_LOCKER(guard, _contextCondition);
  
@@ -106,13 +103,77 @@ index e1b246d..c381f4e 100644
  
      guard.broadcast();
    }
-@@ -210,21 +249,40 @@ void ApplicationV8::exitContext (V8Context* context) {
+@@ -253,25 +292,112 @@ void ApplicationV8::exitContext (V8Context* context) {
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief determine which of the free contexts should be picked for the GC
++////////////////////////////////////////////////////////////////////////////////
++
++ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
++  size_t n = _freeContexts.size();
++
++  if (n == 0) {
++    // this is easy...
++    return 0;
++  }
++
++  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
++  V8Context* context = 0;
++
++  // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
++  size_t pickedContextNr = 0; // index of context with lowest GC stamp
++  
++  for (size_t i = 0; i < n; ++i) {
++    // compare last GC stamp
++    if (_freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
++      pickedContextNr = i;
++    }
++  }
++  // we now have the context to clean up in pickedContextNr
++    
++  // this is the context to clean up
++  context = _freeContexts[pickedContextNr];
++  assert(context != 0);
++  
++  // now compare its last GC timestamp with the last global GC stamp
++  if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
++    // no need yet to clean up the context
++    return 0;
++  }
++
++  // we'll pop the context from the vector. the context might be at any position in the vector
++  // so we need to move the other elements around
++  if (n > 1) {
++    for (size_t i = pickedContextNr; i < n - 1; ++i) {
++      _freeContexts[i] = _freeContexts[i + 1];
++    }
++  }
++  _freeContexts.pop_back();
++
++  return context;
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief runs the garbage collection
  ////////////////////////////////////////////////////////////////////////////////
  
  void ApplicationV8::collectGarbage () {
 +  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
 +  assert(gc != 0);
-+  uint64_t waitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
++  
++  // this flag will be set to true if we timed out waiting for a GC signal
++  // if set to true, the next cycle will use a reduced wait time so the GC
++  // can be performed more early for all dirty contexts. The flag is set
++  // to false again once all contexts have been cleaned up and there is nothing
++  // more to do
++  bool useReducedWait = false;
++
++  // the time we'll wait for a signal
++  uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
++
++  // the time we'll wait for a signal when the previous wait timed out
++  uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
 +
    while (_stopping == 0) {
      V8Context* context = 0;
@@ -123,23 +184,31 @@ index e1b246d..c381f4e 100644
  
        if (_dirtyContexts.empty()) {
 -        guard.wait();
-+        // check whether we got a wait timeout or a signal
++        uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
++        // we'll wait for a signal or a timeout 
 +        gotSignal = guard.wait(waitTime);
++        
++        // use a reduced wait time in the next round because we seem to be idle
++        // the reduced wait time will allow use to perfom GC for more contexts
++        useReducedWait = ! gotSignal;
        }
  
        if (! _dirtyContexts.empty()) {
          context = _dirtyContexts.back();
          _dirtyContexts.pop_back();
-       }
-+
-+      if (context == 0 && ! gotSignal && ! _freeContexts.empty()) {
-+        // we timed out waiting for a signal
-+        // so we'll pop one of the free contexts and clean it up pro-actively
-+        context = _freeContexts.back();
-+        if (context != 0) {
-+          _freeContexts.pop_back();
-+        }
++        useReducedWait = false;
 +      }
++      else if (! gotSignal && ! _freeContexts.empty()) {
++        // we timed out waiting for a signal, so we have idle time that we can
++        // spend on running the GC pro-actively
++        // We'll pick one of the free contexts and clean it up
++        context = pickContextForGc();
++
++        // there is no context to clean up, probably they all have been cleaned up
++        // already. increase the wait time so we don't cycle to much in the GC loop
++        // and waste CPU unnecessary
++        useReducedWait =  (context != 0);
+       }
      }
 +   
 +    // update last gc time   
@@ -148,7 +217,7 @@ index e1b246d..c381f4e 100644
  
      if (context != 0) {
        LOGGER_TRACE << "collecting V8 garbage";
-@@ -241,6 +299,7 @@ void ApplicationV8::collectGarbage () {
+@@ -288,6 +414,7 @@ void ApplicationV8::collectGarbage () {
        delete context->_locker;
  
        context->_dirt = 0;
@@ -156,7 +225,7 @@ index e1b246d..c381f4e 100644
  
        {
          CONDITION_LOCKER(guard, _contextCondition);
-@@ -279,7 +338,8 @@ void ApplicationV8::disableActions () {
+@@ -326,7 +453,8 @@ void ApplicationV8::disableActions () {
  
  void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
    options["JAVASCRIPT Options:help-admin"]
@@ -166,29 +235,38 @@ index e1b246d..c381f4e 100644
    ;
  
    options["JAVASCRIPT Options:help-admin"]
-@@ -475,6 +535,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
-   context->_context->Exit();
+@@ -341,6 +469,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ bool ApplicationV8::prepare () {
++  LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
+   LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
+ 
+   // set up the startup loader
+@@ -528,6 +657,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
    context->_isolate->Exit();
    delete context->_locker;
-+
-+  context->_lastGcStamp = TRI_microtime();
    
++  context->_lastGcStamp = TRI_microtime();
++
    LOGGER_TRACE << "initialised V8 context #" << i;
  
+   _freeContexts.push_back(context);
 diff --git a/arangod/V8Server/ApplicationV8.h b/arangod/V8Server/ApplicationV8.h
-index a4fa6bd..e91304d 100644
+index 62b0474..0ee5356 100644
 --- a/arangod/V8Server/ApplicationV8.h
 +++ b/arangod/V8Server/ApplicationV8.h
 @@ -91,7 +91,19 @@ namespace triagens {
            v8::Persistent<v8::Context> _context;
            v8::Isolate* _isolate;
            v8::Locker* _locker;
+-          size_t _dirt;
 +
 +////////////////////////////////////////////////////////////////////////////////
 +/// @brief number of requests since last GC of the context 
 +////////////////////////////////////////////////////////////////////////////////
 +
-           size_t _dirt;
++           size_t _dirt;
 +
 +////////////////////////////////////////////////////////////////////////////////
 +/// @brief timestamp of last GC for the context
@@ -199,7 +277,22 @@ index a4fa6bd..e91304d 100644
          };
  
  ////////////////////////////////////////////////////////////////////////////////
-@@ -306,6 +318,18 @@ namespace triagens {
+@@ -239,6 +251,14 @@ namespace triagens {
+ /// @addtogroup ArangoDB
+ /// @{
+ ////////////////////////////////////////////////////////////////////////////////
++ 
++////////////////////////////////////////////////////////////////////////////////
++/// @brief determine which of the free contexts should be picked for the GC
++////////////////////////////////////////////////////////////////////////////////
++
++        V8Context* pickContextForGc ();
++
++////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief prepares a V8 instance
+@@ -312,6 +332,18 @@ namespace triagens {
          uint64_t _gcInterval;
  
  ////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +311,1990 @@ index a4fa6bd..e91304d 100644
  /// @brief V8 startup loader
  ////////////////////////////////////////////////////////////////////////////////
  
+diff --git a/arangod/V8Server/v8-query.cpp b/arangod/V8Server/v8-query.cpp
+index 0ca033a..e567349 100755
+--- a/arangod/V8Server/v8-query.cpp
++++ b/arangod/V8Server/v8-query.cpp
+@@ -584,13 +584,23 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
+ /// @brief execute a skiplist query (by condition or by example)
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, std::string const& signature, const query_t type) {
++static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, 
++                                                   std::string const& signature, 
++                                                   const query_t type, 
++                                                   const bool lock) {
+   v8::HandleScope scope;
+ 
+   // extract and use the simple collection
+   v8::Handle<v8::Object> err;
+   TRI_vocbase_col_t const* collection;
+-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++  TRI_sim_collection_t* sim = 0;
++  
++  if (lock) {
++    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++  }
++  else {
++    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
++  }
+ 
+   if (sim == 0) {
+     return scope.Close(v8::ThrowException(err));
+@@ -598,7 +608,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+ 
+   // expecting index, example, skip, and limit
+   if (argv.Length() < 2) {
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+ 
+     std::string usage("Usage: ");
+     usage += signature;
+@@ -608,7 +620,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   }
+ 
+   if (! argv[1]->IsObject()) {
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+     std::string msg;
+ 
+     if (type == QUERY_EXAMPLE) {
+@@ -639,7 +653,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   // inside a read transaction
+   // .............................................................................
+ 
+-  collection->_collection->beginRead(collection->_collection);
++  if (lock) {
++    collection->_collection->beginRead(collection->_collection);
++  }
+ 
+   // extract the index
+   TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+@@ -647,14 +663,18 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   if (idx == 0) {
+     collection->_collection->endRead(collection->_collection);
+ 
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+-    collection->_collection->endRead(collection->_collection);
++    if (lock) {
++      collection->_collection->endRead(collection->_collection);
+ 
+-    TRI_ReleaseCollection(collection);
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+   }
+ 
+@@ -668,9 +688,11 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   }
+ 
+   if (!skiplistOperator) {
+-    collection->_collection->endRead(collection->_collection);
++    if (lock) {
++      collection->_collection->endRead(collection->_collection);
+ 
+-    TRI_ReleaseCollection(collection);
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+   }
+ 
+@@ -699,7 +721,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+     }
+   }
+ 
+-  collection->_collection->endRead(collection->_collection);
++  if (lock) {
++    collection->_collection->endRead(collection->_collection);
++  }
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -711,18 +735,17 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv, st
+   result->Set(v8::String::New("total"), v8::Number::New((double) total));
+   result->Set(v8::String::New("count"), v8::Number::New(count));
+ 
+-  TRI_ReleaseCollection(collection);
++  if (lock) {
++    TRI_ReleaseCollection(collection);
++  }
+ 
+   return scope.Close(result);
+ }
+ 
+-
+-
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief execute a bitarray index query (by condition or by example)
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-
+ ////////////////////////////////////////////////////////////////////////////////
+ // Example of a filter associated with an interator
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -755,7 +778,10 @@ static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
+   return true;
+ }
+ 
+-static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, std::string const& signature, const query_t type) {
++static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, 
++                                                   std::string const& signature, 
++                                                   const query_t type, 
++                                                   const bool lock) {
+   v8::HandleScope scope;
+   v8::Handle<v8::Object> err;
+   const TRI_vocbase_col_t* collection;
+@@ -766,8 +792,14 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   // extract and use the simple collection
+   // ...........................................................................
+ 
+-  
+-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++
++  TRI_sim_collection_t* sim = 0;
++  if (lock) {  
++    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++  }
++  else {
++    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
++  }
+ 
+   if (sim == 0) {
+     return scope.Close(v8::ThrowException(err));
+@@ -781,7 +813,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   // ...........................................................................
+ 
+   if (argv.Length() < 2) {
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+ 
+     std::string usage("Usage: ");
+     usage += signature;
+@@ -794,7 +828,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   // ...........................................................................
+   
+   if (! argv[1]->IsObject()) {
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+     std::string msg;
+ 
+     if (type == QUERY_EXAMPLE) {
+@@ -836,8 +872,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   // inside a read transaction
+   // .............................................................................
+ 
+-  collection->_collection->beginRead(collection->_collection);
+-
++  if (lock) {
++    collection->_collection->beginRead(collection->_collection);
++  }
+ 
+   // .............................................................................
+   // extract the index
+@@ -848,15 +885,19 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   if (idx == 0) {
+     collection->_collection->endRead(collection->_collection);
+ 
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(err));
+   }
+   
+   
+   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
+-    collection->_collection->endRead(collection->_collection);
++    if (lock) {
++      collection->_collection->endRead(collection->_collection);
+ 
+-    TRI_ReleaseCollection(collection);
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a skiplist index")));
+   }
+ 
+@@ -872,9 +913,11 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+ 
+   
+   if (indexOperator == 0) { // something wrong
+-    collection->_collection->endRead(collection->_collection);
++    if (lock) {
++      collection->_collection->endRead(collection->_collection);
+ 
+-    TRI_ReleaseCollection(collection);
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up skiplist operator failed")));
+   }
+ 
+@@ -924,8 +967,10 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   else {
+     LOG_WARNING("index iterator returned with a NULL value in ExecuteBitarrayQuery");
+   }
+-  
+-  collection->_collection->endRead(collection->_collection);
++ 
++  if (lock) { 
++    collection->_collection->endRead(collection->_collection);
++  }
+ 
+   // .............................................................................
+   // outside a write transaction
+@@ -935,12 +980,13 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv, st
+   result->Set(v8::String::New("total"), v8::Number::New((double) total));
+   result->Set(v8::String::New("count"), v8::Number::New(count));
+ 
+-  TRI_ReleaseCollection(collection);
++  if (lock) {
++    TRI_ReleaseCollection(collection);
++  }
+ 
+   return scope.Close(result);
+ }
+ 
+-
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief sorts geo coordinates
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -1114,7 +1160,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+       TRI_voc_rid_t rid;
+ 
+       TRI_vocbase_col_t const* vertexCollection = 0;
+-      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, vertices->Get(i));
++      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, true, vertices->Get(i));
+ 
+       if (! errMsg.IsEmpty()) {
+         if (vertexCollection != 0) {
+@@ -1150,7 +1196,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+     TRI_voc_rid_t rid;
+ 
+     TRI_vocbase_col_t const* vertexCollection = 0;
+-    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, argv[0]);
++    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, true, argv[0]);
+ 
+     if (! errMsg.IsEmpty()) {
+       if (vertexCollection != 0) {
+@@ -1204,24 +1250,18 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+-/// @brief selects all elements
++/// @brief executes an ALL query, without any locking
++///
++/// the caller must ensure all relevant locks are acquired and freed
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
++static v8::Handle<v8::Value> AllQuery (TRI_sim_collection_t* sim, 
++                                       TRI_vocbase_col_t const* collection,
++                                       v8::Arguments const& argv) {
+   v8::HandleScope scope;
+-
+-  // extract and use the simple collection
+-  v8::Handle<v8::Object> err;
+-  TRI_vocbase_col_t const* collection;
+-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+-
+-  if (sim == 0) {
+-    return scope.Close(v8::ThrowException(err));
+-  }
+-
++  
+   // expecting two arguments
+   if (argv.Length() != 2) {
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(
+                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                "usage: ALL(<skip>, <limit>)")));
+@@ -1239,12 +1279,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+   v8::Handle<v8::Array> documents = v8::Array::New();
+   result->Set(v8::String::New("documents"), documents);
+ 
+-  // .............................................................................
+-  // inside a read transaction
+-  // .............................................................................
+-
+-  collection->_collection->beginRead(collection->_collection);
+-
+   size_t total = sim->_primaryIndex._nrUsed;
+   uint32_t count = 0;
+ 
+@@ -1309,8 +1343,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+     }
+   }
+ 
+-  collection->_collection->endRead(collection->_collection);
+-
+   // .............................................................................
+   // outside a write transaction
+   // .............................................................................
+@@ -1318,7 +1350,64 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
+   result->Set(v8::String::New("total"), v8::Number::New((double) total));
+   result->Set(v8::String::New("count"), v8::Number::New(count));
+ 
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects all elements, acquiring all required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++
++  // .............................................................................
++  // inside a read transaction
++  // .............................................................................
++  
++  collection->_collection->beginRead(collection->_collection);
++
++  v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
++
++  collection->_collection->endRead(collection->_collection);
++
++  // .............................................................................
++  // outside a write transaction
++  // .............................................................................
++
+   TRI_ReleaseCollection(collection);
++  
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects all elements, without acquiring any locks
++///
++/// It is the callers responsibility to acquire and free the required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_AllNLQuery (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++
++  v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
++
+   return scope.Close(result);
+ }
+ 
+@@ -1435,23 +1524,18 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects elements by example using a hash index
++///
++/// It is the callers responsibility to acquire and free the required locks
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
++static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_sim_collection_t* sim,
++                                                      TRI_vocbase_col_t const* collection,
++                                                      v8::Handle<v8::Object>* err,
++                                                      v8::Arguments const& argv) {
+   v8::HandleScope scope;
+ 
+-  // extract and use the simple collection
+-  v8::Handle<v8::Object> err;
+-  TRI_vocbase_col_t const* collection;
+-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+-
+-  if (sim == 0) {
+-    return scope.Close(v8::ThrowException(err));
+-  }
+-
+   // expecting index, example, skip, and limit
+   if (argv.Length() < 2) {
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(
+                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                "usage: BY_EXAMPLE_HASH(<index>, <example>, <skip>, <limit>)")));
+@@ -1459,7 +1543,6 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+ 
+   // extract the example
+   if (! argv[1]->IsObject()) {
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(
+                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                "<example> must be an object")));
+@@ -1479,26 +1562,14 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+   v8::Handle<v8::Array> documents = v8::Array::New();
+   result->Set(v8::String::New("documents"), documents);
+ 
+-  // .............................................................................
+-  // inside a read transaction
+-  // .............................................................................
+-
+-  collection->_collection->beginRead(collection->_collection);
+-
+   // extract the index
+-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
++  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
+ 
+   if (idx == 0) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+-    return scope.Close(v8::ThrowException(err));
++    return scope.Close(v8::ThrowException(*err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a hash index")));
+   }
+ 
+@@ -1509,13 +1580,10 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+   TRI_shaped_json_t** values;
+ 
+   TRI_shaper_t* shaper = sim->base._shaper;
+-  int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, &err);
++  int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, err);
+ 
+   if (res != TRI_ERROR_NO_ERROR) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+-    return scope.Close(v8::ThrowException(err));
++    return scope.Close(v8::ThrowException(*err));
+   }
+ 
+   // find the matches
+@@ -1542,12 +1610,6 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+     }
+   }
+ 
+-  collection->_collection->endRead(collection->_collection);
+-
+-  // .............................................................................
+-  // outside a write transaction
+-  // .............................................................................
+-
+   // free data allocated by hash index result
+   TRI_FreeResultHashIndex(idx, list);
+ 
+@@ -1556,19 +1618,85 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
+ 
+   CleanupExampleObject(shaper, n, 0, values);
+ 
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects elements by example using a hash index
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++
++  // .............................................................................
++  // inside a read transaction
++  // .............................................................................
++
++  collection->_collection->beginRead(collection->_collection);
++  
++  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(sim, collection, &err, argv);
++
++  collection->_collection->endRead(collection->_collection);
++
++  // .............................................................................
++  // outside a write transaction
++  // .............................................................................
++
+   TRI_ReleaseCollection(collection);
+ 
+   return scope.Close(result);
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief selects elements by example using a hash index
++///
++/// It is the callers responsibility to acquire and free the required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_ByExampleNLHashIndex (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++
++  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(sim, collection, &err, argv);
++
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects elements by condition using a skiplist index
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
+   std::string signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
+ 
+-  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
++  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION, true);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects elements by condition using a skiplist index
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_ByConditionNLSkiplist (v8::Arguments const& argv) {
++  std::string signature("BY_CONDITION_SKIPLIST_NL(<index>, <conditions>, <skip>, <limit>)");
++
++  return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION, false);
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -1578,9 +1706,18 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv)
+ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
+   std::string signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
+ 
+-  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
++  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE, true);
+ }
+ 
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects elements by example using a skiplist index
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_ByExampleNLSkiplist (v8::Arguments const& argv) {
++  std::string signature("BY_EXAMPLE_SKIPLIST_NL(<index>, <example>, <skip>, <limit>)");
++
++  return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE, false);
++}
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects elements by example using a bitarray index
+@@ -1589,11 +1726,18 @@ static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
+ static v8::Handle<v8::Value> JS_ByExampleBitarray (v8::Arguments const& argv) {
+   std::string signature("BY_EXAMPLE_BITARRAY(<index>, <example>, <skip>, <limit>)");
+ 
+-  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE);
++  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE, true);
+ }
+ 
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects elements by example using a bitarray index
++////////////////////////////////////////////////////////////////////////////////
+ 
++static v8::Handle<v8::Value> JS_ByExampleNLBitarray (v8::Arguments const& argv) {
++  std::string signature("BY_EXAMPLE_BITARRAY_NL(<index>, <example>, <skip>, <limit>)");
+ 
++  return ExecuteBitarrayQuery(argv, signature, QUERY_EXAMPLE, false);
++}
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects all edges for a set of vertices
+@@ -1641,48 +1785,31 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects points near a given coordinate
++///
++/// the caller must ensure all relevant locks are acquired and freed
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
++static v8::Handle<v8::Value> NearQuery (TRI_sim_collection_t* sim,
++                                        TRI_vocbase_col_t const* collection,
++                                        v8::Handle<v8::Object>* err,
++                                        v8::Arguments const& argv) {
+   v8::HandleScope scope;
+ 
+-  // extract and use the simple collection
+-  v8::Handle<v8::Object> err;
+-  TRI_vocbase_col_t const* collection;
+-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+-
+-  if (sim == 0) {
+-    return scope.Close(v8::ThrowException(err));
+-  }
+-
+   // expect: NEAR(<index-id>, <latitude>, <longitude>, <limit>)
+   if (argv.Length() != 4) {
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(
+                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                "usage: NEAR(<index-handle>, <latitude>, <longitude>, <limit>)")));
+   }
+ 
+-  // .............................................................................
+-  // inside a read transaction
+-  // .............................................................................
+-
+-  collection->_collection->beginRead(collection->_collection);
+-
+   // extract the index
+-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
++  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
+ 
+   if (idx == 0) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+-    return scope.Close(v8::ThrowException(err));
++    return scope.Close(v8::ThrowException(*err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
+   }
+ 
+@@ -1708,6 +1835,33 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+     StoreGeoResult(collection, cors, documents, distances);
+   }
+ 
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects points near a given coordinate
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++  
++  // .............................................................................
++  // inside a read transaction
++  // .............................................................................
++
++  collection->_collection->beginRead(collection->_collection);
++
++  v8::Handle<v8::Value> result = NearQuery(sim, collection, &err, argv);
++  
+   collection->_collection->endRead(collection->_collection);
+ 
+   // .............................................................................
+@@ -1720,6 +1874,29 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief selects points near a given coordinate
++///
++/// It is the callers responsibility to acquire and free the required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_NearNLQuery (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++  
++  v8::Handle<v8::Value> result = NearQuery(sim, collection, &err, argv);
++
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects all outbound edges
+ ///
+ /// @FUN{@FA{edge-collection}.outEdges(@FA{vertex})}
+@@ -1743,48 +1920,31 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief selects points within a given radius
++///
++/// the caller must ensure all relevant locks are acquired and freed
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
++static v8::Handle<v8::Value> WithinQuery (TRI_sim_collection_t* sim,
++                                          TRI_vocbase_col_t const* collection,
++                                          v8::Handle<v8::Object>* err,
++                                          v8::Arguments const& argv) {
+   v8::HandleScope scope;
+ 
+-  // extract and use the simple collection
+-  v8::Handle<v8::Object> err;
+-  TRI_vocbase_col_t const* collection;
+-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+-
+-  if (sim == 0) {
+-    return scope.Close(v8::ThrowException(err));
+-  }
+-
+   // expect: WITHIN(<index-handle>, <latitude>, <longitude>, <limit>)
+   if (argv.Length() != 4) {
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(
+                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                "usage: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)")));
+   }
+ 
+-  // .............................................................................
+-  // inside a read transaction
+-  // .............................................................................
+-
+-  collection->_collection->beginRead(collection->_collection);
+-
+   // extract the index
+-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
++  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
+ 
+   if (idx == 0) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+-    return scope.Close(v8::ThrowException(err));
++    return scope.Close(v8::ThrowException(*err));
+   }
+ 
+   if (idx->_type != TRI_IDX_TYPE_GEO1_INDEX && idx->_type != TRI_IDX_TYPE_GEO2_INDEX) {
+-    collection->_collection->endRead(collection->_collection);
+-
+-    TRI_ReleaseCollection(collection);
+     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a geo-index")));
+   }
+ 
+@@ -1810,6 +1970,33 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+     StoreGeoResult(collection, cors, documents, distances);
+   }
+ 
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects points within a given radius
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract and use the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++
++  // .............................................................................
++  // inside a read transaction
++  // .............................................................................
++
++  collection->_collection->beginRead(collection->_collection);
++  
++  v8::Handle<v8::Value> result = WithinQuery(sim, collection, &err, argv);
++
+   collection->_collection->endRead(collection->_collection);
+ 
+   // .............................................................................
+@@ -1817,6 +2004,30 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
+   // .............................................................................
+ 
+   TRI_ReleaseCollection(collection);
++
++  return scope.Close(result);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief selects points within a given radius
++///
++/// It is the callers responsibility to acquire and free the required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_WithinNLQuery (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract the simple collection
++  v8::Handle<v8::Object> err;
++  TRI_vocbase_col_t const* collection;
++  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
++
++  if (sim == 0) {
++    return scope.Close(v8::ThrowException(err));
++  }
++
++  v8::Handle<v8::Value> result = WithinQuery(sim, collection, &err, argv);
++
+   return scope.Close(result);
+ }
+ 
+@@ -1860,16 +2071,23 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
+   // .............................................................................
+ 
+   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
++  v8::Handle<v8::String> AllNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL_NL"));
+   v8::Handle<v8::String> ByConditionSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST"));
++  v8::Handle<v8::String> ByConditionSkiplistNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST_NL"));
+   v8::Handle<v8::String> ByExampleFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE"));
+   v8::Handle<v8::String> ByExampleBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY"));
++  v8::Handle<v8::String> ByExampleBitarrayNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY_NL"));
+   v8::Handle<v8::String> ByExampleHashFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH"));
++  v8::Handle<v8::String> ByExampleHashNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH_NL"));
+   v8::Handle<v8::String> ByExampleSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST"));
++  v8::Handle<v8::String> ByExampleSkiplistNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST_NL"));
+   v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
+   v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
+   v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
++  v8::Handle<v8::String> NearNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR_NL"));
+   v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
+   v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
++  v8::Handle<v8::String> WithinNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN_NL"));
+ 
+   // .............................................................................
+   // generate the TRI_vocbase_col_t template
+@@ -1878,13 +2096,20 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
+   rt = v8g->VocbaseColTempl;
+ 
+   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
++  rt->Set(AllNLFuncName, v8::FunctionTemplate::New(JS_AllNLQuery));
+   rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
++  rt->Set(ByConditionSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLSkiplist));
+   rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
++  rt->Set(ByExampleBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLBitarray));
+   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
+   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
++  rt->Set(ByExampleHashNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLHashIndex));
+   rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
++  rt->Set(ByExampleSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLSkiplist));
+   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
++  rt->Set(NearNLFuncName, v8::FunctionTemplate::New(JS_NearNLQuery));
+   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
++  rt->Set(WithinNLFuncName, v8::FunctionTemplate::New(JS_WithinNLQuery));
+ 
+   // .............................................................................
+   // generate the TRI_vocbase_col_t template for edges
+@@ -1893,16 +2118,23 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
+   rt = v8g->EdgesColTempl;
+ 
+   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
++  rt->Set(AllNLFuncName, v8::FunctionTemplate::New(JS_AllNLQuery));
+   rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
++  rt->Set(ByConditionSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLSkiplist));
+   rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
++  rt->Set(ByExampleBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLBitarray));
+   rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
+   rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
++  rt->Set(ByExampleHashNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLHashIndex));
+   rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
++  rt->Set(ByExampleSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLSkiplist));
+   rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
+   rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
+   rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
++  rt->Set(NearNLFuncName, v8::FunctionTemplate::New(JS_NearNLQuery));
+   rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
+   rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
++  rt->Set(WithinNLFuncName, v8::FunctionTemplate::New(JS_WithinNLQuery));
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+diff --git a/arangod/V8Server/v8-vocbase.cpp b/arangod/V8Server/v8-vocbase.cpp
+index 9bd6923..c92f67d 100755
+--- a/arangod/V8Server/v8-vocbase.cpp
++++ b/arangod/V8Server/v8-vocbase.cpp
+@@ -117,6 +117,65 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @}
+ ////////////////////////////////////////////////////////////////////////////////
++ 
++// -----------------------------------------------------------------------------
++// --SECTION--                                                    HELPER CLASSES
++// -----------------------------------------------------------------------------
++
++// -----------------------------------------------------------------------------
++// --SECTION--                                              AhuacatlContextGuard
++// -----------------------------------------------------------------------------
++
++////////////////////////////////////////////////////////////////////////////////
++/// @addtogroup VocBase
++/// @{
++////////////////////////////////////////////////////////////////////////////////
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief scope guard for AQL queries
++////////////////////////////////////////////////////////////////////////////////
++
++class AhuacatlContextGuard {
++  public:
++    AhuacatlContextGuard (TRI_vocbase_t* vocbase, const string& query) : 
++      _context(0) {
++      _context = TRI_CreateContextAql(vocbase, query.c_str());
++    }
++
++    ~AhuacatlContextGuard () {
++      this->free();
++    }
++
++    void free () {
++      if (_context != 0) {
++        TRI_FreeContextAql(_context);
++        _context = 0;
++      }
++    }
++    
++    inline TRI_aql_context_t* operator() () const {
++      return _context;
++    }
++    
++    inline TRI_aql_context_t* ptr () const {
++      return _context;
++    }
++    
++    inline const TRI_aql_context_t* const_ptr () const {
++      return _context;
++    }
++
++    inline const bool valid () const {
++      return _context != 0;
++    }
++
++  private:
++    TRI_aql_context_t* _context;
++};
++
++////////////////////////////////////////////////////////////////////////////////
++/// @}
++////////////////////////////////////////////////////////////////////////////////
+ 
+ // -----------------------------------------------------------------------------
+ // --SECTION--                                                  HELPER FUNCTIONS
+@@ -476,14 +535,19 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief looks up a document
++///
++/// it is the caller's responsibility to acquire and release the required locks
++/// the collection must also have the correct status already. don't use this
++/// function if you're unsure about it!
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+                                                  TRI_vocbase_col_t const* collection,
+-                                                 v8::Arguments const& argv) {
++                                                 v8::Arguments const& argv,
++                                                 const bool lock) {
+   v8::HandleScope scope;
+ 
+-  // first and only argument schould be a document idenfifier
++  // first and only argument should be a document idenfifier
+   if (argv.Length() != 1) {
+     return scope.Close(v8::ThrowException(
+                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+@@ -492,10 +556,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+ 
+   TRI_voc_did_t did;
+   TRI_voc_rid_t rid;
+-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
++  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, lock, argv[0]);
+ 
+   if (! err.IsEmpty()) {
+-    if (collection != 0) {
++    if (collection != 0 && lock) {
+       TRI_ReleaseCollection(collection);
+     }
+ 
+@@ -513,7 +577,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+   // inside a read transaction
+   // .............................................................................
+ 
+-  collection->_collection->beginRead(collection->_collection);
++  if (lock) {
++    collection->_collection->beginRead(collection->_collection);
++  }
+ 
+   document = collection->_collection->read(collection->_collection, did);
+ 
+@@ -524,13 +590,17 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
+     result = TRI_WrapShapedJson(collection, &document, barrier);
+   }
+ 
+-  collection->_collection->endRead(collection->_collection);
++  if (lock) {
++    collection->_collection->endRead(collection->_collection);
++  }
+ 
+   // .............................................................................
+   // outside a write transaction
+   // .............................................................................
+ 
+-  TRI_ReleaseCollection(collection);
++  if (lock) {
++    TRI_ReleaseCollection(collection);
++  }
+ 
+   if (document._did == 0) {
+     return scope.Close(v8::ThrowException(
+@@ -571,7 +641,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
+   TRI_voc_did_t did;
+   TRI_voc_rid_t rid;
+ 
+-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
++  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, true, argv[0]);
+ 
+   if (! err.IsEmpty()) {
+     if (collection != 0) {
+@@ -658,7 +728,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
+   TRI_voc_did_t did;
+   TRI_voc_rid_t rid;
+ 
+-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, argv[0]);
++  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, true, argv[0]);
+ 
+   if (! err.IsEmpty()) {
+     if (collection != 0) {
+@@ -1302,9 +1372,7 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
+     return scope.Close(v8::True());
+   }
+ 
+-  return scope.Close(v8::ThrowException(
+-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+-                                             "disposed or unknown cursor")));
++  return scope.Close(v8::False());
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -1664,6 +1732,32 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
+                        TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
+                                              "disposed or unknown cursor")));
+ }
++ 
++////////////////////////////////////////////////////////////////////////////////
++/// @brief unuse a general cursor
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  if (argv.Length() != 0) {
++    return scope.Close(v8::ThrowException(
++                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
++                                               "usage: unuse()")));
++  }
++
++  TRI_vocbase_t* vocbase = GetContextVocBase();
++
++  if (!vocbase) {
++    return scope.Close(v8::ThrowException(
++                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
++                                               "corrupted vocbase")));
++  }
++
++  TRI_EndUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
++
++  return scope.Close(v8::Undefined());
++}
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief get a (persistent) cursor by its id
+@@ -1776,16 +1870,16 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
+   // bind parameters
+   triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
+ 
+-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
+-  if (!context) {
++  AhuacatlContextGuard context(vocbase, queryString);
++  if (! context.valid()) {
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+   v8::Handle<v8::Value> result;
+-  result = ExecuteQueryCursorAhuacatl(vocbase, context, parameters.ptr(), doCount, batchSize, allowDirectReturn);
+-  TRI_FreeContextAql(context);
++  result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters.ptr(), doCount, batchSize, allowDirectReturn);
++  context.free();
+ 
+   if (tryCatch.HasCaught()) {
+     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+@@ -1834,8 +1928,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+   // bind parameters
+   triagens::rest::JsonContainer parameters(TRI_UNKNOWN_MEM_ZONE, argc > 1 ? TRI_JsonObject(argv[1]) : 0);
+ 
+-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
+-  if (!context) {
++  AhuacatlContextGuard context(vocbase, queryString);
++  if (! context.valid()) {
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+@@ -1849,13 +1943,12 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+ 
+   TRI_json_t* explain = 0;
+ 
+-  if (!TRI_ValidateQueryContextAql(context) ||
+-      !TRI_BindQueryContextAql(context, parameters.ptr()) ||
+-      !TRI_LockQueryContextAql(context) ||
+-      (performOptimisations && !TRI_OptimiseQueryContextAql(context)) ||
+-      !(explain = TRI_ExplainAql(context))) {
+-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+-    TRI_FreeContextAql(context);
++  if (!TRI_ValidateQueryContextAql(context.ptr()) ||
++      !TRI_BindQueryContextAql(context.ptr(), parameters.ptr()) ||
++      !TRI_LockQueryContextAql(context.ptr()) ||
++      (performOptimisations && !TRI_OptimiseQueryContextAql(context.ptr())) ||
++      !(explain = TRI_ExplainAql(context.ptr()))) {
++    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+@@ -1863,8 +1956,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
+ 
+   v8::Handle<v8::Value> result;
+   result = TRI_ObjectJson(explain);
+-  TRI_FreeContextAql(context);
+   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, explain);
++  context.free();
+ 
+   if (tryCatch.HasCaught()) {
+     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+@@ -1906,18 +1999,16 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+   }
+   string queryString = TRI_ObjectToString(queryArg);
+ 
+-  TRI_aql_context_t* context = TRI_CreateContextAql(vocbase, queryString.c_str());
+-  if (!context) {
++  AhuacatlContextGuard context(vocbase, queryString);
++  if (! context.valid()) {
+     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+ 
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+   // parse & validate
+-  if (!TRI_ValidateQueryContextAql(context)) {
+-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
+-    TRI_FreeContextAql(context);
+-
++  if (!TRI_ValidateQueryContextAql(context.ptr())) {
++    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
+     return scope.Close(v8::ThrowException(errorObject));
+   }
+ 
+@@ -1927,11 +2018,11 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
+   result->Set(v8::String::New("parsed"), v8::True());
+ 
+   // return the bind parameter names
+-  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&context->_parameters._names));
++  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&(context.ptr())->_parameters._names));
+   // return the collection names
+-  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&context->_collectionNames));
++  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&(context.ptr())->_collectionNames));
++  context.free();
+ 
+-  TRI_FreeContextAql(context);
+   if (tryCatch.HasCaught()) {
+     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
+       // we already have an ArangoError object
+@@ -2188,7 +2279,27 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
+     return scope.Close(v8::ThrowException(err));
+   }
+ 
+-  return DocumentVocbaseCol(collection->_vocbase, collection, argv);
++  return DocumentVocbaseCol(collection->_vocbase, collection, argv, true);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief looks up a document
++///
++/// it is the caller's responsibility to acquire and release the required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_DocumentNLVocbaseCol (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  // extract the collection
++  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
++  if (col == 0 || col->_collection == 0) {
++    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection")));
++  }
++
++  TRI_vocbase_col_t const* collection = col;
++
++  return DocumentVocbaseCol(collection->_vocbase, collection, argv, false);
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -3034,20 +3145,27 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief returns information about the indexes
+ ///
+-/// @FUN{getIndexes()}
+-///
+-/// Returns a list of all indexes defined for the collection.
+-///
+-/// @EXAMPLES
+-///
+-/// @verbinclude shell_index-read-all
++/// it is the caller's responsibility to acquire and release all required locks
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
++static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv, 
++                                                   const bool lock) {
+   v8::HandleScope scope;
+ 
+   v8::Handle<v8::Object> err;
+-  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
++  TRI_vocbase_col_t const* collection = 0;
++  
++  if (lock) {
++    collection = UseCollection(argv.Holder(), &err);
++  }
++  else {
++    TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
++    if (col == 0 || col->_collection == 0) {
++      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection"));;
++    }
++
++    collection = col;
++  }
+ 
+   if (collection == 0) {
+     return scope.Close(v8::ThrowException(err));
+@@ -3056,14 +3174,20 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
+   TRI_doc_collection_t* doc = collection->_collection;
+ 
+   if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+-    TRI_ReleaseCollection(collection);
++    if (lock) {
++      TRI_ReleaseCollection(collection);
++    }
+     return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
+   }
+ 
+   TRI_sim_collection_t* sim = (TRI_sim_collection_t*) doc;
+ 
+   // get a list of indexes
+-  TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim);
++  TRI_vector_pointer_t* indexes = TRI_IndexesSimCollection(sim, lock);
++
++  if (lock) {
++    TRI_ReleaseCollection(collection);
++  }
+ 
+   if (!indexes) {
+     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+@@ -3082,12 +3206,36 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
+     }
+   }
+ 
+-  TRI_ReleaseCollection(collection);
+-
+   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, indexes);
+ 
+   return scope.Close(result);
+ }
++ 
++////////////////////////////////////////////////////////////////////////////////
++/// @brief returns information about the indexes
++///
++/// @FUN{getIndexes()}
++///
++/// Returns a list of all indexes defined for the collection.
++///
++/// @EXAMPLES
++///
++/// @verbinclude shell_index-read-all
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
++  return GetIndexesVocbaseCol(argv, true);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief returns information about the indexes
++///
++/// it is the caller's responsibility to acquire and release all required locks
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_GetIndexesNLVocbaseCol (v8::Arguments const& argv) {
++  return GetIndexesVocbaseCol(argv, false);
++}
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief loads a collection
+@@ -3657,7 +3805,7 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
+   TRI_vocbase_col_t const* fromCollection = 0;
+   TRI_voc_rid_t fromRid;
+ 
+-  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, fromCollection, edge._fromDid, fromRid, argv[0]);
++  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, fromCollection, edge._fromDid, fromRid, true, argv[0]);
+ 
+   if (! errMsg.IsEmpty()) {
+     TRI_ReleaseCollection(collection);
+@@ -3676,7 +3824,7 @@ static v8::Handle<v8::Value> JS_SaveEdgesCol (v8::Arguments const& argv) {
+   TRI_vocbase_col_t const* toCollection = 0;
+   TRI_voc_rid_t toRid;
+ 
+-  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, toCollection, edge._toDid, toRid, argv[1]);
++  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, toCollection, edge._toDid, toRid, true, argv[1]);
+ 
+   if (! errMsg.IsEmpty()) {
+     TRI_ReleaseCollection(collection);
+@@ -4024,7 +4172,27 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
+     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+   }
+ 
+-  return DocumentVocbaseCol(vocbase, 0, argv);
++  return DocumentVocbaseCol(vocbase, 0, argv, true);
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief looks up a document
++///
++/// it is the caller's responsibility to acquire and release the required locks
++/// the collection must also have the correct status already. don't use this
++/// function if you're unsure about it!
++////////////////////////////////////////////////////////////////////////////////
++
++static v8::Handle<v8::Value> JS_DocumentNLVocbase (v8::Arguments const& argv) {
++  v8::HandleScope scope;
++
++  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
++
++  if (vocbase == 0) {
++    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
++  }
++
++  return DocumentVocbaseCol(vocbase, 0, argv, false);
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -4470,6 +4638,38 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief extracts the collection, but doesn't lock it
++///
++/// it is the caller's responsibility to acquire and release the required locks
++/// the collection must also have the correct status already. don't use this
++/// function if you're unsure about it!
++////////////////////////////////////////////////////////////////////////////////
++
++TRI_sim_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
++                                                   TRI_vocbase_col_t const*& collection,
++                                                   v8::Handle<v8::Object>* err) {
++  // extract the collection
++  v8::Handle<v8::Object> operand = argv.Holder();
++
++  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
++  if (col == 0 || col->_collection == 0) {
++    return 0;
++  }
++
++  collection = col;
++
++  // handle various collection types
++  TRI_doc_collection_t* doc = collection->_collection;
++
++  if (doc->base._type != TRI_COL_TYPE_SIMPLE_DOCUMENT) {
++    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type");
++    return 0;
++  }
++
++  return (TRI_sim_collection_t*) doc;
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief extracts and locks the collection
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+@@ -4516,6 +4716,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
+                                                          TRI_vocbase_col_t const*& collection,
+                                                          TRI_voc_did_t& did,
+                                                          TRI_voc_rid_t& rid,
++                                                         const bool lock,
+                                                          v8::Handle<v8::Value> val) {
+   v8::HandleScope scope;
+   TRI_v8_global_t* v8g;
+@@ -4567,11 +4768,13 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
+                                                "collection of <document-handle> is unknown"));;
+     }
+ 
+-    // use the collection
+-    int res = TRI_UseCollectionVocBase(vocbase, vc);
++    if (lock) {
++      // use the collection
++      int res = TRI_UseCollectionVocBase(vocbase, vc);
+ 
+-    if (res != TRI_ERROR_NO_ERROR) {
+-      return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection"));;
++      if (res != TRI_ERROR_NO_ERROR) {
++        return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection"));;
++      }
+     }
+ 
+     collection = vc;
+@@ -4872,6 +5075,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   v8::Handle<v8::String> DatafilesFuncName = v8::Persistent<v8::String>::New(v8::String::New("datafiles"));
+   v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
+   v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
++  v8::Handle<v8::String> DocumentNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("document_nl"));
+   v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
+   v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
+   v8::Handle<v8::String> EnsureBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureBitarray"));
+@@ -4887,6 +5091,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
+   v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
+   v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
++  v8::Handle<v8::String> GetIndexesNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexesNL"));
+   v8::Handle<v8::String> GetRowsFuncName = v8::Persistent<v8::String>::New(v8::String::New("getRows"));
+   v8::Handle<v8::String> HasCountFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasCount"));
+   v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
+@@ -4907,6 +5112,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
+   v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
+   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
++  v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
+ 
+   v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
+   v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
+@@ -4914,6 +5120,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   v8::Handle<v8::String> _CreateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_create"));
+   v8::Handle<v8::String> _RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("_remove"));
+   v8::Handle<v8::String> _DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document"));
++  v8::Handle<v8::String> _DocumentNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document_nl"));
+   v8::Handle<v8::String> _ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("_replace"));
+ 
+   // .............................................................................
+@@ -4972,6 +5179,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+ 
+   rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
+   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
++  rt->Set(_DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbase));
+   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
+ 
+   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+@@ -4999,6 +5207,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+ 
+   rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
+   rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
++  rt->Set(_DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbase));
+   rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
+ 
+   v8g->EdgesTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+@@ -5046,6 +5255,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+ 
+   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
+   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
++  rt->Set(DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbaseCol));
+   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
+   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
+   rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
+@@ -5062,6 +5272,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
+   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
+   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
++  rt->Set(GetIndexesNLFuncName, v8::FunctionTemplate::New(JS_GetIndexesNLVocbaseCol));
+   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+   rt->Set(LookupHashIndexFuncName, v8::FunctionTemplate::New(JS_LookupHashIndexVocbaseCol));
+   rt->Set(LookupSkiplistFuncName, v8::FunctionTemplate::New(JS_LookupSkiplistVocbaseCol));
+@@ -5112,6 +5323,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
+   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
+   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
++  rt->Set(GetIndexesNLFuncName, v8::FunctionTemplate::New(JS_GetIndexesNLVocbaseCol));
+   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
+   rt->Set(LookupHashIndexFuncName, v8::FunctionTemplate::New(JS_LookupHashIndexVocbaseCol));
+   rt->Set(LookupSkiplistFuncName, v8::FunctionTemplate::New(JS_LookupSkiplistVocbaseCol));
+@@ -5165,6 +5377,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
+   rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
+   rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
+   rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
++  rt->Set(UnuseFuncName, v8::FunctionTemplate::New(JS_UnuseGeneralCursor));
+ 
+   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+ 
+diff --git a/arangod/V8Server/v8-vocbase.h b/arangod/V8Server/v8-vocbase.h
+index fd28c1a..0057617 100644
+--- a/arangod/V8Server/v8-vocbase.h
++++ b/arangod/V8Server/v8-vocbase.h
+@@ -42,6 +42,18 @@
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief extracts the collection, but doesn't lock it
++///
++/// it is the caller's responsibility to acquire and release the required locks
++/// the collection must also have the correct status already. don't use this
++/// function if you're unsure about it!
++////////////////////////////////////////////////////////////////////////////////
++
++TRI_sim_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
++                                                   TRI_vocbase_col_t const*& collection,
++                                                   v8::Handle<v8::Object>* err);
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief extracts and locks the collection
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+@@ -63,6 +75,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
+                                                          TRI_vocbase_col_t const*& collection,
+                                                          TRI_voc_did_t& did,
+                                                          TRI_voc_rid_t& rid,
++                                                         const bool lock,
+                                                          v8::Handle<v8::Value> val);
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+diff --git a/arangod/VocBase/compactor.c b/arangod/VocBase/compactor.c
+index 2809b17..13ef8fb 100644
+--- a/arangod/VocBase/compactor.c
++++ b/arangod/VocBase/compactor.c
+@@ -538,10 +538,8 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
+-  LOG_TRACE("cleaning shadows");
+-  
+   // clean unused cursors
+-  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, force);
++  TRI_CleanupShadowData(vocbase->_cursors, (double) SHADOW_CURSOR_MAX_AGE, force);
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+diff --git a/arangod/VocBase/shadow-data.c b/arangod/VocBase/shadow-data.c
+index b664156..873fc66 100644
+--- a/arangod/VocBase/shadow-data.c
++++ b/arangod/VocBase/shadow-data.c
+@@ -82,13 +82,14 @@ static TRI_shadow_t* CreateShadow (const void* const data) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+-  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu", 
++  LOG_TRACE("decreasing refcount for shadow %p with data ptr %p and id %lu to %d", 
+             shadow, 
+             shadow->_data, 
+-            (unsigned long) shadow->_id);
++            (unsigned long) shadow->_id,
++            (int) (shadow->_rc - 1));
+ 
+   if (--shadow->_rc <= 0 && shadow->_type == SHADOW_TRANSIENT) {
+-    LOG_TRACE("deleting shadow %p", shadow);
++    LOG_TRACE("deleting transient shadow %p", shadow);
+ 
+     TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+     TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+@@ -102,12 +103,15 @@ static void DecreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* con
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ static void IncreaseRefCount (TRI_shadow_store_t* const store, TRI_shadow_t* const shadow) {
+-  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu", 
++  LOG_TRACE("increasing refcount for shadow %p with data ptr %p and id %lu to %d", 
+             shadow, 
+             shadow->_data, 
+-            (unsigned long) shadow->_id);
++            (unsigned long) shadow->_id,
++            (int) (shadow->_rc + 1));
+ 
+-  ++shadow->_rc;
++  if (++shadow->_rc <= 0) {
++    shadow->_rc = 1;
++  }
+   UpdateTimestampShadow(shadow);
+ }
+ 
+@@ -255,7 +259,7 @@ void TRI_FreeShadowStore (TRI_shadow_store_t* const store) {
+   assert(store);
+ 
+   // force deletion of all remaining shadows
+-  TRI_CleanupShadowData(store, 0, true); 
++  TRI_CleanupShadowData(store, 0.0, true); 
+ 
+   TRI_DestroyMutex(&store->_lock);
+   TRI_DestroyAssociativePointer(&store->_ids);
+@@ -376,7 +380,7 @@ void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
+   TRI_LockMutex(&store->_lock);
+   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
+ 
+-  if (shadow && !shadow->_deleted) {
++  if (shadow) {
+     DecreaseRefCount(store, shadow); // this might delete the shadow
+   } 
+ 
+@@ -400,7 +404,7 @@ void TRI_EndUsageIdShadowData (TRI_shadow_store_t* const store,
+   TRI_LockMutex(&store->_lock);
+   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
+ 
+-  if (shadow && !shadow->_deleted) {
++  if (shadow) {
+     DecreaseRefCount(store, shadow); // this might delete the shadow
+   } 
+ 
+@@ -523,6 +527,14 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
+   // we need an exclusive lock on the index
+   TRI_LockMutex(&store->_lock);
+ 
++  if (store->_ids._nrUsed == 0) {
++    // store is empty, nothing to do!
++    TRI_UnlockMutex(&store->_lock);
++    return;
++  }
++  
++  LOG_TRACE("cleaning shadows. in store: %ld", (unsigned long) store->_ids._nrUsed);
++
+   // loop until there's nothing to delete or 
+   // we have deleted SHADOW_MAX_DELETE elements 
+   while (deleteCount++ < SHADOW_MAX_DELETE || force) {
+@@ -540,8 +552,13 @@ void TRI_CleanupShadowData (TRI_shadow_store_t* const store,
+       if (shadow->_rc < 1 || force) {
+         if (shadow->_type == SHADOW_TRANSIENT || 
+             shadow->_timestamp < compareStamp || 
++            shadow->_deleted ||
+             force) {
+-          LOG_TRACE("cleaning expired shadow %p", shadow);
++          LOG_TRACE("cleaning shadow %p, rc: %d, expired: %d, deleted: %d", 
++                    shadow, 
++                    (int) shadow->_rc, 
++                    (int) (shadow->_timestamp < compareStamp), 
++                    (int) shadow->_deleted);
+ 
+           TRI_RemoveKeyAssociativePointer(&store->_ids, &shadow->_id);
+           TRI_RemoveKeyAssociativePointer(&store->_pointers, shadow->_data);
+diff --git a/arangod/VocBase/simple-collection.c b/arangod/VocBase/simple-collection.c
+index 3e28a19..fa13261 100644
+--- a/arangod/VocBase/simple-collection.c
++++ b/arangod/VocBase/simple-collection.c
+@@ -2868,7 +2868,8 @@ static int ComparePidName (void const* left, void const* right) {
+ /// @brief returns a description of all indexes
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
++TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
++                                                const bool lock) {
+   TRI_vector_pointer_t* vector;
+   size_t n;
+   size_t i;
+@@ -2884,7 +2885,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
+   // inside read-lock
+   // .............................................................................
+ 
+-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
++  if (lock) {
++    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
++  }
+ 
+   n = sim->_indexes._length;
+ 
+@@ -2901,7 +2904,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
+     }
+   }
+ 
+-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
++  if (lock) {
++    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
++  }
+ 
+   // .............................................................................
+   // outside read-lock
+diff --git a/arangod/VocBase/simple-collection.h b/arangod/VocBase/simple-collection.h
+index 1a8c2e7..c5cce0a 100644
+--- a/arangod/VocBase/simple-collection.h
++++ b/arangod/VocBase/simple-collection.h
+@@ -349,7 +349,8 @@ int TRI_CloseSimCollection (TRI_sim_collection_t* collection);
+ /// @brief returns a description of all indexes
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*);
++TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*, 
++                                                const bool);
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief drops an index
+diff --git a/js/actions/system/api-cursor.js b/js/actions/system/api-cursor.js
+index c2d1107..6b1ec42 100644
+--- a/js/actions/system/api-cursor.js
++++ b/js/actions/system/api-cursor.js
+@@ -216,8 +216,15 @@ function PUT_api_cursor(req, res) {
+       return;
+     } 
+ 
+-    // note: this might dispose or persist the cursor
+-    actions.resultCursor(req, res, cursor, actions.HTTP_OK);
++    try {
++      // note: this might dispose or persist the cursor
++      actions.resultCursor(req, res, cursor, actions.HTTP_OK);
++    }
++    catch (e) {
++    }
++    cursor.unuse();
++    cursor = null;
++    internal.wait(0.0);
+   }
+   catch (err) {
+     actions.resultException(req, res, err);
+@@ -269,7 +276,9 @@ function DELETE_api_cursor(req, res) {
+     }
+ 
+     cursor.dispose();
++    cursor = null;
+     actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
++    internal.wait(0.0);
+   }
+   catch (err) {
+     actions.resultException(req, res, err);
+diff --git a/js/server/ahuacatl.js b/js/server/ahuacatl.js
+index 665f723..9c6de31 100644
+--- a/js/server/ahuacatl.js
++++ b/js/server/ahuacatl.js
+@@ -70,7 +70,7 @@ function AHUACATL_THROW (error, data) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ function AHUACATL_INDEX (collection, indexTypes) {
+-  var indexes = collection.getIndexes();
++  var indexes = collection.getIndexesNL();
+ 
+   for (var i = 0; i < indexes.length; ++i) {
+     var index = indexes[i];
+@@ -385,7 +385,7 @@ function AHUACATL_LIST (value) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ function AHUACATL_GET_DOCUMENTS (collection) {
+-  return internal.db[collection].all().toArray();
++  return internal.db[collection].ALL_NL(0, null).documents;
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -395,7 +395,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
+ 
+ function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
+   try {
+-    return [ internal.db[collection].document(id) ];
++    return [ internal.db[collection].document_nl(id) ];
+   }
+   catch (e) {
+     return [ ];
+@@ -413,7 +413,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
+   for (var i in values) {
+     var id = values[i];
+     try {
+-      var d = internal.db[collection].document(id);
++      var d = internal.db[collection].document_nl(id);
+       result.push(d);
+     }
+     catch (e) {
+@@ -429,7 +429,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
+-  return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
++  return internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -446,7 +446,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
+ 
+     example[attribute] = value;
+ 
+-    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
++    var documents = internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;
+     for (var j in documents) {
+       result.push(documents[j]);
+     }
+@@ -460,7 +460,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
+-  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;
++  return internal.db[collection].BY_CONDITION_SKIPLIST_NL(idx, example).documents;
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -477,7 +477,7 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
+ 
+     example[attribute] = value;
+ 
+-    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
++    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST_NL(idx, example).documents;
+     for (var j in documents) {
+       result.push(documents[j]);
+     }
+@@ -1850,7 +1850,7 @@ function AHUACATL_GEO_NEAR () {
+     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+   }
+ 
+-  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
++  var result = internal.db[collection].NEAR_NL(idx, latitude, longitude, limit);
+   if (distanceAttribute == null) {
+     return result.documents;
+   }
+@@ -1882,7 +1882,7 @@ function AHUACATL_GEO_WITHIN () {
+     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+   }
+ 
+-  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
++  var result = internal.db[collection].WITHIN_NL(idx, latitude, longitude, radius);
+   if (distanceAttribute == null) {
+     return result.documents;
+   }
+@@ -2027,7 +2027,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
+       var clonedEdges = AHUACATL_CLONE(edges);
+       var clonedVertices = AHUACATL_CLONE(vertices);
+       clonedEdges.push(subEdge);
+-      clonedVertices.push(internal.db._document(targetId));
++      clonedVertices.push(internal.db._document_nl(targetId));
+       
+       var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
+       for (k = 0; k < connected.length; ++k) {
+diff --git a/js/server/js-ahuacatl.h b/js/server/js-ahuacatl.h
+index 7bf2dd5..2115bad 100644
+--- a/js/server/js-ahuacatl.h
++++ b/js/server/js-ahuacatl.h
+@@ -71,7 +71,7 @@ static string JS_server_ahuacatl =
+   "////////////////////////////////////////////////////////////////////////////////\n"
+   "\n"
+   "function AHUACATL_INDEX (collection, indexTypes) {\n"
+-  "  var indexes = collection.getIndexes();\n"
++  "  var indexes = collection.getIndexesNL();\n"
+   "\n"
+   "  for (var i = 0; i < indexes.length; ++i) {\n"
+   "    var index = indexes[i];\n"
+@@ -386,7 +386,7 @@ static string JS_server_ahuacatl =
+   "////////////////////////////////////////////////////////////////////////////////\n"
+   "\n"
+   "function AHUACATL_GET_DOCUMENTS (collection) {\n"
+-  "  return internal.db[collection].all().toArray();\n"
++  "  return internal.db[collection].ALL_NL(0, null).documents;\n"
+   "}\n"
+   "\n"
+   "////////////////////////////////////////////////////////////////////////////////\n"
+@@ -396,7 +396,7 @@ static string JS_server_ahuacatl =
+   "\n"
+   "function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {\n"
+   "  try {\n"
+-  "    return [ internal.db[collection].document(id) ];\n"
++  "    return [ internal.db[collection].document_nl(id) ];\n"
+   "  }\n"
+   "  catch (e) {\n"
+   "    return [ ];\n"
+@@ -414,7 +414,7 @@ static string JS_server_ahuacatl =
+   "  for (var i in values) {\n"
+   "    var id = values[i];\n"
+   "    try {\n"
+-  "      var d = internal.db[collection].document(id);\n"
++  "      var d = internal.db[collection].document_nl(id);\n"
+   "      result.push(d);\n"
+   "    }\n"
+   "    catch (e) {\n"
+@@ -430,7 +430,7 @@ static string JS_server_ahuacatl =
+   "////////////////////////////////////////////////////////////////////////////////\n"
+   "\n"
+   "function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {\n"
+-  "  return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;\n"
++  "  return internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;\n"
+   "}\n"
+   "\n"
+   "////////////////////////////////////////////////////////////////////////////////\n"
+@@ -447,7 +447,7 @@ static string JS_server_ahuacatl =
+   "\n"
+   "    example[attribute] = value;\n"
+   "\n"
+-  "    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;\n"
++  "    var documents = internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;\n"
+   "    for (var j in documents) {\n"
+   "      result.push(documents[j]);\n"
+   "    }\n"
+@@ -461,7 +461,7 @@ static string JS_server_ahuacatl =
+   "////////////////////////////////////////////////////////////////////////////////\n"
+   "\n"
+   "function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {\n"
+-  "  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;\n"
++  "  return internal.db[collection].BY_CONDITION_SKIPLIST_NL(idx, example).documents;\n"
+   "}\n"
+   "\n"
+   "////////////////////////////////////////////////////////////////////////////////\n"
+@@ -478,7 +478,7 @@ static string JS_server_ahuacatl =
+   "\n"
+   "    example[attribute] = value;\n"
+   "\n"
+-  "    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;\n"
++  "    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST_NL(idx, example).documents;\n"
+   "    for (var j in documents) {\n"
+   "      result.push(documents[j]);\n"
+   "    }\n"
+@@ -1851,7 +1851,7 @@ static string JS_server_ahuacatl =
+   "    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);\n"
+   "  }\n"
+   "\n"
+-  "  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);\n"
++  "  var result = internal.db[collection].NEAR_NL(idx, latitude, longitude, limit);\n"
+   "  if (distanceAttribute == null) {\n"
+   "    return result.documents;\n"
+   "  }\n"
+@@ -1883,7 +1883,7 @@ static string JS_server_ahuacatl =
+   "    AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);\n"
+   "  }\n"
+   "\n"
+-  "  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);\n"
++  "  var result = internal.db[collection].WITHIN_NL(idx, latitude, longitude, radius);\n"
+   "  if (distanceAttribute == null) {\n"
+   "    return result.documents;\n"
+   "  }\n"
+@@ -2028,7 +2028,7 @@ static string JS_server_ahuacatl =
+   "      var clonedEdges = AHUACATL_CLONE(edges);\n"
+   "      var clonedVertices = AHUACATL_CLONE(vertices);\n"
+   "      clonedEdges.push(subEdge);\n"
+-  "      clonedVertices.push(internal.db._document(targetId));\n"
++  "      clonedVertices.push(internal.db._document_nl(targetId));\n"
+   "      \n"
+   "      var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);\n"
+   "      for (k = 0; k < connected.length; ++k) {\n"
 diff --git a/lib/Basics/ConditionLocker.cpp b/lib/Basics/ConditionLocker.cpp
 index e9469e6..097ef7b 100644
 --- a/lib/Basics/ConditionLocker.cpp
@@ -238,14 +2315,14 @@ index e9469e6..097ef7b 100644
  ////////////////////////////////////////////////////////////////////////////////
  
 diff --git a/lib/Basics/ConditionLocker.h b/lib/Basics/ConditionLocker.h
-index 4114fe3..543f389 100644
+index 4114fe3..006f8cc 100644
 --- a/lib/Basics/ConditionLocker.h
 +++ b/lib/Basics/ConditionLocker.h
 @@ -139,6 +139,12 @@ namespace triagens {
          void wait ();
  
  ////////////////////////////////////////////////////////////////////////////////
-+/// @brief waits for an event to occur, using a timeout
++/// @brief waits for an event to occur, with a timeout
 +////////////////////////////////////////////////////////////////////////////////
 +
 +        bool wait (uint64_t);

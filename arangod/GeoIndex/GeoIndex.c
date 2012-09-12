@@ -96,17 +96,16 @@ typedef struct
 /* "points" lists the slotid of the points.  This is   */
 /* only used for a leaf pot.                           */
 /* =================================================== */
-typedef struct
-{
-    int LorLeaf;
-    int RorPoints;
-    GeoString middle;
-    GeoFix  maxdist[GeoIndexFIXEDPOINTS];
-    GeoString start;
-    GeoString end;
-    int level;
-    int points[GeoIndexPOTSIZE];
-}       GeoPot;
+typedef struct {
+  int LorLeaf;
+  int RorPoints;
+  GeoString middle;
+  GeoFix  maxdist[GeoIndexFIXEDPOINTS];
+  GeoString start;
+  GeoString end;
+  int level;
+  int points[GeoIndexPOTSIZE];
+} GeoPot;
 /* =================================================== */
 /*                 GeoIx structure                     */
 /* This is the REAL GeoIndex structure - the one in    */
@@ -125,14 +124,13 @@ typedef struct
 /* There is no provision at present for the index to   */
 /* get smaller when the majority of points are deleted */
 /* =================================================== */
-typedef struct
-{
-    GeoIndexFixed fixed;  /* fixed point data          */
-    int potct;            /* pots allocated            */
-    int slotct;           /* slots allocated           */
-    GeoPot * pots;        /* the pots themselves       */
-    GeoCoordinate * gc;   /* the slots themselves      */
-}       GeoIx;
+typedef struct {
+  GeoIndexFixed fixed;  /* fixed point data          */
+  int potct;            /* pots allocated            */
+  int slotct;           /* slots allocated           */
+  GeoPot * pots;        /* the pots themselves       */
+  GeoCoordinate * gc;   /* the slots themselves      */
+} GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
 /* The routine GeoMkDetail is given a point - really   */
@@ -256,6 +254,19 @@ typedef struct
     int pathlength;
     int path[50];
 }    GeoPath;
+
+
+// .............................................................................
+// forward declaration of static functions which are used by the query engine
+// .............................................................................
+
+static int                   GeoIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
+static TRI_index_iterator_t* GeoIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
+static int                   GeoIndex_freeMethodCall   (void*, void*);
+
+
+
+
 /* =================================================== */
 /*                GeoIndex_Distance routine            */
 /* This is the user-facing routine to compute the      */
@@ -356,15 +367,14 @@ int GeoIndexNewPot(GeoIx * gix)
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIndex * GeoIndex_new(void)
-{
+GeoIndex * GeoIndex_new(void) {
     GeoIx * gix;
     int i,j;
     double lat, lon, x, y, z;
 
     gix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false);
 
-    if(gix == NULL) {
+    if (gix == NULL) {
       return (GeoIndex *) gix;
     }
 
@@ -563,8 +573,7 @@ GeoIndex * GeoIndex_new(void)
 /* objects that may have been pointed to by the user's */
 /* data pointers are (of course) not freed by this call*/
 /* =================================================== */
-void GeoIndex_free(GeoIndex * gi)
-{
+void GeoIndex_free(GeoIndex * gi) {
     GeoIx * gix;
 
     if (gi == NULL) {
@@ -2254,6 +2263,77 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
     return 0;
 }
 
-#endif
+#endif 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Assigns a static function call to a function pointer used by Query Engine
+////////////////////////////////////////////////////////////////////////////////
+
+int GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+
+  switch (methodType) {
+  
+    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
+      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
+      *call = GeoIndex_freeMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
+      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
+      *call = GeoIndex_queryMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
+      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
+      *call = GeoIndex_resultMethodCall;
+      break;
+    }
+
+    default : {
+      assert(false);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared query engine callback functions
+////////////////////////////////////////////////////////////////////////////////////////
+
+static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                    TRI_index_challenge_t* challenge, void* data) {
+  GeoIx* geoIndex = (GeoIx*)(theIndex);
+  if (geoIndex == NULL || indexOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+static TRI_index_iterator_t* GeoIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                                       void* data, bool (*filter) (TRI_index_iterator_t*)) {
+  GeoIx* geoIndex = (GeoIx*)(theIndex);
+  if (geoIndex == NULL || indexOperator == NULL) {
+    return NULL;
+  }
+  assert(false);
+  return NULL;
+}
+
+static int GeoIndex_freeMethodCall(void* theIndex, void* data) {
+  GeoIx* geoIndex = (GeoIx*)(theIndex);
+  if (geoIndex == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
 
 /* end of GeoIndex.c  */
+
+

@@ -28,7 +28,9 @@
 
 #include "HttpResponse.h"
 
+#include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 #include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace triagens::basics;
@@ -71,18 +73,20 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case PAYMENT:              return "402 Payment Required";
     case FORBIDDEN:            return "403 Forbidden";
     case NOT_FOUND:            return "404 Not Found";
-    case METHOD_NOT_ALLOWED:   return "405 Method";
+    case METHOD_NOT_ALLOWED:   return "405 Method Not Supported";
     case CONFLICT:             return "409 Conflict";
     case PRECONDITION_FAILED:  return "412 Precondition Failed";
     case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
 
     case SERVER_ERROR:         return "500 Internal Error";
-    case NOT_IMPLEMENTED:      return "501 Not implemented";
+    case NOT_IMPLEMENTED:      return "501 Not Implemented";
     case BAD_GATEWAY:          return "502 Bad Gateway";
     case SERVICE_UNAVAILABLE:  return "503 Service Temporarily Unavailable";
 
     // default
-    default:                   return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
+    default:                   
+      LOGGER_WARNING << "unknown HTTP response code " << code << " returned";
+      return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
   }
 }
 
@@ -529,11 +533,11 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     }
     
     // ignore content-length
-    if (*key == 'c' && (strcmp(key, "content-length") == 0)) {
+    if (*key == 'c' && TRI_EqualString(key, "content-length")) {
       continue;
     }
     
-    if (*key == 't' && (strcmp(key, "transfer-encoding") == 0)) {
+    if (*key == 't' && TRI_EqualString(key, "transfer-encoding")) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
@@ -556,7 +560,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendText(transferEncoding);
       output->appendText("\r\n");
     }
-    
+   
     output->appendText("content-length: ");
     
     if (_isHeadResponse) {

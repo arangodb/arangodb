@@ -1,0 +1,154 @@
+diff --git a/arangod/VocBase/compactor.c b/arangod/VocBase/compactor.c
+index 2809b17..19a81e0 100644
+--- a/arangod/VocBase/compactor.c
++++ b/arangod/VocBase/compactor.c
+@@ -404,11 +404,13 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
+   size_t n;
+   size_t i;
+ 
++  if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(sim)) {
++    return;
++  }
++  
+   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
+ 
+   // copy datafile information
+-  TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(sim);
+-
+   n = sim->base.base._datafiles._length;
+ 
+   for (i = 0;  i < n;  ++i) {
+diff --git a/arangod/VocBase/simple-collection.h b/arangod/VocBase/simple-collection.h
+index 1a8c2e7..73132b5 100644
+--- a/arangod/VocBase/simple-collection.h
++++ b/arangod/VocBase/simple-collection.h
+@@ -53,6 +53,13 @@ extern "C" {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief tries to read lock the journal files and the parameter file
++////////////////////////////////////////////////////////////////////////////////
++
++#define TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(a) \
++  TRI_TryReadLockReadWriteLock(&(a)->_lock)
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief read locks the journal files and the parameter file
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+diff --git a/arangod/VocBase/synchroniser.c b/arangod/VocBase/synchroniser.c
+index fb0e496..cb5eb91 100644
+--- a/arangod/VocBase/synchroniser.c
++++ b/arangod/VocBase/synchroniser.c
+@@ -138,7 +138,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
+   bool worked;
+   size_t i;
+   size_t n;
+-
++      
+   worked = false;
+   base = &sim->base.base;
+ 
+@@ -205,7 +205,7 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* sim) {
+   double ti;
+   size_t i;
+   size_t n;
+-
++  
+   worked = false;
+   base = &sim->base.base;
+ 
+@@ -266,7 +266,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
+   bool worked;
+   size_t i;
+   size_t n;
+-
++  
+   worked = false;
+   base = &sim->base.base;
+ 
+@@ -365,8 +365,10 @@ void TRI_SynchroniserVocBase (void* data) {
+       bool result;
+ 
+       collection = collections._buffer[i];
+-
+-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
++  
++      if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(collection)) {
++        continue;
++      }
+ 
+       if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
+         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+diff --git a/lib/BasicsC/locks-posix.c b/lib/BasicsC/locks-posix.c
+index 6ea05f9..150d727 100644
+--- a/lib/BasicsC/locks-posix.c
++++ b/lib/BasicsC/locks-posix.c
+@@ -230,6 +230,18 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief tries to read lock read-write lock
++////////////////////////////////////////////////////////////////////////////////
++
++bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
++  int rc;
++
++  rc = pthread_rwlock_tryrdlock(lock);
++
++  return (rc == 0);
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief read locks read-write lock
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+diff --git a/lib/BasicsC/locks-win32.c b/lib/BasicsC/locks-win32.c
+index 73b0a4b..72b720b 100644
+--- a/lib/BasicsC/locks-win32.c
++++ b/lib/BasicsC/locks-win32.c
+@@ -267,6 +267,27 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief tries to read lock a read-write lock
++////////////////////////////////////////////////////////////////////////////////
++
++bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
++  WaitForSingleObject(lock->_writerEvent, 10); // 10 millis timeout
++
++  EnterCriticalSection(&lock->_lockReaders);
++  IncrementReaders(lock);
++  LeaveCriticalSection(&lock->_lockReaders);
++
++  if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
++    EnterCriticalSection(&lock->_lockReaders);
++    DecrementReaders(lock);
++    LeaveCriticalSection(&lock->_lockReaders);
++    return false;
++  }
++
++  return true;
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief read locks read-write lock
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+diff --git a/lib/BasicsC/locks.h b/lib/BasicsC/locks.h
+index 5b37860..2146416 100644
+--- a/lib/BasicsC/locks.h
++++ b/lib/BasicsC/locks.h
+@@ -229,6 +229,12 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock);
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief tries to read lock read-write lock
++////////////////////////////////////////////////////////////////////////////////
++
++bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock);
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief read locks read-write lock
+ ////////////////////////////////////////////////////////////////////////////////
+ 

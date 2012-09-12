@@ -115,7 +115,6 @@ namespace triagens {
     void InitialiseRest (int argc, char* argv[]) {
       TRIAGENS_BASICS_INITIALISE(argc, argv);
 
-      TRI_InitialiseStatistics();
       TRI_InitialiseUrl();
 
       string revision = "$Revision: REST " TRIAGENS_VERSION " (c) triAGENS GmbH $";

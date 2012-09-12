@@ -42,12 +42,11 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
+#include "BasicsC/strings.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/v8-conv.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantString.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -93,7 +92,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
   map<string, string> headerFields;
   SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
 
-  if (!result->isComplete()) {
+  if (! result || ! result->isComplete()) {
     // save error message
     _lastErrorMessage = _client->getErrorMessage();
     _lastHttpReturnCode = 500;
@@ -102,26 +101,38 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _lastHttpReturnCode = result->getHttpReturnCode();
 
     if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
-      triagens::basics::VariantArray* json = result->getBodyAsVariantArray();
+      // default value
+      _version = "arango";
 
+      // convert response body to json
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
       if (json) {
-        triagens::basics::VariantString* vs = json->lookupString("server");
+        // look up "server" value (this returns a pointer, not a copy)
+        TRI_json_t* server = TRI_LookupArrayJson(json, "server");
 
-        if (vs && vs->getValue() == "arango") {
-          // connected to arango server
-          vs = json->lookupString("version");
-
-          if (vs) {
-            _version = vs->getValue();
+        if (server) {
+          // "server" value is a string and content is "arango"
+          if (server->_type == TRI_JSON_STRING && TRI_EqualString(server->_value._string.data, "arango")) {
+            // look up "version" value (this returns a pointer, not a copy)
+            TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
+            if (vs) {
+              // "version" value is a string
+              if (vs->_type == TRI_JSON_STRING) {
+                _version = string(vs->_value._string.data, vs->_value._string.length);
+              }
+            }
           }
+          // must not free server and vs, they are contained in the "json" variable and freed below
         }
 
-        delete json;
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
     }        
   }
-  
-  delete result; 
+ 
+  if (result) { 
+    delete result; 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

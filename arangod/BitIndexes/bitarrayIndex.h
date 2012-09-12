@@ -116,7 +116,7 @@ void BitarrayIndex_free (BitarrayIndex*);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
+int BittarrayIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 int BitarrayIndex_new (BitarrayIndex**, TRI_memory_zone_t*, size_t, TRI_vector_t*, bool, void*);
 

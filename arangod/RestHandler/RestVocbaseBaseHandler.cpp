@@ -52,6 +52,29 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    private macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief macro to check duplicate allocation of _response object, resulting in
+/// memleaks
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_RESPONSE \
+  if (_response != 0) { \
+    LOG_WARNING("multi responses created in the same handler. potential memleak"); \
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
 
@@ -146,6 +169,8 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
   }
 
   LOGGER_REQUEST_IN_END_I(_timing) << _timingResult;
+
+  releaseCollection();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,6 +191,7 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateOk () {
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::NO_CONTENT);
 }
 
@@ -179,6 +205,7 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::CREATED);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -203,6 +230,7 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::ACCEPTED);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -227,6 +255,7 @@ void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::OK);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -249,6 +278,7 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::OK);
 
   _response->setContentType("application/json; charset=utf-8");
@@ -318,6 +348,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
 
   VariantArray* result = new VariantArray();
@@ -347,6 +378,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (string const& etag) {
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::NOT_MODIFIED);
 
   _response->setHeader("ETag", "\"" + etag + "\"");
@@ -414,6 +446,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   }
 
   // and generate a response
+  CHECK_RESPONSE
   _response = new HttpResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
@@ -505,6 +538,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
   }
 
   TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+  _collection = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,10 +683,17 @@ int RestVocbaseBaseHandler::useCollection (string const& name,
   int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
 
   if (res == TRI_ERROR_NO_ERROR) {
+    // when we get here, this will have acquired the read-lock TRI_READ_LOCK_STATUS_VOCBASE_COL(collection)
+    // that must later be unlocked by the caller
     assert(_collection != 0);
 
     _documentCollection = _collection->_collection;
     assert(_documentCollection != 0);
+  }
+  else {
+    // reset collection to 0, otherwise the read-lock would be released later and this would be invalid
+    _collection = 0;
+    generateError(HttpResponse::SERVER_ERROR, res);
   }
 
   return res;

@@ -174,17 +174,21 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
   }
 
   if (base->_journals._length == 0) {
-    worked = true;
-
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     journal = TRI_CreateJournalSimCollection(sim);
 
     if (journal != NULL) {
+      worked = true;
       LOG_DEBUG("created new journal '%s'", journal->_filename);
+
+      TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    }
+    else {
+      // an error occurred when creating the journal file
+      LOG_ERROR("could not create journal file");
     }
 
-    TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
     TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
@@ -298,17 +302,21 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
   }
 
   if (base->_compactors._length == 0) {
-    worked = true;
-
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
     compactor = TRI_CreateCompactorDocCollection(&sim->base);
 
     if (compactor != NULL) {
+      worked = true;
       LOG_DEBUG("created new compactor '%s'", compactor->_filename);
+    
+      TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    }
+    else {
+      // an error occurred when creating the compactor file
+      LOG_ERROR("could not create compactor file");
     }
 
-    TRI_BROADCAST_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
     TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
   }
 
@@ -337,7 +345,7 @@ void TRI_SynchroniserVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
 
-  assert(vocbase->_active);
+  assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -346,8 +354,8 @@ void TRI_SynchroniserVocBase (void* data) {
     size_t i;
     bool worked;
 
-    // keep initial _active value as vocbase->_active might change during compaction loop
-    int active = vocbase->_active; 
+    // keep initial _state value as vocbase->_state might change during sync loop
+    int state = vocbase->_state; 
 
     worked = false;
 
@@ -366,7 +374,12 @@ void TRI_SynchroniserVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      // if we cannot acquire the read lock instantly, we will continue.
+      // otherwise we'll risk a multi-thread deadlock between synchroniser,
+      // compactor and data-modification threads (e.g. POST /_api/document)
+      if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(collection)) {
+        continue;
+      }
 
       if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -396,7 +409,7 @@ void TRI_SynchroniserVocBase (void* data) {
     }
 
     // only sleep while server is still running and no-one is waiting
-    if (! worked && vocbase->_active == 1) {
+    if (! worked && vocbase->_state == 1) {
       TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
 
       if (vocbase->_syncWaiters == 0) {
@@ -407,7 +420,7 @@ void TRI_SynchroniserVocBase (void* data) {
     }
 
     // server shutdown
-    if (active == 2) {
+    if (state == 2) {
       break;
     }
   }
