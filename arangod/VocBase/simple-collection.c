@@ -2868,7 +2868,8 @@ static int ComparePidName (void const* left, void const* right) {
 /// @brief returns a description of all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
+                                                const bool lock) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
@@ -2884,7 +2885,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   // inside read-lock
   // .............................................................................
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  if (lock) {
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  }
 
   n = sim->_indexes._length;
 
@@ -2901,7 +2904,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
     }
   }
 
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  if (lock) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  }
 
   // .............................................................................
   // outside read-lock
