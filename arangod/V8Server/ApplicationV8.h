@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 enigne configuration
+/// @brief V8 engine configuration
 ///
 /// @file
 ///
@@ -330,7 +330,7 @@ namespace triagens {
 ///
 /// @CMDOPT{--javascript.gc-frequency @CA{frequency}}
 ///
-/// Specifies the frequency in seconds for the automatic garbage collection of
+/// Specifies the frequency (in seconds) for the automatic garbage collection of
 /// JavaScript objects. This setting is useful to have the garbage collection 
 /// still work in periods with no or little numbers of requests.
 ////////////////////////////////////////////////////////////////////////////////
