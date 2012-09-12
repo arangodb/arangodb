@@ -67,7 +67,6 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
-#include "UserManager/Session.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -445,16 +444,12 @@ void ArangoServer::buildApplicationServer () {
       mode == OperationMode::MODE_SCRIPT) {
     int res = executeConsole(mode);
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(res);
   }
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(res);
   }
 #endif
@@ -478,8 +473,6 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_FATAL << "no pid-file defined, but daemon or supervisor mode was requested";
       LOGGER_INFO << "please use the '--pid-file' option";
 
-      ApplicationUserManager::unloadUsers();
-      ApplicationUserManager::unloadRoles();
       exit(EXIT_FAILURE);
     }
   }
@@ -541,8 +534,7 @@ int ArangoServer::startupServer () {
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
   DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
-
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 
   // add action handler
   handlerFactory->addPrefixHandler("/",
@@ -643,8 +635,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize V8 enigne";
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -974,8 +964,6 @@ int ArangoServer::executeRubyConsole () {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize MRuby enigne";
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -1061,9 +1049,6 @@ void ArangoServer::openDatabase () {
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
-    Session::unloadSessions();
     exit(EXIT_FAILURE);
   }
 
@@ -1079,10 +1064,6 @@ void ArangoServer::openDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabase () {
-  ApplicationUserManager::unloadUsers();
-  ApplicationUserManager::unloadRoles();
-  Session::unloadSessions();
-
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
