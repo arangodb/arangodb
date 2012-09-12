@@ -112,7 +112,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
   if (rc != 0) {
     LOG_ERROR("could not lock the mutex: %s", strerror(rc));
     if (rc == EDEADLK) {
-     LOG_ERROR("deadlock detected"); 
+      LOG_ERROR("mutex deadlock detected"); 
     }
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
@@ -195,7 +195,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
  if (rc != 0) {
     LOG_ERROR("could not lock the spin-lock: %s", strerror(rc));
     if (rc == EDEADLK) {
-     LOG_ERROR("deadlock detected"); 
+      LOG_ERROR("spinlock deadlock detected"); 
     }
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
@@ -299,7 +299,10 @@ again:
         complained = true;
       }
       usleep(BUSY_LOCK_DELAY);
+#ifdef TRI_HAVE_SCHED_H      
+      // let other threads do things
       sched_yield();
+#endif      
 
       // ideal use case for goto :-)
       goto again;
@@ -307,7 +310,7 @@ again:
 
     LOG_ERROR("could not read-lock the read-write lock: %s", strerror(rc));
     if (rc == EDEADLK) {
-     LOG_ERROR("deadlock detected"); 
+      LOG_ERROR("rw-lock deadlock detected"); 
     }
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
@@ -342,7 +345,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
   if (rc != 0) {
     LOG_ERROR("could not read-lock the read-write lock: %s", strerror(rc));
     if (rc == EDEADLK) {
-     LOG_ERROR("deadlock detected"); 
+      LOG_ERROR("rw-lock deadlock detected"); 
     }
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
