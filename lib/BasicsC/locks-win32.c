@@ -56,7 +56,7 @@ void TRI_InitMutex (TRI_mutex_t* mutex) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroyes a new mutex
+/// @brief destroys a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyMutex (TRI_mutex_t* mutex) {
@@ -128,7 +128,7 @@ void TRI_InitSpin (TRI_spin_t* spin) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroyes a new spin
+/// @brief destroys a spin
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroySpin (TRI_spin_t* spin) {
@@ -203,7 +203,7 @@ void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroyes a read-write lock
+/// @brief destroys a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
@@ -265,6 +265,27 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to read lock a read-write lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+  WaitForSingleObject(lock->_writerEvent, 10); // 10 millis timeout
+
+  EnterCriticalSection(&lock->_lockReaders);
+  IncrementReaders(lock);
+  LeaveCriticalSection(&lock->_lockReaders);
+
+  if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
+    EnterCriticalSection(&lock->_lockReaders);
+    DecrementReaders(lock);
+    LeaveCriticalSection(&lock->_lockReaders);
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks read-write lock

@@ -32,7 +32,6 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-log.h"
 
 #ifdef __cplusplus
 extern "C" {

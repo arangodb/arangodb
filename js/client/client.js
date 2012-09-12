@@ -1356,6 +1356,32 @@ function ArangoCollection (database, data) {
     return true;
   };
 
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a bitarray index
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.ensureBitarray = function () {
+    var i;
+    var body;
+    var fields = [];
+
+    for (i = 0;  i < arguments.length;  ++i) {
+      fields.push(arguments[i]);
+    }
+
+    body = { type : "bitarray", unique : false, fields : fields };
+
+    var requestResult = this._database._connection.POST(
+      "/_api/index?collection=" + encodeURIComponent(this._id),
+      JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult;
+  };
+
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a cap constraint
 ////////////////////////////////////////////////////////////////////////////////

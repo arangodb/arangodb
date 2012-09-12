@@ -1679,6 +1679,7 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   // create primary index
   primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
   if (primary == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 
@@ -2909,7 +2910,8 @@ static int ComparePidName (void const* left, void const* right) {
 /// @brief returns a description of all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
+                                                const bool lock) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
@@ -2925,7 +2927,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
   // inside read-lock
   // .............................................................................
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  if (lock) {
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  }
 
   n = sim->_indexes._length;
 
@@ -2942,7 +2946,9 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim) {
     }
   }
 
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  if (lock) {
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  }
 
   // .............................................................................
   // outside read-lock
@@ -3030,6 +3036,10 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 
     // combine name and pid
     pidnames = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false);
+    if (pidnames == NULL) {
+      LOG_ERROR("out of memory in TRI_PidNamesByAttributeNames");
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
     
     for (j = 0;  j < attributes->_length;  ++j) {
       pidnames[j]._name = attributes->_buffer[j];

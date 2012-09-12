@@ -41,6 +41,17 @@
 //                                                             private functions
 // -----------------------------------------------------------------------------
 
+// .............................................................................
+// forward declaration of static functions which are used by the query engine
+// .............................................................................
+
+static int                   HashIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
+static TRI_index_iterator_t* HashIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
+static int                   HashIndex_freeMethodCall   (void*, void*);
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a hash index results list
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +136,38 @@ HashIndex* HashIndex_new() {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Assigns a static function call to a function pointer used by Query Engine
+////////////////////////////////////////////////////////////////////////////////
+
+int HashIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+  switch (methodType) {
+  
+    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
+      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
+      *call = HashIndex_freeMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
+      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
+      *call = HashIndex_queryMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
+      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
+      *call = HashIndex_resultMethodCall;
+      break;
+    }
+
+    default : {
+      assert(false);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 // -----------------------------------------------------------------------------
 // public functions : INSERT, REMOVE & LOOKUP
@@ -394,5 +437,40 @@ int MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement,
                            HashIndexElement* afterElement) {
   assert(false);
   return TRI_ERROR_INTERNAL;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared query engine callback functions
+////////////////////////////////////////////////////////////////////////////////////////
+
+static int HashIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                     TRI_index_challenge_t* challenge, void* data) {
+  HashIndex* hIndex = (HashIndex*)(theIndex);
+  if (hIndex == NULL || indexOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+static TRI_index_iterator_t* HashIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                          void* data, bool (*filter) (TRI_index_iterator_t*)) {
+  HashIndex* hIndex = (HashIndex*)(theIndex);
+  if (hIndex == NULL || indexOperator == NULL) {
+    return NULL;
+  }
+  assert(false);
+  return NULL;
+}
+
+static int HashIndex_freeMethodCall(void* theIndex, void* data) {
+  HashIndex* hIndex = (HashIndex*)(theIndex);
+  if (hIndex == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
 }
 

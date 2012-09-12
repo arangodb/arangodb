@@ -455,13 +455,11 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   // push the scope on the stack
   TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
 
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope start (");
   ScopeOutput(generator, TRI_TypeNameScopeAql(scope->_type));
   ScopeOutput(generator, ", resultRegister: ");
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ") */\n");
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,11 +470,9 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_register_t i, n;
   
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "\n/* scope end (");
   ScopeOutput(generator, TRI_TypeNameScopeAql(scope->_type));
   ScopeOutput(generator, ") */\n");
-#endif
 
   n = generator->_scopes._length;
   assert(n > 0);
@@ -643,7 +639,7 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
 
   if (TRI_InsertKeyAssociativePointer(&scope->_variables, name, (void*) variable, false)) {
     // variable already exists in symbol table. this should never happen
-    TRI_AQL_LOG("variable already registered: %s", name);
+    LOG_TRACE("variable already registered: %s", name);
     generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_REDECLARED;
     generator->_errorValue = (char*) name;
   }
@@ -673,7 +669,7 @@ static TRI_aql_codegen_register_t LookupSymbol (TRI_aql_codegen_js_t* const gene
   }
 
   // variable not found. this should never happen
-  TRI_AQL_LOG("variable not found: %s", name);
+  LOG_TRACE("variable not found: %s", name);
   generator->_errorCode = TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN;
   generator->_errorValue = (char*) name;
 
@@ -1088,6 +1084,88 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " })");
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for bitarray access
+////////////////////////////////////////////////////////////////////////////////
+
+static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
+                                    const TRI_aql_index_t* const idx,
+                                    const TRI_aql_collection_t* const collection,
+                                    const char* const collectionName) {
+  size_t i, n;
+  
+  n = idx->_fieldAccesses->_length;
+  assert(n >= 1);
+
+  
+  if (n == 1) {
+    // peek at first element and check if it is a list access
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
+
+    if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+      assert(false);
+      ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_BITARRAY_LIST('");
+      ScopeOutput(generator, collectionName);
+      ScopeOutput(generator, "', ");
+      ScopeOutputIndexId(generator, collection, idx);
+      ScopeOutput(generator, ", ");
+      ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);   
+      ScopeOutput(generator, ", ");
+      ScopeOutputJson(generator, fieldAccess->_value._value);
+      ScopeOutput(generator, ")");
+      return;
+    } 
+    // fall through to other access types
+  }
+
+  ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_BITARRAY('");
+  ScopeOutput(generator, collectionName);
+  ScopeOutput(generator, "', ");
+  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutput(generator, ", { \"==\" : {"); // only support the equality operator for now
+
+  
+  // ..................................................................................
+  // Construct the javascript object which will eventually be used to generate 
+  // the index operator. The object is in the form: {"==": {"x":0}}
+  // ..................................................................................
+
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
+
+    // ................................................................................
+    // Only implement equality operator for now
+    // ................................................................................
+    
+    ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
+    ScopeOutput(generator, " : ");    
+
+    switch (fieldAccess->_type) {
+      
+      case TRI_AQL_ACCESS_EXACT: {
+        ScopeOutputJson(generator, fieldAccess->_value._value);
+        break;
+      }
+      
+      case TRI_AQL_ACCESS_REFERENCE: {
+        ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+      }
+      
+      default: {
+        assert(false);
+      }  
+    }
+    
+    if (i < (n-1)) {
+      ScopeOutput(generator, ", ");
+    }
+    
+  }
+
+  ScopeOutput(generator, "} })");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for a reference (the name of a variable)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1287,7 +1365,6 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
     case TRI_IDX_TYPE_GEO2_INDEX: 
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: 
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
       // these index types are not yet supported
       generator->_errorCode = TRI_ERROR_INTERNAL;
       break;
@@ -1303,6 +1380,11 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
     case TRI_IDX_TYPE_SKIPLIST_INDEX: 
       GenerateSkiplistAccess(generator, hint->_index, hint->_collection, collectionName);
       break;
+      
+    case TRI_IDX_TYPE_BITARRAY_INDEX: {
+      GenerateBitarrayAccess(generator, hint->_index, hint->_collection, collectionName); 
+      break;
+    }
   }
 }
 
@@ -1617,11 +1699,7 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = ");
   ScopeOutputRegister(generator, subQueryRegister);
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, "; /* subquery */\n");
-#else
-  ScopeOutput(generator, ";\n");
-#endif
     
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
@@ -1941,11 +2019,7 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
   
   // var row = ...;
   ScopeOutputRegister(generator, resultRegister);
-#ifdef TRI_DEBUG_AQL
   ScopeOutput(generator, " = [ ]; /* return empty */\n");
-#else
-  ScopeOutput(generator, " = [ ];\n");
-#endif
   
   generator->_lastResultRegister = resultRegister;
   
@@ -2280,7 +2354,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
     // put everything together
     code = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, generator->_functionBuffer._buffer, generator->_buffer._buffer);
     if (code) {
-      TRI_AQL_DUMP("generated code: %s\n", code);
+      LOG_TRACE("generated code: %s\n", code);
     }
     else {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;

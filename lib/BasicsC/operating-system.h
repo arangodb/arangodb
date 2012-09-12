@@ -75,7 +75,6 @@
 
 #define TRI_ENABLE_SYSLOG                   1
 
-#define TRI_HAVE_CURSES_H                   1
 #define TRI_HAVE_DIRENT_H                   1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
@@ -83,10 +82,11 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 #define TRI_HAVE_TERMIOS_H                  1
+#define TRI_HAVE_SYS_IOCTL_H                1
+#define TRI_HAVE_SCHED_H                    1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
-#define TRI_HAVE_NCURSES                    1
 #define TRI_HAVE_POSIX_THREADS              1
 
 #define TRI_HAVE_GETPPID                    1
@@ -142,13 +142,11 @@
 #define TRI_ENABLE_SYSLOG                   1
 
 #define TRI_HAVE_DIRENT_H                   1
-#define TRI_HAVE_NCURSES_CURSES_H           1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_UNISTD_H                   1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
-#define TRI_HAVE_NCURSES                    1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 
@@ -210,7 +208,6 @@
 
 #define TRI_GCC_THREAD_LOCAL_STORAGE        1
 
-#define TRI_HAVE_CURSES_H                   1
 #define TRI_HAVE_DIRENT_H                   1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
@@ -219,10 +216,11 @@
 #define TRI_HAVE_SYS_TIME_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 #define TRI_HAVE_TERMIOS_H                  1
+#define TRI_HAVE_SYS_IOCTL_H                1
+#define TRI_HAVE_SCHED_H                    1
 
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1
-#define TRI_HAVE_NCURSES                    1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 

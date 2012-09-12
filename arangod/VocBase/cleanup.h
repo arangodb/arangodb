@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, log macros
+/// @brief cleanup thread
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,42 +21,54 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_AHUACATL_LOG_H
-#define TRIAGENS_DURHAM_AHUACATL_LOG_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_CLEANUP_H
+#define TRIAGENS_DURHAM_VOC_BASE_CLEANUP_H 1
 
-#include <BasicsC/logging.h> 
+#include <BasicsC/common.h>
+
+#include <VocBase/vocbase.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#undef TRI_DEBUG_AQL  
-//#define TRI_DEBUG_AQL 1
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
+// --SECTION--                                                           defines
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log debug information to info or trace log
+/// @brief maximum age for cursor shadows (in seconds)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_DEBUG_AQL
-#define TRI_AQL_LOG(...) LOG_INFO(__VA_ARGS__);
-#define TRI_AQL_DUMP(format, ...) printf(format, __VA_ARGS__);
-#else
-#define TRI_AQL_LOG(...) LOG_TRACE(__VA_ARGS__);
-#define TRI_AQL_DUMP(...) { };
-#endif
+#define SHADOW_CURSOR_MAX_AGE 120
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup event loop
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_CleanupVocBase (void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -72,3 +84,4 @@ extern "C" {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
+

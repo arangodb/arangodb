@@ -59,6 +59,7 @@ typedef enum {
   TRI_LT_INDEX_OPERATOR,
   TRI_GE_INDEX_OPERATOR,
   TRI_GT_INDEX_OPERATOR,
+  TRI_IN_INDEX_OPERATOR,
   
   TRI_AND_INDEX_OPERATOR,
   TRI_NOT_INDEX_OPERATOR,
@@ -93,7 +94,7 @@ TRI_logical_index_operator_t;
 
 
 //................................................................................
-// Storage for relation operator, e.g. <, <=, >, >=, ==
+// Storage for relation operator, e.g. <, <=, >, >=, ==, in 
 //................................................................................
 
 typedef struct TRI_relation_index_operator_s {
@@ -142,6 +143,51 @@ void TRI_FreeIndexOperator (TRI_index_operator_t*);
 
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+// .............................................................................
+// A structure which (eventually) will allow a query to make an informed 'guess'
+// as to the likelihood of an index being efficient if used for document
+// retrieval. Added here in this file for convenience. Eventually this structrue
+// will be expanded. (Essentially a placeholder for now.)
+// .............................................................................
+
+typedef struct TRI_index_challenge_s {  
+  double _response; // 0 == NO, 1 == YES
+} TRI_index_challenge_t;
+
+// .............................................................................
+// An enumeration of possible methods which require assignment from a 'generic'
+// index structure to a concrete index structure. Added here in this file 
+// for convenience.
+// .............................................................................
+
+typedef enum {
+  TRI_INDEX_METHOD_ASSIGNMENT_FREE,
+  TRI_INDEX_METHOD_ASSIGNMENT_QUERY,
+  TRI_INDEX_METHOD_ASSIGNMENT_RESULT
+}
+TRI_index_method_assignment_type_e;
+
+struct TRI_index_iterator_s;
+
+typedef int (*TRI_index_query_method_call_t) (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
+typedef struct TRI_index_iterator_s* (*TRI_index_query_result_method_call_t) (void*, TRI_index_operator_t*, void*, bool (*filter) (struct TRI_index_iterator_s*));
+typedef int (*TRI_index_query_free_method_call_t) (void*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
