@@ -356,7 +356,8 @@ int TRI_CloseSimCollection (TRI_sim_collection_t* collection);
 /// @brief returns a description of all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*);
+TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t*, 
+                                                const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
