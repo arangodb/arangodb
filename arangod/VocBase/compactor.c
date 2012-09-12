@@ -404,11 +404,13 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
   size_t n;
   size_t i;
 
+  if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(sim)) {
+    return;
+  }
+  
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
   // copy datafile information
-  TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(sim);
-
   n = sim->base.base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
