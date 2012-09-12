@@ -59,7 +59,11 @@
 <li>
 <a class="el" href="CommandLine.html#CommandLineArangoForceSyncShapes">database.force-sync-shapes</a> </li>
 <li>
-<a class="el" href="CommandLine.html#CommandLineArangoRemoveOnDrop">database.remove-on-drop</a> </li>
+<a class="el" href="CommandLine.html#CommandLineArangoRemoveOnDrop">database.remove-on-compacted</a> </li>
+<li>
+<a class="el" href="CommandLine.html#CommandLineArangoJsGcFrequency">javascript.gc-frequency</a> </li>
+<li>
+<a class="el" href="CommandLine.html#CommandLineArangoJsGcInterval">javascript.gc-interval</a> </li>
 </ul>
 </li>
 <li>
@@ -331,6 +335,12 @@ DHE-RSA-CAMELLIA256-SHA SSLv3 Kx=DH       Au=RSA  Enc=Camellia(256) Mac=SHA1
 <code><b>--database.remove-on-drop <em>flag</em></b></code><hr/>
  If <code>true</code> and you drop a collection, then they directory and all associated datafiles will be removed from disk. If <code>false</code>, then they collection directory will be renamed to <code>deleted-...</code>, but remains on hard disk. To restore such a dropped collection, you can rename the directory back to <code>collection-...</code>, but you must also edit the file <code>parameter.json</code> inside the directory.</p>
 <p>The default is <code>true</code>. </p>
+<p><a class="anchor" id="CommandLineArangoJsGcFrequency"></a> <hr/>
+<code><b>--javascript.gc-frequency <em>frequency</em></b></code><hr/>
+ Specifies the frequency (in seconds) for the automatic garbage collection of JavaScript objects. This setting is useful to have the garbage collection still work in periods with no or little numbers of requests. </p>
+<p><a class="anchor" id="CommandLineArangoJsGcInterval"></a> <hr/>
+<code><b>--javascript.gc-interval <em>interval</em></b></code><hr/>
+ Specifies the interval (approximately in number of requests) that the garbage collection for JavaScript objects will be run in each thread. </p>
 <h2><a class="anchor" id="CommandLineScheduler"></a>
 Command-Line Options for Communication</h2>
 <p><a class="anchor" id="CommandLineSchedulerThreads"></a> <hr/>
