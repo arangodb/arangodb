@@ -39,25 +39,34 @@ function main (argv) {
   var console = require("console");
   var db = internal.db;
 
+  // path to the VERSION file
   var versionFile = DATABASEPATH + "/VERSION";
 
   var allTasks = [ ];
   var activeTasks = [ ];
   
+  // assume we do not yet have a VERSION value
   var currentVersion = 0;
   if (FS_EXISTS(versionFile)) {
+    // VERSION file exists, read its contents
     currentVersion = parseInt(SYS_READ(versionFile));  
   }
 
   // helper function to define tasks
   function addTask (description, maxVersion, code) {
+    // "description" is a textual description of the task that will be printed out on screen
+    // "maxVersion" is the maximum version number the task will be applied for
     var task = { description: description, maxVersion: maxVersion, code: code };
 
     allTasks.push(task);
+
+    // the maximum version number defined for the task is >= than the current VERSION number
+    // that means we will apply to task 
     if (currentVersion < parseInt(maxVersion)) {
       activeTasks.push(task);
     }
   }
+
 
   // --------------------------------------------------------------------------
   // the actual upgrade tasks. all tasks defined here should be "re-entrant"
@@ -183,6 +192,7 @@ function main (argv) {
   
   // create the VERSION file
   addTask("create VERSION file", 0, function () {
+    // save "1" into VERSION file
     SYS_SAVE(versionFile, "1");
     return true;
   });
