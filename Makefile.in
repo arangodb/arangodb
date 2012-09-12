@@ -526,13 +526,7 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Scheduler/SocketTask.$(OBJEXT) \
 	lib/Scheduler/Task.$(OBJEXT) \
 	lib/Scheduler/TaskManager.$(OBJEXT) \
-	lib/Scheduler/TimerTask.$(OBJEXT) \
-	lib/UserManager/ApplicationUserManager.$(OBJEXT) \
-	lib/UserManager/Role.$(OBJEXT) \
-	lib/UserManager/Session.$(OBJEXT) \
-	lib/UserManager/User.$(OBJEXT) \
-	lib/UserManager/UserHandler.$(OBJEXT) \
-	lib/UserManager/UsersHandler.$(OBJEXT)
+	lib/Scheduler/TimerTask.$(OBJEXT)
 lib_libarango_fe_a_OBJECTS = $(am_lib_libarango_fe_a_OBJECTS)
 lib_libarango_mruby_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_mruby_a_LIBADD =
@@ -1384,13 +1378,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Scheduler/SocketTask.cpp \
 	lib/Scheduler/Task.cpp \
 	lib/Scheduler/TaskManager.cpp \
-	lib/Scheduler/TimerTask.cpp \
-	lib/UserManager/ApplicationUserManager.cpp \
-	lib/UserManager/Role.cpp \
-	lib/UserManager/Session.cpp \
-	lib/UserManager/User.cpp \
-	lib/UserManager/UserHandler.cpp \
-	lib/UserManager/UsersHandler.cpp
+	lib/Scheduler/TimerTask.cpp
 
 
 ################################################################################
@@ -2235,27 +2223,6 @@ lib/Scheduler/TaskManager.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/TimerTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/$(am__dirstamp):
-	@$(MKDIR_P) lib/UserManager
-	@: > lib/UserManager/$(am__dirstamp)
-lib/UserManager/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/UserManager/$(DEPDIR)
-	@: > lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/ApplicationUserManager.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/Role.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/Session.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/User.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/UserHandler.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/UsersHandler.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
 lib/libarango_fe.a: $(lib_libarango_fe_a_OBJECTS) $(lib_libarango_fe_a_DEPENDENCIES) lib/$(am__dirstamp)
 	$(AM_V_at)-rm -f lib/libarango_fe.a
 	$(AM_V_AR)$(lib_libarango_fe_a_AR) lib/libarango_fe.a $(lib_libarango_fe_a_OBJECTS) $(lib_libarango_fe_a_LIBADD)
@@ -3053,12 +3020,6 @@ mostlyclean-compile:
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SslClientConnection.$(OBJEXT)
 	-rm -f lib/Statistics/statistics.$(OBJEXT)
-	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
-	-rm -f lib/UserManager/Role.$(OBJEXT)
-	-rm -f lib/UserManager/Session.$(OBJEXT)
-	-rm -f lib/UserManager/User.$(OBJEXT)
-	-rm -f lib/UserManager/UserHandler.$(OBJEXT)
-	-rm -f lib/UserManager/UsersHandler.$(OBJEXT)
 	-rm -f lib/Utilities/LineEditor.$(OBJEXT)
 	-rm -f lib/Utilities/ScriptLoader.$(OBJEXT)
 	-rm -f lib/V8/JSLoader.$(OBJEXT)
@@ -3314,12 +3275,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/statistics.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Session.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/User.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
@@ -5219,8 +5174,6 @@ distclean-generic:
 	-rm -f lib/SimpleHttpClient/$(am__dirstamp)
 	-rm -f lib/Statistics/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Statistics/$(am__dirstamp)
-	-rm -f lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/UserManager/$(am__dirstamp)
 	-rm -f lib/Utilities/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Utilities/$(am__dirstamp)
 	-rm -f lib/V8/$(DEPDIR)/$(am__dirstamp)
@@ -5242,7 +5195,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5291,7 +5244,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5468,7 +5421,7 @@ start-server:
 .PHONY: unittests-make
 
 unittests-make:
-	@(ctags --version > /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
+	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
 ################################################################################

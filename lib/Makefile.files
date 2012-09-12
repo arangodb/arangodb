@@ -167,13 +167,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Scheduler/SocketTask.cpp \
 	lib/Scheduler/Task.cpp \
 	lib/Scheduler/TaskManager.cpp \
-	lib/Scheduler/TimerTask.cpp \
-	lib/UserManager/ApplicationUserManager.cpp \
-	lib/UserManager/Role.cpp \
-	lib/UserManager/Session.cpp \
-	lib/UserManager/User.cpp \
-	lib/UserManager/UserHandler.cpp \
-	lib/UserManager/UsersHandler.cpp
+	lib/Scheduler/TimerTask.cpp
 
 ################################################################################
 ### @brief library "libarango.a", JavaScript part
