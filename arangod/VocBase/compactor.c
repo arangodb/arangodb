@@ -598,7 +598,9 @@ void TRI_CompactorVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+        continue;
+      }
 
       doc = collection->_collection;
 
