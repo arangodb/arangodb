@@ -1,6 +1,8 @@
 not released yet
 ----------------
 
+* issue #195: VERSION file in database directory
+
 * fixed issue #193: REST API HEAD request returns a message body on 404
 
 * fixed issue #188: intermittent issues with 1.0.0
