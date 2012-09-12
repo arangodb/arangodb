@@ -504,7 +504,11 @@ void TRI_CompactorVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+        // if we can't acquire the read lock instantly, we continue directly
+        // we don't want to stall here for too long
+        continue;
+      }
 
       doc = collection->_collection;
 
