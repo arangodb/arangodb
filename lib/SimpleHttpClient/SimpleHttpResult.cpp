@@ -39,8 +39,6 @@
 #include "SimpleHttpResult.h"
 #include "Basics/StringUtils.h"
 
-#include "JsonParserX/JsonParserXDriver.h"
-
 using namespace triagens::basics;
 using namespace std;
 
@@ -154,33 +152,5 @@ namespace triagens {
 
       return "";
     }
-    
-    
-    VariantObject* SimpleHttpResult::getBodyAsVariant () {
-
-      triagens::rest::JsonParserXDriver parser;
-      VariantObject* result = parser.parse(_resultBody.str());
-
-      return result;
-    }
-
-    VariantArray* SimpleHttpResult::getBodyAsVariantArray () {
-
-      basics::VariantObject* v = getBodyAsVariant();
-
-      if (!v) {
-        return 0;
-      }
-
-      basics::VariantArray* array = dynamic_cast<basics::VariantArray*> (v);
-
-      if (!array) {
-        delete v;
-        return 0;
-      }
-
-      return array;
-    }
-   
   }
 }

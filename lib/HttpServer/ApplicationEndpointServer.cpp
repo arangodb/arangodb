@@ -144,7 +144,7 @@ bool ApplicationEndpointServer::buildServers () {
 
   // turn off authentication
   if (_disableAuthentication) {
-    _handlerFactory->setAuthenticationCallback(0);
+    _handlerFactory->setRequireAuthentication(false);
     LOGGER_INFO << "Authentication is turned off";
   }
 

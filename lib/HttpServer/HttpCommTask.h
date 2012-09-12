@@ -274,6 +274,10 @@ namespace triagens {
 
             this->_requestPending = true;
 
+            // .............................................................................
+            // keep-alive handling
+            // .............................................................................
+
             string connectionType = triagens::basics::StringUtils::tolower(this->_request->header("connection"));
 
             if (connectionType == "close") {
@@ -297,6 +301,10 @@ namespace triagens {
             this->_readPosition = 0;
             this->_bodyPosition = 0;
             this->_bodyLength = 0;
+
+            // .............................................................................
+            // authenticate
+            // .............................................................................
 
             bool auth = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
 

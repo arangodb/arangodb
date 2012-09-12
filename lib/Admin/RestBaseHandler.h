@@ -31,7 +31,6 @@
 #include "HttpServer/HttpHandler.h"
 
 #include "BasicsC/json.h"
-#include "JsonParserX/InputParser.h"
 #include "Rest/HttpResponse.h"
 
 // -----------------------------------------------------------------------------
@@ -143,12 +142,6 @@ namespace triagens {
         virtual void generateError (rest::HttpResponse::HttpResponseCode,
                                     int errorCode,
                                     string const& details);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a request body in json given a description
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool parseBody (rest::InputParser::ObjectDescription&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects an output format
