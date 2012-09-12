@@ -126,7 +126,7 @@ start-server:
 .PHONY: unittests-make
 
 unittests-make:
-	@(ctags --version > /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
+	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
 ## BOOST TESTS
