@@ -5517,7 +5517,7 @@ start-server:
 .PHONY: unittests-make
 
 unittests-make:
-	make tags > /dev/null || test "x$(FORCE)" == "x1" 
+	@(cftags --version > /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
 ################################################################################
