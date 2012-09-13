@@ -31,7 +31,7 @@ ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an inte
 ## HTTP errors
 ################################################################################
 
-ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation an JSON object is corrupt."
+ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation of a JSON object is corrupt."
 ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised when the URL contains superfluous suffices."
 
 ################################################################################
