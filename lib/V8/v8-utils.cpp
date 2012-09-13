@@ -39,6 +39,7 @@
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/utf8-helper.h"
 #include "Rest/SslInterface.h"
 #include "V8/v8-conv.h"
 
@@ -1558,6 +1559,34 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("MODULES_PATH"), modulesPaths);
 }
+
+#ifdef TRI_HAVE_ICU
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
+  _str(0), _length(0), _memoryZone(memoryZone) {
+
+   v8::String::Value str(obj);
+   size_t str_len = str.length();
+   
+   if (str_len > 0) {
+     _str = TR_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);     
+   }   
+}
+
+TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
+  if (_str) {
+    TRI_Free(_memoryZone, _str);
+  }
+}
+#else
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
+  _str(0), _length(0), _memoryZone(memoryZone), _utf8Value(obj) {  
+  _str = *_utf8Value;
+  _length = _utf8Value.length();
+}
+
+TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
