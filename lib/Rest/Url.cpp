@@ -97,7 +97,7 @@ Url::Url (string const& urlName)
     }
   }
   else {
-    THROW_PARAMETER_ERROR("url", "constructor", "url not valid");
+    THROW_PARAMETER_ERROR("url", "url not valid", "constructor");
   }
 }
 
