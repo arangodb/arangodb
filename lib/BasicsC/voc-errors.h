@@ -50,7 +50,7 @@ extern "C" {
 /// - 500: @CODE{internal server error}
 ///   Will be raised when an internal server is encountered.
 /// - 600: @CODE{invalid JSON object}
-///   Will be raised when a string representation an JSON object is corrupt.
+///   Will be raised when a string representation of a JSON object is corrupt.
 /// - 601: @CODE{superfluous URL suffices}
 ///   Will be raised when the URL contains superfluous suffices.
 /// - 1000: @CODE{illegal state}
@@ -542,7 +542,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// invalid JSON object
 ///
-/// Will be raised when a string representation an JSON object is corrupt.
+/// Will be raised when a string representation of a JSON object is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_CORRUPTED_JSON                                     (600)
