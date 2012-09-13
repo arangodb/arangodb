@@ -67,15 +67,9 @@ function HashIndexSuite() {
 
   tearDown : function () {
     collection.unload();
-
-    console.log("waiting for collection '%s' to drop.", cn);
-    internal.wait(0.25);
     collection.drop();
-    internal.wait(1);
-
-    if (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
-      console.log("collection '%s' has not finished unloading.", cn);
-    }
+    collection = null;
+    internal.wait(0.0);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
