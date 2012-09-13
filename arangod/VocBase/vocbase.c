@@ -187,6 +187,24 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 
   return TRI_EqualString(k, e->_name);
 }
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a collection name from the global list of collections
+///
+/// this is called when a collection is dropped. it is necessary that the 
+/// caller also holds a write-lock using TRI_WRITE_LOCK_STATUS_VOCBASE_COL().
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
+
+  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
@@ -533,9 +551,13 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
     char* file;
 
     name = files._buffer[i];
+    assert(name);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
-      LOG_DEBUG("ignoring file/directory '%s'", name);
+      // do not issue a notice about the "lock" file
+      if (! TRI_EqualString(name, "lock")) {
+        LOG_DEBUG("ignoring file/directory '%s'", name);
+      }
       continue;
     }
 
@@ -649,11 +671,28 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_vocbase_col_t* collection;
   TRI_col_parameter_t parameter;
   char wrong;
+  
+  if (*name == '\0') {
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return NULL;
+  }
+  
+  // check that the name does not contain any strange characters
+  parameter._isSystem = false;
+  wrong = TRI_IsAllowedCollectionName(&parameter, name);
+
+  if (wrong != 0) {
+    LOG_DEBUG("found illegal character in name: %c", wrong);
+
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return NULL;
+  }
+
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // .............................................................................
-  // check that we have an existing name
+  // check if we have an existing name
   // .............................................................................
 
   found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
@@ -666,26 +705,6 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
   // .............................................................................
   // create a new one
   // .............................................................................
-
-  if (*name == '\0') {
-    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
-
-  // check that the name does not contain any strange characters
-  parameter._isSystem = false;
-  wrong = TRI_IsAllowedCollectionName(&parameter, name);
-
-  if (wrong != 0) {
-    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-    LOG_DEBUG("found illegal character in name: %c", wrong);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
 
   // create a new collection
   collection = AddCollection(vocbase, type, name, TRI_NewTickVocBase(), NULL);
@@ -1385,22 +1404,50 @@ TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set
+///
+/// collection id (cid) is normally passed with a value of 0
+/// this means that the system will assign a new collection id automatically
+/// using a cid of > 0 is supported to import dumps from other servers etc.
+/// but the functionality is not advertised
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, 
                                                 TRI_col_parameter_t* parameter,
                                                 TRI_voc_cid_t cid) {
-  TRI_doc_collection_t* doc;
+  TRI_doc_collection_t* doc = NULL;
   TRI_vocbase_col_t* collection;
+  TRI_sim_collection_t* sim;
   TRI_col_type_e type;
   char const* name;
   char wrong;
   void const* found;
+  
+  assert(parameter);
+  name = parameter->_name;
 
-  // collection id (cid) is normally passed with a value of 0
-  // this means that the system will assign a new collection id automatically
-  // using a cid of > 0 is supported to import dumps from other servers etc.
-  // but the functionality is not advertised
+  if (*name == '\0') {
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return NULL;
+  }
+  
+  // check that the name does not contain any strange characters
+  wrong = TRI_IsAllowedCollectionName(parameter, name);
+
+  if (wrong != 0) {
+    LOG_DEBUG("found illegal character in name: %c", wrong);
+
+    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return NULL;
+  }
+  
+  type = (TRI_col_type_e) parameter->_type;
+
+  if (! TRI_IS_SIMPLE_COLLECTION(type)) {
+    LOG_ERROR("unknown collection type: %d", (int) parameter->_type);
+
+    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
+    return NULL;
+  }
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -1408,7 +1455,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   // check that we have a new name
   // .............................................................................
 
-  name = parameter->_name;
   found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
 
   if (found != NULL) {
@@ -1420,52 +1466,18 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  if (*name == '\0') {
-    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
-
-  // check that the name does not contain any strange characters
-  wrong = TRI_IsAllowedCollectionName(parameter, name);
-
-  if (wrong != 0) {
-    TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-    LOG_DEBUG("found illegal character in name: %c", wrong);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
-
   // .............................................................................
   // ok, construct the collection
   // .............................................................................
 
-  doc = NULL;
-  type = (TRI_col_type_e) parameter->_type;
+  sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, cid);
 
-  if (TRI_IS_SIMPLE_COLLECTION(type)) {
-    TRI_sim_collection_t* sim;
-
-    sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, cid);
-
-    if (sim == NULL) {
-      TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-      return NULL;
-    }
-
-    doc = &sim->base;
-  }
-  else {
+  if (sim == NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
-    LOG_ERROR("unknown collection type: %d", (int) parameter->_type);
-
-    TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
+
+  doc = &sim->base;
 
   // add collection container
   collection = AddCollection(vocbase,
@@ -1561,16 +1573,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
-  TRI_col_info_t info;
   int res;
-
-  // remove name and id
-  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
-
-  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
-  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
-
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // mark collection as deleted
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1580,6 +1583,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   // .............................................................................
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+    UnregisterCollection(vocbase, collection);
+
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1590,6 +1595,9 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 
   else if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    
+    UnregisterCollection(vocbase, collection);
+
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1599,6 +1607,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
+    TRI_col_info_t info;
     char* tmpFile;
 
     res = TRI_LoadParameterInfoCollection(collection->_path, &info);
@@ -1630,6 +1639,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1645,7 +1656,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->base._deleted = true;
 
-
     res = TRI_UpdateParameterInfoCollection(vocbase, &collection->_collection->base, 0);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1654,6 +1664,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1677,6 +1688,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 
   else {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+    LOG_WARNING("internal error in TRI_DropCollectionVocBase");
+
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
 }
@@ -1843,9 +1856,9 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
   // check that we have an existing name
   // .............................................................................
 
-  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   collection = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   if (collection == NULL) {
     LOG_DEBUG("unknown collection '%s'", name);

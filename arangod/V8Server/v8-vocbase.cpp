@@ -2165,6 +2165,44 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a (persistent) cursor by its id
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: DELETE_CURSOR(<cursor-identifier>)")));
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
+                                               "corrupted vocbase")));
+  }
+
+  // get the id
+  v8::Handle<v8::Value> idArg = argv[0]->ToString();
+
+  if (! idArg->IsString()) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "expecting a string for <cursor-identifier>)")));
+  }
+
+  string idString = TRI_ObjectToString(idArg);
+  uint64_t id = TRI_UInt64String(idString.c_str());
+
+  bool found = TRI_DeleteIdShadowData(vocbase->_cursors, id);
+
+  return scope.Close(found ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5606,6 +5644,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   context->Global()->Set(v8::String::New("CURSOR"),
                          v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("DELETE_CURSOR"),
+                         v8::FunctionTemplate::New(JS_DeleteCursor)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("AHUACATL_RUN"),

@@ -83,6 +83,7 @@
 #define TRI_HAVE_UNISTD_H                   1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_SYS_IOCTL_H                1
+#define TRI_HAVE_SCHED_H                    1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
@@ -216,6 +217,7 @@
 #define TRI_HAVE_UNISTD_H                   1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_SYS_IOCTL_H                1
+#define TRI_HAVE_SCHED_H                    1
 
 #define TRI_HAVE_LINUX_PROC                 1
 #define TRI_HAVE_LINUX_SOCKETS              1

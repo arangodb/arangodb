@@ -67,8 +67,6 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
-#include "UserManager/ApplicationUserManager.h"
-#include "UserManager/Session.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -150,7 +148,6 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
-                                 ApplicationUserManager* user,
                                  TRI_vocbase_t* vocbase) {
 
   // add "/version" handler
@@ -158,7 +155,6 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
-  user->addHandlers(factory, "/_admin");
 
   // add statistics
   factory->addHandler("/_admin/connection-statistics",
@@ -200,7 +196,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
-    _applicationUserManager(0),
     _dispatcherThreads(8),
     _databasePath(),
     _removeOnDrop(true),
@@ -313,42 +308,6 @@ void ArangoServer::buildApplicationServer () {
   _applicationAdminServer->allowAdminDirectory(); // might be changed later
 
   // .............................................................................
-  // build the application user manager
-  // .............................................................................
-
-  _applicationUserManager = new ApplicationUserManager();
-  _applicationServer->addFeature(_applicationUserManager);
-  
-  // create manager role
-  vector<right_t> rightsManager;
-  rightsManager.push_back(RIGHT_TO_MANAGE_USER);
-  rightsManager.push_back(RIGHT_TO_MANAGE_ADMIN);
-
-  _applicationUserManager->createRole("manager", rightsManager, 0);
-
-  // create admin role
-  vector<right_t> rightsAdmin;
-  rightsAdmin.push_back(RIGHT_TO_MANAGE_USER);
-  rightsAdmin.push_back(RIGHT_TO_BE_DELETED);
-
-  _applicationUserManager->createRole("admin", rightsAdmin, RIGHT_TO_MANAGE_ADMIN);
-
-  // create user role
-  vector<right_t> rightsUser;
-  rightsUser.push_back(RIGHT_TO_BE_DELETED);
-
-  _applicationUserManager->createRole("user", rightsUser, RIGHT_TO_MANAGE_USER);
-
-  // create a standard user
-  _applicationUserManager->createUser("manager", "manager");
-
-  // added a anonymous right for session which are not logged in
-  vector<right_t> rightsAnonymous;
-  rightsAnonymous.push_back(RIGHT_TO_LOGIN);
-
-  _applicationUserManager->setAnonymousRights(rightsAnonymous);
-
-  // .............................................................................
   // define server options
   // .............................................................................
 
@@ -440,8 +399,6 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
   
@@ -456,8 +413,6 @@ void ArangoServer::buildApplicationServer () {
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     // validate journal size
     LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -469,9 +424,6 @@ void ArangoServer::buildApplicationServer () {
 
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
-
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
   else if (1 == arguments.size()) {
@@ -481,9 +433,6 @@ void ArangoServer::buildApplicationServer () {
   if (_databasePath.empty()) {
     LOGGER_FATAL << "no database path has been supplied, giving up";
     LOGGER_INFO << "please use the '--database.directory' option";
-
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -495,16 +444,12 @@ void ArangoServer::buildApplicationServer () {
       mode == OperationMode::MODE_SCRIPT) {
     int res = executeConsole(mode);
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(res);
   }
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(res);
   }
 #endif
@@ -528,8 +473,6 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_FATAL << "no pid-file defined, but daemon or supervisor mode was requested";
       LOGGER_INFO << "please use the '--pid-file' option";
 
-      ApplicationUserManager::unloadUsers();
-      ApplicationUserManager::unloadRoles();
       exit(EXIT_FAILURE);
     }
   }
@@ -591,8 +534,7 @@ int ArangoServer::startupServer () {
   HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
   DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
-
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationUserManager, _vocbase);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 
   // add action handler
   handlerFactory->addPrefixHandler("/",
@@ -693,8 +635,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize V8 enigne";
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -740,7 +680,8 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
         }
 
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
+        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
@@ -774,7 +715,8 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
         }
 
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
+        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
@@ -799,7 +741,8 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       case OperationMode::MODE_SCRIPT: {
         v8::TryCatch tryCatch;
 
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
+        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
           bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
@@ -856,7 +799,8 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False());
+        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
 
         console->open(true);
@@ -1020,8 +964,6 @@ int ArangoServer::executeRubyConsole () {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize MRuby enigne";
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -1107,9 +1049,6 @@ void ArangoServer::openDatabase () {
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
-    Session::unloadSessions();
     exit(EXIT_FAILURE);
   }
 
@@ -1125,10 +1064,6 @@ void ArangoServer::openDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabase () {
-  ApplicationUserManager::unloadUsers();
-  ApplicationUserManager::unloadRoles();
-  Session::unloadSessions();
-
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);

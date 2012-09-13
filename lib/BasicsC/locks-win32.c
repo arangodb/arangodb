@@ -267,6 +267,27 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to read lock a read-write lock
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+  WaitForSingleObject(lock->_writerEvent, 10); // 10 millis timeout
+
+  EnterCriticalSection(&lock->_lockReaders);
+  IncrementReaders(lock);
+  LeaveCriticalSection(&lock->_lockReaders);
+
+  if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
+    EnterCriticalSection(&lock->_lockReaders);
+    DecrementReaders(lock);
+    LeaveCriticalSection(&lock->_lockReaders);
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 

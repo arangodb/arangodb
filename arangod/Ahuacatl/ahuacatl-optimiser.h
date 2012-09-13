@@ -40,7 +40,6 @@
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
-#include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
 #ifdef __cplusplus

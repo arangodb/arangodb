@@ -877,7 +877,7 @@ static v8::Handle<v8::Value> JS_ProcessStat (v8::Arguments const& argv) {
 ///
 /// @FUN{internal.read(@FA{filename})}
 ///
-/// Reads in a files and returns the content as string.
+/// Reads in a file and returns the content as string.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
@@ -904,6 +904,45 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes to a file
+///
+/// @FUN{internal.save(@FA{filename})}
+///
+/// Writes the content into a file.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: save(<filename>, <content>)")));
+  }
+
+  v8::String::Utf8Value name(argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
+  }
+  
+  v8::String::Utf8Value content(argv[1]);
+
+  if (*content == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<content> must be a string")));
+  }
+
+  ofstream file;
+  
+  file.open(*name, ios::out | ios::binary);
+  if (file.is_open()) {
+    file << *content;
+    file.close();
+    return scope.Close(v8::True());
+  }
+
+  return scope.Close(v8::ThrowException(v8::String::New("cannot write to file")));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1527,6 +1566,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_READ"),
                          v8::FunctionTemplate::New(JS_Read)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_SAVE"),
+                         v8::FunctionTemplate::New(JS_Save)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_SHA256"),

@@ -28,6 +28,71 @@
 #include "strings.h"
 
 #include "utf8-helper.h"
+#include <openssl/sha.h>
+
+#include "BasicsC/conversions.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hex values for all characters
+////////////////////////////////////////////////////////////////////////////////
+
+static char const HexValues[513] = {
+  "000102030405060708090a0b0c0d0e0f"
+  "101112131415161718191a1b1c1d1e1f"
+  "202122232425262728292a2b2c2d2e2f"
+  "303132333435363738393a3b3c3d3e3f"
+  "404142434445464748494a4b4c4d4e4f"
+  "505152535455565758595a5b5c5d5e5f"
+  "606162636465666768696a6b6c6d6e6f"
+  "707172737475767778797a7b7c7d7e7f"
+  "808182838485868788898a8b8c8d8e8f"
+  "909192939495969798999a9b9c9d9e9f"
+  "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+  "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+  "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
+  "d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+  "e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
+  "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief integer values for all hex characters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint8_t const HexDecodeLookup[256] = {
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,1,2,3,4,5,6,7,8,9,             // 0123456789
+  0,0,0,0,0,0,0,                   // :;<=>?@
+  10,11,12,13,14,15,               // ABCDEF
+  0,0,0,0,0,0,0,0,0,0,0,0,0,       // GHIJKLMNOPQRS
+  0,0,0,0,0,0,0,0,0,0,0,0,0,       // TUVWXYZ[/]^_`
+  10,11,12,13,14,15,               // abcdef
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -820,21 +885,76 @@ void TRI_FreeString (TRI_memory_zone_t* zone, char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a single hex to an integer
+/// @brief converts into hex reqpresentation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_IntHex (char ch, int errorValue) {
-  if ('0' <= ch && ch <= '9') {
-    return ch - '0';
-  }
-  else if ('A' <= ch && ch <= 'F') {
-    return ch - 'A' + 10;
-  }
-  else if ('a' <= ch && ch <= 'f') {
-    return ch - 'a' + 10;
+char* TRI_EncodeHexString (char const* source, size_t sourceLen, size_t* dstLen) {
+  char* result;
+  uint16_t* hex;
+  uint16_t* dst;
+  uint8_t* src;
+  size_t j;
+
+  *dstLen = (sourceLen * 2);
+  dst = TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1, false);
+  result = (char*) dst;
+  
+  hex = (uint16_t*) HexValues;
+  src = (uint8_t*)  source;
+
+  for (j = 0;  j < sourceLen;  j++) {
+    *dst = hex[*src];
+    dst++;
+    src++;
   }
 
-  return errorValue;
+  *((char*) dst) = 0; // terminate the string
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts from hex reqpresentation
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_DecodeHexString (char const* source, size_t sourceLen, size_t* dstLen) {
+  char* result;
+  uint8_t* dst;
+  uint8_t* src;
+  uint8_t d;
+  size_t j;
+
+  *dstLen = (sourceLen / 2);
+  dst = TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1, false);
+  result = (char*) dst;
+
+  src = (uint8_t*) source;
+
+  for (j = 0;  j < sourceLen;  j += 2) {
+    d  = HexDecodeLookup[*src++] << 4;
+    d |= HexDecodeLookup[*src++];
+
+    *dst++ = d;
+  }
+
+  *dst = 0; // terminate the string
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha256 of a string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen) {
+  unsigned char* dst;
+
+  dst = TRI_Allocate(TRI_CORE_MEM_ZONE, SHA256_DIGEST_LENGTH, false);
+  *dstLen = SHA256_DIGEST_LENGTH;
+
+  SHA256((unsigned char const*) source, sourceLen, dst);
+
+  return (char*) dst;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

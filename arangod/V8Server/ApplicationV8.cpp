@@ -423,6 +423,11 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
+  
+  if (_gcFrequency < 1) {
+    // use a minimum of 1 second for GC
+    _gcFrequency = 1;
+  }
 
   // check the startup modules
   if (_startupModules.empty()) {
@@ -501,14 +506,18 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
+  // stop GC
   _gcThread->shutdown();
-  delete _gcThread;
 
+  // shutdown all action threads
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownV8Instance(i);
   }
 
   delete[] _contexts;
+
+  // delete GC thread after all action threads have been stopped
+  delete _gcThread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
