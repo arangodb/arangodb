@@ -1609,6 +1609,22 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test UTF 16 normalize
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_test_normalizer (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_Utf8ValueNFC x(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  
+  if (x.length() == 0) {
+    return scope.Close(v8::Null());    
+  }
+  
+  return scope.Close(v8::String::New(*x, x.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a general cursor from a list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5608,6 +5624,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
                          v8::FunctionTemplate::New(JS_CreateCursor)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("TEST_NORMALIZER"),
+                         v8::FunctionTemplate::New(JS_test_normalizer)->GetFunction(),
+                         v8::ReadOnly);
   // .............................................................................
   // create the global variables
   // .............................................................................
