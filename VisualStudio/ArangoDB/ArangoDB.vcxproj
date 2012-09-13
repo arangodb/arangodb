@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9FB69E35-6ADE-4AAD-9766-B5409C1D2595}</ProjectGuid>
+    <RootNamespace>ArangoDB</RootNamespace>
+    <ProjectName>ArangoDB Library</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\..\lib;..\..\VisualStudio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\..\lib;..\..\VisualStudio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lib\BasicsC\associative-multi.h" />
+    <ClInclude Include="..\..\lib\BasicsC\associative.h" />
+    <ClInclude Include="..\..\lib\BasicsC\common.h" />
+    <ClInclude Include="..\..\lib\BasicsC\conversions.h" />
+    <ClInclude Include="..\..\lib\BasicsC\csv.h" />
+    <ClInclude Include="..\..\lib\BasicsC\error.h" />
+    <ClInclude Include="..\..\lib\BasicsC\files.h" />
+    <ClInclude Include="..\..\lib\BasicsC\hashes.h" />
+    <ClInclude Include="..\..\lib\BasicsC\init.h" />
+    <ClInclude Include="..\..\lib\BasicsC\json-utilities.h" />
+    <ClInclude Include="..\..\lib\BasicsC\json.h" />
+    <ClInclude Include="..\..\lib\BasicsC\linked-list.h" />
+    <ClInclude Include="..\..\lib\BasicsC\locks-macos.h" />
+    <ClInclude Include="..\..\lib\BasicsC\locks-win32.h" />
+    <ClInclude Include="..\..\lib\BasicsC\locks.h" />
+    <ClInclude Include="..\..\lib\BasicsC\logging.h" />
+    <ClInclude Include="..\..\lib\BasicsC\memory.h" />
+    <ClInclude Include="..\..\lib\BasicsC\operating-system.h" />
+    <ClInclude Include="..\..\lib\BasicsC\process-utils.h" />
+    <ClInclude Include="..\..\lib\BasicsC\random.h" />
+    <ClInclude Include="..\..\lib\BasicsC\socket-utils.h" />
+    <ClInclude Include="..\..\lib\BasicsC\string-buffer.h" />
+    <ClInclude Include="..\..\lib\BasicsC\strings.h" />
+    <ClInclude Include="..\..\lib\BasicsC\structures.h" />
+    <ClInclude Include="..\..\lib\BasicsC\system-compiler.h" />
+    <ClInclude Include="..\..\lib\BasicsC\system-functions.h" />
+    <ClInclude Include="..\..\lib\BasicsC\terminal-utils.h" />
+    <ClInclude Include="..\..\lib\BasicsC\threads-win32.h" />
+    <ClInclude Include="..\..\lib\BasicsC\threads.h" />
+    <ClInclude Include="..\..\lib\BasicsC\vector.h" />
+    <ClInclude Include="..\..\lib\BasicsC\voc-errors.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lib\BasicsC\associative-multi.c" />
+    <ClCompile Include="..\..\lib\BasicsC\associative.c" />
+    <ClCompile Include="..\..\lib\BasicsC\conversions.c" />
+    <ClCompile Include="..\..\lib\BasicsC\csv.c" />
+    <ClCompile Include="..\..\lib\BasicsC\error.c" />
+    <ClCompile Include="..\..\lib\BasicsC\files.c" />
+    <ClCompile Include="..\..\lib\BasicsC\hashes.c" />
+    <ClCompile Include="..\..\lib\BasicsC\init.c" />
+    <ClCompile Include="..\..\lib\BasicsC\json-utilities.c" />
+    <ClCompile Include="..\..\lib\BasicsC\json.c" />
+    <ClCompile Include="..\..\lib\BasicsC\linked-list.c" />
+    <ClCompile Include="..\..\lib\BasicsC\locks-win32.c" />
+    <ClCompile Include="..\..\lib\BasicsC\logging.c" />
+    <ClCompile Include="..\..\lib\BasicsC\memory.c" />
+    <ClCompile Include="..\..\lib\BasicsC\process-utils.c" />
+    <ClCompile Include="..\..\lib\BasicsC\random.c" />
+    <ClCompile Include="..\..\lib\BasicsC\socket-utils.c" />
+    <ClCompile Include="..\..\lib\BasicsC\string-buffer.c" />
+    <ClCompile Include="..\..\lib\BasicsC\strings.c" />
+    <ClCompile Include="..\..\lib\BasicsC\structures.c" />
+    <ClCompile Include="..\..\lib\BasicsC\system-functions.c" />
+    <ClCompile Include="..\..\lib\BasicsC\terminal-utils-win32.c" />
+    <ClCompile Include="..\..\lib\BasicsC\terminal-utils.c" />
+    <ClCompile Include="..\..\lib\BasicsC\threads-win32.c" />
+    <ClCompile Include="..\..\lib\BasicsC\vector.c" />
+    <ClCompile Include="..\..\lib\BasicsC\voc-errors.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
