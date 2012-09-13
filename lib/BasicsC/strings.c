@@ -393,7 +393,7 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiString (const char const* value) {
+char* TRI_LowerAsciiString (char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -429,7 +429,7 @@ char* TRI_LowerAsciiString (const char const* value) {
 /// @brief convert a string to upper case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiString (const char const* value) {
+char* TRI_UpperAsciiString (char const* value) {
   size_t length;
   char* buffer;
   char* p;
