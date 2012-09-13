@@ -134,7 +134,8 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request
+/// @brief authenticates a new request, wrapper method that will consider
+/// disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
@@ -142,6 +143,16 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
     return true;
   }
 
+  bool result = authenticate(request);
+  
+  return (result || ! _requireAuthentication);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief authenticates a new request, worker method
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpHandlerFactory::authenticate (HttpRequest* request) {
   bool found;
   char const* auth = request->header("authorization", found);
 
@@ -185,8 +196,8 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
     
     return res;
   }
-  
-  return _requireAuthentication ? false : true;
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
