@@ -1,7 +1,9 @@
 not released yet
 ----------------
 
-* issue #195: VERSION file in database directory
+* fixed issue #197: HTML web interface calls /_admin/user-manager/session
+
+* fixed issue #195: VERSION file in database directory
 
 * fixed issue #193: REST API HEAD request returns a message body on 404
 

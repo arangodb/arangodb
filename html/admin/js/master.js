@@ -177,21 +177,21 @@ $("#tabs").tabs({
 /// checks for a login user cookie, creates new sessions if null  
 ///////////////////////////////////////////////////////////////////////////////
 
-if ($.cookie("sid") == null) {
-  $('#logoutButton').hide();
-  $('#movetologinButton').show();
-  $.ajax({
-    type: "POST",
-    url: "/_admin/user-manager/session/",
-    contentType: "application/json",
-    processData: false, 
-    success: function(data) {
-      $.cookie("sid", data.sid);
-      },
-      error: function(data) {
-      }
-  });
-}
+// if ($.cookie("sid") == null) {
+//   $('#logoutButton').hide();
+//   $('#movetologinButton').show();
+//   $.ajax({
+//     type: "POST",
+//     url: "/_admin/user-manager/session/",
+//     contentType: "application/json",
+//     processData: false, 
+//     success: function(data) {
+//       $.cookie("sid", data.sid);
+//       },
+//       error: function(data) {
+//       }
+//   });
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// if user exists, then:   
@@ -1072,74 +1072,74 @@ var logTable = $('#logTableID').dataTable({
 /// perform logout 
 ///////////////////////////////////////////////////////////////////////////////
 
-  $('#logoutButton').live('click', function () {
-      $.ajax({
-        type: "PUT",
-        url: '/_admin/user-manager/session/' + sid + '/logout',
-        data: JSON.stringify({'user': currentUser}), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          $('#loginWindow').show();
-          $('#logoutButton').hide();
-          $('#movetologinButton').show();
-          $('#activeUser').text('Guest!');  
-          $.cookie("rights", null);
-          $.cookie("user", null);
-          currentUser = null;
-          window.location.href = ""; 
-        },
-        error: function(data) {
-        }
-      });
-  });
+//   $('#logoutButton').live('click', function () {
+//       $.ajax({
+//         type: "PUT",
+//         url: '/_admin/user-manager/session/' + sid + '/logout',
+//         data: JSON.stringify({'user': currentUser}), 
+//         contentType: "application/json",
+//         processData: false, 
+//         success: function(data) {
+//           $('#loginWindow').show();
+//           $('#logoutButton').hide();
+//           $('#movetologinButton').show();
+//           $('#activeUser').text('Guest!');  
+//           $.cookie("rights", null);
+//           $.cookie("user", null);
+//           currentUser = null;
+//           window.location.href = ""; 
+//         },
+//         error: function(data) {
+//         }
+//       });
+//   });
 
 ///////////////////////////////////////////////////////////////////////////////
 /// perform login  
 ///////////////////////////////////////////////////////////////////////////////
 
-  $('#loginButton').live('click', function () {
-    var username = $('#usernameField').val();
-    var password = $('#passwordField').val();
-    var shapassword;
+//   $('#loginButton').live('click', function () {
+//     var username = $('#usernameField').val();
+//     var password = $('#passwordField').val();
+//     var shapassword;
 
-    if (password != '') {
-      shapassword = $.sha256(password);   
-    }
-    else {
-      shapassword = password;
-    }
+//     if (password != '') {
+//       shapassword = $.sha256(password);   
+//     }
+//     else {
+//       shapassword = password;
+//     }
 
-    $.ajax({
-      type: "PUT",
-      url: '/_admin/user-manager/session/' + sid + '/login',
-      data: JSON.stringify({'user': username, 'password': shapassword}), 
-      contentType: "application/json",
-      processData: false, 
-      success: function(data) {
-        currentUser = $.cookie("user"); 
-        $('#loginWindow').hide();
-        $('#logoutButton').show();
-        $('#movetologinButton').hide();
-        $('#activeUser').text(username + '!');  
-        $.cookie("rights", data.rights);
-        $.cookie("user", data.user);
+//     $.ajax({
+//       type: "PUT",
+//       url: '/_admin/user-manager/session/' + sid + '/login',
+//       data: JSON.stringify({'user': username, 'password': shapassword}), 
+//       contentType: "application/json",
+//       processData: false, 
+//       success: function(data) {
+//         currentUser = $.cookie("user"); 
+//         $('#loginWindow').hide();
+//         $('#logoutButton').show();
+//         $('#movetologinButton').hide();
+//         $('#activeUser').text(username + '!');  
+//         $.cookie("rights", data.rights);
+//         $.cookie("user", data.user);
 
-        /*animation*/
-        $('#movetologinButton').text("Login");
-        $('#footerSlideContent').animate({ height: '25px' });
-        $('#footerSlideButton').css('backgroundPosition', 'top left');
-        open = false;
+//         /*animation*/
+//         $('#movetologinButton').text("Login");
+//         $('#footerSlideContent').animate({ height: '25px' });
+//         $('#footerSlideButton').css('backgroundPosition', 'top left');
+//         open = false;
 
-        return false; 
-      },
-      error: function(data) {
-        alert(JSON.stringify(data)); 
-        return false; 
-      }
-    });
-    return false; 
-  });
+//         return false; 
+//       },
+//       error: function(data) {
+//         alert(JSON.stringify(data)); 
+//         return false; 
+//       }
+//     });
+//     return false; 
+//   });
 
 ///////////////////////////////////////////////////////////////////////////////
 /// toggle button for source / table - new document view 
