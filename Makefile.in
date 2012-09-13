@@ -342,10 +342,10 @@ am__v_at_0 = @
 lib_libarango_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_a_LIBADD =
 am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
-	lib/Basics/ConditionVariable.cpp lib/Basics/FileUtils.cpp \
-	lib/Basics/Initialise.cpp lib/Basics/LibraryLoader.cpp \
-	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/ConditionVariable.cpp lib/Basics/Exceptions.cpp \
+	lib/Basics/FileUtils.cpp lib/Basics/Initialise.cpp \
+	lib/Basics/LibraryLoader.cpp lib/Basics/Mutex.cpp \
+	lib/Basics/MutexLocker.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/Random.cpp \
 	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
@@ -401,7 +401,8 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT)
 am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ConditionVariable.$(OBJEXT) \
-	lib/Basics/FileUtils.$(OBJEXT) lib/Basics/Initialise.$(OBJEXT) \
+	lib/Basics/Exceptions.$(OBJEXT) lib/Basics/FileUtils.$(OBJEXT) \
+	lib/Basics/Initialise.$(OBJEXT) \
 	lib/Basics/LibraryLoader.$(OBJEXT) lib/Basics/Mutex.$(OBJEXT) \
 	lib/Basics/MutexLocker.$(OBJEXT) \
 	lib/Basics/ProgramOptions.$(OBJEXT) \
@@ -1276,10 +1277,10 @@ WIKI = \
 	jsUnity
 
 lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
-	lib/Basics/ConditionVariable.cpp lib/Basics/FileUtils.cpp \
-	lib/Basics/Initialise.cpp lib/Basics/LibraryLoader.cpp \
-	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/ConditionVariable.cpp lib/Basics/Exceptions.cpp \
+	lib/Basics/FileUtils.cpp lib/Basics/Initialise.cpp \
+	lib/Basics/LibraryLoader.cpp lib/Basics/Mutex.cpp \
+	lib/Basics/MutexLocker.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/Random.cpp \
 	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
@@ -1795,6 +1796,8 @@ lib/Basics/$(DEPDIR)/$(am__dirstamp):
 lib/Basics/ConditionLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/ConditionVariable.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/Exceptions.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/FileUtils.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -2912,6 +2915,7 @@ mostlyclean-compile:
 	-rm -f lib/ApplicationServer/ApplicationServer.$(OBJEXT)
 	-rm -f lib/Basics/ConditionLocker.$(OBJEXT)
 	-rm -f lib/Basics/ConditionVariable.$(OBJEXT)
+	-rm -f lib/Basics/Exceptions.$(OBJEXT)
 	-rm -f lib/Basics/FileUtils.$(OBJEXT)
 	-rm -f lib/Basics/Initialise.$(OBJEXT)
 	-rm -f lib/Basics/LibraryLoader.$(OBJEXT)
@@ -3167,6 +3171,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ConditionLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ConditionVariable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Exceptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/FileUtils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Initialise.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/LibraryLoader.Po@am__quote@
