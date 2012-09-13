@@ -435,13 +435,13 @@ namespace triagens {
             catch (std::exception const& ex) {
               RequestStatisticsAgentSetExecuteError(handler);
 
-              basics::InternalError err(ex);
+              basics::InternalError err(ex, __FILE__, __LINE__);
               handler->handleError(err);
             }
             catch (...) {
               RequestStatisticsAgentSetExecuteError(handler);
 
-              basics::InternalError err;
+              basics::InternalError err("handleRequestDirectly", __FILE__, __LINE__);
               handler->handleError(err);
             }
 
@@ -453,7 +453,7 @@ namespace triagens {
             typename HF::GeneralResponse * response = handler->getResponse();
 
             if (response == 0) {
-              basics::InternalError err("no response received from handler");
+              basics::InternalError err("no response received from handler", __FILE__, __LINE__);
 
               handler->handleError(err);
               response = handler->getResponse();

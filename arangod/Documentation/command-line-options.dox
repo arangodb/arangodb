@@ -58,7 +58,9 @@
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
 ///      <li>@ref CommandLineArangoForceSyncShapes "database.force-sync-shapes"</li>
-///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
+///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-compacted"</li>
+///      <li>@ref CommandLineArangoJsGcFrequency "javascript.gc-frequency"</li>
+///      <li>@ref CommandLineArangoJsGcInterval "javascript.gc-interval"</li>
 ///     </ul>
 ///    </li>
 ///    <li>@ref CommandLineLogging
@@ -213,6 +215,12 @@
 ///
 /// @anchor CommandLineArangoRemoveOnDrop
 /// @copydetails triagens::arango::ArangoServer::_removeOnDrop
+///
+/// @anchor CommandLineArangoJsGcFrequency
+/// @copydetails triagens::arango::ApplicationV8::_gcFrequency
+///
+/// @anchor CommandLineArangoJsGcInterval
+/// @copydetails triagens::arango::ApplicationV8::_gcInterval
 ///
 /// @section CommandLineScheduler Command-Line Options for Communication
 ////////////////////////////////////////////////////////////////////////

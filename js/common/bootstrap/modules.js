@@ -281,6 +281,21 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.wait = SYS_WAIT;
 
 
+  // password interface
+  internal.encodePassword = function (password) {
+    var salt;
+    var encoded;
+
+    salt = internal.sha256("time:" + SYS_TIME());
+    salt = salt.substr(0,8);
+
+    encoded = "$1$" + salt + "$" + internal.sha256(salt + password);
+    
+    return encoded;
+  }
+
+
+
   // command line parameter
   internal.MODULES_PATH = "";
 
@@ -290,8 +305,8 @@ ModuleCache["/internal"] = new Module("/internal");
 
 
   // output 
-  internal.start_pager = function() {};
-  internal.stop_pager = function() {};
+  internal.start_pager = function () {};
+  internal.stop_pager = function () {};
 
   internal.ARANGO_QUIET = false;
 

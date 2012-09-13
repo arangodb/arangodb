@@ -317,7 +317,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
-  TRI_AQL_LOG("optimised function call");
+  LOG_TRACE("optimised function call");
 
   return node;
 }
@@ -334,7 +334,7 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
     // for statement with a list expression
     if (expression->_members._length == 0) {
       // list is empty => we can eliminate the for statement
-      TRI_AQL_LOG("optimised away empty for loop");
+      LOG_TRACE("optimised away empty for loop");
 
       return TRI_GetDummyReturnEmptyNodeAql();
     }
@@ -373,12 +373,12 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
     TRI_RemoveVectorPointer(&list->_members, i);
     --n;
 
-    TRI_AQL_LOG("optimised away sort element");
+    LOG_TRACE("optimised away sort element");
   }
 
   if (n == 0) {
     // no members left => sort removed
-    TRI_AQL_LOG("optimised away sort");
+    LOG_TRACE("optimised away sort");
 
     return TRI_GetDummyNopNodeAql();
   }
@@ -393,13 +393,13 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
 static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
   if (TRI_GetBooleanNodeValueAql(node)) {
     // filter expression is always true => remove it
-    TRI_AQL_LOG("optimised away constant (true) filter");
+    LOG_TRACE("optimised away constant (true) filter");
 
     return TRI_GetDummyNopNodeAql();
   }
 
   // filter expression is always false => invalidate surrounding scope(s)
-  TRI_AQL_LOG("optimised away scope"); 
+  LOG_TRACE("optimised away scope"); 
 
   return TRI_GetDummyReturnEmptyNodeAql();
 }
@@ -557,7 +557,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
-  TRI_AQL_LOG("optimised away unary logical operation");
+  LOG_TRACE("optimised away unary logical operation");
 
   return node;
 }
@@ -603,7 +603,7 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   assert(node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND ||
          node->_type == TRI_AQL_NODE_OPERATOR_BINARY_OR);
 
-  TRI_AQL_LOG("optimised away binary logical operation");
+  LOG_TRACE("optimised away binary logical operation");
 
   if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND) {
     if (lhsValue) {
@@ -700,7 +700,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
     
-  TRI_AQL_LOG("optimised away binary relational operation");
+  LOG_TRACE("optimised away binary relational operation");
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -785,7 +785,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     return NULL;
   }
   
-  TRI_AQL_LOG("optimised away binary arithmetic operation");
+  LOG_TRACE("optimised away binary arithmetic operation");
 
   return node;
 }
@@ -819,7 +819,7 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
     return node;
   }
     
-  TRI_AQL_LOG("optimised away ternary operation");
+  LOG_TRACE("optimised away ternary operation");
   
   // evaluate condition
   if (TRI_GetBooleanNodeValueAql(condition)) {

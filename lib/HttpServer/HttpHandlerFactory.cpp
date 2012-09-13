@@ -59,6 +59,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
                                         auth_fptr checkAuthentication)
   : _authenticationRealm(authenticationRealm),
     _checkAuthentication(checkAuthentication),
+    _requireAuthentication(true),
     _notFound(0) {
 }
 
@@ -69,6 +70,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
 HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
   : _authenticationRealm(that._authenticationRealm),
     _checkAuthentication(that._checkAuthentication),
+    _requireAuthentication(that._requireAuthentication),
     _constructors(that._constructors),
     _datas(that._datas),
     _prefixes(that._prefixes),
@@ -83,6 +85,7 @@ HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& tha
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm,
     _checkAuthentication = that._checkAuthentication,
+    _requireAuthentication = that._requireAuthentication;
     _constructors = that._constructors;
     _datas = that._datas;
     _prefixes = that._prefixes;
@@ -113,7 +116,26 @@ HttpHandlerFactory::~HttpHandlerFactory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request
+/// @brief require authentication
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpHandlerFactory::setRequireAuthentication (bool value) {
+  _requireAuthentication = value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns header and body size restrictions
+////////////////////////////////////////////////////////////////////////////////
+
+pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
+  static size_t m = (size_t) -1;
+
+  return make_pair(m, m);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief authenticates a new request, wrapper method that will consider
+/// disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
@@ -121,6 +143,16 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
     return true;
   }
 
+  bool result = authenticate(request);
+  
+  return (result || ! _requireAuthentication);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief authenticates a new request, worker method
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpHandlerFactory::authenticate (HttpRequest* request) {
   bool found;
   char const* auth = request->header("authorization", found);
 
@@ -137,8 +169,11 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
 
     {
       READ_LOCKER(_authLock);
+
+      map<string,string>::iterator i = _authCache.find(auth);
       
-      if (_authCache.find(auth) != _authCache.end()) {
+      if (i != _authCache.end()) {
+        request->setUser(i->second);
         return true;
       }
     }
@@ -150,31 +185,18 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
       return false;
     }
     
-    char* sha265 = 0;
-    size_t sha265Len;
-    
-    SslInterface::sslSHA256(split[1].c_str(), split[1].size(), sha265, sha265Len);
-    
-    char* hex = 0;
-    size_t hexLen;
-    
-    SslInterface::sslHEX(sha265, sha265Len, hex, hexLen);
-    
-    delete[] sha265;
-    
-    bool res = _checkAuthentication(split[0].c_str(), hex);
-    
-    delete[] hex;
+    bool res = _checkAuthentication(split[0].c_str(), split[1].c_str());
     
     if (res) {
       WRITE_LOCKER(_authLock);
       
-      _authCache.insert(auth);
+      _authCache[auth] = split[0];
+      request->setUser(split[0]);
     }
     
     return res;
   }
-  
+
   return false;
 }
 
@@ -184,16 +206,6 @@ bool HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
 
 string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
   return _authenticationRealm;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns header and body size restrictions
-////////////////////////////////////////////////////////////////////////////////
-
-pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
-  static size_t m = (size_t) -1;
-
-  return make_pair(m, m);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

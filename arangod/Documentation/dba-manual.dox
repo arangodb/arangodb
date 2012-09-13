@@ -69,7 +69,12 @@
 ///   <ul>
 ///    <li>@ref DbaManualBasicsDurability</li>
 ///    <li>@ref DbaManualBasicsMvcc</li>
-///    <li>@ref DbaManualBasicsConfig</li>
+///    <li>@ref DbaManualBasicsConfig
+///     <ul>
+///      <li>@ref DbaManualBasicsConfigGlobal</li>
+///      <li>@ref DbaManualBasicsConfigCollection</li>
+///     </ul>
+///    </li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -107,6 +112,22 @@
 ///
 /// @section DbaManualBasicsConfig Configuration
 ////////////////////////////////////////////////
+///
+/// @subsection DbaManualBasicsConfigGlobal Global Configuration
+////////////////////////////////////////////////////////////////
+///
+/// There are certain default values, which you can store in the
+/// configuration file or supply on the command line.
+///
+/// @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
+///
+/// @copydetails triagens::arango::ArangoServer::_forceSyncShapes
+///
+/// @subsection DbaManualBasicsConfigCollection Per Collection Configuration
+////////////////////////////////////////////////////////////////////////////
+///
+/// You can configure the durability behavior on a per collection basis.
+/// Use the ArangoDB shell to change these properties.
 ///
 /// @copydetails JS_PropertiesVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////

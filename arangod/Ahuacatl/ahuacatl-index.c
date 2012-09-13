@@ -28,7 +28,6 @@
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h" 
-#include "Ahuacatl/ahuacatl-log.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -43,7 +42,6 @@
 /// @brief log information about the used index
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_DEBUG_AQL    
 static void LogIndexString (const char* const what,
                             TRI_index_t const* idx,
                             char const* collectionName) {
@@ -62,15 +60,14 @@ static void LogIndexString (const char* const what,
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  TRI_AQL_LOG("%s %s index (%s) for '%s'", 
-              what,
-              TRI_TypeNameIndex(idx), 
-              buffer->_buffer, 
-              collectionName);
+  LOG_TRACE("%s %s index (%s) for '%s'", 
+            what,
+            TRI_TypeNameIndex(idx), 
+            buffer->_buffer, 
+            collectionName);
 
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a field access candidate is an exact access
@@ -294,9 +291,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         break;
     }
     
-#ifdef TRI_DEBUG_AQL    
     LogIndexString("checking", idx, collectionName);
-#endif
 
     TRI_ClearVectorPointer(&matches);
 
@@ -424,11 +419,9 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
   TRI_DestroyVectorPointer(&matches);
 
-#ifdef TRI_DEBUG_AQL    
   if (picked) {
     LogIndexString("using", picked->_idx, collectionName);
   }
-#endif
 
   return picked;
 }

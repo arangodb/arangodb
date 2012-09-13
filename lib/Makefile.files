@@ -11,6 +11,7 @@
 lib_libarango_a_SOURCES = \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
+	lib/Basics/Exceptions.cpp \
 	lib/Basics/FileUtils.cpp \
 	lib/Basics/Initialise.cpp \
 	lib/Basics/LibraryLoader.cpp \
@@ -57,10 +58,6 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
 	lib/JsonParser/json-parser.c \
-	lib/JsonParserX/InputParser.cpp \
-	lib/JsonParserX/JsonParserX.cpp \
-	lib/JsonParserX/JsonParserXDriver.cpp \
-	lib/JsonParserX/JsonScannerX.cpp \
 	lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp \
 	lib/Logger/LoggerInfo.cpp \
@@ -172,14 +169,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Scheduler/SocketTask.cpp \
 	lib/Scheduler/Task.cpp \
 	lib/Scheduler/TaskManager.cpp \
-	lib/Scheduler/TimerTask.cpp \
-	lib/UserManager/ApplicationUserManager.cpp \
-	lib/UserManager/Role.cpp \
-	lib/UserManager/Session.cpp \
-	lib/UserManager/SessionHandler.cpp \
-	lib/UserManager/User.cpp \
-	lib/UserManager/UserHandler.cpp \
-	lib/UserManager/UsersHandler.cpp
+	lib/Scheduler/TimerTask.cpp
 
 ################################################################################
 ### @brief library "libarango.a", JavaScript part
@@ -223,15 +213,7 @@ FLEX_FILES += \
 ################################################################################
 
 FLEXXX_FILES += \
-	lib/V8/v8-json.cpp \
-	lib/JsonParserX/JsonScannerX.cpp
-
-################################################################################
-### @brief bison++
-################################################################################
-
-BISONXX_FILES += \
-	lib/JsonParserX/JsonParserX.cpp
+	lib/V8/v8-json.cpp
 
 ################################################################################
 ### @brief protocol buffers

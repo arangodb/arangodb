@@ -52,7 +52,6 @@ namespace triagens {
   }
 
   namespace admin {
-    class ApplicationUserManager;
     class ApplicationAdminServer;
   }
 
@@ -246,12 +245,6 @@ namespace triagens {
         admin::ApplicationAdminServer* _applicationAdminServer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed user server application
-////////////////////////////////////////////////////////////////////////////////
-
-        admin::ApplicationUserManager* _applicationUserManager;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief application MR
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -367,9 +360,9 @@ namespace triagens {
 ///
 /// @CMDOPT{--database.force-sync-shapes @CA{boolean}}
 ///
-/// Force synching of shape data to disk when writing shape information. 
-/// If turned off, synching will still happen for shapes of collections that
-/// have a waitForSync value of @LIT{true}. If turned on, synching of shape data
+/// Force syncing of shape data to disk when writing shape information. 
+/// If turned off, syncing will still happen for shapes of collections that
+/// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
 /// will always happen, regards of the value of waitForSync.
 ///
 /// The default is @LIT{true}.

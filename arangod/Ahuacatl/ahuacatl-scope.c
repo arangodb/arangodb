@@ -241,7 +241,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
     return false;
   }
   
-  TRI_AQL_LOG("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+  LOG_TRACE("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
   TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope);
 
@@ -272,7 +272,7 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
   assert(n > 0);
 
   scope = TRI_RemoveVectorPointer(&context->_currentScopes, --n);
-  TRI_AQL_LOG("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+  LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   
   node = TRI_CreateNodeScopeEndAql(context, scope);
   if (node == NULL) {
@@ -311,7 +311,7 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
     assert(scope);
 
-    TRI_AQL_LOG("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+    LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   
     node = TRI_CreateNodeScopeEndAql(context, scope);
     if (node == NULL) {
