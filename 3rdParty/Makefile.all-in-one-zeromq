@@ -9,6 +9,8 @@
 ################################################################################
 
 BUILT_SOURCES += @ZEROMQ_LIBS@
+CLEANUP += @srcdir@/.zeromq-build-@TRI_BITS@ @srcdir@/.czmq-build-@TRI_BITS@
+
 ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 
 @ZEROMQ_LIBS@: @srcdir@/.zeromq-build-@TRI_BITS@ @srcdir@/.czmq-build-@TRI_BITS@
