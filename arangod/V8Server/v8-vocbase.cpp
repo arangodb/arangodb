@@ -5361,14 +5361,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   }
 
   // .............................................................................
-  // global function names
-  // .............................................................................
-
-  if (v8g->OutputFuncName.IsEmpty()) {
-    v8g->OutputFuncName = v8::Persistent<v8::String>::New(v8::String::New("output"));
-  }
-
-  // .............................................................................
   // local function names
   // .............................................................................
 
