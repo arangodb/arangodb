@@ -227,7 +227,7 @@ typedef struct TRI_document_collection_s {
   TRI_vector_pointer_t _indexes;
 
   // .............................................................................
-  // this condition variable protects the _journals
+  // this condition variable protects the _journalsCondition
   // .............................................................................
 
   TRI_condition_t _journalsCondition;

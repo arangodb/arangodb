@@ -135,27 +135,6 @@ ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restrict
 ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is requested via its id but a cursor with that id cannot be found."
 
 ################################################################################
-## Application Server
-################################################################################
-
-ERROR_SESSION_USERHANDLER_URL_INVALID,1700,"expecting <prefix>/user/<username>","TODO"
-ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER,1701,"cannot create user","TODO"
-ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND,1702,"role not found","TODO"
-ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION,1703,"no permission to create user with that role","TODO"
-ERROR_SESSION_USERHANDLER_USER_NOT_FOUND,1704,"user not found","TODO"
-ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW,1705,"cannot manage password for user","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID1,1706,"expecting POST <prefix>/session","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID2,1707,"expecting GET <prefix>/session/<sid>","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID3,1708,"expecting PUT <prefix>/session/<sid>/<method>","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID4,1709,"expecting DELETE <prefix>/session/<sid>","TODO"
-ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN,1710,"unknown session","TODO"
-ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND,1711,"session has not bound to user","TODO"
-ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN,1712,"cannot login with session","TODO"
-ERROR_SESSION_USERSHANDLER_INVALID_URL,1713,"expecting GET <prefix>/users","TODO"
-ERROR_SESSION_DIRECTORYSERVER_INVALID_URL,1714,"expecting /directory/sessionvoc/<token>","TODO"
-ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED,1715,"directory server is not configured","TODO"
-
-################################################################################
 ## Key value access
 ################################################################################
 
