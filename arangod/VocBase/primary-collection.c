@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection
+/// @brief primary collection
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "document-collection.h"
+#include "primary-collection.h"
 
 #include <BasicsC/conversions.h>
 #include <BasicsC/files.h>
@@ -47,7 +47,7 @@
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
+static TRI_voc_did_t CreateLock (TRI_primary_collection_t* document,
                                  TRI_df_marker_type_e type,
                                  TRI_shaped_json_t const* json,
                                  void const* data) {
@@ -59,7 +59,7 @@ static TRI_voc_did_t CreateLock (TRI_doc_collection_t* document,
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
+static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
                                   TRI_df_marker_type_e type,
                                   TRI_json_t const* json,
                                   void const* data,
@@ -101,7 +101,7 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_collection_t* collection,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateLock (TRI_doc_collection_t* document,
+static int UpdateLock (TRI_primary_collection_t* document,
                        TRI_shaped_json_t const* json,
                        TRI_voc_did_t did,
                        TRI_voc_rid_t rid,
@@ -124,7 +124,7 @@ static int UpdateLock (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
+static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
                                   TRI_json_t const* json,
                                   TRI_voc_did_t did,
                                   TRI_voc_rid_t rid,
@@ -153,7 +153,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_collection_t* collection,
 /// @brief deletes a json document given the identifier under a write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DestroyLock (TRI_doc_collection_t* document,
+static int DestroyLock (TRI_primary_collection_t* document,
                         TRI_voc_did_t did,
                         TRI_voc_rid_t rid,
                         TRI_voc_rid_t* oldRid,
@@ -166,7 +166,7 @@ static int DestroyLock (TRI_doc_collection_t* document,
 /// @brief returns information about the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_collection_info_t* Figures (TRI_doc_collection_t* document) {
+static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* document) {
   TRI_doc_collection_info_t* info;
   TRI_collection_t* base;
   size_t i;
@@ -244,7 +244,7 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* CreateJournal (TRI_doc_collection_t* collection, bool compactor) {
+static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool compactor) {
   TRI_col_header_marker_t cm;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
@@ -368,9 +368,9 @@ static TRI_datafile_t* CreateJournal (TRI_doc_collection_t* collection, bool com
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CloseJournalDocCollection (TRI_doc_collection_t* collection,
-                                       size_t position,
-                                       bool compactor) {
+static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
+                                           size_t position,
+                                           bool compactor) {
   TRI_datafile_t* journal;
   TRI_vector_pointer_t* vector;
   bool ok;
@@ -470,11 +470,11 @@ static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a document collection
+/// @brief initialises a primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitDocCollection (TRI_doc_collection_t* collection,
-                            TRI_shaper_t* shaper) {
+void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
+                                TRI_shaper_t* shaper) {
   collection->_shaper = shaper;
   collection->_capConstraint = NULL;
 
@@ -499,10 +499,10 @@ void TRI_InitDocCollection (TRI_doc_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a document collection
+/// @brief destroys a primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
+void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection) {
   if (collection->_shaper != NULL) {
     TRI_FreeVocShaper(collection->_shaper);
   }
@@ -530,8 +530,8 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection) {
 /// @brief finds a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t* collection,
-                                                            TRI_voc_fid_t fid) {
+TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t* collection,
+                                                                TRI_voc_fid_t fid) {
   TRI_doc_datafile_info_t const* found;
   TRI_doc_datafile_info_t* dfi;
 
@@ -563,7 +563,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t
 /// Note that the caller must hold a lock protecting the _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalDocCollection (TRI_doc_collection_t* collection) {
+TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* collection) {
   return CreateJournal(collection, false);
 }
 
@@ -574,9 +574,9 @@ TRI_datafile_t* TRI_CreateJournalDocCollection (TRI_doc_collection_t* collection
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocCollection (TRI_doc_collection_t* collection,
+bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
                                     size_t position) {
-  return CloseJournalDocCollection(collection, position, false);
+  return CloseJournalPrimaryCollection(collection, position, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,7 +585,7 @@ bool TRI_CloseJournalDocCollection (TRI_doc_collection_t* collection,
 /// Note that the caller must hold a lock protecting the _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateCompactorDocCollection (TRI_doc_collection_t* collection) {
+TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* collection) {
   return CreateJournal(collection, true);
 }
 
@@ -596,9 +596,9 @@ TRI_datafile_t* TRI_CreateCompactorDocCollection (TRI_doc_collection_t* collecti
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
+bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
                                       size_t position) {
-  return CloseJournalDocCollection(collection, position, true);
+  return CloseJournalPrimaryCollection(collection, position, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

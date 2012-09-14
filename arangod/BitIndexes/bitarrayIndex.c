@@ -39,7 +39,7 @@
 #include "BasicsC/string-buffer.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include "BasicsC/logging.h"
 
 
@@ -1062,7 +1062,7 @@ int BitarrayIndex_generateInsertBitMask(BitarrayIndex* baIndex, const BitarrayIn
   // and what values the document has sent.
   // ...........................................................................
   
-  shaper      = ((TRI_doc_collection_t*)(element->collection))->_shaper;
+  shaper      = ((TRI_primary_collection_t*)(element->collection))->_shaper;
   mask->_mask = 0;
   shiftLeft   = 0;
   

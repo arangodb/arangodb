@@ -206,26 +206,26 @@ void TRI_CleanupVocBase (void* data) {
 
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
-      TRI_doc_collection_t* doc;
+      TRI_primary_collection_t* primary;
 
       collection = collections._buffer[i];
 
       TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-      doc = collection->_collection;
+      primary = collection->_collection;
 
-      if (doc == NULL) {
+      if (primary == NULL) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
-      type = doc->base._type;
+      type = primary->base._type;
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // now release the lock and maybe unload the collection or some datafiles
       if (TRI_IS_SIMPLE_COLLECTION(type)) {
-        CleanupSimCollection((TRI_sim_collection_t*) doc);
+        CleanupSimCollection((TRI_sim_collection_t*) primary);
       }
     }
 

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection with global read-write lock
+/// @brief primary collection with global read-write lock
 ///
 /// @file
 ///
@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_SIMPLE_COLLECTION_H
 #define TRIAGENS_DURHAM_VOC_BASE_SIMPLE_COLLECTION_H 1
 
-#include <VocBase/document-collection.h>
+#include <VocBase/primary-collection.h>
 
 #include <BasicsC/associative-multi.h>
 
@@ -206,15 +206,14 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection with global read-write lock
+/// @brief primary collection with global read-write lock
 ///
-/// A simple document collection is a document collection with a single
-/// read-write lock. This lock is used to coordinate the read and write
-/// transactions.
+/// A primary collection is a collection with a single read-write lock. This 
+/// lock is used to coordinate the read and write transactions.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_sim_collection_s {
-  TRI_doc_collection_t base;
+  TRI_primary_collection_t base;
 
   // .............................................................................
   // this lock protects the _next pointer, _headers, _indexes, and _primaryIndex

@@ -399,6 +399,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   
@@ -413,6 +414,7 @@ void ArangoServer::buildApplicationServer () {
   if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     // validate journal size
     LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -424,6 +426,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   else if (1 == arguments.size()) {
@@ -433,6 +436,7 @@ void ArangoServer::buildApplicationServer () {
   if (_databasePath.empty()) {
     LOGGER_FATAL << "no database path has been supplied, giving up";
     LOGGER_INFO << "please use the '--database.directory' option";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -444,12 +448,14 @@ void ArangoServer::buildApplicationServer () {
       mode == OperationMode::MODE_SCRIPT) {
     int res = executeConsole(mode);
 
+    TRI_FlushLogging();
     exit(res);
   }
 #ifdef TRI_ENABLE_MRUBY
   else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
 
+    TRI_FlushLogging();
     exit(res);
   }
 #endif
@@ -473,6 +479,7 @@ void ArangoServer::buildApplicationServer () {
       LOGGER_FATAL << "no pid-file defined, but daemon or supervisor mode was requested";
       LOGGER_INFO << "please use the '--pid-file' option";
 
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
   }
@@ -635,6 +642,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize V8 enigne";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -964,6 +972,7 @@ int ArangoServer::executeRubyConsole () {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize MRuby enigne";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
