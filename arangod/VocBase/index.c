@@ -36,7 +36,7 @@
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -193,16 +193,16 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_t iid) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   TRI_index_t* idx;
   size_t i;
 
-  if (! TRI_IS_SIMPLE_COLLECTION(collection->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->base._type)) {
     TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
 
-  sim = (TRI_sim_collection_t*) collection;
+  sim = (TRI_document_collection_t*) collection;
 
   for (i = 0;  i < sim->_indexes._length;  ++i) {
     idx = sim->_indexes._buffer[i];

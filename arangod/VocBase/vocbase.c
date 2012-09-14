@@ -43,7 +43,7 @@
 #include "VocBase/compactor.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/shadow-data.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/synchroniser.h"
 #include "VocBase/general-cursor.h"
 
@@ -212,7 +212,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
 static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   int res;
 
   collection = data;
@@ -231,7 +231,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return true;
   }
 
-  if (! TRI_IS_SIMPLE_COLLECTION(collection->_collection->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_collection->base._type)) {
     LOG_ERROR("cannot unload collection '%s' of type '%d'",
               collection->_name,
               (int) collection->_collection->base._type);
@@ -242,9 +242,9 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return false;
   }
 
-  sim = (TRI_sim_collection_t*) collection->_collection;
+  sim = (TRI_document_collection_t*) collection->_collection;
 
-  res = TRI_CloseSimCollection(sim);
+  res = TRI_CloseDocumentCollection(sim);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("failed to close collection '%s': %s",
@@ -257,7 +257,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return true;
   }
 
-  TRI_FreeSimCollection(sim);
+  TRI_FreeDocumentCollection(sim);
 
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
   collection->_collection = NULL;
@@ -271,7 +271,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   TRI_vocbase_col_t* collection;
   TRI_vocbase_t* vocbase;
   regmatch_t matches[3];
@@ -298,7 +298,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (collection->_collection != NULL) {
-    if (! TRI_IS_SIMPLE_COLLECTION(collection->_collection->base._type)) {
+    if (! TRI_IS_DOCUMENT_COLLECTION(collection->_collection->base._type)) {
       LOG_ERROR("cannot drop collection '%s' of type '%d'",
                 collection->_name,
                 (int) collection->_collection->base._type);
@@ -307,9 +307,9 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       return false;
     }
 
-    sim = (TRI_sim_collection_t*) collection->_collection;
+    sim = (TRI_document_collection_t*) collection->_collection;
 
-    res = TRI_CloseSimCollection(sim);
+    res = TRI_CloseDocumentCollection(sim);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("failed to close collection '%s': %s",
@@ -320,7 +320,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       return true;
     }
 
-    TRI_FreeSimCollection(sim);
+    TRI_FreeDocumentCollection(sim);
 
     collection->_collection = NULL;
   }
@@ -623,7 +623,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
       else {
         TRI_col_type_e type = (TRI_col_type_e) info._type;
 
-        if (TRI_IS_SIMPLE_COLLECTION(type)) {
+        if (TRI_IS_DOCUMENT_COLLECTION(type)) {
           TRI_vocbase_col_t* c;
 
           c = AddCollection(vocbase, type, info._name, info._cid, file);
@@ -768,15 +768,15 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 
   type = (TRI_col_type_e) collection->_type;
 
-  if (TRI_IS_SIMPLE_COLLECTION(type)) {
-    TRI_sim_collection_t* sim;
+  if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+    TRI_document_collection_t* sim;
     TRI_col_parameter_t parameter;
 
     TRI_InitParameterCollection(vocbase, &parameter, collection->_name, type, vocbase->_defaultMaximalSize);
 
     parameter._type = (TRI_col_type_t) type;
 
-    sim = TRI_CreateSimCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
+    sim = TRI_CreateDocumentCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
 
     if (sim == NULL) {
       collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -921,7 +921,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
       return res;
     }
 
-    // TODO: might this cause endless recursion in some obscure cases??
     return LoadCollectionVocBase(vocbase, collection);
   }
 
@@ -929,10 +928,10 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     type = (TRI_col_type_e) collection->_type;
 
-    if (TRI_IS_SIMPLE_COLLECTION(type)) {
-      TRI_sim_collection_t* sim;
+    if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+      TRI_document_collection_t* sim;
 
-      sim = TRI_OpenSimCollection(vocbase, collection->_path);
+      sim = TRI_OpenDocumentCollection(vocbase, collection->_path);
 
       if (sim == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1391,7 +1390,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
-  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_SIMPLE_DOCUMENT);
+  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1399,7 +1398,7 @@ TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
-  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_SIMPLE_EDGE);
+  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_EDGE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1416,7 +1415,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_voc_cid_t cid) {
   TRI_primary_collection_t* primary = NULL;
   TRI_vocbase_col_t* collection;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   TRI_col_type_e type;
   char const* name;
   char wrong;
@@ -1442,7 +1441,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   
   type = (TRI_col_type_e) parameter->_type;
 
-  if (! TRI_IS_SIMPLE_COLLECTION(type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(type)) {
     LOG_ERROR("unknown collection type: %d", (int) parameter->_type);
 
     TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
@@ -1470,7 +1469,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   // ok, construct the collection
   // .............................................................................
 
-  sim = TRI_CreateSimCollection(vocbase, vocbase->_path, parameter, cid);
+  sim = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
 
   if (sim == NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1487,9 +1486,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                              primary->base._directory);
 
   if (collection == NULL) {
-    if (TRI_IS_SIMPLE_COLLECTION(type)) {
-      TRI_CloseSimCollection((TRI_sim_collection_t*) primary);
-      TRI_FreeSimCollection((TRI_sim_collection_t*) primary);
+    if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+      TRI_CloseDocumentCollection((TRI_document_collection_t*) primary);
+      TRI_FreeDocumentCollection((TRI_document_collection_t*) primary);
     }
 
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
