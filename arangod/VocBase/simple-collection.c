@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection with global read-write lock
+/// @brief simple collection with global read-write lock
 ///
 /// @file
 ///
@@ -71,7 +71,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
                            TRI_doc_update_policy_e policy,
                            bool release);
 
-static int DeleteShapedJson (TRI_doc_collection_t* doc,
+static int DeleteShapedJson (TRI_primary_collection_t* doc,
                              TRI_voc_did_t did,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
@@ -87,7 +87,7 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
 static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old);
 static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t const* collection);
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection);
 
 static int CapConstraintFromJson (TRI_sim_collection_t* sim,
                                   TRI_json_t* definition,
@@ -282,7 +282,7 @@ static int WriteElement (TRI_sim_collection_t* sim,
 /// @brief creates a new header
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CreateHeader (TRI_doc_collection_t* c,
+static void CreateHeader (TRI_primary_collection_t* c,
                           TRI_datafile_t* datafile,
                           TRI_df_marker_t const* m,
                           size_t markerSize,
@@ -378,7 +378,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
     sim->base.createHeader(&sim->base, journal, *result, markerSize, header, 0);
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, journal->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
       dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
@@ -473,7 +473,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
 /// @brief updates an existing header
 ////////////////////////////////////////////////////////////////////////////////
 
-static void UpdateHeader (TRI_doc_collection_t* c,
+static void UpdateHeader (TRI_primary_collection_t* c,
                           TRI_datafile_t* datafile,
                           TRI_df_marker_t const* m,
                           size_t markerSize,
@@ -656,7 +656,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
     collection->base.updateHeader(&collection->base, journal, *result, markerSize, header, &update);
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, header->_fid);
     if (dfi != NULL) {
       size_t length = TRI_LengthDataMasterPointer(header);
 
@@ -667,7 +667,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
       dfi->_sizeDead += length;
     }
 
-    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
       dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
@@ -820,7 +820,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
     TRI_doc_datafile_info_t* dfi;
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, header->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, header->_fid);
     if (dfi != NULL) {
       size_t length = TRI_LengthDataMasterPointer(header);
 
@@ -831,7 +831,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
       dfi->_sizeDead += length;
     }
 
-    dfi = TRI_FindDatafileInfoDocCollection(&collection->base, journal->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberDeletion += 1;
     }
@@ -863,7 +863,7 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               DOCUMENT COLLECTION
+// --SECTION--                                                 SIMPLE COLLECTION
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -879,11 +879,11 @@ static int DeleteDocument (TRI_sim_collection_t* collection,
 /// @brief debug output for datafile information
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DebugDatafileInfoDatafile (TRI_doc_collection_t* collection,
+static void DebugDatafileInfoDatafile (TRI_primary_collection_t* collection,
                                        TRI_datafile_t* datafile) {
   TRI_doc_datafile_info_t* dfi;
 
-  dfi = TRI_FindDatafileInfoDocCollection(collection, datafile->_fid);
+  dfi = TRI_FindDatafileInfoPrimaryCollection(collection, datafile->_fid);
 
   printf("DATAFILE '%s'\n", datafile->_filename);
 
@@ -903,7 +903,7 @@ static void DebugDatafileInfoDatafile (TRI_doc_collection_t* collection,
 /// @brief debug output for datafile information
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DebugDatafileInfoDocCollection (TRI_doc_collection_t* collection) {
+static void DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* collection) {
   TRI_datafile_t* datafile;
   size_t n;
   size_t i;
@@ -965,7 +965,7 @@ static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
+static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* document,
                                         TRI_df_marker_type_e type,
                                         TRI_shaped_json_t const* json,
                                         void const* data,
@@ -1027,15 +1027,16 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_collection_t* document,
   }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads an element from the document collection
+/// @brief reads an element from the simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t ReadShapedJson (TRI_doc_collection_t* document,
+static TRI_doc_mptr_t ReadShapedJson (TRI_primary_collection_t* document,
                                       TRI_voc_did_t did) {
   TRI_sim_collection_t* collection;
   TRI_doc_mptr_t result;
@@ -1058,7 +1059,7 @@ static TRI_doc_mptr_t ReadShapedJson (TRI_doc_collection_t* document,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
+static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* document,
                                         TRI_shaped_json_t const* json,
                                         TRI_voc_did_t did,
                                         TRI_voc_rid_t rid,
@@ -1155,6 +1156,7 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
     }
 
     LOG_FATAL("unknown marker type %lu", (unsigned long) original->_type);
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -1163,7 +1165,7 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_collection_t* document,
 /// @brief deletes a json document given the identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteShapedJson (TRI_doc_collection_t* doc,
+static int DeleteShapedJson (TRI_primary_collection_t* primary,
                              TRI_voc_did_t did,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
@@ -1172,7 +1174,7 @@ static int DeleteShapedJson (TRI_doc_collection_t* doc,
   TRI_sim_collection_t* sim;
   TRI_doc_deletion_marker_t marker;
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_sim_collection_t*) primary;
 
   memset(&marker, 0, sizeof(marker));
 
@@ -1189,10 +1191,10 @@ static int DeleteShapedJson (TRI_doc_collection_t* doc,
 /// @brief read locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BeginRead (TRI_doc_collection_t* doc) {
+static int BeginRead (TRI_primary_collection_t* primary) {
   TRI_sim_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_sim_collection_t*) primary;
   TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
@@ -1202,10 +1204,10 @@ static int BeginRead (TRI_doc_collection_t* doc) {
 /// @brief read unlocks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EndRead (TRI_doc_collection_t* doc) {
+static int EndRead (TRI_primary_collection_t* primary) {
   TRI_sim_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_sim_collection_t*) primary;
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
@@ -1215,10 +1217,10 @@ static int EndRead (TRI_doc_collection_t* doc) {
 /// @brief write locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BeginWrite (TRI_doc_collection_t* doc) {
+static int BeginWrite (TRI_primary_collection_t* primary) {
   TRI_sim_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_sim_collection_t*) primary;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
@@ -1228,7 +1230,7 @@ static int BeginWrite (TRI_doc_collection_t* doc) {
 /// @brief write unlocks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EndWrite (TRI_doc_collection_t* document) {
+static int EndWrite (TRI_primary_collection_t* document) {
   TRI_sim_collection_t* sim;
 
   sim = (TRI_sim_collection_t*) document;
@@ -1238,17 +1240,17 @@ static int EndWrite (TRI_doc_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief size of a document collection
+/// @brief size of a simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_size_t SizeSimCollection (TRI_doc_collection_t* doc) {
+static TRI_voc_size_t SizeSimCollection (TRI_primary_collection_t* primary) {
   TRI_doc_mptr_t const* mptr;
   TRI_sim_collection_t* sim;
   TRI_voc_size_t result;
   void** end;
   void** ptr;
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_sim_collection_t*) primary;
 
   TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
@@ -1327,6 +1329,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
     else {
       LOG_FATAL("unknown marker type %lu", (unsigned long) marker->_type);
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
 
@@ -1348,7 +1351,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       collection->base.createHeader(&collection->base, datafile, marker, markerSize, header, 0);
 
       // update the datafile info
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
@@ -1372,7 +1375,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       collection->base.updateHeader(&collection->base, datafile, marker, markerSize, found, &update);
 
       // update the datafile info
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, found->_fid);
 
       if (dfi != NULL) {
         size_t length = TRI_LengthDataMasterPointer(found);
@@ -1384,7 +1387,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_sizeDead += length;
       }
 
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
@@ -1397,7 +1400,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     // it is a stale update
     else {
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberDead += 1;
@@ -1437,7 +1440,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       CreateImmediateIndexes(collection, header);
 
       // update the datafile info
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberDeletion += 1;
@@ -1453,7 +1456,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       change.v->_deletion = marker->_tick;
 
       // update the datafile info
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, found->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, found->_fid);
 
       if (dfi != NULL) {
         size_t length = TRI_LengthDataMasterPointer(found);
@@ -1464,7 +1467,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
         dfi->_numberDead += 1;
         dfi->_sizeDead += length; 
       }
-      dfi = TRI_FindDatafileInfoDocCollection(&collection->base, datafile->_fid);
+      dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, datafile->_fid);
 
       if (dfi != NULL) {
         dfi->_numberDeletion += 1;
@@ -1668,7 +1671,7 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, vo
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a document collection
+/// @brief initialises a simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InitSimCollection (TRI_sim_collection_t* collection,
@@ -1685,14 +1688,14 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
 
   id = TRI_DuplicateString("_id");
 
-  TRI_InitDocCollection(&collection->base, shaper);
+  TRI_InitPrimaryCollection(&collection->base, shaper);
 
   TRI_InitReadWriteLock(&collection->_lock);
 
   collection->_headers = TRI_CreateSimpleHeaders(sizeof(TRI_doc_mptr_t));
 
   if (collection->_headers == NULL) {
-    TRI_DestroyDocCollection(&collection->base);
+    TRI_DestroyPrimaryCollection(&collection->base);
     TRI_DestroyReadWriteLock(&collection->_lock);
     return false;
   }
@@ -1773,7 +1776,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   TRI_col_info_t info;
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
-  TRI_sim_collection_t* doc;
+  TRI_sim_collection_t* sim;
   bool waitForSync;
 
   memset(&info, 0, sizeof(info));
@@ -1791,20 +1794,20 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   info._waitForSync = parameter->_waitForSync;
   info._maximalSize = parameter->_maximalSize;
 
-  // first create the document collection
-  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
+  // first create the simple collection
+  sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
 
-  if (doc == NULL) {
+  if (sim == NULL) {
     LOG_ERROR("cannot create document");
     return NULL;
   }
 
-  collection = TRI_CreateCollection(vocbase, &doc->base.base, path, &info);
+  collection = TRI_CreateCollection(vocbase, &sim->base.base, path, &info);
 
   if (collection == NULL) {
-    LOG_ERROR("cannot create document collection");
+    LOG_ERROR("cannot create simple collection");
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, sim);
     return NULL;
   }
 
@@ -1816,22 +1819,22 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("cannot create shapes collection");
 
     TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection); // will free doc
+    TRI_FreeCollection(collection); // will free sim
 
     return NULL;
   }
 
-  // create document collection and shaper
-  if (false == InitSimCollection(doc, shaper)) {
+  // create simple collection and shaper
+  if (false == InitSimCollection(sim, shaper)) {
     LOG_ERROR("cannot initialise shapes collection");
 
     TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection); // will free doc
+    TRI_FreeCollection(collection); // will free sim
 
     return NULL;
   }
 
-  return doc;
+  return sim;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1872,7 +1875,7 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
   // free index vector
   TRI_DestroyVectorPointer(&collection->_indexes);
 
-  TRI_DestroyDocCollection(&collection->base);
+  TRI_DestroyPrimaryCollection(&collection->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1902,7 +1905,7 @@ void TRI_FreeSimCollection (TRI_sim_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateJournalSimCollection (TRI_sim_collection_t* collection) {
-  return TRI_CreateJournalDocCollection(&collection->base);
+  return TRI_CreateJournalPrimaryCollection(&collection->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1911,7 +1914,7 @@ TRI_datafile_t* TRI_CreateJournalSimCollection (TRI_sim_collection_t* collection
 
 bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
                                     size_t position) {
-  return TRI_CloseJournalDocCollection(&collection->base, position);
+  return TRI_CloseJournalPrimaryCollection(&collection->base, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1921,22 +1924,22 @@ bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
 TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const* path) {
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
-  TRI_sim_collection_t* doc;
+  TRI_sim_collection_t* sim;
   TRI_shape_collection_t* shapeCollection;
   char* shapes;
 
-  // first open the document collection
-  doc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
-  if (!doc) {
+  // first open the simple collection
+  sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
+  if (!sim) {
     return NULL;
   }
 
-  collection = TRI_OpenCollection(vocbase, &doc->base.base, path);
+  collection = TRI_OpenCollection(vocbase, &sim->base.base, path);
 
   if (collection == NULL) {
-    LOG_ERROR("cannot open document collection");
+    LOG_ERROR("cannot open simple collection");
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, sim);
     return NULL;
   }
 
@@ -1945,7 +1948,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   if (!shapes) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, sim);
     return NULL;
   }
 
@@ -1961,8 +1964,8 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
     return NULL;
   }
 
-  // create document collection and shaper
-  if (false == InitSimCollection(doc, shaper)) {
+  // create simple collection and shaper
+  if (false == InitSimCollection(sim, shaper)) {
     LOG_ERROR("cannot initialise shapes collection");
 
     TRI_CloseCollection(collection);
@@ -1995,11 +1998,11 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
 
   // output infomations about datafiles and journals
   if (TRI_IsTraceLogging(__FILE__)) {
-    DebugDatafileInfoDocCollection(&doc->base);
-    DebugHeaderSimCollection(doc);
+    DebugDatafileInfoPrimaryCollection(&sim->base);
+    DebugHeaderSimCollection(sim);
   }
 
-  return doc;
+  return sim;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3173,7 +3176,7 @@ static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
 

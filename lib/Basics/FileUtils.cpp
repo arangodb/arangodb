@@ -78,7 +78,7 @@ namespace triagens {
         int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
 
         if (fd == -1) {
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY");
+          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
         }
 
         char buffer[10240];
@@ -95,7 +95,7 @@ namespace triagens {
             TRI_CLOSE(fd);
             LOGGER_TRACE << "read failed for '" << filename << "' with " << strerror(errno) << " and result " << n
                   << " on fd " << fd;
-            THROW_FILE_FUNC_ERROR("read", strerror(errno));
+            THROW_FILE_FUNC_ERROR("read", "", errno);
           }
 
           result.appendText(buffer, n);
@@ -114,7 +114,7 @@ namespace triagens {
         int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
 
         if (fd == -1) {
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY");
+          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
         }
 
         char buffer[10240];
@@ -130,7 +130,7 @@ namespace triagens {
             TRI_CLOSE(fd);
             LOGGER_TRACE << "read failed for '" << filename << "' with " << strerror(errno) << " and result " << n
                   << " on fd " << fd;
-            THROW_FILE_FUNC_ERROR("read", strerror(errno));
+            THROW_FILE_FUNC_ERROR("read", "", errno);
           }
 
           result.appendText(buffer, n);
@@ -146,7 +146,7 @@ namespace triagens {
 
         if (fd == -1) {
           LOGGER_TRACE << "open failed for '" << filename << "' with " << strerror(errno);
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC");
+          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC", errno);
         }
 
         char const* ptr = content.c_str();
@@ -159,7 +159,7 @@ namespace triagens {
             TRI_CLOSE(fd);
             LOGGER_TRACE << "write failed for '" << filename << "' with " << strerror(errno) << " and result " << n
                   << " on fd " << fd;
-            THROW_FILE_FUNC_ERROR("write", strerror(errno));
+            THROW_FILE_FUNC_ERROR("write", "", errno);
           }
 
           ptr += n;
@@ -177,7 +177,7 @@ namespace triagens {
 
         if (fd == -1) {
           LOGGER_TRACE << "open failed for '" << filename << "' with " << strerror(errno);
-          THROW_FILE_OPEN_ERROR("open", filename, "O_WRONLY | O_CREAT | O_TRUNC");
+          THROW_FILE_OPEN_ERROR("open", filename, "O_WRONLY | O_CREAT | O_TRUNC", errno);
         }
 
         char const* ptr = content.c_str();
@@ -190,7 +190,7 @@ namespace triagens {
             TRI_CLOSE(fd);
             LOGGER_TRACE << "write failed for '" << filename << "' with " << strerror(errno) << " and result " << n
                   << " on fd " << fd;
-            THROW_FILE_FUNC_ERROR("write", strerror(errno));
+            THROW_FILE_FUNC_ERROR("write", "", errno);
           }
 
           ptr += n;

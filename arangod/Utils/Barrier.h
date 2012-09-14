@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default rights
+/// @brief "safe" barrier container (will not leak resources)
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,85 +21,106 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_USER_MANAGER_RIGHT_H
-#define TRIAGENS_USER_MANAGER_RIGHT_H 1
-
-#include "Basics/Common.h"
+#ifndef TRIAGENS_UTILS_BARRIER_H
+#define TRIAGENS_UTILS_BARRIER_H 1
 
 #include "Logger/Logger.h"
+#include "VocBase/barrier.h"
+#include "VocBase/primary-collection.h"
 
 namespace triagens {
-  namespace admin {
+  namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                     class Barrier
 // -----------------------------------------------------------------------------
+
+    class Barrier {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a single right
+/// @brief Barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef uint32_t right_t;
+      private:
+        Barrier (const Barrier&);
+        Barrier& operator= (const Barrier&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief right to manage an administrator account
-///
-/// Right to create, delete, or change role.
-////////////////////////////////////////////////////////////////////////////////
-
-    right_t const RIGHT_TO_MANAGE_ADMIN = 1000;
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief right to manage an user account
-///
-/// Right to create, delete, or change role.
+/// @brief create the barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-    right_t const RIGHT_TO_MANAGE_USER = 1001;
+        Barrier (TRI_primary_collection_t* const doc) :
+          _barrier(0) { 
+          _barrier = TRI_CreateBarrierElement(&doc->_barrierList);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief right to be deleted
+/// @brief destroy the barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-    right_t const RIGHT_TO_BE_DELETED = 1002;
+        ~Barrier () {
+          if (_barrier != 0) {
+            TRI_FreeBarrier(_barrier);
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief right to login in
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-    right_t const RIGHT_TO_LOGIN = 1003;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the barrier
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_barrier_t* _barrier;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+    };
+
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

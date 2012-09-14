@@ -37,14 +37,7 @@
 ///    <li>@ref HttpSystemRequestStatistics "GET /_admin/request-statistics"</li>
 ///    <li>@ref HttpSystemConfigDescription "GET /_admin/config/description"</li>
 ///    <li>@ref HttpSystemConfigConfiguration "GET /_admin/config/configuration"</li>
-///    <li>@ref HtppSystemUserManagement
-///     <ul>
-///      <li>@ref HttpSystemUsers "GET /_admin/user-manager/users"</li>
-///      <li>@ref HttpSystemUserGet "GET /_admin/user-manager/user/user-name"</li>
-///      <li>@ref HttpSystemUserPost "POST /_admin/user-manager/user/user-name"</li>
-///     </ul>
-///    </li>
-///    <li>@ref HtppSystemSessionManagement
+///    <li>@ref HttpSystemSessionManagement
 ///     <ul>
 ///      <li>@ref HttpSystemSessionGet "POST /_admin/user-manager/session/sid"</li>
 ///      <li>@ref HttpSystemSessionPost "POST /_admin/user-manager/session"</li>
@@ -84,19 +77,7 @@
 /// @anchor HttpSystemConfigConfiguration
 /// @copydetails JSF_GET_admin_config_configuration
 ///
-/// @section HtppSystemUserManagement Front-End User Management
-///////////////////////////////////////////////////////////////
-///
-/// @anchor HttpSystemUsers
-/// @copydetails triagens::admin::UsersHandler::execute
-///
-/// @anchor HttpSystemUserGet
-/// @copydetails triagens::admin::UserHandler::executeGet
-///
-/// @anchor HttpSystemUserPost
-/// @copydetails triagens::admin::UserHandler::executePost
-///
-/// @section HtppSystemSessionManagement Front-End Session Management
+/// @section HttpSystemSessionManagement Front-End Session Management
 /////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpSystemSessionGet

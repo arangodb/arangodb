@@ -67,7 +67,7 @@ describe ArangoDB do
 
         # run a HTTP HEAD query on the existing document
 	cmd = "/_api/document/" + did
-        doc = ArangoDB.log_head("#{prefix}-head-check-documentq", cmd)
+        doc = ArangoDB.log_head("#{prefix}-head-check-document", cmd)
 
 	doc.code.should eq(200)
         doc.response.body.should be_nil

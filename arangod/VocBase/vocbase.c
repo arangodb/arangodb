@@ -41,7 +41,7 @@
 #include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include "VocBase/shadow-data.h"
 #include "VocBase/simple-collection.h"
 #include "VocBase/synchroniser.h"
@@ -629,7 +629,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           c = AddCollection(vocbase, type, info._name, info._cid, file);
 
           if (c == NULL) {
-            LOG_FATAL("failed to add simple document collection from '%s'", file);
+            LOG_FATAL("failed to add simple collection from '%s'", file);
 
             TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, file);
             regfree(&re);
@@ -640,7 +640,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
           c->_status = TRI_VOC_COL_STATUS_UNLOADED;
 
-          LOG_DEBUG("added simple document collection from '%s'", file);
+          LOG_DEBUG("added simple collection from '%s'", file);
         }
         else {
           LOG_DEBUG("skipping collection of unknown type %d", (int) type);
@@ -1387,7 +1387,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a document collection by name
+/// @brief finds a primary collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
@@ -1414,7 +1414,7 @@ TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, 
                                                 TRI_col_parameter_t* parameter,
                                                 TRI_voc_cid_t cid) {
-  TRI_doc_collection_t* doc = NULL;
+  TRI_primary_collection_t* primary = NULL;
   TRI_vocbase_col_t* collection;
   TRI_sim_collection_t* sim;
   TRI_col_type_e type;
@@ -1477,19 +1477,19 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  doc = &sim->base;
+  primary = &sim->base;
 
   // add collection container
   collection = AddCollection(vocbase,
-                             doc->base._type,
-                             doc->base._name,
-                             doc->base._cid,
-                             doc->base._directory);
+                             primary->base._type,
+                             primary->base._name,
+                             primary->base._cid,
+                             primary->base._directory);
 
   if (collection == NULL) {
     if (TRI_IS_SIMPLE_COLLECTION(type)) {
-      TRI_CloseSimCollection((TRI_sim_collection_t*) doc);
-      TRI_FreeSimCollection((TRI_sim_collection_t*) doc);
+      TRI_CloseSimCollection((TRI_sim_collection_t*) primary);
+      TRI_FreeSimCollection((TRI_sim_collection_t*) primary);
     }
 
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1497,9 +1497,9 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   }
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
-  collection->_collection = doc;
+  collection->_collection = primary;
   FreeCollectionPath(collection);
-  collection->_path = TRI_DuplicateString(doc->base._directory);
+  collection->_path = TRI_DuplicateString(primary->base._directory);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
   return collection;

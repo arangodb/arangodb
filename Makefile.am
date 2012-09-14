@@ -198,14 +198,6 @@ bin_PROGRAMS = \
 
 noinst_PROGRAMS =
 
-if ENABLE_ZEROMQ
-
-noinst_PROGRAMS += \
-	bin/zclient \
-	bin/zserver
-
-endif
-
 ################################################################################
 ### @brief ruby additions
 ################################################################################
@@ -284,7 +276,6 @@ endif
 ### @brief unit tests
 ################################################################################
 
-include PerfTests/Makefile.files
 include UnitTests/Makefile.files
 
 ################################################################################
@@ -319,6 +310,15 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+
+################################################################################
+### @brief tags file
+################################################################################
+
+GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
+
+GTAGS:
+	echo $(GTAGS_FILES) | tr " " "\n" | gtags -i -f -
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                      DEPENDENCIES

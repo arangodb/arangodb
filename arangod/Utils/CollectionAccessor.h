@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 engine configuration
+/// @brief "safe" collection accessor
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,59 +21,51 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_APPLICATION_V8_H
-#define TRIAGENS_REST_SERVER_APPLICATION_V8_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_LOCK_H
+#define TRIAGENS_UTILS_COLLECTION_LOCK_H 1
 
-#include "ApplicationServer/ApplicationFeature.h"
+#include "Logger/Logger.h"
+#include "Basics/StringUtils.h"
+#include "ShapedJson/json-shaper.h"
+#include "VocBase/barrier.h"
+#include "VocBase/primary-collection.h"
+#include "VocBase/vocbase.h"
 
-#include <v8.h>
-
-#include "Basics/ConditionVariable.h"
-#include "V8/JSLoader.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-extern "C" {
-  struct TRI_vocbase_s;
-}
+using namespace std;
+using namespace triagens::basics;
 
 namespace triagens {
-  namespace basics {
-    class Thread;
-  }
+  namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class ApplicationV8
+// --SECTION--                                          class CollectionAccessor
 // -----------------------------------------------------------------------------
+
+    class CollectionAccessor {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  namespace arango {
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application simple user and session management feature
+/// @brief CollectionAccessor
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ApplicationV8 : public rest::ApplicationFeature {
       private:
-        ApplicationV8 (ApplicationV8 const&);
-        ApplicationV8& operator= (ApplicationV8 const&);
+        CollectionAccessor (const CollectionAccessor&);
+        CollectionAccessor& operator= (const CollectionAccessor&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                     private enums
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,29 +73,10 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 isolate and context
-////////////////////////////////////////////////////////////////////////////////
-
-        struct V8Context {
-          v8::Persistent<v8::Context> _context;
-          v8::Isolate* _isolate;
-          v8::Locker* _locker;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of requests since last GC of the context 
-////////////////////////////////////////////////////////////////////////////////
-
-          size_t _dirt;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief timestamp of last GC for the context
-////////////////////////////////////////////////////////////////////////////////
-
-          double _lastGcStamp;
-
+        enum LockTypes {
+          TYPE_NONE = 0,
+          TYPE_READ,
+          TYPE_WRITE
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,16 +95,31 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief create the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationV8 (string const& binaryPath);
+        CollectionAccessor (TRI_vocbase_t* const vocbase, 
+                            const string& name,
+                            const TRI_col_type_e type,
+                            const bool create) : 
+          _vocbase(vocbase), 
+          _name(name),
+          _type(type),
+          _create(create),
+          _lockType(TYPE_NONE), 
+          _collection(0), 
+          _primaryCollection(0) {
+
+          assert(_vocbase);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
+/// @brief destroy the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ApplicationV8 ();
+        ~CollectionAccessor () {
+          release();
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -146,86 +134,148 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the concurrency
-////////////////////////////////////////////////////////////////////////////////
-
-        void setConcurrency (size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the database
-////////////////////////////////////////////////////////////////////////////////
-
-        void setVocbase (struct TRI_vocbase_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enters an context
-////////////////////////////////////////////////////////////////////////////////
-
-        V8Context* enterContext ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exists an context
-////////////////////////////////////////////////////////////////////////////////
-
-        void exitContext (V8Context*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the garbage collection
-////////////////////////////////////////////////////////////////////////////////
-
-        void collectGarbage ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disables actions
-////////////////////////////////////////////////////////////////////////////////
-
-        void disableActions ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        ApplicationFeature methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief use the collection and initialise the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (map<string, basics::ProgramOptionsDescription>&);
+        int use () {
+          if (_collection != 0) {
+            // we already called use() before
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (_name.empty()) {
+            // name is empty. cannot open the collection
+            return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
+
+          // open or create the collection
+          if (isdigit(_name[0])) {
+            TRI_voc_cid_t id = StringUtils::uint64(_name);
+
+            _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
+          }
+          else {
+            if (_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+              _collection = TRI_FindDocumentCollectionByNameVocBase(_vocbase, _name.c_str(), _create);
+            }
+            else if (_type == TRI_COL_TYPE_SIMPLE_EDGE) {
+              _collection = TRI_FindEdgeCollectionByNameVocBase(_vocbase, _name.c_str(), _create);
+            }
+          }
+ 
+          if (_collection == 0) {
+            // collection not found
+            return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
+
+          int result = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+
+          if (TRI_ERROR_NO_ERROR != result) {
+            _collection = 0;
+            return TRI_set_errno(result);
+          }
+
+          LOGGER_TRACE << "using collection " << _name;
+          assert(_collection->_collection != 0);
+          _primaryCollection = _collection->_collection;
+
+          return TRI_ERROR_NO_ERROR;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief free all resources. accessor cannot be used after calling this
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool prepare ();
+        bool unuse () {
+          return release();
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief read-lock the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool start ();
+        bool beginRead () {
+          return lock(TYPE_READ);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief write-lock the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        void close ();
+        bool beginWrite () {
+          return lock(TYPE_WRITE);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief read-unlock the collection
+////////////////////////////////////////////////////////////////////////////////
+          
+        bool endRead () {
+          return unlock(TYPE_READ);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-unlock the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        void stop ();
+        bool endWrite () {
+          return unlock(TYPE_WRITE);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a collection is initialised
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isValid () const {
+          return (_collection != 0);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a lock is already held
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isLocked () const {
+          return (_lockType != TYPE_NONE);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        inline const bool waitForSync () const {
+          assert(_primaryCollection != 0);
+          return _primaryCollection->base._waitForSync;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying primary collection
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_primary_collection_t* primary () {
+          assert(_primaryCollection != 0);
+          return _primaryCollection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying collection's id
+////////////////////////////////////////////////////////////////////////////////
+
+        const inline TRI_voc_cid_t cid () const {
+          assert(_collection != 0);
+          return _collection->_cid;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection's shaper
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline TRI_shaper_t* shaper () const {
+          assert(_primaryCollection != 0);
+          return _primaryCollection->_shaper;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -235,30 +285,119 @@ namespace triagens {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-      private:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine which of the free contexts should be picked for the GC
-////////////////////////////////////////////////////////////////////////////////
-
-        V8Context* pickContextForGc ();
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares a V8 instance
+/// @brief release all locks
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool release () {
+          if (_collection == 0) {
+            return false;
+          }
+
+          if (isLocked()) {
+            unlock(_lockType);
+          }
+          
+          LOGGER_TRACE << "releasing collection";
+          TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+          _collection = 0;
+          _primaryCollection = 0;
+
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores the lock type
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool prepareV8Instance (size_t i);
+        inline void setLock (const LockTypes type) {
+          _lockType = type;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs a V8 instances
+/// @brief lock a collection in read or write mode
 ////////////////////////////////////////////////////////////////////////////////
 
-        void shutdownV8Instance (size_t i);
+        bool lock (const LockTypes type) {
+          if (! isValid()) {
+            LOGGER_ERROR << "logic error - attempt to lock uninitialised collection " << _name;
+            return false;
+          }
+
+          if (isLocked()) {
+            LOGGER_ERROR << "logic error - attempt to lock already locked collection " << _name;
+          }
+
+          assert(_primaryCollection != 0);
+
+          int result = TRI_ERROR_INTERNAL;
+          if (TYPE_READ == type) {
+            LOGGER_TRACE << "read-locking collection " << _name;
+            result = _primaryCollection->beginRead(_primaryCollection);
+          }
+          else if (TYPE_WRITE == type) {
+            LOGGER_TRACE << "write-locking collection " << _name;
+            result = _primaryCollection->beginWrite(_primaryCollection);
+          }
+          else {
+            assert(false);
+          }
+
+          if (TRI_ERROR_NO_ERROR == result) {
+            setLock(type);
+            return true;
+          }
+          
+          LOGGER_WARNING << "could not lock collection";
+
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlock a collection 
+////////////////////////////////////////////////////////////////////////////////
+
+        bool unlock (const LockTypes type) {
+          if (! isValid()) {
+            LOGGER_ERROR << "logic error - attempt to unlock uninitialised collection " << _name;
+            return false;
+          }
+
+          if (! isLocked()) {
+            LOGGER_ERROR << "logic error - attempt to unlock non-locked collection " << _name;
+          }
+          
+          assert(_primaryCollection != 0);
+
+          int result = TRI_ERROR_INTERNAL;
+          if (TYPE_READ == type) { 
+            LOGGER_TRACE << "read-unlocking collection " << _name;
+            result = _primaryCollection->endRead(_primaryCollection);
+          }
+          else if (TYPE_WRITE == type) {
+            LOGGER_TRACE << "write-unlocking collection " << _name;
+            result = _primaryCollection->endWrite(_primaryCollection);
+          }
+          else {
+            assert(false);
+          }
+
+          if (TRI_ERROR_NO_ERROR == result) {
+            setLock(TYPE_NONE);
+            return true;
+          }
+
+          LOGGER_WARNING << "could not unlock collection " << _name;
+
+          return false;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -273,140 +412,68 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the directory containing alternate startup scripts
-///
-/// @CMDOPT{--javascript.directory @CA{directory}}
-///
-/// Specifies the @CA{directory} path to alternate startup JavaScript files.
-/// Normally, the server will start using built-in JavaScript core
-/// functionality. To override the core functionality with a different
-/// implementation, this option can be used.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _startupPath;
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief semicolon separated list of module directories
-///
-/// @CMDOPT{--javascript.modules-path @CA{directory}}
-///
-/// Specifies the @CA{directory} path with user defined JavaScript modules.
-/// Multiple paths can be specified separated with commas.
+/// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _startupModules;
+        TRI_vocbase_t* const _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the system action directory
-///
-/// @CMDOPT{--javascript.action-directory @CA{directory}}
-///
-/// Specifies the @CA{directory} containg the system defined JavaScript files
-/// that can be invoked as actions.
+/// @brief collection name / id
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _actionPath;
+        const string _name;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use actions
+/// @brief type of collection
 ////////////////////////////////////////////////////////////////////////////////
-
-        bool _useActions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript garbage collection interval (each x requests)
-///
-/// @CMDOPT{--javascript.gc-interval @CA{interval}}
-///
-/// Specifies the interval (approximately in number of requests) that the
-/// garbage collection for JavaScript objects will be run in each thread.
-////////////////////////////////////////////////////////////////////////////////
-
-        uint64_t _gcInterval;
+        
+        const TRI_col_type_e _type;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript garbage collection frequency (each x seconds)
-///
-/// @CMDOPT{--javascript.gc-frequency @CA{frequency}}
-///
-/// Specifies the frequency (in seconds) for the automatic garbage collection of
-/// JavaScript objects. This setting is useful to have the garbage collection 
-/// still work in periods with no or little numbers of requests.
+/// @brief create flag for collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        double _gcFrequency;
+        const bool _create;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 startup loader
+/// @brief the type of lock currently held
 ////////////////////////////////////////////////////////////////////////////////
 
-        JSLoader _startupLoader;
+        LockTypes _lockType;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action loader
+/// @brief the underlying vocbase collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        JSLoader _actionLoader;
+        TRI_vocbase_col_t* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief database
+/// @brief corresponding loaded primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
+        TRI_primary_collection_t* _primaryCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of instances to create
+/// @brief a barrier for deletion
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _nrInstances;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 contexts
-////////////////////////////////////////////////////////////////////////////////
-
-        V8Context** _contexts;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 contexts queue lock
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::ConditionVariable _contextCondition;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 free contexts
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<V8Context*> _freeContexts;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 free contexts
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<V8Context*> _dirtyContexts;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown in progress
-////////////////////////////////////////////////////////////////////////////////
-
-        volatile sig_atomic_t _stopping;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief garbage collection thread
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::Thread* _gcThread;
-    };
-  }
-}
+        TRI_barrier_t* _barrier;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+    };
+
+  }
+}
+
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

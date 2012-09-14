@@ -38,7 +38,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_collection_s;
+struct TRI_primary_collection_s;
 struct TRI_collection_s;
 struct TRI_datafile_s;
 
@@ -120,7 +120,7 @@ TRI_barrier_collection_cb_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_barrier_list_s {
-  struct TRI_doc_collection_s* _collection;
+  struct TRI_primary_collection_s* _collection;
 
   TRI_spin_t _lock;
 
@@ -146,7 +146,7 @@ TRI_barrier_list_t;
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitBarrierList (TRI_barrier_list_t* container, struct TRI_doc_collection_s* collection);
+void TRI_InitBarrierList (TRI_barrier_list_t* container, struct TRI_primary_collection_s* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a barrier list

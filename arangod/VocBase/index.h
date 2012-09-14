@@ -104,14 +104,14 @@ TRI_index_geo_variant_e;
 typedef struct TRI_index_s {
   TRI_idx_iid_t _iid;
   TRI_idx_type_e _type;
-  struct TRI_doc_collection_s* _collection;
+  struct TRI_primary_collection_s* _collection;
 
   bool _unique;
   bool _ignoreNull;
   TRI_vector_string_t _fields;
 
-  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_doc_collection_s const*);
-  void (*removeIndex) (struct TRI_index_s*, struct TRI_doc_collection_s*);
+  TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_primary_collection_s const*);
+  void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
 
   // .........................................................................................
   // the following functions are called for document/collection administration 
@@ -273,19 +273,19 @@ void TRI_FreeIndex (TRI_index_t* const);
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (struct TRI_doc_collection_s* collection, TRI_index_t* idx);
+bool TRI_RemoveIndexFile (struct TRI_primary_collection_s* collection, TRI_index_t* idx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (struct TRI_doc_collection_s*, TRI_index_t*);
+int TRI_SaveIndex (struct TRI_primary_collection_s*, TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (struct TRI_doc_collection_s*, TRI_idx_iid_t);
+TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*, TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets name of index type
@@ -345,7 +345,7 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 /// @brief creates a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collection,
                                       size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +385,7 @@ void TRI_FreeCapConstraint (TRI_index_t* idx);
 /// first and latitude second.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
                                   char const* locationName,
                                   TRI_shape_pid_t,
                                   bool geoJson,
@@ -396,7 +396,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s*,
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s*,
                                   char const* latitudeName,
                                   TRI_shape_pid_t,
                                   char const* longitudeName,
@@ -473,7 +473,7 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
 /// @note @FA{paths} must be sorted.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s*,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
                                   bool unique);
@@ -552,7 +552,7 @@ PQIndexElements* TRI_LookupPriorityQueueIndex (TRI_index_t*, TRI_json_t*);
 /// @brief creates a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s*,
                                            TRI_vector_pointer_t*,
                                            TRI_vector_t*,
                                            bool);
@@ -594,7 +594,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, TRI_index_operat
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s*,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique);
@@ -643,7 +643,7 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, TRI_index_operator_
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s*,
+TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s*,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
                                       TRI_vector_pointer_t*,

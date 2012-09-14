@@ -101,27 +101,35 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     _lastHttpReturnCode = result->getHttpReturnCode();
 
     if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
+
       // default value
       _version = "arango";
 
       // convert response body to json
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
+
       if (json) {
+
         // look up "server" value (this returns a pointer, not a copy)
         TRI_json_t* server = TRI_LookupArrayJson(json, "server");
 
         if (server) {
+
           // "server" value is a string and content is "arango"
           if (server->_type == TRI_JSON_STRING && TRI_EqualString(server->_value._string.data, "arango")) {
+
             // look up "version" value (this returns a pointer, not a copy)
             TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
+
             if (vs) {
+
               // "version" value is a string
               if (vs->_type == TRI_JSON_STRING) {
                 _version = string(vs->_value._string.data, vs->_value._string.length);
               }
             }
           }
+
           // must not free server and vs, they are contained in the "json" variable and freed below
         }
 

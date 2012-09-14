@@ -32,6 +32,28 @@
 #include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                           DEFINES
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    private macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief busy wait delay (in microseconds)
+///
+/// busy waiting is used if we cannot acquire a read-lock on a shared read/write
+/// in case of too many concurrent lock requests. we'll wait in a busy
+/// loop until we can acquire the lock
+////////////////////////////////////////////////////////////////////////////////
+
+#define BUSY_LOCK_DELAY        (10 * 1000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                             MUTEX
 // -----------------------------------------------------------------------------
 
@@ -95,12 +117,15 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 
 #ifdef TRI_ENABLE_LOCK_CHECK
   assert(mutex);
-  // never LOG_XXX something here. this will cause infinite recursing (logging uses a mutex)
 #endif
   rc = pthread_mutex_lock(mutex);
 
   if (rc != 0) {
     LOG_ERROR("could not lock the mutex: %s", strerror(rc));
+    if (rc == EDEADLK) {
+      LOG_ERROR("mutex deadlock detected"); 
+    }
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -120,6 +145,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 
   if (rc != 0) {
     LOG_ERROR("could not release the mutex: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -192,6 +218,10 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
 
  if (rc != 0) {
     LOG_ERROR("could not lock the spin-lock: %s", strerror(rc));
+    if (rc == EDEADLK) {
+      LOG_ERROR("spinlock deadlock detected"); 
+    }
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -210,6 +240,7 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
 
   if (rc != 0) {
     LOG_ERROR("could not release the spin-lock: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -289,14 +320,39 @@ bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 
 void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
   int rc;
+  bool complained = false;
 
 #ifdef TRI_ENABLE_LOCK_CHECK
   assert(lock);
 #endif
+
+again:
   rc = pthread_rwlock_rdlock(lock);
 
   if (rc != 0) {
+    if (rc == EAGAIN) {
+      // use busy waiting if we cannot acquire the read-lock in case of too many
+      // concurrent read locks ("resource temporarily unavailable").
+      // in this case we'll wait in a busy loop until we can acquire the lock
+      if (! complained) {
+        LOG_WARNING("too many read-locks on read-write lock");
+        complained = true;
+      }
+      usleep(BUSY_LOCK_DELAY);
+#ifdef TRI_HAVE_SCHED_H
+      // let other threads do things
+      sched_yield();
+#endif
+
+      // ideal use case for goto :-)
+      goto again;
+    }
+
     LOG_ERROR("could not read-lock the read-write lock: %s", strerror(rc));
+    if (rc == EDEADLK) {
+      LOG_ERROR("rw-lock deadlock detected"); 
+    }
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -315,6 +371,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -333,6 +390,10 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     LOG_ERROR("could not read-lock the read-write lock: %s", strerror(rc));
+    if (rc == EDEADLK) {
+      LOG_ERROR("rw-lock deadlock detected"); 
+    }
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -351,6 +412,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 
   if (rc != 0) {
     LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -387,6 +449,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
 
   if (cond->_mutex == NULL) {
     LOG_ERROR("could not allocate memory for condition variable mutex");
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -453,6 +516,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
 
   if (rc != 0) {
     LOG_ERROR("could not signal the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -473,6 +537,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 
   if (rc != 0) {
     LOG_ERROR("could not croadcast the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -493,6 +558,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 
   if (rc != 0) {
     LOG_ERROR("could not wait for the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -513,6 +579,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 
   if (rc != 0) {
     LOG_ERROR("could not get time of day for the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -535,6 +602,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
     }
 
     LOG_ERROR("could not wait for the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -555,6 +623,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
 
   if (rc != 0) {
     LOG_ERROR("could not lock the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }
@@ -573,6 +642,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 
   if (rc != 0) {
     LOG_ERROR("could not unlock the condition: %s", strerror(rc));
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 }

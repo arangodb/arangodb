@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default handler for admin handlers
+/// @brief "safe" read transaction
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,34 +21,39 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_USER_MANAGER_REST_ADMIN_BASE_HANDLER_H
-#define TRIAGENS_USER_MANAGER_REST_ADMIN_BASE_HANDLER_H 1
+#ifndef TRIAGENS_UTILS_READ_TRANSACTION_H
+#define TRIAGENS_UTILS_READ_TRANSACTION_H 1
 
-#include "Admin/RestBaseHandler.h"
-
-#include "UserManager/Right.h"
+#include "Logger/Logger.h"
+#include "Utils/CollectionAccessor.h"
+#include "Utils/Transaction.h"
+#include "VocBase/primary-collection.h"
 
 namespace triagens {
-  namespace admin {
+  namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        class RestAdminBaseHandler
+// --SECTION--                                             class ReadTransaction
 // -----------------------------------------------------------------------------
+
+    class ReadTransaction : public Transaction {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default handler for admin handlers
+/// @brief ReadTransaction
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestAdminBaseHandler : public RestBaseHandler {
+      private:
+        ReadTransaction (const ReadTransaction&);
+        ReadTransaction& operator= (const ReadTransaction&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -59,55 +64,41 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
+/// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestAdminBaseHandler (rest::HttpRequest* request);
+        ReadTransaction (CollectionAccessor* collection) : 
+          Transaction(collection) {
+          _collection->beginRead();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        ~ReadTransaction () {
+          end();
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if authentication session has given right
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool hasRight (right_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if authentication session is bound to given user
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool isSelf (string const& username);
     };
+
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
 // End:

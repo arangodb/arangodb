@@ -1081,8 +1081,6 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 static bool BitarrayFilterExample(TRI_index_iterator_t* indexIterator) {
   BitarrayIndexElement* indexElement;
   TRI_bitarray_index_t* baIndex;
-  // TRI_doc_mptr_t* doc;
-    
     
   indexElement = (BitarrayIndexElement*) indexIterator->_next(indexIterator);
 
@@ -1410,7 +1408,7 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
 
   SortGeoCoordinates(tmp, gnd);
 
-  barrier = TRI_CreateBarrierElement(&((TRI_doc_collection_t*) collection->_collection)->_barrierList);
+  barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
   // TODO: barrier might be 0
 
   // copy the documents

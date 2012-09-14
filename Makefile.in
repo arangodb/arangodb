@@ -70,15 +70,6 @@
 
 # -*- mode: Makefile; -*-
 
-################################################################################
-################################################################################
-
-################################################################################
-### @brief program "zclient"
-################################################################################
-
-# -*- mode: Makefile; -*-
-
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -192,18 +183,14 @@ sbin_PROGRAMS = bin/arangod$(EXEEXT) bin/arango-password$(EXEEXT) \
 	bin/arango-dfdb$(EXEEXT) bin/arango-upgrade$(EXEEXT)
 bin_PROGRAMS = bin/arangosh$(EXEEXT) bin/arangoimp$(EXEEXT) \
 	$(am__EXEEXT_1)
-noinst_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
-@ENABLE_ZEROMQ_TRUE@am__append_7 = \
-@ENABLE_ZEROMQ_TRUE@	bin/zclient \
-@ENABLE_ZEROMQ_TRUE@	bin/zserver
-
+noinst_PROGRAMS = $(am__EXEEXT_2)
 
 ################################################################################
 ### @brief ruby additions
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_8 = lib/libarango_mruby.a
-@ENABLE_MRUBY_TRUE@am__append_9 = bin/arangoirb
-@ENABLE_MRUBY_TRUE@am__append_10 = \
+@ENABLE_MRUBY_TRUE@am__append_7 = lib/libarango_mruby.a
+@ENABLE_MRUBY_TRUE@am__append_8 = bin/arangoirb
+@ENABLE_MRUBY_TRUE@am__append_9 = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/actions/system -name "*.rb" -print) 
 
 DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
@@ -214,7 +201,6 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 	$(srcdir)/3rdParty/Makefile.all-in-one-zeromq \
 	$(srcdir)/Documentation/Makefile.doxygen $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
-	$(srcdir)/PerfTests/Makefile.files \
 	$(srcdir)/UnitTests/Makefile.files \
 	$(srcdir)/arangod/Makefile.files \
 	$(srcdir)/arangoirb/Makefile.files \
@@ -228,36 +214,36 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 	$(top_srcdir)/lib/BasicsC/local-configuration.h.in \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing
-@ENABLE_ZEROMQ_TRUE@am__append_11 = \
+@ENABLE_ZEROMQ_TRUE@am__append_10 = \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ApplicationZeroMQ.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQBatchJob.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQQueueThread.cpp \
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.cpp
 
-@ENABLE_MRUBY_TRUE@am__append_12 = \
+@ENABLE_MRUBY_TRUE@am__append_11 = \
 @ENABLE_MRUBY_TRUE@	lib/libarango_mruby.a \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
-@ENABLE_MRUBY_TRUE@am__append_13 = \
+@ENABLE_MRUBY_TRUE@am__append_12 = \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/ApplicationMR.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp
 
-@ENABLE_ZEROMQ_TRUE@am__append_14 = \
+@ENABLE_ZEROMQ_TRUE@am__append_13 = \
 @ENABLE_ZEROMQ_TRUE@	@ZEROMQ_LIBS@
 
-@ENABLE_BOOST_TEST_TRUE@am__append_15 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_BOOST_TEST_TRUE@am__append_14 = UnitTests/basics_suite UnitTests/geo_suite
 @ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
 @ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_16 = \
+@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_15 = \
 @ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
 
-@ENABLE_MRUBY_TRUE@am__append_17 = @builddir@/.setup-mr-directories
+@ENABLE_MRUBY_TRUE@am__append_16 = @builddir@/.setup-mr-directories
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_18 = $(MRUBY_HEADER) .setup-mr-directories
+@ENABLE_MRUBY_TRUE@am__append_17 = $(MRUBY_HEADER) .setup-mr-directories
 
 ################################################################################
 ### @brief documentation
@@ -274,24 +260,24 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 ################################################################################
 ### @brief generate readme
 ################################################################################
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_19 = README
-@ENABLE_FLEX_TRUE@am__append_20 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_18 = README
+@ENABLE_FLEX_TRUE@am__append_19 = $(FLEX_FILES) $(FLEXXX_FILES)
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_21 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_FLEX_TRUE@am__append_20 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_BISON_TRUE@am__append_21 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ### @brief CLEANUP
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_23 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_24 = @LIBEV_LIBS@
-@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_25 = @PROTOBUF_LIBS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_26 = @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_27 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_28 = @ZEROMQ_LIBS@
+@ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_23 = @LIBEV_LIBS@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_24 = @PROTOBUF_LIBS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_25 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_26 = @MRUBY_LIBS@
+@ENABLE_ZEROMQ_TRUE@am__append_27 = @ZEROMQ_LIBS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -342,10 +328,10 @@ am__v_at_0 = @
 lib_libarango_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_a_LIBADD =
 am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
-	lib/Basics/ConditionVariable.cpp lib/Basics/FileUtils.cpp \
-	lib/Basics/Initialise.cpp lib/Basics/LibraryLoader.cpp \
-	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/ConditionVariable.cpp lib/Basics/Exceptions.cpp \
+	lib/Basics/FileUtils.cpp lib/Basics/Initialise.cpp \
+	lib/Basics/LibraryLoader.cpp lib/Basics/Mutex.cpp \
+	lib/Basics/MutexLocker.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/Random.cpp \
 	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
@@ -365,10 +351,7 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
 	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
-	lib/JsonParserX/JsonParserX.cpp \
-	lib/JsonParserX/JsonParserXDriver.cpp \
-	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
+	lib/JsonParser/json-parser.c lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
@@ -404,7 +387,8 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @ENABLE_ZEROMQ_TRUE@	lib/ZeroMQ/ZeroMQWorkerThread.$(OBJEXT)
 am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ConditionVariable.$(OBJEXT) \
-	lib/Basics/FileUtils.$(OBJEXT) lib/Basics/Initialise.$(OBJEXT) \
+	lib/Basics/Exceptions.$(OBJEXT) lib/Basics/FileUtils.$(OBJEXT) \
+	lib/Basics/Initialise.$(OBJEXT) \
 	lib/Basics/LibraryLoader.$(OBJEXT) lib/Basics/Mutex.$(OBJEXT) \
 	lib/Basics/MutexLocker.$(OBJEXT) \
 	lib/Basics/ProgramOptions.$(OBJEXT) \
@@ -438,10 +422,6 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/threads-posix.$(OBJEXT) \
 	lib/BasicsC/vector.$(OBJEXT) lib/BasicsC/voc-errors.$(OBJEXT) \
 	lib/JsonParser/json-parser.$(OBJEXT) \
-	lib/JsonParserX/InputParser.$(OBJEXT) \
-	lib/JsonParserX/JsonParserX.$(OBJEXT) \
-	lib/JsonParserX/JsonParserXDriver.$(OBJEXT) \
-	lib/JsonParserX/JsonScannerX.$(OBJEXT) \
 	lib/Logger/Logger.$(OBJEXT) lib/Logger/LoggerData.$(OBJEXT) \
 	lib/Logger/LoggerInfo.$(OBJEXT) \
 	lib/Logger/LoggerStream.$(OBJEXT) \
@@ -533,14 +513,7 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/Scheduler/SocketTask.$(OBJEXT) \
 	lib/Scheduler/Task.$(OBJEXT) \
 	lib/Scheduler/TaskManager.$(OBJEXT) \
-	lib/Scheduler/TimerTask.$(OBJEXT) \
-	lib/UserManager/ApplicationUserManager.$(OBJEXT) \
-	lib/UserManager/Role.$(OBJEXT) \
-	lib/UserManager/Session.$(OBJEXT) \
-	lib/UserManager/SessionHandler.$(OBJEXT) \
-	lib/UserManager/User.$(OBJEXT) \
-	lib/UserManager/UserHandler.$(OBJEXT) \
-	lib/UserManager/UsersHandler.$(OBJEXT)
+	lib/Scheduler/TimerTask.$(OBJEXT)
 lib_libarango_fe_a_OBJECTS = $(am_lib_libarango_fe_a_OBJECTS)
 lib_libarango_mruby_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_mruby_a_LIBADD =
@@ -562,9 +535,7 @@ lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"
-@ENABLE_ZEROMQ_TRUE@am__EXEEXT_2 = bin/zclient$(EXEEXT) \
-@ENABLE_ZEROMQ_TRUE@	bin/zserver$(EXEEXT)
-@ENABLE_BOOST_TEST_TRUE@am__EXEEXT_3 =  \
+@ENABLE_BOOST_TEST_TRUE@am__EXEEXT_2 =  \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/basics_suite$(EXEEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/geo_suite$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
@@ -661,10 +632,10 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
-	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/datafile.c arangod/VocBase/general-cursor.c \
+	arangod/VocBase/headers.c arangod/VocBase/index.c \
+	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
@@ -731,10 +702,10 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-compactor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-datafile.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-document-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-headers.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-index.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT) \
@@ -775,14 +746,6 @@ am_bin_arangosh_OBJECTS =  \
 bin_arangosh_OBJECTS = $(am_bin_arangosh_OBJECTS)
 bin_arangosh_DEPENDENCIES = lib/libarango_v8.a lib/libarango_client.a \
 	lib/libarango.a $(am__DEPENDENCIES_2)
-am_bin_zclient_OBJECTS =  \
-	lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT) \
-	PerfTests/bin_zclient-zclient.$(OBJEXT)
-bin_zclient_OBJECTS = $(am_bin_zclient_OBJECTS)
-bin_zclient_DEPENDENCIES = $(am__DEPENDENCIES_2)
-am_bin_zserver_OBJECTS = PerfTests/bin_zserver-zserver.$(OBJEXT)
-bin_zserver_OBJECTS = $(am_bin_zserver_OBJECTS)
-bin_zserver_DEPENDENCIES = $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/config -I$(top_builddir)/lib/BasicsC
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -821,8 +784,7 @@ SOURCES = $(lib_libarango_a_SOURCES) $(lib_libarango_client_a_SOURCES) \
 	$(UnitTests_geo_suite_SOURCES) $(bin_arango_dfdb_SOURCES) \
 	$(bin_arango_password_SOURCES) $(bin_arango_upgrade_SOURCES) \
 	$(bin_arangod_SOURCES) $(bin_arangoimp_SOURCES) \
-	$(bin_arangoirb_SOURCES) $(bin_arangosh_SOURCES) \
-	$(bin_zclient_SOURCES) $(bin_zserver_SOURCES)
+	$(bin_arangoirb_SOURCES) $(bin_arangosh_SOURCES)
 DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(lib_libarango_client_a_SOURCES) \
 	$(lib_libarango_fe_a_SOURCES) \
@@ -833,8 +795,7 @@ DIST_SOURCES = $(am__lib_libarango_a_SOURCES_DIST) \
 	$(bin_arango_dfdb_SOURCES) $(bin_arango_password_SOURCES) \
 	$(bin_arango_upgrade_SOURCES) $(am__bin_arangod_SOURCES_DIST) \
 	$(bin_arangoimp_SOURCES) $(am__bin_arangoirb_SOURCES_DIST) \
-	$(bin_arangosh_SOURCES) $(bin_zclient_SOURCES) \
-	$(bin_zserver_SOURCES)
+	$(bin_arangosh_SOURCES)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -1036,11 +997,11 @@ top_srcdir = @top_srcdir@
 BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(MRUBY_HEADER) etc/arangodb/arangod.conf \
 	etc/arangodb/arangoirb.conf etc/arangodb/arangosh.conf \
-	$(am__append_16) Doxygen/.setup-directories \
-	@builddir@/.setup-js-directories $(am__append_17) \
-	$(am__append_19) $(am__append_20) $(am__append_22) \
-	$(PROTOBUF_FILES) $(am__append_24) $(am__append_25) \
-	$(am__append_26) $(am__append_27) $(am__append_28)
+	$(am__append_15) Doxygen/.setup-directories \
+	@builddir@/.setup-js-directories $(am__append_16) \
+	$(am__append_18) $(am__append_19) $(am__append_21) \
+	$(PROTOBUF_FILES) $(am__append_23) $(am__append_24) \
+	$(am__append_25) $(am__append_26) $(am__append_27)
 
 ################################################################################
 ### @brief man pages to install
@@ -1073,8 +1034,8 @@ dist_man_MANS = Doxygen/man/man1/arangoimp.1 \
 CLEANUP = bin/arango-password bin/arango-upgrade bin/arango-dfdb \
 	$(DOXYGEN) $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
 	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
-	$(JAVASCRIPT_HEADER) .setup-js-directories $(am__append_18) \
-	$(am__append_21) $(am__append_23) $(PROTOBUF_FILES)
+	$(JAVASCRIPT_HEADER) .setup-js-directories $(am__append_17) \
+	$(am__append_20) $(am__append_22) $(PROTOBUF_FILES)
 
 ################################################################################
 ### @brief flex files
@@ -1103,7 +1064,7 @@ FLEX_FILES = lib/JsonParser/json-parser.c \
 ################################################################################
 ### @brief flex++
 ################################################################################
-FLEXXX_FILES = lib/V8/v8-json.cpp lib/JsonParserX/JsonScannerX.cpp
+FLEXXX_FILES = lib/V8/v8-json.cpp
 
 ################################################################################
 ### @brief bison files
@@ -1117,11 +1078,7 @@ BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.c
 ################################################################################
 ### @brief bison++ files
 ################################################################################
-
-################################################################################
-### @brief bison++
-################################################################################
-BISONXX_FILES = lib/JsonParserX/JsonParserX.cpp
+BISONXX_FILES = 
 
 ################################################################################
 ### @brief protocol buffers files
@@ -1165,7 +1122,7 @@ AM_LDFLAGS = @BOOST_LDFLAGS@ @LIBEV_LDFLAGS@ @MATH_LDFLAGS@ \
 ### @brief auxiliary libraries
 ################################################################################
 noinst_LIBRARIES = lib/libarango.a lib/libarango_v8.a \
-	lib/libarango_fe.a lib/libarango_client.a $(am__append_8)
+	lib/libarango_fe.a lib/libarango_client.a $(am__append_7)
 
 ################################################################################
 ### @brief /etc data
@@ -1185,7 +1142,7 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	"*.html" -print) $(shell find @srcdir@/html -name "*.ico" \
 	-print) $(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print) \
-	$(am__append_10)
+	$(am__append_9)
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
@@ -1294,10 +1251,10 @@ WIKI = \
 	jsUnity
 
 lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
-	lib/Basics/ConditionVariable.cpp lib/Basics/FileUtils.cpp \
-	lib/Basics/Initialise.cpp lib/Basics/LibraryLoader.cpp \
-	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/ConditionVariable.cpp lib/Basics/Exceptions.cpp \
+	lib/Basics/FileUtils.cpp lib/Basics/Initialise.cpp \
+	lib/Basics/LibraryLoader.cpp lib/Basics/Mutex.cpp \
+	lib/Basics/MutexLocker.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/Random.cpp \
 	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
@@ -1317,10 +1274,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
 	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c lib/JsonParserX/InputParser.cpp \
-	lib/JsonParserX/JsonParserX.cpp \
-	lib/JsonParserX/JsonParserXDriver.cpp \
-	lib/JsonParserX/JsonScannerX.cpp lib/Logger/Logger.cpp \
+	lib/JsonParser/json-parser.c lib/Logger/Logger.cpp \
 	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
 	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
@@ -1344,7 +1298,7 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Variant/VariantString.cpp lib/Variant/VariantUInt16.cpp \
 	lib/Variant/VariantUInt32.cpp lib/Variant/VariantUInt64.cpp \
 	lib/Variant/VariantUInt8.cpp lib/Variant/VariantVector.cpp \
-	$(am__append_11)
+	$(am__append_10)
 
 ################################################################################
 ### @brief library "libarango.a", client part
@@ -1399,14 +1353,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Scheduler/SocketTask.cpp \
 	lib/Scheduler/Task.cpp \
 	lib/Scheduler/TaskManager.cpp \
-	lib/Scheduler/TimerTask.cpp \
-	lib/UserManager/ApplicationUserManager.cpp \
-	lib/UserManager/Role.cpp \
-	lib/UserManager/Session.cpp \
-	lib/UserManager/SessionHandler.cpp \
-	lib/UserManager/User.cpp \
-	lib/UserManager/UserHandler.cpp \
-	lib/UserManager/UsersHandler.cpp
+	lib/Scheduler/TimerTask.cpp
 
 
 ################################################################################
@@ -1435,8 +1382,8 @@ bin_arangod_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangod_LDADD = lib/libarango_fe.a lib/libarango_v8.a \
-	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_12) \
-	$(am__append_14)
+	lib/libarango.a $(LIBS) @V8_LIBS@ $(am__append_11) \
+	$(am__append_13)
 bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
@@ -1487,14 +1434,14 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
-	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/datafile.c arangod/VocBase/general-cursor.c \
+	arangod/VocBase/headers.c arangod/VocBase/index.c \
+	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
-	arangod/VocBase/vocbase.c $(am__append_13)
+	arangod/VocBase/vocbase.c $(am__append_12)
 bin_arangosh_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
 	$(AM_CPPFLAGS) 
@@ -1570,31 +1517,6 @@ bin_arango_dfdb_SOURCES =
 @ENABLE_MRUBY_TRUE@	arangosh/ArangoShell/ArangoClient.cpp \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/MRubyClientConnection.cpp \
 @ENABLE_MRUBY_TRUE@	arangoirb/MRClient/arangoirb.cpp
-
-bin_zclient_CPPFLAGS = \
-	$(AM_CPPFLAGS) 
-
-bin_zclient_LDADD = \
-	$(LIBS) \
-	@ZEROMQ_LIBS@
-
-bin_zclient_SOURCES = \
-	lib/ProtocolBuffers/arangodb.pb.cpp \
-	PerfTests/zclient.cpp
-
-
-################################################################################
-### @brief program "zserver"
-################################################################################
-bin_zserver_CPPFLAGS = \
-	$(AM_CPPFLAGS) 
-
-bin_zserver_LDADD = \
-	$(LIBS) \
-	@ZEROMQ_LIBS@
-
-bin_zserver_SOURCES = \
-	PerfTests/zserver.cpp
 
 FORCE = 0
 SKIP_BOOST = 0
@@ -1736,6 +1658,11 @@ UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 ################################################################################
 BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
 UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
+
+################################################################################
+### @brief tags file
+################################################################################
+GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 @ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 @ENABLE_ZEROMQ_TRUE@ZMQDIR = @abs_top_srcdir@/3rdParty/zeromq-2.2.0/BUILD
 all: $(BUILT_SOURCES)
@@ -1745,7 +1672,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/PerfTests/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/Documentation/Makefile.doxygen $(srcdir)/js/Makefile.javascript $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/lib/Makefile.protobuf $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-protobuf $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-zeromq $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/Documentation/Makefile.doxygen $(srcdir)/js/Makefile.javascript $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/lib/Makefile.protobuf $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-protobuf $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-zeromq $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1818,6 +1745,8 @@ lib/Basics/$(DEPDIR)/$(am__dirstamp):
 lib/Basics/ConditionLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/ConditionVariable.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/Exceptions.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/FileUtils.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -1923,24 +1852,6 @@ lib/JsonParser/$(DEPDIR)/$(am__dirstamp):
 	@: > lib/JsonParser/$(DEPDIR)/$(am__dirstamp)
 lib/JsonParser/json-parser.$(OBJEXT): lib/JsonParser/$(am__dirstamp) \
 	lib/JsonParser/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/$(am__dirstamp):
-	@$(MKDIR_P) lib/JsonParserX
-	@: > lib/JsonParserX/$(am__dirstamp)
-lib/JsonParserX/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/JsonParserX/$(DEPDIR)
-	@: > lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/InputParser.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/JsonParserX.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/JsonParserXDriver.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-lib/JsonParserX/JsonScannerX.$(OBJEXT):  \
-	lib/JsonParserX/$(am__dirstamp) \
-	lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
 lib/Logger/$(am__dirstamp):
 	@$(MKDIR_P) lib/Logger
 	@: > lib/Logger/$(am__dirstamp)
@@ -2264,30 +2175,6 @@ lib/Scheduler/TaskManager.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/TimerTask.$(OBJEXT): lib/Scheduler/$(am__dirstamp) \
 	lib/Scheduler/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/$(am__dirstamp):
-	@$(MKDIR_P) lib/UserManager
-	@: > lib/UserManager/$(am__dirstamp)
-lib/UserManager/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) lib/UserManager/$(DEPDIR)
-	@: > lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/ApplicationUserManager.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/Role.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/Session.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/SessionHandler.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/User.$(OBJEXT): lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/UserHandler.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-lib/UserManager/UsersHandler.$(OBJEXT):  \
-	lib/UserManager/$(am__dirstamp) \
-	lib/UserManager/$(DEPDIR)/$(am__dirstamp)
 lib/libarango_fe.a: $(lib_libarango_fe_a_OBJECTS) $(lib_libarango_fe_a_DEPENDENCIES) lib/$(am__dirstamp)
 	$(AM_V_at)-rm -f lib/libarango_fe.a
 	$(AM_V_AR)$(lib_libarango_fe_a_AR) lib/libarango_fe.a $(lib_libarango_fe_a_OBJECTS) $(lib_libarango_fe_a_LIBADD)
@@ -2741,9 +2628,6 @@ arangod/VocBase/bin_arangod-compactor.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-datafile.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/bin_arangod-document-collection.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2751,6 +2635,9 @@ arangod/VocBase/bin_arangod-headers.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-index.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT):  \
@@ -2846,30 +2733,9 @@ arangosh/V8Client/bin_arangosh-arangosh.$(OBJEXT):  \
 bin/arangosh$(EXEEXT): $(bin_arangosh_OBJECTS) $(bin_arangosh_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangosh$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangosh_OBJECTS) $(bin_arangosh_LDADD) $(LIBS)
-lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT):  \
-	lib/ProtocolBuffers/$(am__dirstamp) \
-	lib/ProtocolBuffers/$(DEPDIR)/$(am__dirstamp)
-PerfTests/$(am__dirstamp):
-	@$(MKDIR_P) PerfTests
-	@: > PerfTests/$(am__dirstamp)
-PerfTests/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) PerfTests/$(DEPDIR)
-	@: > PerfTests/$(DEPDIR)/$(am__dirstamp)
-PerfTests/bin_zclient-zclient.$(OBJEXT): PerfTests/$(am__dirstamp) \
-	PerfTests/$(DEPDIR)/$(am__dirstamp)
-bin/zclient$(EXEEXT): $(bin_zclient_OBJECTS) $(bin_zclient_DEPENDENCIES) bin/$(am__dirstamp)
-	@rm -f bin/zclient$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(bin_zclient_OBJECTS) $(bin_zclient_LDADD) $(LIBS)
-PerfTests/bin_zserver-zserver.$(OBJEXT): PerfTests/$(am__dirstamp) \
-	PerfTests/$(DEPDIR)/$(am__dirstamp)
-bin/zserver$(EXEEXT): $(bin_zserver_OBJECTS) $(bin_zserver_DEPENDENCIES) bin/$(am__dirstamp)
-	@rm -f bin/zserver$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(bin_zserver_OBJECTS) $(bin_zserver_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f PerfTests/bin_zclient-zclient.$(OBJEXT)
-	-rm -f PerfTests/bin_zserver-zserver.$(OBJEXT)
 	-rm -f UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT)
 	-rm -f UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT)
 	-rm -f UnitTests/Jutland/EndpointTest.$(OBJEXT)
@@ -2946,10 +2812,10 @@ mostlyclean-compile:
 	-rm -f arangod/VocBase/bin_arangod-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-compactor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-datafile.$(OBJEXT)
-	-rm -f arangod/VocBase/bin_arangod-document-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-headers.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-index.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT)
@@ -2977,6 +2843,7 @@ mostlyclean-compile:
 	-rm -f lib/ApplicationServer/ApplicationServer.$(OBJEXT)
 	-rm -f lib/Basics/ConditionLocker.$(OBJEXT)
 	-rm -f lib/Basics/ConditionVariable.$(OBJEXT)
+	-rm -f lib/Basics/Exceptions.$(OBJEXT)
 	-rm -f lib/Basics/FileUtils.$(OBJEXT)
 	-rm -f lib/Basics/Initialise.$(OBJEXT)
 	-rm -f lib/Basics/LibraryLoader.$(OBJEXT)
@@ -3033,10 +2900,6 @@ mostlyclean-compile:
 	-rm -f lib/HttpServer/RedirectHandler.$(OBJEXT)
 	-rm -f lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT)
 	-rm -f lib/JsonParser/json-parser.$(OBJEXT)
-	-rm -f lib/JsonParserX/InputParser.$(OBJEXT)
-	-rm -f lib/JsonParserX/JsonParserX.$(OBJEXT)
-	-rm -f lib/JsonParserX/JsonParserXDriver.$(OBJEXT)
-	-rm -f lib/JsonParserX/JsonScannerX.$(OBJEXT)
 	-rm -f lib/Logger/Logger.$(OBJEXT)
 	-rm -f lib/Logger/LoggerData.$(OBJEXT)
 	-rm -f lib/Logger/LoggerInfo.$(OBJEXT)
@@ -3048,7 +2911,6 @@ mostlyclean-compile:
 	-rm -f lib/ProgramOptions/program-options.$(OBJEXT)
 	-rm -f lib/ProtocolBuffers/HttpRequestProtobuf.$(OBJEXT)
 	-rm -f lib/ProtocolBuffers/arangodb.pb.$(OBJEXT)
-	-rm -f lib/ProtocolBuffers/bin_zclient-arangodb.pb.$(OBJEXT)
 	-rm -f lib/Rest/AnyServer.$(OBJEXT)
 	-rm -f lib/Rest/Endpoint.$(OBJEXT)
 	-rm -f lib/Rest/EndpointList.$(OBJEXT)
@@ -3089,13 +2951,6 @@ mostlyclean-compile:
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SslClientConnection.$(OBJEXT)
 	-rm -f lib/Statistics/statistics.$(OBJEXT)
-	-rm -f lib/UserManager/ApplicationUserManager.$(OBJEXT)
-	-rm -f lib/UserManager/Role.$(OBJEXT)
-	-rm -f lib/UserManager/Session.$(OBJEXT)
-	-rm -f lib/UserManager/SessionHandler.$(OBJEXT)
-	-rm -f lib/UserManager/User.$(OBJEXT)
-	-rm -f lib/UserManager/UserHandler.$(OBJEXT)
-	-rm -f lib/UserManager/UsersHandler.$(OBJEXT)
 	-rm -f lib/Utilities/LineEditor.$(OBJEXT)
 	-rm -f lib/Utilities/ScriptLoader.$(OBJEXT)
 	-rm -f lib/V8/JSLoader.$(OBJEXT)
@@ -3134,8 +2989,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@PerfTests/$(DEPDIR)/bin_zclient-zclient.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@PerfTests/$(DEPDIR)/bin_zserver-zserver.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/$(DEPDIR)/Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-Runner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Cambridge/$(DEPDIR)/UnitTests_geo_suite-georeg.Po@am__quote@
@@ -3212,10 +3065,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-compactor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-datafile.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-index.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Po@am__quote@
@@ -3243,6 +3096,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ApplicationServer/$(DEPDIR)/ApplicationServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ConditionLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ConditionVariable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Exceptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/FileUtils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Initialise.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/LibraryLoader.Po@am__quote@
@@ -3299,10 +3153,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/RedirectHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ServiceUnavailableHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParser/$(DEPDIR)/json-parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/InputParser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonParserX.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonParserXDriver.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParserX/$(DEPDIR)/JsonScannerX.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/Logger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/LoggerData.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Logger/$(DEPDIR)/LoggerInfo.Po@am__quote@
@@ -3314,7 +3164,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProgramOptions/$(DEPDIR)/program-options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/HttpRequestProtobuf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/arangodb.pb.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/AnyServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Endpoint.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/EndpointList.Po@am__quote@
@@ -3355,13 +3204,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Statistics/$(DEPDIR)/statistics.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/ApplicationUserManager.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Role.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/Session.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/SessionHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/User.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/UserHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/UserManager/$(DEPDIR)/UsersHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/ScriptLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
@@ -4071,22 +3913,6 @@ arangod/VocBase/bin_arangod-datafile.obj: arangod/VocBase/datafile.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-datafile.obj `if test -f 'arangod/VocBase/datafile.c'; then $(CYGPATH_W) 'arangod/VocBase/datafile.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/datafile.c'; fi`
 
-arangod/VocBase/bin_arangod-document-collection.o: arangod/VocBase/document-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-document-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo -c -o arangod/VocBase/bin_arangod-document-collection.o `test -f 'arangod/VocBase/document-collection.c' || echo '$(srcdir)/'`arangod/VocBase/document-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.o `test -f 'arangod/VocBase/document-collection.c' || echo '$(srcdir)/'`arangod/VocBase/document-collection.c
-
-arangod/VocBase/bin_arangod-document-collection.obj: arangod/VocBase/document-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-document-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
-
 arangod/VocBase/bin_arangod-general-cursor.o: arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-general-cursor.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo -c -o arangod/VocBase/bin_arangod-general-cursor.o `test -f 'arangod/VocBase/general-cursor.c' || echo '$(srcdir)/'`arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po
@@ -4134,6 +3960,22 @@ arangod/VocBase/bin_arangod-index.obj: arangod/VocBase/index.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/index.c' object='arangod/VocBase/bin_arangod-index.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-index.obj `if test -f 'arangod/VocBase/index.c'; then $(CYGPATH_W) 'arangod/VocBase/index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/index.c'; fi`
+
+arangod/VocBase/bin_arangod-primary-collection.o: arangod/VocBase/primary-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-primary-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo -c -o arangod/VocBase/bin_arangod-primary-collection.o `test -f 'arangod/VocBase/primary-collection.c' || echo '$(srcdir)/'`arangod/VocBase/primary-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/primary-collection.c' object='arangod/VocBase/bin_arangod-primary-collection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-primary-collection.o `test -f 'arangod/VocBase/primary-collection.c' || echo '$(srcdir)/'`arangod/VocBase/primary-collection.c
+
+arangod/VocBase/bin_arangod-primary-collection.obj: arangod/VocBase/primary-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-primary-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo -c -o arangod/VocBase/bin_arangod-primary-collection.obj `if test -f 'arangod/VocBase/primary-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/primary-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/primary-collection.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/primary-collection.c' object='arangod/VocBase/bin_arangod-primary-collection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-primary-collection.obj `if test -f 'arangod/VocBase/primary-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/primary-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/primary-collection.c'; fi`
 
 arangod/VocBase/bin_arangod-shadow-data.o: arangod/VocBase/shadow-data.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shadow-data.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Tpo -c -o arangod/VocBase/bin_arangod-shadow-data.o `test -f 'arangod/VocBase/shadow-data.c' || echo '$(srcdir)/'`arangod/VocBase/shadow-data.c
@@ -4776,54 +4618,6 @@ arangosh/V8Client/bin_arangosh-arangosh.obj: arangosh/V8Client/arangosh.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/arangosh.cpp' object='arangosh/V8Client/bin_arangosh-arangosh.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangosh_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangosh-arangosh.obj `if test -f 'arangosh/V8Client/arangosh.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangosh.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangosh.cpp'; fi`
-
-lib/ProtocolBuffers/bin_zclient-arangodb.pb.o: lib/ProtocolBuffers/arangodb.pb.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ProtocolBuffers/bin_zclient-arangodb.pb.o -MD -MP -MF lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.o `test -f 'lib/ProtocolBuffers/arangodb.pb.cpp' || echo '$(srcdir)/'`lib/ProtocolBuffers/arangodb.pb.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lib/ProtocolBuffers/arangodb.pb.cpp' object='lib/ProtocolBuffers/bin_zclient-arangodb.pb.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.o `test -f 'lib/ProtocolBuffers/arangodb.pb.cpp' || echo '$(srcdir)/'`lib/ProtocolBuffers/arangodb.pb.cpp
-
-lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj: lib/ProtocolBuffers/arangodb.pb.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj -MD -MP -MF lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj `if test -f 'lib/ProtocolBuffers/arangodb.pb.cpp'; then $(CYGPATH_W) 'lib/ProtocolBuffers/arangodb.pb.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ProtocolBuffers/arangodb.pb.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Tpo lib/ProtocolBuffers/$(DEPDIR)/bin_zclient-arangodb.pb.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lib/ProtocolBuffers/arangodb.pb.cpp' object='lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/ProtocolBuffers/bin_zclient-arangodb.pb.obj `if test -f 'lib/ProtocolBuffers/arangodb.pb.cpp'; then $(CYGPATH_W) 'lib/ProtocolBuffers/arangodb.pb.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/ProtocolBuffers/arangodb.pb.cpp'; fi`
-
-PerfTests/bin_zclient-zclient.o: PerfTests/zclient.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT PerfTests/bin_zclient-zclient.o -MD -MP -MF PerfTests/$(DEPDIR)/bin_zclient-zclient.Tpo -c -o PerfTests/bin_zclient-zclient.o `test -f 'PerfTests/zclient.cpp' || echo '$(srcdir)/'`PerfTests/zclient.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) PerfTests/$(DEPDIR)/bin_zclient-zclient.Tpo PerfTests/$(DEPDIR)/bin_zclient-zclient.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zclient.cpp' object='PerfTests/bin_zclient-zclient.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zclient-zclient.o `test -f 'PerfTests/zclient.cpp' || echo '$(srcdir)/'`PerfTests/zclient.cpp
-
-PerfTests/bin_zclient-zclient.obj: PerfTests/zclient.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT PerfTests/bin_zclient-zclient.obj -MD -MP -MF PerfTests/$(DEPDIR)/bin_zclient-zclient.Tpo -c -o PerfTests/bin_zclient-zclient.obj `if test -f 'PerfTests/zclient.cpp'; then $(CYGPATH_W) 'PerfTests/zclient.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zclient.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) PerfTests/$(DEPDIR)/bin_zclient-zclient.Tpo PerfTests/$(DEPDIR)/bin_zclient-zclient.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zclient.cpp' object='PerfTests/bin_zclient-zclient.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zclient_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zclient-zclient.obj `if test -f 'PerfTests/zclient.cpp'; then $(CYGPATH_W) 'PerfTests/zclient.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zclient.cpp'; fi`
-
-PerfTests/bin_zserver-zserver.o: PerfTests/zserver.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT PerfTests/bin_zserver-zserver.o -MD -MP -MF PerfTests/$(DEPDIR)/bin_zserver-zserver.Tpo -c -o PerfTests/bin_zserver-zserver.o `test -f 'PerfTests/zserver.cpp' || echo '$(srcdir)/'`PerfTests/zserver.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) PerfTests/$(DEPDIR)/bin_zserver-zserver.Tpo PerfTests/$(DEPDIR)/bin_zserver-zserver.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zserver.cpp' object='PerfTests/bin_zserver-zserver.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zserver-zserver.o `test -f 'PerfTests/zserver.cpp' || echo '$(srcdir)/'`PerfTests/zserver.cpp
-
-PerfTests/bin_zserver-zserver.obj: PerfTests/zserver.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT PerfTests/bin_zserver-zserver.obj -MD -MP -MF PerfTests/$(DEPDIR)/bin_zserver-zserver.Tpo -c -o PerfTests/bin_zserver-zserver.obj `if test -f 'PerfTests/zserver.cpp'; then $(CYGPATH_W) 'PerfTests/zserver.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zserver.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) PerfTests/$(DEPDIR)/bin_zserver-zserver.Tpo PerfTests/$(DEPDIR)/bin_zserver-zserver.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='PerfTests/zserver.cpp' object='PerfTests/bin_zserver-zserver.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_zserver_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o PerfTests/bin_zserver-zserver.obj `if test -f 'PerfTests/zserver.cpp'; then $(CYGPATH_W) 'PerfTests/zserver.cpp'; else $(CYGPATH_W) '$(srcdir)/PerfTests/zserver.cpp'; fi`
 install-man1: $(dist_man_MANS)
 	@$(NORMAL_INSTALL)
 	test -z "$(man1dir)" || $(MKDIR_P) "$(DESTDIR)$(man1dir)"
@@ -4987,11 +4781,6 @@ CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	test -z "$(CTAGS_ARGS)$$unique" \
 	  || $(CTAGS) $(CTAGSFLAGS) $(AM_CTAGSFLAGS) $(CTAGS_ARGS) \
 	     $$unique
-
-GTAGS:
-	here=`$(am__cd) $(top_builddir) && pwd` \
-	  && $(am__cd) $(top_srcdir) \
-	  && gtags -i $(GTAGS_ARGS) "$$here"
 
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
@@ -5186,8 +4975,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f PerfTests/$(DEPDIR)/$(am__dirstamp)
-	-rm -f PerfTests/$(am__dirstamp)
 	-rm -f UnitTests/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/$(am__dirstamp)
 	-rm -f UnitTests/Cambridge/$(DEPDIR)/$(am__dirstamp)
@@ -5246,8 +5033,6 @@ distclean-generic:
 	-rm -f lib/HttpServer/$(am__dirstamp)
 	-rm -f lib/JsonParser/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/JsonParser/$(am__dirstamp)
-	-rm -f lib/JsonParserX/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/JsonParserX/$(am__dirstamp)
 	-rm -f lib/Logger/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Logger/$(am__dirstamp)
 	-rm -f lib/MRuby/$(DEPDIR)/$(am__dirstamp)
@@ -5268,8 +5053,6 @@ distclean-generic:
 	-rm -f lib/SimpleHttpClient/$(am__dirstamp)
 	-rm -f lib/Statistics/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Statistics/$(am__dirstamp)
-	-rm -f lib/UserManager/$(DEPDIR)/$(am__dirstamp)
-	-rm -f lib/UserManager/$(am__dirstamp)
 	-rm -f lib/Utilities/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/Utilities/$(am__dirstamp)
 	-rm -f lib/V8/$(DEPDIR)/$(am__dirstamp)
@@ -5291,7 +5074,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -5340,7 +5123,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf PerfTests/$(DEPDIR) UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/JsonParserX/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/UserManager/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
+	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/ProtocolBuffers/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR) lib/ZeroMQ/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -5447,9 +5230,6 @@ bin/arango-dfdb: utils/arango-dfdb.in
 ################################################################################
 ################################################################################
 
-################################################################################
-################################################################################
-
 .PHONY: unittests unittests-brief unittests-verbose
 
 unittests: unittests-verbose unittests-brief
@@ -5517,7 +5297,7 @@ start-server:
 .PHONY: unittests-make
 
 unittests-make:
-	@(cftags --version > /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
+	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
 ################################################################################
@@ -5731,6 +5511,9 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+
+GTAGS:
+	echo $(GTAGS_FILES) | tr " " "\n" | gtags -i -f -
 
 .PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
 

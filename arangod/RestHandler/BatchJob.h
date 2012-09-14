@@ -140,12 +140,12 @@ namespace triagens {
               handler->handleError(ex);
             }
             catch (std::exception const& ex) {
-              triagens::basics::InternalError err(ex);
+              triagens::basics::InternalError err(ex, __FILE__, __LINE__);
 
               handler->handleError(err);
             }
             catch (...) {
-              triagens::basics::InternalError err;
+              triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
               handler->handleError(err);
             }
           }

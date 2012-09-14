@@ -163,7 +163,7 @@ static void FreeAuthInfo (TRI_vocbase_auth_t* auth) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
-                                            TRI_doc_collection_t* doc,
+                                            TRI_primary_collection_t* primary,
                                             TRI_shaped_json_t const* document) {
   TRI_shaper_t* shaper;
   char* user;
@@ -172,7 +172,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   bool found;
   TRI_vocbase_auth_t* result;
 
-  shaper = doc->_shaper;
+  shaper = primary->_shaper;
 
   // extract username
   user = ExtractStringShapedJson(shaper, document, "user");
@@ -229,7 +229,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 
 void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection;
-  TRI_doc_collection_t* doc;
+  TRI_primary_collection_t* primary;
   TRI_sim_collection_t* sim;
   void** beg;
   void** end;
@@ -246,20 +246,20 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_UseCollectionVocBase(vocbase, collection);
 
-  doc = collection->_collection;
+  primary = collection->_collection;
 
-  if (doc == NULL) {
+  if (primary == NULL) {
     LOG_FATAL("collection '_users' cannot be loaded");
     return;
   }
 
-  if (! TRI_IS_SIMPLE_COLLECTION(doc->base._type)) {
+  if (! TRI_IS_SIMPLE_COLLECTION(primary->base._type)) {
     TRI_ReleaseCollectionVocBase(vocbase, collection);
     LOG_FATAL("collection '_users' has an unknown collection type");
     return;
   }
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_sim_collection_t*) primary;
 
   // .............................................................................
   // inside a read transaction
@@ -279,15 +279,18 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
       TRI_shaped_json_t shapedJson;
 
       d = (TRI_doc_mptr_t const*) *ptr;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-      auth = ConvertAuthInfo(vocbase, doc, &shapedJson);
+      if (d->_deletion == 0) {
+        TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-      if (auth != NULL) {
-        old = TRI_InsertElementAssociativePointer(&vocbase->_authInfo, auth, true);
+        auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
 
-        if (old != NULL) {
-          FreeAuthInfo(old);
+        if (auth != NULL) {
+          old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
+
+          if (old != NULL) {
+            FreeAuthInfo(old);
+          }
         }
       }
     }
@@ -344,11 +347,19 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
                                       char const* password) {
   TRI_vocbase_auth_t* auth;
   bool res;
+  char* hex;
+  char* salted;
+  char* sha256;
+  size_t hexLen;
+  size_t len;
+  size_t sha256Len;
 
+  // no authentication info available, always authenticate
   if (DefaultAuthInfo == 0) {
     return true;
   }
 
+  // lockup username
   TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
   auth = TRI_LookupByKeyAssociativePointer(&DefaultAuthInfo->_authInfo, username);
 
@@ -362,12 +373,51 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
     return false;
   }
 
-  LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
-            username,
-            auth->_password,
-            password);
+  // convert password
+  res = false;
 
-  res = TRI_EqualString(auth->_password, password);
+  if (TRI_IsPrefixString(auth->_password, "$1$")) {
+    if (strlen(auth->_password) < 12 || auth->_password[11] != '$') {
+      LOG_WARNING("found corrupted password for user '%s'", username);
+    }
+    else {
+      len = 8 + strlen(password);
+      salted = TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false);
+      memcpy(salted, auth->_password + 3, 8);
+      memcpy(salted + 8, password, len - 8);
+      salted[len] = '\0';
+
+      sha256 = TRI_SHA256String(salted, len, &sha256Len);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, salted);
+
+      hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
+
+      LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
+                username,
+                auth->_password + 12,
+                hex);
+
+      res = TRI_EqualString(auth->_password + 12, hex);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+    }
+  }
+  else {
+    len = strlen(password);
+    sha256 = TRI_SHA256String(password, len, &sha256Len);
+
+    hex = TRI_EncodeHexString(sha256, sha256Len, &hexLen);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, sha256);
+
+    LOG_DEBUG("found active user '%s', expecting password '%s', got '%s'",
+              username,
+              auth->_password + 12,
+              hex);
+
+    res = TRI_EqualString(auth->_password, hex);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
+  }
+
   TRI_ReadUnlockReadWriteLock(&DefaultAuthInfo->_authInfoLock);
 
   return res;

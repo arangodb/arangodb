@@ -144,7 +144,7 @@ bool ApplicationEndpointServer::buildServers () {
 
   // turn off authentication
   if (_disableAuthentication) {
-    _handlerFactory->setAuthenticationCallback(0);
+    _handlerFactory->setRequireAuthentication(false);
     LOGGER_INFO << "Authentication is turned off";
   }
 
@@ -179,6 +179,7 @@ bool ApplicationEndpointServer::buildServers () {
     if (_sslContext == 0) {
       LOGGER_FATAL << "no ssl context is known, cannot create https server";
       LOGGER_INFO << "please use the --server.keyfile option";
+      TRI_FlushLogging();
 
       exit(EXIT_FAILURE);
     }
@@ -262,6 +263,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     LOGGER_FATAL << "no endpoint has been specified, giving up";
     cerr << "no endpoint has been specified, giving up\n";
     LOGGER_INFO << "please use the '--server.endpoint' option";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   
@@ -272,6 +274,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     if (endpoint == 0) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
       cerr << "invalid endpoint '" << *i << "'\n";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
 
@@ -281,6 +284,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     if (! ok) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
       cerr << "invalid endpoint '" << *i << "'\n";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
   }
@@ -421,6 +425,7 @@ bool ApplicationEndpointServer::createSslContext () {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
       LOGGER_FATAL << "cannot set SSL cipher list '" << _sslCipherList << "'";
       LOGGER_ERROR << lastSSLError();
+      TRI_FlushLogging();
       
       exit(EXIT_FAILURE);
     }
@@ -435,6 +440,7 @@ bool ApplicationEndpointServer::createSslContext () {
   if (res != 1) {
     LOGGER_FATAL << "cannot set SSL session id context '" << _rctx << "'";
     LOGGER_ERROR << lastSSLError();
+    TRI_FlushLogging();
     
     exit(EXIT_FAILURE);
   }
@@ -448,6 +454,7 @@ bool ApplicationEndpointServer::createSslContext () {
     if (res == 0) {
       LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
       LOGGER_ERROR << lastSSLError();
+      TRI_FlushLogging();
     
       exit(EXIT_FAILURE);
     }
@@ -459,6 +466,7 @@ bool ApplicationEndpointServer::createSslContext () {
     if (certNames == 0) {
       LOGGER_FATAL << "cannot load CA certificates from '" << _cafile << "'";
       LOGGER_ERROR << lastSSLError();
+      TRI_FlushLogging();
       
       exit(EXIT_FAILURE);
     }

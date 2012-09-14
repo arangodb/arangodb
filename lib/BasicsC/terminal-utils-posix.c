@@ -26,9 +26,9 @@
 
 #include "BasicsC/terminal-utils.h"
 
-#include <sys/ioctl.h>
-
 #ifdef TRI_HAVE_SYS_IOCTL_H
+
+#include <sys/ioctl.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
