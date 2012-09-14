@@ -229,6 +229,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
     else {
       LOG_FATAL("unknown marker type %d", (int) marker->_type);
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
 
@@ -266,7 +267,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // update datafile
     TRI_WRITE_LOCK_DATAFILES_SIM_COLLECTION(sim);
 
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, fid);
 
     if (deleted) {
       dfi->_numberDead += 1;
@@ -304,7 +305,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // update datafile info
     TRI_WRITE_LOCK_DATAFILES_SIM_COLLECTION(sim);
 
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, fid);
     dfi->_numberDeletion += 1;
 
     TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
@@ -421,7 +422,7 @@ static bool CompactifySimCollection (TRI_sim_collection_t* sim) {
     TRI_doc_datafile_info_t* dfi;
 
     df = sim->base.base._datafiles._buffer[i];
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, df->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, df->_fid);
 
     TRI_PushBackVector(&vector, dfi);
   }
@@ -500,27 +501,31 @@ void TRI_CompactorVocBase (void* data) {
 
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
-      TRI_doc_collection_t* doc;
+      TRI_primary_collection_t* primary;
 
       collection = collections._buffer[i];
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+        // if we can't acquire the read lock instantly, we continue directly
+        // we don't want to stall here for too long
+        continue;
+      }
 
-      doc = collection->_collection;
+      primary = collection->_collection;
 
-      if (doc == NULL) {
+      if (primary == NULL) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
-      type = doc->base._type;
+      type = primary->base._type;
 
-      // for simple document collection, compactify datafiles
+      // for simple collection, compactify datafiles
       if (TRI_IS_SIMPLE_COLLECTION(type)) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-          TRI_barrier_t* ce = TRI_CreateBarrierElement(&doc->_barrierList);
+          TRI_barrier_t* ce = TRI_CreateBarrierElement(&primary->_barrierList);
 
-          worked = CompactifySimCollection((TRI_sim_collection_t*) doc);
+          worked = CompactifySimCollection((TRI_sim_collection_t*) primary);
           if (ce != NULL) {
             TRI_FreeBarrier(ce);
           }

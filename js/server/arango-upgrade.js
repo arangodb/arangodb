@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    arango-upgrade
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
@@ -39,23 +43,46 @@ function main (argv) {
   var console = require("console");
   var db = internal.db;
 
-  var tasks = [ ];
+  // path to the VERSION file
+  var versionFile = DATABASEPATH + "/VERSION";
+
+  var allTasks = [ ];
+  var activeTasks = [ ];
+  
+  // assume we do not yet have a VERSION value
+  var currentVersion = 0;
+  if (FS_EXISTS(versionFile)) {
+    // VERSION file exists, read its contents
+    currentVersion = parseInt(SYS_READ(versionFile));  
+  }
 
   // helper function to define tasks
-  function addTask (description, code) {
-    tasks.push({ description: description, code: code });
+  function addTask (description, maxVersion, code) {
+    // "description" is a textual description of the task that will be printed out on screen
+    // "maxVersion" is the maximum version number the task will be applied for
+    var task = { description: description, maxVersion: maxVersion, code: code };
+
+    allTasks.push(task);
+
+    // the maximum version number defined for the task is >= than the current VERSION number
+    // that means we will apply to task 
+    if (currentVersion < parseInt(maxVersion)) {
+      activeTasks.push(task);
+    }
   }
+
 
   // --------------------------------------------------------------------------
   // the actual upgrade tasks. all tasks defined here should be "re-entrant"
   // --------------------------------------------------------------------------
 
   // set up the collection _users 
-  addTask("setup _users collection", function () {
+  addTask("setup _users collection", 0, function () {
     var users = db._collection("_users");
 
     if (users == null) {
       users = db._create("_users", { isSystem: true, waitForSync: true });
+
       if (users == null) {
         console.error("creating users collection '_users' failed");
         return false;
@@ -66,8 +93,9 @@ function main (argv) {
   });
 
   // create a unique index on username attribute in _users
-  addTask("create index on username attribute in _users collection", function () {
+  addTask("create index on username attribute in _users collection", 0, function () {
     var users = db._collection("_users");
+
     if (users == null) {
       return false;
     }
@@ -78,26 +106,28 @@ function main (argv) {
   });
   
   // add a default root user with no passwd
-  addTask("add default root user", function () {
+  addTask("add default root user", 0, function () {
     var users = db._collection("_users");
+
     if (users == null) {
       return false;
     }
 
     if (users.count() == 0) {
       // only add account if user has not created his/her own accounts already
-      users.save({ user: "root", password: internal.sha256(""), active: true });
+      users.save({ user: "root", password: internal.encodePassword(""), active: true });
     }
 
     return true;
   });
   
   // set up the collection _graphs
-  addTask("setup _graphs collection", function () {
+  addTask("setup _graphs collection", 0, function () {
     var graphs = db._collection("_graphs");
 
     if (graphs == null) {
       graphs = db._create("_graphs", { isSystem: true, waitForSync: true });
+
       if (graphs == null) {
         console.error("creating graphs collection '_graphs' failed");
         return false;
@@ -108,8 +138,9 @@ function main (argv) {
   });
   
   // create a unique index on name attribute in _graphs
-  addTask("create index on name attribute in _graphs collection", function () {
+  addTask("create index on name attribute in _graphs collection", 0, function () {
     var graphs = db._collection("_graphs");
+
     if (graphs == null) {
       return false;
     }
@@ -120,7 +151,7 @@ function main (argv) {
   });
 
   // make distinction between document and edge collections
-  addTask("set new collection type for edge collections and update collection version", function () {
+  addTask("set new collection type for edge collections and update collection version", 0, function () {
     var collections = db._collections();
     
     for (var i in collections) {
@@ -142,6 +173,7 @@ function main (argv) {
           var isEdge = true;
           // check the 1st 50 documents from a collection
           var documents = collection.ALL(0, 50);
+
           for (var j in documents) {
             var doc = documents[j];
   
@@ -167,18 +199,28 @@ function main (argv) {
 
     return true;
   });
+  
+  // create the VERSION file
+  addTask("create VERSION file", 0, function () {
+    // save "1" into VERSION file
+    SYS_SAVE(versionFile, "1");
+    return true;
+  });
 
 
   console.log("Upgrade script " + argv[0] + " started");
+  console.log("Server VERSION is: " + currentVersion);
 
   // loop through all tasks and execute them
-  console.log("Found " + tasks.length + " tasks to run...");
-  for (var i in tasks) {
-    var task = tasks[i];
+  console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
 
-    console.log("Executing task #" + i + ": " + task.description);
+  for (var i in activeTasks) {
+    var task = activeTasks[i];
+
+    console.log("Executing task #" + (i + 1) + ": " + task.description);
 
     var result = task.code();
+
     if (! result) {
       console.error("Task failed. Aborting upgrade script.");
       console.error("Please fix the problem and try running the upgrade script again.");
@@ -197,6 +239,10 @@ function main (argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

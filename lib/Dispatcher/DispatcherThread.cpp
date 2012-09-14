@@ -152,7 +152,7 @@ void DispatcherThread::run () {
       }
       catch (std::exception const& ex) {
         try {
-          InternalError err(string("job failed with unknown in work: ") + ex.what());
+          InternalError err(string("job failed with unknown in work: ") + ex.what(), __FILE__, __LINE__);
 
           job->handleError(err);
         }
@@ -177,7 +177,7 @@ void DispatcherThread::run () {
 #endif
 
         try {
-          InternalError err("job failed with unknown error in work");
+          InternalError err("job failed with unknown error in work", __FILE__, __LINE__);
 
           job->handleError(err);
         }

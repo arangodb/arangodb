@@ -44,7 +44,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_collection_s;
+struct TRI_primary_collection_s;
 struct TRI_col_parameter_s;
 struct TRI_shadow_store_s;
 
@@ -84,6 +84,13 @@ struct TRI_shadow_store_s;
 
 #define TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(a) \
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to read lock the vocbase collection status
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(a) \
+  TRI_TryReadLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the vocbase collection status
@@ -403,7 +410,7 @@ typedef enum {
 TRI_vocbase_col_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection container
+/// @brief collection container
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
@@ -417,7 +424,7 @@ typedef struct TRI_vocbase_col_s {
 
   TRI_read_write_lock_t _lock;               // lock protecting the status
   TRI_vocbase_col_status_e _status;          // status of the collection
-  struct TRI_doc_collection_s* _collection;  // NULL or pointer to loaded collection
+  struct TRI_primary_collection_s* _collection;  // NULL or pointer to loaded collection
 }
 TRI_vocbase_col_t;
 
@@ -508,7 +515,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_
 TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a document collection by name
+/// @brief finds a primary collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);

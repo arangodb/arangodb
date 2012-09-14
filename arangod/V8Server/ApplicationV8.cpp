@@ -432,6 +432,7 @@ bool ApplicationV8::prepare () {
   // check the startup modules
   if (_startupModules.empty()) {
     LOGGER_FATAL << "no 'javascript.modules-path' has been supplied, giving up";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   else {
@@ -458,6 +459,7 @@ bool ApplicationV8::prepare () {
   if (_useActions) {
     if (_actionPath.empty()) {
       LOGGER_FATAL << "no 'javascript.action-directory' has been supplied, giving up";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
     else {

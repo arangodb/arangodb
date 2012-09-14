@@ -334,6 +334,7 @@ bool ApplicationMR::prepare () {
   // check the startup modules
   if (_startupModules.empty()) {
     LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   else {
@@ -356,6 +357,7 @@ bool ApplicationMR::prepare () {
   // set up action loader
   if (_actionPath.empty()) {
     LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   else {

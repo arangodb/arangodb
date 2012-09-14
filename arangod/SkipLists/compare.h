@@ -40,7 +40,7 @@
 
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
 #define USE_STATIC_SKIPLIST_COMPARE 1
 
@@ -809,8 +809,8 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist, vo
   }    
 
   
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < hLeftElement->numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
@@ -903,8 +903,8 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
   }
   
   
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), 
@@ -974,8 +974,8 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
   }    
 
 
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < hLeftElement->numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
@@ -1048,8 +1048,8 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
     numFields = hRightElement->numFields;
   }
   
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);

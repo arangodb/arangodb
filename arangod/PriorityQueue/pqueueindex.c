@@ -38,7 +38,7 @@
 #include "pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "ShapedJson/json-shaper.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include <BasicsC/hashes.h>
 #include <BasicsC/logging.h>
 
@@ -546,8 +546,8 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
     maxNumFields = rightElement->numFields;
   }
   
-  leftShaper  = ((TRI_doc_collection_t*)(leftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(rightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
   
   compareResult = 0;
 

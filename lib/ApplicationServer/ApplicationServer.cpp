@@ -420,6 +420,7 @@ void ApplicationServer::prepare () {
 
     if (! ok) {
       LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 
@@ -443,6 +444,7 @@ void ApplicationServer::prepare2 () {
 
     if (! ok) {
       LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 
@@ -471,6 +473,7 @@ void ApplicationServer::start () {
 
     if (! ok) {
       LOGGER_FATAL << "failed to start server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 
@@ -487,6 +490,7 @@ void ApplicationServer::start () {
 
     if (! ok) {
       LOGGER_FATAL << "failed to open server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 

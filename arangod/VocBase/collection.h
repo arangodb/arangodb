@@ -67,9 +67,9 @@ extern "C" {
 ///
 /// @copydetails TRI_shape_collection_t
 ///
-/// @section DocCollection Document Collection
+/// @section PrimaryCollection Document Collection
 ///
-/// @copydetails TRI_doc_collection_t
+/// @copydetails TRI_primary_collection_t
 ///
 /// @section SimCollection Simple Document Collection
 ///

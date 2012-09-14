@@ -25,8 +25,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("actions");
-var API = "_api/collection";
+(function() {
+  var actions = require("actions");
+  var API = "_api/collection";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -41,36 +42,36 @@ var API = "_api/collection";
 /// @brief collection representation
 ////////////////////////////////////////////////////////////////////////////////
 
-function CollectionRepresentation (collection, showProperties, showCount, showFigures) {
-  var result = {};
+  function CollectionRepresentation (collection, showProperties, showCount, showFigures) {
+    var result = {};
 
-  result.id = collection._id;
-  result.name = collection.name();
+    result.id = collection._id;
+    result.name = collection.name();
 
-  if (showProperties) {
-    var properties = collection.properties();
+    if (showProperties) {
+      var properties = collection.properties();
 
-    result.waitForSync = properties.waitForSync;
-    result.journalSize = properties.journalSize;
-  }
-
-  if (showCount) {
-    result.count = collection.count();
-  }
-
-  if (showFigures) {
-    var figures = collection.figures();
-
-    if (figures) {
-      result.figures = figures;
+      result.waitForSync = properties.waitForSync;
+      result.journalSize = properties.journalSize;
     }
+
+    if (showCount) {
+      result.count = collection.count();
+    }
+
+    if (showFigures) {
+      var figures = collection.figures();
+
+      if (figures) {
+        result.figures = figures;
+      }
+    }
+
+    result.status = collection.status();
+    result.type = collection.type();
+
+    return result;
   }
-
-  result.status = collection.status();
-  result.type = collection.type();
-
-  return result;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -115,71 +116,71 @@ function CollectionRepresentation (collection, showProperties, showCount, showFi
 /// @verbinclude api-collection-create-collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function POST_api_collection (req, res) {
-  var body = actions.getJsonBody(req, res);
+  function POST_api_collection (req, res) {
+    var body = actions.getJsonBody(req, res);
 
-  if (body === undefined) {
-    return;
-  }
-
-  if (! body.hasOwnProperty("name")) {
-    actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
-                      "name must be non-empty");
-    return;
-  }
-
-  var name = body.name;
-  var parameter = { waitForSync : false };
-  var cid = undefined;
-  var type = ArangoCollection.TYPE_DOCUMENT;
-
-  if (body.hasOwnProperty("waitForSync")) {
-    parameter.waitForSync = body.waitForSync;
-  }
-
-  if (body.hasOwnProperty("journalSize")) {
-    parameter.journalSize = body.journalSize;
-  }
-
-  if (body.hasOwnProperty("isSystem")) {
-    parameter.isSystem = body.isSystem;
-  }
-
-  if (body.hasOwnProperty("_id")) {
-    cid = body._id;
-  }
-
-  if (body.hasOwnProperty("type")) {
-    type = body.type;
-  }
-
-  try {
-    var collection;
-
-    if (type == ArangoCollection.TYPE_EDGE) {
-      collection = internal.db._createEdgeCollection(name, parameter, cid);
-    }
-    else {
-      collection = internal.db._createDocumentCollection(name, parameter, cid);
+    if (body === undefined) {
+      return;
     }
 
-    var result = {};
-    var headers = {};
+    if (! body.hasOwnProperty("name")) {
+      actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
+                        "name must be non-empty");
+      return;
+    }
 
-    result.id = collection._id;
-    result.name = collection.name();
-    result.waitForSync = parameter.waitForSync;
-    result.status = collection.status();
-    result.type = collection.type();
+    var name = body.name;
+    var parameter = { waitForSync : false };
+    var cid = undefined;
+    var type = ArangoCollection.TYPE_DOCUMENT;
 
-    headers.location = "/" + API + "/" + collection._id;
-      
-    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    if (body.hasOwnProperty("waitForSync")) {
+      parameter.waitForSync = body.waitForSync;
+    }
+
+    if (body.hasOwnProperty("journalSize")) {
+      parameter.journalSize = body.journalSize;
+    }
+
+    if (body.hasOwnProperty("isSystem")) {
+      parameter.isSystem = body.isSystem;
+    }
+
+    if (body.hasOwnProperty("_id")) {
+      cid = body._id;
+    }
+
+    if (body.hasOwnProperty("type")) {
+      type = body.type;
+    }
+
+    try {
+      var collection;
+
+      if (type == ArangoCollection.TYPE_EDGE) {
+        collection = internal.db._createEdgeCollection(name, parameter, cid);
+      }
+      else {
+        collection = internal.db._createDocumentCollection(name, parameter, cid);
+      }
+
+      var result = {};
+      var headers = {};
+
+      result.id = collection._id;
+      result.name = collection.name();
+      result.waitForSync = parameter.waitForSync;
+      result.status = collection.status();
+      result.type = collection.type();
+
+      headers.location = "/" + API + "/" + collection._id;
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
@@ -200,23 +201,23 @@ function POST_api_collection (req, res) {
 /// @verbinclude api-collection-all-collections
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_api_collections (req, res) {
-  var list = [];
-  var names = {};
-  var collections = internal.db._collections();
+  function GET_api_collections (req, res) {
+    var list = [];
+    var names = {};
+    var collections = internal.db._collections();
 
-  for (var i = 0;  i < collections.length;  ++i) {
-    var collection = collections[i];
-    var rep = CollectionRepresentation(collection);
-    
-    list.push(rep);
-    names[rep.name] = rep;
+    for (var i = 0;  i < collections.length;  ++i) {
+      var collection = collections[i];
+      var rep = CollectionRepresentation(collection);
+
+      list.push(rep);
+      names[rep.name] = rep;
+    }
+
+    var result = { collections : list, names : names };
+
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
-
-  var result = { collections : list, names : names };
-  
-  actions.resultOk(req, res, actions.HTTP_OK, result);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
@@ -324,93 +325,93 @@ function GET_api_collections (req, res) {
 /// @verbinclude api-collection-get-collection-figures
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_api_collection (req, res) {
-
-  // .............................................................................
-  // /_api/collection
-  // .............................................................................
-
-  if (req.suffix.length === 0) {
-    GET_api_collections(req, res);
-    return;
-  }
-
-  var name = decodeURIComponent(req.suffix[0]);
-  var id = parseInt(name) || name;
-  var collection = internal.db._collection(id);
-
-  if (collection === null) {
-    actions.collectionNotFound(req, res, name);
-    return;
-  }
-
-  // .............................................................................
-  // /_api/collection/<identifier>
-  // .............................................................................
-
-  if (req.suffix.length === 1) {
-    var result = CollectionRepresentation(collection, false, false, false);
-    var headers = { location : "/" + API + "/" + collection._id };
-
-    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-  }
-
-  else if (req.suffix.length === 2) {
-    var sub = decodeURIComponent(req.suffix[1]);
+  function GET_api_collection (req, res) {
 
     // .............................................................................
-    // /_api/collection/<identifier>/figures
+    // /_api/collection
     // .............................................................................
 
-    if (sub === "figures") {
-      var result = CollectionRepresentation(collection, true, true, true);
-      var headers = { location : "/" + API + "/" + collection._id + "/figures" };
+    if (req.suffix.length === 0) {
+      GET_api_collections(req, res);
+      return;
+    }
+
+    var name = decodeURIComponent(req.suffix[0]);
+    var id = parseInt(name) || name;
+    var collection = internal.db._collection(id);
+
+    if (collection === null) {
+      actions.collectionNotFound(req, res, name);
+      return;
+    }
+
+    // .............................................................................
+    // /_api/collection/<identifier>
+    // .............................................................................
+
+    if (req.suffix.length === 1) {
+      var result = CollectionRepresentation(collection, false, false, false);
+      var headers = { location : "/" + API + "/" + collection._id };
 
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
-    // .............................................................................
-    // /_api/collection/<identifier>/count
-    // .............................................................................
+    else if (req.suffix.length === 2) {
+      var sub = decodeURIComponent(req.suffix[1]);
 
-    else if (sub === "count") {
-      var result = CollectionRepresentation(collection, true, true, false);
-      var headers = { location : "/" + API + "/" + collection._id + "/count" };
+      // .............................................................................
+      // /_api/collection/<identifier>/figures
+      // .............................................................................
 
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      if (sub === "figures") {
+        var result = CollectionRepresentation(collection, true, true, true);
+        var headers = { location : "/" + API + "/" + collection._id + "/figures" };
+
+        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      }
+
+      // .............................................................................
+      // /_api/collection/<identifier>/count
+      // .............................................................................
+
+      else if (sub === "count") {
+        var result = CollectionRepresentation(collection, true, true, false);
+        var headers = { location : "/" + API + "/" + collection._id + "/count" };
+
+        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      }
+
+      // .............................................................................
+      // /_api/collection/<identifier>/properties
+      // .............................................................................
+
+      else if (sub === "properties") {
+        var result = CollectionRepresentation(collection, true, false, false);
+        var headers = { location : "/" + API + "/" + collection._id + "/properties" };
+
+        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      }
+
+      // .............................................................................
+      // /_api/collection/<identifier>/parameter (DEPRECATED)
+      // .............................................................................
+
+      else if (sub === "parameter") {
+        var result = CollectionRepresentation(collection, true, false, false);
+        var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
+
+        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      }
+
+      else {
+        actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
+      }
     }
-
-    // .............................................................................
-    // /_api/collection/<identifier>/properties
-    // .............................................................................
-
-    else if (sub === "properties") {
-      var result = CollectionRepresentation(collection, true, false, false);
-      var headers = { location : "/" + API + "/" + collection._id + "/properties" };
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-    }
-
-    // .............................................................................
-    // /_api/collection/<identifier>/parameter (DEPRECATED)
-    // .............................................................................
-
-    else if (sub === "parameter") {
-      var result = CollectionRepresentation(collection, true, false, false);
-      var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-    }
-
     else {
-      actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
+      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                        "expect GET /" + API + "/<collection-identifer>/<method>");
     }
   }
-  else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /" + API + "/<collection-identifer>/<method>");
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
@@ -440,18 +441,18 @@ function GET_api_collection (req, res) {
 /// @verbinclude api-collection-identifier-load
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection_load (req, res, collection) {
-  try {
-    collection.load();
+  function PUT_api_collection_load (req, res, collection) {
+    try {
+      collection.load();
 
-    var result = CollectionRepresentation(collection, false, true, false);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+      var result = CollectionRepresentation(collection, false, true, false);
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
@@ -479,18 +480,18 @@ function PUT_api_collection_load (req, res, collection) {
 /// @verbinclude api-collection-identifier-unload
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection_unload (req, res, collection) {
-  try {
-    collection.unload();
+  function PUT_api_collection_unload (req, res, collection) {
+    try {
+      collection.unload();
 
-    var result = CollectionRepresentation(collection);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+      var result = CollectionRepresentation(collection);
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -506,18 +507,18 @@ function PUT_api_collection_unload (req, res, collection) {
 /// @verbinclude api-collection-identifier-truncate
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection_truncate (req, res, collection) {
-  try {
-    collection.truncate();
+  function PUT_api_collection_truncate (req, res, collection) {
+    try {
+      collection.truncate();
 
-    var result = CollectionRepresentation(collection);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+      var result = CollectionRepresentation(collection);
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
@@ -545,24 +546,24 @@ function PUT_api_collection_truncate (req, res, collection) {
 /// @verbinclude api-collection-identifier-properties-sync
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection_properties (req, res, collection) {
-  var body = actions.getJsonBody(req, res);
+  function PUT_api_collection_properties (req, res, collection) {
+    var body = actions.getJsonBody(req, res);
 
-  if (body === undefined) {
-    return;
-  }
+    if (body === undefined) {
+      return;
+    }
 
-  try {
-    collection.properties(body);
+    try {
+      collection.properties(body);
 
-    var result = CollectionRepresentation(collection, true);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+      var result = CollectionRepresentation(collection, true);
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
@@ -586,75 +587,74 @@ function PUT_api_collection_properties (req, res, collection) {
 /// @verbinclude api-collection-identifier-rename
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection_rename (req, res, collection) {
-  var body = actions.getJsonBody(req, res);
+  function PUT_api_collection_rename (req, res, collection) {
+    var body = actions.getJsonBody(req, res);
 
-  if (body === undefined) {
-    return;
+    if (body === undefined) {
+      return;
+    }
+
+    if (! body.hasOwnProperty("name")) {
+      actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
+                        "name must be non-empty");
+      return;
+    }
+
+    var name = body.name;
+
+    try {
+      collection.rename(name);
+
+      var result = CollectionRepresentation(collection);
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
-
-  if (! body.hasOwnProperty("name")) {
-    actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
-                      "name must be non-empty");
-    return;
-  }
-
-  var name = body.name;
-
-  try {
-    collection.rename(name);
-
-    var result = CollectionRepresentation(collection);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_collection (req, res) {
+  function PUT_api_collection (req, res) {
+    if (req.suffix.length != 2) {
+      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                        "expected PUT /" + API + "/<collection-identifer>/<action>");
+      return;
+    }
 
-  if (req.suffix.length != 2) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected PUT /" + API + "/<collection-identifer>/<action>");
-    return;
-  }
+    var name = decodeURIComponent(req.suffix[0]);
+    var id = parseInt(name) || name;
+    var collection = internal.db._collection(id);
 
-  var name = decodeURIComponent(req.suffix[0]);
-  var id = parseInt(name) || name;
-  var collection = internal.db._collection(id);
-    
-  if (collection === null) {
-    actions.collectionNotFound(req, res, name);
-    return;
-  }
+    if (collection === null) {
+      actions.collectionNotFound(req, res, name);
+      return;
+    }
 
-  var sub = decodeURIComponent(req.suffix[1]);
+    var sub = decodeURIComponent(req.suffix[1]);
 
-  if (sub === "load") {
-    PUT_api_collection_load(req, res, collection);
+    if (sub === "load") {
+      PUT_api_collection_load(req, res, collection);
+    }
+    else if (sub === "unload") {
+      PUT_api_collection_unload(req, res, collection);
+    }
+    else if (sub === "truncate") {
+      PUT_api_collection_truncate(req, res, collection);
+    }
+    else if (sub === "properties") {
+      PUT_api_collection_properties(req, res, collection);
+    }
+    else if (sub === "rename") {
+      PUT_api_collection_rename(req, res, collection);
+    }
+    else {
+      actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
+    }
   }
-  else if (sub === "unload") {
-    PUT_api_collection_unload(req, res, collection);
-  }
-  else if (sub === "truncate") {
-    PUT_api_collection_truncate(req, res, collection);
-  }
-  else if (sub === "properties") {
-    PUT_api_collection_properties(req, res, collection);
-  }
-  else if (sub === "rename") {
-    PUT_api_collection_rename(req, res, collection);
-  }
-  else {
-    actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a collection
@@ -689,68 +689,74 @@ function PUT_api_collection (req, res) {
 /// @verbinclude api-collection-delete-collection-name
 ////////////////////////////////////////////////////////////////////////////////
 
-function DELETE_api_collection (req, res) {
-  if (req.suffix.length != 1) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expected DELETE /" + API + "/<collection-identifer>");
-  }
-  else {
-    var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = internal.db._collection(id);
-    
-    if (collection === null) {
-      actions.collectionNotFound(req, res, name);
+  function DELETE_api_collection (req, res) {
+    if (req.suffix.length != 1) {
+      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                        "expected DELETE /" + API + "/<collection-identifer>");
     }
     else {
-      try {
-        var result = {
-          id : collection._id
-        };
+      var name = decodeURIComponent(req.suffix[0]);
+      var id = parseInt(name) || name;
+      var collection = internal.db._collection(id);
 
-        collection.drop();
-
-        actions.resultOk(req, res, actions.HTTP_OK, result);
+      if (collection === null) {
+        actions.collectionNotFound(req, res, name);
       }
-      catch (err) {
-        actions.resultException(req, res, err);
+      else {
+        try {
+          var result = {
+            id : collection._id
+          };
+
+          collection.drop();
+
+          actions.resultOk(req, res, actions.HTTP_OK, result);
+        }
+        catch (err) {
+          actions.resultException(req, res, err);
+        }
       }
     }
   }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads or creates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : API,
-  context : "api",
+  actions.defineHttp({
+    url : API,
+    context : "api",
 
-  callback : function (req, res) {
-    if (req.requestType === actions.GET) {
-      GET_api_collection(req, res);
+    callback : function (req, res) {
+      if (req.requestType === actions.GET) {
+        GET_api_collection(req, res);
+      }
+      else if (req.requestType === actions.DELETE) {
+        DELETE_api_collection(req, res);
+      }
+      else if (req.requestType === actions.POST) {
+        POST_api_collection(req, res);
+      }
+      else if (req.requestType === actions.PUT) {
+        PUT_api_collection(req, res);
+      }
+      else {
+        actions.resultUnsupported(req, res);
+      }
     }
-    else if (req.requestType === actions.DELETE) {
-      DELETE_api_collection(req, res);
-    }
-    else if (req.requestType === actions.POST) {
-      POST_api_collection(req, res);
-    }
-    else if (req.requestType === actions.PUT) {
-      PUT_api_collection(req, res);
-    }
-    else {
-      actions.resultUnsupported(req, res);
-    }
-  }
-});
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+})();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:

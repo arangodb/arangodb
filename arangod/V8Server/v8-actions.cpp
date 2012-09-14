@@ -300,8 +300,19 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   //        },
   //
   //        "requestType" : "GET",
-  //        "requestBody" : "... only for PUT and POST ..."
+  //        "requestBody" : "... only for PUT and POST ...",
+  //        "user" : "authenticatedUser"
   //      }
+
+  // create user or null
+  string const& user = request->user();
+
+  if (user.empty()) {
+    req->Set(v8g->UserKey, v8::Null());
+  }
+  else {
+    req->Set(v8g->UserKey, v8::String::New(user.c_str()));
+  }
 
   // copy suffix
   v8::Handle<v8::Array> suffixArray = v8::Array::New();
@@ -627,6 +638,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("suffix"));
+  v8g->UserKey = v8::Persistent<v8::String>::New(v8::String::New("user"));
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(v8::String::New("DELETE"));
   v8g->GetConstant = v8::Persistent<v8::String>::New(v8::String::New("GET"));

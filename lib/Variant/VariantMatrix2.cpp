@@ -142,7 +142,7 @@ void VariantMatrix2::print (StringBuffer& buffer, size_t) const {
 
 vector<string> const& VariantMatrix2::getDimension (size_t n) const {
   if (n >= 2) {
-    THROW_PARAMETER_ERROR("n", "getDimension", "too large");
+    THROW_PARAMETER_ERROR("n", "too large", "getDimension");
   }
 
   return _dimensions[n];
@@ -162,11 +162,11 @@ vector< vector<VariantObject*> > const& VariantMatrix2::getValues () const {
 
 VariantObject* VariantMatrix2::getValue (size_t x, size_t y) const {
   if (_dimensions[0].size() <= x) {
-    THROW_PARAMETER_ERROR("x", "setValue", "too large");
+    THROW_PARAMETER_ERROR("x", "too large", "setValue");
   }
 
   if (_dimensions[1].size() <= y) {
-    THROW_PARAMETER_ERROR("y", "setValue", "too large");
+    THROW_PARAMETER_ERROR("y", "too large", "setValue");
   }
 
   if (_values.size() <= x) {
@@ -188,11 +188,11 @@ VariantObject* VariantMatrix2::getValue (size_t x, size_t y) const {
 
 void VariantMatrix2::setValue (size_t x, size_t y, VariantObject* object) {
   if (_dimensions[0].size() <= x) {
-    THROW_PARAMETER_ERROR("x", "setValue", "too large");
+    THROW_PARAMETER_ERROR("x", "too large", "setValue");
   }
 
   if (_dimensions[1].size() <= y) {
-    THROW_PARAMETER_ERROR("y", "setValue", "too large");
+    THROW_PARAMETER_ERROR("y", "too large", "setValue");
   }
 
   if (_values.size() <= x) {
@@ -218,7 +218,7 @@ void VariantMatrix2::setValue (size_t x, size_t y, VariantObject* object) {
 
 size_t VariantMatrix2::addDimension (size_t n, string const& name) {
   if (n >= 2) {
-    THROW_PARAMETER_ERROR("n", "addDimension", "too large");
+    THROW_PARAMETER_ERROR("n", "too large", "addDimension");
   }
 
   _dimensions[n].push_back(name);

@@ -27,7 +27,7 @@
 
 #include "headers.h"
 
-#include <VocBase/document-collection.h>
+#include <VocBase/primary-collection.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
