@@ -9,6 +9,7 @@
 ################################################################################
 
 BUILT_SOURCES += @V8_LIBS@
+CLEANUP += @srcdir@/.v8-build-@TRI_BITS@
 
 @V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
 
