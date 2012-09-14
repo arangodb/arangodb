@@ -39,7 +39,7 @@
 #include <BasicsC/hashes.h>
 #include <ShapedJson/json-shaper.h>
 #include <ShapedJson/shaped-json.h>
-#include <VocBase/document-collection.h>
+#include <VocBase/primary-collection.h>
 
 #define USE_STATIC_HASHARRAY_COMPARE 1
 

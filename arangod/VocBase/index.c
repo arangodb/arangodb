@@ -97,7 +97,7 @@ void TRI_FreeIndex (TRI_index_t* const idx) {
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (TRI_doc_collection_t* collection, TRI_index_t* idx) {
+bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   char* filename;
   char* name;
   char* number;
@@ -151,7 +151,7 @@ bool TRI_RemoveIndexFile (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
+int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   TRI_json_t* json;
   char* filename;
   char* name;
@@ -192,7 +192,7 @@ int TRI_SaveIndex (TRI_doc_collection_t* collection, TRI_index_t* idx) {
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (TRI_doc_collection_t* collection, TRI_idx_iid_t iid) {
+TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_t iid) {
   TRI_sim_collection_t* sim;
   TRI_index_t* idx;
   size_t i;
@@ -333,7 +333,7 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
 /// @brief describes a cap constraint as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_cap_constraint_t* cap;
    
@@ -359,7 +359,7 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, TRI_doc_collection_t con
 /// @brief removes a cap constraint from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RemoveIndexCapConstraint (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static void RemoveIndexCapConstraint (TRI_index_t* idx, TRI_primary_collection_t* collection) {
   collection->_capConstraint = NULL;
 }
 
@@ -420,7 +420,7 @@ static int RemoveCapConstraint (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief creates a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collection,
                                       size_t size) {
   TRI_cap_constraint_t* cap;
 
@@ -891,7 +891,7 @@ static int RemoveGeoIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief JSON description of a geo index, location is a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_shape_path_t const* path;
@@ -938,7 +938,7 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t* idx, TRI_doc_collection_t const* 
 /// @brief JSON description of a geo index, two attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   TRI_shape_path_t const* path;
@@ -995,7 +995,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t* idx, TRI_doc_collection_t const* 
 /// @brief removes a json index from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RemoveIndexGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static void RemoveIndexGeoIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1015,7 +1015,7 @@ static void RemoveIndexGeoIndex (TRI_index_t* idx, TRI_doc_collection_t* collect
 /// @brief creates a geo-index for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* collection,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
                                   bool geoJson,
@@ -1087,7 +1087,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_doc_collection_s* collection,
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
                                   char const* latitudeName,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
@@ -1337,7 +1337,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 /// @brief describes a hash index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   const TRI_shape_path_t* path;
@@ -1416,7 +1416,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t* idx, TRI_doc_collection_t const* 
 /// @brief removes a hash index from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RemoveIndexHashIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static void RemoveIndexHashIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1727,7 +1727,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
 /// @brief creates a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateHashIndex (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
                                   bool unique) {
@@ -2189,7 +2189,7 @@ static int InsertPriorityQueueIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc
 /// @brief describes a priority queue index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   const TRI_shape_path_t* path;
@@ -2269,7 +2269,7 @@ static TRI_json_t* JsonPriorityQueueIndex (TRI_index_t* idx, TRI_doc_collection_
 /// @brief removes a priority queue from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RemoveIndexPriorityQueueIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static void RemoveIndexPriorityQueueIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2472,7 +2472,7 @@ static int UpdatePriorityQueueIndex (TRI_index_t* idx,
 /// @brief creates a priority queue index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* collection,
                                            TRI_vector_pointer_t* fields,
                                            TRI_vector_t* paths,
                                            bool unique) {
@@ -2684,7 +2684,7 @@ PQIndexElements* TRI_LookupPriorityQueueIndex(TRI_index_t* idx, TRI_json_t* para
 // .............................................................................
 
 
-static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_doc_collection_t* collection) {
+static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_primary_collection_t* collection) {
   TRI_json_t*                    jsonObject;
   TRI_shaped_json_t*             shapedObject;
   TRI_relation_index_operator_t* relationOperator;
@@ -3094,7 +3094,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief describes a skiplist index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;
   TRI_json_t* fields;
   const TRI_shape_path_t* path;
@@ -3163,7 +3163,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t con
 /// @brief removes a skip-list index from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RemoveIndexSkiplistIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static void RemoveIndexSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3488,7 +3488,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collection,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
@@ -3626,7 +3626,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // Helper function for TRI_LookupBitarrayIndex
 // .............................................................................
 
-static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_doc_collection_t* collection) {
+static int FillLookupBitarrayOperator(TRI_index_operator_t* indexOperator, TRI_primary_collection_t* collection) {
   TRI_relation_index_operator_t* relationOperator;
   TRI_logical_index_operator_t*  logicalOperator;
   
@@ -3963,7 +3963,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief describes a bitarray index as a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_doc_collection_t const* collection) {
+static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
   TRI_json_t* json;      // the json object we return describing the index
   TRI_json_t* keyValues; // a list of attributes and their associated values
   const TRI_shape_path_t* path;
@@ -4101,7 +4101,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_doc_collection_t con
 /// @brief removes a bitarray index from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RemoveIndexBitarrayIndex (TRI_index_t* idx, TRI_doc_collection_t* collection) {
+static void RemoveIndexBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
 
 }
 
@@ -4334,7 +4334,7 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_doc_collection_s* collection,
+TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collection,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       TRI_vector_pointer_t* values,

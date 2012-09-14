@@ -129,7 +129,7 @@ static bool CheckSyncSimCollection (TRI_sim_collection_t* sim) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the journal of a document collection
+/// @brief checks the journal of a simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
@@ -162,7 +162,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
       LOG_DEBUG("closing full journal '%s'", journal->_filename);
 
       TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
-      TRI_CloseJournalDocCollection(&sim->base, i);
+      TRI_CloseJournalPrimaryCollection(&sim->base, i);
       TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       n = base->_journals._length;
@@ -261,7 +261,7 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* sim) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the compactor of a document collection
+/// @brief checks the compactor of a simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
@@ -290,7 +290,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
       LOG_DEBUG("closing full compactor '%s'", compactor->_filename);
 
       TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
-      TRI_CloseCompactorDocCollection(&sim->base, i);
+      TRI_CloseCompactorPrimaryCollection(&sim->base, i);
       TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
       n = base->_compactors._length;
@@ -304,7 +304,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
   if (base->_compactors._length == 0) {
     TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
 
-    compactor = TRI_CreateCompactorDocCollection(&sim->base);
+    compactor = TRI_CreateCompactorPrimaryCollection(&sim->base);
 
     if (compactor != NULL) {
       worked = true;
@@ -369,7 +369,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
-      TRI_doc_collection_t* doc;
+      TRI_primary_collection_t* primary;
       bool result;
 
       collection = collections._buffer[i];
@@ -386,22 +386,22 @@ void TRI_SynchroniserVocBase (void* data) {
         continue;
       }
 
-      doc = collection->_collection;
+      primary = collection->_collection;
 
-      // for simple document collection, first sync and then seal
-      type = doc->base._type;
+      // for simple collection, first sync and then seal
+      type = primary->base._type;
 
       if (TRI_IS_SIMPLE_COLLECTION(type)) {
-        result = CheckSyncSimCollection((TRI_sim_collection_t*) doc);
+        result = CheckSyncSimCollection((TRI_sim_collection_t*) primary);
         worked |= result;
 
-        result = CheckJournalSimCollection((TRI_sim_collection_t*) doc);
+        result = CheckJournalSimCollection((TRI_sim_collection_t*) primary);
         worked |= result;
 
-        result = CheckSyncCompactorSimCollection((TRI_sim_collection_t*) doc);
+        result = CheckSyncCompactorSimCollection((TRI_sim_collection_t*) primary);
         worked |= result;
 
-        result = CheckCompactorSimCollection((TRI_sim_collection_t*) doc);
+        result = CheckCompactorSimCollection((TRI_sim_collection_t*) primary);
         worked |= result;
       }
 
