@@ -123,7 +123,7 @@ static uint32_t SortJsonRandomGenerator (void) {
 /// @brief get type weight of a json value usable for comparison and sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TypeWeight (const TRI_json_t* const value) {
+static int TypeWeight (const TRI_json_t* const value) {
   if (value == NULL) {
     return 0;
   }
