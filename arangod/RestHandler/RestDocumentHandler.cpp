@@ -34,7 +34,7 @@
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
 
@@ -517,7 +517,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   ReadTransaction trx(&ca);
 
-  const TRI_sim_collection_t* sim = (TRI_sim_collection_t*) trx.primary();
+  const TRI_document_collection_t* sim = (TRI_document_collection_t*) trx.primary();
 
   if (0 < sim->_primaryIndex._nrUsed) {
     void** ptr = sim->_primaryIndex._table;

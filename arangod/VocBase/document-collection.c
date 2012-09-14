@@ -25,7 +25,7 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "simple-collection.h"
+#include "document-collection.h"
 
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
@@ -40,18 +40,18 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static int CreateImmediateIndexes (TRI_sim_collection_t* collection,
+static int CreateImmediateIndexes (TRI_document_collection_t* collection,
                                    TRI_doc_mptr_t* header);
 
-static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
+static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
                                    TRI_doc_mptr_t const* header,
                                    TRI_doc_mptr_t const* update);
 
-static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
+static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
                                    TRI_doc_mptr_t const* header,
                                    TRI_voc_tick_t);
 
-static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       TRI_doc_mptr_t const* header,
                                       TRI_doc_document_marker_t* marker,
                                       size_t markerSize,
@@ -64,7 +64,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
                                       bool release,
                                       bool allowRollback);
 
-static int DeleteDocument (TRI_sim_collection_t* collection,
+static int DeleteDocument (TRI_document_collection_t* collection,
                            TRI_doc_deletion_marker_t* marker,
                            TRI_voc_rid_t rid,
                            TRI_voc_rid_t* oldRid,
@@ -89,27 +89,27 @@ static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shap
 static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
 static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection);
 
-static int CapConstraintFromJson (TRI_sim_collection_t* sim,
+static int CapConstraintFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t);
 
-static int BitarrayIndexFromJson (TRI_sim_collection_t* sim,
+static int BitarrayIndexFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t);
 
-static int GeoIndexFromJson (TRI_sim_collection_t* sim,
+static int GeoIndexFromJson (TRI_document_collection_t* sim,
                              TRI_json_t* definition,
                              TRI_idx_iid_t iid);
 
-static int HashIndexFromJson (TRI_sim_collection_t* sim,
+static int HashIndexFromJson (TRI_document_collection_t* sim,
                               TRI_json_t* definition,
                               TRI_idx_iid_t iid);
 
-static int SkiplistIndexFromJson (TRI_sim_collection_t* sim,
+static int SkiplistIndexFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid);
 
-static int PriorityQueueFromJson (TRI_sim_collection_t* sim,
+static int PriorityQueueFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid);
 
@@ -133,7 +133,7 @@ static int PriorityQueueFromJson (TRI_sim_collection_t* sim,
 /// to allow the gc to start when waiting for a journal to appear.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
+static TRI_datafile_t* SelectJournal (TRI_document_collection_t* sim,
                                       TRI_voc_size_t size,
                                       TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
@@ -141,7 +141,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
   size_t i;
   size_t n;
 
-  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 
   if (sim->base.base._maximumMarkerSize < size) {
     sim->base.base._maximumMarkerSize = size;
@@ -160,21 +160,21 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
         return datafile;
       }
       else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
-        TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
         return NULL;
       }
     }
 
     TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
-    TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
     TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
   }
 
-  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
   return NULL;
 }
 
@@ -187,7 +187,7 @@ static TRI_datafile_t* SelectJournal (TRI_sim_collection_t* sim,
 /// datafile and has been synced.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WaitSync (TRI_sim_collection_t* sim,
+static void WaitSync (TRI_document_collection_t* sim,
                       TRI_datafile_t* journal,
                       char const* position) {
   TRI_collection_t* base;
@@ -201,7 +201,7 @@ static void WaitSync (TRI_sim_collection_t* sim,
     return;
   }
 
-  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 
   // wait until the sync condition is fullfilled
   while (true) {
@@ -222,17 +222,17 @@ static void WaitSync (TRI_sim_collection_t* sim,
     }
 
     // we have to wait a bit longer
-    TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
   }
 
-  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes data to the journal and updates the barriers
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteElement (TRI_sim_collection_t* sim,
+static int WriteElement (TRI_document_collection_t* sim,
                          TRI_datafile_t* journal,
                          TRI_df_marker_t* marker,
                          TRI_voc_size_t markerSize,
@@ -251,12 +251,12 @@ static int WriteElement (TRI_sim_collection_t* sim,
     return res;
   }
 
-  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 
   journal->_written = ((char*) result) + marker->_size;
   journal->_nWritten++;
 
-  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -303,7 +303,7 @@ static void CreateHeader (TRI_primary_collection_t* c,
 /// @brief creates a new document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateDocument (TRI_sim_collection_t* sim,
+static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
                                       TRI_doc_document_marker_t* marker,
                                       size_t markerSize,
                                       void const* body,
@@ -493,7 +493,7 @@ static void UpdateHeader (TRI_primary_collection_t* c,
 /// @brief rolls back an update
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
+static TRI_doc_mptr_t RollbackUpdate (TRI_document_collection_t* sim,
                                       TRI_doc_mptr_t const* header,
                                       TRI_df_marker_t const* originalMarker,
                                       TRI_df_marker_t** result) {
@@ -544,7 +544,7 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
+static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       TRI_doc_mptr_t const* header,
                                       TRI_doc_document_marker_t* marker,
                                       size_t markerSize,
@@ -732,7 +732,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_sim_collection_t* collection,
 /// @brief deletes an element and removes it from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteDocument (TRI_sim_collection_t* collection,
+static int DeleteDocument (TRI_document_collection_t* collection,
                            TRI_doc_deletion_marker_t* marker,
                            TRI_voc_rid_t rid,
                            TRI_voc_rid_t* oldRid,
@@ -937,7 +937,7 @@ static void DebugDatafileInfoPrimaryCollection (TRI_primary_collection_t* collec
 /// @brief debug output for datafile information
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DebugHeaderSimCollection (TRI_sim_collection_t* collection) {
+static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection) {
   void** end;
   void** ptr;
 
@@ -973,9 +973,9 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* document,
                                         TRI_voc_rid_t rid,
                                         bool release) {
   TRI_df_marker_t* result;
-  TRI_sim_collection_t* collection;
+  TRI_document_collection_t* collection;
 
-  collection = (TRI_sim_collection_t*) document;
+  collection = (TRI_document_collection_t*) document;
 
   if (type == TRI_DOC_MARKER_DOCUMENT) {
     TRI_doc_document_marker_t marker;
@@ -1038,11 +1038,11 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* document,
 
 static TRI_doc_mptr_t ReadShapedJson (TRI_primary_collection_t* document,
                                       TRI_voc_did_t did) {
-  TRI_sim_collection_t* collection;
+  TRI_document_collection_t* collection;
   TRI_doc_mptr_t result;
   TRI_doc_mptr_t const* header;
 
-  collection = (TRI_sim_collection_t*) document;
+  collection = (TRI_document_collection_t*) document;
 
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &did);
 
@@ -1070,9 +1070,9 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* document,
   TRI_df_marker_t* result;
   TRI_doc_mptr_t mptr;
   TRI_doc_mptr_t const* header;
-  TRI_sim_collection_t* collection;
+  TRI_document_collection_t* collection;
 
-  collection = (TRI_sim_collection_t*) document;
+  collection = (TRI_document_collection_t*) document;
 
   // get an existing header pointer
   header = TRI_LookupByKeyAssociativePointer(&collection->_primaryIndex, &did);
@@ -1171,10 +1171,10 @@ static int DeleteShapedJson (TRI_primary_collection_t* primary,
                              TRI_voc_rid_t* oldRid,
                              TRI_doc_update_policy_e policy,
                              bool release) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   TRI_doc_deletion_marker_t marker;
 
-  sim = (TRI_sim_collection_t*) primary;
+  sim = (TRI_document_collection_t*) primary;
 
   memset(&marker, 0, sizeof(marker));
 
@@ -1192,10 +1192,10 @@ static int DeleteShapedJson (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BeginRead (TRI_primary_collection_t* primary) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) primary;
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  sim = (TRI_document_collection_t*) primary;
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1205,10 +1205,10 @@ static int BeginRead (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EndRead (TRI_primary_collection_t* primary) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) primary;
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  sim = (TRI_document_collection_t*) primary;
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1218,10 +1218,10 @@ static int EndRead (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BeginWrite (TRI_primary_collection_t* primary) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) primary;
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  sim = (TRI_document_collection_t*) primary;
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1231,10 +1231,10 @@ static int BeginWrite (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EndWrite (TRI_primary_collection_t* document) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
 
-  sim = (TRI_sim_collection_t*) document;
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  sim = (TRI_document_collection_t*) document;
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1243,16 +1243,16 @@ static int EndWrite (TRI_primary_collection_t* document) {
 /// @brief size of a simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_size_t SizeSimCollection (TRI_primary_collection_t* primary) {
+static TRI_voc_size_t SizeDocumentCollection (TRI_primary_collection_t* primary) {
   TRI_doc_mptr_t const* mptr;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   TRI_voc_size_t result;
   void** end;
   void** ptr;
 
-  sim = (TRI_sim_collection_t*) primary;
+  sim = (TRI_document_collection_t*) primary;
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   ptr = sim->_primaryIndex._table;
   end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
@@ -1268,7 +1268,7 @@ static TRI_voc_size_t SizeSimCollection (TRI_primary_collection_t* primary) {
     }
   }
 
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   return result;
 }
@@ -1295,7 +1295,7 @@ static TRI_voc_size_t SizeSimCollection (TRI_primary_collection_t* primary) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafile_t* datafile, bool journal) {
-  TRI_sim_collection_t* collection = data;
+  TRI_document_collection_t* collection = data;
   TRI_doc_mptr_t const* found;
   TRI_doc_datafile_info_t* dfi;
 
@@ -1495,7 +1495,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   TRI_json_t* iis;
   TRI_json_t* json;
   TRI_json_t* type;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   char const* typeStr;
   char* error;
   int res;
@@ -1504,7 +1504,7 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
 
   // simple collection of the index
-  sim = (TRI_sim_collection_t*) data;
+  sim = (TRI_document_collection_t*) data;
 
   // json must be a index description
   if (json == NULL) {
@@ -1674,8 +1674,8 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, vo
 /// @brief initialises a simple collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool InitSimCollection (TRI_sim_collection_t* collection,
-                               TRI_shaper_t* shaper) {
+static bool InitDocumentCollection (TRI_document_collection_t* collection,
+                                    TRI_shaper_t* shaper) {
   TRI_index_t* primary;
   char* id;
   
@@ -1747,7 +1747,7 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
   collection->base.update = UpdateShapedJson;
   collection->base.destroy = DeleteShapedJson;
 
-  collection->base.size = SizeSimCollection;
+  collection->base.size = SizeDocumentCollection;
 
   return true;
 }
@@ -1769,14 +1769,14 @@ static bool InitSimCollection (TRI_sim_collection_t* collection,
 /// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
-                                               char const* path,
-                                               TRI_col_parameter_t* parameter,
-                                               TRI_voc_cid_t cid) {
+TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
+                                                         char const* path,
+                                                         TRI_col_parameter_t* parameter,
+                                                         TRI_voc_cid_t cid) {
   TRI_col_info_t info;
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   bool waitForSync;
 
   memset(&info, 0, sizeof(info));
@@ -1795,7 +1795,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   info._maximalSize = parameter->_maximalSize;
 
   // first create the simple collection
-  sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
+  sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
 
   if (sim == NULL) {
     LOG_ERROR("cannot create document");
@@ -1825,7 +1825,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
   }
 
   // create simple collection and shaper
-  if (false == InitSimCollection(sim, shaper)) {
+  if (false == InitDocumentCollection(sim, shaper)) {
     LOG_ERROR("cannot initialise shapes collection");
 
     TRI_CloseCollection(collection);
@@ -1843,7 +1843,7 @@ TRI_sim_collection_t* TRI_CreateSimCollection (TRI_vocbase_t* vocbase,
 /// Note that the collection must be closed first.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
+void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
   size_t i;
   size_t n;
 
@@ -1882,8 +1882,8 @@ void TRI_DestroySimCollection (TRI_sim_collection_t* collection) {
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSimCollection (TRI_sim_collection_t* collection) {
-  TRI_DestroySimCollection(collection);
+void TRI_FreeDocumentCollection (TRI_document_collection_t* collection) {
+  TRI_DestroyDocumentCollection(collection);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
@@ -1904,7 +1904,7 @@ void TRI_FreeSimCollection (TRI_sim_collection_t* collection) {
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalSimCollection (TRI_sim_collection_t* collection) {
+TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* collection) {
   return TRI_CreateJournalPrimaryCollection(&collection->base);
 }
 
@@ -1912,8 +1912,8 @@ TRI_datafile_t* TRI_CreateJournalSimCollection (TRI_sim_collection_t* collection
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
-                                    size_t position) {
+bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t* collection,
+                                         size_t position) {
   return TRI_CloseJournalPrimaryCollection(&collection->base, position);
 }
 
@@ -1921,15 +1921,15 @@ bool TRI_CloseJournalSimCollection (TRI_sim_collection_t* collection,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const* path) {
+TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, char const* path) {
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
   TRI_shape_collection_t* shapeCollection;
   char* shapes;
 
   // first open the simple collection
-  sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_sim_collection_t), false);
+  sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
   if (!sim) {
     return NULL;
   }
@@ -1965,7 +1965,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   }
 
   // create simple collection and shaper
-  if (false == InitSimCollection(sim, shaper)) {
+  if (false == InitDocumentCollection(sim, shaper)) {
     LOG_ERROR("cannot initialise shapes collection");
 
     TRI_CloseCollection(collection);
@@ -1999,7 +1999,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
   // output infomations about datafiles and journals
   if (TRI_IsTraceLogging(__FILE__)) {
     DebugDatafileInfoPrimaryCollection(&sim->base);
-    DebugHeaderSimCollection(sim);
+    DebugHeaderDocumentCollection(sim);
   }
 
   return sim;
@@ -2009,7 +2009,7 @@ TRI_sim_collection_t* TRI_OpenSimCollection (TRI_vocbase_t* vocbase, char const*
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseSimCollection (TRI_sim_collection_t* collection) {
+int TRI_CloseDocumentCollection (TRI_document_collection_t* collection) {
   int res;
 
   res = TRI_CloseCollection(&collection->base.base);
@@ -2194,7 +2194,7 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
 /// @brief creates a new entry in the immediate indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
+static int CreateImmediateIndexes (TRI_document_collection_t* sim,
                                    TRI_doc_mptr_t* header) {
   TRI_df_marker_t const* marker;
   TRI_doc_mptr_t* found;
@@ -2334,7 +2334,7 @@ static int CreateImmediateIndexes (TRI_sim_collection_t* sim,
 /// @brief updates the immediate indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
+static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
                                    TRI_doc_mptr_t const* header,
                                    TRI_doc_mptr_t const* update) {
 
@@ -2402,7 +2402,7 @@ static int UpdateImmediateIndexes (TRI_sim_collection_t* collection,
 /// @brief deletes an entry from the immediate indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
+static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
                                     TRI_doc_mptr_t const* header,
                                     TRI_voc_tick_t deletion) {
   union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
@@ -2516,7 +2516,7 @@ static int DeleteImmediateIndexes (TRI_sim_collection_t* collection,
 /// @brief initialises an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
+static int FillIndex (TRI_document_collection_t* collection, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   size_t n;
   size_t scanned;
@@ -2572,10 +2572,10 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
 /// @brief finds a path based, unique or non-unique index
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* LookupPathIndexSimCollection (TRI_sim_collection_t* collection,
-                                                  TRI_vector_t const* paths,
-                                                  TRI_idx_type_e type,
-                                                  bool unique) {
+static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                       TRI_vector_t const* paths,
+                                                       TRI_idx_type_e type,
+                                                       bool unique) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
   TRI_vector_t* indexPaths;
   size_t j;
@@ -2685,10 +2685,10 @@ static TRI_index_t* LookupPathIndexSimCollection (TRI_sim_collection_t* collecti
 /// @brief restores a bitarray based index (template)
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
+static int BitarrayBasedIndexFromJson (TRI_document_collection_t* sim,
                                        TRI_json_t* definition,
                                        TRI_idx_iid_t iid,
-                                       TRI_index_t* (*creator)(TRI_sim_collection_t*,
+                                       TRI_index_t* (*creator)(TRI_document_collection_t*,
                                                                const TRI_vector_pointer_t*,
                                                                const TRI_vector_pointer_t*,
                                                                TRI_idx_iid_t,
@@ -2815,10 +2815,10 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
 /// @brief restores a path based index (template)
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PathBasedIndexFromJson (TRI_sim_collection_t* sim,
+static int PathBasedIndexFromJson (TRI_document_collection_t* sim,
                                    TRI_json_t* definition,
                                    TRI_idx_iid_t iid,
-                                   TRI_index_t* (*creator)(TRI_sim_collection_t*,
+                                   TRI_index_t* (*creator)(TRI_document_collection_t*,
                                                            TRI_vector_pointer_t const*,
                                                            TRI_idx_iid_t,
                                                            bool,
@@ -2913,8 +2913,8 @@ static int ComparePidName (void const* left, void const* right) {
 /// @brief returns a description of all indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
-                                                const bool lock) {
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* sim,
+                                                     const bool lock) {
   TRI_vector_pointer_t* vector;
   size_t n;
   size_t i;
@@ -2931,7 +2931,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
   // .............................................................................
 
   if (lock) {
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   }
 
   n = sim->_indexes._length;
@@ -2950,7 +2950,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
   }
 
   if (lock) {
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   }
 
   // .............................................................................
@@ -2964,7 +2964,7 @@ TRI_vector_pointer_t* TRI_IndexesSimCollection (TRI_sim_collection_t* sim,
 /// @brief drops an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
+bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* sim, TRI_idx_iid_t iid) {
   TRI_index_t* found;
   bool removeResult;
   size_t n;
@@ -2980,7 +2980,7 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
   // inside write-lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   n = sim->_indexes._length;
 
@@ -3000,7 +3000,7 @@ bool TRI_DropIndexSimCollection (TRI_sim_collection_t* sim, TRI_idx_iid_t iid) {
     }
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -3213,10 +3213,10 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
-                                                   TRI_edge_direction_e direction,
-                                                   TRI_voc_cid_t cid,
-                                                   TRI_voc_did_t did) {
+TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
+                                                        TRI_edge_direction_e direction,
+                                                        TRI_voc_cid_t cid,
+                                                        TRI_voc_did_t did) {
   union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
   TRI_vector_pointer_t result;
   TRI_edge_header_t entry;
@@ -3263,10 +3263,10 @@ TRI_vector_pointer_t TRI_LookupEdgesSimCollection (TRI_sim_collection_t* edges,
 /// @brief adds a cap constraint to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateCapConstraintSimCollection (TRI_sim_collection_t* sim,
-                                                      size_t size,
-                                                      TRI_idx_iid_t iid,
-                                                      bool* created) {
+static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collection_t* sim,
+                                                           size_t size,
+                                                           TRI_idx_iid_t iid,
+                                                           bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -3315,7 +3315,7 @@ static TRI_index_t* CreateCapConstraintSimCollection (TRI_sim_collection_t* sim,
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CapConstraintFromJson (TRI_sim_collection_t* sim,
+static int CapConstraintFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
   TRI_json_t* num;
@@ -3336,7 +3336,7 @@ static int CapConstraintFromJson (TRI_sim_collection_t* sim,
 
   size = (size_t) num->_value._number; 
 
-  idx = CreateCapConstraintSimCollection(sim, size, iid, NULL);
+  idx = CreateCapConstraintDocumentCollection(sim, size, iid, NULL);
 
   return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
 }
@@ -3358,9 +3358,9 @@ static int CapConstraintFromJson (TRI_sim_collection_t* sim,
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
-                                                   size_t size,
-                                                   bool* created) {
+TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* sim,
+                                                        size_t size,
+                                                        bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -3368,16 +3368,16 @@ TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
-  idx = CreateCapConstraintSimCollection(sim, size, 0, created);
+  idx = CreateCapConstraintDocumentCollection(sim, size, 0, created);
 
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -3414,15 +3414,15 @@ TRI_index_t* TRI_EnsureCapConstraintSimCollection (TRI_sim_collection_t* sim,
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
-                                                 char const* location,
-                                                 char const* latitude,
-                                                 char const* longitude,
-                                                 bool geoJson,
-                                                 bool constraint,
-                                                 bool ignoreNull,
-                                                 TRI_idx_iid_t iid,
-                                                 bool* created) {
+static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                      char const* location,
+                                                      char const* latitude,
+                                                      char const* longitude,
+                                                      bool geoJson,
+                                                      bool constraint,
+                                                      bool ignoreNull,
+                                                      TRI_idx_iid_t iid,
+                                                      bool* created) {
   TRI_index_t* idx;
   TRI_shape_pid_t lat;
   TRI_shape_pid_t loc;
@@ -3466,10 +3466,10 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 
   // check, if we know the index
   if (location != NULL) {
-    idx = TRI_LookupGeoIndex1SimCollection(sim, loc, geoJson, constraint, ignoreNull);
+    idx = TRI_LookupGeoIndex1DocumentCollection(sim, loc, geoJson, constraint, ignoreNull);
   }
   else if (longitude != NULL && latitude != NULL) {
-    idx = TRI_LookupGeoIndex2SimCollection(sim, lat, lon, constraint, ignoreNull);
+    idx = TRI_LookupGeoIndex2DocumentCollection(sim, lat, lon, constraint, ignoreNull);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -3530,7 +3530,7 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GeoIndexFromJson (TRI_sim_collection_t* sim,
+static int GeoIndexFromJson (TRI_document_collection_t* sim,
                              TRI_json_t* definition,
                              TRI_idx_iid_t iid) {
   TRI_index_t* idx;
@@ -3584,7 +3584,7 @@ static int GeoIndexFromJson (TRI_sim_collection_t* sim,
 
       loc = TRI_AtVector(&fld->_value._objects, 0);
 
-      idx = CreateGeoIndexSimCollection(sim,
+      idx = CreateGeoIndexDocumentCollection(sim,
                                         loc->_value._string.data,
                                         NULL, 
                                         NULL, 
@@ -3613,7 +3613,7 @@ static int GeoIndexFromJson (TRI_sim_collection_t* sim,
       lat = TRI_AtVector(&fld->_value._objects, 0);
       lon = TRI_AtVector(&fld->_value._objects, 1);
 
-      idx = CreateGeoIndexSimCollection(sim,
+      idx = CreateGeoIndexDocumentCollection(sim,
                                         NULL,
                                         lat->_value._string.data,
                                         lon->_value._string.data,
@@ -3655,11 +3655,11 @@ static int GeoIndexFromJson (TRI_sim_collection_t* sim,
 /// @brief finds a geo index, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
-                                              TRI_shape_pid_t location,
-                                               bool geoJson,
-                                               bool constraint,
-                                               bool ignoreNull) {
+TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* collection,
+                                                    TRI_shape_pid_t location,
+                                                    bool geoJson,
+                                                    bool constraint,
+                                                    bool ignoreNull) {
   size_t n;
   size_t i;
 
@@ -3688,11 +3688,11 @@ TRI_index_t* TRI_LookupGeoIndex1SimCollection (TRI_sim_collection_t* collection,
 /// @brief finds a geo index, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
-                                               TRI_shape_pid_t latitude,
-                                               TRI_shape_pid_t longitude,
-                                               bool constraint,
-                                               bool ignoreNull) {
+TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* collection,
+                                                    TRI_shape_pid_t latitude,
+                                                    TRI_shape_pid_t longitude,
+                                                    bool constraint,
+                                                    bool ignoreNull) {
   size_t n;
   size_t i;
 
@@ -3721,12 +3721,12 @@ TRI_index_t* TRI_LookupGeoIndex2SimCollection (TRI_sim_collection_t* collection,
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* sim,
-                                               char const* location,
-                                               bool geoJson,
-                                               bool constraint,
-                                               bool ignoreNull,
-                                               bool* created) {
+TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* sim,
+                                                    char const* location,
+                                                    bool geoJson,
+                                                    bool constraint,
+                                                    bool ignoreNull,
+                                                    bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -3734,16 +3734,16 @@ TRI_index_t* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(sim, location, NULL, NULL, geoJson, constraint, ignoreNull, 0, created);
+  idx = CreateGeoIndexDocumentCollection(sim, location, NULL, NULL, geoJson, constraint, ignoreNull, 0, created);
 
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -3763,12 +3763,12 @@ TRI_index_t* TRI_EnsureGeoIndex1SimCollection (TRI_sim_collection_t* sim,
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
-                                               char const* latitude,
-                                               char const* longitude,
-                                               bool constraint,
-                                               bool ignoreNull,
-                                               bool* created) {
+TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* sim,
+                                                    char const* latitude,
+                                                    char const* longitude,
+                                                    bool constraint,
+                                                    bool ignoreNull,
+                                                    bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -3776,16 +3776,16 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
-  idx = CreateGeoIndexSimCollection(sim, NULL, latitude, longitude, false, constraint, ignoreNull, 0, created);
+  idx = CreateGeoIndexDocumentCollection(sim, NULL, latitude, longitude, false, constraint, ignoreNull, 0, created);
 
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -3823,11 +3823,11 @@ TRI_index_t* TRI_EnsureGeoIndex2SimCollection (TRI_sim_collection_t* sim,
 /// @brief adds a hash index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collection,
-                                                  TRI_vector_pointer_t const* attributes,
-                                                  TRI_idx_iid_t iid,
-                                                  bool unique,
-                                                  bool* created) {
+static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                       TRI_vector_pointer_t const* attributes,
+                                                       TRI_idx_iid_t iid,
+                                                       bool unique,
+                                                       bool* created) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -3856,7 +3856,7 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(collection, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -3904,10 +3904,10 @@ static TRI_index_t* CreateHashIndexSimCollection (TRI_sim_collection_t* collecti
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int HashIndexFromJson (TRI_sim_collection_t* sim,
+static int HashIndexFromJson (TRI_document_collection_t* sim,
                               TRI_json_t* definition,
                               TRI_idx_iid_t iid) {
-  return PathBasedIndexFromJson(sim, definition, iid, CreateHashIndexSimCollection);
+  return PathBasedIndexFromJson(sim, definition, iid, CreateHashIndexDocumentCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3927,9 +3927,9 @@ static int HashIndexFromJson (TRI_sim_collection_t* sim,
 /// @brief finds a hash index (unique or non-unique)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* sim,
-                                               TRI_vector_pointer_t const* attributes,
-                                               bool unique) {
+TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                    TRI_vector_pointer_t const* attributes,
+                                                    bool unique) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -3950,11 +3950,11 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
-  idx = LookupPathIndexSimCollection(sim, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(sim, &paths, TRI_IDX_TYPE_HASH_INDEX, unique);
   
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -3971,10 +3971,10 @@ TRI_index_t* TRI_LookupHashIndexSimCollection (TRI_sim_collection_t* sim,
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* sim,
-                                               TRI_vector_pointer_t const* attributes,
-                                               bool unique,
-                                               bool* created) {
+TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                    TRI_vector_pointer_t const* attributes,
+                                                    bool unique,
+                                                    bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -3982,17 +3982,17 @@ TRI_index_t* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
   // given the list of attributes (as strings) 
-  idx = CreateHashIndexSimCollection(sim, attributes, 0, unique, created);
+  idx = CreateHashIndexDocumentCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -4029,11 +4029,11 @@ TRI_index_t* TRI_EnsureHashIndexSimCollection (TRI_sim_collection_t* sim,
 /// @brief adds a skiplist index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* collection,
-                                                      TRI_vector_pointer_t const* attributes,
-                                                      TRI_idx_iid_t iid,
-                                                      bool unique,
-                                                      bool* created) {
+static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                           TRI_vector_pointer_t const* attributes,
+                                                           TRI_idx_iid_t iid,
+                                                           bool unique,
+                                                           bool* created) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4059,7 +4059,7 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(collection, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -4107,10 +4107,10 @@ static TRI_index_t* CreateSkiplistIndexSimCollection (TRI_sim_collection_t* coll
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SkiplistIndexFromJson (TRI_sim_collection_t* sim,
+static int SkiplistIndexFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
-  return PathBasedIndexFromJson(sim, definition, iid, CreateSkiplistIndexSimCollection);
+  return PathBasedIndexFromJson(sim, definition, iid, CreateSkiplistIndexDocumentCollection);
 }
                                                   
 ////////////////////////////////////////////////////////////////////////////////
@@ -4130,9 +4130,9 @@ static int SkiplistIndexFromJson (TRI_sim_collection_t* sim,
 /// @brief finds a skiplist index (unique or non-unique)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
-                                                   TRI_vector_pointer_t const* attributes,
-                                                   bool unique) {
+TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                        TRI_vector_pointer_t const* attributes,
+                                                        bool unique) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4153,11 +4153,11 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
-  idx = LookupPathIndexSimCollection(sim, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
+  idx = LookupPathIndexDocumentCollection(sim, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique);
   
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -4174,10 +4174,10 @@ TRI_index_t* TRI_LookupSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
-                                                   TRI_vector_pointer_t const* attributes,
-                                                   bool unique,
-                                                   bool* created) {
+TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                        TRI_vector_pointer_t const* attributes,
+                                                        bool unique,
+                                                        bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -4185,16 +4185,16 @@ TRI_index_t* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock the collection
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
-  idx = CreateSkiplistIndexSimCollection(sim, attributes, 0, unique, created);
+  idx = CreateSkiplistIndexDocumentCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -4231,11 +4231,11 @@ TRI_index_t* TRI_EnsureSkiplistIndexSimCollection (TRI_sim_collection_t* sim,
 /// @brief adds a priroity queue index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
-                                                           TRI_vector_pointer_t const* attributes,
-                                                           TRI_idx_iid_t iid,
-                                                           bool unique,
-                                                           bool* created) {
+static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                                TRI_vector_pointer_t const* attributes,
+                                                                TRI_idx_iid_t iid,
+                                                                bool unique,
+                                                                bool* created) {
   TRI_index_t* idx     = NULL;
   TRI_shaper_t* shaper = collection->base._shaper;
   TRI_vector_t paths;
@@ -4271,7 +4271,7 @@ static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t*
   // a new one.
   // ...........................................................................
 
-  idx = TRI_LookupPriorityQueueIndexSimCollection(collection, &paths);
+  idx = TRI_LookupPriorityQueueIndexDocumentCollection(collection, &paths);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -4334,10 +4334,10 @@ static TRI_index_t* CreatePriorityQueueIndexSimCollection (TRI_sim_collection_t*
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PriorityQueueFromJson (TRI_sim_collection_t* sim,
+static int PriorityQueueFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
-  return PathBasedIndexFromJson(sim, definition, iid, CreatePriorityQueueIndexSimCollection);
+  return PathBasedIndexFromJson(sim, definition, iid, CreatePriorityQueueIndexDocumentCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4357,8 +4357,8 @@ static int PriorityQueueFromJson (TRI_sim_collection_t* sim,
 /// @brief finds a priority queue index (non-unique)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupPriorityQueueIndexSimCollection (TRI_sim_collection_t* collection,
-                                                        const TRI_vector_t* paths) {
+TRI_index_t* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                             const TRI_vector_t* paths) {
   TRI_index_t* matchedIndex = NULL;                                                                                        
   size_t j, k;
   
@@ -4423,10 +4423,10 @@ TRI_index_t* TRI_LookupPriorityQueueIndexSimCollection (TRI_sim_collection_t* co
 /// @brief ensures that a priority queue index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim,
-                                                       TRI_vector_pointer_t const* attributes,
-                                                       bool unique,
-                                                       bool* created) {
+TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collection_t* sim,
+                                                            TRI_vector_pointer_t const* attributes,
+                                                            bool unique,
+                                                            bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -4434,17 +4434,17 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim
   // inside write-lock
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
   // Given the list of attributes (as strings) 
-  idx = CreatePriorityQueueIndexSimCollection(sim, attributes, 0, unique, created);
+  idx = CreatePriorityQueueIndexDocumentCollection(sim, attributes, 0, unique, created);
   
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -4482,12 +4482,12 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexSimCollection(TRI_sim_collection_t* sim
 /// @brief adds a bitarray index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* collection,
-                                                      const TRI_vector_pointer_t* attributes,
-                                                      const TRI_vector_pointer_t* values,
-                                                      TRI_idx_iid_t iid,
-                                                      bool supportUndef,
-                                                      bool* created) {
+static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                           const TRI_vector_pointer_t* attributes,
+                                                           const TRI_vector_pointer_t* values,
+                                                           TRI_idx_iid_t iid,
+                                                           bool supportUndef,
+                                                           bool* created) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4513,7 +4513,7 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
+  idx = LookupPathIndexDocumentCollection(collection, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
   
   if (idx != NULL) {
     TRI_DestroyVector(&paths);
@@ -4593,10 +4593,10 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BitarrayIndexFromJson (TRI_sim_collection_t* sim,
+static int BitarrayIndexFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t iid) {
-  return BitarrayBasedIndexFromJson(sim, definition, iid, CreateBitarrayIndexSimCollection);
+  return BitarrayBasedIndexFromJson(sim, definition, iid, CreateBitarrayIndexDocumentCollection);
 }
                                                   
 ////////////////////////////////////////////////////////////////////////////////
@@ -4616,8 +4616,8 @@ static int BitarrayIndexFromJson (TRI_sim_collection_t* sim,
 /// @brief finds a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
-                                                   const TRI_vector_pointer_t* attributes) {
+TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                        const TRI_vector_pointer_t* attributes) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4639,7 +4639,7 @@ TRI_index_t* TRI_LookupBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock
   // .............................................................................
 
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
   
   // .............................................................................
@@ -4647,10 +4647,10 @@ TRI_index_t* TRI_LookupBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
   // locate the index
   // .............................................................................
   
-  idx = LookupPathIndexSimCollection(sim, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, false);
+  idx = LookupPathIndexDocumentCollection(sim, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, false);
   
   
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -4670,11 +4670,11 @@ TRI_index_t* TRI_LookupBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
 /// @brief ensures that a bitarray index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
-                                                   const TRI_vector_pointer_t* attributes,
-                                                   const TRI_vector_pointer_t* values,
-                                                   bool supportUndef,
-                                                   bool* created) {
+TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t* sim,
+                                                        const TRI_vector_pointer_t* attributes,
+                                                        const TRI_vector_pointer_t* values,
+                                                        bool supportUndef,
+                                                        bool* created) {
   TRI_index_t* idx;
   int res;
 
@@ -4682,16 +4682,16 @@ TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
   // inside write-lock the collection
   // .............................................................................
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
   
-  idx = CreateBitarrayIndexSimCollection(sim, attributes, values, 0, supportUndef, created);
+  idx = CreateBitarrayIndexDocumentCollection(sim, attributes, values, 0, supportUndef, created);
   
   if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
     return NULL;
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
@@ -4793,7 +4793,7 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (TRI_sim_collection_t* sim,
+TRI_vector_t TRI_SelectByExample (TRI_document_collection_t* sim,
                                   size_t length,
                                   TRI_shape_pid_t* pids,
                                   TRI_shaped_json_t** values) {

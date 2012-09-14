@@ -34,7 +34,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/shape-collection.h"
 #include "VocBase/voc-shaper.h"
 
@@ -519,7 +519,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   // simple collection use the collection identifier
-  else if (TRI_IS_SIMPLE_COLLECTION(parameter->_type)) {
+  else if (TRI_IS_DOCUMENT_COLLECTION(parameter->_type)) {
     tmp1 = TRI_StringUInt64(parameter->_cid);
     if (tmp1 == NULL) {
       LOG_ERROR("cannot create collection '%s', out of memory", path);
@@ -807,8 +807,8 @@ int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase,
                                        TRI_col_parameter_t const* parameter) {
   TRI_col_info_t info;
 
-  if (TRI_IS_SIMPLE_COLLECTION(collection->_type)) {
-    TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
+  if (TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
+    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
   info._version = collection->_version;
@@ -833,18 +833,18 @@ int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase,
     info._waitForSync = collection->_waitForSync;
   }
 
-  if (TRI_IS_SIMPLE_COLLECTION(collection->_type)) {
-    TRI_sim_collection_t* simCollection = (TRI_sim_collection_t*) collection;
+  if (TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
+    TRI_document_collection_t* docCollection = (TRI_document_collection_t*) collection;
 
-    if (simCollection->base._shaper != NULL) {
-      TRI_shape_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_sim_collection_t*) collection)->base._shaper);
+    if (docCollection->base._shaper != NULL) {
+      TRI_shape_collection_t* shapeCollection = TRI_CollectionVocShaper(((TRI_document_collection_t*) collection)->base._shaper);
 
       if (shapeCollection != NULL) {
         // adjust wait for sync value of underlying shape collection
         shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
       }
     }
-    TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION((TRI_sim_collection_t*) collection);
+    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
 
   return TRI_SaveParameterInfoCollection(collection->_directory, &info);
