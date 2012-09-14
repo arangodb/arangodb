@@ -2901,7 +2901,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   v8::HandleScope scope;
   bool ok;
   string errorString;
-  // int errorCode;
+  int errorCode;
   TRI_index_t* bitarrayIndex = 0;
   bool indexCreated;
   v8::Handle<v8::Value> theIndex;
@@ -2973,7 +2973,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     
       if (! argument->IsString() ) {
         errorString = "invalid parameter -- expected string parameter";
-        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -2992,7 +2992,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       
       if (! argument->IsArray() ) {
         errorString = "invalid parameter -- expected an array (list)";
-        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -3011,7 +3011,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
       
       if (value == NULL) {
         errorString = "invalid parameter -- expected an array (list)";
-        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -3023,7 +3023,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
       if (value->_type != TRI_JSON_LIST) {
         errorString = "invalid parameter -- expected an array (list)";
-        // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+        errorCode   = TRI_ERROR_ILLEGAL_OPTION;
         ok = false;
         break;
       }
@@ -3042,7 +3042,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     
     if (attributes._length != values._length) {
       errorString = "invalid parameter -- expected an array (list)";
-      // errorCode   = TRI_ERROR_ILLEGAL_OPTION;
+      errorCode   = TRI_ERROR_ILLEGAL_OPTION;
       ok = false;
     }
   }
@@ -3056,7 +3056,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   if (ok) {
     bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated);
     if (bitarrayIndex == 0) {
-      // errorCode = TRI_errno();
+      errorCode = TRI_errno();
       errorString = "index could not be created from Simple Collection";
       ok = false;
     }
@@ -3087,7 +3087,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, collection->_collection);
 
     if (json == NULL) {
-      // errorCode = TRI_errno();
+      errorCode = TRI_ERROR_OUT_OF_MEMORY;
       errorString = "out of memory";
       ok = false;
     }  
@@ -3106,7 +3106,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   TRI_ReleaseCollection(collection);
 
   if (!ok || bitarrayIndex == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New(errorString.c_str())));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(errorCode, errorString)));
   }
 
   return scope.Close(theIndex);
