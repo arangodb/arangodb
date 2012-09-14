@@ -999,7 +999,7 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* document,
   }
   else if (type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_edge_marker_t marker;
-    TRI_sim_edge_t const* edge;
+    TRI_document_edge_t const* edge;
 
     edge = data;
 

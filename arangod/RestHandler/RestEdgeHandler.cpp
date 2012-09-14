@@ -109,7 +109,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // edge
-  TRI_sim_edge_t edge;
+  TRI_document_edge_t edge;
 
   // extract the from
   bool found;

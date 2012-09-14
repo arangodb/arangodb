@@ -238,14 +238,14 @@ TRI_document_collection_t;
 /// @brief edge from and to
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_sim_edge_s {
+typedef struct TRI_document_edge_s {
   TRI_voc_cid_t _fromCid;
   TRI_voc_did_t _fromDid;
 
   TRI_voc_cid_t _toCid;
   TRI_voc_did_t _toDid;
 }
-TRI_sim_edge_t;
+TRI_document_edge_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge direction
