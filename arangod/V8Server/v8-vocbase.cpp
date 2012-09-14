@@ -843,7 +843,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
     rid = TRI_ObjectToUInt64(argv[4]);
   }
 
-  TRI_sim_edge_t edge;
+  TRI_document_edge_t edge;
 
   edge._fromCid = collection->_cid;
   edge._toCid = collection->_cid;
