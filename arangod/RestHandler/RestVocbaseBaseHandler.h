@@ -33,7 +33,7 @@
 #include "Logger/Logger.h"
 #include "Utils/CollectionAccessor.h"
 #include "Rest/HttpResponse.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
 #include "Utils/CollectionAccessor.h"
@@ -44,7 +44,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_collection_s;
+struct TRI_primary_collection_s;
 struct TRI_result_set_s;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_s;

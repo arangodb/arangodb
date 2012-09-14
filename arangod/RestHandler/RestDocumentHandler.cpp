@@ -282,7 +282,7 @@ bool RestDocumentHandler::createDocument () {
 
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.doc()->createJson(trx.doc(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
 
   trx.end();
 
@@ -427,10 +427,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   ReadTransaction trx(&ca);
 
-  TRI_doc_mptr_t const document = trx.doc()->read(trx.doc(), id);
+  TRI_doc_mptr_t const document = trx.primary()->read(trx.primary(), id);
 
   // register a barrier. will be destroyed automatically
-  Barrier barrier(trx.doc());
+  Barrier barrier(trx.primary());
 
   trx.end();
 
@@ -517,7 +517,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   ReadTransaction trx(&ca);
 
-  const TRI_sim_collection_t* sim = (TRI_sim_collection_t*) trx.doc();
+  const TRI_sim_collection_t* sim = (TRI_sim_collection_t*) trx.primary();
 
   if (0 < sim->_primaryIndex._nrUsed) {
     void** ptr = sim->_primaryIndex._table;
@@ -781,7 +781,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     // read the existing document
-    TRI_doc_mptr_t document = trx.doc()->read(trx.doc(), did);
+    TRI_doc_mptr_t document = trx.primary()->read(trx.primary(), did);
     TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
@@ -791,7 +791,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_FreeJson(shaper->_memoryZone, old);
 
       if (patchedJson != 0) {
-        mptr = trx.doc()->updateJson(trx.doc(), patchedJson, did, revision, &rid, policy, false);
+        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
@@ -799,7 +799,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   else {
     // replacing an existing document
-    mptr = trx.doc()->updateJson(trx.doc(), json, did, revision, &rid, policy, false);
+    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false);
   }
 
   trx.end();
@@ -945,7 +945,7 @@ bool RestDocumentHandler::deleteDocument () {
   WriteTransaction trx(&ca);
 
   // unlocking is performed in destroy()
-  res = trx.doc()->destroy(trx.doc(), did, revision, &rid, policy, false);
+  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false);
 
   trx.end();
 

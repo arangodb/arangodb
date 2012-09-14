@@ -198,7 +198,7 @@ bool RestEdgeHandler::createDocument () {
   
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.doc()->createJson(trx.doc(), TRI_DOC_MARKER_EDGE, json, &edge, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_EDGE, json, &edge, reuseId, false);
 
   trx.end();
 

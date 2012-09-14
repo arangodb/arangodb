@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "ShapedJson/json-shaper.h"
 #include "VocBase/barrier.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -108,7 +108,7 @@ namespace triagens {
           _create(create),
           _lockType(TYPE_NONE), 
           _collection(0), 
-          _documentCollection(0) {
+          _primaryCollection(0) {
 
           assert(_vocbase);
         }
@@ -180,7 +180,7 @@ namespace triagens {
 
           LOGGER_TRACE << "using collection " << _name;
           assert(_collection->_collection != 0);
-          _documentCollection = _collection->_collection;
+          _primaryCollection = _collection->_collection;
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -246,17 +246,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline const bool waitForSync () const {
-          assert(_documentCollection != 0);
-          return _documentCollection->base._waitForSync;
+          assert(_primaryCollection != 0);
+          return _primaryCollection->base._waitForSync;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying document collection
+/// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_doc_collection_t* doc () {
-          assert(_documentCollection != 0);
-          return _documentCollection;
+        inline TRI_primary_collection_t* primary () {
+          assert(_primaryCollection != 0);
+          return _primaryCollection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,8 +273,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         inline TRI_shaper_t* shaper () const {
-          assert(_documentCollection != 0);
-          return _documentCollection->_shaper;
+          assert(_primaryCollection != 0);
+          return _primaryCollection->_shaper;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,7 +308,7 @@ namespace triagens {
           LOGGER_TRACE << "releasing collection";
           TRI_ReleaseCollectionVocBase(_vocbase, _collection);
           _collection = 0;
-          _documentCollection = 0;
+          _primaryCollection = 0;
 
           return true;
         }
@@ -335,16 +335,16 @@ namespace triagens {
             LOGGER_ERROR << "logic error - attempt to lock already locked collection " << _name;
           }
 
-          assert(_documentCollection != 0);
+          assert(_primaryCollection != 0);
 
           int result = TRI_ERROR_INTERNAL;
           if (TYPE_READ == type) {
             LOGGER_TRACE << "read-locking collection " << _name;
-            result = _documentCollection->beginRead(_documentCollection);
+            result = _primaryCollection->beginRead(_primaryCollection);
           }
           else if (TYPE_WRITE == type) {
             LOGGER_TRACE << "write-locking collection " << _name;
-            result = _documentCollection->beginWrite(_documentCollection);
+            result = _primaryCollection->beginWrite(_primaryCollection);
           }
           else {
             assert(false);
@@ -374,16 +374,16 @@ namespace triagens {
             LOGGER_ERROR << "logic error - attempt to unlock non-locked collection " << _name;
           }
           
-          assert(_documentCollection != 0);
+          assert(_primaryCollection != 0);
 
           int result = TRI_ERROR_INTERNAL;
           if (TYPE_READ == type) { 
             LOGGER_TRACE << "read-unlocking collection " << _name;
-            result = _documentCollection->endRead(_documentCollection);
+            result = _primaryCollection->endRead(_primaryCollection);
           }
           else if (TYPE_WRITE == type) {
             LOGGER_TRACE << "write-unlocking collection " << _name;
-            result = _documentCollection->endWrite(_documentCollection);
+            result = _primaryCollection->endWrite(_primaryCollection);
           }
           else {
             assert(false);
@@ -451,10 +451,10 @@ namespace triagens {
         TRI_vocbase_col_t* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief corresponding loaded document collection
+/// @brief corresponding loaded primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_collection_t* _documentCollection;
+        TRI_primary_collection_t* _primaryCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a barrier for deletion

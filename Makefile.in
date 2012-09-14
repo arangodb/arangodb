@@ -632,10 +632,10 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
-	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/datafile.c arangod/VocBase/general-cursor.c \
+	arangod/VocBase/headers.c arangod/VocBase/index.c \
+	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
@@ -702,10 +702,10 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-compactor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-datafile.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-document-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-headers.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-index.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT) \
@@ -1434,10 +1434,10 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c \
-	arangod/VocBase/document-collection.c \
-	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
-	arangod/VocBase/index.c arangod/VocBase/shadow-data.c \
+	arangod/VocBase/datafile.c arangod/VocBase/general-cursor.c \
+	arangod/VocBase/headers.c arangod/VocBase/index.c \
+	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
@@ -2628,9 +2628,6 @@ arangod/VocBase/bin_arangod-compactor.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-datafile.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/bin_arangod-document-collection.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2638,6 +2635,9 @@ arangod/VocBase/bin_arangod-headers.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-index.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT):  \
@@ -2812,10 +2812,10 @@ mostlyclean-compile:
 	-rm -f arangod/VocBase/bin_arangod-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-compactor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-datafile.$(OBJEXT)
-	-rm -f arangod/VocBase/bin_arangod-document-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-headers.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-index.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT)
@@ -3065,10 +3065,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-compactor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-datafile.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-index.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Po@am__quote@
@@ -3913,22 +3913,6 @@ arangod/VocBase/bin_arangod-datafile.obj: arangod/VocBase/datafile.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-datafile.obj `if test -f 'arangod/VocBase/datafile.c'; then $(CYGPATH_W) 'arangod/VocBase/datafile.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/datafile.c'; fi`
 
-arangod/VocBase/bin_arangod-document-collection.o: arangod/VocBase/document-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-document-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo -c -o arangod/VocBase/bin_arangod-document-collection.o `test -f 'arangod/VocBase/document-collection.c' || echo '$(srcdir)/'`arangod/VocBase/document-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.o `test -f 'arangod/VocBase/document-collection.c' || echo '$(srcdir)/'`arangod/VocBase/document-collection.c
-
-arangod/VocBase/bin_arangod-document-collection.obj: arangod/VocBase/document-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-document-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
-
 arangod/VocBase/bin_arangod-general-cursor.o: arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-general-cursor.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo -c -o arangod/VocBase/bin_arangod-general-cursor.o `test -f 'arangod/VocBase/general-cursor.c' || echo '$(srcdir)/'`arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po
@@ -3976,6 +3960,22 @@ arangod/VocBase/bin_arangod-index.obj: arangod/VocBase/index.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/index.c' object='arangod/VocBase/bin_arangod-index.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-index.obj `if test -f 'arangod/VocBase/index.c'; then $(CYGPATH_W) 'arangod/VocBase/index.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/index.c'; fi`
+
+arangod/VocBase/bin_arangod-primary-collection.o: arangod/VocBase/primary-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-primary-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo -c -o arangod/VocBase/bin_arangod-primary-collection.o `test -f 'arangod/VocBase/primary-collection.c' || echo '$(srcdir)/'`arangod/VocBase/primary-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/primary-collection.c' object='arangod/VocBase/bin_arangod-primary-collection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-primary-collection.o `test -f 'arangod/VocBase/primary-collection.c' || echo '$(srcdir)/'`arangod/VocBase/primary-collection.c
+
+arangod/VocBase/bin_arangod-primary-collection.obj: arangod/VocBase/primary-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-primary-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo -c -o arangod/VocBase/bin_arangod-primary-collection.obj `if test -f 'arangod/VocBase/primary-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/primary-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/primary-collection.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/primary-collection.c' object='arangod/VocBase/bin_arangod-primary-collection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-primary-collection.obj `if test -f 'arangod/VocBase/primary-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/primary-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/primary-collection.c'; fi`
 
 arangod/VocBase/bin_arangod-shadow-data.o: arangod/VocBase/shadow-data.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-shadow-data.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Tpo -c -o arangod/VocBase/bin_arangod-shadow-data.o `test -f 'arangod/VocBase/shadow-data.c' || echo '$(srcdir)/'`arangod/VocBase/shadow-data.c
