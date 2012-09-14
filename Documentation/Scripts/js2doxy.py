@@ -46,10 +46,10 @@ DEBUG = False
 ################################################################################
 
 r1 = re.compile(r'//')
-r2 = re.compile(r'function\s*([a-zA-Z0-9_]*)\s*\((.*)\)\s*{')
+r2 = re.compile(r'^\s*function\s*([a-zA-Z0-9_]*)\s*\((.*)\)\s*{')
 r3 = re.compile(r'^\s*$')
-r4 = re.compile(r'\s*([a-zA-Z0-9\._]*)\s*=\s*function\s*\((.*)\)\s*{')
-r5 = re.compile(r'^actions\.defineHttp\(')
+r4 = re.compile(r'^\s*([a-zA-Z0-9\._]*)\s*=\s*function\s*\((.*)\)\s*{')
+r5 = re.compile(r'^\s*actions\.defineHttp\(')
 r6 = re.compile(r'^/// @fn ([a-zA-Z0-_]*)\s*')
 
 f = open(file_name, "r")
