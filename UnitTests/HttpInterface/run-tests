@@ -11,8 +11,9 @@ rspec --format d \
 	rest-edge-spec.rb \
 	api-import-spec.rb \
 	api-index-spec.rb \
+	api-index-bitarray-spec.rb \
 	api-index-hash-spec.rb \
 	api-index-skiplist-spec.rb \
-        api-explain-spec.rb \
-        api-cursor-spec.rb \
-        api-simple-spec.rb
+  api-explain-spec.rb \
+  api-cursor-spec.rb \
+  api-simple-spec.rb
