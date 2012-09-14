@@ -83,7 +83,7 @@ namespace triagens {
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~Transaction () {
+        virtual ~Transaction () {
           end();
         }
 
