@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual C++ Express 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ArangoDB", "ArangoDB\ArangoDB.vcxproj", "{9FB69E35-6ADE-4AAD-9766-B5409C1D2595}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "getopt_mb_uni_vc10", "..\3rdParty\VisualStudio\getopt_mb_uni_vc10\getopt_mb_uni_vc10.vcxproj", "{01CF5F97-15ED-4224-9A62-F2D1D3E2F8A7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "regex-2.7", "..\3rdParty\VisualStudio\regex-2.7\regex-2.7.vcxproj", "{23313837-C0F8-46E2-8F16-6396D72FBF08}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9FB69E35-6ADE-4AAD-9766-B5409C1D2595}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9FB69E35-6ADE-4AAD-9766-B5409C1D2595}.Debug|Win32.Build.0 = Debug|Win32
+		{9FB69E35-6ADE-4AAD-9766-B5409C1D2595}.Release|Win32.ActiveCfg = Release|Win32
+		{9FB69E35-6ADE-4AAD-9766-B5409C1D2595}.Release|Win32.Build.0 = Release|Win32
+		{01CF5F97-15ED-4224-9A62-F2D1D3E2F8A7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{01CF5F97-15ED-4224-9A62-F2D1D3E2F8A7}.Debug|Win32.Build.0 = Debug|Win32
+		{01CF5F97-15ED-4224-9A62-F2D1D3E2F8A7}.Release|Win32.ActiveCfg = Release|Win32
+		{01CF5F97-15ED-4224-9A62-F2D1D3E2F8A7}.Release|Win32.Build.0 = Release|Win32
+		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Debug|Win32.ActiveCfg = Debug|Win32
+		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Debug|Win32.Build.0 = Debug|Win32
+		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Release|Win32.ActiveCfg = Release|Win32
+		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

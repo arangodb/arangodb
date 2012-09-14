@@ -72,26 +72,14 @@ function CollectionEdgeSuiteErrorHandling () {
 
     tearDown : function () {
       edge.unload();
-      console.log("waiting for collection '%s' to drop", en);
-      internal.wait(0.25);
       edge.drop();
-      internal.wait(1);
-
-      if (edge.status() != internal.ArangoCollection.STATUS_DELETED) {
-        console.log("collection '%s' has not finished unloading", en);
-      }
       edge = null;
+      internal.wait(0.0);
 
       vertex.unload();
-      console.log("waiting for collection '%s' to drop", vn);
-      internal.wait(0.25);
       vertex.drop();
-      internal.wait(1);
-
-      if (vertex.status() != internal.ArangoCollection.STATUS_DELETED) {
-        console.log("collection '%s' has not finished unloading", vn);
-      }
       vertex = null;
+      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,6 +148,8 @@ function CollectionEdgeSuite () {
       edge.drop();
       vertex.drop();
       edge = null;
+      vertex = null;
+      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

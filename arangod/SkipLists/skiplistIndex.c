@@ -671,7 +671,7 @@ static void debugElement(SkiplistIndex* skiplistIndex, TRI_skiplist_node_t* node
   }    
   
   numFields = element->numFields;
-  shaper    = ((TRI_doc_collection_t*)(element->collection))->_shaper;
+  shaper    = ((TRI_primary_collection_t*)(element->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
     printf("%s:%u:!!!:%f:%lu\n",__FILE__,__LINE__,
@@ -1097,7 +1097,7 @@ static void debugElementMulti(SkiplistIndex* skiplistIndex, TRI_skiplist_node_t*
   }    
   
   numFields = element->numFields;
-  shaper    = ((TRI_doc_collection_t*)(element->collection))->_shaper;
+  shaper    = ((TRI_primary_collection_t*)(element->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
     printf("%s:%u:!!!:%f:%lu\n",__FILE__,__LINE__,
