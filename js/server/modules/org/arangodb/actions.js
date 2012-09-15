@@ -29,6 +29,79 @@ var internal = require("internal");
 var console = require("console");
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+var RoutingCache = {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallback (callback) {
+  if (typeof callback === "string") {
+    var components;
+    var module;
+    var fn;
+
+    if (callback == "") {
+      return undefined;
+    }
+
+    components = callback.split("/");
+    fn = components[components.length - 1];
+
+    components.pop();
+    module = components.join("/");
+
+    try {
+      module = require(module);
+    }
+    catch (err) {
+      console.error("cannot load callback '%s' from module '%s': %s",
+		    fn, module, "" + err);
+      return undefined;
+    }
+
+    if (fn in module) {
+      console.error("lookup %s: %s", typeof module[fn], module[fn]);
+      return module[fn];
+    }
+
+    console.error("callback '%s' is not defined in module '%s'", fn, module);
+    return undefined;
+  }
+
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -53,7 +126,7 @@ var console = require("console");
 ///
 /// @FA{options.prefix}
 ///
-/// If @LIT{false}, then only use the action for excat matches. The default is
+/// If @LIT{false}, then only use the action for exact matches. The default is
 /// @LIT{true}.
 ///
 /// @FA{options.context}
@@ -252,6 +325,232 @@ function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes cache and reload routing information
+////////////////////////////////////////////////////////////////////////////////
+
+function ReloadRouting () {
+  var all = [ exports.DELETE, exports.GET, exports.HEAD, exports.POST, exports.PUT, exports.PATCH ];
+  var callbacks;
+  var i;
+  var method;
+  var routes;
+  var routing = internal.db._collection("_routing");
+  var routings;
+
+  RoutingCache = {};
+
+  for (i = 0;  i < all.length;  ++i) {
+    method = all[i];
+    RoutingCache[method] = {};
+  }
+
+  if (routing === null) {
+    return;
+  }
+
+  routes = routing.all();
+
+  while (routes.hasNext()) {
+    var route = routes.next();
+
+    var callback;
+    var methods = [ exports.GET, exports.HEAD ];
+    var topdown = false;
+    var path;
+    var prefix = false;
+    var prio = 1.0;
+    var tmp;
+
+    // extract path
+    if (! ('path' in route)) {
+      console.error("route %s is missing the 'path' attribute", route._id);
+      continue;
+    }
+
+    path = route.path;
+
+    // extract callback
+    if (! ('callback' in route)) {
+      console.error("route %s is missing the 'callback' attribute", route._id);
+      continue;
+    }
+
+    callback = route.callback;
+
+    if ( !(callback instanceof Array)) {
+      callback = [ callback ];
+    }
+
+    tmp = [];
+
+    for (i = 0;  i < callback.length;  ++i) {
+      var cb = LookupCallback(callback[i]);
+
+      if (cb === undefined) {
+	console.error("route '%s' contains invalid callback '%s'", route._id, JSON.stringify(callback[i]));
+      }
+      else if (typeof cb !== "function") {
+	console.error("route '%s' contains non-function callback '%s'", route._id, JSON.stringify(callback[i]));
+      }
+      else {
+	tmp.push(cb);
+      }
+    }
+
+    callback = tmp;
+
+    // extract method
+    if ('method' in route) {
+      methods = route.method;
+
+      if (typeof methods === 'string') {
+	if (methods === "all" || methods === "*") {
+	  methods = all;
+	}
+	else {
+	  methods = [ methods ];
+	}
+      }
+    }
+
+    // extract priority
+    if ('priority' in route) {
+      prio = route.priority;
+    }
+
+    // extract topdown flag
+    if ('topdown' in route) {
+      topdown = route.topdown;
+    }
+
+    // extract prefix flag
+    if ('prefix' in route) {
+      prefix = route.prefix;
+    }
+
+    for (i = 0;  i < methods.length;  ++i) {
+      method = methods[i].toUpperCase();
+      routings = RoutingCache[method];
+
+      if (routings === undefined) {
+	console.error("unknown method '%s' in route %s", method, route._id);
+	continue;
+      }
+
+      if (path in routings) {
+	callbacks = routings[path];
+      }
+      else {
+	callbacks = routings[path] = []
+      }
+
+      callbacks.push({
+	route : route._id,
+	path : path,
+	topdown : topdown,
+	priority : prio,
+	prefix : prefix,
+	callback : callback
+      });
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extratcs the routing for a path and a a method
+////////////////////////////////////////////////////////////////////////////////
+
+function Routing (method, path) {
+  var bottomup;
+  var components;
+  var current;
+  var i;
+  var j;
+  var l;
+  var result;
+  var routings;
+  var topdown;
+
+  routings = RoutingCache[method];
+
+  if (routings === undefined) {
+    return [];
+  }
+
+  topdown = [];
+  bottomup = [];
+
+  current = "/";
+  components = [""].concat(path);
+
+  l = components.length;
+
+  for (i = 0;  i < l;  ++i) {
+    var full = (i + 1) == l;
+
+    if (1 < i) {
+      current += "/";
+    }
+
+    current += components[i];
+
+    if (current in routings) {
+      var callbacks = routings[current];
+
+      for (j = 0;  j < callbacks.length;  ++j) {
+	var callback = callbacks[j];
+
+	if (callback.prefix || full) {
+	  if (callback.topdown) {
+	    topdown.push(callback);
+	  }
+	  else {
+	    bottomup.push(callback);
+	  }
+	}
+      }
+    }
+  }
+
+  var sortTD = function (a, b) {
+    var la = a.path.length;
+    var lb = b.path.length;
+
+    if (la == lb) {
+      return a.priority - b.priority;
+    }
+
+    return la - lb;
+  }
+
+  var sortBU = function (a, b) {
+    var la = a.path.length;
+    var lb = b.path.length;
+
+    if (la == lb) {
+      return b.priority - a.priority;
+    }
+
+    return lb - la;
+  }
+
+  topdown.sort(sortTD);
+  bottomup.sort(sortBU);
+
+  result = [];
+
+  for (i = 0;  i < topdown.length;  ++i) {
+    result = result.concat(topdown[i].callback);
+  }
+
+  for (i = 0;  i < bottomup.length;  ++i) {
+    result = result.concat(bottomup[i].callback);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -327,6 +626,18 @@ function ResultNotFound (req, res, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error for not implemented
+///
+/// @FUN{actions.resultNotImplemented(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultNotImplemented (req, res, msg, headers) {
+  ResultError(req, res, exports.HTTP_NOT_IMPLEMENTED, exports.ERROR_NOT_IMPLEMENTED, "" + msg, headers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for unsupported methods
 ///
 /// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
@@ -339,6 +650,34 @@ function ResultUnsupported (req, res, headers) {
               exports.HTTP_METHOD_NOT_ALLOWED, exports.ERROR_HTTP_METHOD_NOT_ALLOWED,
               "Unsupported method",
               headers);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a permanently redirect
+///
+/// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultPermanentRedirect (req, res, destination, headers) {
+  res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
+  res.contentType = "text/html";
+
+  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + destination
+    + "\">"
+    + destination
+    + "</a>.</p></body></html>";
+
+  if (headers !== undefined) {
+    res.headers = headers.shallowCopy;
+  }
+  else {
+    res.headers = {};
+  }
+
+  res.headers.location = dest;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,13 +847,17 @@ function ResultException (req, res, err, headers) {
 exports.defineHttp              = DefineHttp;
 exports.getErrorMessage         = GetErrorMessage;
 exports.getJsonBody             = GetJsonBody;
+exports.reloadRouting           = ReloadRouting;
+exports.routing                 = Routing;
 
 // standard HTTP responses
 exports.resultBad               = ResultBad;
-exports.resultNotFound          = ResultNotFound;
-exports.resultOk                = ResultOk;
-exports.resultUnsupported       = ResultUnsupported;
 exports.resultError             = ResultError;
+exports.resultNotFound          = ResultNotFound;
+exports.resultNotImplemented    = ResultNotImplemented;
+exports.resultOk                = ResultOk;
+exports.resultPermanentRedirect = ResultPermanentRedirect;
+exports.resultUnsupported       = ResultUnsupported;
 
 // ArangoDB specific responses
 exports.resultCursor            = ResultCursor;
@@ -533,6 +876,7 @@ exports.GET                     = "GET";
 exports.HEAD                    = "HEAD";
 exports.POST                    = "POST";
 exports.PUT                     = "PUT";
+exports.PATCH                   = "PATCH";
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
@@ -572,9 +916,16 @@ for (var name in internal.errors) {
   }
 }
 
+// load routing
+ReloadRouting();
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

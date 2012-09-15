@@ -35,7 +35,7 @@
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-var actions = require("actions");
+var actions = require("org/arangodb/actions");
 var graph = require("graph");
 
 var MY_URL = "_api/blueprint";
