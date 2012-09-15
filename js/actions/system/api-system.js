@@ -25,9 +25,76 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("actions");
 var internal = require("internal");
-var console = require("internal");
+var console = require("console");
+
+var actions = require("org/arangodb/actions");
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  standard routing
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routing function
+////////////////////////////////////////////////////////////////////////////////
+
+function Routing (req, res) {
+  var callbacks;
+  var current;
+  var i;
+  var next;
+
+  console.log("request = %s", JSON.stringify(req));
+
+  callbacks = actions.routing(req.requestType, req.suffix);
+
+  for (i = 0;  i < callbacks.length;  ++i) {
+    console.log("callback %d = %s", i, callbacks[i]);
+  }
+
+  current = 0;
+
+  next = function () {
+    var options = {};
+    var callback;
+
+    if (callbacks.length <= current) {
+      actions.resultNotFound(req, res, "unknown path '" + req.suffix.join("/") + "'");
+      return;
+    }
+
+    callback = callbacks[current++];
+
+    console.error("trying callback #%d / %d: %s # %s", current, callbacks.length, typeof callback, callback);
+
+    current++;
+
+    if (callback == null) {
+      actions.resultNotImplemented(req, res, "not implemented '" + req.suffix.join("/") + "'");
+    }
+    else {
+      callback(req, res, next, options);
+    }
+  }
+
+  next();
+}
+
+actions.defineHttp({
+  url : "",
+  prefix : true,
+  context : "admin",
+  callback : Routing
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            administration actions
@@ -37,6 +104,39 @@ var console = require("internal");
 /// @addtogroup ActionsAdmin
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
+function AdminRedirect (req, res) {
+  var dest = "/_admin/html/index.html";
+
+  res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
+  res.contentType = "text/html";
+
+  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + dest
+    + "\">"
+    + dest
+    + "</a>.</p></body></html>";
+
+  res.headers = { location : dest };
+}
+
+actions.defineHttp({
+  url : "",
+  context : "admin",
+  prefix : false,
+  callback : AdminRedirect
+});
+
+actions.defineHttp({
+  url : "_admin",
+  context : "admin",
+  prefix : false,
+  callback : AdminRedirect
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns system time
@@ -88,39 +188,6 @@ actions.defineHttp({
     res.contentType = "application/json";
     res.body = JSON.stringify(req);
   }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system status information for the server
-////////////////////////////////////////////////////////////////////////////////
-
-function AdminRedirect (req, res) {
-  var dest = "/_admin/html/index.html";
-
-  res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
-  res.contentType = "text/html";
-
-  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-    + dest
-    + "\">"
-    + dest
-    + "</a>.</p></body></html>";
-
-  res.headers = { location : dest };
-}
-
-actions.defineHttp({
-  url : "",
-  context : "admin",
-  prefix : false,
-  callback : AdminRedirect
-});
-
-actions.defineHttp({
-  url : "_admin",
-  context : "admin",
-  prefix : false,
-  callback : AdminRedirect
 });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,7 +379,12 @@ actions.defineHttp({
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+

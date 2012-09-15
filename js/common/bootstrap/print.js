@@ -53,7 +53,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output
 ///
-/// @FUN{print(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
+/// @FUN{internal.printShell(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
 ///
 /// Only available in shell mode.
 ///
