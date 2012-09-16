@@ -57,11 +57,48 @@ var RoutingCache = {};
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for static data
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackStatic (callback) {
+  var type;
+  var body;
+
+  type = callback.type || "text/plain";
+  body = callback.body || "";
+
+  return function (req, res) {
+    res.responseCode = exports.HTTP_OK;
+    res.contentType = type;
+    res.body = body;
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a callback
 ////////////////////////////////////////////////////////////////////////////////
 
 function LookupCallback (callback) {
-  if (typeof callback === "string") {
+  var type;
+
+  if (typeof callback === 'object') {
+    if ('type' in callback) {
+      type = callback.type;
+
+      if (type === "static") {
+	return LookupCallbackStatic(callback);
+      }
+      else {
+	console.error("unknown callback type '%s'", type);
+	return undefined;
+      }
+    }
+    else {
+      console.error("missing callback type in '%s'", JSON.stringify(callback));
+      return undefined;
+    }
+  }
+  else if (typeof callback === "string") {
     var components;
     var module;
     var fn;
@@ -86,7 +123,6 @@ function LookupCallback (callback) {
     }
 
     if (fn in module) {
-      console.error("lookup %s: %s", typeof module[fn], module[fn]);
       return module[fn];
     }
 
@@ -540,11 +576,21 @@ function Routing (method, path) {
   result = [];
 
   for (i = 0;  i < topdown.length;  ++i) {
-    result = result.concat(topdown[i].callback);
+    var td = topdown[i];
+    var callback = td.callback;
+
+    for (j = 0;  j < callback.length;  ++j) {
+      result.push({ func : callback[j], path : td.path });
+    }
   }
 
   for (i = 0;  i < bottomup.length;  ++i) {
-    result = result.concat(bottomup[i].callback);
+    var bu = bottomup[i];
+    var callback = bu.callback;
+
+    for (j = 0;  j < callback.length;  ++j) {
+      result.push({ func : callback[j], path : bu.path });
+    }
   }
 
   return result;
