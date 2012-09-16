@@ -283,6 +283,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   // Example:
   //      {
+  //        path : "/full/path/suffix1/suffix2",
+  //
+  //        prefix : "/full/path",
+  //
   //        "suffix" : [
   //          "suffix1",
   //          "suffix2"
@@ -303,18 +307,30 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   //        "requestBody" : "... only for PUT and POST ..."
   //      }
 
+  // copy prefix
+  string path = request->prefix();
+
+  req->Set(v8g->PrefixKey, v8::String::New(path.c_str()));
+  
   // copy suffix
   v8::Handle<v8::Array> suffixArray = v8::Array::New();
   vector<string> const& suffix = request->suffix();
 
   uint32_t index = 0;
+  char const* sep = "";
 
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
     suffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
+
+    path += sep + suffix[s];
+    sep = "/";
   }
 
   req->Set(v8g->SuffixKey, suffixArray);
 
+  // copy full path
+  req->Set(v8g->PathKey, v8::String::New(path.c_str()));
+  
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
 
@@ -622,6 +638,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
   v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
+  v8g->PathKey = v8::Persistent<v8::String>::New(v8::String::New("path"));
   v8g->PrefixKey = v8::Persistent<v8::String>::New(v8::String::New("prefix"));
   v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("requestBody"));
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));
