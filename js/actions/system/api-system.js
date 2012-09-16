@@ -72,13 +72,12 @@ function Routing (req, res) {
 
     console.error("trying callback #%d / %d: %s # %s", current, callbacks.length, typeof callback, callback);
 
-    current++;
-
     if (callback == null) {
       actions.resultNotImplemented(req, res, "not implemented '" + req.suffix.join("/") + "'");
     }
     else {
-      callback(req, res, next, options);
+      req.prefix = callback.path;
+      callback.func(req, res, next, options);
     }
   }
 

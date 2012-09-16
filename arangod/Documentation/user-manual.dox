@@ -42,6 +42,7 @@
 ///  <li>@ref ShellEdge</li>
 ///  <li>@ref SimpleQueries</li>
 ///  <li>@ref Aql</li>
+///  <li>@ref UserManualActions</li>
 ///
 ///  @latexonly\appendix@endlatexonly
 ///  <li>@ref CommandLine</li>
@@ -56,6 +57,7 @@
 /// @copydetails ShellEdgeTOC
 /// @copydetails SimpleQueriesTOC
 /// @copydetails AqlTOC
+/// @copydetails UserManualActionsTOC
 /// @copydetails CommandLineTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,6 +338,103 @@
 /// JSON output format.
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               USER MANUAL ACTIONS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualActionsTOC
+///
+/// <ul>
+///  <li>@ref UserManualActions
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualActions Arango Actions
+///
+/// Please note, that user Actions in ArangoDB are still preliminary and details
+/// are subject to change.
+///
+/// @EMBEDTOC{UserManualActionsTOC}
+///
+/// @section UserManualActionsIntro Introduction to User Actions
+////////////////////////////////////////////////////////////////
+///
+/// In same ways the ArangoDB server behaves like a Web server. It responses to
+/// HTTP request by delivering JSON objects in general. The idea is that
+/// sometimes it is better to store parts of the business logic within
+/// AnrangoDB. For instance, if you want to apply some statistics to large
+/// data-set and you cannot easily express this as query, then you can define a
+/// action instead of transferring the whole data-set to the client and do the
+/// computation there. Actions are also useful if you want to restrict and
+/// filter data according to some complex permission system.
+///
+/// The ArangoDB server deliver all kinds of information, JSON being only one
+/// possible format. You can also generate HTML or images. However, a Web server
+/// is normally better suited for the task as it also implements various caching
+/// strategies, language selection, compression and so on. Having said that,
+/// there are still situations where it might be suitable to use the ArangoDB to
+/// deliver HTML pages - static or dynamic. An simple example is the built-in
+/// administration interface. You can access it using any modern browser and
+/// there is no need for a separate Apache or IIS.
+///
+/// In the following sections we will introduce you to actions within ArangoDB
+/// and how to define them. The examples start with delivering static HTML pages
+/// - even if this is not the primary use-case for actions. The later sections
+/// will then show you, how to code some pieces of your business logic and
+/// return JSON objects.
+///
+/// The interface is loosely modelled after the JavaScript classes for HTTP
+/// request and responses found in node.js and the middleware/routing aspects
+/// of connect.js and express.js.
+///
+/// Note that unlike node.js, ArangoDB is multi-threaded and there is no easy
+/// way to share state between queries inside the JavaScript engine. If such
+/// state information is required, you need to use the database itself.
+///
+/// @section UserManualActionsHelloWorld A Hello World
+///
+/// The client API or browser sends a HTTP request to the ArangoDB server and
+/// the server returns a HTTP response to the client. A HTTP requests consists
+/// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
+/// request path like "/hello/world". For a real Web server there are a zillion
+/// of other thing to consider, we will ignore this for the moment. The HTTP
+/// response contains a content type, describing how to interpret the returned
+/// data, and the data itself.
+///
+/// In the following example, we want to define action in ArangoDB, so that the
+/// server returns the HTML document
+///
+/// @code
+/// <html>
+///  <body>
+///   Hallo World
+///  </body>
+/// </html>
+/// @endcode
+///
+/// if asked @LIT{GET /hello/world}.
+///
+/// The server needs to know what function to call or what document to deliver
+/// if it receives a request. This is called routing. All the routing information
+/// of ArangoDB is stored in a collection @LIT{_routing}. Each entry in this
+/// collections describes how to deal with a particular request path.
+///
+/// For the above example, add the following document to the @{_routing}
+/// collection:
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path : "/hello/world", 
+/// ........>   callback: { 
+/// ........>     type: "static", 
+/// ........>     contentType: "text/html", 
+/// ........>     body: "<html><body>Hello</body></html>" }});
+/// @endcode
+///
+///
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
