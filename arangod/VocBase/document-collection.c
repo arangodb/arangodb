@@ -3371,17 +3371,16 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   idx = CreateCapConstraintDocumentCollection(sim, size, 0, created);
-
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
+  
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
@@ -3737,17 +3736,16 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* s
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   idx = CreateGeoIndexDocumentCollection(sim, location, NULL, NULL, geoJson, constraint, ignoreNull, 0, created);
-
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
+    
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
@@ -3779,17 +3777,16 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* s
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   idx = CreateGeoIndexDocumentCollection(sim, NULL, latitude, longitude, false, constraint, ignoreNull, 0, created);
-
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
+    
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
 
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
@@ -3987,16 +3984,15 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* s
   // given the list of attributes (as strings) 
   idx = CreateHashIndexDocumentCollection(sim, attributes, 0, unique, created);
   
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-
+  
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
@@ -4189,16 +4185,15 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
   
   idx = CreateSkiplistIndexDocumentCollection(sim, attributes, 0, unique, created);
   
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-
+  
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
@@ -4439,16 +4434,15 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
   // Given the list of attributes (as strings) 
   idx = CreatePriorityQueueIndexDocumentCollection(sim, attributes, 0, unique, created);
   
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-
+  
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
@@ -4686,16 +4680,15 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   
   idx = CreateBitarrayIndexDocumentCollection(sim, attributes, values, 0, supportUndef, created);
   
-  if (idx == NULL) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-    return NULL;
-  }
-
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
-
+  
   // .............................................................................
   // outside write-lock
   // .............................................................................
+
+  if (idx == NULL) {
+    return NULL;
+  }
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
