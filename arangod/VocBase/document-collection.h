@@ -220,11 +220,12 @@ typedef struct TRI_document_collection_s {
   // .............................................................................
 
   TRI_read_write_lock_t _lock;
-
+  
   TRI_headers_t* _headers;
   TRI_associative_pointer_t _primaryIndex;
+
+  TRI_vector_pointer_t _secondaryIndexes;
   TRI_multi_pointer_t _edgesIndex;
-  TRI_vector_pointer_t _indexes;
 
   // .............................................................................
   // this condition variable protects the _journalsCondition
