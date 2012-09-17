@@ -4137,14 +4137,14 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vector_pointer_t documents;
   TRI_InitVectorPointer(&documents, TRI_UNKNOWN_MEM_ZONE);
-
-  primary->beginWrite(collection->_collection);
   
   TRI_doc_mptr_t const** ptr;
   TRI_doc_mptr_t const** end;
 
-  ptr = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table);
-  end = (TRI_doc_mptr_t const**) (sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc);
+  primary->beginWrite(collection->_collection);
+  
+  ptr = (TRI_doc_mptr_t const**) (primary->_primaryIndex._table);
+  end = (TRI_doc_mptr_t const**) ptr + primary->_primaryIndex._nrAlloc;
   
   // first, collect all document pointers by traversing the primary index
   for (;  ptr < end;  ++ptr) {
