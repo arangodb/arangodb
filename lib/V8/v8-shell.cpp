@@ -136,7 +136,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   }
 
   // extract the filename
-  v8::String::Utf8Value filename(argv[0]);
+  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
@@ -246,7 +246,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
   }
 
   // extract the filename
-  v8::String::Utf8Value filename(argv[0]);
+  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));

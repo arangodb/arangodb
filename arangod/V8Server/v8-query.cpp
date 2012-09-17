@@ -186,7 +186,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = example->Get(key);
 
-    v8::String::Utf8Value keyStr(key);
+    TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr != 0) {
       pids[i] = shaper->findAttributePathByName(shaper, *keyStr);

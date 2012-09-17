@@ -160,6 +160,50 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two utf8 strings
+////////////////////////////////////////////////////////////////////////////////
+
+int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength, UCollator* coll) {
+  UErrorCode status = U_ZERO_ERROR; 
+  UCollationResult result = UCOL_EQUAL;
+  
+  if (!coll) {
+    coll = ucol_open("de_DE", &status); 
+    if(U_FAILURE(status)) {
+      printf("error in ucol_open %s\n", u_errorName(status));      
+      return 0;
+    }
+    
+    ucol_setAttribute(coll, UCOL_CASE_FIRST, UCOL_UPPER_FIRST, &status); // A < a
+    ucol_setAttribute(coll, UCOL_NORMALIZATION_MODE, UCOL_OFF, &status);
+    ucol_setAttribute(coll, UCOL_STRENGTH, UCOL_IDENTICAL, &status);     //UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
+  
+    if(U_FAILURE(status)) {
+      printf("error in ucol_setAttribute %s\n", u_errorName(status));      
+      return 0;
+    }
+    
+    result = ucol_strcoll(coll, (const UChar *)left, leftLength, (const UChar *)right, rightLength);
+    
+    ucol_close(coll);
+  }
+  else {
+    result = ucol_strcoll(coll, (const UChar *)left, leftLength, (const UChar *)right, rightLength);
+  }
+    
+  switch (result) {
+    case (UCOL_GREATER):
+      return 1;
+      
+    case (UCOL_LESS):
+      return -1;
+      
+    default:
+      return 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
