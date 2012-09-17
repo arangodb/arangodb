@@ -1,0 +1,65 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/so.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/so.xml
+ */
+so{
+    Languages{
+        ak{"Akan"}
+        am{"Axmaari"}
+        ar{"Carabi"}
+        be{"Beleruusiyaan"}
+        bg{"Bulgeeriyaan"}
+        bn{"Bangaali"}
+        cs{"Jeeg"}
+        de{"Jarmal"}
+        el{"Giriik"}
+        en{"Ingiriisi"}
+        es{"Isbaanish"}
+        fa{"Faarisi"}
+        fr{"Faransiis"}
+        fy{"Firiisiyan Galbeed"}
+        ha{"Hawsa"}
+        hi{"Hindi"}
+        hu{"Hangariyaan"}
+        id{"Indunuusiyaan"}
+        ig{"Igbo"}
+        it{"Talyaani"}
+        ja{"Jabbaaniis"}
+        jv{"Jafaaniis"}
+        km{"Kamboodhian"}
+        ko{"Kuuriyaan"}
+        ms{"Malaay"}
+        my{"Burmese"}
+        ne{"Nebaali"}
+        nl{"Holandays"}
+        pa{"Bunjaabi"}
+        pl{"Boolish"}
+        pt{"Boortaqiis"}
+        ro{"Romanka"}
+        ru{"Ruush"}
+        rw{"Rwanda"}
+        so{"Soomaali"}
+        sv{"Swiidhis"}
+        ta{"Tamiil"}
+        th{"Taaylandays"}
+        tr{"Turkish"}
+        uk{"Yukreeniyaan"}
+        ur{"Urduu"}
+        vi{"Fiitnaamays"}
+        yo{"Yoruuba"}
+        zh{"Jayniis"}
+        zu{"Zuulu"}
+    }
+    Scripts{
+        Zxxx{"Aan la qorin"}
+        Zzzz{"Far aan la aqoon amase aan saxnayn"}
+    }
+    Version{"2.0.65.46"}
+}

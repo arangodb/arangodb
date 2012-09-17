@@ -1,0 +1,93 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/kk.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/kk.xml
+ */
+kk{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Asia:Almaty"{
+            ec{"Алматы"}
+        }
+        "Asia:Aqtau"{
+            ec{"Ақтау"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Ақтөбе"}
+        }
+        "Asia:Oral"{
+            ec{"Орал"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Қызылорда"}
+        }
+        "Etc:Unknown"{
+            ec{"Белгісіз"}
+        }
+        "meta:Africa_Central"{
+            ls{"Орталық Африка уақыты"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Шығыс Африка уақыты"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Оңтүстік Африка уақыты"}
+        }
+        "meta:Africa_Western"{
+            ld{"Батыс Африка жаздық уақыты"}
+            lg{"Батыс Африка уақыты"}
+            ls{"Батыс Африка стандарт уақыты"}
+        }
+        "meta:Atlantic"{
+            ld{"Атлантикалық жаздық уақыт"}
+            lg{"Атлантика уақыты"}
+            ls{"Атлантика стандарт уақыты"}
+        }
+        "meta:Australia_Central"{
+            ld{"Австралиялық орталық жаздық уақыт"}
+            lg{"Орталық Австралия уақыты"}
+            ls{"Австралияның орталық стандарт уақыты"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Орталық Австралиялық батыс жаздық уақыты"}
+            lg{"Орталық Австралиялық батыс уақыты"}
+            ls{"Орталық Австралиялық батыс стандарт уақыты"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Шығыс Австралиялық жаздық уақыт"}
+            lg{"Шығыс Австралиялық уақыт"}
+            ls{"Шығыс Австралиялық стандарт уақыты"}
+        }
+        "meta:Australia_Western"{
+            ld{"Батыс Австралиялық жаздық уақыт"}
+            lg{"Батыс Австралиялық уақыт"}
+            ls{"Батыс Австралиялық стандарт уақыты"}
+        }
+        "meta:Europe_Central"{
+            ld{"Орталық Еуропа жаздық уақыты"}
+            lg{"Орталық Еуропа уақыты"}
+            ls{"Орталық Еуропа стандарт уақыты"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Шығыс Еуропа жаздық уақыты"}
+            lg{"Шығыс Еуропа уақыты"}
+            ls{"Шығыс Еуропа стандарт уақыты"}
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            ld{"Батыс Еуропа жаздық уақыты"}
+            lg{"Батыс Еуропа уақыты"}
+            ls{"Батыс Еуропа стандарт уақыты"}
+        }
+        fallbackRegionFormat{"{1} Уақыт ({0})"}
+        regionFormat{"{0} уақыт"}
+    }
+}

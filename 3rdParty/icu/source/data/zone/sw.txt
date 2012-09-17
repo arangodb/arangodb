@@ -1,0 +1,215 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/sw.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/sw.xml
+ */
+sw{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "meta:Africa_Eastern"{
+            ls{"Saa za Africa Mashariki"}
+        }
+        "meta:Alaska"{
+            ld{"Saa za Mchana za Alaska"}
+            lg{"Saa za Alaska"}
+            ls{"Saa Wastani za Alaska"}
+        }
+        "meta:Amazon"{
+            ld{"Saa za Mchana za Amazon"}
+            lg{"Saa za Amazon"}
+            ls{"Saa Wastani za Amazon"}
+        }
+        "meta:America_Central"{
+            ld{"Saa za Mchana za Kati"}
+            lg{"Saa za Kati"}
+            ls{"Saa za Wastani za Kati"}
+        }
+        "meta:America_Eastern"{
+            ld{"Saa za Mchana za Mashariki"}
+            lg{"Saa za Mashariki"}
+            ls{"Saa za Wastani za Mashariki"}
+        }
+        "meta:America_Mountain"{
+            ld{"Saa za Mchana za Mountain"}
+            lg{"Saa za Mountain"}
+            ls{"Saa za Wastani za Mountain"}
+        }
+        "meta:America_Pacific"{
+            ld{"Saa za Mchana za Pasifiki"}
+            lg{"Saa za Pasifiki"}
+            ls{"Saa za Wastani za Pasifiki"}
+        }
+        "meta:Anadyr"{
+            ld{"Saa za Kiangazi za Anadyr"}
+            lg{"Saa za Anadyr"}
+            ls{"Saa za Wastani za Anadyr"}
+        }
+        "meta:Argentina"{
+            ld{"Saa za Kiangazi za Ajentina"}
+            lg{"Saa za Ajentina"}
+            ls{"Saa za Wastani za Ajentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Saa za Kiangazi za Ajentina Magharibi"}
+            lg{"Saa za Ajentina Magharibi"}
+            ls{"Saa za Wastani za Ajentina Magharibi"}
+        }
+        "meta:Atlantic"{
+            ld{"Saa za Mchana za Atlantiki"}
+            lg{"Saa za Atlantiki"}
+            ls{"Saa za Wastani za Atlantiki"}
+        }
+        "meta:Australia_Central"{
+            ld{"Saa za Mchana za Australia ya Kati"}
+            lg{"Saa za Australia ya Kati"}
+            ls{"Saa za Wastani za Australia ya Kati"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Saa za Mchana za Magharibi ya Kati ya Australia"}
+            lg{"Saa za Magharibi ya Kati ya Australia"}
+            ls{"Saa za Wastani za Magharibi ya Kati ya Australia"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Saa za Mchana za Mashariki mwa Australia"}
+            lg{"Saa za Australia Mashariki"}
+            ls{"Saa Wastani za Mashariki mwa Australia"}
+        }
+        "meta:Australia_Western"{
+            ld{"Saa za Mchana za Australia Magharibi"}
+            lg{"Saa za Australia Magharibi"}
+            ls{"Saa za Wastani za Australia Magharibi"}
+        }
+        "meta:Brasilia"{
+            ld{"Saa za Kiangazi za Brasilia"}
+            lg{"Saa za Brasilia"}
+            ls{"Saa za Wastani za Brasilia"}
+        }
+        "meta:Choibalsan"{
+            ld{"Saa za Kiangazi za Choibalsan"}
+            lg{"Saa za Choibalsan"}
+            ls{"Saa za Wastani za Choibalsan"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Saa za Mchana za Hawaii na Aleutia"}
+            lg{"Saa za Hawaii na Aleutia"}
+            ls{"Saa za Wastani za Hawaii na Aleutia"}
+        }
+        "meta:Hovd"{
+            ld{"Saa za Kiangazi za Hovd"}
+            lg{"Saa za Hovd"}
+            ls{"Saa za Wastani za Hovd"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Saa za Indonesia ya Kati"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Saa za Indonesia Mashariki"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Saa za Indonesia Magharibi"}
+        }
+        "meta:Irkutsk"{
+            ld{"Saa za Kiangazi za Irkutsk"}
+            lg{"Saa za Irkutsk"}
+            ls{"Saa za Wastani za Irkutsk"}
+        }
+        "meta:Kamchatka"{
+            ld{"Saa za Kiangazi za Petropavlovsk-Kamchatski"}
+            lg{"Saa za Petropavlovsk-Kamchatski"}
+            ls{"Saa za Wastani za Petropavlovsk-Kamchatski"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Saa za Kazakistani Mashariki"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Saa za Kazakistani Magharibi"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Saa za Kiangazi za Krasnoyarsk"}
+            lg{"Saa za Krasnoyarsk"}
+            ls{"Saa za Wastani za Krasnoyarsk"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Saa za Mchana za Lord Howe"}
+            lg{"Saa za Lord Howe"}
+            ls{"Saa za Wastani za Lord Howe"}
+        }
+        "meta:Macquarie"{
+            ls{"Saa za Macquarie"}
+        }
+        "meta:Magadan"{
+            ld{"Saa za Kiangazi za Magadan"}
+            lg{"Saa za Magadan"}
+            ls{"Saa za Wastani za Magadan"}
+        }
+        "meta:Mongolia"{
+            ld{"Saa za Kiangazi za Ulan Bator"}
+            lg{"Saa za Ulan Bator"}
+            ls{"Saa za Wastani za Ulan Bator"}
+        }
+        "meta:Moscow"{
+            ld{"Saa za Kiangazi za Moscow"}
+            lg{"Saa za Moscow"}
+            ls{"Saa za Wastani za Moscow"}
+        }
+        "meta:Newfoundland"{
+            ld{"Saa za Mchana za Newfoundland"}
+            lg{"Saa za Newfoundland"}
+            ls{"Saa za Wastani za Newfoundland"}
+        }
+        "meta:Noronha"{
+            ld{"Saa za Kiangazi za Fernando de Noronha"}
+            lg{"Saa za Fernando de Noronha"}
+            ls{"Saa za Wastani za Fernando de Noronha"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Saa za Kiangazi za Novosibirsk"}
+            lg{"Saa za Novosibirsk"}
+            ls{"Saa za Wastani za Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"Saa za Kiangazi za Omsk"}
+            lg{"Saa za Omsk"}
+            ls{"Saa za Wastani za Omsk"}
+        }
+        "meta:Sakhalin"{
+            ld{"Saa za Kiangazi za Sakhalin"}
+            lg{"Saa za Sakhalin"}
+            ls{"Saa za Wastani za Sakhalin"}
+        }
+        "meta:Samara"{
+            ld{"Saa za Kiangazi za Samara"}
+            lg{"Saa za Samara"}
+            ls{"Saa za Wastani za Samara"}
+        }
+        "meta:Vladivostok"{
+            ld{"Saa za Kiangazi za Vladivostok"}
+            lg{"Saa za Vladivostok"}
+            ls{"Saa za Wastani za Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"Saa za Kiangazi za Volgograd"}
+            lg{"Saa za Volgograd"}
+            ls{"Saa za Wastani za Volgograd"}
+        }
+        "meta:Yakutsk"{
+            ld{"Saa za Kiangazi za Yakutsk"}
+            lg{"Saa za Yakutsk"}
+            ls{"Saa za Wastani za Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Saa za Kiangazi za Yekaterinburg"}
+            lg{"Saa za Yekaterinburg"}
+            ls{"Saa za Wastani za Yekaterinburg"}
+        }
+        fallbackRegionFormat{"{1} Saa ({0})"}
+        gmtFormat{"GMT {0}"}
+        regionFormat{"{0} Saa"}
+    }
+}

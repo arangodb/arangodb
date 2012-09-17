@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{6ab67213-fd7b-45cd-b44f-8deffb1990ac}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{b342f76f-065b-4c8c-9abc-4e524e21ab35}</UniqueIdentifier>
+      <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{492bec7f-3152-419a-afa7-8735518021f6}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl</Extensions>
+    </Filter>
+    <Filter Include="Makefile">
+      <UniqueIdentifier>{aa083dae-ee83-4d36-bb4f-8a592bf805d1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ufortune.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="resources\es.txt">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="resources\res-file-list.txt">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="resources\root.txt">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="resources\fortune_resources.mak">
+      <Filter>Makefile</Filter>
+    </CustomBuild>
+  </ItemGroup>
+</Project>
