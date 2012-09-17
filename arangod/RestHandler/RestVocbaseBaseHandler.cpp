@@ -39,8 +39,8 @@
 #include "Variant/VariantInt32.h"
 #include "Variant/VariantString.h"
 #include "Variant/VariantUInt64.h"
+#include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/simple-collection.h"
 
 using namespace std;
 using namespace triagens::basics;

@@ -31,7 +31,7 @@
 #include "Logger/Logger.h"
 #include "Utils/CollectionAccessor.h"
 #include "Utils/Transaction.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
 using namespace triagens::basics;
 

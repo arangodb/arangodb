@@ -30,7 +30,7 @@
 
 #include "Logger/Logger.h"
 #include "VocBase/barrier.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
 namespace triagens {
   namespace arango {
@@ -73,7 +73,7 @@ namespace triagens {
 /// @brief create the barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-        Barrier (TRI_doc_collection_t* const doc) :
+        Barrier (TRI_primary_collection_t* const doc) :
           _barrier(0) { 
           _barrier = TRI_CreateBarrierElement(&doc->_barrierList);
         }

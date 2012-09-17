@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection
+/// @brief primary collection with global read-write lock
 ///
 /// @file
 ///
@@ -28,21 +28,173 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_DOCUMENT_COLLECTION_H
 #define TRIAGENS_DURHAM_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
-#include "VocBase/collection.h"
+#include <VocBase/primary-collection.h>
 
-#include "BasicsC/json.h"
-#include "ShapedJson/json-shaper.h"
-#include "VocBase/barrier.h"
+#include <BasicsC/associative-multi.h>
+
+#include <VocBase/headers.h>
+#include <VocBase/index.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                               DOCUMENT COLLECTION
 // -----------------------------------------------------------------------------
 
-struct TRI_cap_constraint_s;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to read lock the journal files and the parameter file
+///
+/// note: the return value of the call to TRI_TryReadLockReadWriteLock is 
+/// is checked so we cannot add logging here
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(a) \
+  TRI_TryReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("read-locking datafiles %p", a); \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("read-unlocking datafiles %p", a); \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("write-locking datafiles %p", a); \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the journal files and the parameter file
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("write-unlocking datafiles %p", a); \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("read-locking collection index %p", a); \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("read-unlocking collection index %p", a); \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("write-locking collection index %p", a); \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("write-unlocking collection index %p", a); \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locks the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(a) \
+  TRI_LockCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(a) \
+  TRI_UnlockCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(a) \
+  TRI_WaitCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief signals the journal entries
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(a) \
+  TRI_BroadcastCondition(&(a)->_journalsCondition)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shape identifier pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(dst, src)                                     \
+  do {                                                                                    \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {             \
+      (dst) = ((TRI_doc_document_marker_t*) (src))->_shape;                               \
+    }                                                                                     \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {            \
+      (dst) = ((TRI_doc_edge_marker_t*) (src))->base._shape;                              \
+    }                                                                                     \
+    else {                                                                                \
+      (dst) = 0;                                                                          \
+    }                                                                                     \
+  } while (false)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shaped JSON pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXTRACT_SHAPED_JSON_MARKER(dst, src)                                                     \
+  do {                                                                                               \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {                        \
+      (dst)._sid = ((TRI_doc_document_marker_t*) (src))->_shape;                                     \
+      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - sizeof(TRI_doc_document_marker_t);    \
+      (dst)._data.data = (((char*) (src)) + sizeof(TRI_doc_document_marker_t));                      \
+    }                                                                                                \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {                       \
+      (dst)._sid = ((TRI_doc_document_marker_t*) (src))->_shape;                                     \
+      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - sizeof(TRI_doc_edge_marker_t);        \
+      (dst)._data.data = (((char*) (src)) + sizeof(TRI_doc_edge_marker_t));                          \
+    }                                                                                                \
+    else {                                                                                           \
+      (dst)._sid = 0;                                                                                \
+    }                                                                                                \
+  } while (false)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -54,324 +206,70 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update and delete policy
+/// @brief primary collection with global read-write lock
+///
+/// A primary collection is a collection with a single read-write lock. This 
+/// lock is used to coordinate the read and write transactions.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
-  TRI_DOC_UPDATE_ERROR,
-  TRI_DOC_UPDATE_LAST_WRITE,
-  TRI_DOC_UPDATE_CONFLICT,
-  TRI_DOC_UPDATE_ILLEGAL
+typedef struct TRI_document_collection_s {
+  TRI_primary_collection_t base;
+
+  // .............................................................................
+  // this lock protects the _next pointer, _headers, _indexes, and _primaryIndex
+  // .............................................................................
+
+  TRI_read_write_lock_t _lock;
+
+  TRI_headers_t* _headers;
+  TRI_associative_pointer_t _primaryIndex;
+  TRI_multi_pointer_t _edgesIndex;
+  TRI_vector_pointer_t _indexes;
+
+  // .............................................................................
+  // this condition variable protects the _journalsCondition
+  // .............................................................................
+
+  TRI_condition_t _journalsCondition;
 }
-TRI_doc_update_policy_e;
+TRI_document_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief master pointer
+/// @brief edge from and to
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_mptr_s {
-  TRI_voc_did_t _did; // this is the document identifier
-  TRI_voc_rid_t _rid; // this is the revision identifier
-  TRI_voc_eid_t _eid; // this is the step identifier
-
-  TRI_voc_fid_t _fid; // this is the datafile identifier
-
-  TRI_voc_tick_t _deletion; // this is the deletion time
-
-  void const* _data; // this is the pointer to the raw marker
-}
-TRI_doc_mptr_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile info
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_datafile_info_s {
-  TRI_voc_fid_t _fid;
-
-  TRI_voc_ssize_t _numberAlive;
-  TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _sizeAlive;
-  TRI_voc_ssize_t _sizeDead;
-  TRI_voc_ssize_t _numberDeletion;
-}
-TRI_doc_datafile_info_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection info
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_collection_info_s {
-  TRI_voc_ssize_t _numberDatafiles;
-  TRI_voc_ssize_t _numberJournalfiles;
-
-  TRI_voc_ssize_t _numberAlive;
-  TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _sizeAlive;
-  TRI_voc_ssize_t _sizeDead;
-  TRI_voc_ssize_t _numberDeletion;
-  TRI_voc_ssize_t _datafileSize;
-  TRI_voc_ssize_t _journalfileSize;
-}
-TRI_doc_collection_info_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection
-///
-/// A document collection is a collection of documents. These documents are
-/// represented as @ref ShapedJson "shaped JSON objects". Each document has a
-/// place in memory which is determined by the position in the memory mapped
-/// file. As datafiles are compacted during garbage collection, this position
-/// can change over time. Each active document also has a master pointer of type
-/// @ref TRI_doc_mptr_t. This master pointer never changes and is valid as long
-/// as the object is not deleted.
-///
-/// It is important to use locks for create, read, update, and delete.  The
-/// functions @FN{create}, @FN{createJson}, @FN{update}, @FN{updateJson}, and
-/// @FN{destroy} are only allowed within a @FN{beginWrite} and
-/// @FN{endWrite}. The function @FN{read} is only allowed within a
-/// @FN{beginRead} and @FN{endRead}. Note that @FN{read} returns a copy of the
-/// master pointer.
-///
-/// If a document is deleted, it's master pointer becomes invalid. However, the
-/// document itself still exists. Executing a query and constructing its result
-/// set, must be done inside a "beginRead" and "endRead".
-///
-/// @FUN{int beginRead (TRI_doc_collection_t*)}
-///////////////////////////////////////////////
-///
-/// Starts a read transaction. Query and calls to @FN{read} are allowed within a
-/// read transaction, but not calls to @FN{create}, @FN{update}, or
-/// @FN{destroy}.  Returns @ref TRI_ERROR_NO_ERROR if the transaction could be
-/// started. This call might block until a running write transaction is
-/// finished.
-///
-/// @FUN{int endRead (TRI_doc_collection_t*)}
-/////////////////////////////////////////////
-///
-/// Ends a read transaction. Should only be called after a successful
-/// "beginRead".
-///
-/// @FUN{int beginWrite (TRI_doc_collection_t*)}
-////////////////////////////////////////////////
-///
-/// Starts a write transaction. Query and calls to @FN{create}, @FN{read},
-/// @FN{update}, and @FN{destroy} are allowed within a write
-/// transaction. Returns @ref TRI_ERROR_NO_ERROR if the transaction could be
-/// started. This call might block until a running write transaction is
-/// finished.
-///
-/// @FUN{int endWrite (TRI_doc_collection_t*)}
-//////////////////////////////////////////////
-///
-/// Ends a write transaction. Should only be called after a successful
-/// @LIT{beginWrite}.
-///
-/// @FUN{void createHeader (TRI_doc_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t*, void const* @FA{data})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Creates a new header.
-///
-/// @FUN{void updateHeader (TRI_doc_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t const* {current}, TRI_doc_mptr_t* @FA{update})}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Updates an existing header.
-///
-/// @FUN{TRI_doc_mptr_t const create (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool @FA{release})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Adds a new document to the collection and returns the master pointer of the
-/// newly created entry. In case of an error, the attribute @LIT{_did} of the
-/// result is @LIT{0} and "TRI_errno()" is set accordingly. The function DOES
-/// NOT acquire a write lock. This must be done by the caller. If @FA{release}
-/// is true, it will release the write lock as soon as possible.
-///
-/// @FUN{TRI_doc_mptr_t const createJson (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_json_t const*, bool @FA{release})}
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but instead of a shaped json a json object must be given.
-///
-/// @FUN{TRI_voc_did_t createLock (TRI_doc_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but the function will acquire and release the write lock.
-///
-/// @FUN{TRI_doc_mptr_t const read (TRI_doc_collection_t*, TRI_voc_did_t)}
-//////////////////////////////////////////////////////////////////////////
-///
-/// Returns the master pointer of the document with the given identifier. If the
-/// document does not exist or is deleted, then the identifier @LIT{_did} of
-/// the result is @LIT{0}. The function DOES NOT acquire or release a read
-/// lock. This must be done by the caller.
-///
-/// @FUN{TRI_doc_mptr_t const update (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Updates an existing document of the collection and returns copy of a valid
-/// master pointer in case of success. Otherwise, the attribute @LIT{_did} of
-/// the result is @LIT{0} and the "TRI_errno()" is set accordingly. The function
-/// DOES NOT acquire a write lock. This must be done by the caller. However, if
-/// @FA{release} is true, it will release the write lock as soon as possible.
-///
-/// If the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_LAST_WRITE",
-/// than the revision @FA{rid} is ignored and the update is always performed. If
-/// the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_ERROR" and the
-/// revision @FA{rid} is given (i. e. not equal 0), then the update is only
-/// performed if the current revision matches the given. In any case the current
-/// revision after the updated of the document is returned in @FA{current}.
-///
-/// @FUN{TRI_doc_mptr_t const updateJson (TRI_doc_collection_t*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but instead of a shaped json a json object must be given.
-///
-/// @FUN{int updateLock (TRI_doc_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but the function will acquire and release the write lock.
-///
-/// @FUN{int destroy (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Deletes an existing document from the given collection and returns @ref
-/// TRI_ERROR_NO_ERROR in case of success. Otherwise, an error is returned and
-/// the "TRI_errno()" is set accordingly. The function DOES NOT acquire a write
-/// lock.  However, if @FA{release} is true, it will release the write lock as
-/// soon as possible.
-///
-/// If the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_ERROR" and the
-/// revision is given, then it must match the current revision of the
-/// document. If the delete was executed, than @FA{current} contains the last
-/// valid revision of the document. If the delete was aborted, than @FA{current}
-/// contains the revision of the still alive document.
-///
-/// @FUN{int destroyLock (TRI_doc_collection_t*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// As before, but the function will acquire and release the write lock.
-///
-/// @FUN{TRI_doc_collection_info_t* figures (TRI_doc_collection_t*)}
-////////////////////////////////////////////////////////////////////
-///
-/// Returns informatiom about the collection. You must hold a read lock and must
-/// destroy the result after usage.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_collection_s {
-  TRI_collection_t base;
-
-  TRI_shaper_t* _shaper;
-  TRI_barrier_list_t _barrierList;
-  TRI_associative_pointer_t _datafileInfo;
-
-  struct TRI_cap_constraint_s* _capConstraint;
-
-  int (*beginRead) (struct TRI_doc_collection_s*);
-  int (*endRead) (struct TRI_doc_collection_s*);
-
-  int (*beginWrite) (struct TRI_doc_collection_s*);
-  int (*endWrite) (struct TRI_doc_collection_s*);
-
-  void (*createHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
-  void (*updateHeader) (struct TRI_doc_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
-
-  TRI_doc_mptr_t (*create) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_did_t, TRI_voc_rid_t, bool);
-  TRI_doc_mptr_t (*createJson) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool);
-  TRI_voc_did_t (*createLock) (struct TRI_doc_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
-
-  TRI_doc_mptr_t (*read) (struct TRI_doc_collection_s*, TRI_voc_did_t);
-
-  TRI_doc_mptr_t (*update) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  TRI_doc_mptr_t (*updateJson) (struct TRI_doc_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  int (*updateLock) (struct TRI_doc_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
-
-  int (*destroy) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  int (*destroyLock) (struct TRI_doc_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
-
-  TRI_doc_collection_info_t* (*figures) (struct TRI_doc_collection_s* collection);
-  TRI_voc_size_t (*size) (struct TRI_doc_collection_s* collection);
-}
-TRI_doc_collection_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_document_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_did_t _did;        // this is the tick for a create, but not an update
-  TRI_voc_rid_t _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t _sid;
-
-  TRI_shape_sid_t _shape;
-
-  // char data[]
-}
-TRI_doc_document_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge datafile marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_edge_marker_s {
-  TRI_doc_document_marker_t base;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_did_t _toDid;
-
+typedef struct TRI_document_edge_s {
   TRI_voc_cid_t _fromCid;
   TRI_voc_did_t _fromDid;
 
-  // char data[]
+  TRI_voc_cid_t _toCid;
+  TRI_voc_did_t _toDid;
 }
-TRI_doc_edge_marker_t;
+TRI_document_edge_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile deletion marker
+/// @brief edge direction
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_deletion_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_did_t _did;        // this is the tick for a create, but not an update
-  TRI_voc_rid_t _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t _sid;
+typedef enum {
+  TRI_EDGE_UNUSED = 0,
+  TRI_EDGE_IN = 1,
+  TRI_EDGE_OUT = 2,
+  TRI_EDGE_ANY = 3
 }
-TRI_doc_deletion_marker_t;
+TRI_edge_direction_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile begin transaction marker
+/// @brief index entry for edges
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_begin_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
+typedef struct TRI_edge_header_s {
+  TRI_doc_mptr_t const* _mptr;
+  TRI_edge_direction_e _direction;
+  TRI_voc_cid_t _cid; // from or to, depending on the direction
+  TRI_voc_did_t _did; // from or to, depending on the direction
 }
-TRI_doc_begin_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile commit transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_commit_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-}
-TRI_doc_commit_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile abort transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_abort_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t _tid;
-}
-TRI_doc_abort_transaction_marker_t;
+TRI_edge_header_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -387,23 +285,34 @@ TRI_doc_abort_transaction_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a document collection structure
+/// @brief creates a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitDocCollection (TRI_doc_collection_t*, TRI_shaper_t*);
+TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t*,
+                                                         char const* path,
+                                                         TRI_col_parameter_t* parameter,
+                                                         TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a document collection
+/// @brief frees the memory allocated, but does not free the pointer
+///
+/// Note that the collection must be closed first.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyDocCollection (TRI_doc_collection_t* collection);
+void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeDocumentCollection (TRI_document_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,49 +321,383 @@ void TRI_DestroyDocCollection (TRI_doc_collection_t* collection);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a datafile description
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocCollection (TRI_doc_collection_t* collection,
-                                                            TRI_voc_fid_t fid);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalDocCollection (TRI_doc_collection_t* collection);
+TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocCollection (TRI_doc_collection_t* collection,
-                                    size_t position);
+bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t* collection,
+                                         size_t position);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new compactor file
+/// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateCompactorDocCollection (TRI_doc_collection_t* collection);
+TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*, char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing compactor file
+/// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseCompactorDocCollection (TRI_doc_collection_t* collection,
-                                      size_t position);
+int TRI_CloseDocumentCollection (TRI_document_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Convert a raw data document pointer into a master pointer
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_MarkerMasterPointer (void const*, TRI_doc_mptr_t*);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           INDEXES
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the data length from a master pointer
+/// @addtogroup VocBase
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a description of all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*, 
+                                                     const bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an index
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* collection, TRI_idx_iid_t iid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       EDGES INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
+                                                        TRI_edge_direction_e direction,
+                                                        TRI_voc_cid_t cid,
+                                                        TRI_voc_did_t did);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    CAP CONSTRAINT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a cap constraint exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* sim,
+                                                        size_t size,
+                                                        bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    BITARRAY INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a bitarray index
+///
+/// Note that the caller must hold at least a read-lock.
+/// Also note that the only the set of attributes are used to distinguish 
+/// a bitarray index -- that is, a bitarray is considered to be the same if
+/// the attributes match irrespective of the possible values for an attribute.
+/// Finally observe that there is no notion of uniqueness for a bitarray index.
+/// TODO: allow changes to possible values to be made at run-time.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_t*,
+                                                               const TRI_vector_pointer_t* attributes);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t*,
+                                                               const TRI_vector_pointer_t* attributes,
+                                                               const TRI_vector_pointer_t* values,
+                                                               bool supportUndef, 
+                                                               bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         GEO INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a geo index, list style
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* collection,
+                                                           TRI_shape_pid_t location,
+                                                           bool geoJson,
+                                                           bool constraint,
+                                                           bool ignoreNull);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a geo index, attribute style
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* collection,
+                                                           TRI_shape_pid_t latitude,
+                                                           TRI_shape_pid_t longitude,
+                                                           bool constraint,
+                                                           bool ignoreNull);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index exists, list style
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* collection,
+                                                           char const* location,
+                                                           bool geoJson,
+                                                           bool constraint,
+                                                           bool ignoreNull,
+                                                           bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a geo index exists, attribute style
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* collection,
+                                                           char const* latitude,
+                                                           char const* longitude,
+                                                           bool constraint,
+                                                           bool ignoreNull,
+                                                           bool* created);
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        HASH INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts attribute names to sorted lists of pids and names
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
+                                  TRI_shaper_t* shaper,
+                                  TRI_vector_t* pids,
+                                  TRI_vector_pointer_t* names,
+                                  bool sorted);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a hash index
+///
+/// @note The caller must hold at least a read-lock.
+///
+/// @note The @FA{paths} must be sorted.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
+                                                           TRI_vector_pointer_t const* attributes,
+                                                           bool unique);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a hash index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                           TRI_vector_pointer_t const* attributes,
+                                                           bool unique,
+                                                           bool* created);
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    SKIPLIST INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a skiplist index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+                                                               TRI_vector_pointer_t const* attributes,
+                                                               bool unique);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a skiplist index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+                                                               TRI_vector_pointer_t const* attributes,
+                                                               bool unique,
+                                                               bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PRIORITY QUEUE INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a priority queue index
+///
+/// Note that the caller must hold at least a read-lock.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document_collection_t*,
+                                                                    TRI_vector_t const*);
+                                                               
+                                                               
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a priority queue index exists
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_s* TRI_EnsurePriorityQueueIndexDocumentCollection (TRI_document_collection_t* collection,
+                                                                    TRI_vector_pointer_t const* attributes,
+                                                                    bool unique,
+                                                                    bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              PRIORITY QUEUE INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a cap constraint exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* sim,
+                                                        size_t size,
+                                                        bool* created);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           SELECT BY EXAMPLE QUERY
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a select-by-example query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_t TRI_SelectByExample (TRI_document_collection_t* sim,
+                                  size_t length,
+                                  TRI_shape_pid_t* pids,
+                                  TRI_shaped_json_t** values);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

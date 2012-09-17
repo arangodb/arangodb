@@ -30,7 +30,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
 
@@ -163,7 +163,7 @@ static void FreeAuthInfo (TRI_vocbase_auth_t* auth) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
-                                            TRI_doc_collection_t* doc,
+                                            TRI_primary_collection_t* primary,
                                             TRI_shaped_json_t const* document) {
   TRI_shaper_t* shaper;
   char* user;
@@ -172,7 +172,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   bool found;
   TRI_vocbase_auth_t* result;
 
-  shaper = doc->_shaper;
+  shaper = primary->_shaper;
 
   // extract username
   user = ExtractStringShapedJson(shaper, document, "user");
@@ -229,8 +229,8 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 
 void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection;
-  TRI_doc_collection_t* doc;
-  TRI_sim_collection_t* sim;
+  TRI_primary_collection_t* primary;
+  TRI_document_collection_t* sim;
   void** beg;
   void** end;
   void** ptr;
@@ -246,20 +246,20 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_UseCollectionVocBase(vocbase, collection);
 
-  doc = collection->_collection;
+  primary = collection->_collection;
 
-  if (doc == NULL) {
+  if (primary == NULL) {
     LOG_FATAL("collection '_users' cannot be loaded");
     return;
   }
 
-  if (! TRI_IS_SIMPLE_COLLECTION(doc->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
     TRI_ReleaseCollectionVocBase(vocbase, collection);
     LOG_FATAL("collection '_users' has an unknown collection type");
     return;
   }
 
-  sim = (TRI_sim_collection_t*) doc;
+  sim = (TRI_document_collection_t*) primary;
 
   // .............................................................................
   // inside a read transaction
@@ -283,7 +283,7 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
       if (d->_deletion == 0) {
         TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-        auth = ConvertAuthInfo(vocbase, doc, &shapedJson);
+        auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
 
         if (auth != NULL) {
           old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
