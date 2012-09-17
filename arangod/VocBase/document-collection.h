@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief primary collection with global read-write lock
+/// @brief document collection with global read-write lock, derived from
+/// TRI_primary_collection_t
 ///
 /// @file
 ///
@@ -95,38 +96,6 @@ extern "C" {
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-locking collection index %p", a); \
-  TRI_ReadLockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-unlocking collection index %p", a); \
-  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-locking collection index %p", a); \
-  TRI_WriteLockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write unlocks the documents and indexes
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-unlocking collection index %p", a); \
-  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the journal entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -214,15 +183,13 @@ extern "C" {
 
 typedef struct TRI_document_collection_s {
   TRI_primary_collection_t base;
-
-  // .............................................................................
-  // this lock protects the _next pointer, _headers, _indexes, and _primaryIndex
-  // .............................................................................
-
-  TRI_read_write_lock_t _lock;
   
+  // .............................................................................
+  // the collection does not have a lock of its own. it is protected by the
+  // _lock of its base type, TRI_primary_collection_t.
+  // .............................................................................
+
   TRI_headers_t* _headers;
-  TRI_associative_pointer_t _primaryIndex;
 
   TRI_vector_pointer_t _secondaryIndexes;
   TRI_multi_pointer_t _edgesIndex;

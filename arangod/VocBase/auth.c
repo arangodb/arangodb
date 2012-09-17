@@ -230,7 +230,6 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
-  TRI_document_collection_t* sim;
   void** beg;
   void** end;
   void** ptr;
@@ -259,16 +258,14 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     return;
   }
 
-  sim = (TRI_document_collection_t*) primary;
-
   // .............................................................................
   // inside a read transaction
   // .............................................................................
 
   collection->_collection->beginRead(collection->_collection);
   
-  beg = sim->_primaryIndex._table;
-  end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+  beg = primary->_primaryIndex._table;
+  end = beg + primary->_primaryIndex._nrAlloc;
   ptr = beg;
 
   for (;  ptr < end;  ++ptr) {

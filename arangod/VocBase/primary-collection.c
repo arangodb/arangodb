@@ -29,6 +29,7 @@
 
 #include <BasicsC/conversions.h>
 #include <BasicsC/files.h>
+#include <BasicsC/hashes.h>
 #include <BasicsC/logging.h>
 #include <BasicsC/strings.h>
 
@@ -42,6 +43,37 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs the document id
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key) {
+  TRI_voc_did_t const* k = key;
+
+  return TRI_FnvHashPointer(k, sizeof(TRI_voc_did_t));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashs the document header
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
+  TRI_doc_mptr_t const* e = element;
+
+  return TRI_FnvHashPointer(&e->_did, sizeof(TRI_voc_did_t));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a document id and a document
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
+  TRI_voc_did_t const* k = key;
+  TRI_doc_mptr_t const* e = element;
+
+  return *k == e->_did;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document in the collection from shaped json
@@ -496,6 +528,15 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
                              HashElementDatafile,
                              IsEqualKeyElementDatafile,
                              NULL);
+
+  TRI_InitAssociativePointer(&collection->_primaryIndex,
+                             TRI_UNKNOWN_MEM_ZONE, 
+                             HashKeyHeader,
+                             HashElementDocument,
+                             IsEqualKeyDocument,
+                             0);
+  
+  TRI_InitReadWriteLock(&collection->_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,10 +544,13 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection) {
+  TRI_DestroyReadWriteLock(&collection->_lock);
+  TRI_DestroyAssociativePointer(&collection->_primaryIndex);
+
   if (collection->_shaper != NULL) {
     TRI_FreeVocShaper(collection->_shaper);
   }
-
+  
   FreeDatafileInfo(&collection->_datafileInfo);
   TRI_DestroyBarrierList(&collection->_barrierList);
 

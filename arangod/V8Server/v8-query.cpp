@@ -1648,6 +1648,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
   // extract skip and limit
   TRI_voc_ssize_t skip;
   TRI_voc_size_t limit;
+  TRI_primary_collection_t* primary = &sim->base;
 
   ExtractSkipAndLimit(argv, 0, skip, limit);
 
@@ -1657,15 +1658,15 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  size_t total = sim->_primaryIndex._nrUsed;
+  size_t total = primary->_primaryIndex._nrUsed;
   uint32_t count = 0;
   bool error = false;
 
   if (0 < total && 0 < limit) {
     TRI_barrier_t* barrier = 0;
 
-    void** beg = sim->_primaryIndex._table;
-    void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+    void** beg = primary->_primaryIndex._table;
+    void** end = beg + primary->_primaryIndex._nrAlloc;
     void** ptr = beg;
 
     // skip from the beginning

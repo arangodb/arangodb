@@ -209,11 +209,13 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_doc_datafile_info_t* dfi;
   TRI_doc_mptr_t const* found;
   TRI_document_collection_t* sim;
+  TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
   bool deleted;
   int res;
 
   sim = data;
+  primary = &sim->base;
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
@@ -236,12 +238,12 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     d = (TRI_doc_document_marker_t const*) marker;
 
     // check if the document is still active
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&sim->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, &d->_did);
     deleted = found == NULL || found->_deletion != 0;
 
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     if (deleted) {
       LOG_TRACE("found a stale document: %lu", d->_did);
@@ -257,24 +259,24 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     // check if the document is still active
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&sim->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, &d->_did);
     deleted = found == NULL || found->_deletion != 0;
 
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_DOC_COLLECTION(sim);
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     // update datafile
-    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(sim);
+    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
 
     if (deleted) {
       dfi->_numberDead += 1;
       dfi->_sizeDead += marker->_size - markerSize;
 
       LOG_DEBUG("found a stale document after copying: %lu", d->_did);
-      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(sim);
+      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
       return true;
     }
@@ -287,7 +289,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     dfi->_numberAlive += 1;
     dfi->_sizeAlive += marker->_size - markerSize;
 
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
 
   // deletion
@@ -303,12 +305,12 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
 
     // update datafile info
-    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(sim);
+    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
     dfi->_numberDeletion += 1;
 
-    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
 
   return true;
@@ -334,24 +336,27 @@ static void WaitCompactSync (TRI_document_collection_t* collection, TRI_datafile
 
 static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fid) {
   TRI_datafile_t* df;
+  TRI_primary_collection_t* primary;
   bool ok;
   size_t n;
   size_t i;
 
-  // locate the datafile
-  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(sim);
+  primary = &sim->base;
 
-  n = sim->base.base._datafiles._length;
+  // locate the datafile
+  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+
+  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    df = sim->base.base._datafiles._buffer[i];
+    df = primary->base._datafiles._buffer[i];
 
     if (df->_fid == fid) {
       break;
     }
   }
 
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(sim);
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   if (i == n) {
     return;
@@ -371,20 +376,20 @@ static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fi
   WaitCompactSync(sim, df);
 
   // remove the datafile from the list of datafiles
-  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(sim);
+  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-  n = sim->base.base._datafiles._length;
+  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    df = sim->base.base._datafiles._buffer[i];
+    df = primary->base._datafiles._buffer[i];
 
     if (df->_fid == fid) {
-      TRI_RemoveVectorPointer(&sim->base.base._datafiles, i);
+      TRI_RemoveVectorPointer(&primary->base._datafiles, i);
       break;
     }
   }
 
-  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   if (i == n) {
     LOG_WARNING("failed to locate the datafile '%lu'", (unsigned long) df->_fid);
@@ -392,7 +397,7 @@ static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fi
   }
 
   // add a deletion marker to the result set container
-  TRI_CreateBarrierDatafile(&sim->base._barrierList, df, RemoveDatafileCallback, &sim->base.base);
+  TRI_CreateBarrierDatafile(&primary->_barrierList, df, RemoveDatafileCallback, &primary->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,34 +405,37 @@ static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fi
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CompactifyDocumentCollection (TRI_document_collection_t* sim) {
+  TRI_primary_collection_t* primary;
   TRI_vector_t vector;
   size_t n;
   size_t i;
   bool worked = false;
 
+  primary = &sim->base;
+
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchroniser,
   // compactor and data-modification threads (e.g. POST /_api/document)
-  if (! TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(sim)) {
+  if (! TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(primary)) {
     return worked;
   }
 
   // copy datafile information
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
-  n = sim->base.base._datafiles._length;
+  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
     TRI_doc_datafile_info_t* dfi;
 
-    df = sim->base.base._datafiles._buffer[i];
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, df->_fid);
+    df = primary->base._datafiles._buffer[i];
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, df->_fid);
 
     TRI_PushBackVector(&vector, dfi);
   }
 
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(sim);
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   // handle datafiles with dead objects
   for (i = 0;  i < vector._length;  ++i) {
