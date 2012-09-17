@@ -413,6 +413,7 @@
 /// state information is required, you need to use the database itself.
 ///
 /// @section UserManualActionsHelloWorld A Hello World Example
+//////////////////////////////////////////////////////////////
 ///
 /// The client API or browser sends a HTTP request to the ArangoDB server and
 /// the server returns a HTTP response to the client. A HTTP requests consists
@@ -452,7 +453,117 @@
 /// ........>     body: "<html><body>Hello</body></html>" }});
 /// @endcode
 ///
+/// In order to activate the new routing, you must either restart the server
+/// or call the internal reload function.
 ///
+/// @code
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// Now use the browser and access
+///
+/// @LIT{http://localhost:8529/hello/world"}
+///
+/// @section UserManualActionsHelloJson A Hello World Example for JSON
+//////////////////////////////////////////////////////////////////////
+///
+/// If you change the example slightly, then a JSON object will be delivered.
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path : "/hello/json", 
+/// ........>   callback: { 
+/// ........>     type: "static", 
+/// ........>     contentType: "application/json", 
+/// ........>     body: "{ \"hello\" : \"world\" }" }});
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// Again check with your browser
+///
+/// @LIT{http://localhost:8529/hello/json}
+///
+/// Depending on your browser and installed add-ons you will either see the
+/// JSON object or a download dialog. If your browser wants to open external
+/// application to display the JSON object, you can change the @LIT{contentType}
+/// to @LIT{"text/plain"}. This makes it easier to check the example using a
+/// browser. Or use @LIT{curl} to access the server.
+///
+/// @code
+/// bash> curl "http://127.0.0.1:8529/hello/json" && echo
+/// { "hello" : "world" }
+/// @endcode
+///
+/// @section UserManualActionsEcho A Dynamic Example
+////////////////////////////////////////////////////
+///
+/// The above examples deliver static content, which is fine for an example.
+/// But the real power of actions lies in dynamic actions which use JavaScript
+/// to construct the result.
+/// 
+/// A very simple example is the function @LIT{echoRequest} defined in
+/// the module @LIT{org/arangodb/actions}.
+///
+/// @code
+/// function EchoRequest (req, res, next, options) {
+///   var result;
+/// 
+///   result = { request : req, options : options };
+/// 
+///   res.responseCode = exports.HTTP_OK;
+///   res.contentType = "application/json";
+///   res.body = JSON.stringify(result);
+/// }
+/// @endcode
+///
+/// That functions accepts a request and returns this request as JSON object.
+///
+/// It is not possible to store function directly in the routing table, but you
+/// can call functions defined in modules. In this case the function is defined
+/// as
+///
+/// @LIT{require("org/arangodb/actions").echoRequest}
+///
+/// You can use it in the routing collection specifying the name 
+/// @LIT{"org/arangodb/actions/echoRequest"}.
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path : "/hello/echo",
+/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// @endcode
+///
+/// Reload the routing and check
+///
+/// @LIT{http://127.0.0.1:8529/hello/echo}
+///
+/// You should see something like
+///
+/// @code
+/// {
+///     "request": {
+///         "prefix": "/hello/echo",
+///         "suffix": [
+///             "hello",
+///             "echo"
+///         ],
+///         "path": "/hello/echo",
+///         "headers": {
+///             "accept-encoding": "gzip, deflate",
+///             "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
+///             "connection": "keep-alive",
+///             "content-length": "0",
+///             "host": "localhost:8529",
+///             "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
+///         },
+///         "requestType": "GET",
+///         "parameters": { }
+///     },
+///     "options": { }
+/// }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -57,6 +57,42 @@ var RoutingCache = {};
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a string
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackString (callback) {
+  var components;
+  var module;
+  var fn;
+
+  if (callback == "") {
+    return undefined;
+  }
+
+  components = callback.split("/");
+  fn = components[components.length - 1];
+
+  components.pop();
+  module = components.join("/");
+
+  try {
+    module = require(module);
+  }
+  catch (err) {
+    console.error("cannot load callback '%s' from module '%s': %s",
+                  fn, module, "" + err);
+    return undefined;
+  }
+
+  if (fn in module) {
+    return module[fn];
+  }
+
+  console.error("callback '%s' is not defined in module '%s'", fn, module);
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a callback for static data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -64,7 +100,7 @@ function LookupCallbackStatic (callback) {
   var type;
   var body;
 
-  type = callback.type || "text/plain";
+  type = callback.contentType || "text/plain";
   body = callback.body || "";
 
   return function (req, res) {
@@ -86,11 +122,11 @@ function LookupCallback (callback) {
       type = callback.type;
 
       if (type === "static") {
-	return LookupCallbackStatic(callback);
+        return LookupCallbackStatic(callback);
       }
       else {
-	console.error("unknown callback type '%s'", type);
-	return undefined;
+        console.error("unknown callback type '%s'", type);
+        return undefined;
       }
     }
     else {
@@ -99,35 +135,7 @@ function LookupCallback (callback) {
     }
   }
   else if (typeof callback === "string") {
-    var components;
-    var module;
-    var fn;
-
-    if (callback == "") {
-      return undefined;
-    }
-
-    components = callback.split("/");
-    fn = components[components.length - 1];
-
-    components.pop();
-    module = components.join("/");
-
-    try {
-      module = require(module);
-    }
-    catch (err) {
-      console.error("cannot load callback '%s' from module '%s': %s",
-		    fn, module, "" + err);
-      return undefined;
-    }
-
-    if (fn in module) {
-      return module[fn];
-    }
-
-    console.error("callback '%s' is not defined in module '%s'", fn, module);
-    return undefined;
+    return LookupCallbackString(callback);
   }
 
   return undefined;
@@ -423,13 +431,13 @@ function ReloadRouting () {
       var cb = LookupCallback(callback[i]);
 
       if (cb === undefined) {
-	console.error("route '%s' contains invalid callback '%s'", route._id, JSON.stringify(callback[i]));
+        console.error("route '%s' contains invalid callback '%s'", route._id, JSON.stringify(callback[i]));
       }
       else if (typeof cb !== "function") {
-	console.error("route '%s' contains non-function callback '%s'", route._id, JSON.stringify(callback[i]));
+        console.error("route '%s' contains non-function callback '%s'", route._id, JSON.stringify(callback[i]));
       }
       else {
-	tmp.push(cb);
+        tmp.push(cb);
       }
     }
 
@@ -440,12 +448,12 @@ function ReloadRouting () {
       methods = route.method;
 
       if (typeof methods === 'string') {
-	if (methods === "all" || methods === "*") {
-	  methods = all;
-	}
-	else {
-	  methods = [ methods ];
-	}
+        if (methods === "all" || methods === "*") {
+          methods = all;
+        }
+        else {
+          methods = [ methods ];
+        }
       }
     }
 
@@ -469,24 +477,24 @@ function ReloadRouting () {
       routings = RoutingCache[method];
 
       if (routings === undefined) {
-	console.error("unknown method '%s' in route %s", method, route._id);
-	continue;
+        console.error("unknown method '%s' in route %s", method, route._id);
+        continue;
       }
 
       if (path in routings) {
-	callbacks = routings[path];
+        callbacks = routings[path];
       }
       else {
-	callbacks = routings[path] = []
+        callbacks = routings[path] = []
       }
 
       callbacks.push({
-	route : route._id,
-	path : path,
-	topdown : topdown,
-	priority : prio,
-	prefix : prefix,
-	callback : callback
+        route : route._id,
+        path : path,
+        topdown : topdown,
+        priority : prio,
+        prefix : prefix,
+        callback : callback
       });
     }
   }
@@ -534,16 +542,16 @@ function Routing (method, path) {
       var callbacks = routings[current];
 
       for (j = 0;  j < callbacks.length;  ++j) {
-	var callback = callbacks[j];
+        var callback = callbacks[j];
 
-	if (callback.prefix || full) {
-	  if (callback.topdown) {
-	    topdown.push(callback);
-	  }
-	  else {
-	    bottomup.push(callback);
-	  }
-	}
+        if (callback.prefix || full) {
+          if (callback.topdown) {
+            topdown.push(callback);
+          }
+          else {
+            bottomup.push(callback);
+          }
+        }
       }
     }
   }
@@ -881,6 +889,33 @@ function ResultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                      ArangoDB specific responses
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief echos a request
+////////////////////////////////////////////////////////////////////////////////
+
+function EchoRequest (req, res, next, options) {
+  var result;
+
+  result = { request : req, options : options };
+
+  res.responseCode = exports.HTTP_OK;
+  res.contentType = "application/json";
+  res.body = JSON.stringify(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -910,6 +945,9 @@ exports.resultCursor            = ResultCursor;
 exports.collectionNotFound      = CollectionNotFound;
 exports.indexNotFound           = IndexNotFound;
 exports.resultException         = ResultException;
+
+// standard actions
+exports.echoRequest             = EchoRequest;
 
 // some useful constants
 exports.COLLECTION              = "collection";

@@ -108,6 +108,20 @@ actions.defineHttp({
 /// @brief returns system status information for the server
 ////////////////////////////////////////////////////////////////////////////////
 
+actions.defineHttp({
+  url : "_admin/reloadRouting",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
 function AdminRedirect (req, res) {
   var dest = "/_admin/html/index.html";
 

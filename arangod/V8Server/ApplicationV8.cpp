@@ -105,7 +105,48 @@ namespace {
       ReadWriteLock _lock;
       double _lastGcStamp;
   };
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a global method
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
+  _globalMethods.push_back(method);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes all global methods
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::V8Context::handleGlobalContextMethods () {
+  v8::HandleScope scope;
+
+  for (vector<string>::iterator i = _globalMethods.begin();  i != _globalMethods.end();  ++i) {
+    string const& func = *i;
+
+    LOGGER_DEBUG << "executing global context methods '" << func << "' for context " << _id;
+
+    TRI_ExecuteJavaScriptString(_context,
+                                v8::String::New(func.c_str()),
+                                v8::String::New("global context method"),
+                                false);
+  }
+
+  _globalMethods.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,6 +185,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _contextCondition(),
     _freeContexts(),
     _dirtyContexts(),
+    _busyContexts(),
     _stopping(0) {
 
   // .............................................................................
@@ -247,10 +289,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 
   V8Context* context = _freeContexts.back();
   _freeContexts.pop_back();
+  _busyContexts.insert(context);
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
+
+  context->handleGlobalContextMethods();
 
   return context;
 }
@@ -261,8 +306,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 
 void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+
   assert(gc != 0);
   double lastGc = gc->getLastGcStamp();
+
+  CONDITION_LOCKER(guard, _contextCondition);
+
+  context->handleGlobalContextMethods();
 
   context->_context->Exit();
   context->_isolate->Exit();
@@ -270,25 +320,50 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   ++context->_dirt;
 
-  {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    if (context->_lastGcStamp + _gcFrequency < lastGc) {
-      LOGGER_TRACE << "periodic gc interval reached";
-      _dirtyContexts.push_back(context);
-    }
-    else if (context->_dirt >= _gcInterval) {
-      LOGGER_TRACE << "maximum number of requests reached";
-      _dirtyContexts.push_back(context);
-    }
-    else {
-      _freeContexts.push_back(context);
-    }
-
-    guard.broadcast();
+  if (context->_lastGcStamp + _gcFrequency < lastGc) {
+    LOGGER_TRACE << "periodic gc interval reached";
+    _dirtyContexts.push_back(context);
+    _busyContexts.erase(context);
   }
+  else if (context->_dirt >= _gcInterval) {
+    LOGGER_TRACE << "maximum number of requests reached";
+    _dirtyContexts.push_back(context);
+    _busyContexts.erase(context);
+  }
+  else {
+    _freeContexts.push_back(context);
+    _busyContexts.erase(context);
+  }
+  
+  guard.broadcast();
 
   LOGGER_TRACE << "returned dirty V8 context";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a global context functions to be executed asap
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::addGlobalContextMethod (string const& method) {
+  CONDITION_LOCKER(guard, _contextCondition);
+  
+  for (vector<V8Context*>::iterator i = _freeContexts.begin();  i != _freeContexts.end();  ++i) {
+    V8Context* context = *i;
+
+    context->addGlobalContextMethod(method);
+  }
+
+  for (vector<V8Context*>::iterator i = _dirtyContexts.begin();  i != _dirtyContexts.end();  ++i) {
+    V8Context* context = *i;
+
+    context->addGlobalContextMethod(method);
+  }
+
+  for (set<V8Context*>::iterator i = _busyContexts.begin();  i != _busyContexts.end();  ++i) {
+    V8Context* context = *i;
+
+    context->addGlobalContextMethod(method);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,6 +675,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   V8Context* context = _contexts[i] = new V8Context();
 
   // enter a new isolate
+  context->_id = i;
   context->_isolate = v8::Isolate::New();
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();

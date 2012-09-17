@@ -93,13 +93,7 @@ Module.prototype.require = function (path) {
           + raw.content 
           + "\n});";
 
-  try {
-    f = SYS_EXECUTE(content, undefined, path);
-  }
-  catch (err) {
-    require("console").error("in file %s: %o", path, err.stack);
-    throw err;
-  }
+  f = SYS_EXECUTE(content, undefined, path);
 
   if (f === undefined) {
     throw "cannot create context function";

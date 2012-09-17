@@ -592,6 +592,34 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief eventually executes a function in all contexts
+///
+/// @FUN{internal.executeGlobalContextFunction(@FA{function-definition})}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION(<function-definition>)")));
+  }
+
+  // extract the action name
+  v8::String::Utf8Value utf8def(argv[0]);
+
+  if (*utf8def == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<defition> must be a UTF8 function definition")));
+  }
+
+  string def = *utf8def;
+
+  // and pass it to the V8 contexts
+  GlobalV8Dealer->addGlobalContextMethod(def);
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -628,6 +656,10 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
 
   context->Global()->Set(v8::String::New("SYS_DEFINE_ACTION"),
                          v8::FunctionTemplate::New(JS_DefineAction)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
+                         v8::FunctionTemplate::New(JS_ExecuteGlobalContextFunction)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................
