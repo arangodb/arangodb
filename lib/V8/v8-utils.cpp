@@ -506,7 +506,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
       if (TRI_IsTraceLogging(__FILE__)) {
-        v8::String::Utf8Value keyName(key);
+        TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != 0) {
           LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
@@ -555,7 +555,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
       if (TRI_IsTraceLogging(__FILE__)) {
-        v8::String::Utf8Value keyName(key);
+        TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != 0) {
           LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
@@ -636,7 +636,7 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: load(<filename>)")));
   }
 
-  v8::String::Utf8Value name(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
@@ -678,13 +678,13 @@ static v8::Handle<v8::Value> JS_Log (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: log(<level>, <message>)")));
   }
 
-  v8::String::Utf8Value level(argv[0]);
+  TRI_Utf8ValueNFC level(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*level == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<level> must be a string")));
   }
 
-  v8::String::Utf8Value message(argv[1]);
+  TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*message == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<message> must be a string")));
@@ -742,7 +742,7 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (1 <= argv.Length()) {
-    v8::String::Utf8Value str(argv[0]);
+    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
     TRI_SetLogLevelLogging(*str);
   }
@@ -799,6 +799,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 
     // convert it into a string
     v8::String::Utf8Value utf8(val);
+    // TRI_Utf8ValueNFC utf8(TRI_UNKNOWN_MEM_ZONE, val);
 
     if (*utf8 == 0) {
       continue;
@@ -887,7 +888,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
   }
 
-  v8::String::Utf8Value name(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
@@ -921,13 +922,13 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: save(<filename>, <content>)")));
   }
 
-  v8::String::Utf8Value name(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
   
-  v8::String::Utf8Value content(argv[1]);
+  TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<content> must be a string")));
@@ -991,7 +992,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
     return scope.Close(v8::String::New(""));
   }
 
-  v8::String::Utf8Value format(argv[0]);
+  TRI_Utf8ValueNFC format(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*format == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<format> must be a string")));
@@ -1047,7 +1048,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
             return scope.Close(v8::ThrowException(v8::String::New("not enough arguments")));
           }
 
-          v8::String::Utf8Value text(argv[p]);
+          TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[p]);
 
           if (*text == 0) {
             string msg = StringUtils::itoa(p) + ".th argument must be a string";
@@ -1073,7 +1074,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
   }
 
   for (size_t i = p;  i < len;  ++i) {
-    v8::String::Utf8Value text(argv[i]);
+    TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[i]);
 
     if (*text == 0) {
       string msg = StringUtils::itoa(i) + ".th argument must be a string";
@@ -1228,7 +1229,7 @@ void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json) {
 string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
-  v8::String::Utf8Value exception(tryCatch->Exception());
+  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
   const char* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
   string result;
@@ -1243,7 +1244,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
     }
   }
   else {
-    v8::String::Utf8Value filename(message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, message->GetScriptResourceName());
     const char* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
@@ -1269,7 +1270,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
       }
     }
 
-    v8::String::Utf8Value sourceline(message->GetSourceLine());
+    TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
       string l = *sourceline;
@@ -1288,7 +1289,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
       result += "!" + l + "\n";
     }
 
-    v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
+    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
       result += "stacktrace: " + string(*stacktrace) + "\n";
@@ -1305,7 +1306,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
 void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
-  v8::String::Utf8Value exception(tryCatch->Exception());
+  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());  
   const char* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
 
@@ -1319,7 +1320,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
     }
   }
   else {
-    v8::String::Utf8Value filename(message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, message->GetScriptResourceName());
     const char* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
@@ -1342,7 +1343,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
       }
     }
 
-    v8::String::Utf8Value sourceline(message->GetSourceLine());
+    TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
       string l = *sourceline;
@@ -1361,7 +1362,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
       LOG_ERROR("!%s", l.c_str());
     }
 
-    v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
+    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
       LOG_ERROR("stacktrace: %s", *stacktrace);

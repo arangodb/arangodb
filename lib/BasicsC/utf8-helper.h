@@ -35,6 +35,7 @@ extern "C" {
 #endif
   
 #ifdef TRI_HAVE_ICU
+#include "unicode/ucol.h"
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -56,6 +57,12 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
 ////////////////////////////////////////////////////////////////////////////////
 
 char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16, size_t inLength, size_t* outLength);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two utf16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength, UCollator* coll);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
