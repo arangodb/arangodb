@@ -330,6 +330,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.protobuf \
 	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.v8 \
 	$(top_srcdir)/m4/all-in-one.zeromq \
+	$(top_srcdir)/m4/external.icu \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -361,11 +362,12 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
-	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
-	lib/Basics/ssl-helper.cpp lib/BasicsC/associative-multi.c \
-	lib/BasicsC/associative.c lib/BasicsC/conversions.c \
-	lib/BasicsC/csv.c lib/BasicsC/error.c lib/BasicsC/files.c \
-	lib/BasicsC/hashes.c lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/Basics/Utf8Helper.cpp lib/Basics/WriteLocker.cpp \
+	lib/Basics/WriteUnlocker.cpp lib/Basics/ssl-helper.cpp \
+	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
+	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
+	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
+	lib/BasicsC/init.c lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c lib/BasicsC/memory.c \
@@ -375,10 +377,11 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/system-functions.c \
 	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
-	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c lib/Logger/Logger.cpp \
-	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
-	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
+	lib/BasicsC/utf8-helper.c lib/BasicsC/vector.c \
+	lib/BasicsC/voc-errors.c lib/JsonParser/json-parser.c \
+	lib/Logger/Logger.cpp lib/Logger/LoggerData.cpp \
+	lib/Logger/LoggerInfo.cpp lib/Logger/LoggerStream.cpp \
+	lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AnyServer.cpp \
@@ -422,7 +425,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/ReadUnlocker.$(OBJEXT) \
 	lib/Basics/ReadWriteLock.$(OBJEXT) \
 	lib/Basics/StringUtils.$(OBJEXT) lib/Basics/Thread.$(OBJEXT) \
-	lib/Basics/Timing.$(OBJEXT) lib/Basics/WriteLocker.$(OBJEXT) \
+	lib/Basics/Timing.$(OBJEXT) lib/Basics/Utf8Helper.$(OBJEXT) \
+	lib/Basics/WriteLocker.$(OBJEXT) \
 	lib/Basics/WriteUnlocker.$(OBJEXT) \
 	lib/Basics/ssl-helper.$(OBJEXT) \
 	lib/BasicsC/associative-multi.$(OBJEXT) \
@@ -445,7 +449,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/terminal-utils-posix.$(OBJEXT) \
 	lib/BasicsC/terminal-utils.$(OBJEXT) \
 	lib/BasicsC/threads-posix.$(OBJEXT) \
-	lib/BasicsC/vector.$(OBJEXT) lib/BasicsC/voc-errors.$(OBJEXT) \
+	lib/BasicsC/utf8-helper.$(OBJEXT) lib/BasicsC/vector.$(OBJEXT) \
+	lib/BasicsC/voc-errors.$(OBJEXT) \
 	lib/JsonParser/json-parser.$(OBJEXT) \
 	lib/Logger/Logger.$(OBJEXT) lib/Logger/LoggerData.$(OBJEXT) \
 	lib/Logger/LoggerInfo.$(OBJEXT) \
@@ -570,6 +575,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
 	UnitTests/Philadelphia/string-test.cpp \
 	UnitTests/Philadelphia/vector-pointer-test.cpp \
@@ -584,6 +590,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-test.$(OBJEXT) \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
@@ -898,6 +905,9 @@ GCOV_LIBS = @GCOV_LIBS@
 GREP = @GREP@
 HAVE_DOT = @HAVE_DOT@
 HTML2TEXT_EXEC = @HTML2TEXT_EXEC@
+ICU_CPPFLAGS = @ICU_CPPFLAGS@
+ICU_LDFLAGS = @ICU_LDFLAGS@
+ICU_LIBS = @ICU_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -915,7 +925,7 @@ LIBOBJS = @LIBOBJS@
 ################################################################################
 ### @brief libraries
 ################################################################################
-LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ \
+LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ \
 	@PROTOBUF_LIBS@ @READLINE_LIBS@ $(am__append_6)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -1136,8 +1146,8 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ @V8_CPPFLAGS@ \
-	$(am__append_1) $(am__append_2) $(am__append_3) \
+	@READLINE_CPPFLAGS@ @ICU_CPPFLAGS@ @PROTOBUF_CPPFLAGS@ \
+	@V8_CPPFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_5)
 
 ################################################################################
@@ -1288,11 +1298,12 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ReadLocker.cpp lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp lib/Basics/Timing.cpp \
-	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
-	lib/Basics/ssl-helper.cpp lib/BasicsC/associative-multi.c \
-	lib/BasicsC/associative.c lib/BasicsC/conversions.c \
-	lib/BasicsC/csv.c lib/BasicsC/error.c lib/BasicsC/files.c \
-	lib/BasicsC/hashes.c lib/BasicsC/init.c lib/BasicsC/json.c \
+	lib/Basics/Utf8Helper.cpp lib/Basics/WriteLocker.cpp \
+	lib/Basics/WriteUnlocker.cpp lib/Basics/ssl-helper.cpp \
+	lib/BasicsC/associative-multi.c lib/BasicsC/associative.c \
+	lib/BasicsC/conversions.c lib/BasicsC/csv.c \
+	lib/BasicsC/error.c lib/BasicsC/files.c lib/BasicsC/hashes.c \
+	lib/BasicsC/init.c lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c lib/BasicsC/memory.c \
@@ -1302,10 +1313,11 @@ lib_libarango_a_SOURCES = lib/Basics/ConditionLocker.cpp \
 	lib/BasicsC/system-functions.c \
 	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c lib/BasicsC/threads-posix.c \
-	lib/BasicsC/vector.c lib/BasicsC/voc-errors.c \
-	lib/JsonParser/json-parser.c lib/Logger/Logger.cpp \
-	lib/Logger/LoggerData.cpp lib/Logger/LoggerInfo.cpp \
-	lib/Logger/LoggerStream.cpp lib/Logger/LoggerTiming.cpp \
+	lib/BasicsC/utf8-helper.c lib/BasicsC/vector.c \
+	lib/BasicsC/voc-errors.c lib/JsonParser/json-parser.c \
+	lib/Logger/Logger.cpp lib/Logger/LoggerData.cpp \
+	lib/Logger/LoggerInfo.cpp lib/Logger/LoggerStream.cpp \
+	lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
 	lib/ProtocolBuffers/arangodb.pb.cpp lib/Rest/AnyServer.cpp \
@@ -1598,6 +1610,7 @@ CLIENT_OPT := \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
+@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-test.cpp \
 @ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
@@ -1806,6 +1819,8 @@ lib/Basics/Thread.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/Timing.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/Utf8Helper.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/WriteLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/WriteUnlocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
@@ -1868,6 +1883,8 @@ lib/BasicsC/terminal-utils-posix.$(OBJEXT):  \
 lib/BasicsC/terminal-utils.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/threads-posix.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
+	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
+lib/BasicsC/utf8-helper.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/vector.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -2354,6 +2371,9 @@ UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
 UnitTests/Philadelphia/string-buffer-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/string-utf8-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
@@ -2776,6 +2796,7 @@ mostlyclean-compile:
 	-rm -f UnitTests/Philadelphia/json-utilities-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-utf8-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/vector-test.$(OBJEXT)
@@ -2887,6 +2908,7 @@ mostlyclean-compile:
 	-rm -f lib/Basics/StringUtils.$(OBJEXT)
 	-rm -f lib/Basics/Thread.$(OBJEXT)
 	-rm -f lib/Basics/Timing.$(OBJEXT)
+	-rm -f lib/Basics/Utf8Helper.$(OBJEXT)
 	-rm -f lib/Basics/WriteLocker.$(OBJEXT)
 	-rm -f lib/Basics/WriteUnlocker.$(OBJEXT)
 	-rm -f lib/Basics/ssl-helper.$(OBJEXT)
@@ -2915,6 +2937,7 @@ mostlyclean-compile:
 	-rm -f lib/BasicsC/terminal-utils-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/terminal-utils.$(OBJEXT)
 	-rm -f lib/BasicsC/threads-posix.$(OBJEXT)
+	-rm -f lib/BasicsC/utf8-helper.$(OBJEXT)
 	-rm -f lib/BasicsC/vector.$(OBJEXT)
 	-rm -f lib/BasicsC/voc-errors.$(OBJEXT)
 	-rm -f lib/Dispatcher/ApplicationDispatcher.$(OBJEXT)
@@ -3030,6 +3053,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-utilities-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-normalize-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-pointer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/vector-test.Po@am__quote@
@@ -3140,6 +3164,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/StringUtils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Thread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Timing.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Utf8Helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/WriteLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/WriteUnlocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ssl-helper.Po@am__quote@
@@ -3168,6 +3193,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/terminal-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/threads-posix.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/utf8-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/voc-errors.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Dispatcher/$(DEPDIR)/ApplicationDispatcher.Po@am__quote@
