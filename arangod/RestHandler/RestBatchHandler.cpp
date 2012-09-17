@@ -52,7 +52,6 @@ using namespace triagens::arango;
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
   : RestVocbaseBaseHandler(request, vocbase),
-    _missingResponses(0),
     _outputMessages(new PB_ArangoMessage) {
 }
 
@@ -65,8 +64,6 @@ RestBatchHandler::~RestBatchHandler () {
     // delete protobuf message
     delete _outputMessages;
   }
-
-  destroyHandlers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +84,7 @@ RestBatchHandler::~RestBatchHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::isDirect () {
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,31 +95,6 @@ string const& RestBatchHandler::queue () {
   static string const client = "STANDARD";
 
   return client;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-Job* RestBatchHandler::createJob (AsyncJobServer* server) {
-  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
-
-  if (httpServer == 0) {
-    LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
-    return 0;
-  }
-
-  BatchJob<HttpServer>* batchJob = new BatchJob<HttpServer>(httpServer, this);
-
-  return batchJob;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-        
-vector<HttpHandler*> RestBatchHandler::subhandlers () {
-  return _handlers;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +117,7 @@ Handler::status_e RestBatchHandler::execute() {
   if (! _inputMessages.ParseFromArray(_request->body(), _request->bodySize())) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid protobuf input message");
+                  "invalid request message data sent");
 
     return Handler::HANDLER_FAILED;
   }
@@ -171,55 +143,48 @@ Handler::status_e RestBatchHandler::execute() {
 
       return Handler::HANDLER_FAILED;
     }
-    
-    ++_missingResponses;
-    _handlers.push_back(handler);
-  }
 
-  // success
-  return Handler::HANDLER_DONE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a single handler response to the output array
-////////////////////////////////////////////////////////////////////////////////
-  
-void RestBatchHandler::addResponse (HttpHandler* handler) {
-  for (size_t i = 0; i < _handlers.size(); ++i) {
-    if (_handlers[i] == handler) {
-
-      // avoid concurrent modifications to the structure
-      MUTEX_LOCKER(_handlerLock);
-      PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
-
-      handler->getResponse()->write(batch);
-      if (--_missingResponses == 0) {
-        assembleResponse();
+    Handler::status_e status = Handler::HANDLER_FAILED;
+    do {
+      try {
+        status = handler->execute();
       }
-      return;
+      catch (triagens::basics::TriagensError const& ex) {
+        handler->handleError(ex);
+      }
+      catch (std::exception const& ex) {
+        triagens::basics::InternalError err(ex, __FILE__, __LINE__);
+
+        handler->handleError(err);
+      }
+      catch (...) {
+        triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+        handler->handleError(err);
+      }
+    }
+    while (status == Handler::HANDLER_REQUEUE);
+   
+    if (status == Handler::HANDLER_DONE) {
+      PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
+      handler->getResponse()->write(batch);
+    }
+
+    delete handler;
+
+    if (status == Handler::HANDLER_FAILED) {
+      return Handler::HANDLER_FAILED;
     }
   }
   
-  // handler not found
-  LOGGER_WARNING << "handler not found. this should not happen."; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an overall protobuf response from the array of responses
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBatchHandler::assembleResponse () {
-  assert(_missingResponses == 0);
-  
   size_t messageSize = _outputMessages->ByteSize();
-
+  
   // allocate output buffer
   char* output = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * messageSize, false);
   if (output == NULL) {
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
-    return;
+    return Handler::HANDLER_FAILED;
   }
 
   _response = new HttpResponse(HttpResponse::OK);
@@ -230,26 +195,15 @@ void RestBatchHandler::assembleResponse () {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
     delete _response;
 
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory");
-    return;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    return Handler::HANDLER_FAILED;
   }
-/*
-  for (char* x = output; x < output + messageSize; ++x) {
-    if (*x >= ' ' && *x <= 'z') {
-      printf("%c", *x);
-    }
-    else if (*x == '\n' || *x == '\0') {
-      printf("\n");
-    } 
-    else {
-      printf(".");
-    }
-  }
-  */ 
+  
   _response->body().appendText(output, messageSize);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
+
+  // success
+  return Handler::HANDLER_DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,20 +216,6 @@ string const& RestBatchHandler::getContentType () {
   return contentType;
 }
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy handlers in case setup went wrong
-////////////////////////////////////////////////////////////////////////////////
-  
-void RestBatchHandler::destroyHandlers () {
-  for (size_t i = 0; i < _handlers.size(); ++i) {
-    HttpHandler* handler = _handlers[i];
-
-    delete handler;
-  }
-
-  _handlers.clear();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
