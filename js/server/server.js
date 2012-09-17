@@ -68,6 +68,15 @@
     internal.defineAction = SYS_DEFINE_ACTION;
   }
 
+  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
+    internal.executeGlobalContextFunction = function() {
+      console.error("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION not available");
+    };
+  }
+  else {
+    internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
