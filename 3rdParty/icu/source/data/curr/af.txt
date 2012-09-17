@@ -1,0 +1,668 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/af.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/af.xml
+ */
+af{
+    Currencies{
+        AED{
+            "AED",
+            "Verenigde Arabiese Emirate dirham",
+        }
+        AFN{
+            "AFN",
+            "Afgaanse afgani",
+        }
+        ALL{
+            "ALL",
+            "Albanese lek",
+        }
+        AMD{
+            "AMD",
+            "Armeense dram",
+        }
+        ANG{
+            "ANG",
+            "Nederlands-Antilliaanse gulde",
+        }
+        AOA{
+            "AOA",
+            "Angolese kwanza",
+        }
+        ARS{
+            "ARS",
+            "Argentynse peso",
+        }
+        AUD{
+            "AU$",
+            "Australiese dollar",
+        }
+        AWG{
+            "AWG",
+            "Arubaanse floryn",
+        }
+        AZN{
+            "AZN",
+            "Azerbeidjaanse manat",
+        }
+        BAM{
+            "BAM",
+            "Bosnië en Herzegowina omskakelbare marka",
+        }
+        BBD{
+            "BBD",
+            "Barbados-dollar",
+        }
+        BDT{
+            "BDT",
+            "Bangladesjiese taka",
+        }
+        BGN{
+            "BGN",
+            "Bulgaarse lev",
+        }
+        BHD{
+            "BHD",
+            "Bahrainse dinar",
+        }
+        BIF{
+            "BIF",
+            "Burundiese frank",
+        }
+        BMD{
+            "BMD",
+            "Bermuda-dollar",
+        }
+        BND{
+            "BND",
+            "Broeneise dollar",
+        }
+        BOB{
+            "BOB",
+            "Boliviaanse boliviano",
+        }
+        BRL{
+            "R$",
+            "Brasiliaanse real",
+        }
+        BSD{
+            "BSD",
+            "Bahamiaanse dollar",
+        }
+        BTN{
+            "BTN",
+            "Bhoetanese ngoeltroem",
+        }
+        BWP{
+            "BWP",
+            "Botswana pula",
+        }
+        BYR{
+            "BYR",
+            "Belo-Russiese roebel",
+        }
+        BZD{
+            "BZD",
+            "Beliziese dollar",
+        }
+        CAD{
+            "CA$",
+            "Kanadese dollar",
+        }
+        CDF{
+            "CDF",
+            "Kongolese frank",
+        }
+        CHF{
+            "CHF",
+            "Switserse frank",
+        }
+        CLP{
+            "CLP",
+            "Chileense peso",
+        }
+        CNY{
+            "CN¥",
+            "Sjinese joean renminbi",
+        }
+        COP{
+            "COP",
+            "Colombiaanse peso",
+        }
+        CRC{
+            "CRC",
+            "Costa Ricaanse colón",
+        }
+        CUC{
+            "CUC",
+            "Kubaanse omskakelbare peso",
+        }
+        CUP{
+            "CUP",
+            "Kubaanse peso",
+        }
+        CVE{
+            "CVE",
+            "Kaap Verdiese escudo",
+        }
+        CZK{
+            "CZK",
+            "Tsjeggiese kroon",
+        }
+        DJF{
+            "DJF",
+            "Djiboeti frank",
+        }
+        DKK{
+            "DKK",
+            "Deense kroon",
+        }
+        DOP{
+            "DOP",
+            "Dominikaanse peso",
+        }
+        DZD{
+            "DZD",
+            "Algeriese dinar",
+        }
+        EGP{
+            "EGP",
+            "Egiptiese pond",
+        }
+        ERN{
+            "ERN",
+            "Eritrese nakfa",
+        }
+        ETB{
+            "ETB",
+            "Etiopiese birr",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        FJD{
+            "FJD",
+            "Fidjiaanse dollar",
+        }
+        FKP{
+            "FKP",
+            "Falkland-eilande pond",
+        }
+        GBP{
+            "£",
+            "Britse pond",
+        }
+        GEL{
+            "GEL",
+            "Georgiese lari",
+        }
+        GHC{
+            "GHC",
+            "Ghanese cedi (1979-2007)",
+        }
+        GHS{
+            "GHS",
+            "Ghanese cedi",
+        }
+        GIP{
+            "GIP",
+            "Gibraltarese pond",
+        }
+        GMD{
+            "GMD",
+            "Gambiese dalasi",
+        }
+        GNF{
+            "GNF",
+            "Guinese frank",
+        }
+        GNS{
+            "GNS",
+            "Guinese syli",
+        }
+        GTQ{
+            "GTQ",
+            "Guatemalaanse quetzal",
+        }
+        GYD{
+            "GYD",
+            "Guyanese dollar",
+        }
+        HKD{
+            "HK$",
+            "Hong Kong dollar",
+        }
+        HNL{
+            "HNL",
+            "Hondurese lempira",
+        }
+        HRK{
+            "HRK",
+            "Kroatiese kuna",
+        }
+        HTG{
+            "HTG",
+            "Haïtiaanse gourde",
+        }
+        HUF{
+            "HUF",
+            "Hongaarse forint",
+        }
+        IDR{
+            "IDR",
+            "Indonesiese roepia",
+        }
+        ILS{
+            "₪",
+            "Israeliese nuwe sikkel",
+        }
+        INR{
+            "₹",
+            "Indiese rupee",
+        }
+        IQD{
+            "IQD",
+            "Irakse dinar",
+        }
+        IRR{
+            "IRR",
+            "Iranse rial",
+        }
+        ISK{
+            "ISK",
+            "Yslandse kroon",
+        }
+        ITL{
+            "ITL",
+            "Italiaanse lier",
+        }
+        JMD{
+            "JMD",
+            "Jamaikaanse dollar",
+        }
+        JOD{
+            "JOD",
+            "Jordaniese dinar",
+        }
+        JPY{
+            "JP¥",
+            "Japannese jen",
+        }
+        KES{
+            "KES",
+            "Keniaanse sjieling",
+        }
+        KGS{
+            "KGS",
+            "Kirgisiese som",
+        }
+        KHR{
+            "KHR",
+            "Kambodjaanse riel",
+        }
+        KMF{
+            "KMF",
+            "Comoriese frank",
+        }
+        KPW{
+            "KPW",
+            "Noord-Koreaanse won",
+        }
+        KRW{
+            "₩",
+            "Suid-Koreaanse won",
+        }
+        KWD{
+            "KWD",
+            "Koeweitse dinar",
+        }
+        KYD{
+            "KYD",
+            "Cayman-eilande dollar",
+        }
+        KZT{
+            "KZT",
+            "Kazakse tenge",
+        }
+        LAK{
+            "LAK",
+            "Laosiaanse kip",
+        }
+        LBP{
+            "LBP",
+            "Lebanese pond",
+        }
+        LKR{
+            "LKR",
+            "Sri Lankaanse roepee",
+        }
+        LRD{
+            "LRD",
+            "Liberiese dollar",
+        }
+        LSL{
+            "LSL",
+            "Lesotho loti",
+        }
+        LTL{
+            "LTL",
+            "Litause litas",
+        }
+        LVL{
+            "LVL",
+            "Lettiese lats",
+        }
+        LYD{
+            "LYD",
+            "Libiese dinar",
+        }
+        MAD{
+            "MAD",
+            "Marokkaanse dirham",
+        }
+        MDL{
+            "MDL",
+            "Moldowiese leu",
+        }
+        MGA{
+            "MGA",
+            "Malgassiese ariary",
+        }
+        MKD{
+            "MKD",
+            "Macedoniese denar",
+        }
+        MMK{
+            "MMK",
+            "Myanma Kyat",
+        }
+        MNT{
+            "MNT",
+            "Mongoolse toegrik",
+        }
+        MOP{
+            "MOP",
+            "Macaose pataca",
+        }
+        MRO{
+            "MRO",
+            "Mauritaniese ouguiya",
+        }
+        MUR{
+            "MUR",
+            "Mauritiaanse rupee",
+        }
+        MVR{
+            "MVR",
+            "Malediviese rufia",
+        }
+        MWK{
+            "MWK",
+            "Malawiese kwacha",
+        }
+        MXN{
+            "MX$",
+            "Meksikaanse peso",
+        }
+        MYR{
+            "MYR",
+            "Maleisiese ringgit",
+        }
+        MZM{
+            "MZM",
+            "Mosambiekse metical (1980-2006)",
+        }
+        MZN{
+            "MZN",
+            "Mosambiekse metical",
+        }
+        NAD{
+            "NAD",
+            "Namibiese dollar",
+        }
+        NGN{
+            "NGN",
+            "Nigeriese naira",
+        }
+        NIO{
+            "NIO",
+            "Nicaraguaanse córdoba",
+        }
+        NOK{
+            "NOK",
+            "Noorse kroon",
+        }
+        NPR{
+            "NPR",
+            "Nepalese roepee",
+        }
+        NZD{
+            "NZ$",
+            "Nieu-Seeland dollar",
+        }
+        OMR{
+            "OMR",
+            "Omaanse rial",
+        }
+        PAB{
+            "PAB",
+            "Panamese balboa",
+        }
+        PEN{
+            "PEN",
+            "Peruaanse nuwe sol",
+        }
+        PGK{
+            "PGK",
+            "Papoease kina",
+        }
+        PHP{
+            "PHP",
+            "Filippynse peso",
+        }
+        PKR{
+            "PKR",
+            "Pakistanse roepee",
+        }
+        PLN{
+            "PLN",
+            "Poolse zloty",
+        }
+        PYG{
+            "PYG",
+            "Paraguaanse guarani",
+        }
+        QAR{
+            "QAR",
+            "Katarese rial",
+        }
+        RSD{
+            "RSD",
+            "Serbiese dinar",
+        }
+        RUB{
+            "RUB",
+            "Russiese roebel",
+        }
+        RWF{
+            "RWF",
+            "Rwandiese frank",
+        }
+        SAR{
+            "SAR",
+            "Saoedi-Arabiese riyal",
+        }
+        SBD{
+            "SBD",
+            "Salomons-eilande dollar",
+        }
+        SCR{
+            "SCR",
+            "Seychellese rupee",
+        }
+        SDG{
+            "SDG",
+            "Soedannese pond",
+        }
+        SDP{
+            "SDP",
+            "Soedannese pond (1957-1998)",
+        }
+        SEK{
+            "SEK",
+            "Sweedse kroon",
+        }
+        SGD{
+            "SGD",
+            "Singapoer-dollar",
+        }
+        SHP{
+            "SHP",
+            "Sint Helena pond",
+        }
+        SLL{
+            "SLL",
+            "Sierra Leonese leone",
+        }
+        SOS{
+            "SOS",
+            "Somaliese sjieling",
+        }
+        SRD{
+            "SRD",
+            "Surinaamse dollar",
+        }
+        STD{
+            "STD",
+            "São Tomé en Príncipe dobra",
+        }
+        SYP{
+            "SYP",
+            "Siriese pond",
+        }
+        SZL{
+            "SZL",
+            "Swazilandse lilangeni",
+        }
+        THB{
+            "฿",
+            "Thaise baht",
+        }
+        TJS{
+            "TJS",
+            "Tadjikse roebel",
+        }
+        TMT{
+            "TMT",
+            "Toerkmeense manat",
+        }
+        TND{
+            "TND",
+            "Tunisiese dinar",
+        }
+        TOP{
+            "TOP",
+            "Tongaanse pa'anga",
+        }
+        TRL{
+            "TRL",
+            "Turkse lier (1922-2005)",
+        }
+        TRY{
+            "TRY",
+            "Turkse lier",
+        }
+        TTD{
+            "TTD",
+            "Trinidad en Tobago dollar",
+        }
+        TWD{
+            "NT$",
+            "Nuwe Taiwanese dollar",
+        }
+        TZS{
+            "TZS",
+            "Tanzaniese sjieling",
+        }
+        UAH{
+            "UAH",
+            "Oekraïnse hriwna",
+        }
+        UGX{
+            "UGX",
+            "Ugandese sjieling",
+        }
+        USD{
+            "US$",
+            "Amerikaanse dollar",
+        }
+        UYU{
+            "UYU",
+            "Uruguaanse peso",
+        }
+        UZS{
+            "UZS",
+            "Oezbekiese som",
+        }
+        VEF{
+            "VEF",
+            "Venezolaanse bolivar",
+        }
+        VND{
+            "₫",
+            "Viëtnamese dong",
+        }
+        VUV{
+            "VUV",
+            "Vanuatu vatu",
+        }
+        WST{
+            "WST",
+            "Samoaanse tala",
+        }
+        XAF{
+            "FCFA",
+            "CFA frank BEAC",
+        }
+        XCD{
+            "EC$",
+            "Oos-Karibbiese dollar",
+        }
+        XOF{
+            "CFA",
+            "CFA frank BCEAO",
+        }
+        XPF{
+            "CFPF",
+            "CFP-frank",
+        }
+        XXX{
+            "XXX",
+            "Onbekende geldeenheid",
+        }
+        YER{
+            "YER",
+            "Jemenitiese rial",
+        }
+        ZAR{
+            "R",
+            "Suid-Afrikaanse rand",
+        }
+        ZMK{
+            "ZMK",
+            "Zambiese kwacha",
+        }
+        ZWD{
+            "ZWD",
+            "Zimbabwiese dollar",
+        }
+    }
+    Version{"2.0.65.46"}
+}

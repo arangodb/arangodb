@@ -1,0 +1,902 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/vi.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/vi.xml
+ */
+vi{
+    Version{"2.0.67.6"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abidjan"}
+        }
+        "Africa:Accra"{
+            ec{"Accra"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"Addis Ababa"}
+        }
+        "Africa:Algiers"{
+            ec{"Algiers"}
+        }
+        "Africa:Bangui"{
+            ec{"Bangui"}
+        }
+        "Africa:Banjul"{
+            ec{"Banjul"}
+        }
+        "Africa:Bissau"{
+            ec{"Bissau"}
+        }
+        "Africa:Blantyre"{
+            ec{"Blantyre"}
+        }
+        "Africa:Djibouti"{
+            ec{"Djibouti"}
+        }
+        "America:Adak"{
+            ec{"Adak"}
+        }
+        "America:Anchorage"{
+            ec{"Anchorage"}
+        }
+        "America:Anguilla"{
+            ec{"Anguilla"}
+        }
+        "America:Antigua"{
+            ec{"Antigua"}
+        }
+        "America:Araguaina"{
+            ec{"Araguaina"}
+        }
+        "America:Aruba"{
+            ec{"Aruba"}
+        }
+        "America:Asuncion"{
+            ec{"Asuncion"}
+        }
+        "America:Bahia"{
+            ec{"Bahia"}
+        }
+        "America:Barbados"{
+            ec{"Barbados"}
+        }
+        "America:Belem"{
+            ec{"Belem"}
+        }
+        "America:Belize"{
+            ec{"Belize"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"Blanc-Sablon"}
+        }
+        "America:Boa_Vista"{
+            ec{"Boa Vista"}
+        }
+        "America:Costa_Rica"{
+            ec{"Costa Rica"}
+        }
+        "America:Dominica"{
+            ec{"Dominica"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvador"}
+        }
+        "America:Grenada"{
+            ec{"Grenada"}
+        }
+        "America:Guatemala"{
+            ec{"Guatemala"}
+        }
+        "America:Guyana"{
+            ec{"Guyana"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaica"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, Bắc Dakota"}
+        }
+        "America:Panama"{
+            ec{"Panama"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont D'Urville"}
+        }
+        "Asia:Aden"{
+            ec{"Aden"}
+        }
+        "Asia:Almaty"{
+            ec{"Almaty"}
+        }
+        "Asia:Amman"{
+            ec{"Amman"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadyr"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aqtau"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aqtobe"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Ashgabat"}
+        }
+        "Asia:Baghdad"{
+            ec{"Baghdad"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahrain"}
+        }
+        "Asia:Baku"{
+            ec{"Baku"}
+        }
+        "Asia:Bangkok"{
+            ec{"Bangkok"}
+        }
+        "Asia:Beirut"{
+            ec{"Beirut"}
+        }
+        "Asia:Bishkek"{
+            ec{"Bishkek"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"Hồng Kông"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuwait"}
+        }
+        "Asia:Qatar"{
+            ec{"Qatar"}
+        }
+        "Asia:Saigon"{
+            ec{"TP Hồ Chí Minh"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapore"}
+        }
+        "Asia:Taipei"{
+            ec{"Đài Bắc"}
+        }
+        "Asia:Vientiane"{
+            ec{"Viêng Chăn"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azores"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermuda"}
+        }
+        "Atlantic:Canary"{
+            ec{"Canary"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Cape Verde"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Nam Georgia"}
+        }
+        "Australia:Adelaide"{
+            ec{"Adelaide"}
+        }
+        "Etc:Unknown"{
+            ec{"Không rõ"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Amsterdam"}
+        }
+        "Europe:Andorra"{
+            ec{"Andorra"}
+        }
+        "Europe:Athens"{
+            ec{"Athens"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrade"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlin"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Luxembourg"}
+        }
+        "Europe:Malta"{
+            ec{"Malta"}
+        }
+        "Europe:Monaco"{
+            ec{"Monaco"}
+        }
+        "Indian:Antananarivo"{
+            ec{"Antananarivo"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldives"}
+        }
+        "Indian:Mauritius"{
+            ec{"Mauritius"}
+        }
+        "Pacific:Apia"{
+            ec{"Apia"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fiji"}
+        }
+        "Pacific:Nauru"{
+            ec{"Nauru"}
+        }
+        "Pacific:Palau"{
+            ec{"Palau"}
+        }
+        "meta:Acre"{
+            ld{"Giờ Mùa Hè Acre"}
+            lg{"Giờ Acre"}
+            ls{"Giờ Chuẩn Acre"}
+        }
+        "meta:Afghanistan"{
+            ls{"Giờ Afghanistan"}
+        }
+        "meta:Africa_Central"{
+            ls{"Giờ Trung Phi"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Giờ Đông Phi"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Giờ Chuẩn Nam Phi"}
+        }
+        "meta:Africa_Western"{
+            ld{"Giờ Mùa Hè Tây Phi"}
+            lg{"Giờ Tây Phi"}
+            ls{"Giờ Chuẩn Tây Phi"}
+        }
+        "meta:Aktyubinsk"{
+            ld{"Giờ Mùa Hè Aktyubinsk"}
+            lg{"Giờ Aktyubinsk"}
+            ls{"Giờ Chuẩn Aktyubinsk"}
+        }
+        "meta:Alaska"{
+            ld{"Giờ Mùa Hè Alaska"}
+            lg{"Giờ Alaska"}
+            ls{"Giờ Chuẩn Alaska"}
+        }
+        "meta:Alaska_Hawaii"{
+            ld{"Giờ Mùa Hè Alaska-Hawaii"}
+            lg{"Giờ Alaska-Hawaii"}
+            ls{"Giờ Chuẩn Alaska-Hawaii"}
+        }
+        "meta:Almaty"{
+            ld{"Giờ Mùa Hè Almaty"}
+            lg{"Giờ Almaty"}
+            ls{"Giờ Chuẩn Almaty"}
+        }
+        "meta:Amazon"{
+            ld{"Giờ Mùa Hè Amazon"}
+            lg{"Giờ Amazon"}
+            ls{"Giờ Chuẩn Amazon"}
+        }
+        "meta:America_Central"{
+            ld{"Giờ ban ngày miền trung"}
+            lg{"Giờ miền trung"}
+            ls{"Giờ chuẩn miền trung"}
+        }
+        "meta:America_Eastern"{
+            ld{"Giờ ban ngày miền đông"}
+            lg{"Giờ miền đông"}
+            ls{"Giờ chuẩn miền đông"}
+        }
+        "meta:America_Mountain"{
+            ld{"Giờ ban ngày miền núi"}
+            lg{"Giờ miền núi"}
+            ls{"Giờ chuẩn miền núi"}
+        }
+        "meta:America_Pacific"{
+            ld{"Giờ ban ngày Thái Bình Dương"}
+            lg{"Giờ Thái Bình Dương"}
+            ls{"Giờ chuẩn Thái Bình Dương"}
+        }
+        "meta:Anadyr"{
+            ld{"Giờ mùa hè Anadyr"}
+            lg{"Giờ Anadyr"}
+            ls{"Giờ Chuẩn Anadyr"}
+        }
+        "meta:Aqtau"{
+            ld{"Giờ Mùa Hè Aqtau"}
+            lg{"Giờ Aqtau"}
+            ls{"Giờ Chuẩn Aqtau"}
+        }
+        "meta:Aqtobe"{
+            ld{"Giờ Mùa Hè Aqtobe"}
+            lg{"Giờ Aqtobe"}
+            ls{"Giờ Chuẩn Aqtobe"}
+        }
+        "meta:Arabian"{
+            ld{"Giờ Mùa Hè A-rập"}
+            lg{"Giờ A-rập"}
+            ls{"Giờ Chuẩn A-rập"}
+        }
+        "meta:Argentina"{
+            ld{"Giờ Mùa Hè Argentina"}
+            lg{"Giờ Argentina"}
+            ls{"Giờ Chuẩn Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Giờ mùa hè miền tây Argentina"}
+            lg{"Giờ miền tây Argentina"}
+            ls{"Giờ chuẩn miền mây Argentina"}
+        }
+        "meta:Armenia"{
+            ld{"Giờ Mùa Hè Armenia"}
+            lg{"Giờ Armenia"}
+            ls{"Giờ Chuẩn Armenia"}
+        }
+        "meta:Ashkhabad"{
+            ld{"Giờ Mùa Hè Ashkhabad"}
+            lg{"Giờ Ashkhabad"}
+            ls{"Giờ Chuẩn Ashkhabad"}
+        }
+        "meta:Atlantic"{
+            ld{"Giờ Mùa hè Đại Tây Dương"}
+            lg{"Giờ Đại Tây Dương"}
+            ls{"Giờ Chuẩn Đại Tây Dương"}
+        }
+        "meta:Australia_Central"{
+            ld{"Giờ Mùa Hè Miền Trung Nước Úc"}
+            lg{"Giờ Miền Trung Nước Úc"}
+            ls{"Giờ Chuẩn Miền Trung Nước Úc"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Giờ Mùa Hè Miền Trung Tây Nước Úc"}
+            lg{"Giờ Miền Trung Tây Nước Úc"}
+            ls{"Giờ Chuẩn Miền Trung Tây Nước Úc"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Giờ Mùa Hè Miền Đông Nước Úc"}
+            lg{"Giờ Miền Đông Nước Úc"}
+            ls{"Giờ Chuẩn Miền Đông Nước Úc"}
+        }
+        "meta:Australia_Western"{
+            ld{"Giờ Mùa Hè Miền Tây Nước Úc"}
+            lg{"Giờ Miền Tây Nước Úc"}
+            ls{"Giờ Chuẩn Miền Tây Nước Úc"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Giờ Mùa Hè Azerbaijan"}
+            lg{"Giờ Azerbaijan"}
+            ls{"Giờ Chuẩn Azerbaijan"}
+        }
+        "meta:Azores"{
+            ld{"Giờ Mùa Hè Azores"}
+            lg{"Giờ Azores"}
+            ls{"Giờ Chuẩn Azores"}
+        }
+        "meta:Baku"{
+            ld{"Giờ Mùa Hè Baku"}
+            lg{"Giờ Baku"}
+            ls{"Giờ Chuẩn Baku"}
+        }
+        "meta:Bangladesh"{
+            ld{"Giờ Mùa Hè Bangladesh"}
+            lg{"Giờ Bangladesh"}
+            ls{"Giờ Chuẩn Bangladesh"}
+        }
+        "meta:Bering"{
+            ld{"Giờ Mùa Hè Bering"}
+            lg{"Giờ Bering"}
+            ls{"Giờ Chuẩn Bering"}
+        }
+        "meta:Bhutan"{
+            ls{"Giờ Bhutan"}
+        }
+        "meta:Bolivia"{
+            ls{"Giờ Bolivia"}
+        }
+        "meta:Borneo"{
+            ld{"Giờ Mùa Hè Borneo"}
+            lg{"Giờ Borneo"}
+            ls{"Giờ Chuẩn Borneo"}
+        }
+        "meta:Brasilia"{
+            ld{"Giờ Mùa Hè Brasilia"}
+            lg{"Giờ Brasilia"}
+            ls{"Giờ Chuẩn Brasilia"}
+        }
+        "meta:Brunei"{
+            ls{"Giờ Brunei Darussalam"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Giờ Mùa Hè Cape Verde"}
+            lg{"Giờ Cape Verde"}
+            ls{"Giờ Chuẩn Cape Verde"}
+        }
+        "meta:Chamorro"{
+            ls{"Giờ Chamorro"}
+        }
+        "meta:Changbai"{
+            ls{"Giờ Changbai"}
+        }
+        "meta:Chatham"{
+            ld{"Giờ Mùa Hè Chatham"}
+            lg{"Giờ Chatham"}
+            ls{"Giờ Chuẩn Chatham"}
+        }
+        "meta:Chile"{
+            ld{"Giờ Mùa Hè Chile"}
+            lg{"Giờ Chile"}
+            ls{"Giờ Chuẩn Chile"}
+        }
+        "meta:China"{
+            ld{"Giờ Mùa Hè Trung Quốc"}
+            lg{"Giờ Trung Quốc"}
+            ls{"Giờ Chuẩn Trung Quốc"}
+        }
+        "meta:Choibalsan"{
+            ld{"Giờ Mùa Hè Choibalsan"}
+            lg{"Giờ Choibalsan"}
+            ls{"Giờ Chuẩn Choibalsan"}
+        }
+        "meta:Christmas"{
+            ls{"Giờ Đảo Christmas"}
+        }
+        "meta:Cocos"{
+            ls{"Giờ Quần Đảo Cocos"}
+        }
+        "meta:Colombia"{
+            ld{"Giờ Mùa Hè Colombia"}
+            lg{"Giờ Colombia"}
+            ls{"Giờ Chuẩn Colombia"}
+        }
+        "meta:Cook"{
+            ld{"Giờ Nửa Mùa Hè Quần Đảo Cook"}
+            lg{"Giờ Quần Đảo Cook"}
+            ls{"Giờ Chuẩn Quần Đảo Cook"}
+        }
+        "meta:Cuba"{
+            ld{"Giờ Mùa Hè Cuba"}
+            lg{"Giờ Cuba"}
+            ls{"Giờ Chuẩn Cuba"}
+        }
+        "meta:Dacca"{
+            ls{"Giờ Dacca"}
+        }
+        "meta:Davis"{
+            ls{"Giờ Davis"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Giờ Dumont-d'Urville"}
+        }
+        "meta:Dushanbe"{
+            ld{"Giờ Mùa Hè Dushanbe"}
+            lg{"Giờ Dushanbe"}
+            ls{"Giờ Chuẩn Dushanbe"}
+        }
+        "meta:Dutch_Guiana"{
+            ls{"Giờ Guiana thuộc Hà Lan"}
+        }
+        "meta:East_Timor"{
+            ls{"Giờ Đông Timor"}
+        }
+        "meta:Easter"{
+            ld{"Giờ Mùa Hè Đảo Phục Sinh"}
+            lg{"Giờ Đảo Phục Sinh"}
+            ls{"Giờ Chuẩn Đảo Phục Sinh"}
+        }
+        "meta:Ecuador"{
+            ls{"Giờ Ecuador"}
+        }
+        "meta:Europe_Central"{
+            ld{"Giờ Mùa Hè Trung Âu"}
+            lg{"Giờ Trung Âu"}
+            ls{"Giờ Chuẩn Trung Âu"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Giờ Mùa Hè Đông Âu"}
+            lg{"Giờ Đông Âu"}
+            ls{"Giờ Chuẩn Đông Âu"}
+        }
+        "meta:Europe_Western"{
+            ld{"Giờ Mùa hè Tây Âu"}
+            lg{"Giờ Tây Âu"}
+            ls{"Giờ Chuẩn Tây Âu"}
+        }
+        "meta:Falkland"{
+            ld{"Giờ Mùa Hè Quần Đảo Falkland"}
+            lg{"Giờ Quần Đảo Falkland"}
+            ls{"Giờ Chuẩn Quần Đảo Falkland"}
+        }
+        "meta:Fiji"{
+            ld{"Giờ Mùa Hè Fiji"}
+            lg{"Giờ Fiji"}
+            ls{"Giờ Chuẩn Fiji"}
+        }
+        "meta:French_Guiana"{
+            ls{"Giờ Guiana thuộc Pháp"}
+        }
+        "meta:French_Southern"{
+            ls{"Giờ Nam Cực và Nam Nước Pháp"}
+        }
+        "meta:Frunze"{
+            ld{"Giờ Mùa Hè Frunze"}
+            lg{"Giờ Frunze"}
+            ls{"Giờ Chuẩn Frunze"}
+        }
+        "meta:GMT"{
+            ls{"Giờ Trung Bình Greenwich"}
+        }
+        "meta:Galapagos"{
+            ls{"Giờ Galapagos"}
+        }
+        "meta:Gambier"{
+            ls{"Giờ Gambier"}
+        }
+        "meta:Georgia"{
+            ld{"Giờ Mùa Hè Georgia"}
+            lg{"Giờ Georgia"}
+            ls{"Giờ Chuẩn Georgia"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Giờ Quần Đảo Gilbert"}
+        }
+        "meta:Greenland_Central"{
+            ld{"Giờ Mùa Hè Miền Trung Greenland"}
+            lg{"Giờ Miền Trung Greenland"}
+            ls{"Giờ Chuẩn Miền Trung Greenland"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Giờ Mùa Hè Miền Đông Greenland"}
+            lg{"Giờ Miền Đông Greenland"}
+            ls{"Giờ Chuẩn Miền Đông Greenland"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Giờ Mùa Hè Miền Tây Greenland"}
+            lg{"Giờ Miền Tây Greenland"}
+            ls{"Giờ Chuẩn Miền Tây Greenland"}
+        }
+        "meta:Guam"{
+            ls{"Giờ Chuẩn Guam"}
+        }
+        "meta:Gulf"{
+            ls{"Giờ Chuẩn Vùng Vịnh"}
+        }
+        "meta:Guyana"{
+            ls{"Giờ Guyana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Giờ Mùa Hè Hawaii-Aleutian"}
+            lg{"Giờ Hawaii-Aleutian"}
+            ls{"Giờ Chuẩn Hawaii-Aleutian"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Giờ Mùa Hè Hồng Kông"}
+            lg{"Giờ Hồng Kông"}
+            ls{"Giờ Chuẩn Hồng Kông"}
+        }
+        "meta:Hovd"{
+            ld{"Giờ Mùa Hè Hovd"}
+            lg{"Giờ Hovd"}
+            ls{"Giờ Chuẩn Hovd"}
+        }
+        "meta:India"{
+            ls{"Giờ Chuẩn Ấn Độ"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Giờ Ấn Độ Dương"}
+        }
+        "meta:Indochina"{
+            ls{"Giờ Đông Dương"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Giờ Miền Trung Indonexia"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Giờ Miền Đông Indonexia"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Giờ Miền Tây Indonexia"}
+        }
+        "meta:Iran"{
+            ld{"Giờ Mùa Hè Iran"}
+            lg{"Giờ Iran"}
+            ls{"Giờ Chuẩn Iran"}
+        }
+        "meta:Irkutsk"{
+            ld{"Giờ Mùa Hè Irkutsk"}
+            lg{"Giờ Irkutsk"}
+            ls{"Giờ Chuẩn Irkutsk"}
+        }
+        "meta:Israel"{
+            ld{"Giờ Mùa Hè Israel"}
+            lg{"Giờ Israel"}
+            ls{"Giờ Chuẩn Israel"}
+        }
+        "meta:Japan"{
+            ld{"Giờ Mùa Hè Nhật Bản"}
+            lg{"Giờ Nhật Bản"}
+            ls{"Giờ Chuẩn Nhật Bản"}
+        }
+        "meta:Kamchatka"{
+            ld{"Giờ mùa hè Petropavlovsk-Kamchatski"}
+            lg{"Giờ Petropavlovsk-Kamchatski"}
+            ls{"Giờ chuẩn Petropavlovsk-Kamchatski"}
+        }
+        "meta:Karachi"{
+            ls{"Giờ Karachi"}
+        }
+        "meta:Kashgar"{
+            ls{"Giờ Kashgar"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Giờ Miền Đông Kazakhstan"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Giờ Miền Tây Kazakhstan"}
+        }
+        "meta:Kizilorda"{
+            ld{"Giờ Mùa Hè Kizilorda"}
+            lg{"Giờ Kizilorda"}
+            ls{"Giờ Chuẩn Kizilorda"}
+        }
+        "meta:Korea"{
+            ld{"Giờ Mùa Hè Hàn Quốc"}
+            lg{"Giờ Hàn Quốc"}
+            ls{"Giờ Chuẩn Hàn Quốc"}
+        }
+        "meta:Kosrae"{
+            ls{"Giờ Kosrae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Giờ Mùa Hè Krasnoyarsk"}
+            lg{"Giờ Krasnoyarsk"}
+            ls{"Giờ Chuẩn Krasnoyarsk"}
+        }
+        "meta:Kuybyshev"{
+            ld{"Giờ Mùa Hè Kuybyshev"}
+            lg{"Giờ Kuybyshev"}
+            ls{"Giờ Chuẩn Kuybyshev"}
+        }
+        "meta:Kwajalein"{
+            ls{"Giờ Kwajalein"}
+        }
+        "meta:Line_Islands"{
+            ls{"Giờ Quần Đảo Line"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Giờ Mùa Hè Lord Howe"}
+            lg{"Giờ Lord Howe"}
+            ls{"Giờ Chuẩn Lord Howe"}
+        }
+        "meta:Macquarie"{
+            ls{"Giờ Macquarie"}
+        }
+        "meta:Magadan"{
+            ld{"Giờ mùa hè Magadan"}
+            lg{"Giờ Magadan"}
+            ls{"Giờ Chuẩn Magadan"}
+        }
+        "meta:Maldives"{
+            ls{"Giờ Maldives"}
+        }
+        "meta:Marquesas"{
+            ls{"Giờ Marquesas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Giờ Quần Đảo Marshall"}
+        }
+        "meta:Mauritius"{
+            ld{"Giờ Mùa Hè Mauritius"}
+            lg{"Giờ Mauritius"}
+            ls{"Giờ Chuẩn Mauritius"}
+        }
+        "meta:Mawson"{
+            ls{"Giờ Mawson"}
+        }
+        "meta:Mongolia"{
+            ld{"Giờ mùa hè Ulan Bator"}
+            lg{"Giờ Ulan Bator"}
+            ls{"Giờ chuẩn Ulan Bator"}
+        }
+        "meta:Moscow"{
+            ld{"Giờ Mùa Hè Matxcơva"}
+            lg{"Giờ Matxcơva"}
+            ls{"Giờ Chuẩn Matxcơva"}
+        }
+        "meta:Nauru"{
+            ls{"Giờ Nauru"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Giờ Mùa Hè New Caledonia"}
+            lg{"Giờ New Caledonia"}
+            ls{"Giờ Chuẩn New Caledonia"}
+        }
+        "meta:New_Zealand"{
+            ld{"Giờ Mùa Hè New Zealand"}
+            lg{"Giờ New Zealand"}
+            ls{"Giờ Chuẩn New Zealand"}
+        }
+        "meta:Newfoundland"{
+            ld{"Giờ Mùa Hè Newfoundland"}
+            lg{"Giờ Newfoundland"}
+            ls{"Giờ Chuẩn Newfoundland"}
+        }
+        "meta:Niue"{
+            ls{"Giờ Niue"}
+        }
+        "meta:Norfolk"{
+            ls{"Giờ Quần Đảo Norfolk"}
+        }
+        "meta:Noronha"{
+            ld{"Giờ Mùa Hè Fernando de Noronha"}
+            lg{"Giờ Fernando de Noronha"}
+            ls{"Giờ Chuẩn Fernando de Noronha"}
+        }
+        "meta:North_Mariana"{
+            ls{"Giờ Quần Đảo Bắc Mariana"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Giờ mùa hè Novosibirsk"}
+            lg{"Giờ Novosibirsk"}
+            ls{"Giờ chuẩn Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"Giờ mùa hè Omsk"}
+            lg{"Giờ Omsk"}
+            ls{"Giờ chuẩn Omsk"}
+        }
+        "meta:Palau"{
+            ls{"Giờ Palau"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Giờ Papua New Guinea"}
+        }
+        "meta:Paraguay"{
+            ld{"Giờ Mùa Hè Paraguay"}
+            lg{"Giờ Paraguay"}
+            ls{"Giờ Chuẩn Paraguay"}
+        }
+        "meta:Peru"{
+            ld{"Giờ Mùa Hè Peru"}
+            lg{"Giờ Peru"}
+            ls{"Giờ Chuẩn Peru"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Giờ Quần Đảo Phoenix"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Giờ Mùa Hè Pierre và Miquelon"}
+            lg{"Giờ Pierre và Miquelon"}
+            ls{"Giờ Chuẩn Pierre và Miquelon"}
+        }
+        "meta:Pitcairn"{
+            ls{"Giờ Pitcairn"}
+        }
+        "meta:Ponape"{
+            ls{"Giờ Ponape"}
+        }
+        "meta:Reunion"{
+            ls{"Giờ Reunion"}
+        }
+        "meta:Rothera"{
+            ls{"Giờ Rothera"}
+        }
+        "meta:Sakhalin"{
+            ld{"Giờ mùa hè Sakhalin"}
+            lg{"Giờ Sakhalin"}
+            ls{"Giờ Chuẩn Sakhalin"}
+        }
+        "meta:Samara"{
+            ld{"Giờ mùa hè Samara"}
+            lg{"Giờ Samara"}
+            ls{"Giờ Chuẩn Samara"}
+        }
+        "meta:Samoa"{
+            ls{"Giờ Chuẩn Samoa"}
+        }
+        "meta:Seychelles"{
+            ls{"Giờ Seychelles"}
+        }
+        "meta:Solomon"{
+            ls{"Giờ Quần Đảo Solomon"}
+        }
+        "meta:South_Georgia"{
+            ls{"Giờ Nam Georgia"}
+        }
+        "meta:Suriname"{
+            ls{"Giờ Suriname"}
+        }
+        "meta:Syowa"{
+            ls{"Giờ Syowa"}
+        }
+        "meta:Tahiti"{
+            ls{"Giờ Tahiti"}
+        }
+        "meta:Tokelau"{
+            ls{"Giờ Tokelau"}
+        }
+        "meta:Tonga"{
+            ld{"Giờ Mùa Hè Tonga"}
+            lg{"Giờ Tonga"}
+            ls{"Giờ Chuẩn Tonga"}
+        }
+        "meta:Truk"{
+            ls{"Giờ Chuuk"}
+        }
+        "meta:Turkey"{
+            ld{"Giờ Mùa Hè Thổ Nhĩ Kỳ"}
+            lg{"Giờ Thổ Nhĩ Kỳ"}
+            ls{"Giờ Chuẩn Thổ Nhĩ Kỳ"}
+        }
+        "meta:Tuvalu"{
+            ls{"Giờ Tuvalu"}
+        }
+        "meta:Uruguay"{
+            ld{"Giờ Mùa Hè Uruguay"}
+            lg{"Giờ Uruguay"}
+            ls{"Giờ Chuẩn Uruguay"}
+        }
+        "meta:Vanuatu"{
+            ld{"Giờ Mùa Hè Vanuatu"}
+            lg{"Giờ Vanuatu"}
+            ls{"Giờ Chuẩn Vanuatu"}
+        }
+        "meta:Venezuela"{
+            ls{"Giờ Venezuela"}
+        }
+        "meta:Vladivostok"{
+            ld{"Giờ mùa hè Vladivostok"}
+            lg{"Giờ Vladivostok"}
+            ls{"Giờ Chuẩn Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"Giờ Mùa Hè Volgograd"}
+            lg{"Giờ Volgograd"}
+            ls{"Giờ Chuẩn Volgograd"}
+        }
+        "meta:Vostok"{
+            ls{"Giờ Vostok"}
+        }
+        "meta:Wake"{
+            ls{"Giờ Đảo Wake"}
+        }
+        "meta:Wallis"{
+            ls{"Giờ Wallis và Futuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"Giờ mùa hè Yakutsk"}
+            lg{"Giờ Yakutsk"}
+            ls{"Giờ Chuẩn Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Giờ mùa hè Yekaterinburg"}
+            lg{"Giờ Yekaterinburg"}
+            ls{"Giờ Chuẩn Yekaterinburg"}
+        }
+        "meta:Yukon"{
+            ld{"Giờ Mùa Hè Yukon"}
+            lg{"Giờ Yukon"}
+            ls{"Giờ Chuẩn Yukon"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        fallbackRegionFormat{"Giờ {1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Giờ {0}"}
+    }
+}

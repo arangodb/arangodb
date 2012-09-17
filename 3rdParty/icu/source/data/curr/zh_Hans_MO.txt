@@ -1,0 +1,33 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/zh_Hans_MO.xml
+// *
+// ***************************************************************************
+zh_Hans_MO{
+    Currencies{
+        AWG{
+            "AWG",
+            "阿鲁巴弗罗林",
+        }
+        BAM{
+            "BAM",
+            "波斯尼亚-黑塞哥维那可兑换马克",
+        }
+        FKP{
+            "FKP",
+            "福克兰群岛镑",
+        }
+        KZT{
+            "KZT",
+            "哈萨克斯坦腾格",
+        }
+        NIO{
+            "NIO",
+            "尼加拉瓜科多巴",
+        }
+    }
+    Version{"2.0.64.65"}
+}

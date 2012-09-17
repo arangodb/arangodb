@@ -1,0 +1,60 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/ig.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/ig.xml
+ */
+ig{
+    Languages{
+        ak{"Akan"}
+        am{"Amariikị"}
+        ar{"Arabiikị"}
+        be{"Belaruusu"}
+        bg{"Bọlụgarịa"}
+        bn{"Bengali"}
+        cs{"Cheekị"}
+        de{"Jamaan"}
+        el{"Giriikị"}
+        en{"Oyibo"}
+        es{"Panya"}
+        fa{"Peshan"}
+        fr{"Fụrench"}
+        ha{"Awụsa"}
+        hi{"Hindi"}
+        hu{"Magịya"}
+        id{"Indonisia"}
+        ig{"Igbo"}
+        it{"Italo"}
+        ja{"Japanese"}
+        jv{"Java"}
+        km{"Keme, Etiti"}
+        ko{"Koria"}
+        ms{"Maleyi"}
+        my{"Mịanma"}
+        ne{"Nepali"}
+        nl{"Dọọch"}
+        pa{"Punjabi"}
+        pl{"Poliishi"}
+        pt{"Potoki"}
+        ro{"Rumenia"}
+        ru{"Rọshan"}
+        rw{"Rụwanda"}
+        so{"Somali"}
+        sv{"Sụwidiishi"}
+        ta{"Tamụlụ"}
+        th{"Taị"}
+        tr{"Tọkiishi"}
+        uk{"Ukureenị"}
+        ur{"Urudu"}
+        vi{"Viyetịnaamụ"}
+        yo{"Yoruba"}
+        zh{"Mandarịịnị"}
+        zu{"Zulu"}
+    }
+    Version{"2.0.65.46"}
+}

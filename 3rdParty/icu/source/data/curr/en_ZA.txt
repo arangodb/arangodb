@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/en_ZA.xml
+// *
+// ***************************************************************************
+en_ZA{
+    Currencies{
+        USD{
+            "US$",
+            "US Dollar",
+        }
+        ZAR{
+            "R",
+            "South African Rand",
+        }
+    }
+    Version{"2.0.64.50"}
+}

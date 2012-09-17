@@ -131,6 +131,7 @@ AM_LDFLAGS = \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
 	@PROTOBUF_LDFLAGS@ \
+	@ICU_LDFLAGS@ \
 	@V8_LDFLAGS@
 
 if ENABLE_ZEROMQ
@@ -430,6 +431,14 @@ endif
 
 if ENABLE_ZEROMQ
 include 3rdParty/Makefile.all-in-one-zeromq
+endif
+
+################################################################################
+### @brief ICU
+################################################################################
+
+if ENABLE_ALL_IN_ONE_ICU
+include 3rdParty/Makefile.all-in-one-icu
 endif
 
 ## -----------------------------------------------------------------------------
