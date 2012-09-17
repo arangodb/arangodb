@@ -466,7 +466,9 @@ struct TRI_index_s* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t*,
                                                           const TRI_vector_pointer_t* attributes,
                                                           const TRI_vector_pointer_t* values,
                                                           bool supportUndef, 
-                                                          bool* created);
+                                                          bool* created,
+                                                          int* errorNum,
+                                                          char** errorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -2693,7 +2693,7 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
                                                                const TRI_vector_pointer_t*,
                                                                TRI_idx_iid_t,
                                                                bool,
-                                                               bool*)) {
+                                                               bool*, int*, char**)) {
   TRI_index_t* idx;
   TRI_json_t* uniqueIndex;
   TRI_json_t* supportUndefIndex;
@@ -2705,7 +2705,8 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   bool created;
   size_t fieldCount;
   size_t j;
-  
+  int errorNum;
+  char* errorStr;
 
   // ...........................................................................
   // extract fields list (which is a list of key/value pairs for a bitarray index
@@ -2786,8 +2787,8 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   // ...........................................................................
   // attempt to create the index or retrieve an existing one
   // ...........................................................................
-  
-  idx = creator(sim, &attributes, &values, iid, supportUndef, &created);
+  errorStr = NULL;
+  idx = creator(sim, &attributes, &values, iid, supportUndef, &created, &errorNum, &errorStr);
 
 
   // ...........................................................................
@@ -2804,7 +2805,11 @@ static int BitarrayBasedIndexFromJson (TRI_sim_collection_t* sim,
   
   if (idx == NULL) {
     LOG_ERROR("cannot create bitarray index %lu", (unsigned long) iid);
-    return TRI_errno();
+    if (errorStr != NULL) {
+      LOG_TRACE(errorStr);
+      TRI_Free(TRI_CORE_MEM_ZONE, errorStr);  
+    }  
+    return errorNum;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -4487,7 +4492,9 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
                                                       const TRI_vector_pointer_t* values,
                                                       TRI_idx_iid_t iid,
                                                       bool supportUndef,
-                                                      bool* created) {
+                                                      bool* created,
+                                                      int* errorNum,
+                                                      char** errorStr) {
   TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4503,7 +4510,8 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
     if (created != NULL) {
       *created = false;
     }
-
+    *errorNum = res;
+    *errorStr  = TRI_DuplicateString("Bitarray index attributes could not be accessed.");
     return NULL;
   }
 
@@ -4516,6 +4524,12 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
   idx = LookupPathIndexSimCollection(collection, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false);
   
   if (idx != NULL) {
+  
+    // .........................................................................
+    // existing index has been located which matches the list of attributes
+    // return this one
+    // .........................................................................
+    
     TRI_DestroyVector(&paths);
     TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("bitarray-index previously created");
@@ -4532,7 +4546,7 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
   // Create the bitarray index
   // ...........................................................................
   
-  idx = TRI_CreateBitarrayIndex(&collection->base, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef);
+  idx = TRI_CreateBitarrayIndex(&collection->base, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
 
   
   // ...........................................................................
@@ -4571,6 +4585,14 @@ static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* coll
   res = FillIndex(collection, idx);
   
   if (res != TRI_ERROR_NO_ERROR) {
+  
+    // .........................................................................
+    // for some reason one or more of the existing documents has caused the 
+    // index to fail. Remove the index from the collection and return null.
+    // .........................................................................
+    
+    *errorNum = res;
+    *errorStr = TRI_DuplicateString("Bitarray index creation aborted due to documents within collection.");
     TRI_FreeBitarrayIndex(idx);
     return NULL;
   }
@@ -4674,17 +4696,22 @@ TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
                                                    const TRI_vector_pointer_t* attributes,
                                                    const TRI_vector_pointer_t* values,
                                                    bool supportUndef,
-                                                   bool* created) {
+                                                   bool* created,
+                                                   int* errorCode,
+                                                   char** errorStr) {
   TRI_index_t* idx;
   int res;
 
+  *errorCode = TRI_ERROR_NO_ERROR;
+  *errorStr  = NULL;
+  
   // .............................................................................
   // inside write-lock the collection
   // .............................................................................
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
   
-  idx = CreateBitarrayIndexSimCollection(sim, attributes, values, 0, supportUndef, created);
+  idx = CreateBitarrayIndexSimCollection(sim, attributes, values, 0, supportUndef, created, errorCode, errorStr);
   
   if (idx == NULL) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
@@ -4696,15 +4723,35 @@ TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
   // .............................................................................
   // outside write-lock
   // .............................................................................
+  
+  
+  // .............................................................................
+  // The index is 'new' so save it
+  // .............................................................................
 
   if (created) {
     res = TRI_SaveIndex(&sim->base, idx);
+    
+    // ...........................................................................    
+    // If index could not be saved, report the error and return NULL
+    // Todo: get TRI_SaveIndex to report the error
+    // ...........................................................................    
+    
+    if (res == TRI_ERROR_NO_ERROR) {
+      return idx;
+    }
+   
+    *errorCode = res;
+    *errorStr  = TRI_DuplicateString("Bitarray index could not be saved.");
+    return NULL;
+  }
+
   
-    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
-  }
-  else {
-    return TRI_ERROR_NO_ERROR;
-  }
+  // .............................................................................
+  // Index already exists so simply return it
+  // .............................................................................
+  
+  return idx;
 }                                                
                                                 
 ////////////////////////////////////////////////////////////////////////////////

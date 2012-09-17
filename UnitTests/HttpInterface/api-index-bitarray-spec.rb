@@ -50,11 +50,11 @@ describe ArangoDB do
         
         cmd = "/_api/index?collection=#{@cid}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"a\", [0,1,2], \"a\", [\"a\",\"b\",\"c\"]  ] }"
-        doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
+        doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)        
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(0)
+        doc.parsed_response['errorNum'].should eq(3415)
       end  
 
       it "creation failure due to duplicate values" do
@@ -69,7 +69,7 @@ describe ArangoDB do
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(0)
+        doc.parsed_response['errorNum'].should eq(3417)
       end  
       
       
@@ -115,7 +115,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(0)        
+        doc.parsed_response['errorNum'].should eq(3413)        
       end      
 
       it "creation success when all documents have supported values" do

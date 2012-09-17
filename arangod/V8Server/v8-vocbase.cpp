@@ -3054,10 +3054,16 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   // .............................................................................
 
   if (ok) {
-    bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated);
+    char* errorStr = 0;
+    bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
     if (bitarrayIndex == 0) {
-      errorCode = TRI_errno();
-      errorString = "index could not be created from Simple Collection";
+      if (errorStr == 0) {
+         errorString = "index could not be created from Simple Collection";
+      }
+      else {
+         errorString = string(errorStr);
+         TRI_Free(TRI_CORE_MEM_ZONE, errorStr); // strings are created in the CORE MEMORY ZONE
+      }   
       ok = false;
     }
   }  
