@@ -186,7 +186,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = example->Get(key);
 
-    v8::String::Utf8Value keyStr(key);
+    TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr != 0) {
       pids[i] = shaper->findAttributePathByName(shaper, *keyStr);
@@ -906,7 +906,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = 0;
+  TRI_document_collection_t* sim = 0;
   
   if (lock) {
     sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
@@ -1118,8 +1118,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // extract and use the simple collection
   // ...........................................................................
 
-
-  TRI_sim_collection_t* sim = 0;
+  TRI_document_collection_t* sim = 0;
   if (lock) {  
     sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
   }
@@ -1447,13 +1446,13 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  if (collection->_type != TRI_COL_TYPE_SIMPLE_EDGE) {
+  if (collection->_type != TRI_COL_TYPE_EDGE) {
     TRI_ReleaseCollection(collection);
 
     return scope.Close(v8::ThrowException(
@@ -1526,7 +1525,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       cid = vertexCollection->_cid;
       TRI_ReleaseCollection(vertexCollection);
 
-      edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
+      edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, did);
 
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
@@ -1576,7 +1575,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     cid = vertexCollection->_cid;
     TRI_ReleaseCollection(vertexCollection);
 
-    edges = TRI_LookupEdgesSimCollection(sim, direction, cid, did);
+    edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, did);
 
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
@@ -1634,7 +1633,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> AllQuery (TRI_sim_collection_t* sim, 
+static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim, 
                                        TRI_vocbase_col_t const* collection,
                                        v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -1649,6 +1648,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_sim_collection_t* sim,
   // extract skip and limit
   TRI_voc_ssize_t skip;
   TRI_voc_size_t limit;
+  TRI_primary_collection_t* primary = &sim->base;
 
   ExtractSkipAndLimit(argv, 0, skip, limit);
 
@@ -1658,15 +1658,15 @@ static v8::Handle<v8::Value> AllQuery (TRI_sim_collection_t* sim,
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  size_t total = sim->_primaryIndex._nrUsed;
+  size_t total = primary->_primaryIndex._nrUsed;
   uint32_t count = 0;
   bool error = false;
 
   if (0 < total && 0 < limit) {
     TRI_barrier_t* barrier = 0;
 
-    void** beg = sim->_primaryIndex._table;
-    void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+    void** beg = primary->_primaryIndex._table;
+    void** end = beg + primary->_primaryIndex._nrAlloc;
     void** ptr = beg;
 
     // skip from the beginning
@@ -1752,7 +1752,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1789,7 +1789,7 @@ static v8::Handle<v8::Value> JS_AllNLQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1810,7 +1810,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -1931,7 +1931,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 /// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_sim_collection_t* sim,
+static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t* sim,
                                                       TRI_vocbase_col_t const* collection,
                                                       v8::Handle<v8::Object>* err,
                                                       v8::Arguments const& argv) {
@@ -2049,7 +2049,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -2086,7 +2086,7 @@ static v8::Handle<v8::Value> JS_ByExampleNLHashIndex (v8::Arguments const& argv)
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -2215,7 +2215,7 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> NearQuery (TRI_sim_collection_t* sim,
+static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* sim,
                                         TRI_vocbase_col_t const* collection,
                                         v8::Handle<v8::Object>* err,
                                         v8::Arguments const& argv) {
@@ -2274,7 +2274,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -2311,7 +2311,7 @@ static v8::Handle<v8::Value> JS_NearNLQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -2350,7 +2350,7 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WithinQuery (TRI_sim_collection_t* sim,
+static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* sim,
                                           TRI_vocbase_col_t const* collection,
                                           v8::Handle<v8::Object>* err,
                                           v8::Arguments const& argv) {
@@ -2409,7 +2409,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));
@@ -2446,7 +2446,7 @@ static v8::Handle<v8::Value> JS_WithinNLQuery (v8::Arguments const& argv) {
   // extract the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_sim_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
 
   if (sim == 0) {
     return scope.Close(v8::ThrowException(err));

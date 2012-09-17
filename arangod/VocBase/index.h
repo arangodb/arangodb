@@ -52,7 +52,7 @@ extern "C" {
 struct TRI_collection_s;
 struct TRI_doc_mptr_s;
 struct TRI_shaped_json_s;
-struct TRI_sim_collection_s;
+struct TRI_document_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types

@@ -20,7 +20,7 @@ dist_man_MANS =
 ### @brief files to cleanup
 ################################################################################
 
-CLEANUP =
+CLEANUP = .setup-js-directories .setup-mr-directories
 
 ################################################################################
 ### @brief flex files
@@ -94,6 +94,7 @@ AM_CPPFLAGS = \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
 	@READLINE_CPPFLAGS@ \
+	@ICU_CPPFLAGS@ \
 	@PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
@@ -148,6 +149,7 @@ LIBS = \
 	@LIBEV_LIBS@ \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
+	@ICU_LIBS@ \
 	@PROTOBUF_LIBS@ \
 	@READLINE_LIBS@
 
@@ -301,7 +303,7 @@ endif
 ################################################################################
 
 clean-local:
-	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+	rm -f $(CLEANUP); 
 
 ################################################################################
 ### @brief generated files

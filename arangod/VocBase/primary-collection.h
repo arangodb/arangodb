@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief primary collection
+/// @brief primary collection with global read-write lock
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_DOCUMENT_COLLECTION_H
-#define TRIAGENS_DURHAM_VOC_BASE_DOCUMENT_COLLECTION_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_PRIMARY_COLLECTION_H
+#define TRIAGENS_DURHAM_VOC_BASE_PRIMARY_COLLECTION_H 1
 
 #include "VocBase/collection.h"
 
@@ -43,6 +43,51 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_cap_constraint_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("read-locking collection index %p", a); \
+  TRI_ReadLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("read-unlocking collection index %p", a); \
+  TRI_ReadUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("write-locking collection index %p", a); \
+  TRI_WriteLockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks the documents and indexes
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
+  TRI_LOCK_CHECK_TRACE("write-unlocking collection index %p", a); \
+  TRI_WriteUnlockReadWriteLock(&(a)->_lock)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -259,10 +304,19 @@ TRI_doc_collection_info_t;
 
 typedef struct TRI_primary_collection_s {
   TRI_collection_t base;
+  
+  // .............................................................................
+  // this lock protects the _primaryIndex plus the _secondaryIndexes, _edgesIndex,
+  // and _headers attributes in derived types
+  // .............................................................................
+
+  TRI_read_write_lock_t _lock;
 
   TRI_shaper_t* _shaper;
   TRI_barrier_list_t _barrierList;
   TRI_associative_pointer_t _datafileInfo;
+  
+  TRI_associative_pointer_t _primaryIndex;
 
   struct TRI_cap_constraint_s* _capConstraint;
 

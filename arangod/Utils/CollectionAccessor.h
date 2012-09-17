@@ -158,10 +158,10 @@ namespace triagens {
             _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
           }
           else {
-            if (_type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+            if (_type == TRI_COL_TYPE_DOCUMENT) {
               _collection = TRI_FindDocumentCollectionByNameVocBase(_vocbase, _name.c_str(), _create);
             }
-            else if (_type == TRI_COL_TYPE_SIMPLE_EDGE) {
+            else if (_type == TRI_COL_TYPE_EDGE) {
               _collection = TRI_FindEdgeCollectionByNameVocBase(_vocbase, _name.c_str(), _create);
             }
           }

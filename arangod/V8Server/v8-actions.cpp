@@ -519,7 +519,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   }
 
   // extract the action name
-  v8::String::Utf8Value utf8name(argv[0]);
+  TRI_Utf8ValueNFC utf8name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*utf8name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
