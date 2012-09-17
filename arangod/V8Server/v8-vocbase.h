@@ -30,7 +30,7 @@
 
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -49,17 +49,17 @@
 /// function if you're unsure about it!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
-                                                   TRI_vocbase_col_t const*& collection,
-                                                   v8::Handle<v8::Object>* err);
+TRI_document_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& argv,
+                                                        TRI_vocbase_col_t const*& collection,
+                                                        v8::Handle<v8::Object>* err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts and locks the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_sim_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments const& argv,
-                                                         TRI_vocbase_col_t const*& collection,
-                                                         v8::Handle<v8::Object>* err);
+TRI_document_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments const& argv,
+                                                              TRI_vocbase_col_t const*& collection,
+                                                              v8::Handle<v8::Object>* err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection

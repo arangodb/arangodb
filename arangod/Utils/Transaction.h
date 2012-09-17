@@ -30,7 +30,7 @@
 
 #include "Logger/Logger.h"
 #include "Utils/CollectionAccessor.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
 namespace triagens {
   namespace arango {
@@ -76,7 +76,7 @@ namespace triagens {
         Transaction (CollectionAccessor* collection) : 
           _collection(collection) {
           assert(_collection != 0);
-          assert(_collection->doc());
+          assert(_collection->primary());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,19 +111,19 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying document collection
+/// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
   
-        inline TRI_doc_collection_t* doc () {
-          return _collection->doc();
+        inline TRI_primary_collection_t* primary () {
+          return _collection->primary();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying document collection
+/// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
   
-        const inline TRI_doc_collection_t* doc () const {
-          return _collection->doc();
+        const inline TRI_primary_collection_t* primary () const {
+          return _collection->primary();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
