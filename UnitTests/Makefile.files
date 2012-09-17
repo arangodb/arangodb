@@ -160,6 +160,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Philadelphia/hashes-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
 	UnitTests/Philadelphia/string-test.cpp \
 	UnitTests/Philadelphia/vector-pointer-test.cpp \

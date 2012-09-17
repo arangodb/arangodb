@@ -177,7 +177,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, v8::Handle<v8::String> json) {
   char* ptr;
 
-  v8::String::Utf8Value str(json);
+  TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (*str == 0) {
     dst->_type = TRI_SHAPE_SHORT_STRING;
@@ -590,7 +590,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     bool ok;
 
     // first find an identifier for the name
-    v8::String::Utf8Value keyStr(key);
+    TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
 
     if (*keyStr == 0) {
       --p;
@@ -1365,7 +1365,7 @@ TRI_json_t* TRI_JsonObject (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
+    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
     return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
   }
 
@@ -1473,7 +1473,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
+    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
     return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, *str);
   }
 
@@ -1519,7 +1519,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> parameter) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string TRI_ObjectToString (v8::Handle<v8::Value> value) {
-  v8::String::Utf8Value utf8Value(value);
+  TRI_Utf8ValueNFC utf8Value(TRI_UNKNOWN_MEM_ZONE, value);
 
   if (*utf8Value == 0) {
     return "";
@@ -1541,7 +1541,7 @@ char TRI_ObjectToCharacter (v8::Handle<v8::Value> value, bool& error) {
     return '\0';
   }
 
-  v8::String::Utf8Value sep(value->ToString());
+  TRI_Utf8ValueNFC sep(TRI_UNKNOWN_MEM_ZONE, value->ToString());
 
   if (*sep == 0 || sep.length() != 1) {
     error = true;
