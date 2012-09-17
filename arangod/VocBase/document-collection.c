@@ -2376,8 +2376,8 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
-                                    TRI_doc_mptr_t const* header,
-                                    TRI_voc_tick_t deletion) {
+                                   TRI_doc_mptr_t const* header,
+                                   TRI_voc_tick_t deletion) {
   union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
   TRI_primary_collection_t* primary;
   TRI_df_marker_t const* marker;
