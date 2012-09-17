@@ -309,11 +309,14 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
                                       bool release) {
 
   TRI_datafile_t* journal;
+  TRI_primary_collection_t* primary;
   TRI_doc_mptr_t* header;
   TRI_doc_mptr_t mptr;
   TRI_voc_size_t total;
   TRI_doc_datafile_info_t* dfi;
   int res;
+
+  primary = &sim->base;
   
   // .............................................................................
   // create header
@@ -341,7 +344,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
 
   if (journal == NULL) {
     if (release) {
-      sim->base.endWrite(&sim->base);
+      primary->endWrite(primary);
     }
 
     memset(&mptr, 0, sizeof(mptr));
@@ -369,10 +372,10 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
   if (res == TRI_ERROR_NO_ERROR) {
 
     // fill the header
-    sim->base.createHeader(&sim->base, journal, *result, markerSize, header, 0);
+    primary->createHeader(primary, journal, *result, markerSize, header, 0);
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&sim->base, journal->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
       dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
@@ -388,7 +391,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
       LOG_DEBUG("encountered index violation during create, deleting newly created document");
 
       // rollback, ignore any additional errors
-      resRollback = DeleteShapedJson(&sim->base, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false);
+      resRollback = DeleteShapedJson(primary, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false);
 
       if (resRollback != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
@@ -405,23 +408,23 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
       mptr = *header;
 
       // check cap constraint
-      if (sim->base._capConstraint != NULL) {
-        while (sim->base._capConstraint->_size < sim->base._capConstraint->_array._array._nrUsed) {
+      if (primary->_capConstraint != NULL) {
+        while (primary->_capConstraint->_size < primary->_capConstraint->_array._array._nrUsed) {
           TRI_doc_mptr_t const* oldest;
           int remRes;
 
-          oldest = TRI_PopFrontLinkedArray(&sim->base._capConstraint->_array);
+          oldest = TRI_PopFrontLinkedArray(&primary->_capConstraint->_array);
 
           if (oldest == NULL) {
             LOG_WARNING("cap collection is empty, but collection '%ld' contains elements", 
-                        (unsigned long) sim->base.base._cid);
+                        (unsigned long) primary->base._cid);
             break;
           }
 
           LOG_DEBUG("removing document '%lu' because of cap constraint",
                     (unsigned long) oldest->_did);
 
-          remRes = DeleteShapedJson(&sim->base, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false);
+          remRes = DeleteShapedJson(primary, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false);
 
           if (remRes != TRI_ERROR_NO_ERROR) {
             LOG_WARNING("cannot cap collection: %s", TRI_last_error());
@@ -432,7 +435,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
 
       // release lock, header might be invalid after this
       if (release) {
-        sim->base.endWrite(&sim->base);
+        primary->endWrite(primary);
       }
 
       // wait for sync
@@ -443,7 +446,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
     }
     else {
       if (release) {
-        sim->base.endWrite(&sim->base);
+        primary->endWrite(primary);
       }
 
       mptr._did = 0;
@@ -453,7 +456,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
   }
   else {
     if (release) {
-      sim->base.endWrite(&sim->base);
+      primary->endWrite(primary);
     }
 
     LOG_ERROR("cannot write element: %s", TRI_last_error());
@@ -551,11 +554,14 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       bool release,
                                       bool allowRollback) {
   TRI_doc_mptr_t mptr;
+  TRI_primary_collection_t* primary;
   TRI_datafile_t* journal;
   TRI_df_marker_t const* originalMarker;
   TRI_doc_mptr_t resUpd;
   TRI_voc_size_t total;
   int res;
+
+  primary = &collection->base;
 
   originalMarker = header->_data;
 
@@ -572,7 +578,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
       if (rid != 0) {
         if (rid != header->_rid) {
           if (release) {
-            collection->base.endWrite(&collection->base);
+            primary->endWrite(primary);
           }
 
           TRI_set_errno(TRI_ERROR_ARANGO_CONFLICT);
@@ -588,7 +594,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
 
     case TRI_DOC_UPDATE_CONFLICT:
       if (release) {
-        collection->base.endWrite(&collection->base);
+        primary->endWrite(primary);
       }
 
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
@@ -597,7 +603,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
 
     case TRI_DOC_UPDATE_ILLEGAL:
       if (release) {
-        collection->base.endWrite(&collection->base);
+        primary->endWrite(primary);
       }
 
       TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -617,10 +623,10 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
   journal = SelectJournal(collection, total, result);
 
   if (journal == NULL) {
-    collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
 
     if (release) {
-      collection->base.endWrite(&collection->base);
+      primary->endWrite(primary);
     }
 
     mptr._did = 0;
@@ -647,10 +653,10 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
     TRI_doc_datafile_info_t* dfi;
 
     // update the header
-    collection->base.updateHeader(&collection->base, journal, *result, markerSize, header, &update);
+    primary->updateHeader(primary, journal, *result, markerSize, header, &update);
 
     // update the datafile info
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, header->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
     if (dfi != NULL) {
       size_t length = TRI_LengthDataMasterPointer(header);
 
@@ -661,7 +667,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
       dfi->_sizeDead += length;
     }
 
-    dfi = TRI_FindDatafileInfoPrimaryCollection(&collection->base, journal->_fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
     if (dfi != NULL) {
       dfi->_numberAlive += 1;
       dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
@@ -692,7 +698,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
 
       // release lock, header might be invalid after this
       if (release) {
-        collection->base.endWrite(&collection->base);
+        primary->endWrite(primary);
       }
 
       // wait for sync
@@ -703,7 +709,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
     }
     else {
       if (release) {
-        collection->base.endWrite(&collection->base);
+        primary->endWrite(primary);
       }
 
       mptr._did = 0;
@@ -713,7 +719,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
   }
   else {
     if (release) {
-      collection->base.endWrite(&collection->base);
+      primary->endWrite(primary);
     }
 
     LOG_ERROR("cannot write element");
@@ -2219,7 +2225,11 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
 
     // IN
     entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    /* TODO FIXME: memory allocation might fail */
+    if (entry == NULL) {
+      // OOM
+      // TODO: do we have to release the header and remove the entry from the primaryIndex?
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_IN;
@@ -2230,7 +2240,11 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
 
     // OUT
     entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    /* TODO FIXME: memory allocation might fail */
+    if (entry == NULL) {
+      // OOM
+      // TODO: do we have to release the header and remove the entry from the primaryIndex?
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_OUT;
@@ -2241,7 +2255,11 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
 
     // ANY
     entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    /* TODO FIXME: memory allocation might fail */
+    if (entry == NULL) {
+      // OOM
+      // TODO: do we have to release the header and remove the entry from the primaryIndex?
+      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     entry->_mptr = header;
     entry->_direction = TRI_EDGE_ANY;
@@ -2252,7 +2270,11 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
 
     if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
       entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-      /* TODO FIXME: memory allocation might fail */
+      if (entry == NULL) {
+        // OOM
+        // TODO: do we have to release the header and remove the entry from the primaryIndex?
+        return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
       entry->_mptr = header;
       entry->_direction = TRI_EDGE_ANY;
@@ -2280,6 +2302,7 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
 
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      // TODO: do we have to cleanup?
       return res;
     }
 
