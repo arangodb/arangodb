@@ -65,7 +65,9 @@ static void  BitarrayIndexResetIterator            (TRI_index_iterator_t*, bool)
 static void  BitarrayIndex_destroyMaskSet             (TRI_bitarray_mask_set_t*);
 static void  BitarrayIndex_extendMaskSet              (TRI_bitarray_mask_set_t*, const int, const double);
 static int   BitarrayIndex_findHelper                 (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*, TRI_bitarray_mask_set_t*);
+#if 0
 static void  BitarrayIndex_freeMaskSet                (TRI_bitarray_mask_set_t*);
+#endif
 static int   BitarrayIndex_generateInsertBitMask      (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
 static int   BitarrayIndex_generateEqualBitMask       (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
 static int   BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t*, TRI_json_t*, uint64_t*);
@@ -936,13 +938,14 @@ static void  BitarrayIndex_extendMaskSet(TRI_bitarray_mask_set_t* maskSet, const
   maskSet->_arraySize = newSize;
 }
 
-
+#if 0
 static void  BitarrayIndex_freeMaskSet(TRI_bitarray_mask_set_t* maskSet) {
   BitarrayIndex_destroyMaskSet(maskSet);
   if (maskSet != 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, maskSet);   
   }  
 }
+#endif
 
 static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_json_t* value, uint64_t* mask) {
   int i;
