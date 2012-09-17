@@ -193,7 +193,7 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_t iid) {
-  TRI_document_collection_t* sim;
+  TRI_document_collection_t* doc;
   TRI_index_t* idx;
   size_t i;
 
@@ -202,10 +202,10 @@ TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_
     return NULL;
   }
 
-  sim = (TRI_document_collection_t*) collection;
+  doc = (TRI_document_collection_t*) collection;
 
-  for (i = 0;  i < sim->_indexes._length;  ++i) {
-    idx = sim->_indexes._buffer[i];
+  for (i = 0;  i < doc->_secondaryIndexes._length;  ++i) {
+    idx = doc->_secondaryIndexes._buffer[i];
 
     if (idx->_iid == iid) {
       return idx;
