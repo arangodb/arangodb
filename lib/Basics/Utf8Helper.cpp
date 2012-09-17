@@ -55,7 +55,7 @@ Utf8Helper::Utf8Helper (const string& lang) : _coll(0) {
   }
   else {
     Locale locale(lang.c_str());
-    _coll = Collator::createInstance(status);     
+    _coll = Collator::createInstance(locale, status);     
   }
   
   if(U_FAILURE(status)) {
