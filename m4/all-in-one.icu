@@ -3,8 +3,8 @@ dnl -*- mode: Autoconf; -*-
 dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                               V8
 dnl ----------------------------------------------------------------------------
-
-ICU_CPPFLAGS="$(${srcdir}/3rdParty/icu/BUILD/bin/icu-config --cppflags)"
+# -ffunction-sections -fdata-sections -D_REENTRANT 
+ICU_CPPFLAGS="-I${srcdir}/3rdParty/icu/BUILD/include"
 ICU_LDFLAGS=""
 ICU_LIBS=" -lpthread -ldl -lm ${srcdir}/3rdParty/icu/BUILD/libs/libicui18n.a ${srcdir}/3rdParty/icu/BUILD/libs/libicuuc.a ${srcdir}/3rdParty/icu/BUILD/libs/libicudata.a ${srcdir}/3rdParty/icu/BUILD/libs/libicuio.a ${srcdir}/3rdParty/icu/BUILD/libs/libicule.a ${srcdir}/3rdParty/icu/BUILD/libs/libiculx.a"
 
