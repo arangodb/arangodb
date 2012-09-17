@@ -531,7 +531,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
-  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (create) {
@@ -583,26 +583,27 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
 
   TRI_doc_mptr_t document;
   v8::Handle<v8::Value> result;
+  TRI_primary_collection_t* primary = collection->_collection;
 
   // .............................................................................
   // inside a read transaction
   // .............................................................................
 
   if (lock) {
-    collection->_collection->beginRead(collection->_collection);
+    primary->beginRead(primary);
   }
 
-  document = collection->_collection->read(collection->_collection, did);
+  document = primary->read(primary, did);
 
   if (document._did != 0) {
     TRI_barrier_t* barrier;
 
-    barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+    barrier = TRI_CreateBarrierElement(&primary->_barrierList);
     result = TRI_WrapShapedJson(collection, &document, barrier);
   }
 
   if (lock) {
-    collection->_collection->endRead(collection->_collection);
+    primary->endRead(primary);
   }
 
   // .............................................................................
@@ -691,7 +692,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
   // inside a write transaction
   // .............................................................................
 
-  collection->_collection->beginWrite(collection->_collection);
+  primary->beginWrite(primary);
 
   TRI_voc_rid_t oldRid = 0;
   TRI_doc_mptr_t mptr = primary->update(primary, shaped, did, rid, &oldRid, policy, true);
@@ -777,7 +778,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   // inside a write transaction
   // .............................................................................
 
-  collection->_collection->beginWrite(collection->_collection);
+  primary->beginWrite(primary);
 
   // the lock is freed in create
   TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true);
@@ -897,7 +898,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   // inside a write transaction
   // .............................................................................
 
-  collection->_collection->beginWrite(collection->_collection);
+  primary->beginWrite(primary);
 
   TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true);
 
@@ -995,7 +996,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   // inside a write transaction
   // .............................................................................
 
-  collection->_collection->beginWrite(collection->_collection);
+  primary->beginWrite(primary);
   
   // init target document
   TRI_doc_mptr_t mptr;
@@ -1376,7 +1377,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
-  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (index->IsObject()) {
@@ -2885,7 +2886,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
-  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (index->IsObject()) {
@@ -3114,7 +3115,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     }  
   
     else {
-      theIndex = IndexRep(&collection->_collection->base, json);
+      theIndex = IndexRep(&primary->base, json);
       if (theIndex->IsObject()) {
         theIndex->ToObject()->Set(v8::String::New("isNewlyCreated"), indexCreated ? v8::True() : v8::False());
       }
@@ -3384,7 +3385,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
-  v8::Handle<v8::Value> index = IndexRep(&collection->_collection->base, json);
+  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (index->IsObject()) {

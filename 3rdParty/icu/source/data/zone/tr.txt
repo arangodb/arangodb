@@ -1,0 +1,1152 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/tr.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/tr.xml
+ */
+tr{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abican"}
+        }
+        "Africa:Accra"{
+            ec{"Akra"}
+        }
+        "Africa:Algiers"{
+            ec{"Cezayir"}
+        }
+        "Africa:Brazzaville"{
+            ec{"Brazzavil"}
+        }
+        "Africa:Cairo"{
+            ec{"Kahire"}
+        }
+        "Africa:Casablanca"{
+            ec{"Kazablanka"}
+        }
+        "Africa:Ceuta"{
+            ec{"Septe"}
+        }
+        "Africa:Conakry"{
+            ec{"Konakri"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"Darüsselam"}
+        }
+        "Africa:Djibouti"{
+            ec{"Cibuti"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"El Aaiun"}
+        }
+        "Africa:Khartoum"{
+            ec{"Hartum"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kinşasa"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mogadişu"}
+        }
+        "Africa:Tripoli"{
+            ec{"Trablus"}
+        }
+        "Africa:Tunis"{
+            ec{"Tunus"}
+        }
+        "America:Caracas"{
+            ec{"Karakas"}
+        }
+        "America:Cayman"{
+            ec{"Cayman"}
+        }
+        "America:Costa_Rica"{
+            ec{"Kosta Rika"}
+        }
+        "America:Dominica"{
+            ec{"Dominika"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvador"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaika"}
+        }
+        "America:Martinique"{
+            ec{"Martinique"}
+        }
+        "America:Mexico_City"{
+            ec{"Meksiko City"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, Kuzey Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Merkez, Kuzey Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, Kuzey Dakota"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port of Spain"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Porto Riko"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont D'Urville"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"Güney Kutbu"}
+        }
+        "Asia:Almaty"{
+            ec{"Almatı"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadır"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aktav"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aktöbe"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Aşkabat"}
+        }
+        "Asia:Baghdad"{
+            ec{"Bağdat"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahreyn"}
+        }
+        "Asia:Baku"{
+            ec{"Bakü"}
+        }
+        "Asia:Beirut"{
+            ec{"Beyrut"}
+        }
+        "Asia:Bishkek"{
+            ec{"Bişkek"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kalküta"}
+        }
+        "Asia:Choibalsan"{
+            ec{"Çoybalsan"}
+        }
+        "Asia:Chongqing"{
+            ec{"Çunking"}
+        }
+        "Asia:Colombo"{
+            ec{"Kolombo"}
+        }
+        "Asia:Damascus"{
+            ec{"Şam"}
+        }
+        "Asia:Dhaka"{
+            ec{"Dakka"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Duşanbe"}
+        }
+        "Asia:Gaza"{
+            ec{"Gazze"}
+        }
+        "Asia:Hovd"{
+            ec{"Kobdo"}
+        }
+        "Asia:Irkutsk"{
+            ec{"İrkutsk"}
+        }
+        "Asia:Jakarta"{
+            ec{"Cakarta"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Kudüs"}
+        }
+        "Asia:Kabul"{
+            ec{"Kabil"}
+        }
+        "Asia:Kamchatka"{
+            ec{"Kamçatka"}
+        }
+        "Asia:Karachi"{
+            ec{"Karaçi"}
+        }
+        "Asia:Kashgar"{
+            ec{"Kaşgar"}
+        }
+        "Asia:Katmandu"{
+            ec{"Katmandu"}
+        }
+        "Asia:Kuching"{
+            ec{"Kuçing"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuveyt"}
+        }
+        "Asia:Macau"{
+            ec{"Makao"}
+        }
+        "Asia:Muscat"{
+            ec{"Maskat"}
+        }
+        "Asia:Nicosia"{
+            ec{"Lefkoşa"}
+        }
+        "Asia:Oral"{
+            ec{"Uralsk"}
+        }
+        "Asia:Qatar"{
+            ec{"Katar"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Kızılorda"}
+        }
+        "Asia:Rangoon"{
+            ec{"Yangon"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyad"}
+        }
+        "Asia:Saigon"{
+            ec{"Ho Chi Minh Kenti"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sahalin"}
+        }
+        "Asia:Samarkand"{
+            ec{"Semerkand"}
+        }
+        "Asia:Seoul"{
+            ec{"Seul"}
+        }
+        "Asia:Shanghai"{
+            ec{"Şangay"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapur"}
+        }
+        "Asia:Tashkent"{
+            ec{"Taşkent"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tiflis"}
+        }
+        "Asia:Tehran"{
+            ec{"Tahran"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulan Batur"}
+        }
+        "Asia:Urumqi"{
+            ec{"Urumçi"}
+        }
+        "Asia:Yerevan"{
+            ec{"Erivan"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azor Adaları"}
+        }
+        "Atlantic:Canary"{
+            ec{"Kanarya Adaları"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Güney Georgia"}
+        }
+        "Australia:Sydney"{
+            ec{"Sidney"}
+        }
+        "Etc:Unknown"{
+            ec{"Bilinmeyen Şehir"}
+        }
+        "Europe:Athens"{
+            ec{"Atina"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrad"}
+        }
+        "Europe:Brussels"{
+            ec{"Brüksel"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bükreş"}
+        }
+        "Europe:Budapest"{
+            ec{"Budapeşte"}
+        }
+        "Europe:Chisinau"{
+            ec{"Kişinev"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhag"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Cebelitarık"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Man Adası"}
+        }
+        "Europe:Istanbul"{
+            ec{"İstanbul"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lizbon"}
+        }
+        "Europe:London"{
+            ec{"Londra"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Lüksemburg"}
+        }
+        "Europe:Monaco"{
+            ec{"Monako"}
+        }
+        "Europe:Moscow"{
+            ec{"Moskova"}
+        }
+        "Europe:Prague"{
+            ec{"Prag"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:Sarajevo"{
+            ec{"Saraybosna"}
+        }
+        "Europe:Simferopol"{
+            ec{"Akmescit"}
+        }
+        "Europe:Skopje"{
+            ec{"Üsküp"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofya"}
+        }
+        "Europe:Stockholm"{
+            ec{"Stokholm"}
+        }
+        "Europe:Tirane"{
+            ec{"Tiran"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"Ujgorod"}
+        }
+        "Europe:Vatican"{
+            ec{"Vatikan"}
+        }
+        "Europe:Vienna"{
+            ec{"Viyana"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varşova"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporojye"}
+        }
+        "Europe:Zurich"{
+            ec{"Zürih"}
+        }
+        "Indian:Christmas"{
+            ec{"Christmas"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldivler"}
+        }
+        "Indian:Mauritius"{
+            ec{"Mauritius"}
+        }
+        "Indian:Mayotte"{
+            ec{"Mayotte"}
+        }
+        "Indian:Reunion"{
+            ec{"Reunion"}
+        }
+        "Pacific:Marquesas"{
+            ec{"Markiz Adaları"}
+        }
+        "Pacific:Nauru"{
+            ec{"Nauru"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Pitcairn"}
+        }
+        "meta:Acre"{
+            ld{"Acre Yaz Saati"}
+            lg{"Acre Saati"}
+            ls{"Acre Standart Saati"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afganistan Saati"}
+        }
+        "meta:Africa_Central"{
+            ls{"Orta Afrika Saati"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Doğu Afrika Saati"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Güney Afrika Standart Saati"}
+        }
+        "meta:Africa_Western"{
+            ld{"Batı Afrika Yaz Saati"}
+            lg{"Batı Afrika Saati"}
+            ls{"Batı Afrika Standart Saati"}
+        }
+        "meta:Aktyubinsk"{
+            ld{"Aktyubinsk Yaz Saati"}
+            lg{"Aktyubinsk Saati"}
+            ls{"Aktyubinsk Standart Saati"}
+        }
+        "meta:Alaska"{
+            ld{"Alaska Yaz Saati"}
+            lg{"Alaska Saati"}
+            ls{"Alaska Standart Saati"}
+        }
+        "meta:Alaska_Hawaii"{
+            ld{"Alaska-Hawaii Yaz Saati"}
+            lg{"Alaska-Hawaii Saati"}
+            ls{"Alaska-Hawaii Standart Saati"}
+        }
+        "meta:Almaty"{
+            ld{"Almatı Yaz Saati"}
+            lg{"Almatı Saati"}
+            ls{"Almatı Standart Saati"}
+        }
+        "meta:Amazon"{
+            ld{"Amazon Yaz Saati"}
+            lg{"Amazon Saati"}
+            ls{"Amazon Standart Saati"}
+        }
+        "meta:America_Central"{
+            ld{"Merkezi Yaz Saati"}
+            lg{"Merkezi Saat"}
+            ls{"Merkezi Standart Saati"}
+        }
+        "meta:America_Eastern"{
+            ld{"Doğu Yaz Saati"}
+            lg{"Doğu Saati"}
+            ls{"Doğu Standart Saati"}
+        }
+        "meta:America_Mountain"{
+            ld{"ABD Sıradağlar Yaz Saati"}
+            lg{"ABD Sıradağlar Saati"}
+            ls{"ABD Sıradağlar Standart Saati"}
+        }
+        "meta:America_Pacific"{
+            ld{"Pasifik Yaz Saati"}
+            lg{"Pasifik Saati"}
+            ls{"Pasifik Standart Saati"}
+        }
+        "meta:Anadyr"{
+            ld{"Anadır Yaz Saati"}
+            lg{"Anadyr Saati"}
+            ls{"Anadır Standart Saati"}
+        }
+        "meta:Aqtau"{
+            ld{"Aktav Yaz Saati"}
+            lg{"Aktav Saati"}
+            ls{"Aktav Standart Saati"}
+        }
+        "meta:Aqtobe"{
+            ld{"Aktöbe Yaz Saati"}
+            lg{"Aktöbe Saati"}
+            ls{"Aktöbe Standart Saati"}
+        }
+        "meta:Arabian"{
+            ld{"Arabistan Yaz Saati"}
+            lg{"Arabistan Saati"}
+            ls{"Arabistan Standart Saati"}
+        }
+        "meta:Argentina"{
+            ld{"Arjantin Yaz Saati"}
+            lg{"Arjantin Saati"}
+            ls{"Arjantin Standart Saati"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Batı Arjantin Yaz Saati"}
+            lg{"Batı Arjantin Saati"}
+            ls{"Batı Arjantin Standart Saati"}
+        }
+        "meta:Armenia"{
+            ld{"Ermenistan Yaz Saati"}
+            lg{"Ermenistan Saati"}
+            ls{"Ermenistan Standart Saati"}
+        }
+        "meta:Ashkhabad"{
+            ld{"Aşkabat Yaz Saati"}
+            lg{"Aşkabat Saati"}
+            ls{"Aşkabat Standart Saati"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlantik Yaz Saati"}
+            lg{"Atlantik Saati"}
+            ls{"Atlantik Standart Saati"}
+        }
+        "meta:Australia_Central"{
+            ld{"Orta Avustralya Yaz Saati"}
+            lg{"Orta Avustralya Saati"}
+            ls{"Orta Avustralya Standart Saati"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"İçbatı Avustralya Yaz Saati"}
+            lg{"İçbatı Avustralya Saati"}
+            ls{"İçbatı Avustralya Standart Saati"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Doğu Avustralya Yaz Saati"}
+            lg{"Doğu Avustralya Saati"}
+            ls{"Doğu Avustralya Standart Saati"}
+        }
+        "meta:Australia_Western"{
+            ld{"Batı Avustralya Yaz Saati"}
+            lg{"Batı Avustralya Saati"}
+            ls{"Batı Avustralya Standart Saati"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Azerbaycan Yaz Saati"}
+            lg{"Azerbaycan Saati"}
+            ls{"Azerbaycan Standart Saati"}
+        }
+        "meta:Azores"{
+            ld{"Azor Adaları Yaz Saati"}
+            lg{"Azor Adaları Saati"}
+            ls{"Azor Adaları Standart Saati"}
+        }
+        "meta:Baku"{
+            ld{"Bakü Yaz Saati"}
+            lg{"Bakü Saati"}
+            ls{"Bakü Standart Saati"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bangladeş Yaz Saati"}
+            lg{"Bangladeş Saati"}
+            ls{"Bangladeş Standart Saati"}
+        }
+        "meta:Bering"{
+            ld{"Bering Yaz Saati"}
+            lg{"Bering Saati"}
+            ls{"Bering Standart Saati"}
+        }
+        "meta:Bhutan"{
+            ls{"Bhutan Saati"}
+        }
+        "meta:Bolivia"{
+            ls{"Bolivya Saati"}
+        }
+        "meta:Borneo"{
+            ld{"Borneo Yaz Saati"}
+            lg{"Borneo Saati"}
+            ls{"Borneo Standart Saati"}
+        }
+        "meta:Brasilia"{
+            ld{"Brasilia Yaz Saati"}
+            lg{"Brasilia Saati"}
+            ls{"Brasilia Standart Saati"}
+        }
+        "meta:Brunei"{
+            ls{"Bruney Sultanlığı Saati"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Cape Verde Yaz Saati"}
+            lg{"Cape Verde Saati"}
+            ls{"Cape Verde Standart Saati"}
+        }
+        "meta:Chamorro"{
+            ls{"Chamorro Standart Saati"}
+        }
+        "meta:Changbai"{
+            ls{"Changbai Saati"}
+        }
+        "meta:Chatham"{
+            ld{"Chatham Yaz Saati"}
+            lg{"Chatham Saati"}
+            ls{"Chatham Standart Saati"}
+        }
+        "meta:Chile"{
+            ld{"Şili Yaz Saati"}
+            lg{"Şili Saati"}
+            ls{"Şili Standart Saati"}
+        }
+        "meta:China"{
+            ld{"Çin Yaz Saati"}
+            lg{"Çin Saati"}
+            ls{"Çin Standart Saati"}
+        }
+        "meta:Choibalsan"{
+            ld{"Çoybalsan Yaz Saati"}
+            lg{"Choibalsan Saati"}
+            ls{"Çoybalsan Standart Saati"}
+        }
+        "meta:Christmas"{
+            ls{"Christmas Adası Saati"}
+        }
+        "meta:Cocos"{
+            ls{"Cocos Adaları Saati"}
+        }
+        "meta:Colombia"{
+            ld{"Kolombiya Yaz Saati"}
+            lg{"Kolombiya Saati"}
+            ls{"Kolombiya Standart Saati"}
+        }
+        "meta:Cook"{
+            ld{"Cook Adaları Yarı Yaz Saati"}
+            lg{"Cook Adaları Saati"}
+            ls{"Cook Adaları Standart Saati"}
+        }
+        "meta:Cuba"{
+            ld{"Küba Yaz Saati"}
+            lg{"Küba Saati"}
+            ls{"Küba Standart Saati"}
+        }
+        "meta:Dacca"{
+            ls{"Dakka Saati"}
+        }
+        "meta:Davis"{
+            ls{"Davis Saati"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d'Urville Saati"}
+        }
+        "meta:Dushanbe"{
+            ld{"Duşanbe Yaz Saati"}
+            lg{"Duşanbe Saati"}
+            ls{"Duşanbe Standart Saati"}
+        }
+        "meta:Dutch_Guiana"{
+            ls{"Hollanda Guyanası Saati"}
+        }
+        "meta:East_Timor"{
+            ls{"Doğu Timor Saati"}
+        }
+        "meta:Easter"{
+            ld{"Easter Adası Yaz Saati"}
+            lg{"Easter Adası Saati"}
+            ls{"Easter Adası Standart Saati"}
+        }
+        "meta:Ecuador"{
+            ls{"Ekvador Saati"}
+        }
+        "meta:Europe_Central"{
+            ld{"Orta Avrupa Yaz Saati"}
+            lg{"Orta Avrupa Saati"}
+            ls{"Orta Avrupa Standart Saati"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Doğu Avrupa Yaz Saati"}
+            lg{"Doğu Avrupa Saati"}
+            ls{"Doğu Avrupa Standart Saati"}
+        }
+        "meta:Europe_Western"{
+            ld{"Batı Avrupa Yaz Saati"}
+            lg{"Batı Avrupa Saati"}
+            ls{"Batı Avrupa Standart Saati"}
+        }
+        "meta:Falkland"{
+            ld{"Falkland Adaları Yaz Saati"}
+            lg{"Falkland Adaları Saati"}
+            ls{"Falkland Adaları Standart Saati"}
+        }
+        "meta:Fiji"{
+            ld{"Fiji Yaz Saati"}
+            lg{"Fiji Saati"}
+            ls{"Fiji Standart Saati"}
+        }
+        "meta:French_Guiana"{
+            ls{"Fransız Guyanası Saati"}
+        }
+        "meta:French_Southern"{
+            ls{"Fransız Güney ve Antarktika Saati"}
+        }
+        "meta:Frunze"{
+            ld{"Bişkek Yaz Saati"}
+            lg{"Bişkek Saati"}
+            ls{"Bişkek Standart Saati"}
+        }
+        "meta:GMT"{
+            ls{"Greenwich Merkez Saati"}
+        }
+        "meta:Galapagos"{
+            ls{"Galapagos Saati"}
+        }
+        "meta:Gambier"{
+            ls{"Gambier Saati"}
+        }
+        "meta:Georgia"{
+            ld{"Gürcistan Yaz Saati"}
+            lg{"Gürcistan Saati"}
+            ls{"Gürcistan Standart Saati"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilbert Adaları Saati"}
+        }
+        "meta:Greenland_Central"{
+            ld{"Orta Grönland Yaz Saati"}
+            lg{"Orta Grönland Saati"}
+            ls{"Orta Grönland Standart Saati"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Doğu Grönland Yaz Saati"}
+            lg{"Doğu Grönland Saati"}
+            ls{"Doğu Grönland Standart Saati"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Batı Grönland Yaz Saati"}
+            lg{"Batı Grönland Saati"}
+            ls{"Batı Grönland Standart Saati"}
+        }
+        "meta:Guam"{
+            ls{"Guam Standart Saati"}
+        }
+        "meta:Gulf"{
+            ls{"Körfez Standart Saati"}
+        }
+        "meta:Guyana"{
+            ls{"Guyana Saati"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hawaii-Aleutian Yaz Saati"}
+            lg{"Hawaii Aleutian Saati"}
+            ls{"Hawaii-Aleutian Standart Saati"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Hong Kong Yaz Saati"}
+            lg{"Hong Kong Saati"}
+            ls{"Hong Kong Standart Saati"}
+        }
+        "meta:Hovd"{
+            ld{"Kobdo Yaz Saati"}
+            lg{"Hovd Saati"}
+            ls{"Kobdo Standart Saati"}
+        }
+        "meta:India"{
+            ls{"Hindistan Standart Saati"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Hint Okyanusu Saati"}
+        }
+        "meta:Indochina"{
+            ls{"Çinhindi Saati"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Orta Endonezya Saati"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Doğu Endonezya Saati"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Batı Endonezya Saati"}
+        }
+        "meta:Iran"{
+            ld{"İran Yaz Saati"}
+            lg{"İran Saati"}
+            ls{"İran Standart Saati"}
+        }
+        "meta:Irkutsk"{
+            ld{"İrkutsk Yaz Saati"}
+            lg{"Irkutsk Saati"}
+            ls{"İrkutsk Standart Saati"}
+        }
+        "meta:Israel"{
+            ld{"İsrail Yaz Saati"}
+            lg{"İsrail Saati"}
+            ls{"İsrail Standart Saati"}
+        }
+        "meta:Japan"{
+            ld{"Japonya Yaz Saati"}
+            lg{"Japonya Saati"}
+            ls{"Japonya Standart Saati"}
+        }
+        "meta:Kamchatka"{
+            ld{"Petropavlovsk-Kamçatski Yaz Saati"}
+            lg{"Petropavlovsk-Kamçatski Saati"}
+            ls{"Petropavlovsk-Kamçatski Standart Saati"}
+        }
+        "meta:Karachi"{
+            ls{"Karaçi Saati"}
+        }
+        "meta:Kashgar"{
+            ls{"Kaşgar Saati"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Doğu Kazakistan Saati"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Batı Kazakistan Saati"}
+        }
+        "meta:Kizilorda"{
+            ld{"Kızılorda Yaz Saati"}
+            lg{"Kızılorda Saati"}
+            ls{"Kızılorda Standart Saati"}
+        }
+        "meta:Korea"{
+            ld{"Kore Yaz Saati"}
+            lg{"Kore Saati"}
+            ls{"Kore Standart Saati"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosrae Saati"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnoyarsk Yaz Saati"}
+            lg{"Krasnoyarsk Saati"}
+            ls{"Krasnoyarsk Standart Saati"}
+        }
+        "meta:Kuybyshev"{
+            ld{"Kuybişev Yaz Saati"}
+            lg{"Kuybişev Saati"}
+            ls{"Kuybişev Standart Saati"}
+        }
+        "meta:Kwajalein"{
+            ls{"Kwajalein Saati"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Kırgızistan Saati"}
+        }
+        "meta:Lanka"{
+            ls{"Lanka Saati"}
+        }
+        "meta:Line_Islands"{
+            ls{"Line Adaları Saati"}
+        }
+        "meta:Long_Shu"{
+            ls{"Long-Shu Saati"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Howe Yaz Saati"}
+            lg{"Lord Howe Saati"}
+            ls{"Lord Howe Standart Saati"}
+        }
+        "meta:Macau"{
+            ld{"Makao Yaz Saati"}
+            lg{"Makao Saati"}
+            ls{"Makao Standart Saati"}
+        }
+        "meta:Macquarie"{
+            ls{"Macquarie Saati"}
+        }
+        "meta:Magadan"{
+            ld{"Magadan Yaz Saati"}
+            lg{"Magadan Saati"}
+            ls{"Magadan Standart Saati"}
+        }
+        "meta:Malaya"{
+            ls{"Malaya Saati"}
+        }
+        "meta:Malaysia"{
+            ls{"Malezya Saati"}
+        }
+        "meta:Maldives"{
+            ls{"Maldivler Saati"}
+        }
+        "meta:Marquesas"{
+            ls{"Markiz Adaları Saati"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Marshall Adaları Saati"}
+        }
+        "meta:Mauritius"{
+            ld{"Mauritius Yaz Saati"}
+            lg{"Mauritius Saati"}
+            ls{"Mauritius Standart Saati"}
+        }
+        "meta:Mawson"{
+            ls{"Mawson Saati"}
+        }
+        "meta:Mongolia"{
+            ld{"Ulan Batur Yaz Saati"}
+            lg{"Ulan Batur Saati"}
+            ls{"Ulan Batur Standart Saati"}
+        }
+        "meta:Moscow"{
+            ld{"Moskova Yaz Saati"}
+            lg{"Moskova Saati"}
+            ls{"Moskova Standart Saati"}
+        }
+        "meta:Myanmar"{
+            ls{"Myanmar Saati"}
+        }
+        "meta:Nauru"{
+            ls{"Nauru Saati"}
+        }
+        "meta:Nepal"{
+            ls{"Nepal Saati"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Yeni Kaledonya Yaz Saati"}
+            lg{"Yeni Kaledonya Saati"}
+            ls{"Yeni Kaledonya Standart Saati"}
+        }
+        "meta:New_Zealand"{
+            ld{"Yeni Zelanda Yaz Saati"}
+            lg{"Yeni Zelanda Saati"}
+            ls{"Yeni Zelanda Standart Saati"}
+        }
+        "meta:Newfoundland"{
+            ld{"Newfoundland Yaz Saati"}
+            lg{"Newfoundland Saati"}
+            ls{"Newfoundland Standart Saati"}
+        }
+        "meta:Niue"{
+            ls{"Niue Saati"}
+        }
+        "meta:Norfolk"{
+            ls{"Norfolk Adası Saati"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronha Yaz Saati"}
+            lg{"Fernando de Noronha Saati"}
+            ls{"Fernando de Noronha Standart Saati"}
+        }
+        "meta:North_Mariana"{
+            ls{"Kuzey Mariana Adaları Saati"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirsk Yaz Saati"}
+            lg{"Novosibirsk Saati"}
+            ls{"Novosibirsk Standart Saati"}
+        }
+        "meta:Omsk"{
+            ld{"Omsk Yaz Saati"}
+            lg{"Omsk Saati"}
+            ls{"Omsk Standart Saati"}
+        }
+        "meta:Pakistan"{
+            ld{"Pakistan Yaz Saati"}
+            lg{"Pakistan Saati"}
+            ls{"Pakistan Standart Saati"}
+        }
+        "meta:Palau"{
+            ls{"Palau Saati"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papua Yeni Gine Saati"}
+        }
+        "meta:Paraguay"{
+            ld{"Paraguay Yaz Saati"}
+            lg{"Paraguay Saati"}
+            ls{"Paraguay Standart Saati"}
+        }
+        "meta:Peru"{
+            ld{"Peru Yaz Saati"}
+            lg{"Peru Saati"}
+            ls{"Peru Standart Saati"}
+        }
+        "meta:Philippines"{
+            ld{"Filipinler Yaz Saati"}
+            lg{"Filipinler Saati"}
+            ls{"Filipinler Standart Saati"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Phoenix Adaları Saati"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Pierre ve Miquelon Yaz Saati"}
+            lg{"Pierre ve Miquelon Saati"}
+            ls{"Pierre ve Miquelon Standart Saati"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitcairn Saati"}
+        }
+        "meta:Ponape"{
+            ls{"Ponape Saati"}
+        }
+        "meta:Qyzylorda"{
+            ld{"Kızılorda Yaz Saati"}
+            lg{"Kızılorda Saati"}
+            ls{"Kızılorda Standart Saati"}
+        }
+        "meta:Reunion"{
+            ls{"Reunion Saati"}
+        }
+        "meta:Rothera"{
+            ls{"Rothera Saati"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sakhalin Yaz Saati"}
+            lg{"Sakhalin Saati"}
+            ls{"Sakhalin Standart Saati"}
+        }
+        "meta:Samara"{
+            ld{"Samara Yaz Saati"}
+            lg{"Samara Saati"}
+            ls{"Samara Standart Saati"}
+        }
+        "meta:Samarkand"{
+            ld{"Semerkand Yaz Saati"}
+            lg{"Semerkand Saati"}
+            ls{"Semerkand Standart Saati"}
+        }
+        "meta:Samoa"{
+            ls{"Samoa Standart Saati"}
+        }
+        "meta:Seychelles"{
+            ls{"Seyşel Adaları Saati"}
+        }
+        "meta:Shevchenko"{
+            ld{"Şevçenko Yaz Saati"}
+            lg{"Şevçenko Saati"}
+            ls{"Şevçenko Standart Saati"}
+        }
+        "meta:Singapore"{
+            ls{"Singapur Standart Saati"}
+        }
+        "meta:Solomon"{
+            ls{"Solomon Adaları Saati"}
+        }
+        "meta:South_Georgia"{
+            ls{"Güney Georgia Saati"}
+        }
+        "meta:Suriname"{
+            ls{"Surinam Saati"}
+        }
+        "meta:Sverdlovsk"{
+            ld{"Sverdlovsk Yaz Saati"}
+            lg{"Sverdlovsk Saati"}
+            ls{"Sverdlovsk Standart Saati"}
+        }
+        "meta:Syowa"{
+            ls{"Showa Saati"}
+        }
+        "meta:Tahiti"{
+            ls{"Tahiti Saati"}
+        }
+        "meta:Taipei"{
+            ld{"Taipei Yaz Saati"}
+            lg{"Taipei Saati"}
+            ls{"Taipei Standart Saati"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tacikistan Saati"}
+        }
+        "meta:Tashkent"{
+            ld{"Taşkent Yaz Saati"}
+            lg{"Taşkent Saati"}
+            ls{"Taşkent Standart Saati"}
+        }
+        "meta:Tbilisi"{
+            ld{"Tiflis Yaz Saati"}
+            lg{"Tiflis Saati"}
+            ls{"Tiflis Standart Saati"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokelau Saati"}
+        }
+        "meta:Tonga"{
+            ld{"Tonga Yaz Saati"}
+            lg{"Tonga Saati"}
+            ls{"Tonga Standart Saati"}
+        }
+        "meta:Truk"{
+            ls{"Truk Saati"}
+        }
+        "meta:Turkey"{
+            ld{"Türkiye Yaz Saati"}
+            lg{"Türkiye Saati"}
+            ls{"Türkiye Standart Saati"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Türkmenistan Yaz Saati"}
+            lg{"Türkmenistan Saati"}
+            ls{"Türkmenistan Standart Saati"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvalu Saati"}
+        }
+        "meta:Uralsk"{
+            ld{"Oral Yaz Saati"}
+            lg{"Oral Saati"}
+            ls{"Oral Standart Saati"}
+        }
+        "meta:Uruguay"{
+            ld{"Uruguay Yaz Saati"}
+            lg{"Uruguay Saati"}
+            ls{"Uruguay Standart Saati"}
+        }
+        "meta:Urumqi"{
+            ls{"Urumçi Saati"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Özbekistan Yaz Saati"}
+            lg{"Özbekistan Saati"}
+            ls{"Özbekistan Standart Saati"}
+        }
+        "meta:Vanuatu"{
+            ld{"Vanuatu Yaz Saati"}
+            lg{"Vanuatu Saati"}
+            ls{"Vanuatu Standart Saati"}
+        }
+        "meta:Venezuela"{
+            ls{"Venezuela Saati"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostok Yaz Saati"}
+            lg{"Vladivostok Saati"}
+            ls{"Vladivostok Standart Saati"}
+        }
+        "meta:Volgograd"{
+            ld{"Volgograd Yaz Saati"}
+            lg{"Volgograd Saati"}
+            ls{"Volgograd Standart Saati"}
+        }
+        "meta:Vostok"{
+            ls{"Vostok Saati"}
+        }
+        "meta:Wake"{
+            ls{"Wake Adası Saati"}
+        }
+        "meta:Wallis"{
+            ls{"Wallis ve Futuna Saati"}
+        }
+        "meta:Yakutsk"{
+            ld{"Yakutsk Yaz Saati"}
+            lg{"Yakutsk Saati"}
+            ls{"Yakutsk Standart Saati"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Yekaterinburg Yaz Saati"}
+            lg{"Yekaterinburg Saati"}
+            ls{"Yekaterinburg Standart Saati"}
+        }
+        "meta:Yerevan"{
+            ld{"Erivan Yaz Saati"}
+            lg{"Erivan Saati"}
+            ls{"Erivan Standart Saati"}
+        }
+        "meta:Yukon"{
+            ld{"Yukon Yaz Saati"}
+            lg{"Yukon Saati"}
+            ls{"Yukon Standart Saati"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        fallbackRegionFormat{"{1} Saati ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0} Saati"}
+    }
+}

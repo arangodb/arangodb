@@ -1,0 +1,501 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/et.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/et.xml
+ */
+et{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Africa:Algiers"{
+            ec{"Alžiir"}
+        }
+        "Africa:Cairo"{
+            ec{"Kairo"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvador"}
+        }
+        "America:Havana"{
+            ec{"Havanna"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port of Spain"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont D'Urville"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"Lõunapoolus"}
+        }
+        "Asia:Qatar"{
+            ec{"Katar"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapur"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermuda"}
+        }
+        "Atlantic:Canary"{
+            ec{"Kanaari saared"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Roheneemesaared"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Fääri"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"South Georgia"}
+        }
+        "Etc:Unknown"{
+            ec{"määramata"}
+        }
+        "Europe:Athens"{
+            ec{"Ateena"}
+        }
+        "Europe:Berlin"{
+            ec{"Berliin"}
+        }
+        "Europe:Brussels"{
+            ec{"Brüssel"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukarest"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhaagen"}
+        }
+        "Europe:Helsinki"{
+            ec{"Helsingi"}
+        }
+        "Europe:Kiev"{
+            ec{"Kiiev"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lissabon"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Luxembourg"}
+        }
+        "Europe:Madrid"{
+            ec{"Madrid"}
+        }
+        "Europe:Paris"{
+            ec{"Pariis"}
+        }
+        "Europe:Riga"{
+            ec{"Riia"}
+        }
+        "Europe:Rome"{
+            ec{"Rooma"}
+        }
+        "Europe:Tallinn"{
+            ec{"Tallinn"}
+        }
+        "Europe:Vienna"{
+            ec{"Viin"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varssavi"}
+        }
+        "Europe:Zurich"{
+            ec{"Zürich"}
+        }
+        "Indian:Christmas"{
+            ec{"Jõulud"}
+        }
+        "Indian:Cocos"{
+            ec{"Cocos"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldiivid"}
+        }
+        "Indian:Reunion"{
+            ec{"Réunion"}
+        }
+        "Pacific:Easter"{
+            ec{"Lihavõttesaar"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fidži"}
+        }
+        "meta:Acre"{
+            ld{"Acre suveaeg"}
+            lg{"Acre aeg"}
+            ls{"Acre standardaeg"}
+        }
+        "meta:Africa_Central"{
+            ls{"Kesk-Aafrika aeg"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Ida-Aafrika aeg"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Lõuna-Aafrika standardaeg"}
+        }
+        "meta:Africa_Western"{
+            ld{"Lääne-Aafrika suveaeg"}
+            lg{"Lääne-Aafrika aeg"}
+            ls{"Lääne-Aafrika standardaeg"}
+        }
+        "meta:Alaska"{
+            ld{"Alaska suveaeg"}
+            lg{"Alaska aeg"}
+            ls{"Alaska standardaeg"}
+        }
+        "meta:Amazon"{
+            ld{"Amazoni suveaeg"}
+            lg{"Amazoni aeg"}
+            ls{"Amazoni standardaeg"}
+        }
+        "meta:America_Central"{
+            ld{"Kesk-Ameerika suveaeg"}
+            lg{"Kesk-Ameerika aeg"}
+            ls{"Kesk-Ameerika standardaeg"}
+        }
+        "meta:America_Eastern"{
+            ld{"Idaranniku suveaeg"}
+            lg{"Idaranniku aeg"}
+            ls{"Idaranniku standardaeg"}
+        }
+        "meta:America_Mountain"{
+            ld{"Mäestikuvööndi suveaeg"}
+            lg{"Mäestikuvööndi aeg"}
+            ls{"Mäestikuvööndi standardaeg"}
+        }
+        "meta:America_Pacific"{
+            ld{"Vaikse ookeani suveaeg"}
+            lg{"Vaikse ookeani aeg"}
+            ls{"Vaikse ookeani standardaeg"}
+        }
+        "meta:Anadyr"{
+            ld{"Anadõri suveaeg"}
+            lg{"Anadõri aeg"}
+            ls{"Anadõri aeg"}
+        }
+        "meta:Argentina"{
+            ld{"Argentina suveaeg"}
+            lg{"Argentina aeg"}
+            ls{"Argentina aeg"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Argentina lääne suveaeg"}
+            lg{"Argentina lääneaeg"}
+            ls{"Lääne-Argentina aeg"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlandi suveaeg"}
+            lg{"Atlandi aeg"}
+            ls{"Atlandi standardaeg"}
+        }
+        "meta:Australia_Central"{
+            ld{"Kesk-Austraalia suveaeg"}
+            lg{"Kesk-Austraalia aeg"}
+            ls{"Kesk-Austraalia standardaeg"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Kesk-Lääne Austraalia suveaeg"}
+            lg{"Kesk-Lääne Austraalia aeg"}
+            ls{"Kesk-Lääne Austraalia standardaeg"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Ida-Austraalia suveaeg"}
+            lg{"Ida-Austraalia aeg"}
+            ls{"Ida-Austraalia standardaeg"}
+        }
+        "meta:Australia_Western"{
+            ld{"Lääne-Austraalia suveaeg"}
+            lg{"Lääne-Austraalia aeg"}
+            ls{"Lääne-Austraalia standardaeg"}
+        }
+        "meta:Azores"{
+            ld{"Assooride suveaeg"}
+            lg{"Assooride aeg"}
+            ls{"Assooride standardaeg"}
+        }
+        "meta:Brasilia"{
+            ld{"Brasiilia suveaeg"}
+            lg{"Brasiilia aeg"}
+            ls{"Brasiilia standardaeg"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Rohuneemesaarte suveaeg"}
+            lg{"Rohuneemesaarte aeg"}
+            ls{"Rohuneemesaarte standardaeg"}
+        }
+        "meta:Chamorro"{
+            ls{"Põhja-Mariaanide standardaeg"}
+        }
+        "meta:Chatham"{
+            ld{"Chathami suveaeg"}
+            lg{"Chathami aeg"}
+            ls{"Chathami standardaeg"}
+        }
+        "meta:Choibalsan"{
+            ld{"Tšojbalsani suveaeg"}
+            lg{"Tšojbalsani aeg"}
+            ls{"Tšojbalsani standardaeg"}
+        }
+        "meta:Christmas"{
+            ls{"Jõulusaaare aeg"}
+        }
+        "meta:Cocos"{
+            ls{"Kookossaarte aeg"}
+        }
+        "meta:Cook"{
+            ld{"Cook'i saarte pool-suveaeg"}
+            lg{"Cook'i saarte aeg"}
+            ls{"Cook'i saarte standardaeg"}
+        }
+        "meta:Davis"{
+            ls{"Davis aeg"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d'Urville aeg"}
+        }
+        "meta:Easter"{
+            ld{"Lihavõttesaare suveaeg"}
+            lg{"Lihavõttesaare aeg"}
+            ls{"Lihavõttesaare standardaeg"}
+        }
+        "meta:Europe_Central"{
+            ld{"Kesk-Euroopa suveaeg"}
+            lg{"Kesk-Euroopa aeg"}
+            ls{"Kesk-Euroopa standardaeg"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Ida-Euroopa suveaeg"}
+            lg{"Ida-Euroopa aeg"}
+            ls{"Ida-Euroopa standardaeg"}
+        }
+        "meta:Europe_Western"{
+            ld{"Lääne-Euroopa suveaeg"}
+            lg{"Lääne-Euroopa aeg"}
+            ls{"Lääne-Euroopa standardaeg"}
+        }
+        "meta:Falkland"{
+            ld{"Falklandi saarte suveaeg"}
+            lg{"Falklandi saarte aeg"}
+            ls{"Falklandi saarte standardaeg"}
+        }
+        "meta:Fiji"{
+            ld{"Fiji suveaeg"}
+            lg{"Fiji aeg"}
+            ls{"Fiji standardaeg"}
+        }
+        "meta:French_Southern"{
+            ls{"Prantsuse Lõunaalade ja Antarktika aeg"}
+        }
+        "meta:GMT"{
+            ls{"Greenwich'i aeg"}
+        }
+        "meta:Galapagos"{
+            ls{"Galapagose aeg"}
+        }
+        "meta:Gambier"{
+            ls{"Gambier'i aeg"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilberti saare aeg"}
+        }
+        "meta:Guam"{
+            ls{"Guami standardaeg"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hawaii-Aleuudi suveaeg"}
+            lg{"Hawaii-aleuudi aeg"}
+            ls{"Hawaii-Aleuudi standardaeg"}
+        }
+        "meta:Hovd"{
+            ld{"Hovdi suveaeg"}
+            lg{"Hovdi aeg"}
+            ls{"Hovdi standardaeg"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"India ookeani aeg"}
+        }
+        "meta:Indonesia_Central"{
+            lg{"Indoneesia keskvööndiaeg"}
+        }
+        "meta:Indonesia_Eastern"{
+            lg{"Indoneesia idaaeg"}
+        }
+        "meta:Indonesia_Western"{
+            lg{"Indoneesia lääneaeg"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutski suveaeg"}
+            lg{"Irkutski aeg"}
+            ls{"Irkutski standardaeg"}
+        }
+        "meta:Kamchatka"{
+            ld{"Kamtšatka suveaeg"}
+            lg{"Kamtšatka aeg"}
+            ls{"Kamtšatka standardaeg"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ld{"Ida-Kasahstani suveaeg"}
+            lg{"Ida-Kasahstani aeg"}
+            ls{"Ida-Kasahstani standardaeg"}
+        }
+        "meta:Kazakhstan_Western"{
+            ld{"Lääne-Kasahstani suveaeg"}
+            lg{"Lääne-Kasahstani aeg"}
+            ls{"Lääne-Kasahstani standardaeg"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosrae aeg"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnojarski suveaeg"}
+            lg{"Krasnojarski aeg"}
+            ls{"Krasnojarski aeg"}
+        }
+        "meta:Kuybyshev"{
+            ld{"Kuibõševi suveaeg"}
+            ls{"Kuibõševi aeg"}
+        }
+        "meta:Kwajalein"{
+            ls{"Kwajalein'i aeg"}
+        }
+        "meta:Line_Islands"{
+            ls{"Line'i saarte aeg"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Howe suveaeg"}
+            lg{"Lord Howe aeg"}
+            ls{"Lord Howe standardaeg"}
+        }
+        "meta:Macquarie"{
+            lg{"Macquarie aeg"}
+        }
+        "meta:Magadan"{
+            ld{"Magadani suveaeg"}
+            lg{"Magadani aeg"}
+            ls{"Magadani standardaeg"}
+        }
+        "meta:Maldives"{
+            ls{"Maldiivide aeg"}
+        }
+        "meta:Marquesas"{
+            ls{"Marquesas'i aeg"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Marshalli saarte aeg"}
+        }
+        "meta:Mauritius"{
+            ld{"Mauritiuse suveaeg"}
+            lg{"Mauritiuse aeg"}
+            ls{"Mauritiuse standardaeg"}
+        }
+        "meta:Mawson"{
+            ls{"Mawson aeg"}
+        }
+        "meta:Mongolia"{
+            ld{"Ulaanbaatari suveaeg"}
+            lg{"Ulaanbaatari aeg"}
+            ls{"Ulaanbaatari standardaeg"}
+        }
+        "meta:Moscow"{
+            ld{"Moskva suveaeg"}
+            lg{"Moskva aeg"}
+            ls{"Moskva standardaeg"}
+        }
+        "meta:Newfoundland"{
+            ld{"Newfoundlandi suveaeg"}
+            lg{"Newfoundlandi aeg"}
+            ls{"Newfoundlandi standardaeg"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronha suveaeg"}
+            lg{"Fernando de Noronha aeg"}
+            ls{"Fernando de Noronha standardaeg"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirski suveaeg"}
+            lg{"Novosibirski aeg"}
+            ls{"Novosibirski standardaeg"}
+        }
+        "meta:Omsk"{
+            ld{"Omski suveaeg"}
+            lg{"Omski aeg"}
+            ls{"Omski standardaeg"}
+        }
+        "meta:Reunion"{
+            ls{"Reunioni aeg"}
+        }
+        "meta:Rothera"{
+            ls{"Rothera aeg"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sahhalini suveaeg"}
+            lg{"Sahhalini aeg"}
+            ls{"Sahhalini standardaeg"}
+        }
+        "meta:Samara"{
+            ld{"Samara suveag"}
+            lg{"Samara aeg"}
+            ls{"Samara standardaeg"}
+        }
+        "meta:Seychelles"{
+            ls{"Seišellide aeg"}
+        }
+        "meta:South_Georgia"{
+            ls{"Lõuna-Georgia aeg"}
+        }
+        "meta:Syowa"{
+            ls{"Syowa aeg"}
+        }
+        "meta:Turkey"{
+            ld{"Türgi suveaeg"}
+            lg{"Türgi aeg"}
+            ls{"Türgi standardaeg"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostoki suveaeg"}
+            lg{"Vladivostoki aeg"}
+            ls{"Vladivostoki standardaeg"}
+        }
+        "meta:Volgograd"{
+            ld{"Volgogradi suveaeg"}
+            lg{"Volgogradi aeg"}
+            ls{"Volgogradi standardaeg"}
+        }
+        "meta:Vostok"{
+            ls{"Vostoki aeg"}
+        }
+        "meta:Yakutsk"{
+            ld{"Jakutski suveaeg"}
+            lg{"Jakutski aeg"}
+            ls{"Jakutski standardaeg"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Jakaterinburgi suveaeg"}
+            lg{"Jakaterinburgi aeg"}
+            ls{"Jakaterinburgi standardaeg"}
+        }
+        fallbackRegionFormat{"{1} aeg ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0} aeg"}
+    }
+}

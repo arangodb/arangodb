@@ -1,0 +1,253 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/fil.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/fil.xml
+ */
+fil{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Africa:Conakry"{
+            ec{"Conakry"}
+        }
+        "Africa:Harare"{
+            ec{"Harare"}
+        }
+        "Africa:Maseru"{
+            ec{"Maseru"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Porto-Novo"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port of Spain"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Dushanbe"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tbilisi"}
+        }
+        "Etc:Unknown"{
+            ec{"Unknown"}
+        }
+        "Indian:Christmas"{
+            ec{"Christmas"}
+        }
+        "meta:Alaska"{
+            ld{"Oras na Alaska Daylight"}
+            lg{"Oras sa Alaska"}
+            ls{"Standard na Oras sa Alaska"}
+        }
+        "meta:Amazon"{
+            ld{"Panahon ng Tag-init sa Amazon"}
+            lg{"Oras sa Amazon"}
+            ls{"Standard na Oras sa Amazon"}
+        }
+        "meta:America_Central"{
+            ld{"Oras na Central Daylight"}
+            lg{"Oras sa Central"}
+            ls{"Standard na Oras sa Central"}
+        }
+        "meta:America_Eastern"{
+            ld{"Oras na Eastern Daylight"}
+            lg{"Oras sa Silangan"}
+            ls{"Standard na Oras sa Silangan"}
+        }
+        "meta:America_Mountain"{
+            ld{"Oras na Mountain Daylight"}
+            lg{"Oras sa Mountain"}
+            ls{"Standard na Oras sa Mountain"}
+        }
+        "meta:America_Pacific"{
+            ld{"Oras sa Pacific Daylight"}
+            lg{"Oras sa Pacific"}
+            ls{"Standard na Oras sa Pacific"}
+        }
+        "meta:Anadyr"{
+            ld{"Panahon ng Tag-init sa Anadyr"}
+            lg{"Oras sa Anadyr"}
+            ls{"Standard na Oras sa Anadyr"}
+        }
+        "meta:Argentina"{
+            ld{"Panahon ng Tag-init sa Argentina"}
+            lg{"Oras sa Argentina"}
+            ls{"Standard na Oras sa Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Panahon ng Tag-init sa Kanluran ng Argentina"}
+            lg{"Oras sa Kanluran ng Argentina"}
+            ls{"Standard na Oras sa Kanluran ng Argentina"}
+        }
+        "meta:Atlantic"{
+            ld{"Oras na Atlantic Daylight"}
+            lg{"Oras sa Atlantic"}
+            ls{"Standard na Oras sa Atlantic"}
+        }
+        "meta:Australia_Central"{
+            ld{"Panahon ng Tag-init sa Central ng Australia"}
+            lg{"Oras sa Central ng Australia"}
+            ls{"Standard na Oras sa Central ng Australia"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Oras sa Central sa Kanluran ng Australia Daylight"}
+            lg{"Oras sa Central sa Kanluran ng Australia"}
+            ls{"Standard na Oras sa Central na Kanluran ng Australia"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Oras sa Silangang Australia Daylight"}
+            lg{"Oras sa Silangang Australia"}
+            ls{"Standard na Oras sa Silangan ng Australia"}
+        }
+        "meta:Australia_Western"{
+            ld{"Oras sa Kanlurang Australia Daylight"}
+            lg{"Oras sa Kanlurang Australia"}
+            ls{"Standard na Oras sa Kanluran ng Australia"}
+        }
+        "meta:Brasilia"{
+            ld{"Panahon ng Tag-init sa Brasilia"}
+            lg{"Oras sa Brasilia"}
+            ls{"Standard na Oras sa Brasilia"}
+        }
+        "meta:Choibalsan"{
+            ld{"Panahon ng Tag-init sa Choibalsan"}
+            lg{"Oras sa Choibalsan"}
+            ls{"Standard na Oras sa Choibalsan"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Oras sa Hawaii Aleutian Daylight"}
+            lg{"Oras sa Hawaii Aleutian"}
+            ls{"Standard na Oras sa Hawaii Aleutian"}
+        }
+        "meta:Hovd"{
+            ld{"Panahon ng Tag-init sa Hovd"}
+            lg{"Oras sa Hovd"}
+            ls{"Standard na Oras sa Hovd"}
+        }
+        "meta:Indonesia_Central"{
+            lg{"Oras sa Central ng Indonesia"}
+        }
+        "meta:Indonesia_Eastern"{
+            lg{"Oras sa Silangan ng Indonesia"}
+        }
+        "meta:Indonesia_Western"{
+            lg{"Oras sa Kanluran ng Indonesia"}
+        }
+        "meta:Irkutsk"{
+            ld{"Panahon ng Tag-init sa Irkutsk"}
+            lg{"Oras sa Irkutsk"}
+            ls{"Standard na Oras sa Irkutsk"}
+        }
+        "meta:Kamchatka"{
+            ld{"Panahon ng Tag-init sa Petropavlovsk-Kamchatski"}
+            lg{"Oras sa Petropavlovsk-Kamchatski"}
+            ls{"Standard na Oras sa Petropavlovsk-Kamchatski"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Oras sa Silangan ng Kazakhstan"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Oras sa Kanluran ng Kazakhstan"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Panahon ng Tag-init sa Krasnoyarsk"}
+            lg{"Oras sa Krasnoyarsk"}
+            ls{"Standard na Oras sa Krasnoyarsk"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Oras na Lord Howe Daylight"}
+            lg{"Oras sa Lord Howe"}
+            ls{"Standard na Oras sa Lord Howe"}
+        }
+        "meta:Macquarie"{
+            lg{"Oras sa Macquarie"}
+        }
+        "meta:Magadan"{
+            ld{"Panahon ng Tag-init sa Magadan Summer"}
+            lg{"Oras sa Magadan"}
+            ls{"Standard na Oras sa Magadan"}
+        }
+        "meta:Mongolia"{
+            ld{"Panahon ng Tag-init sa Ulan Bator"}
+            lg{"Oras sa Ulan Bator"}
+            ls{"Standard na Oras sa Ulan Bator"}
+        }
+        "meta:Moscow"{
+            ld{"Panahon ng Tag-init sa Moscow"}
+            lg{"Oras sa Moscow"}
+            ls{"Standard na Oras sa Moscow"}
+        }
+        "meta:Newfoundland"{
+            ld{"Oras na Newfoundland Daylight"}
+            lg{"Oras sa Newfoundland"}
+            ls{"Standard na Oras sa Newfoundland"}
+        }
+        "meta:Noronha"{
+            ld{"Panahon ng Tag-init sa Fernando de Noronha"}
+            lg{"Oras sa Fernando de Noronha"}
+            ls{"Standard na Oras sa Fernando de Noronha"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Panahon ng Tag-init sa Novosibirsk"}
+            lg{"Oras sa Novosibirsk"}
+            ls{"Standard na Oras sa Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"Panahon ng Tag-init sa Omsk"}
+            lg{"Oras sa Omsk"}
+            ls{"Standard na Oras sa Omsk"}
+        }
+        "meta:Sakhalin"{
+            ld{"Panahon ng Tag-init sa Sakhalin"}
+            lg{"Oras sa Sakhalin"}
+            ls{"Standard na Oras sa Sakhalin"}
+        }
+        "meta:Samara"{
+            ld{"Samara Daylight Time"}
+            lg{"Oras sa Samara"}
+            ls{"Standard na Oras sa Samara"}
+        }
+        "meta:Vladivostok"{
+            ld{"Panahon ng Tag-init sa Vladivostok"}
+            lg{"Oras sa Vladivostok"}
+            ls{"Standard na Oras sa Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"Volgograd Daylight Time"}
+            lg{"Oras sa Volgograd"}
+            ls{"Standard na Oras sa Volgograd"}
+        }
+        "meta:Yakutsk"{
+            ld{"Panahon ng Tag-init sa Yakutsk"}
+            lg{"Oras sa Yakutsk"}
+            ls{"Standard na Oras sa Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Panahon ng Tag-init sa Yekaterinburg"}
+            lg{"Oras sa Yekaterinburg"}
+            ls{"Standard na Oras sa Yekaterinburg"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        fallbackRegionFormat{"{1} Oras ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0} (na) Oras"}
+    }
+}
