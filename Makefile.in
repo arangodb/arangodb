@@ -1324,6 +1324,7 @@ WIKI = \
 	UserManual \
 	UserManualBasics \
 	UserManualArangosh \
+	UserManualActions \
         Aql \
         AqlExamples \
 	jsUnity
