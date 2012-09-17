@@ -1,0 +1,253 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/to.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/to.xml
+ */
+to{
+    Keys{
+        calendar{"tohi māhina"}
+        collation{"tohi hokohoko"}
+        currency{"paʻanga"}
+    }
+    Languages{
+        ab{"lea fakaʻapakasi"}
+        af{"lea fakaʻafilikana"}
+        am{"lea ʻameliki"}
+        ar{"lea fakaʻalepea"}
+        art{"lea faʻu"}
+        as{"lea ʻasamisi"}
+        ay{"lea ʻaimala"}
+        az{"lea fakaʻasapaisani"}
+        be{"lea fakapelelusi"}
+        bg{"lea fakapokalia"}
+        bn{"lea fakapengila"}
+        bo{"lea fakataipeti"}
+        bs{"lea fakaposinia"}
+        ca{"lea fakaketalani"}
+        cs{"lea fakaseki"}
+        cy{"lea fakauēlesi"}
+        da{"lea fakatenimaʻake"}
+        de{"lea fakasiamane"}
+        de_AT{"lea fakasiamani ʻaositulia"}
+        de_CH{"lea fakasiamani suitisālani ma'olunga"}
+        dv{"lea tivehi"}
+        dz{"lea fakaputeni"}
+        efi{"lea ʻefiki"}
+        el{"lea fakakalisi"}
+        en{"lea fakapālangi"}
+        en_AU{"lea fakapālangi ʻaositelēlia"}
+        en_CA{"lea fakapālangi kānata"}
+        en_GB{"lea fakapilitānia"}
+        en_US{"lea fakapālangi ʻamelika"}
+        eo{"lea fakaʻesipulanito"}
+        es{"lea fakasīpenisi"}
+        es_419{"lea fakasipēnisi lātini ʻamelika"}
+        es_ES{"lea fakasipēnisi ʻaipilieni"}
+        et{"lea fakaʻesitōnia"}
+        eu{"lea pasiki"}
+        fa{"lea fakapēsia"}
+        fi{"lea fakafinilani"}
+        fil{"lea fakafilipaini"}
+        fj{"lea fakafisi"}
+        fr{"lea fakafalanisē"}
+        fr_CA{"lea fakafalanisē kānata"}
+        fr_CH{"lea fakafalanisē suitisālani"}
+        ga{"lea fakaʻaelani"}
+        gil{"lea fakakilipasi"}
+        gl{"lea kalisieni"}
+        gn{"lea kualani"}
+        grc{"lea fakakalisimuʻa"}
+        gsw{"lea fakasiamani suitisālani"}
+        gu{"lea kutalati"}
+        ha{"lea hausa"}
+        haw{"lea fakahauaiʻi"}
+        he{"lea fakahepelū"}
+        hi{"lea fakahinitī"}
+        hr{"lea fakakuloisia"}
+        ht{"lea fakahaiti"}
+        hu{"lea fakahangakalia"}
+        hy{"lea fakaʻaminiume"}
+        id{"lea fakaʻinitōnesia"}
+        ig{"lea ʻikipō"}
+        is{"lea fakaʻaisilani"}
+        it{"lea fakaʻītali"}
+        ja{"lea fakasiapani"}
+        jv{"lea fakasava"}
+        ka{"lea fakasōsia"}
+        kk{"lea fakakasakiteni"}
+        km{"lea fakakemipōtia"}
+        kn{"lea kanata"}
+        ko{"lea fakakōlea"}
+        ks{"lea fakakesimia"}
+        ku{"lea kētisi"}
+        ky{"lea fakakekisiteni"}
+        la{"lea fakalatina"}
+        lah{"lea lanita"}
+        lb{"lea fakalakisimipeki"}
+        ln{"lea lingikala"}
+        lo{"lea fakalau"}
+        lt{"lea fakalifiuenia"}
+        lv{"lea fakalativia"}
+        mg{"lea fakamatakasika"}
+        mh{"lea fakamāsolo"}
+        mi{"lea fakamauli"}
+        mis{"lea kehekehe"}
+        mk{"lea fakamasitōnia"}
+        ml{"lea fakaʻinitia malāialemi"}
+        mn{"lea fakamongokōlia"}
+        mr{"lea malati"}
+        ms{"lea fakamalei"}
+        mt{"lea fakamolota"}
+        mul{"lea tuifio"}
+        my{"lea fakapema"}
+        na{"lea fakanaulu"}
+        nb{"lea fakanouei pokimali"}
+        nd{"lea netepele fakatokelau"}
+        ne{"lea fakanepali"}
+        niu{"lea fakaniuē"}
+        nl{"lea fakahōlani"}
+        nl_BE{"lea fakahōlani pelesiume"}
+        nn{"lea fakanouei nosiki"}
+        no{"lea fakanouē"}
+        nso{"lea sofo fakatokelau"}
+        ny{"lea sua"}
+        or{"lea fakaʻinitia ʻolāea"}
+        os{"lea ʻosetiki"}
+        pa{"lea punusapi"}
+        pl{"lea fakapōlani"}
+        ps{"lea pasito"}
+        pt{"lea fakapotukali"}
+        pt_BR{"lea fakapotukali-palāsili"}
+        pt_PT{"lea fakapotukali ʻaipilieni"}
+        qu{"lea kuetisa"}
+        rap{"lea fakalapanui"}
+        rar{"lea fakalalotonga"}
+        rm{"lea laito-lomēnia"}
+        rn{"lea luaniti"}
+        ro{"lea fakalōmenia"}
+        ru{"lea fakalūsia"}
+        rw{"lea fakaluanita"}
+        sa{"lea sanisukuliti"}
+        sco{"lea fakasikotilani"}
+        sd{"lea siniti"}
+        se{"lea sami fakatokelau"}
+        sg{"lea sango"}
+        sgn{"lea fakaʻilonga"}
+        sh{"lea sēpia-kuloisia"}
+        si{"lea fakaselengika"}
+        sk{"lea fakasolāvaki"}
+        sl{"lea fakasolovenia"}
+        sm{"lea fakahaʻamoa"}
+        sn{"lea sona"}
+        so{"lea fakasomali"}
+        sq{"lea fakaʻalapēnia"}
+        sr{"lea fakasēpia"}
+        ss{"lea fakasuasilani"}
+        st{"lea sofo fakatonga"}
+        su{"lea sanita"}
+        sv{"lea fakasueteni"}
+        sw{"lea suahile"}
+        swb{"lea fakakomolo"}
+        ta{"lea fakatemole"}
+        te{"lea fakaʻinitia teluku"}
+        tet{"lea fakatētamu"}
+        tg{"lea fakatetiki"}
+        th{"lea fakataileni"}
+        ti{"lea fakatikilina"}
+        tk{"lea tekimeni"}
+        tkl{"lea fakatokelau"}
+        tl{"lea fakatekaloka"}
+        tn{"lea suana"}
+        to{"lea fakatonga"}
+        tpi{"lea toki pisini"}
+        tr{"lea fakatoake"}
+        ts{"lea songa"}
+        tvl{"lea fakatūvalu"}
+        ty{"lea fakatahiti"}
+        ug{"lea fakaʻuika"}
+        uk{"lea fakaʻiukālia"}
+        und{"lea taʻeʻiloa"}
+        ur{"lea fakaʻetiu"}
+        uz{"lea fakaʻusipeki"}
+        ve{"lea fakavenitā"}
+        vi{"lea fakavietinemi"}
+        wo{"lea fakaʻuolofo"}
+        xh{"lea fakatōsa"}
+        yo{"lea fakaʻiōlupa"}
+        yue{"lea kenitēnisi"}
+        zh{"lea fakasiaina"}
+        zh_Hans{"lea fakasiaina fakangofua"}
+        zh_Hant{"lea fakasiaina tukufakaholo"}
+        zu{"lea fakasulu"}
+        zxx{"ʻikai ha lea"}
+    }
+    Scripts{
+        Arab{"tohinima fakaʻalepea"}
+        Armn{"tohinima fakaʻamīnia"}
+        Beng{"tohinima fakapengila"}
+        Bopo{"tohinima ongo fakasiaina"}
+        Brai{"tohinima laukonga ki he kui"}
+        Cyrl{"tohinima fakalūsia"}
+        Deva{"tohinima fakaʻinitia tēvanakali"}
+        Ethi{"tohinima fakaʻitiopea"}
+        Geor{"tohinima fakasōsia"}
+        Grek{"tohinima fakakalisi"}
+        Gujr{"tohinima fakaʻinitia kutalati"}
+        Guru{"tohinima fakapūnusapi"}
+        Hang{"tohinima fakakōlea hāngūlu"}
+        Hani{"tohinima fakasiaina"}
+        Hans{"tohinima fakasiaina fakafaingofua"}
+        Hant{"tohinima tukufakaholo fakasiaina"}
+        Hebr{"tohinima fakahepelū"}
+        Hira{"tohinima fakasiapani hilakana"}
+        Jpan{"tohinima fakasiapani"}
+        Kana{"tohinima fakasiapani katakana"}
+        Khmr{"tohinima fakakemipōtia"}
+        Knda{"tohinima fakaʻinitia kānatā"}
+        Kore{"tohinima fakakōlea"}
+        Laoo{"tohinima fakalau"}
+        Latn{"tohinima fakalatina"}
+        Mlym{"tohinima fakaʻinitia malāialemi"}
+        Mong{"tohinima fakamongokōlia"}
+        Mymr{"tohinima fakapema"}
+        Orya{"tohinima fakaʻinitia ʻolāea"}
+        Sinh{"tohinima fakaselengika"}
+        Taml{"tohinima fakatemole"}
+        Telu{"tohinima fakaʻinitia teluku"}
+        Thaa{"tohinima fakatāna"}
+        Thai{"tohinima fakataileni"}
+        Tibt{"tohinima fakataipeti"}
+        Zsym{"tohinima fakaʻilonga"}
+        Zxxx{"tohinima taʻetohitohiʻi"}
+        Zyyy{"tohinima fakatatau"}
+        Zzzz{"tohinima taʻeʻiloa"}
+    }
+    Types{
+        calendar{
+            buddhist{"fakaputa"}
+            chinese{"fakasiaina"}
+            gregorian{"fakakelekolia"}
+            hebrew{"fakahepelū"}
+            indian{"fakaʻinitia"}
+            islamic{"fakamohameti"}
+            islamic-civil{"fakamohameti-sivile"}
+            japanese{"fakasiapani"}
+        }
+        collation{
+            phonebook{"fika telefoni"}
+            traditional{"tukufakaholo"}
+        }
+    }
+    Version{"2.0.65.46"}
+    codePatterns{
+        language{"Lea: {0}"}
+        script{"Tohinima Fakaha: {0}"}
+        territory{"Feituʻu: {0}"}
+    }
+}

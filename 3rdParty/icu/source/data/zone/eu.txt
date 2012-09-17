@@ -1,0 +1,283 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/eu.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/eu.xml
+ */
+eu{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Africa:Djibouti"{
+            ec{"Djibuti"}
+        }
+        "America:Dominica"{
+            ec{"Dominika"}
+        }
+        "America:Guadeloupe"{
+            ec{"Guadalupe"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaika"}
+        }
+        "America:Martinique"{
+            ec{"Martinika"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Ameriketako Estatu Batuak (Erdialdea, Ipar Dakota)"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahrain"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapur"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermuda"}
+        }
+        "Atlantic:Canary"{
+            ec{"Espainia (Kanariak)"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Cabo Verde"}
+        }
+        "Etc:Unknown"{
+            ec{"Ezezaguna"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Luxenburgo"}
+        }
+        "Europe:Madrid"{
+            ec{"Madril"}
+        }
+        "Europe:Monaco"{
+            ec{"Monako"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldivak"}
+        }
+        "Indian:Mauritius"{
+            ec{"Maurizio"}
+        }
+        "meta:Alaska"{
+            ld{"Alaskako urte-sasoiko ordua"}
+            lg{"Alaskako ordua"}
+            ls{"Alaskako ordu estandarra"}
+        }
+        "meta:Amazon"{
+            ld{"Amazoniako urte-sasoiko ordua"}
+            lg{"Amazoniako ordua"}
+            ls{"Amazoniako ordu estandarra"}
+        }
+        "meta:America_Central"{
+            ld{"Erdialdeko urte-sasoiko ordua"}
+            lg{"Erdialdeko ordua"}
+            ls{"Erdialdeko ordu estandarra"}
+        }
+        "meta:America_Eastern"{
+            ld{"Ekialdeko urte-sasoiko ordua"}
+            lg{"Ekialdeko ordua"}
+            ls{"Ekialdeko ordu estandarra"}
+        }
+        "meta:America_Mountain"{
+            ld{"Mendi Harritsuetako urte-sasoiko ordua"}
+            lg{"Mendiko ordua"}
+            ls{"Mendi Harritsuetako ordu estandarra"}
+        }
+        "meta:America_Pacific"{
+            ld{"Pazifikoko urte-sasoiko ordua"}
+            lg{"Pazifikoko ordua"}
+            ls{"Pazifikoko ordu estandarra"}
+        }
+        "meta:Anadyr"{
+            ld{"Anadyrreko udako ordua"}
+            lg{"Anadyrreko ordua"}
+            ls{"Anadyrreko ordu estandarra"}
+        }
+        "meta:Argentina"{
+            ld{"Argentinako udako ordua"}
+            lg{"Argentinako ordua"}
+            ls{"Argentinako ordu estandarra"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Argentina mendebaldeko udako ordua"}
+            lg{"Argentina mendebaldeko ordua"}
+            ls{"Argentina mendebaldeko ordu estandarra"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlantikoko urte-sasoiko ordua"}
+            lg{"Atlantikoko ordua"}
+            ls{"Atlantikoko ordu estandarra"}
+        }
+        "meta:Australia_Central"{
+            ld{"Australia erdialdeko urte-sasoiko ordua"}
+            lg{"Australia erdialdeko ordua"}
+            ls{"Australia erdialdeko ordu estandarra"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Australia erdialdeko mendebaldeko urte-sasoiko ordua"}
+            lg{"Australia erdialdeko mendebaldeko ordua"}
+            ls{"Australia erdialdeko mendebaldeko ordu estandarra"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Australia ekialdeko urte-sasoiko ordua"}
+            lg{"Australia ekialdeko ordua"}
+            ls{"Australia ekialdeko ordu estandarra"}
+        }
+        "meta:Australia_Western"{
+            ld{"Australia mendebaldeko urte-sasoiko ordua"}
+            lg{"Australia mendebaldeko ordua"}
+            ls{"Australia mendebaldeko ordu estandarra"}
+        }
+        "meta:Brasilia"{
+            ld{"Brasiliako udako ordua"}
+            lg{"Brasiliako ordua"}
+            ls{"Brasiliako ordu estandarra"}
+        }
+        "meta:Choibalsan"{
+            ld{"Choibalsango udako ordua"}
+            lg{"Choibalsango ordua"}
+            ls{"Choibalsango ordu estandarra"}
+        }
+        "meta:Europe_Central"{
+            sd{"CEST"}
+            sg{"CET"}
+            ss{"CET"}
+        }
+        "meta:Europe_Eastern"{
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            sd{"WEST"}
+            sg{"WET"}
+            ss{"WET"}
+        }
+        "meta:GMT"{
+            ss{"GMT"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hawaii Aleuteko urte-sasoiko ordua"}
+            lg{"Hawaii Aleuteko ordua"}
+            ls{"Hawaii Aleuteko ordu estandarra"}
+        }
+        "meta:Hovd"{
+            ld{"Hovdeko udako ordua"}
+            lg{"Hovdeko ordua"}
+            ls{"Hovdeko ordu estandarra"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Indonesia erdialdeko ordua"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Indonesia ekialdeko ordua"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Indonesia mendebaldeko ordua"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutskeko udako ordua"}
+            lg{"Irkutskeko ordua"}
+            ls{"Irkutskeko ordu estandarra"}
+        }
+        "meta:Kamchatka"{
+            ld{"Petropavlovsk-Kamchatskiko udako ordua"}
+            lg{"Petropavlovsk-Kamchatskiko ordua"}
+            ls{"Petropavlovsk-Kamchatskiko ordu estandarra"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Kazakhstan ekialdeko ordua"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Kazakhstan mendebaldeko ordua"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnoyarskeko udako ordua"}
+            lg{"Krasnoyarskeko ordua"}
+            ls{"Krasnoyarskeko ordu estandarra"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Howeko urte-sasoiko ordua"}
+            lg{"Lord Howeko ordua"}
+            ls{"Lord Howeko ordu estandarra"}
+        }
+        "meta:Macquarie"{
+            ls{"Macquarieko ordua"}
+        }
+        "meta:Magadan"{
+            ld{"Magadango udako ordua"}
+            lg{"Magadako ordua"}
+            ls{"Magadako ordu estandarra"}
+        }
+        "meta:Mongolia"{
+            ld{"Ulan Batorgo udako ordua"}
+            lg{"Ulan Batorgo ordua"}
+            ls{"Ulan Batorgo ordu estandarra"}
+        }
+        "meta:Moscow"{
+            ld{"Moskuko udako ordua"}
+            lg{"Moskuko ordua"}
+            ls{"Moskuko ordu estandarra"}
+        }
+        "meta:Newfoundland"{
+            ld{"Ternuako urte-sasoiko ordua"}
+            lg{"Ternuako ordua"}
+            ls{"Ternuako ordu estandarra"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronhako udako ordua"}
+            lg{"Fernando de Noronhako ordua"}
+            ls{"Fernando de Noronhako ordu estandarra"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirskeko udako ordua"}
+            lg{"Novosibirskeko ordua"}
+            ls{"Novosibirskeko ordu estandarra"}
+        }
+        "meta:Omsk"{
+            ld{"Omskeko udako ordua"}
+            lg{"Omskeko ordua"}
+            ls{"Omskeko ordu estandarra"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sakhalingo udako ordua"}
+            lg{"Sakhalingo ordua"}
+            ls{"Sakhalingo ordu estandarra"}
+        }
+        "meta:Samara"{
+            ld{"Samarako udako ordua"}
+            lg{"Samarako ordua"}
+            ls{"Samarako ordu estandarra"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostokeko udako ordua"}
+            lg{"Vladivostokeko ordua"}
+            ls{"Vladivostokeko ordu estandarra"}
+        }
+        "meta:Volgograd"{
+            ld{"Belgradeko udako ordua"}
+            lg{"Belgradeko ordua"}
+            ls{"Belgradeko ordu estandarra"}
+        }
+        "meta:Yakutsk"{
+            ld{"Yakutskeko udako ordua"}
+            lg{"Yakutskeko ordua"}
+            ls{"Yakutskeko ordu estandarra"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Yekaterinburgeko udako ordua"}
+            lg{"Yekaterinburgeko ordua"}
+            ls{"Yekaterinburgeko ordu estandarra"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        fallbackRegionFormat{"{1}-(e)ko ordua ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0}-(e)ko ordua"}
+    }
+}

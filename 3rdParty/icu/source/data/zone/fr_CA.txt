@@ -1,0 +1,88 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/fr_CA.xml
+// *
+// ***************************************************************************
+fr_CA{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "America:Cayman"{
+            ec{"Îles Caïmans"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:St_Kitts"{
+            ec{"Saint-Christophe-et-Niévès"}
+        }
+        "America:St_Thomas"{
+            ec{"Saint Thomas"}
+        }
+        "Asia:Baghdad"{
+            ec{"Baghdad"}
+        }
+        "Asia:Dhaka"{
+            ec{"Dacca"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Îles Féroé"}
+        }
+        "Europe:Vatican"{
+            ec{"Vatican"}
+        }
+        "Indian:Chagos"{
+            ec{"Archipel des Chagos"}
+        }
+        "Indian:Christmas"{
+            ec{"Île Christmas"}
+        }
+        "Indian:Cocos"{
+            ec{"Îles Cocos"}
+        }
+        "Indian:Comoro"{
+            ec{"Union des Comores"}
+        }
+        "Indian:Kerguelen"{
+            ec{"Îles Kerguelen"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Île Norfolk"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Île Pitcairn"}
+        }
+        "Pacific:Wallis"{
+            ec{"Uvéa"}
+        }
+        "meta:America_Central"{
+            sd{"HAC"}
+            sg{"HC"}
+            ss{"HNC"}
+        }
+        "meta:America_Eastern"{
+            sd{"HAE"}
+            sg{"HE"}
+            ss{"HNE"}
+        }
+        "meta:America_Mountain"{
+            sd{"HAR"}
+            sg{"HR"}
+            ss{"HNR"}
+        }
+        "meta:America_Pacific"{
+            sd{"HAP"}
+            sg{"HP"}
+            ss{"HNP"}
+        }
+        "meta:Newfoundland"{
+            sd{"HAT"}
+            sg{"HT"}
+            ss{"HNT"}
+        }
+        fallbackRegionFormat{"Heure de {1} ({0})"}
+        regionFormat{"Heure de {0}"}
+    }
+}

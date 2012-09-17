@@ -45,8 +45,6 @@ dnl ----------------------------------------------------------------------------
 dnl add substitutions
 dnl ----------------------------------------------------------------------------
 
-AM_CONDITIONAL(ENABLE_ICU, test "x$tr_ICU" = xyes)
-
 AC_SUBST(ICU_CPPFLAGS)
 AC_SUBST(ICU_LDFLAGS)
 AC_SUBST(ICU_LIBS)

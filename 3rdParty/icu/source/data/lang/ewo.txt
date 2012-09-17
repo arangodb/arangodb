@@ -1,0 +1,61 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/ewo.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/ewo.xml
+ */
+ewo{
+    Languages{
+        ak{"Ǹkɔ́bɔ akán"}
+        am{"Ǹkɔ́bɔ amária"}
+        ar{"Ǹkɔ́bɔ arábia"}
+        be{"Ǹkɔ́bɔ belarúsian"}
+        bg{"Ǹkɔ́bɔ bulǝgárian"}
+        bn{"Ǹkɔ́bɔ bɛngalí"}
+        cs{"Ǹkɔ́bɔ tsɛ́g"}
+        de{"Ǹkɔ́bɔ ndzáman"}
+        el{"Ǹkɔ́bɔ gǝlɛ́g"}
+        en{"Ǹkɔ́bɔ éngǝlís"}
+        es{"ǹkɔ́bɔ kpǝnyá"}
+        ewo{"ewondo"}
+        fa{"ǹkɔ́bɔ fɛ́rǝsian"}
+        fr{"Ǹkɔ́bɔ fulɛnsí"}
+        ha{"Ǹkɔ́bɔ aúsá"}
+        hi{"Ǹkɔ́bɔ hindí"}
+        hu{"Ǹkɔ́bɔ ungárían"}
+        id{"Ǹkɔ́bɔ ɛndonésian"}
+        ig{"Ǹkɔ́bɔ ibó"}
+        it{"Ǹkɔ́bɔ etáliɛn"}
+        ja{"Ǹkɔ́bɔ hapɔ́n"}
+        jv{"Ǹkɔ́bɔ havanís"}
+        km{"Ǹkɔ́bɔ kǝmɛ́r"}
+        ko{"Ǹkɔ́bɔ koréan"}
+        ms{"Ǹkɔ́bɔ malɛ́sian"}
+        my{"Ǹkɔ́bɔ birǝmán"}
+        ne{"ǹkɔ́bɔ nefálian"}
+        nl{"Ǹkɔ́bɔ nɛrǝlándía"}
+        pa{"ǹkɔ́bɔ funǝhábia"}
+        pl{"ǹkɔ́bɔ fólis"}
+        pt{"ǹkɔ́bɔ fɔtugɛ́s"}
+        ro{"ńkɔ́bɔ románía"}
+        ru{"ǹkɔ́bɔ rúsian"}
+        rw{"ǹkɔ́bɔ ruwandá"}
+        so{"ǹkɔ́bɔ somália"}
+        sv{"ǹkɔ́bɔ suwɛ́d"}
+        ta{"ǹkɔ́bɔ tamíl"}
+        th{"ǹkɔ́bɔ táilan"}
+        tr{"ǹkɔ́bɔ túrǝki"}
+        uk{"ǹkɔ́bɔ ukelénia"}
+        ur{"ǹkɔ́bɔ urudú"}
+        vi{"ǹkɔ́bɔ hiɛdǝnám"}
+        yo{"ǹkɔ́bɔ yorúba"}
+        zh{"Ǹkɔ́bɔ tsainís"}
+        zu{"ǹkɔ́bɔ zulú"}
+    }
+    Version{"2.0.65.46"}
+}

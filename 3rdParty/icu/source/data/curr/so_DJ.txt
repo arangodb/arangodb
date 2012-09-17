@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/so_DJ.xml
+// *
+// ***************************************************************************
+so_DJ{
+    Currencies{
+        DJF{
+            "Fdj",
+            "Faran Jabbuuti",
+        }
+    }
+    Version{"2.0.57.17"}
+}

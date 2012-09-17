@@ -1,0 +1,37 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/mt.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/mt.xml
+ */
+mt{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Etc:Unknown"{
+            ec{"Mhux Magħruf"}
+        }
+        "Europe:London"{
+            ec{"Londra"}
+        }
+        "Europe:Malta"{
+            ec{"Valletta"}
+        }
+        "meta:Europe_Central"{
+            ld{"Ħin Ċentrali Ewropew tas-Sajf"}
+            lg{"Ħin Ċentrali Ewropew"}
+            ls{"Ħin Ċentrali Ewropew istandard"}
+            sd{"CEST"}
+            sg{"CET"}
+            ss{"CET"}
+        }
+        fallbackRegionFormat{"Ħin ta’ {1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Ħin ta’ {0}"}
+    }
+}
