@@ -1,0 +1,250 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/af.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/af.xml
+ */
+af{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "America:Mexico_City"{
+            ec{"Meksiko"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"Suidpool"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahrein"}
+        }
+        "Asia:Shanghai"{
+            ec{"Shanghai"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisbon"}
+        }
+        "Europe:Moscow"{
+            ec{"Moskou"}
+        }
+        "meta:Africa_Central"{
+            ss{"CAT"}
+        }
+        "meta:Africa_Eastern"{
+            ss{"EAT"}
+        }
+        "meta:Africa_Southern"{
+            ss{"SAST"}
+        }
+        "meta:Africa_Western"{
+            sd{"WAST"}
+            sg{"WAT"}
+            ss{"WAT"}
+        }
+        "meta:Alaska"{
+            ld{"Alaska-dagligtyd"}
+            lg{"Alaska-tyd"}
+            ls{"Alaska-standaardtyd"}
+        }
+        "meta:Amazon"{
+            ld{"Amasone-somertyd"}
+            lg{"Amasone-tyd"}
+            ls{"Amasone-tyd"}
+        }
+        "meta:America_Central"{
+            ld{"Sentrale dagligtyd"}
+            lg{"Sentrale tyd"}
+            ls{"Sentraal-standaardtyd"}
+        }
+        "meta:America_Eastern"{
+            ld{"Oostelike dagligtyd"}
+            lg{"Oostelike tyd"}
+            ls{"Oostelike standaardtyd"}
+        }
+        "meta:America_Mountain"{
+            ld{"Berg-dagligtyd"}
+            lg{"Bergtyd"}
+            ls{"Berg-standaardtyd"}
+        }
+        "meta:America_Pacific"{
+            ld{"Pasifiese dagligtyd"}
+            lg{"Pasifiese tyd"}
+            ls{"Pasifiese standaardtyd"}
+        }
+        "meta:Anadyr"{
+            ld{"Anadyr-somertyd"}
+            lg{"Anadyr-tyd"}
+            ls{"Anadyr-tyd"}
+        }
+        "meta:Argentina"{
+            ld{"Argentinië-somertyd"}
+            lg{"Argentinië-tyd"}
+            ls{"Argentinië-tyd"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Argentinië Westelike somertyd"}
+            lg{"Argentinië Westelike tyd"}
+            ls{"Westelike Argentinië-tyd"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlantiese dagligtyd"}
+            lg{"Atlantiese tyd"}
+            ls{"Atlantiese standaardtyd"}
+        }
+        "meta:Australia_Central"{
+            ld{"Australiese sentrale dagligtyd"}
+            lg{"Sentraal-Australië-tyd"}
+            ls{"Australiese sentraal-standaardtyd"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Australiese sentraal-Westelike dagligtyd"}
+            lg{"Australiese sentraal-Westelike tyd"}
+            ls{"Australiese sentraal-Westelike standaard-tyd"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Australiese Oostelike dagligtyd"}
+            lg{"Oostelike Australiese tyd"}
+            ls{"Australiese Oostelike standaardtyd"}
+        }
+        "meta:Australia_Western"{
+            ld{"Australiese Westelike dagligtyd"}
+            lg{"Westelike Australië-tyd"}
+            ls{"Australiese Westelike standaardtyd"}
+        }
+        "meta:Brasilia"{
+            ld{"Brasilië somertyd"}
+            lg{"Brasilië-tyd"}
+            ls{"Brasilië-tyd"}
+        }
+        "meta:Choibalsan"{
+            ld{"Choibalsan-somertyd"}
+            lg{"Choibalsan-tyd"}
+            ls{"Choibalsan-tyd"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hawaii Aleutiese dagligtyd"}
+            lg{"Hawaii Aleutiese tyd"}
+            ls{"Hawaii Aleutiese standaardtyd"}
+        }
+        "meta:Hovd"{
+            ld{"Hovd-somertyd"}
+            lg{"Hovd-tyd"}
+            ls{"Hovd-tyd"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Indonesië-sentraal-tyd"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Indonesiese Oostelike tyd"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Indonesiese Westelike tyd"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutsk-somertyd"}
+            lg{"Irkutsk-tyd"}
+            ls{"Irkutsk-tyd"}
+        }
+        "meta:Kamchatka"{
+            ld{"Petropavlovsk-Kamchatski-somertyd"}
+            lg{"Kamchatka-tyd"}
+            ls{"Petropavlovsk-Kamchatski-tyd"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ld{"Kazakstan Oostelike somertyd"}
+            lg{"Oos-Kazakstan-tyd"}
+            ls{"Oos-Kazakstan-standaardtyd"}
+        }
+        "meta:Kazakhstan_Western"{
+            ld{"Kazakstan Westelike somertyd"}
+            lg{"Wes-Kazakstan-tyd"}
+            ls{"Wes-Kazakstan-standaardtyd"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnoyarsk-somertyd"}
+            lg{"Krasnoyarsk-tyd"}
+            ls{"Krasnoyarsk-tyd"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Howe-dagligtyd"}
+            lg{"Lord Howe-tyd"}
+            ls{"Lord Howe-standaardtyd"}
+        }
+        "meta:Macquarie"{
+            ls{"Macquarie-tyd"}
+        }
+        "meta:Magadan"{
+            ld{"Magadan-somertyd"}
+            lg{"Magadan-tyd"}
+            ls{"Magadan-tyd"}
+        }
+        "meta:Mongolia"{
+            ld{"Oelan Bator-somertyd"}
+            lg{"Mongolië-tyd"}
+            ls{"Oelan Bator-tyd"}
+        }
+        "meta:Moscow"{
+            ld{"Moskou-somertyd"}
+            lg{"Moskou-tyd"}
+            ls{"Moskou-standaardtyd"}
+        }
+        "meta:Newfoundland"{
+            ld{"Newfoundland-dagligtyd"}
+            lg{"Newfoundland-tyd"}
+            ls{"Newfoundland-standaard-tyd"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronha-somertyd"}
+            lg{"Noronha-tyd"}
+            ls{"Fernando de Noronha-tyd"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirsk-somertyd"}
+            lg{"Novosibirsk-tyd"}
+            ls{"Novosibirsk-tyd"}
+        }
+        "meta:Omsk"{
+            ld{"Omsk-somertyd"}
+            lg{"Omsk-tyd"}
+            ls{"Omsk-tyd"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sakhalin-somertyd"}
+            lg{"Sakhalin-tyd"}
+            ls{"Sakhalin-tyd"}
+        }
+        "meta:Samara"{
+            ld{"Samara-somertyd"}
+            lg{"Samara-tyd"}
+            ls{"Samara-tyd"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostok-somertyd"}
+            lg{"Vladivostok-tyd"}
+            ls{"Vladivostok-tyd"}
+        }
+        "meta:Volgograd"{
+            ld{"Volgograd-somertyd"}
+            lg{"Volgograd-tyd"}
+            ls{"Volgograd-tyd"}
+        }
+        "meta:Yakutsk"{
+            ld{"Yakutsk-somertyd"}
+            lg{"Yakutsk-tyd"}
+            ls{"Yakutsk-tyd"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Yekaterinburg-somertyd"}
+            lg{"Yekaterinburg-tyd"}
+            ls{"Yekaterinburg-tyd"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        fallbackRegionFormat{"{1}-tyd ({0})"}
+        gmtFormat{"MGT{0}"}
+        gmtZeroFormat{"MGT"}
+        regionFormat{"{0}-tyd"}
+    }
+}

@@ -1,0 +1,64 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/zh_Hans_SG.xml
+// *
+// ***************************************************************************
+zh_Hans_SG{
+    Version{"2.0.64.65"}
+    zoneStrings{
+        "America:Cambridge_Bay"{
+            ec{"剑桥湾"}
+        }
+        "America:Indiana:Knox"{
+            ec{"印第安纳州诺克斯"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"印第安纳州马伦戈"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"印第安纳州彼得斯堡"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"印第安纳州维维市"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"印第安纳州温森斯"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"肯塔基州蒙蒂塞洛"}
+        }
+        "America:Menominee"{
+            ec{"梅诺米尼"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"北达科他州申特"}
+        }
+        "America:Pangnirtung"{
+            ec{"旁尼唐"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"兰今湾"}
+        }
+        "America:Santo_Domingo"{
+            ec{"圣多明戈"}
+        }
+        "America:Scoresbysund"{
+            ec{"斯考斯伯松德"}
+        }
+        "America:St_Barthelemy"{
+            ec{"圣巴太累米"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"克孜洛尔达"}
+        }
+        "Atlantic:Azores"{
+            ec{"亚速尔群岛"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"扎波罗什"}
+        }
+    }
+}

@@ -88,6 +88,18 @@ AC_ARG_ENABLE(all-in-one-v8,
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_V8, test "x$tr_ALL_IN_ONE_V8" = xyes)
 
+dnl ----------------------------------------------------------------------------
+dnl ICU
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one-icu,
+  AS_HELP_STRING([--enable-all-in-one-icu], [use supplied ICU from 3rdParty directory]),
+  [tr_ALL_IN_ONE_ICU="${enableval:-yes}"],
+  [tr_ALL_IN_ONE_ICU=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ICU, test "x$tr_ALL_IN_ONE_ICU" = xyes)
+
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
 dnl ============================================================================
@@ -205,7 +217,11 @@ dnl ----------------------------------------------------------------------------
 dnl ICU
 dnl ----------------------------------------------------------------------------
 
-m4_include([m4/external.icu])
+if test "x$tr_ALL_IN_ONE_ICU" = xyes;  then
+  m4_include([m4/all-in-one.icu])
+else
+  m4_include([m4/external.icu])
+fi
 
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES

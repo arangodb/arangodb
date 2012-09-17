@@ -1,0 +1,73 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/fa_AF.xml
+// *
+// ***************************************************************************
+fa_AF{
+    Currencies{
+        AFN{
+            "؋",
+            "افغانی افغانستان",
+        }
+        AUD{
+            "AU$",
+            "دالر آسترالیا",
+        }
+        BND{
+            "BND",
+            "دالر برونی",
+        }
+        BYR{
+            "BYR",
+            "روبل روسیهٔ سفید",
+        }
+        CAD{
+            "CA$",
+            "دالر کانادا",
+        }
+        CHF{
+            "CHF",
+            "فرانک سویس",
+        }
+        DKK{
+            "DKK",
+            "کرون دنمارک",
+        }
+        JPY{
+            "JP¥",
+            "ین جاپان",
+        }
+        MXN{
+            "MX$",
+            "پزوی مکسیکو",
+        }
+        NLG{
+            "NLG",
+            "گیلدر هالند",
+        }
+        NOK{
+            "NOK",
+            "کرون ناروی",
+        }
+        SEK{
+            "SEK",
+            "کرون سویدن",
+        }
+        SGD{
+            "SGD",
+            "دالر سینگاپور",
+        }
+        TJS{
+            "TJS",
+            "سامانی تاجکستان",
+        }
+        USD{
+            "US$",
+            "دالر امریکا",
+        }
+    }
+    Version{"2.0.65.46"}
+}

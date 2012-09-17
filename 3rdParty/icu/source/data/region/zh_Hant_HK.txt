@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/zh_Hant_HK.xml
+// *
+// ***************************************************************************
+zh_Hant_HK{
+    Countries{
+        013{"中美洲"}
+        019{"美洲地區"}
+        029{"加勒比"}
+        EA{"瑟塔與梅利拉"}
+    }
+    Version{"2.0.65.46"}
+}
