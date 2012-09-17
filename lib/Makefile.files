@@ -26,6 +26,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/StringUtils.cpp \
 	lib/Basics/Thread.cpp \
 	lib/Basics/Timing.cpp \
+	lib/Basics/Utf8Helper.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/ssl-helper.cpp \
@@ -54,6 +55,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/terminal-utils-posix.c \
 	lib/BasicsC/terminal-utils.c \
 	lib/BasicsC/threads-posix.c \
+	lib/BasicsC/utf8-helper.c \
 	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
 	lib/JsonParser/json-parser.c \

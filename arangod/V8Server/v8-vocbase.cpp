@@ -250,7 +250,7 @@ static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI
     return false;
   }
 
-  v8::String::Utf8Value str(arg);
+  TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
   char const* s = *str;
 
   if (s == 0) {
@@ -286,7 +286,7 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_id
     return false;
   }
 
-  v8::String::Utf8Value str(arg);
+  TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
   char const* s = *str;
 
   if (s == 0) {
@@ -369,7 +369,7 @@ int FillVectorPointerFromArguments (v8::Arguments const& argv,
       return TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
     }
 
-    v8::String::Utf8Value argumentString(argument);
+    TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
     char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
 
     TRI_PushBackVectorPointer(result, cArgument);
@@ -1276,7 +1276,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   // .............................................................................
 
   if (argv.Length() == 1 + off) {
-    v8::String::Utf8Value loc(argv[0]);
+    TRI_Utf8ValueNFC loc(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
     if (*loc == 0) {
       TRI_ReleaseCollection(collection);
@@ -1297,7 +1297,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   // .............................................................................
 
   else if (argv.Length() == 2 + off && (argv[1]->IsBoolean() || argv[1]->IsBooleanObject())) {
-    v8::String::Utf8Value loc(argv[0]);
+    TRI_Utf8ValueNFC loc(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
     if (*loc == 0) {
       TRI_ReleaseCollection(collection);
@@ -1318,8 +1318,8 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   // .............................................................................
 
   else if (argv.Length() == 2 + off) {
-    v8::String::Utf8Value lat(argv[0]);
-    v8::String::Utf8Value lon(argv[1]);
+    TRI_Utf8ValueNFC lat(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+    TRI_Utf8ValueNFC lon(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
     if (*lat == 0) {
       TRI_ReleaseCollection(collection);
@@ -1607,6 +1607,22 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_Utf8ValueNFC x(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  
+  if (x.length() == 0) {
+    return scope.Close(v8::Null());    
+  }
+  
+  return scope.Close(v8::String::New(*x, x.length()));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a general cursor from a list
@@ -2977,7 +2993,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
         break;
       }
       
-      v8::String::Utf8Value argumentString(argument);
+      TRI_Utf8ValueNFC argumentString(TRI_UNKNOWN_MEM_ZONE, argument);
       char* cArgument = *argumentString == 0 ? 0 : TRI_DuplicateString(*argumentString);
       TRI_PushBackVectorPointer(&attributes, cArgument);
       
@@ -5641,6 +5657,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   context->Global()->Set(v8::String::New("CREATE_CURSOR"),
                          v8::FunctionTemplate::New(JS_CreateCursor)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
+                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................

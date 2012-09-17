@@ -38,6 +38,7 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "BasicsC/csv.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
@@ -346,6 +347,54 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: NORMALIZE_STRING(<string>)")));
+  }
+
+  TRI_Utf8ValueNFC x(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  
+  if (x.length() == 0) {
+    return scope.Close(v8::Null());    
+  }
+  
+  return scope.Close(v8::String::New(*x, x.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_compare_strings (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: COMPARE_STRINGS(<left string>, <right string>)")));
+  }
+
+  v8::String::Value left(argv[0]);
+  if (!*left) {
+    return scope.Close(v8::Integer::New(1));    
+  }
+
+  v8::String::Value right(argv[1]);
+  if (!*right) {
+    return scope.Close(v8::Integer::New(-1));    
+  }
+  
+  Utf8Helper uh("");  
+  int result = uh.compareUtf16(*left, left.length(), *right, right.length());
+  
+  return scope.Close(v8::Integer::New(result));    
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -511,7 +560,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("usage: get(<url>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   // check header fields
   map<string, string> headerFields;
@@ -542,7 +591,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
     return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<url>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   // check header fields
   map<string, string> headerFields;
@@ -572,7 +621,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: post(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -603,7 +652,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("usage: put(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -634,7 +683,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& ar
     return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -1103,6 +1152,13 @@ int main (int argc, char* argv[]) {
                          v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
                          v8::ReadOnly);
  
+  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
+                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
+                         v8::ReadOnly);
+  context->Global()->Set(v8::String::New("COMPARE_STRINGS"),
+                         v8::FunctionTemplate::New(JS_compare_strings)->GetFunction(),
+                         v8::ReadOnly);
+  
   // .............................................................................
   // banner
   // .............................................................................  
