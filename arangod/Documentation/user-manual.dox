@@ -362,14 +362,32 @@
 /// @section UserManualActionsIntro Introduction to User Actions
 ////////////////////////////////////////////////////////////////
 ///
-/// In same ways the ArangoDB server behaves like a Web server. It responses to
-/// HTTP request by delivering JSON objects in general. The idea is that
-/// sometimes it is better to store parts of the business logic within
-/// AnrangoDB. For instance, if you want to apply some statistics to large
-/// data-set and you cannot easily express this as query, then you can define a
-/// action instead of transferring the whole data-set to the client and do the
-/// computation there. Actions are also useful if you want to restrict and
-/// filter data according to some complex permission system.
+/// In some ways the communication layer of the ArangoDB server behaves like a
+/// Web server. Unlike a Web server, it normally responses to HTTP requests by
+/// delivering JSON objects. Remember, documents in the database are just JSON
+/// objects. So most of the time the HTTP response will contain a JSON document
+/// from the database as body. You can extract the documents stored in the
+/// database using HTTP @LIT{GET}. You can store documents using HTTP
+/// @LIT{POST}.
+///
+/// However, there is something more. You can write small sniplets - so called
+/// actions - to extended the database. The idea of actions is that sometimes it
+/// is better to store parts of the business logic within AnrangoDB. 
+///
+/// The simplest example is the age of a person. Assume you store information
+/// about people in your database. It is an anti-pattern to store the age,
+/// because it changes every now and then. Therefore, you normally store the
+/// birthday and let the client decide what to do with it. However, if you have
+/// many different clients, it might be easier to enrich the person document
+/// with the age using actions once on the server side.
+///
+/// Or, for instance, if you want to apply some statistics to large data-sets
+/// and you cannot easily express this as query. You can define a action instead
+/// of transferring the whole data to the client and do the computation on the
+/// client.
+///
+/// Actions are also useful if you want to restrict and filter data according to
+/// some complex permission system.
 ///
 /// The ArangoDB server deliver all kinds of information, JSON being only one
 /// possible format. You can also generate HTML or images. However, a Web server
@@ -380,9 +398,9 @@
 /// administration interface. You can access it using any modern browser and
 /// there is no need for a separate Apache or IIS.
 ///
-/// In the following sections we will introduce you to actions within ArangoDB
-/// and how to define them. The examples start with delivering static HTML pages
-/// - even if this is not the primary use-case for actions. The later sections
+/// In the following sections we will explain actions within ArangoDB and show
+/// how to define them. The examples start with delivering static HTML pages -
+/// even if this is not the primary use-case for actions. The later sections
 /// will then show you, how to code some pieces of your business logic and
 /// return JSON objects.
 ///
@@ -394,7 +412,7 @@
 /// way to share state between queries inside the JavaScript engine. If such
 /// state information is required, you need to use the database itself.
 ///
-/// @section UserManualActionsHelloWorld A Hello World
+/// @section UserManualActionsHelloWorld A Hello World Example
 ///
 /// The client API or browser sends a HTTP request to the ArangoDB server and
 /// the server returns a HTTP response to the client. A HTTP requests consists
