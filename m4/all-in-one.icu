@@ -8,7 +8,7 @@ ICU_CPPFLAGS="$(${srcdir}/3rdParty/icu/BUILD/bin/icu-config --cppflags)"
 ICU_LDFLAGS=""
 ICU_LIBS=" -lpthread -ldl -lm ${srcdir}/3rdParty/icu/BUILD/libs/libicui18n.a ${srcdir}/3rdParty/icu/BUILD/libs/libicuuc.a ${srcdir}/3rdParty/icu/BUILD/libs/libicudata.a ${srcdir}/3rdParty/icu/BUILD/libs/libicuio.a ${srcdir}/3rdParty/icu/BUILD/libs/libicule.a ${srcdir}/3rdParty/icu/BUILD/libs/libiculx.a"
 
-TRI_ICU_VERSION="$(${srcdir}/3rdParty/icu/BUILD/bin/icu-config --version)"
+TRI_ICU_VERSION="49.1.2"
 
 dnl ----------------------------------------------------------------------------
 dnl add substitutions
