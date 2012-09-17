@@ -447,7 +447,7 @@ int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* pos
   return TRI_ERROR_NO_ERROR;
 }
 
-
+#if 0
 static int localPushBackVector(TRI_vector_t* vector, void const* element) {
   //return TRI_ERROR_NO_ERROR;
   if (vector->_length == vector->_capacity) {
@@ -471,6 +471,7 @@ static int localPushBackVector(TRI_vector_t* vector, void const* element) {
 
   return TRI_ERROR_NO_ERROR;
 }
+#endif
 
 int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_position_t* position) {
   // should we store doc pointers directly or indirectly via BitarrayIndexElement
