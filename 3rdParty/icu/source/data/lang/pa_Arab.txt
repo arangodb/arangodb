@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/pa_Arab.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/pa_Arab.xml
+ */
+pa_Arab{
+    Languages{
+        pa{"پنجاب"}
+    }
+    Scripts{
+        Arab{"العربية"}
+        Guru{"گُرمُکھی"}
+    }
+    Version{"2.0.67.8"}
+}

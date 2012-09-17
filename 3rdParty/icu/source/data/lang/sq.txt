@@ -1,0 +1,35 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/sq.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/sq.xml
+ */
+sq{
+    Languages{
+        ar{"Arabisht"}
+        de{"Gjermanisht"}
+        en{"Anglisht"}
+        es{"Spanjisht"}
+        fr{"Frengjisht"}
+        hi{"Hindi"}
+        it{"Italisht"}
+        ja{"Japanisht"}
+        nl{"Holandisht"}
+        pt{"Portugeze"}
+        ru{"Rusisht"}
+        sh{"Serbo-Kroatisht"}
+        sq{"shqip"}
+        zh{"Kineze"}
+    }
+    Scripts{
+        Latn{"Latine"}
+        Zxxx{"I pashkruar"}
+        Zzzz{"Skript i panjohur"}
+    }
+    Version{"2.0.65.46"}
+}

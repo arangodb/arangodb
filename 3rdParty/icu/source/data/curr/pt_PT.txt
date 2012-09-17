@@ -1,0 +1,171 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/pt_PT.xml
+// *
+// ***************************************************************************
+pt_PT{
+    Currencies{
+        AED{
+            "AED",
+            "Dirham dos Emirados Árabes Unidos",
+        }
+        AFA{
+            "AFA",
+            "Afeghani (1927-2002)",
+        }
+        AFN{
+            "AFN",
+            "Afgani afegão",
+        }
+        ANG{
+            "ANG",
+            "Florim das Antilhas Holandesas",
+        }
+        AWG{
+            "AWG",
+            "Florim de Aruba",
+        }
+        BAD{
+            "BAD",
+            "Dinar da Bósnia-Herzegóvina",
+        }
+        BAM{
+            "BAM",
+            "Marco bósnio-herzegóvino conversível",
+        }
+        BEC{
+            "BEC",
+            "Franco belga (convertível)",
+        }
+        BRL{
+            "BR$",
+            "Real brasileiro",
+        }
+        BYB{
+            "BYB",
+            "Rublo novo bielorusso (1994-1999)",
+        }
+        CAD{
+            "CA$",
+            "Dólar canadiano",
+        }
+        CYP{
+            "CYP",
+            "Libra de Chipre",
+        }
+        CZK{
+            "CZK",
+            "Coroa da República Checa",
+        }
+        ECV{
+            "ECV",
+            "Unidad de Valor Constante (UVC) do Equador",
+        }
+        GMD{
+            "GMD",
+            "Dalasi da Gâmbia",
+        }
+        GNF{
+            "GNF",
+            "Franco Guineense",
+        }
+        GTQ{
+            "GTQ",
+            "Quetzal da Guatemala",
+        }
+        HNL{
+            "HNL",
+            "Lempira das Honduras",
+        }
+        KWD{
+            "KWD",
+            "Dinar do Koweit",
+        }
+        KYD{
+            "KYD",
+            "Dólar das Ilhas Caimão",
+        }
+        MKD{
+            "MKD",
+            "Dinar Macedónio",
+        }
+        MWK{
+            "MWK",
+            "Cuacha do Malawi",
+        }
+        MXP{
+            "MXP",
+            "Peso Plata mexicano (1861-1992)",
+        }
+        MXV{
+            "MXV",
+            "Unidad de Inversion (UDI) mexicana",
+        }
+        NIC{
+            "NIC",
+            "Córdoba nicaraguano",
+        }
+        NIO{
+            "NIO",
+            "Córdoba Ouro nicaraguano",
+        }
+        PLN{
+            "PLN",
+            "Zloti polaco",
+        }
+        PTE{
+            "Esc.",
+            "Escudo português",
+            {
+                /**
+                 * Duplicated from NumberPatterns resource
+                 */
+                "#,##0.00 ¤",
+                "$",
+                ",",
+            }
+        }
+        QAR{
+            "QAR",
+            "Rial do Catar",
+        }
+        SGD{
+            "SGD",
+            "Dólar de Singapura",
+        }
+        THB{
+            "฿",
+            "Baht da Tailândia",
+        }
+        TZS{
+            "TZS",
+            "Xelim de Tanzânia",
+        }
+        USD{
+            "US$",
+            "Dólar dos Estados Unidos",
+        }
+        WST{
+            "WST",
+            "Tala de Samoa Ocidental",
+        }
+        XXX{
+            "XXX",
+            "Moeda Desconhecida",
+        }
+    }
+    CurrencyPlurals{
+        CAD{
+            one{"Dólar canadiano"}
+            other{"Dólares canadianos"}
+        }
+        USD{
+            one{"Dólar dos Estados Unidos"}
+            other{"Dólares dos Estados Unidos"}
+        }
+    }
+    Version{"2.0.65.46"}
+}

@@ -1,0 +1,313 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/fil.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/fil.xml
+ */
+fil{
+    Keys{
+        calendar{"Calendar"}
+        collation{"Collation"}
+        currency{"Pera"}
+        numbers{"Mga Numero"}
+        x{"Pribadong Paggamit"}
+    }
+    Languages{
+        ab{"Abkhazian"}
+        af{"Afrikaans"}
+        am{"Amharic"}
+        ar{"Arabic"}
+        as{"Assamese"}
+        ay{"Aymara"}
+        az{"Azerbaijani"}
+        be{"Belarusian"}
+        bg{"Bulgarian"}
+        bh{"Bihari"}
+        bn{"Bengali; Bangla"}
+        bo{"Tibetan"}
+        br{"Breton"}
+        bs{"Bosnian"}
+        ca{"Catalan"}
+        cs{"Czech"}
+        cy{"Welsh"}
+        da{"Danish"}
+        de{"Aleman"}
+        de_AT{"Austrian German"}
+        de_CH{"Swiss High German"}
+        dv{"Divehi"}
+        dz{"Dzongkha"}
+        efi{"Efik"}
+        el{"Griyego"}
+        en{"Ingles"}
+        en_AU{"Ingles sa Australia"}
+        en_CA{"Canadian English"}
+        en_GB{"Ingles (UK)"}
+        en_US{"Ingles sa U.S."}
+        eo{"Esperanto"}
+        es{"Espanyol"}
+        es_419{"Espanyol sa Latin America"}
+        es_ES{"Espanyol sa Iberia"}
+        et{"Estonian"}
+        eu{"Basque"}
+        fa{"Persian"}
+        fi{"Finnish"}
+        fil{"Filipino"}
+        fj{"Fijian"}
+        fo{"Faroeso"}
+        fr{"Pranses"}
+        fr_CA{"Canadian French"}
+        fr_CH{"Swiss French"}
+        fy{"Western Frisian"}
+        ga{"Irish"}
+        gd{"Scots Gaelic"}
+        gl{"Galician"}
+        gn{"Guarani"}
+        gsw{"Swiss German"}
+        gu{"Gujarati"}
+        ha{"Hausa"}
+        haw{"Hawaiian"}
+        he{"Hebreo"}
+        hi{"Hindi"}
+        hr{"Croatian"}
+        ht{"Haitian"}
+        hu{"Hungarian"}
+        hy{"Armenian"}
+        ia{"Interlingua"}
+        id{"Indonesian"}
+        ie{"Interlingue"}
+        ig{"Igbo"}
+        is{"Icelandic"}
+        it{"Italyano"}
+        ja{"Japanese"}
+        jv{"Javanese"}
+        ka{"Georgian"}
+        kk{"Kazakh"}
+        km{"Khmer"}
+        kn{"Kannada"}
+        ko{"Korean"}
+        ks{"Kashmiri"}
+        ku{"Kurdish"}
+        ky{"Kirghiz"}
+        la{"Latin"}
+        lb{"Luxembourgish"}
+        ln{"Lingala"}
+        lo{"Lao"}
+        lt{"Lithuanian"}
+        lv{"Latvian"}
+        mg{"Malagasy"}
+        mi{"Maori"}
+        mk{"Macedonian"}
+        ml{"Malayalam"}
+        mn{"Mongolian"}
+        mr{"Marathi"}
+        ms{"Malay"}
+        mt{"Maltese"}
+        my{"Burmese"}
+        nb{"Norwegian Bokmål"}
+        nd{"North Ndebele"}
+        ne{"Nepali"}
+        nl{"Olandes"}
+        nl_BE{"Flemish"}
+        nn{"Norwegian Nynorsk"}
+        no{"Norwegian"}
+        nso{"Northern Sotho"}
+        ny{"Nyanja"}
+        oc{"Occitan"}
+        or{"Oriya"}
+        os{"Ossetic"}
+        pa{"Punjabi"}
+        pl{"Polish"}
+        ps{"Pashto"}
+        pt{"Portuges"}
+        pt_BR{"Portuges sa Brazil"}
+        pt_PT{"Portuges sa Iberia"}
+        qu{"Quechua"}
+        rm{"Rhaeto-Romance"}
+        rn{"Rundi"}
+        ro{"Romanian"}
+        ru{"Russian"}
+        rw{"Kinyarwanda"}
+        sa{"Sanskrit"}
+        sd{"Sindhi"}
+        se{"Northern Sami"}
+        sg{"Sango"}
+        sh{"Serbo-Croatian"}
+        si{"Sinhala"}
+        sk{"Slovak"}
+        sl{"Slovenian"}
+        sm{"Samoan"}
+        sn{"Shona"}
+        so{"Somali"}
+        sq{"Albanian"}
+        sr{"Serbian"}
+        ss{"Swati"}
+        st{"Southern Sotho"}
+        su{"Sundanese"}
+        sv{"Swedish"}
+        sw{"Swahili"}
+        swb{"Comorian"}
+        ta{"Tamil"}
+        te{"Telugu"}
+        tet{"Tetum"}
+        tg{"Tajik"}
+        th{"Thai"}
+        ti{"Tigrinya"}
+        tk{"Turkmen"}
+        tlh{"Klingon"}
+        tn{"Tswana"}
+        to{"Tonga"}
+        tpi{"Tok Pisin"}
+        tr{"Turkish"}
+        ts{"Tsonga"}
+        tt{"Tatar"}
+        ty{"Tahitian"}
+        ug{"Uighur"}
+        uk{"Ukranian"}
+        ur{"Urdu"}
+        uz{"Uzbek"}
+        ve{"Venda"}
+        vi{"Vietnamese"}
+        wo{"Wolof"}
+        xh{"Xhosa"}
+        yo{"Yoruba"}
+        yue{"Cantonese"}
+        zh{"Chinese"}
+        zh_Hans{"Chinese (pinasimple)"}
+        zh_Hant{"Chinese (tradisyunal)"}
+        zu{"Zulu"}
+        zxx{"Walang nilalamang linguistic"}
+    }
+    LanguagesShort{
+        az{"Azeri"}
+    }
+    Scripts{
+        Arab{"Arabic"}
+        Armn{"Armenian"}
+        Beng{"Bengali"}
+        Bopo{"Bopomofo"}
+        Brai{"Braille"}
+        Cyrl{"Cyrillic"}
+        Deva{"Devanagari"}
+        Ethi{"Ethiopic"}
+        Geor{"Georgian"}
+        Grek{"Greek"}
+        Gujr{"Gujarati"}
+        Guru{"Gurmukhi"}
+        Hang{"Hangul"}
+        Hani{"Han"}
+        Hans{"Pinasimple"}
+        Hant{"Tradisyunal"}
+        Hebr{"Hebrew"}
+        Hira{"Hiragana"}
+        Jpan{"Japanese"}
+        Kana{"Katakana"}
+        Khmr{"Khmer"}
+        Knda{"Kannada"}
+        Kore{"Korean"}
+        Laoo{"Lao"}
+        Latn{"Latin"}
+        Mlym{"Malayalam"}
+        Mong{"Mongolian"}
+        Mymr{"Myanmar"}
+        Orya{"Oriya"}
+        Sinh{"Sinhala"}
+        Taml{"Tamil"}
+        Telu{"Telugu"}
+        Thaa{"Thaana"}
+        Thai{"Thai"}
+        Tibt{"Tibetan"}
+        Zsym{"Mga Simbolo"}
+        Zxxx{"Unwritten"}
+        Zyyy{"Common"}
+        Zzzz{"Hindi Kilalang Script"}
+    }
+    Scripts%stand-alone{
+        Hans{"Simplified Han"}
+        Hant{"Tradisyunal Han"}
+    }
+    Types{
+        calendar{
+            buddhist{"Kalendaryo ng Buddhist"}
+            chinese{"Kalendaryong Chinese"}
+            coptic{"Coptic Calendar"}
+            ethiopic{"Kalendaryong Ethiopic"}
+            ethiopic-amete-alem{"Kalendaryong Ethiopic Amete Alem"}
+            gregorian{"Kalendaryong Gregorian"}
+            hebrew{"Hebrew Calendar"}
+            indian{"Pambansang Kalendaryong Indian"}
+            islamic{"Kalendaryong Islamic"}
+            islamic-civil{"Kalendaryong Islamic-Civil"}
+            japanese{"Kalendaryong Japanese"}
+            persian{"Kalendaryong Persian"}
+            roc{"Kalendaryong Minguo"}
+        }
+        collation{
+            big5han{"Pagkakasunod-sunod ng Pag-uuri ng Tradisyunal na Chinese - Big5"}
+            dictionary{"Pagkakasunud-sunod ng Pag-uuri ng Diksyunaryo"}
+            ducet{"Default na Pagkakasunud-sunod ng Pag-uuri ng Unicode"}
+            gb2312han{"Pagkakasunud-sunod ng Pag-uuri ng Pinasimpleng Chinese - GB2312"}
+            phonebook{"Pagkakasunud-sunod ng Pag-uuri ng Phonebook"}
+            pinyin{"Pagkakasunud-sunod ng Pag-uuri ng Pinyin"}
+            reformed{"Pagkakasunud-sunod ng Pag-uuri ng Na-reform"}
+            search{"Paghahanap na Layuning Pangkalahatan"}
+            stroke{"Pagkakasunud-sunod ng Pag-uuri ng Stroke"}
+            traditional{"Tradisyunal na Pagkakasunud-sunod ng Pag-uuri"}
+            unihan{"Pagkakasunud-sunod ng Pag-uuri ng Radical-Stroke"}
+        }
+        numbers{
+            arab{"Arabic-Indic Digits"}
+            arabext{"Extended Arabic-Indic Digits"}
+            armn{"Armenian Numerals"}
+            armnlow{"Armenian Lowercase Numerals"}
+            beng{"Bengali Digits"}
+            deva{"Devanagari Digits"}
+            ethi{"Ethiopic Numerals"}
+            fullwide{"Full Width Digits"}
+            geor{"Georgian Numerals"}
+            grek{"Greek Numerals"}
+            greklow{"Greek Lowercase Numerals"}
+            gujr{"Gujarati Digits"}
+            guru{"Gurmukhi Digits"}
+            hanidec{"Chinese Decimal Numerals"}
+            hans{"Pinasimpleng Chinese Numerals"}
+            hansfin{"Pinasimpleng Chinese Financial Numerals"}
+            hant{"Tradisyunal na Chinese Numerals"}
+            hantfin{"Tradisyunal na Chinese Financial Numerals"}
+            hebr{"Hebrew Numerals"}
+            jpan{"Japanese Numerals"}
+            jpanfin{"Japanese Financial Numerals"}
+            khmr{"Khmer Digits"}
+            knda{"Kannada Digits"}
+            laoo{"Lao Digits"}
+            latn{"Western Digits"}
+            mlym{"Malayalam Digits"}
+            mong{"Mongolian Digits"}
+            mymr{"Myanmar Digits"}
+            orya{"Oriya Digits"}
+            roman{"Roman Numerals"}
+            romanlow{"Roman Lowercase Numerals"}
+            taml{"Tamil Numerals"}
+            telu{"Telugu Digits"}
+            thai{"Thai Digits"}
+            tibt{"Tibetan Digits"}
+        }
+    }
+    Variants{
+        PINYIN{"Pinyin Romanization"}
+        WADEGILE{"Wade-Giles Romanization"}
+    }
+    Version{"2.0.65.46"}
+    codePatterns{
+        language{"{0}"}
+        script{"{0}"}
+        territory{"{0}"}
+    }
+    localeDisplayPattern{
+        separator{","}
+    }
+}

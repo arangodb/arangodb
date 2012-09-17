@@ -1,0 +1,42 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/chr.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/chr.xml
+ */
+chr{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "meta:America_Central"{
+            ld{"ᎠᏰᎵ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᎠᏰᎵ ᎢᏳᏩᎪᏗ"}
+            ls{"ᎠᏰᎵ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+        }
+        "meta:America_Eastern"{
+            ld{"ᎧᎸᎬᎢᏗᏢ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᎧᎸᎬᎢᏗᏢ ᎢᏳᏩᎪᏗ"}
+            ls{"ᎧᎸᎬᎢᏗᏢ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+        }
+        "meta:America_Mountain"{
+            ld{"ᎣᏓᎸ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᎣᏓᎸ ᎢᏳᏩᎪᏗ"}
+            ls{"ᎣᏓᎸ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+        }
+        "meta:America_Pacific"{
+            ld{"ᏭᏕᎵᎬ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᏭᏕᎵᎬ ᎢᏳᏩᎪᏗ"}
+            ls{"ᏭᏕᎵᎬ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+        }
+        "meta:GMT"{
+            ls{"ᎢᏤ ᎢᏳᏍᏗ ᎢᏳᏩᎪᏗ"}
+        }
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"ᎢᎢᎢ"}
+        hourFormat{"+HH:mm;-HH:mm"}
+    }
+}
