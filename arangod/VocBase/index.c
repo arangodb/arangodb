@@ -4338,7 +4338,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       TRI_vector_pointer_t* values,
-                                      bool supportUndef) {
+                                      bool supportUndef, int* errorNum, char** errorStr) {
   TRI_bitarray_index_t* baIndex;
   size_t i,j,k;
   int result;
@@ -4357,6 +4357,8 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
       TRI_shape_pid_t* rightShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,i));
       if (*leftShape == *rightShape) {
         LOG_WARNING("bitarray index creation failed -- duplicate keys in index");
+        *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
+        *errorStr = TRI_DuplicateString("bitarray index creation failed -- duplicate keys in index");
         return NULL;
       }
     }
@@ -4371,16 +4373,22 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
 
   for (k = 0;  k < paths->_length;  ++k) {
     TRI_json_t* valueList = (TRI_json_t*)(TRI_AtVectorPointer(values,k));
+    
     if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {    
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
+      *errorNum = TRI_ERROR_ILLEGAL_OPTION;
+      *errorStr = TRI_DuplicateString("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     } 
+    
     for (j = 0; j < valueList->_value._objects._length; ++j) {
       TRI_json_t* leftValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), j));            
       for (i = j + 1; i < valueList->_value._objects._length; ++i) {
         TRI_json_t* rightValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));            
         if (TRI_EqualJsonJson(leftValue, rightValue)) {
-          LOG_WARNING("bitarray index creation failed -- duplicate values in value list for an attribute");
+          LOG_WARNING("bitarray index creation failed -- duplicate values in value list for an attribute");          
+          *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES;
+          *errorStr = TRI_DuplicateString("bitarray index creation failed -- duplicate values in value list for an attribute");
           return NULL;
         }
       }
