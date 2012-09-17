@@ -150,7 +150,8 @@ dist_man_MANS += \
 CLEANUP += \
 	$(DOXYGEN) \
 	$(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
-	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI)))
+	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
+	Doxygen/.setup-directories 
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

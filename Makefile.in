@@ -274,10 +274,35 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 ################################################################################
 @ENABLE_BISON_TRUE@am__append_22 = $(BISON_FILES) $(BISONXX_FILES)
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_23 = @LIBEV_LIBS@
-@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_24 = @PROTOBUF_LIBS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_25 = @V8_LIBS@
-@ENABLE_MRUBY_TRUE@am__append_26 = @MRUBY_LIBS@
-@ENABLE_ZEROMQ_TRUE@am__append_27 = @ZEROMQ_LIBS@
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_24 = .libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_25 = @PROTOBUF_LIBS@
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+@ENABLE_ALL_IN_ONE_PROTOBUF_TRUE@am__append_26 = .protobuf-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_27 = @V8_LIBS@
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_28 = .v8-build-@TRI_BITS@
+@ENABLE_MRUBY_TRUE@am__append_29 = @MRUBY_LIBS@
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+@ENABLE_MRUBY_TRUE@am__append_30 = .mruby-build-@TRI_BITS@
+@ENABLE_ZEROMQ_TRUE@am__append_31 = @ZEROMQ_LIBS@
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+@ENABLE_ZEROMQ_TRUE@am__append_32 = .zeromq-build-@TRI_BITS@ .czmq-build-@TRI_BITS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -632,12 +657,12 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c arangod/VocBase/general-cursor.c \
-	arangod/VocBase/headers.c arangod/VocBase/index.c \
-	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/datafile.c \
+	arangod/VocBase/document-collection.c \
+	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
+	arangod/VocBase/index.c arangod/VocBase/primary-collection.c \
 	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
-	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c arangod/MRServer/ApplicationMR.cpp \
 	arangod/MRServer/mr-actions.cpp
@@ -702,13 +727,13 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-compactor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-datafile.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-document-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-headers.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-index.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT) \
-	arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-vocbase.$(OBJEXT) $(am__objects_2)
@@ -1000,8 +1025,8 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(am__append_15) Doxygen/.setup-directories \
 	@builddir@/.setup-js-directories $(am__append_16) \
 	$(am__append_18) $(am__append_19) $(am__append_21) \
-	$(PROTOBUF_FILES) $(am__append_23) $(am__append_24) \
-	$(am__append_25) $(am__append_26) $(am__append_27)
+	$(PROTOBUF_FILES) $(am__append_23) $(am__append_25) \
+	$(am__append_27) $(am__append_29) $(am__append_31)
 
 ################################################################################
 ### @brief man pages to install
@@ -1031,11 +1056,15 @@ dist_man_MANS = Doxygen/man/man1/arangoimp.1 \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = bin/arango-password bin/arango-upgrade bin/arango-dfdb \
+CLEANUP = .setup-js-directories .setup-mr-directories \
+	bin/arango-password bin/arango-upgrade bin/arango-dfdb \
 	$(DOXYGEN) $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
 	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
-	$(JAVASCRIPT_HEADER) .setup-js-directories $(am__append_17) \
-	$(am__append_20) $(am__append_22) $(PROTOBUF_FILES)
+	Doxygen/.setup-directories $(JAVASCRIPT_HEADER) \
+	.setup-js-directories $(am__append_17) $(am__append_20) \
+	$(am__append_22) $(PROTOBUF_FILES) $(am__append_24) \
+	$(am__append_26) $(am__append_28) $(am__append_30) \
+	$(am__append_32)
 
 ################################################################################
 ### @brief flex files
@@ -1434,12 +1463,12 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/V8Server/v8-vocbase.cpp arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
-	arangod/VocBase/datafile.c arangod/VocBase/general-cursor.c \
-	arangod/VocBase/headers.c arangod/VocBase/index.c \
-	arangod/VocBase/primary-collection.c \
+	arangod/VocBase/datafile.c \
+	arangod/VocBase/document-collection.c \
+	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
+	arangod/VocBase/index.c arangod/VocBase/primary-collection.c \
 	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
-	arangod/VocBase/simple-collection.c \
 	arangod/VocBase/synchroniser.c arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c $(am__append_12)
 bin_arangosh_CPPFLAGS = \
@@ -2628,6 +2657,9 @@ arangod/VocBase/bin_arangod-compactor.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-datafile.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-document-collection.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2644,9 +2676,6 @@ arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT):  \
-	arangod/VocBase/$(am__dirstamp) \
-	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
-arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT):  \
@@ -2812,13 +2841,13 @@ mostlyclean-compile:
 	-rm -f arangod/VocBase/bin_arangod-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-compactor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-datafile.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-document-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-headers.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-index.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-primary-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shadow-data.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-shape-collection.$(OBJEXT)
-	-rm -f arangod/VocBase/bin_arangod-simple-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-synchroniser.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-voc-shaper.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-vocbase.$(OBJEXT)
@@ -3065,13 +3094,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-compactor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-datafile.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-primary-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shadow-data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-shape-collection.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-synchroniser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-voc-shaper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-vocbase.Po@am__quote@
@@ -3913,6 +3942,22 @@ arangod/VocBase/bin_arangod-datafile.obj: arangod/VocBase/datafile.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-datafile.obj `if test -f 'arangod/VocBase/datafile.c'; then $(CYGPATH_W) 'arangod/VocBase/datafile.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/datafile.c'; fi`
 
+arangod/VocBase/bin_arangod-document-collection.o: arangod/VocBase/document-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-document-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo -c -o arangod/VocBase/bin_arangod-document-collection.o `test -f 'arangod/VocBase/document-collection.c' || echo '$(srcdir)/'`arangod/VocBase/document-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.o `test -f 'arangod/VocBase/document-collection.c' || echo '$(srcdir)/'`arangod/VocBase/document-collection.c
+
+arangod/VocBase/bin_arangod-document-collection.obj: arangod/VocBase/document-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-document-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
+
 arangod/VocBase/bin_arangod-general-cursor.o: arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-general-cursor.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo -c -o arangod/VocBase/bin_arangod-general-cursor.o `test -f 'arangod/VocBase/general-cursor.c' || echo '$(srcdir)/'`arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po
@@ -4008,22 +4053,6 @@ arangod/VocBase/bin_arangod-shape-collection.obj: arangod/VocBase/shape-collecti
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/shape-collection.c' object='arangod/VocBase/bin_arangod-shape-collection.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-shape-collection.obj `if test -f 'arangod/VocBase/shape-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/shape-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/shape-collection.c'; fi`
-
-arangod/VocBase/bin_arangod-simple-collection.o: arangod/VocBase/simple-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-simple-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Tpo -c -o arangod/VocBase/bin_arangod-simple-collection.o `test -f 'arangod/VocBase/simple-collection.c' || echo '$(srcdir)/'`arangod/VocBase/simple-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/simple-collection.c' object='arangod/VocBase/bin_arangod-simple-collection.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-simple-collection.o `test -f 'arangod/VocBase/simple-collection.c' || echo '$(srcdir)/'`arangod/VocBase/simple-collection.c
-
-arangod/VocBase/bin_arangod-simple-collection.obj: arangod/VocBase/simple-collection.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-simple-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Tpo -c -o arangod/VocBase/bin_arangod-simple-collection.obj `if test -f 'arangod/VocBase/simple-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/simple-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/simple-collection.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-simple-collection.Po
-@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/simple-collection.c' object='arangod/VocBase/bin_arangod-simple-collection.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-simple-collection.obj `if test -f 'arangod/VocBase/simple-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/simple-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/simple-collection.c'; fi`
 
 arangod/VocBase/bin_arangod-synchroniser.o: arangod/VocBase/synchroniser.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-synchroniser.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-synchroniser.Tpo -c -o arangod/VocBase/bin_arangod-synchroniser.o `test -f 'arangod/VocBase/synchroniser.c' || echo '$(srcdir)/'`arangod/VocBase/synchroniser.c
@@ -5502,7 +5531,7 @@ unittests-bitarray-index:
 ################################################################################
 
 clean-local:
-	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+	rm -f $(CLEANUP); 
 
 ################################################################################
 ### @brief generated files
@@ -5723,7 +5752,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@@srcdir@/.libev-build-@TRI_BITS@:
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILDING LIBEV"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILDING libev"
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 
@@ -5735,7 +5764,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILD LIBEV FINISHED"
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILD libev FINISHED"
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
 
@@ -5788,7 +5817,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_MRUBY_TRUE@@srcdir@/.mruby-build-@TRI_BITS@:
 @ENABLE_MRUBY_TRUE@	@echo
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_MRUBY_TRUE@	@echo "BUILDING LIBEV"
+@ENABLE_MRUBY_TRUE@	@echo "BUILDING mruby"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
 
@@ -5807,7 +5836,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ZEROMQ_TRUE@@srcdir@/.zeromq-build-@TRI_BITS@:
 @ENABLE_ZEROMQ_TRUE@	@echo
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ZEROMQ_TRUE@	@echo "BUILDING ZEROMQ"
+@ENABLE_ZEROMQ_TRUE@	@echo "BUILDING ZeroMQ"
 @ENABLE_ZEROMQ_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ZEROMQ_TRUE@	@echo
 

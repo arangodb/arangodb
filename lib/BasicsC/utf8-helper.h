@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 utility functions
+/// @brief utf8 helper functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,39 +25,50 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_C_CONV_H
-#define TRIAGENS_V8_V8_C_CONV_H 1
+#ifndef TRIAGENS_BASICS_C_UTF8_HELPER_H
+#define TRIAGENS_BASICS_C_UTF8_HELPER_H 1
 
-#include "VocBase/document-collection.h"
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              CONVERSION FUNCTIONS
-// -----------------------------------------------------------------------------
-
+  
+#ifdef TRI_HAVE_ICU
+#include "unicode/ucol.h"
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Utils
+/// @addtogroup Helper functions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_doc_mptr_t into a V8 object
+/// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
-                                TRI_doc_mptr_t const* document,
-                                void* storage);
+char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size_t inLength, size_t* outLength);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize an utf16 string (NFC) and export it to utf8
+////////////////////////////////////////////////////////////////////////////////
+
+char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16, size_t inLength, size_t* outLength);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two utf16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength, UCollator* coll);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#endif
 
 #ifdef __cplusplus
 }
@@ -67,5 +78,5 @@ bool TRI_ObjectDocumentPointer (TRI_doc_collection_t* collection,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

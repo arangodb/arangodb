@@ -162,7 +162,7 @@ static char* CompletionGenerator (char const* text, int state) {
       for (size_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
                   
-        v8::String::Utf8Value str(v);
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
         char const* s = *str;
         
         if (s != 0 && *s) {

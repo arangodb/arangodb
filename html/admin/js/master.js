@@ -2531,6 +2531,7 @@ function drawConnections (placeholder, granularity) {
           }, 
           xaxis: {
             mode: "time",
+            timeformat: "%h:%M", 
             twelveHourClock: false
           },
           //crosshair: { mode: "x" },
@@ -2617,7 +2618,7 @@ function drawRequests (placeholder, granularity) {
           arraySent.push([data.start[i]*1000,data.bytesSent.mean[i]]);
           arrayReceived.push([data.start[i]*1000,data.bytesReceived.mean[i]]);
         }
-        var stack = 0, bars = true, lines = true, steps = true;
+        var stack = 0, bars = false, lines = false, steps = false;
         var options = {
           legend: {
             show: true,
@@ -2626,7 +2627,6 @@ function drawRequests (placeholder, granularity) {
             backgroundOpacity: 0.4 
           }, 
           series: {
-            stack: stack,
             lines: { show: true, 
                      steps: false,  
                      fill: true, 
@@ -2636,6 +2636,7 @@ function drawRequests (placeholder, granularity) {
           }, 
           xaxis: {
             mode: "time",
+            timeformat: "%h:%M", 
             twelveHourClock: false
           },
           //crosshair: { mode: "x" },

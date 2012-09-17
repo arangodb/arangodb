@@ -27,6 +27,7 @@
 
 #include "strings.h"
 
+#include "utf8-helper.h"
 #include <openssl/sha.h>
 
 #include "BasicsC/conversions.h"
@@ -1265,7 +1266,12 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char * qtr;
   char const * ptr;
   char const * end;
-
+  
+#ifdef TRI_HAVE_ICU
+  char * utf8_nfc;
+  size_t tmpLength = 0;
+#endif
+  
   buffer = TRI_Allocate(zone, inLength + 1, false);
 
   if (buffer == NULL) {
@@ -1361,6 +1367,14 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *qtr = '\0';
   *outLength = qtr - buffer;
 
+#ifdef TRI_HAVE_ICU
+  utf8_nfc = TR_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
+  if (utf8_nfc) {
+    *outLength = tmpLength;
+    TRI_Free(zone, buffer);
+    return utf8_nfc;
+  }    
+#endif
 
   // we might have wasted some space if the unescaped string is shorter than the
   // escaped one. this is the case if the string contained escaped characters

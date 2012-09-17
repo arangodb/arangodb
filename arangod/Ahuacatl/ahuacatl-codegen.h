@@ -38,7 +38,7 @@
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
