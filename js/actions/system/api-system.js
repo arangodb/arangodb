@@ -52,15 +52,9 @@ function Routing (req, res) {
   console.log("request = %s", JSON.stringify(req));
 
   callbacks = actions.routing(req.requestType, req.suffix);
-
-  for (i = 0;  i < callbacks.length;  ++i) {
-    console.log("callback %d = %s", i, callbacks[i]);
-  }
-
   current = 0;
 
   next = function () {
-    var options = {};
     var callback;
 
     if (callbacks.length <= current) {
@@ -70,14 +64,13 @@ function Routing (req, res) {
 
     callback = callbacks[current++];
 
-    console.error("trying callback #%d / %d: %s # %s", current, callbacks.length, typeof callback, callback);
-
     if (callback == null) {
-      actions.resultNotImplemented(req, res, "not implemented '" + req.suffix.join("/") + "'");
+      actions.resultNotImplemented(req, res,
+				   "not implemented '" + req.suffix.join("/") + "'");
     }
     else {
       req.prefix = callback.path;
-      callback.func(req, res, next, options);
+      callback.func(req, res, next, callback.options);
     }
   }
 
