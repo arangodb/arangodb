@@ -347,6 +347,12 @@
 ///
 /// <ul>
 ///  <li>@ref UserManualActions
+///   <ul>
+///    <li>@ref UserManualActionsIntro</li>
+///    <li>@ref UserManualActionsHelloWorld</li>
+///    <li>@ref UserManualActionsHelloJson</li>
+///    <li>@ref UserManualActionsEcho</li>
+///   </ul>
 ///  </li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
@@ -418,7 +424,7 @@
 /// The client API or browser sends a HTTP request to the ArangoDB server and
 /// the server returns a HTTP response to the client. A HTTP requests consists
 /// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
-/// request path like "/hello/world". For a real Web server there are a zillion
+/// request path like @LIT{/hello/world}. For a real Web server there are a zillion
 /// of other thing to consider, we will ignore this for the moment. The HTTP
 /// response contains a content type, describing how to interpret the returned
 /// data, and the data itself.
@@ -462,7 +468,7 @@
 ///
 /// Now use the browser and access
 ///
-/// @LIT{http://localhost:8529/hello/world"}
+/// @LIT{http://localhost:8529/hello/world}
 ///
 /// @section UserManualActionsHelloJson A Hello World Example for JSON
 //////////////////////////////////////////////////////////////////////
@@ -561,6 +567,79 @@
 ///     },
 ///     "options": { }
 /// }
+/// @endcode
+///
+/// Please note that
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path : "/hello/echo",
+/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// @endcode
+///
+/// is a short-cut for
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path : "/hello/echo-long",
+/// ........>   callback: {
+/// ........>     type: "function",
+/// ........>     module: "org/arangodb/actions",
+/// ........>     function: "echoRequest" }});
+/// @endcode
+///
+/// The verbose form allows you to pass options to the called function:
+///
+/// @code
+/// arangosh> a = db._routing.firstExample({path : "/hello/echo-long"});
+/// arangosh> a.callback.options = { option: "my option1" };
+/// arangosh> db._replace(a, a);
+/// @endcode
+///
+/// You should now see the options in the result.
+///
+/// @code
+/// {
+///     "request": {
+///         "prefix": "/hello/echo-long",
+///         ...
+///     },
+///     "options": {
+///         "option": "my option1"
+///     }
+/// }
+/// @endcode
+///
+/// @section UserManualActionsDYO Define Your Own Callback
+//////////////////////////////////////////////////////////
+///
+/// You can define your own callbacks by adding a new module to ArangoDB. In
+/// order to avoid name clashes modules should be named
+///
+/// @LIT{tld/domain/modulename}
+///
+/// where @LIT{domain.tld} is your domain name. For development you can store
+/// your code in files in the filesystem, see @ref MODULES_PATH and @MODULES.
+///
+/// However, when you are finished with the development you can rollout the
+/// module code by storing it inside the @LIT{_modules} collection.
+///
+/// Create a file @LIT{hello-world.js} with the following content:
+///
+/// @code
+/// var actions = require("org/arangodb/actions");
+/// 
+/// exports.helloWorld = function (req, res) {
+///   res.contentType = "text/html";
+///   res.responseCode = actions.HTTP_OK;
+///   res.body = "<html><body>Hello World!</body></html>";
+/// };
+/// @endcode
+///
+/// Load this file as new module @LIT{de.triagens.hello-world} into the database
+///
+/// @code
+/// arangosh> require("internal").defineModule("de/triagens/hello-world", "hello-world.js");
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 

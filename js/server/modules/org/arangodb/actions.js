@@ -93,6 +93,33 @@ function LookupCallbackString (callback) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a function
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackFunction (callback) {
+  var module;
+  var fn;
+
+  try {
+    module = require(callback.module);
+  }
+  catch (err) {
+    console.error("cannot load callback '%s' from module '%s': %s",
+                  fn, callback.module, "" + err);
+    return undefined;
+  }
+
+  fn = callback.function;
+
+  if (fn in module) {
+    return module[fn];
+  }
+
+  console.error("callback '%s' is not defined in module '%s'", fn, module);
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a callback for static data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,6 +150,9 @@ function LookupCallback (callback) {
 
       if (type === "static") {
         return LookupCallbackStatic(callback);
+      }
+      else if (type === "function") {
+        return LookupCallbackFunction(callback);
       }
       else {
         console.error("unknown callback type '%s'", type);
@@ -431,13 +461,20 @@ function ReloadRouting () {
       var cb = LookupCallback(callback[i]);
 
       if (cb === undefined) {
-        console.error("route '%s' contains invalid callback '%s'", route._id, JSON.stringify(callback[i]));
+        console.error("route '%s' contains invalid callback '%s'", 
+		      route._id, JSON.stringify(callback[i]));
       }
       else if (typeof cb !== "function") {
-        console.error("route '%s' contains non-function callback '%s'", route._id, JSON.stringify(callback[i]));
+        console.error("route '%s' contains non-function callback '%s'",
+		      route._id, JSON.stringify(callback[i]));
       }
       else {
-        tmp.push(cb);
+	var result = { 
+	  func: cb,
+	  options: callback[i].options || {}
+	};
+
+        tmp.push(result);
       }
     }
 
@@ -588,7 +625,11 @@ function Routing (method, path) {
     var callback = td.callback;
 
     for (j = 0;  j < callback.length;  ++j) {
-      result.push({ func : callback[j], path : td.path });
+      result.push({ 
+	func: callback[j].func,
+	options: callback[j].options,
+	path: td.path
+      });
     }
   }
 
@@ -597,7 +638,11 @@ function Routing (method, path) {
     var callback = bu.callback;
 
     for (j = 0;  j < callback.length;  ++j) {
-      result.push({ func : callback[j], path : bu.path });
+      result.push({
+	func: callback[j].func,
+	options: callback[j].options,
+	path: bu.path
+      });
     }
   }
 
