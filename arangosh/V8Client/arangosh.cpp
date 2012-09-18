@@ -356,43 +356,33 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: NORMALIZE_STRING(<string>)")));
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: NORMALIZE_STRING(<string>)")));
   }
 
-  TRI_Utf8ValueNFC x(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-  
-  if (x.length() == 0) {
-    return scope.Close(v8::Null());    
-  }
-  
-  return scope.Close(v8::String::New(*x, x.length()));
+  return scope.Close(Utf8Helper::DefaultUtf8Helper.normalize(argv[0]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_compare_strings (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: COMPARE_STRINGS(<left string>, <right string>)")));
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: COMPARE_STRING(<left string>, <right string>)")));
   }
 
   v8::String::Value left(argv[0]);
-  if (!*left) {
-    return scope.Close(v8::Integer::New(1));    
-  }
-
   v8::String::Value right(argv[1]);
-  if (!*right) {
-    return scope.Close(v8::Integer::New(-1));    
-  }
   
-  Utf8Helper uh("");  
-  int result = uh.compareUtf16(*left, left.length(), *right, right.length());
+  int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
   
-  return scope.Close(v8::Integer::New(result));    
+  return scope.Close(v8::Integer::New(result));
 }
 
 // -----------------------------------------------------------------------------
@@ -1155,8 +1145,8 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
                          v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COMPARE_STRINGS"),
-                         v8::FunctionTemplate::New(JS_compare_strings)->GetFunction(),
+  context->Global()->Set(v8::String::New("COMPARE_STRING"),
+                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
                          v8::ReadOnly);
   
   // .............................................................................

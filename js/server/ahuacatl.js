@@ -717,6 +717,10 @@ function AHUACATL_RELATIONAL_UNEQUAL (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) != 0;
+  }
+
   return (lhs !== rhs);
 }
 
@@ -758,6 +762,10 @@ function AHUACATL_RELATIONAL_GREATER_REC (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) > 0;
   }
 
   if (lhs === rhs) {
@@ -823,6 +831,10 @@ function AHUACATL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) >= 0;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -886,6 +898,10 @@ function AHUACATL_RELATIONAL_LESS_REC (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) < 0;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -947,6 +963,10 @@ function AHUACATL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+  
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) <= 0;
   }
   
   if (lhs === rhs) {
@@ -1013,6 +1033,10 @@ function AHUACATL_RELATIONAL_CMP (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs);
   }
 
   if (lhs < rhs) {
