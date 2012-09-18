@@ -1922,6 +1922,11 @@ void TRI_InitialiseVocBase () {
 #ifdef TRI_V8_VERSION
   LOG_TRACE("%s", "$Revision: V8 " TRI_V8_VERSION " $");
 #endif
+  
+#ifdef TRI_ICU_VERSION
+  LOG_TRACE("%s", "$Revision: ICU " TRI_ICU_VERSION " $");
+#endif
+  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
