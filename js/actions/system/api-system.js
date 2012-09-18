@@ -49,8 +49,6 @@ function Routing (req, res) {
   var i;
   var next;
 
-  console.log("request = %s", JSON.stringify(req));
-
   callbacks = actions.routing(req.requestType, req.suffix);
   current = 0;
 
@@ -66,7 +64,7 @@ function Routing (req, res) {
 
     if (callback == null) {
       actions.resultNotImplemented(req, res,
-				   "not implemented '" + req.suffix.join("/") + "'");
+                                   "not implemented '" + req.suffix.join("/") + "'");
     }
     else {
       req.prefix = callback.path;
