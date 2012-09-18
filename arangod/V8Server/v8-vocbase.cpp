@@ -1617,13 +1617,13 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_Utf8ValueNFC x(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-  
-  if (x.length() == 0) {
-    return scope.Close(v8::Null());    
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: NORMALIZE_STRING(<string>)")));
   }
-  
-  return scope.Close(v8::String::New(*x, x.length()));
+
+  return scope.Close(Utf8Helper::DefaultUtf8Helper.normalize(argv[0]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1639,13 +1639,10 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
                                                "usage: COMPARE_STRING(<left string>, <right string>)")));
   }
 
-  // TODO: get collation language
-  Utf8Helper u8("");
-  
   v8::String::Value left(argv[0]);
   v8::String::Value right(argv[1]);
   
-  int result = u8.compareUtf16(*left, left.length(), *right, right.length());
+  int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
   
   return scope.Close(v8::Integer::New(result));
 }
