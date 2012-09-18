@@ -26,16 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
-#include <fstream>
+#include <iomanip>
 
 #include "build.h"
 
 #include "ArangoShell/ArangoClient.h"
-#include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
@@ -196,7 +194,6 @@ int main (int argc, char* argv[]) {
   SharedCounter<unsigned long> operationsCounter(0, Operations);
   ConditionVariable startCondition;
 
-  std::cout << "Concurrency: " << Concurrency << endl; 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
   for (int i = 0; i < Concurrency; ++i) {
@@ -215,7 +212,10 @@ int main (int argc, char* argv[]) {
     thread->start();
   }
 
-  usleep(100000);
+  usleep(500000);
+
+  
+  Timing timer(Timing::TI_WALLCLOCK);
 
   {
     ConditionLocker guard(&startCondition);
@@ -229,9 +229,15 @@ int main (int argc, char* argv[]) {
       break;
     }
 
-    std::cout << "cycling " << numOperations << "\n";
-    usleep(100000); 
+    usleep(50000); 
   }
+
+  double time = ((double) timer.time()) / 1000000.0;
+
+  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level: " << Concurrency << endl;
+  cout << "Total duration: " << fixed << time << " s" << endl;
+  cout << "Duration per operation: " << fixed << (time / Operations) << " s" << endl;
+  cout << "Duration per operation per thread: " << fixed << (time / Operations * (double) Concurrency) << " s" << endl << endl;
 
   for (int i = 0; i < Concurrency; ++i) {
     threads[i]->join();
