@@ -86,6 +86,10 @@ HttpRequestProtobuf::HttpRequestProtobuf (PB_ArangoBatchMessage const& message)
       case PB_REQUEST_TYPE_PUT:
         _type = HTTP_REQUEST_PUT;
         break;
+      
+      case PB_REQUEST_TYPE_PATCH:
+        _type = HTTP_REQUEST_PATCH;
+        break;
     }
   }
 }
@@ -142,6 +146,10 @@ void HttpRequestProtobuf::write (TRI_string_buffer_t* buffer) const {
 
     case HTTP_REQUEST_HEAD:
       TRI_AppendString2StringBuffer(buffer, "HEAD ", 5);
+      break;
+    
+    case HTTP_REQUEST_PATCH:
+      TRI_AppendString2StringBuffer(buffer, "PATCH ", 6);
       break;
 
     default:

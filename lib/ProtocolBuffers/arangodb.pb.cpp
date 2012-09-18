@@ -226,11 +226,11 @@ void protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
     "_RESPONSE\020\001\022\025\n\021PB_ERROR_RESPONSE\020\002*Z\n\033PB"
     "_ArangoMessageContentType\022\021\n\rPB_NO_CONTE"
     "NT\020\000\022\023\n\017PB_TEXT_CONTENT\020\001\022\023\n\017PB_JSON_CON"
-    "TENT\020\002*\230\001\n\024PB_ArangoRequestType\022\032\n\026PB_RE"
+    "TENT\020\002*\263\001\n\024PB_ArangoRequestType\022\032\n\026PB_RE"
     "QUEST_TYPE_DELETE\020\000\022\027\n\023PB_REQUEST_TYPE_G"
     "ET\020\001\022\030\n\024PB_REQUEST_TYPE_HEAD\020\002\022\030\n\024PB_REQ"
     "UEST_TYPE_POST\020\003\022\027\n\023PB_REQUEST_TYPE_PUT\020"
-    "\004", 1121);
+    "\004\022\031\n\025PB_REQUEST_TYPE_PATCH\020\005", 1148);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "lib/ProtocolBuffers/arangodb.proto", &protobuf_RegisterTypes);
   PB_ArangoKeyValue::default_instance_ = new PB_ArangoKeyValue();
@@ -296,6 +296,7 @@ bool PB_ArangoRequestType_IsValid(int value) {
     case 2:
     case 3:
     case 4:
+    case 5:
       return true;
     default:
       return false;
