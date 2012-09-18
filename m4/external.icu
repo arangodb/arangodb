@@ -30,15 +30,31 @@ AC_ARG_WITH(ICU-lib,
 
 TR_STATIC_ENABLE([ICU])
 
-
-################################################################################
-### @brief TODO: create m4/external.icu
-################################################################################
-
 if test "x$tr_ICU" = xyes;  then
-  ICU_CPPFLAGS="$ICU_CPPFLAGS -DTRI_HAVE_ICU=1"
-  ICU_LDFLAGS="$ICU_LDFLAGS"
-  ICU_LIBS="-licui18n -licuuc -licudata  -licuio -licule -liculx"
+
+  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+  AC_MSG_NOTICE([CHECKING FOR ICU])
+  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+  dnl ----------------------------------------------------------------------------
+  dnl checks for the icu-config
+  dnl ----------------------------------------------------------------------------
+
+  ICU_CONFIG="icu-config"
+
+  if $ICU_CONFIG --version > /dev/null 2>&1; then
+    ICU_CPPFLAGS="$($ICU_CONFIG --cppflags)"
+    ICU_LDFLAGS="$($ICU_CONFIG --ldflags)"
+    ICU_LIBS=""    
+    TRI_ICU_VERSION="$($ICU_CONFIG --version)"
+  else
+    ICU_CPPFLAGS="$ICU_CPPFLAGS"
+    ICU_LDFLAGS="$ICU_LDFLAGS"
+    ICU_LIBS="-licui18n -licuuc -licudata  -licuio -licule -liculx"
+    TRI_ICU_VERSION="unknown"
+  fi
+
+  ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"' -DTRI_HAVE_ICU=1"
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -58,7 +74,7 @@ if test "x$tr_ICU" = xyes;  then
   LIB_INFO="$LIB_INFO|ICU VERSION: ${TRI_ICU_VERSION}"
 
   LIB_INFO="$LIB_INFO|ICU_CPPFLAGS: ${ICU_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|ICU_LDLIBS:  ${ICU_LDLIBS}"
+  LIB_INFO="$LIB_INFO|ICU_LDFLAGS:  ${ICU_LDFLAGS}"
   LIB_INFO="$LIB_INFO|ICU_LIBS:     ${ICU_LIBS}"
 else
   LIB_INFO="$LIB_INFO|ICU: disabled"
