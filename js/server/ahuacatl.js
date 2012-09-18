@@ -671,6 +671,10 @@ function AHUACATL_RELATIONAL_EQUAL (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) == 0;
+  }
+
   return (lhs === rhs);
 }
 

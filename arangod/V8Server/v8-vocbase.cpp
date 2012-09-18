@@ -49,6 +49,7 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
+#include "Basics/Utf8Helper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -1623,6 +1624,30 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
   }
   
   return scope.Close(v8::String::New(*x, x.length()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: COMPARE_STRING(<left string>, <right string>)")));
+  }
+
+  // TODO: get collation language
+  Utf8Helper u8("");
+  
+  v8::String::Value left(argv[0]);
+  v8::String::Value right(argv[1]);
+  
+  int result = u8.compareUtf16(*left, left.length(), *right, right.length());
+  
+  return scope.Close(v8::Integer::New(result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5662,6 +5687,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
                          v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("COMPARE_STRING"),
+                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
                          v8::ReadOnly);
 
   // .............................................................................
