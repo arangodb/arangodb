@@ -193,7 +193,8 @@ sbin_PROGRAMS = \
 
 bin_PROGRAMS = \
 	bin/arangosh \
-	bin/arangoimp
+	bin/arangoimp \
+	bin/arangob
 
 ################################################################################
 ### @brief uninstalled programs

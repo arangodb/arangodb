@@ -82,11 +82,12 @@ enum PB_ArangoRequestType {
   PB_REQUEST_TYPE_GET = 1,
   PB_REQUEST_TYPE_HEAD = 2,
   PB_REQUEST_TYPE_POST = 3,
-  PB_REQUEST_TYPE_PUT = 4
+  PB_REQUEST_TYPE_PUT = 4,
+  PB_REQUEST_TYPE_PATCH = 5
 };
 bool PB_ArangoRequestType_IsValid(int value);
 const PB_ArangoRequestType PB_ArangoRequestType_MIN = PB_REQUEST_TYPE_DELETE;
-const PB_ArangoRequestType PB_ArangoRequestType_MAX = PB_REQUEST_TYPE_PUT;
+const PB_ArangoRequestType PB_ArangoRequestType_MAX = PB_REQUEST_TYPE_PATCH;
 const int PB_ArangoRequestType_ARRAYSIZE = PB_ArangoRequestType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* PB_ArangoRequestType_descriptor();

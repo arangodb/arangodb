@@ -84,7 +84,7 @@ RestBatchHandler::~RestBatchHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::isDirect () {
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,26 +104,30 @@ string const& RestBatchHandler::queue () {
 Handler::status_e RestBatchHandler::execute() {
   // extract the request type
   HttpRequest::HttpRequestType type = _request->requestType();
-  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
   
-  if (type != HttpRequest::HTTP_REQUEST_POST || contentType != getContentType()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid request data sent");
+  if (type != HttpRequest::HTTP_REQUEST_POST && type != HttpRequest::HTTP_REQUEST_PUT) {
+    generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
-    return Handler::HANDLER_FAILED;
+    return Handler::HANDLER_DONE;
+  }
+
+  // extra content type
+  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
+    
+  if (contentType != getContentType()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type sent");
+
+    return Handler::HANDLER_DONE;
   }
 
   if (! _inputMessages.ParseFromArray(_request->body(), _request->bodySize())) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid request message data sent");
+    LOGGER_DEBUG << "could not unserialize protobuf message";
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid request message data sent");
 
-    return Handler::HANDLER_FAILED;
+    return Handler::HANDLER_DONE; 
   }
 
 
-  // loop over the input messages once to set up the output structures without concurrency
   for (int i = 0; i < _inputMessages.messages_size(); ++i) {
     _outputMessages->add_messages();
   
@@ -163,16 +167,18 @@ Handler::status_e RestBatchHandler::execute() {
       }
     }
     while (status == Handler::HANDLER_REQUEUE);
+  
    
     if (status == Handler::HANDLER_DONE) {
       PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
       handler->getResponse()->write(batch);
     }
 
+
     delete handler;
 
     if (status == Handler::HANDLER_FAILED) {
-      return Handler::HANDLER_FAILED;
+      return Handler::HANDLER_DONE; 
     }
   }
   
@@ -181,10 +187,8 @@ Handler::status_e RestBatchHandler::execute() {
   // allocate output buffer
   char* output = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * messageSize, false);
   if (output == NULL) {
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory");
-    return Handler::HANDLER_FAILED;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    return Handler::HANDLER_DONE; //FAILED;
   }
 
   _response = new HttpResponse(HttpResponse::OK);
@@ -196,7 +200,7 @@ Handler::status_e RestBatchHandler::execute() {
     delete _response;
 
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
-    return Handler::HANDLER_FAILED;
+    return Handler::HANDLER_DONE; //FAILED;
   }
   
   _response->body().appendText(output, messageSize);
@@ -211,7 +215,7 @@ Handler::status_e RestBatchHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& RestBatchHandler::getContentType () {
-  static string const contentType = "application/x-protobuf"; 
+  static string const contentType = "application/x-arangodb-batch"; 
   
   return contentType;
 }
