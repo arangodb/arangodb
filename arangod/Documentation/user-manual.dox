@@ -519,8 +519,8 @@
 /// That functions accepts a request and returns this request as JSON object.
 ///
 /// It is not possible to store function directly in the routing table, but you
-/// can call functions defined in modules. In this case the function is defined
-/// as
+/// can call functions defined in modules. In this case the function can be accessed
+/// from JavaScript as:
 ///
 /// @LIT{require("org/arangodb/actions").echoRequest}
 ///
