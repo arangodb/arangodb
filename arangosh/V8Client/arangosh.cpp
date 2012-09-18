@@ -1193,9 +1193,13 @@ int main (int argc, char* argv[]) {
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    cout << "Using READLINE " << TRI_READLINE_VERSION << endl;
+    cout << "Using READLINE " << TRI_READLINE_VERSION << "." << endl;
 #endif
 
+#ifdef TRI_ICU_VERSION
+    cout << "Using ICU " << TRI_ICU_VERSION << " - International Components for Unicode." << endl;
+#endif
+    
     cout << endl;
 
     BaseClient.printWelcomeInfo();
