@@ -368,7 +368,7 @@ ModuleCache["/internal"] = new Module("/internal");
       n = mc.firstExample({ path: path });
 
       if (n !== null) {
-	return { path : "_collection/" + path, content : n.module };
+        return { path : "_collection/" + path, content : n.module };
       }
     }
 
@@ -434,7 +434,7 @@ ModuleCache["/internal"] = new Module("/internal");
       mc.save({ path: path, module: content });
     }
     else {
-      m.content = content;
+      m.module = content;
       mc.replace(m, m);
     }
   };
