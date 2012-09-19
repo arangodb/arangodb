@@ -115,6 +115,12 @@ namespace triagens {
 
         void setCollatorLanguage (const string& lang);
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set collator by language
+////////////////////////////////////////////////////////////////////////////////
+
+        string getCollatorLanguage ();
+        
       private:
 #ifdef TRI_HAVE_ICU      
         Collator* _coll;
