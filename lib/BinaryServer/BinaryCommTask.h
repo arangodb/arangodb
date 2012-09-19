@@ -120,6 +120,50 @@ namespace triagens {
 
       protected:
 
+        const size_t getHeaderLength () const {
+          return 8;
+        }
+        
+        const size_t getMaxLength () const {
+          return 128 * 1024 * 1024;
+        }
+
+        bool validate (const char* data, const char* end, size_t* bodyLength) {
+          size_t length = end - data;
+
+          // validate message container
+          if (end <= data) {
+            return false;
+          }
+
+          // validate message length
+          if (length < getHeaderLength()) {
+            return false;
+          }
+
+          // validate signature
+          if ((data[0] & 0xff) != 0xaa) {
+            return false;
+          }
+
+          if ((data[1] & 0xff) != 0xdb) {
+            return false;
+          }
+
+          // validate body length
+          *bodyLength = (size_t) data[7] + 
+                        (size_t) (data[6] << 8) + 
+                        (size_t) (data[5] << 16) +
+                        (size_t) (data[4] << 24);
+
+          if (*bodyLength > getMaxLength()) {
+            LOGGER_WARNING << "maximum binary message size is " << getMaxLength() << ", actual size is " << *bodyLength;
+            return false;
+          }
+
+          return true;
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,43 +189,27 @@ namespace triagens {
             const char * end = this->_readBuffer->end();
             size_t length = 0;
 
-            if (end - ptr >= 8) {
-              if ((ptr[0] & 0xFF) != 0xB0 ||
-                  (ptr[1] & 0xFF) != 0x00 ||
-                  (ptr[2] & 0xFF) != 0xB1 ||
-                  (ptr[3] & 0xFF) != 0x35) {
-
-                HttpResponse response(HttpResponse::BAD);
-                this->handleResponse(&response);
-                this->_requestPending = true;
-                return false;
-              }
-
-              length = (size_t) ptr[7] + 
-                       (size_t) (ptr[6] << 8) + 
-                       (size_t) (ptr[5] << 16) +
-                       (size_t) (ptr[4] << 24);
-
-              this->_readRequestBody = true;
-            }
-            
-            if (length > 128 * 1024 * 1024) {
-              LOGGER_WARNING << "maximum size is " << 128 * 1024 * 1024 << ", message size is " << length;
+            if (! validate(ptr, end, &length)) {
+              HttpResponse response(HttpResponse::BAD);
+              this->handleResponse(&response);
+              this->_requestPending = true;
               return false;
             }
 
+            this->_readRequestBody = true;
+            
             if (ptr < end) {
-              this->_readPosition = 8;
+              this->_readPosition = getHeaderLength();
 
               LOGGER_TRACE << "HTTP READ FOR " << static_cast<Task*>(this) << ":\n"
                 << string(this->_readBuffer->c_str(), this->_readPosition);
 
               // create a fake HTTP request
               triagens::basics::StringBuffer fakeRequest(TRI_UNKNOWN_MEM_ZONE);
-              fakeRequest.appendText("POST /_api/batch HTTP/1.1\r\nContent-Type: application/x-protobuf\r\nContent-Length: ");
+              fakeRequest.appendText("POST /_api/batch HTTP/1.1\r\nContent-Type: application/x-arangodb-protobuf\r\nContent-Length: ");
               fakeRequest.appendInteger(length);
               fakeRequest.appendText("\r\nConnection: Close\r\n\r\n");
-              fakeRequest.appendText(this->_readBuffer->c_str() + 8, length);
+              fakeRequest.appendText(this->_readBuffer->c_str() + getHeaderLength(), length);
 
               // LOGGER_INFO << fakeRequest.c_str() << "\n\n";
 

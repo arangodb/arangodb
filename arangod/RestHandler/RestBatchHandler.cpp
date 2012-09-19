@@ -31,6 +31,7 @@
 #include "Basics/MutexLocker.h"
 #include "HttpServer/HttpServer.h"
 #include "ProtocolBuffers/HttpRequestProtobuf.h"
+#include "BinaryServer/BinaryMessage.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -114,7 +115,7 @@ Handler::status_e RestBatchHandler::execute() {
   // extra content type
   string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
     
-  if (contentType != getContentType()) {
+  if (contentType != BinaryMessage::getContentType()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type sent");
 
     return Handler::HANDLER_DONE;
@@ -192,7 +193,7 @@ Handler::status_e RestBatchHandler::execute() {
   }
 
   _response = new HttpResponse(HttpResponse::OK);
-  _response->setContentType(getContentType());
+  _response->setContentType(BinaryMessage::getContentType());
 
   // content of message is binary, cannot use null-terminated std::string
   if (!_outputMessages->SerializeToArray(output, messageSize)) {
@@ -210,16 +211,6 @@ Handler::status_e RestBatchHandler::execute() {
   return Handler::HANDLER_DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the required content type string
-////////////////////////////////////////////////////////////////////////////////
-
-string const& RestBatchHandler::getContentType () {
-  static string const contentType = "application/x-arangodb-batch"; 
-  
-  return contentType;
-}
-  
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

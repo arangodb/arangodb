@@ -79,13 +79,13 @@ static int Concurrency = 1;
 /// @brief number of operations to perform
 ////////////////////////////////////////////////////////////////////////////////
 
-static long Operations = 1000;
+static int Operations = 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of operations in one batch
 ////////////////////////////////////////////////////////////////////////////////
 
-static long BatchSize = 1;
+static int BatchSize = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -110,7 +110,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
-   // ("batch-size", &BatchSize, "number of operations in one batch")
+    ("batch-size", &BatchSize, "number of operations in one batch")
   ;
 
   BaseClient.setupGeneral(description);
@@ -237,7 +237,7 @@ int main (int argc, char* argv[]) {
   cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level: " << Concurrency << endl;
   cout << "Total duration: " << fixed << time << " s" << endl;
   cout << "Duration per operation: " << fixed << (time / Operations) << " s" << endl;
-  cout << "Duration per operation per thread: " << fixed << (time / Operations * (double) Concurrency) << " s" << endl << endl;
+  cout << "Duration per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl << endl;
 
   for (int i = 0; i < Concurrency; ++i) {
     threads[i]->join();
