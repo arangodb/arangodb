@@ -392,7 +392,7 @@ function GetJsonBody (req, res, code) {
 
 function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
   res.responseCode = httpReturnCode;
-  res.contentType = "application/json";
+  res.contentType = "application/json; charset=utf-8";
 
   if (typeof errorNum === "string") {
     keyvals = headers;
@@ -701,7 +701,7 @@ function Routing (method, path) {
 
 function ResultOk (req, res, httpReturnCode, result, headers) {  
   res.responseCode = httpReturnCode;
-  res.contentType = "application/json";
+  res.contentType = "application/json; charset=utf-8";
   
   // add some default attributes to result
   if (result === undefined) {
@@ -1005,7 +1005,7 @@ function EchoRequest (req, res, next, options) {
   result = { request : req, options : options };
 
   res.responseCode = exports.HTTP_OK;
-  res.contentType = "application/json";
+  res.contentType = "application/json; charset=utf-8";
   res.body = JSON.stringify(result);
 }
 
