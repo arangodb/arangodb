@@ -404,11 +404,13 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
   size_t n;
   size_t i;
 
+  if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(sim)) {
+    return;
+  }
+  
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
   // copy datafile information
-  TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(sim);
-
   n = sim->base.base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
@@ -538,10 +540,8 @@ static void CleanupSimCollection (TRI_sim_collection_t* sim) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
-  LOG_TRACE("cleaning shadows");
-  
   // clean unused cursors
-  TRI_CleanupShadowData(vocbase->_cursors, SHADOW_CURSOR_MAX_AGE, force);
+  TRI_CleanupShadowData(vocbase->_cursors, (double) SHADOW_CURSOR_MAX_AGE, force);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -598,7 +598,9 @@ void TRI_CompactorVocBase (void* data) {
 
       collection = collections._buffer[i];
 
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+      if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+        continue;
+      }
 
       doc = collection->_collection;
 

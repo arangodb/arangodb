@@ -51,7 +51,8 @@ namespace triagens {
     HttpCommTask::HttpCommTask (HttpServer* server, socket_t fd, ConnectionInfo const& info)
       : Task("HttpCommTask"),
         GeneralCommTask<HttpServer, HttpHandlerFactory>(server, fd, info),
-        _handler(0) {
+        _handler(0),
+        _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL) {
       incCounter<GeneralServerStatistics::httpAccessor>();
     }
 
@@ -113,8 +114,12 @@ namespace triagens {
           // set body start to current position
           bodyPosition = readPosition;
 
-          // and different methods
-          switch (request->requestType()) {
+          // store the original request's type. we need it later when responding
+          // (original request objects gets deleted before responding)
+          this->_requestType = this->request->requestType();
+
+          // handle different HTTP methods
+          switch (this->_requestType) {
             case HttpRequest::HTTP_REQUEST_GET:
             case HttpRequest::HTTP_REQUEST_DELETE:
             case HttpRequest::HTTP_REQUEST_HEAD:
@@ -262,6 +267,12 @@ namespace triagens {
 
     void HttpCommTask::addResponse (HttpResponse* response) {
       StringBuffer * buffer;
+
+      if (this->_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
+        // clear body if this is an HTTP HEAD request
+        // HEAD must not return a body
+        response->headResponse(response->bodySize());
+      }
 
       // save header
       buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);

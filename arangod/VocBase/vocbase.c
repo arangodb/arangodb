@@ -188,6 +188,24 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a collection name from the global list of collections
+///
+/// this is called when a collection is dropped. it is necessary that the 
+/// caller also holds a write-lock using TRI_WRITE_LOCK_STATUS_VOCBASE_COL().
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
+  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
+  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
+
+  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1518,14 +1536,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   TRI_col_info_t info;
   int res;
 
-  // remove name and id
-  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
-
-  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
-  TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid);
-
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-
   // mark collection as deleted
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1534,6 +1544,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
   // .............................................................................
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
+    UnregisterCollection(vocbase, collection);
+
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1544,6 +1556,9 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 
   else if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+
+    UnregisterCollection(vocbase, collection);
+
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
   }
@@ -1584,6 +1599,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1608,6 +1625,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1792,9 +1810,9 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase, char 
   // check that we have an existing name
   // .............................................................................
 
-  TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   collection = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
-  TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   if (collection == NULL) {
     LOG_DEBUG("unknown collection '%s'", name);

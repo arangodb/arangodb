@@ -1,4 +1,4 @@
-var actions = require("actions");
+var actions = require("org/arangodb/actions");
 
 function getDocuments(req, res) {
   if (req.suffix.length != 1) {
