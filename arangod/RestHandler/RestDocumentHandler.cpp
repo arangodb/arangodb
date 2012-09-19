@@ -262,7 +262,6 @@ bool RestDocumentHandler::createDocument () {
   int res = useCollection(collection, create);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -407,7 +406,6 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -501,7 +499,6 @@ bool RestDocumentHandler::readAllDocuments () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -707,7 +704,6 @@ bool RestDocumentHandler::updateDocument () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 
@@ -852,7 +848,6 @@ bool RestDocumentHandler::deleteDocument () {
   int res = useCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
     return false;
   }
 

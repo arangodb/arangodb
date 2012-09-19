@@ -20,7 +20,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
 	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
+	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
 	@test -d Doxygen/web || mkdir Doxygen/web
 	@touch $@

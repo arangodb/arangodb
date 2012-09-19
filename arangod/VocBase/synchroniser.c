@@ -138,7 +138,7 @@ static bool CheckJournalSimCollection (TRI_sim_collection_t* sim) {
   bool worked;
   size_t i;
   size_t n;
-
+      
   worked = false;
   base = &sim->base.base;
 
@@ -205,7 +205,7 @@ static bool CheckSyncCompactorSimCollection (TRI_sim_collection_t* sim) {
   double ti;
   size_t i;
   size_t n;
-
+  
   worked = false;
   base = &sim->base.base;
 
@@ -266,7 +266,7 @@ static bool CheckCompactorSimCollection (TRI_sim_collection_t* sim) {
   bool worked;
   size_t i;
   size_t n;
-
+  
   worked = false;
   base = &sim->base.base;
 
@@ -365,8 +365,10 @@ void TRI_SynchroniserVocBase (void* data) {
       bool result;
 
       collection = collections._buffer[i];
-
-      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+  
+      if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(collection)) {
+        continue;
+      }
 
       if (collection->_status != TRI_VOC_COL_STATUS_LOADED) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
