@@ -3,10 +3,16 @@ dnl -*- mode: Autoconf; -*-
 dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                               V8
 dnl ----------------------------------------------------------------------------
-# -ffunction-sections -fdata-sections 
-ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/icu/BUILD/include"
-ICU_LDFLAGS=""
-ICU_LIBS=" -lpthread -ldl -lm ${srcdir}/3rdParty/icu/BUILD/libs/libicui18n.a ${srcdir}/3rdParty/icu/BUILD/libs/libicuuc.a ${srcdir}/3rdParty/icu/BUILD/libs/libicudata.a ${srcdir}/3rdParty/icu/BUILD/libs/libicuio.a ${srcdir}/3rdParty/icu/BUILD/libs/libicule.a ${srcdir}/3rdParty/icu/BUILD/libs/libiculx.a"
+
+icu_build_dir="${srcdir}/3rdParty/icu/BUILD"
+icu_lib_dir="${icu_build_dir}/libs"
+
+dnl --- do we need "-ffunction-sections -fdata-sections" in ICU_CPPFLAGS?
+dnl --- ICU_LIBS was: " -lpthread -ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a ${icu_lib_dir}/libicuio.a ${icu_lib_dir}/libicule.a ${icu_lib_dir}/libiculx.a -lpthread -ldl -lm "
+
+ICU_CPPFLAGS="-D_REENTRANT -I${icu_build_dir}/include"
+ICU_LDFLAGS=" -ldl -lm "
+ICU_LIBS=" ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a "
 
 TRI_ICU_VERSION="49.1.2"
 

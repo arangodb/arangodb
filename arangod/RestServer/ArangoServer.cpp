@@ -48,6 +48,7 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/Random.h"
+#include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/strings.h"
@@ -219,6 +220,9 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   // set working directory and database directory
   _workingDirectory = "/var/tmp";
+#ifdef TRI_HAVE_ICU  
+  _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,6 +334,9 @@ void ArangoServer::buildApplicationServer () {
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
+#ifdef TRI_HAVE_ICU
+    ("default-language", &_defaultLanguage, "ISO-639 language code")
+#endif  
   ;
   
   // .............................................................................
@@ -403,6 +410,13 @@ void ArangoServer::buildApplicationServer () {
     exit(EXIT_FAILURE);
   }
   
+  // .............................................................................
+  // set language of default collator
+  // .............................................................................
+#ifdef TRI_HAVE_ICU  
+  Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
+  LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'";
+#endif  
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................
