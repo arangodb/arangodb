@@ -24,11 +24,13 @@ ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 		&& ./configure \
 			--enable-static \
 			--disable-shared \
-      --disable-tests \
-      --disable-samples \
-      --disable-extras \
+			--disable-tests \
+			--disable-samples \
+			--disable-extras \
 			--prefix=$(ICUDIR) \
-			--libdir=$(ICUDIR)/libs
+			--libdir=$(ICUDIR)/libs \
+			CC=${CC} \
+			CXX=${CXX}
 
 	cd @top_srcdir@/3rdParty/icu/source && $(MAKE) install
 
