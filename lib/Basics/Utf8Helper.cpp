@@ -90,13 +90,11 @@ int Utf8Helper::compareUtf8 (const char* left, size_t leftLength, const char* ri
       return 0;
   }
 #else
-  int result = 0;
-  
   if (leftLength == rightLength) {
     return memcmp((const void*)left, (const void*)right, leftLength);
   }
   
-  result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength : rightLength);
+  int result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength : rightLength);
   
   if (result == 0) {
     if (leftLength < rightLength) {
@@ -104,13 +102,17 @@ int Utf8Helper::compareUtf8 (const char* left, size_t leftLength, const char* ri
     }
     return 1;
   }
-  
-  return result;  
+  else if (result < 0) {
+    return -1;
+  }
+  else {
+    return 1;
+  }
 #endif
 }
 
 int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {  
-#ifdef TRI_HAVE_ICU  
+#ifdef TRI_HAVE_ICU 
   if (!_coll) {
     LOGGER_ERROR << "no Collator in Utf8Helper::compareUtf16()!";
     return 0;
@@ -129,13 +131,11 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
       return 0;
   }
 #else 
-  int result = 0;
-  
   if (leftLength == rightLength) {
-    return memcmp((const void*)left, (const void*)right, leftLength);
+    return memcmp((const void*)left, (const void*)right, leftLength * 2);
   }
   
-  result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength : rightLength);
+  int result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength * 2 : rightLength * 2);
   
   if (result == 0) {
     if (leftLength < rightLength) {
@@ -143,8 +143,12 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
     }
     return 1;
   }
-  
-  return result;  
+  else if (result < 0) {
+    return -1;
+  }
+  else {
+    return 1;
+  } 
 #endif  
 }
 
