@@ -5696,6 +5696,14 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
                          v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("HAS_ICU"),
+#ifdef TRI_ICU_VERSION
+                         v8::Boolean::New(true),
+#else
+                         v8::Boolean::New(false),
+#endif
+                         v8::ReadOnly);
+  
   // .............................................................................
   // create the global variables
   // .............................................................................

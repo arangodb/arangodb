@@ -146,8 +146,42 @@ function clientTestSuite () {
 
     testPrintPlain : function () {
       print_plain(true);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test COMPARE_STRING function
+////////////////////////////////////////////////////////////////////////////////
+
+    testICU_Compare : function () {
+      if (HAS_ICU) {
+        nfc = "Gr\u00FC\u00DF Gott.";
+        nfd = "Gru\u0308\u00DF Gott.";
+      
+        assertNotEqual(nfc, nfd);
+        assertNotEqual(COMPARE_STRING(nfc, nfd), true);        
+      }
+      else {
+        print("ICU_Compare ignored!");
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test NORMALIZE_STRING function
+////////////////////////////////////////////////////////////////////////////////
+
+    testICU_Normalize : function () {
+      if (HAS_ICU) {
+        nfc = "Gr\u00FC\u00DF Gott.";
+        nfd = "Gru\u0308\u00DF Gott.";
+      
+        assertNotEqual(nfc, nfd);
+        assertEqual(NORMALIZE_STRING(nfd), nfc);
+        assertEqual(NORMALIZE_STRING(nfd), "Grüß Gott.");
+      }
+      else {
+        print("ICU_Normalize ignored!");
+      }
+    }
   };
 }
 
