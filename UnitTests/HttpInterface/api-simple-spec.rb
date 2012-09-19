@@ -34,7 +34,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-all", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(true)
@@ -48,7 +48,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-all-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -62,7 +62,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-all-negative-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -76,7 +76,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-all-skip", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -90,7 +90,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-all-skip-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -130,7 +130,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-near-missing", cmd, :body => body)
 
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1570)
@@ -146,7 +146,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-near", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -164,7 +164,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-near-distance", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -206,7 +206,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-within-missing", cmd, :body => body)
 
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1570)
@@ -222,7 +222,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-within", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -240,7 +240,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-within-distance", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -307,7 +307,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-by-example1", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -320,7 +320,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-by-example2", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -333,7 +333,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-by-example3", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -346,7 +346,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-first-example", cmd, :body => body)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['document']['_id'].should eq(d3)
@@ -356,7 +356,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-first-example-not-found", cmd, :body => body)
 
 	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(404)
       end
@@ -401,7 +401,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-range", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)
@@ -415,7 +415,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-range", cmd, :body => body)
 
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['hasMore'].should eq(false)

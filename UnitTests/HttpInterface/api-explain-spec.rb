@@ -19,7 +19,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-missing-body", cmd)
 	
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
       end
@@ -30,7 +30,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-unknown-collection", cmd, :body => body)
 	
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1520)
@@ -42,7 +42,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-missing-bind-variables-completely", cmd, :body => body)
 	
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1551)
@@ -54,7 +54,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-missing-bind-variables-empty", cmd, :body => body)
 	
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1551)
@@ -66,7 +66,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-missing-bind-variables-wrong", cmd, :body => body)
 	
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1551)
@@ -78,7 +78,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-parse-error", cmd, :body => body)
 	
 	doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(400)
 	doc.parsed_response['errorNum'].should eq(1501)
@@ -97,7 +97,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-query-simple", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
       end
