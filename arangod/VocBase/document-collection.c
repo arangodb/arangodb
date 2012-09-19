@@ -4474,7 +4474,7 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
 /// @brief adds a bitarray index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_t* CreateBitarrayIndexSimCollection (TRI_sim_collection_t* collection,
+static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collection_t* collection,
                                                       const TRI_vector_pointer_t* attributes,
                                                       const TRI_vector_pointer_t* values,
                                                       TRI_idx_iid_t iid,
@@ -4682,7 +4682,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
 /// @brief ensures that a bitarray index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
+TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_document_collection_t* sim,
                                                    const TRI_vector_pointer_t* attributes,
                                                    const TRI_vector_pointer_t* values,
                                                    bool supportUndef,
@@ -4704,7 +4704,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexSimCollection (TRI_sim_collection_t* sim,
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = CreateBitarrayIndexSimCollection(sim, attributes, values, 0, supportUndef, created, errorCode, errorStr);
+  idx = CreateBitarrayIndexDocumentCollection(sim, attributes, values, 0, supportUndef, created, errorCode, errorStr);
   
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
