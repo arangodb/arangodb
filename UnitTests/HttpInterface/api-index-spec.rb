@@ -29,7 +29,7 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-bad-collection-identifier", cmd)
 
 	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(404)
@@ -40,7 +40,7 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-bad-index-identifier", cmd)
 
 	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1212)
 	doc.parsed_response['code'].should eq(404)
@@ -68,7 +68,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-new-cap-constraint", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -78,7 +78,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-old-cap-constraint", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should_not eq(0)
@@ -108,7 +108,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -133,7 +133,7 @@ describe ArangoDB do
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -163,7 +163,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-new-geo", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -175,7 +175,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-old-geo", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should_not eq(0)
@@ -191,7 +191,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-geo-location", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -207,7 +207,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-geo-json", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -223,7 +223,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-no-geo-json", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -239,7 +239,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-geo-latitude-longitude", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -270,7 +270,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -295,7 +295,7 @@ describe ArangoDB do
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -326,7 +326,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-new-unique-constraint", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -338,7 +338,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-old-unique-constraint", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should_not eq(0)
@@ -370,7 +370,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -395,7 +395,7 @@ describe ArangoDB do
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -426,7 +426,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-new-hash-index", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -438,7 +438,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-old-hash-index", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should_not eq(0)
@@ -470,7 +470,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -495,7 +495,7 @@ describe ArangoDB do
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -526,7 +526,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-new-skiplist", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -538,7 +538,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-old-skiplist", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should_not eq(0)
@@ -570,7 +570,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -595,7 +595,7 @@ describe ArangoDB do
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -626,7 +626,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-new-unique-skiplist", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -638,7 +638,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-create-old-unique-skiplist", cmd, :body => body)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should_not eq(0)
@@ -670,7 +670,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -695,7 +695,7 @@ describe ArangoDB do
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -725,7 +725,7 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-all-indexes", cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 
@@ -742,7 +742,7 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-all-indexes-name", cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 
@@ -775,7 +775,7 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-primary-index", cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq("#{@cid}/0")
@@ -787,7 +787,7 @@ describe ArangoDB do
         doc = ArangoDB.log_get("#{prefix}-primary-index-name", cmd)
 
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq("#{@cid}/0")
@@ -816,7 +816,7 @@ describe ArangoDB do
         doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should_not eq(0)
@@ -831,7 +831,7 @@ describe ArangoDB do
         doc = ArangoDB.log_delete("#{prefix}-delete-unique-skiplist", cmd)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(iid)
@@ -840,7 +840,7 @@ describe ArangoDB do
 	doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['code'].should eq(404)
 	doc.parsed_response['errorNum'].should eq(1212)
