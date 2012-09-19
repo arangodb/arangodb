@@ -34,6 +34,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "V8Client/SharedCounter.h"
+#include "BinaryServer/BinaryMessage.h"
 #include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace std;
@@ -94,6 +95,9 @@ namespace triagens {
           if (_connection != 0 && _connection->isConnected()) {
             _connection->disconnect();
           }
+          if (_connection != 0) {
+            delete _connection;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +124,8 @@ namespace triagens {
 
           _connection = GeneralClientConnection::factory(_endpoint, 5.0, 10.0, 3);
           if (_connection == 0) {
-            throw "out of memory";
+            cerr << "out of memory" << endl;
+            exit(EXIT_FAILURE);
           }
   
           _client = new SimpleHttpClient(_connection, 10.0, true);
@@ -130,7 +135,13 @@ namespace triagens {
           SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
   
           if (! result || ! result->isComplete()) {
-            throw "could not connect to server";
+            if (result) {
+              delete result;
+            }
+            delete _client;
+
+            cerr << "could not connect to server" << endl;
+            exit(EXIT_FAILURE);
           }
 
           delete result;
@@ -170,7 +181,8 @@ namespace triagens {
           if (type == SimpleHttpClient::DELETE) {
             return PB_REQUEST_TYPE_DELETE;
           }
-          throw "invalid request type";
+          cerr << "invalid request type" << endl;
+          exit(EXIT_FAILURE);
         }
 
         
@@ -203,14 +215,24 @@ namespace triagens {
           char* message = new char[messageSize];
 
           if (! messages.SerializeToArray(message, messageSize)) {
-            throw "out of memory";
+            cerr << "out of memory" << endl;
+            exit(EXIT_FAILURE);
           }
 
           map<string, string> headerFields;
-          headerFields["Content-Type"] = "application/x-arangodb-batch";
+          headerFields["Content-Type"] = BinaryMessage::getContentType();
           SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/batch", message, (size_t) messageSize, headerFields);
-          delete result;
           delete message;
+
+          if (result == 0) {
+            _operationsCounter->incFailures();
+            return;
+          }
+
+          if (result->getHttpReturnCode() >= 400) { 
+            _operationsCounter->incFailures();
+          }
+          delete result;
         }
 
 
@@ -235,6 +257,14 @@ namespace triagens {
 
           map<string, string> headerFields;
           SimpleHttpResult* result = _client->request(r.type, url, r.payload.c_str(), r.payload.size(), headerFields);
+          if (result == 0) {
+            _operationsCounter->incFailures();
+            return;
+          }
+
+          if (result->getHttpReturnCode() >= 400) { 
+            _operationsCounter->incFailures();
+          }
           delete result;
         }
 
