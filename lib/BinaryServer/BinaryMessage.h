@@ -123,7 +123,7 @@ namespace triagens {
             } 
           }
 
-          size_t bodyLength = decodeLength(data + 4);
+          size_t bodyLength = (size_t) decodeLength((uint8_t*) (data + 4));
 
           if (bodyLength > getMaxLength()) {
             LOGGER_WARNING << "maximum binary message size is " << getMaxLength() << ", actual size is " << bodyLength;
@@ -160,11 +160,11 @@ namespace triagens {
 /// @brief return the encoded length as a size_t 
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t decodeLength (const char* data) {
-          size_t length = (size_t) (((size_t) data[3]) << 0) + 
-                          (size_t) (((size_t) data[2]) << 8) + 
-                          (size_t) (((size_t) data[1]) << 16) +
-                          (size_t) (((size_t) data[0]) << 24);
+        static uint32_t decodeLength (const uint8_t* data) {
+          uint32_t length = ((uint32_t) data[0] << 24) |
+                            ((uint32_t) data[1] << 16) |
+                            ((uint32_t) data[2] << 8) |
+                            (uint32_t) data[3];
 
           return length;
         }
@@ -173,11 +173,11 @@ namespace triagens {
 /// @brief encode the size_t length in a char[4]
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void encodeLength (const size_t length, char* out) {
-          out[0] = (char) ((length >> 24) & 0xff);
-          out[1] = (char) ((length >> 16) & 0xff);
-          out[2] = (char) ((length >> 8) & 0xff); 
-          out[3] = (char) ((length >> 0) & 0xff);
+        static void encodeLength (const uint32_t length, uint8_t* out) {
+          *(out++) = ((uint32_t) length >> 24);
+          *(out++) = ((uint32_t) length >> 16) & 0xff;
+          *(out++) = ((uint32_t) length >> 8) & 0xff;
+          *(out++) = ((uint32_t) length) & 0xff;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

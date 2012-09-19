@@ -198,10 +198,10 @@ namespace triagens {
       }
 
       // write length
-      char length[4];
+      uint8_t length[4];
       BinaryMessage::encodeLength(bodyLength, &length[0]);
       for (int i = 0; i < 4; ++i) {
-        _writeBuffer.appendChar(length[i]);
+        _writeBuffer.appendChar((char) length[i]);
       }
 
       _writeBuffer.appendText(body, bodyLength);
