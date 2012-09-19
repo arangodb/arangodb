@@ -296,6 +296,12 @@ extern "C" {
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   fails due to the fact that one or more values for an index attribute is
 ///   not supported within that index.
+/// - 3415: @CODE{bitarray index creation failure - one or more index attributes are duplicated.}
+///   Will be raised when an attempt to create an index with two or more index
+///   attributes repeated.
+/// - 3417: @CODE{bitarray index creation failure - one or more index attribute values are duplicated.}
+///   Will be raised when an attempt to create an index with two or more index
+///   attribute values repeated.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1528,6 +1534,30 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE     (3413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3415: ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES
+///
+/// bitarray index creation failure - one or more index attributes are
+/// duplicated.
+///
+/// Will be raised when an attempt to create an index with two or more index
+/// attributes repeated.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES (3415)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3417: ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES
+///
+/// bitarray index creation failure - one or more index attribute values are
+/// duplicated.
+///
+/// Will be raised when an attempt to create an index with two or more index
+/// attribute values repeated.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES (3417)
 
 
 ////////////////////////////////////////////////////////////////////////////////
