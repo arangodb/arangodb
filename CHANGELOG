@@ -1,6 +1,8 @@
 v1.0.1 (2012-XX-XX)
 -------------------
 
+* fix for issue #190: install doesn't create log directory
+
 * fix for issue #194: potential race condition between creating and dropping collections
 
 * fix for issue #193: REST API HEAD request returns a message body on 404
