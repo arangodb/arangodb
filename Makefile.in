@@ -512,6 +512,8 @@ am_lib_libarango_client_a_OBJECTS =  \
 	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
+	lib/SimpleHttpClient/SimpleClient.$(OBJEXT) \
+	lib/SimpleHttpClient/SimpleBinaryClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT) \
 	lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 lib_libarango_client_a_OBJECTS = $(am_lib_libarango_client_a_OBJECTS)
@@ -1381,6 +1383,8 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
+	lib/SimpleHttpClient/SimpleClient.cpp \
+	lib/SimpleHttpClient/SimpleBinaryClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -2130,6 +2134,12 @@ lib/SimpleHttpClient/ClientConnection.$(OBJEXT):  \
 lib/SimpleHttpClient/SslClientConnection.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/SimpleClient.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
+lib/SimpleHttpClient/SimpleBinaryClient.$(OBJEXT):  \
+	lib/SimpleHttpClient/$(am__dirstamp) \
+	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
 lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT):  \
 	lib/SimpleHttpClient/$(am__dirstamp) \
 	lib/SimpleHttpClient/$(DEPDIR)/$(am__dirstamp)
@@ -2507,7 +2517,7 @@ arangosh/V8Client/bin_arangob-V8ClientConnection.$(OBJEXT):  \
 arangosh/V8Client/bin_arangob-arangob.$(OBJEXT):  \
 	arangosh/V8Client/$(am__dirstamp) \
 	arangosh/V8Client/$(DEPDIR)/$(am__dirstamp)
-bin/arangob$(EXEEXT): $(bin_arangob_OBJECTS) $(bin_arangob_DEPENDENCIES) bin/$(am__dirstamp)
+bin/arangob$(EXEEXT): $(bin_arangob_OBJECTS) $(bin_arangob_DEPENDENCIES) $(EXTRA_bin_arangob_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangob$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangob_OBJECTS) $(bin_arangob_LDADD) $(LIBS)
 arangod/Actions/$(am__dirstamp):
@@ -3070,6 +3080,8 @@ mostlyclean-compile:
 	-rm -f lib/ShapedJson/shaped-json.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/ClientConnection.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/SimpleBinaryClient.$(OBJEXT)
+	-rm -f lib/SimpleHttpClient/SimpleClient.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpClient.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SimpleHttpResult.$(OBJEXT)
 	-rm -f lib/SimpleHttpClient/SslClientConnection.$(OBJEXT)
@@ -3330,6 +3342,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/ShapedJson/$(DEPDIR)/shaped-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/ClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/GeneralClientConnection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleBinaryClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SimpleHttpResult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
@@ -4146,66 +4160,58 @@ UnitTests/Cambridge/UnitTests_geo_suite-georeg.obj: UnitTests/Cambridge/georeg.c
 arangosh/ArangoShell/bin_arangob-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangob-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangob-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangob-ArangoClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangob-ArangoClient.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangob-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangob-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
 
 arangosh/ArangoShell/bin_arangob-ArangoClient.obj: arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangob-ArangoClient.obj -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangob-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Tpo arangosh/ArangoShell/$(DEPDIR)/bin_arangob-ArangoClient.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangob-ArangoClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/ArangoShell/ArangoClient.cpp' object='arangosh/ArangoShell/bin_arangob-ArangoClient.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangob-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/ArangoShell/bin_arangob-ArangoClient.obj `if test -f 'arangosh/ArangoShell/ArangoClient.cpp'; then $(CYGPATH_W) 'arangosh/ArangoShell/ArangoClient.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/ArangoShell/ArangoClient.cpp'; fi`
 
 arangosh/V8Client/bin_arangob-ImportHelper.o: arangosh/V8Client/ImportHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangob-ImportHelper.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangob-ImportHelper.Tpo -c -o arangosh/V8Client/bin_arangob-ImportHelper.o `test -f 'arangosh/V8Client/ImportHelper.cpp' || echo '$(srcdir)/'`arangosh/V8Client/ImportHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangob-ImportHelper.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangob-ImportHelper.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/ImportHelper.cpp' object='arangosh/V8Client/bin_arangob-ImportHelper.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/ImportHelper.cpp' object='arangosh/V8Client/bin_arangob-ImportHelper.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-ImportHelper.o `test -f 'arangosh/V8Client/ImportHelper.cpp' || echo '$(srcdir)/'`arangosh/V8Client/ImportHelper.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-ImportHelper.o `test -f 'arangosh/V8Client/ImportHelper.cpp' || echo '$(srcdir)/'`arangosh/V8Client/ImportHelper.cpp
 
 arangosh/V8Client/bin_arangob-ImportHelper.obj: arangosh/V8Client/ImportHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangob-ImportHelper.obj -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangob-ImportHelper.Tpo -c -o arangosh/V8Client/bin_arangob-ImportHelper.obj `if test -f 'arangosh/V8Client/ImportHelper.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/ImportHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/ImportHelper.cpp'; fi`
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangob-ImportHelper.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangob-ImportHelper.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/ImportHelper.cpp' object='arangosh/V8Client/bin_arangob-ImportHelper.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/ImportHelper.cpp' object='arangosh/V8Client/bin_arangob-ImportHelper.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-ImportHelper.obj `if test -f 'arangosh/V8Client/ImportHelper.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/ImportHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/ImportHelper.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-ImportHelper.obj `if test -f 'arangosh/V8Client/ImportHelper.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/ImportHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/ImportHelper.cpp'; fi`
 
 arangosh/V8Client/bin_arangob-V8ClientConnection.o: arangosh/V8Client/V8ClientConnection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangob-V8ClientConnection.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangob-V8ClientConnection.Tpo -c -o arangosh/V8Client/bin_arangob-V8ClientConnection.o `test -f 'arangosh/V8Client/V8ClientConnection.cpp' || echo '$(srcdir)/'`arangosh/V8Client/V8ClientConnection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangob-V8ClientConnection.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangob-V8ClientConnection.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/V8ClientConnection.cpp' object='arangosh/V8Client/bin_arangob-V8ClientConnection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/V8ClientConnection.cpp' object='arangosh/V8Client/bin_arangob-V8ClientConnection.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-V8ClientConnection.o `test -f 'arangosh/V8Client/V8ClientConnection.cpp' || echo '$(srcdir)/'`arangosh/V8Client/V8ClientConnection.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-V8ClientConnection.o `test -f 'arangosh/V8Client/V8ClientConnection.cpp' || echo '$(srcdir)/'`arangosh/V8Client/V8ClientConnection.cpp
 
 arangosh/V8Client/bin_arangob-V8ClientConnection.obj: arangosh/V8Client/V8ClientConnection.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangob-V8ClientConnection.obj -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangob-V8ClientConnection.Tpo -c -o arangosh/V8Client/bin_arangob-V8ClientConnection.obj `if test -f 'arangosh/V8Client/V8ClientConnection.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/V8ClientConnection.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/V8ClientConnection.cpp'; fi`
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangob-V8ClientConnection.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangob-V8ClientConnection.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/V8ClientConnection.cpp' object='arangosh/V8Client/bin_arangob-V8ClientConnection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/V8ClientConnection.cpp' object='arangosh/V8Client/bin_arangob-V8ClientConnection.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-V8ClientConnection.obj `if test -f 'arangosh/V8Client/V8ClientConnection.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/V8ClientConnection.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/V8ClientConnection.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-V8ClientConnection.obj `if test -f 'arangosh/V8Client/V8ClientConnection.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/V8ClientConnection.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/V8ClientConnection.cpp'; fi`
 
 arangosh/V8Client/bin_arangob-arangob.o: arangosh/V8Client/arangob.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangob-arangob.o -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangob-arangob.Tpo -c -o arangosh/V8Client/bin_arangob-arangob.o `test -f 'arangosh/V8Client/arangob.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangob.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangob-arangob.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangob-arangob.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/arangob.cpp' object='arangosh/V8Client/bin_arangob-arangob.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/arangob.cpp' object='arangosh/V8Client/bin_arangob-arangob.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-arangob.o `test -f 'arangosh/V8Client/arangob.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangob.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-arangob.o `test -f 'arangosh/V8Client/arangob.cpp' || echo '$(srcdir)/'`arangosh/V8Client/arangob.cpp
 
 arangosh/V8Client/bin_arangob-arangob.obj: arangosh/V8Client/arangob.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/V8Client/bin_arangob-arangob.obj -MD -MP -MF arangosh/V8Client/$(DEPDIR)/bin_arangob-arangob.Tpo -c -o arangosh/V8Client/bin_arangob-arangob.obj `if test -f 'arangosh/V8Client/arangob.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangob.cpp'; fi`
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangosh/V8Client/$(DEPDIR)/bin_arangob-arangob.Tpo arangosh/V8Client/$(DEPDIR)/bin_arangob-arangob.Po
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='arangosh/V8Client/arangob.cpp' object='arangosh/V8Client/bin_arangob-arangob.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangosh/V8Client/arangob.cpp' object='arangosh/V8Client/bin_arangob-arangob.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-arangob.obj `if test -f 'arangosh/V8Client/arangob.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangob.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/V8Client/bin_arangob-arangob.obj `if test -f 'arangosh/V8Client/arangob.cpp'; then $(CYGPATH_W) 'arangosh/V8Client/arangob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/V8Client/arangob.cpp'; fi`
 
 arangod/Actions/bin_arangod-actions.o: arangod/Actions/actions.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Actions/bin_arangod-actions.o -MD -MP -MF arangod/Actions/$(DEPDIR)/bin_arangod-actions.Tpo -c -o arangod/Actions/bin_arangod-actions.o `test -f 'arangod/Actions/actions.cpp' || echo '$(srcdir)/'`arangod/Actions/actions.cpp
@@ -5900,11 +5906,13 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ALL_IN_ONE_ICU_TRUE@		&& ./configure \
 @ENABLE_ALL_IN_ONE_ICU_TRUE@			--enable-static \
 @ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-shared \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@      --disable-tests \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@      --disable-samples \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@      --disable-extras \
+@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-tests \
+@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-samples \
+@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-extras \
 @ENABLE_ALL_IN_ONE_ICU_TRUE@			--prefix=$(ICUDIR) \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--libdir=$(ICUDIR)/libs
+@ENABLE_ALL_IN_ONE_ICU_TRUE@			--libdir=$(ICUDIR)/libs \
+@ENABLE_ALL_IN_ONE_ICU_TRUE@			CC=${CC} \
+@ENABLE_ALL_IN_ONE_ICU_TRUE@			CXX=${CXX}
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@	cd @top_srcdir@/3rdParty/icu/source && $(MAKE) install
 

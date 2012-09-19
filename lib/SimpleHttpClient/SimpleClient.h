@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple http client
+/// @brief simple client
 ///
 /// @file
 ///
@@ -26,54 +26,76 @@
 /// @author Copyright 2009, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_CLIENT_H
+#define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_CLIENT_H 1
 
 #include <Basics/Common.h>
 
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
-#include "SimpleHttpClient/SimpleClient.h"
 
 namespace triagens {
   namespace httpclient {
-      
-    class SimpleHttpResult;
-    class GeneralClientConnection;
     
+    class GeneralClientConnection;
+    class SimpleHttpResult;
+      
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief simple http client
+    /// @brief simple client
     ////////////////////////////////////////////////////////////////////////////////
 
-    class SimpleHttpClient : public SimpleClient {
+    class SimpleClient {
 
     private:
-      SimpleHttpClient (SimpleHttpClient const&);
-      SimpleHttpClient& operator= (SimpleHttpClient const&);
+      SimpleClient (SimpleClient const&);
+      SimpleClient& operator= (SimpleClient const&);
 
     public:
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief supported request methods
+      /// @brief state of the connection
       ////////////////////////////////////////////////////////////////////////////////
 
-      enum http_method {
-        GET, POST, PUT, DELETE, HEAD, PATCH
-      };
+      enum request_state {
+        IN_CONNECT,
+        IN_WRITE,
+        IN_READ_HEADER,
+        IN_READ_BODY,
+        IN_READ_CHUNKED_HEADER,
+        IN_READ_CHUNKED_BODY,
+        FINISHED,
+        DEAD
+      };      
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief constructs a new client
+      ////////////////////////////////////////////////////////////////////////////////
+
+      SimpleClient (GeneralClientConnection*, 
+                    double, 
+                    bool);
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief constructs a new http client
+      /// @brief destructs a client
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (GeneralClientConnection*, 
-                        double, 
-                        bool);
+      virtual ~SimpleClient ();
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief destructs a http client
+      /// @brief returns the port of the remote server
+      ////////////////////////////////////////////////////////////////////////////////      
+     
+      const string& getErrorMessage () {
+          return _errorMessage;
+      }
+      
       ////////////////////////////////////////////////////////////////////////////////
-
-      virtual ~SimpleHttpClient ();
+      /// @brief set user name and password
+      ////////////////////////////////////////////////////////////////////////////////
+    
+      virtual void setUserNamePassword (const string& prefix,
+                                        const string& username,
+                                        const string& password) = 0;
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief make a http request
@@ -84,19 +106,54 @@ namespace triagens {
                                          const string& location,
                                          const char* body, 
                                          size_t bodyLength,
-                                         const map<string, string>& headerFields);
+                                         const map<string, string>& headerFields) = 0;
 
+    protected:
+      
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets username and password 
-      ///
-      /// @param prefix                         prefix for sending username and password
-      /// @param username                       username
-      /// @param password                       password
+      /// @brief register and dump an error message
       ////////////////////////////////////////////////////////////////////////////////
       
-      virtual void setUserNamePassword (const string& prefix, 
-                                        const string& username, 
-                                        const string& password);
+      void setErrorMessage (const string& message) {
+        _errorMessage = message;
+       
+        if (_warn) { 
+          LOGGER_WARNING << _errorMessage;
+        }
+      }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief register an error message
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setErrorMessage (const string& message, int error) {
+        if (error != 0) {
+          _errorMessage = message + ": " + strerror(error);
+        }
+        else {
+          setErrorMessage(message);
+        }
+      }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief returns true if the request is in progress
+      ////////////////////////////////////////////////////////////////////////////////      
+
+      bool isWorking () const {
+        return _state < FINISHED;
+      }   
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief initialise the connection
+      ////////////////////////////////////////////////////////////////////////////////
+    
+      void handleConnect ();
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief close connection
+      ////////////////////////////////////////////////////////////////////////////////
+
+      bool close ();
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief reset state
@@ -104,63 +161,36 @@ namespace triagens {
 
       virtual void reset ();
 
-    private:
-      
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the result
-      /// the caller has to delete the result object
-      ////////////////////////////////////////////////////////////////////////////////
-
-      SimpleHttpResult* getResult ();
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief set the request
+      /// @brief get timestamp
       ///
-      /// @param method                         request method
-      /// @param location                       request uri
-      /// @param body                           request body
-      /// @param bodyLength                     size of body
-      /// @param headerFields                   list of header fields
+      /// @return double          time in seconds
       ////////////////////////////////////////////////////////////////////////////////
       
-      void setRequest (int method,
-                       const string& location,
-                       const char* body, 
-                       size_t bodyLength,
-                       const map<string, string>& headerFields);
+      static double now ();                  
       
+    protected:
+
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the http header
+      /// @brief connection used (TCP or SSL connection)
       ////////////////////////////////////////////////////////////////////////////////
+
+      GeneralClientConnection* _connection;
+
+      // read and write buffer
+      triagens::basics::StringBuffer _writeBuffer;
+      triagens::basics::StringBuffer _readBuffer;
       
-      bool readHeader ();
+      double _requestTimeout;
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the http body by content length
-      ////////////////////////////////////////////////////////////////////////////////
+      bool _warn;
+                  
+      request_state _state;
       
-      bool readBody ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the chunk size
-      ////////////////////////////////////////////////////////////////////////////////
+      size_t _written;
       
-      bool readChunkedHeader ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the net chunk
-      ////////////////////////////////////////////////////////////////////////////////
+      string _errorMessage;
       
-      bool readChunkedBody ();
-
-    private:
-
-      uint32_t _nextChunkedSize;
-
-      SimpleHttpResult* _result;
-      
-      std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
-
     };
   }
 }

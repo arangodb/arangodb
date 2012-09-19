@@ -210,6 +210,9 @@ namespace triagens {
             this->_request = 0;
             bool ok = this->_server->handleRequest(this, handler);
 
+            delete this->_binaryMessage;
+            this->_binaryMessage = 0;
+
             if (! ok) {
               HttpResponse response(HttpResponse::SERVER_ERROR);
               this->handleResponse(&response);

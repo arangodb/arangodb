@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple http client
+/// @brief simple binary client
 ///
 /// @file
 ///
@@ -21,19 +21,19 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2009, triagens GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_BINARY_CLIENT_H
+#define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_BINARY_CLIENT_H 1
 
 #include <Basics/Common.h>
 
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 #include "SimpleHttpClient/SimpleClient.h"
+#include "ProtocolBuffers/arangodb.pb.h"
 
 namespace triagens {
   namespace httpclient {
@@ -42,39 +42,31 @@ namespace triagens {
     class GeneralClientConnection;
     
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief simple http client
+    /// @brief simple binary client
     ////////////////////////////////////////////////////////////////////////////////
 
-    class SimpleHttpClient : public SimpleClient {
+    class SimpleBinaryClient : public SimpleClient {
 
     private:
-      SimpleHttpClient (SimpleHttpClient const&);
-      SimpleHttpClient& operator= (SimpleHttpClient const&);
+      SimpleBinaryClient (SimpleBinaryClient const&);
+      SimpleBinaryClient& operator= (SimpleBinaryClient const&);
 
     public:
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief supported request methods
+      /// @brief constructs a new binary client
       ////////////////////////////////////////////////////////////////////////////////
 
-      enum http_method {
-        GET, POST, PUT, DELETE, HEAD, PATCH
-      };
+      SimpleBinaryClient (GeneralClientConnection*, 
+                          double, 
+                          bool);
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief constructs a new http client
+      /// @brief destructs a binary client
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (GeneralClientConnection*, 
-                        double, 
-                        bool);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief destructs a http client
-      ////////////////////////////////////////////////////////////////////////////////
-
-      virtual ~SimpleHttpClient ();
-
+      virtual ~SimpleBinaryClient ();
+      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief make a http request
       /// the caller has to delete the result object
@@ -85,18 +77,16 @@ namespace triagens {
                                          const char* body, 
                                          size_t bodyLength,
                                          const map<string, string>& headerFields);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets username and password 
-      ///
-      /// @param prefix                         prefix for sending username and password
-      /// @param username                       username
-      /// @param password                       password
-      ////////////////////////////////////////////////////////////////////////////////
       
-      virtual void setUserNamePassword (const string& prefix, 
-                                        const string& username, 
-                                        const string& password);
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief set user name and password
+      /// not needed for binary client
+      ////////////////////////////////////////////////////////////////////////////////
+    
+      virtual void setUserNamePassword (const string& prefix,
+                                        const string& username,
+                                        const string& password) {
+      }
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief reset state
@@ -109,18 +99,14 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the result
       /// the caller has to delete the result object
+      ///
+      /// @return SimpleHttpResult          the request result
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* getResult ();
       
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief set the request
-      ///
-      /// @param method                         request method
-      /// @param location                       request uri
-      /// @param body                           request body
-      /// @param bodyLength                     size of body
-      /// @param headerFields                   list of header fields
       ////////////////////////////////////////////////////////////////////////////////
       
       void setRequest (int method,
@@ -129,37 +115,9 @@ namespace triagens {
                        size_t bodyLength,
                        const map<string, string>& headerFields);
       
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the http header
-      ////////////////////////////////////////////////////////////////////////////////
-      
-      bool readHeader ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the http body by content length
-      ////////////////////////////////////////////////////////////////////////////////
-      
-      bool readBody ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the chunk size
-      ////////////////////////////////////////////////////////////////////////////////
-      
-      bool readChunkedHeader ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read the net chunk
-      ////////////////////////////////////////////////////////////////////////////////
-      
-      bool readChunkedBody ();
-
     private:
 
-      uint32_t _nextChunkedSize;
-
       SimpleHttpResult* _result;
-      
-      std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
 
     };
   }
