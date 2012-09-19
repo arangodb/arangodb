@@ -11235,23 +11235,11 @@ fi
 
 
 
-if test "x$EDITION_INFO" != "x";  then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
-$as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
-
-  echo $EDITION_INFO | tr "|" "\n" | while read a; do
-    if test "x$a" != "x";  then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: $a" >&5
-$as_echo "$as_me: $a" >&6;}
-    fi
-  done
-fi
-
 if test "x$BASIC_INFO" != "x";  then
   { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 
-  echo $BASIC_INFO | tr "|" "\n" | while read a; do
+  echo $BASIC_INFO | tr "|" "\n" | sort | while read a; do
     if test "x$a" != "x";  then
       { $as_echo "$as_me:${as_lineno-$LINENO}: $a" >&5
 $as_echo "$as_me: $a" >&6;}
@@ -11263,7 +11251,7 @@ if test "x$LIB_INFO" != "x";  then
   { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 
-  echo $LIB_INFO | tr "|" "\n" | while read a; do
+  echo $LIB_INFO | tr "|" "\n" | sort | while read a; do
     if test "x$a" != "x";  then
       { $as_echo "$as_me:${as_lineno-$LINENO}: $a" >&5
 $as_echo "$as_me: $a" >&6;}
@@ -11275,7 +11263,7 @@ if test "x$TOOL_INFO" != "x";  then
   { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 
-  echo $TOOL_INFO | tr "|" "\n" | while read a; do
+  echo $TOOL_INFO | tr "|" "\n" | sort | while read a; do
     if test "x$a" != "x";  then
       { $as_echo "$as_me:${as_lineno-$LINENO}: $a" >&5
 $as_echo "$as_me: $a" >&6;}

@@ -42,6 +42,7 @@
 ///  <li>@ref ShellEdge</li>
 ///  <li>@ref SimpleQueries</li>
 ///  <li>@ref Aql</li>
+///  <li>@ref UserManualActions</li>
 ///
 ///  @latexonly\appendix@endlatexonly
 ///  <li>@ref CommandLine</li>
@@ -56,6 +57,7 @@
 /// @copydetails ShellEdgeTOC
 /// @copydetails SimpleQueriesTOC
 /// @copydetails AqlTOC
+/// @copydetails UserManualActionsTOC
 /// @copydetails CommandLineTOC
 /// @endif
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,6 +336,401 @@
 ///
 /// The functions disable the pretty printer, switching back to the standard
 /// JSON output format.
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               USER MANUAL ACTIONS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualActionsTOC
+///
+/// <ul>
+///  <li>@ref UserManualActions
+///   <ul>
+///    <li>@ref UserManualActionsIntro</li>
+///    <li>@ref UserManualActionsHelloWorld</li>
+///    <li>@ref UserManualActionsHelloJson</li>
+///    <li>@ref UserManualActionsEcho</li>
+///    <li>@ref UserManualActionsDYO</li>
+///    <li>@ref UserManualActionsAdvanced</li>
+///   </ul>
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page UserManualActions Arango Actions
+///
+/// Please note, that user Actions in ArangoDB are still preliminary and details
+/// are subject to change.
+///
+/// @EMBEDTOC{UserManualActionsTOC}
+///
+/// @section UserManualActionsIntro Introduction to User Actions
+////////////////////////////////////////////////////////////////
+///
+/// In some ways the communication layer of the ArangoDB server behaves like a
+/// Web server. Unlike a Web server, it normally responses to HTTP requests by
+/// delivering JSON objects. Remember, documents in the database are just JSON
+/// objects. So, most of the time the HTTP response will contain a JSON document
+/// from the database as body. You can extract the documents stored in the
+/// database using HTTP @LIT{GET}. You can store documents using HTTP
+/// @LIT{POST}.
+///
+/// However, there is something more. You can write small sniplets - so called
+/// actions - to extend the database. The idea of actions is that sometimes it
+/// is better to store parts of the business logic within AnrangoDB. 
+///
+/// The simplest example is the age of a person. Assume you store information
+/// about people in your database. It is an anti-pattern to store the age,
+/// because it changes every now and then. Therefore, you normally store the
+/// birthday and let the client decide what to do with it. However, if you have
+/// many different clients, it might be easier to enrich the person document
+/// with the age using actions once on the server side.
+///
+/// Or, for instance, if you want to apply some statistics to large data-sets
+/// and you cannot easily express this as query. You can define a action instead
+/// of transferring the whole data to the client and do the computation on the
+/// client.
+///
+/// Actions are also useful if you want to restrict and filter data according to
+/// some complex permission system.
+///
+/// The ArangoDB server can deliver all kinds of information, JSON being only
+/// one possible format. You can also generate HTML or images. However, a Web
+/// server is normally better suited for the task as it also implements various
+/// caching strategies, language selection, compression and so on. Having said
+/// that, there are still situations where it might be suitable to use the
+/// ArangoDB to deliver HTML pages - static or dynamic. An simple example is the
+/// built-in administration interface. You can access it using any modern
+/// browser and there is no need for a separate Apache or IIS.
+///
+/// The following sections will explain actions within ArangoDB and show how to
+/// define them. The examples start with delivering static HTML pages - even if
+/// this is not the primary use-case for actions. The later sections will then
+/// show you, how to code some pieces of your business logic and return JSON
+/// objects.
+///
+/// The interface is loosely modelled after the JavaScript classes for HTTP
+/// request and responses found in node.js and the middleware/routing aspects
+/// of connect.js and express.js.
+///
+/// Note that unlike node.js, ArangoDB is multi-threaded and there is no easy
+/// way to share state between queries inside the JavaScript engine. If such
+/// state information is required, you need to use the database itself.
+///
+/// @section UserManualActionsHelloWorld A Hello World Example
+//////////////////////////////////////////////////////////////
+///
+/// The client API or browser sends a HTTP request to the ArangoDB server and
+/// the server returns a HTTP response to the client. A HTTP requests consists
+/// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
+/// request path like @LIT{/hello/world}. For a real Web server there are a zillion
+/// of other thing to consider, we will ignore this for the moment. The HTTP
+/// response contains a content type, describing how to interpret the returned
+/// data, and the data itself.
+///
+/// In the following example, we want to define action in ArangoDB, so that the
+/// server returns the HTML document
+///
+/// @code
+/// <html>
+///  <body>
+///   Hello World
+///  </body>
+/// </html>
+/// @endcode
+///
+/// if asked @LIT{GET /hello/world}.
+///
+/// The server needs to know what function to call or what document to deliver
+/// if it receives a request. This is called routing. All the routing information
+/// of ArangoDB is stored in a collection @LIT{_routing}. Each entry in this
+/// collections describes how to deal with a particular request path.
+///
+/// For the above example, add the following document to the @{_routing}
+/// collection:
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/hello/world", 
+/// ........>   callback: { 
+/// ........>     contentType: "text/html", 
+/// ........>     body: "<html><body>Hello World</body></html>" }});
+/// @endcode
+///
+/// In order to activate the new routing, you must either restart the server
+/// or call the internal reload function.
+///
+/// @code
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// Now use the browser and access
+///
+/// @LIT{http://localhost:8529/hello/world}
+///
+/// @section UserManualActionsHelloJson A Hello World Example for JSON
+//////////////////////////////////////////////////////////////////////
+///
+/// If you change the example slightly, then a JSON object will be delivered.
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/hello/json", 
+/// ........>   callback: { 
+/// ........>     contentType: "application/json", 
+/// ........>     body: "{ \"hello\" : \"world\" }" }});
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// Again check with your browser
+///
+/// @LIT{http://localhost:8529/hello/json}
+///
+/// Depending on your browser and installed add-ons you will either see the
+/// JSON object or a download dialog. If your browser wants to open an external
+/// application to display the JSON object, you can change the @LIT{contentType}
+/// to @LIT{"text/plain"} for the example. This makes it easier to check the
+/// example using a browser. Or use @LIT{curl} to access the server.
+///
+/// @code
+/// bash> curl "http://127.0.0.1:8529/hello/json" && echo
+/// { "hello" : "world" }
+/// @endcode
+///
+/// @section UserManualActionsEcho A Dynamic Example
+////////////////////////////////////////////////////
+///
+/// The above examples deliver static content, which is fine for an example.
+/// But the real power of actions lies in dynamic actions which use JavaScript
+/// to construct the result.
+/// 
+/// A very simple example is the function @LIT{echoRequest} defined in
+/// the module @LIT{org/arangodb/actions}.
+///
+/// @code
+/// function (req, res, next, options) {
+///   var result;
+/// 
+///   result = { request: req, options: options };
+/// 
+///   res.responseCode = exports.HTTP_OK;
+///   res.contentType = "application/json";
+///   res.body = JSON.stringify(result);
+/// }
+/// @endcode
+///
+/// That functions accepts a request and returns this request as JSON object.
+///
+/// It is not possible to store functions directly in the routing table, but you
+/// can call functions defined in modules. In the above example the function can
+/// be accessed from JavaScript as:
+///
+/// @LIT{require("org/arangodb/actions").echoRequest}
+///
+/// You can use it in the routing collection by specifying the name 
+/// @LIT{"org/arangodb/actions/echoRequest"}.
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/hello/echo",
+/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// @endcode
+///
+/// Reload the routing and check
+///
+/// @LIT{http://127.0.0.1:8529/hello/echo}
+///
+/// You should see something like
+///
+/// @code
+/// {
+///     "request": {
+///         "prefix": "/hello/echo",
+///         "suffix": [
+///             "hello",
+///             "echo"
+///         ],
+///         "path": "/hello/echo",
+///         "headers": {
+///             "accept-encoding": "gzip, deflate",
+///             "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
+///             "connection": "keep-alive",
+///             "content-length": "0",
+///             "host": "localhost:8529",
+///             "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
+///         },
+///         "requestType": "GET",
+///         "parameters": { }
+///     },
+///     "options": { }
+/// }
+/// @endcode
+///
+/// Please note that
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/hello/echo",
+/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// @endcode
+///
+/// is a short-cut for
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/hello/echo-long",
+/// ........>   callback: {
+/// ........>     for: "org/arangodb/actions",
+/// ........>     do: "echoRequest" }});
+/// @endcode
+///
+/// The verbose form allows you to pass options to the called function:
+///
+/// @code
+/// arangosh> a = db._routing.firstExample({path: "/hello/echo-long"});
+/// arangosh> a.callback.options = { option: "my option1" };
+/// arangosh> db._replace(a, a);
+/// @endcode
+///
+/// You should now see the options in the result.
+///
+/// @code
+/// {
+///     "request": {
+///         "prefix": "/hello/echo-long",
+///         ...
+///     },
+///     "options": {
+///         "option": "my option1"
+///     }
+/// }
+/// @endcode
+///
+/// @section UserManualActionsDYO Define Your Own Callback
+//////////////////////////////////////////////////////////
+///
+/// You can define your own callbacks by adding a new module to ArangoDB. In
+/// order to avoid name clashes modules should be named
+///
+/// @LIT{tld/domain/modulename}
+///
+/// where @LIT{domain.tld} is your domain name. For development you can store
+/// your code in files in the filesystem, see @ref MODULES_PATH and
+/// @ref MODULES.
+///
+/// However, when you are finished with the development, you can rollout the
+/// module code by storing it inside the @LIT{_modules} collection.
+///
+/// Create a file @LIT{hello-world.js} with the following content:
+///
+/// @code
+/// var actions = require("org/arangodb/actions");
+/// 
+/// exports.helloWorld = function (req, res) {
+///   res.contentType = "text/html";
+///   res.responseCode = actions.HTTP_OK;
+///   res.body = "<html><body>Hello World!</body></html>";
+/// };
+/// @endcode
+///
+/// Load this file as new module @LIT{de/celler/hello-world} into the database
+///
+/// @code
+/// arangosh> require("internal").defineModule("de/celler/hello-world", "hello-world.js");
+/// @endcode
+///
+/// Define a corresponding routing
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/my/echo",
+/// ........>   callback: "de/celler/hello-world/helloWorld" });
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// and check it
+///
+/// @LIT{http://localhost:8529/my/echo}
+///
+/// @section UserManualActionsAdvanced Advanced Usages
+//////////////////////////////////////////////////////
+///
+/// For detailed information see the reference manual.
+///
+/// @subsection UserManualActionsAdvancedPrefix Using Prefixes
+//////////////////////////////////////////////////////////////
+///
+/// All the above definitions require an exact match. If you set the
+/// @LIT{prefix} attribute to @LIT{true}, additional paths are ignored and the
+/// URL also results in a match.
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/hello",
+/// ........>   prefix: true,
+/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// @endcode
+///
+/// Now try
+///
+/// @LIT{http://localhost:8529/hello/this/is/ignored/but/available/in/path}
+///
+/// The complete path is available in the @LIT{path} attribute, while the
+/// matched prefix is available in the @LIT{prefix} attribute.
+///
+/// @code
+/// {
+///     "request": {
+///         "prefix": "/hello",
+///         "path": "/hello/this/is/ignored/but/available/in/path",
+///         ...
+///     },
+///     "options": { }
+/// }
+/// @endcode
+///
+/// @subsection UserManualActionsAdvancedMiddleware Writing Middleware
+//////////////////////////////////////////////////////////////////////
+///
+/// Assume, you want to log every request. In this case you can easily define
+/// an action for the whole url-space @LIT{/}. This action simply logs
+/// the requests, calls the next in line, and logs the response.
+///
+/// @code
+/// exports.logRequest = function (req, res, next, options) {
+///   console.log("received request: %s", JSON.stringify(req));
+///   next();
+///   console.log("produced response: %s", JSON.stringify(res));
+/// };
+/// @endcode
+///
+/// This functions is available as @LIT{org/arangodb/actions/logRequest}.
+/// You need to tell ArangoDB that it is should use a prefix match and
+/// that the shortest match should win in this case:
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/",
+/// ........>   topdown: true,
+/// ........>   prefix: true,
+/// ........>   callback: "org/arangodb/actions/logRequest" });
+/// @endcode
+///
+/// @subsection UserManualActionsAdvancedeRedirect Redirects
+////////////////////////////////////////////////////////////
+///
+/// Use the following for a permanent redirect:
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   path: "/",
+/// ........>   topdown: true,
+/// ........>   prefix: true,
+/// ........>   callback: { redirect: "http://somewhere.else.org/hallo" });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

@@ -54,7 +54,7 @@ static string JS_common_bootstrap_print =
   "////////////////////////////////////////////////////////////////////////////////\n"
   "/// @brief prints objects to standard output\n"
   "///\n"
-  "/// @FUN{print(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}\n"
+  "/// @FUN{internal.printShell(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}\n"
   "///\n"
   "/// Only available in shell mode.\n"
   "///\n"

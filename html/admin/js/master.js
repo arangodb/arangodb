@@ -868,7 +868,7 @@ var logTable = $('#logTableID').dataTable({
 
       for (row in data) {
         var row_data = data[row];
-        result[row_data[1]] = row_data[3];
+        result[row_data[1]] = JSON.parse(row_data[3]);
       }
 
       $.ajax({
