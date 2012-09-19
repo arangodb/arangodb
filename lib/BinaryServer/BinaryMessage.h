@@ -115,19 +115,15 @@ namespace triagens {
           }
 
           // validate signature
-          if ((data[0] & 0xff) != 0xaa) {
-            return 0;
+          const char* signature = getSignature();
+
+          for (int i = 0; i < 4; ++i) {
+            if (data[i] != signature[i]) {
+              return 0;
+            } 
           }
 
-          if ((data[1] & 0xff) != 0xdb) {
-            return 0;
-          }
-
-          // validate body length
-          size_t bodyLength = (size_t) data[7] + 
-                              (size_t) (data[6] << 8) + 
-                              (size_t) (data[5] << 16) +
-                              (size_t) (data[4] << 24);
+          size_t bodyLength = decodeLength(data + 4);
 
           if (bodyLength > getMaxLength()) {
             LOGGER_WARNING << "maximum binary message size is " << getMaxLength() << ", actual size is " << bodyLength;
@@ -151,6 +147,38 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the protocol signature
+////////////////////////////////////////////////////////////////////////////////
+
+        static const char* getSignature () {
+          return "\xaa\xdb\x00\x00";
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the encoded length as a size_t 
+////////////////////////////////////////////////////////////////////////////////
+
+        static size_t decodeLength (const char* data) {
+          size_t length = (size_t) (((size_t) data[3]) << 0) + 
+                          (size_t) (((size_t) data[2]) << 8) + 
+                          (size_t) (((size_t) data[1]) << 16) +
+                          (size_t) (((size_t) data[0]) << 24);
+
+          return length;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief encode the size_t length in a char[4]
+////////////////////////////////////////////////////////////////////////////////
+
+        static void encodeLength (const size_t length, char* out) {
+          out[0] = (char) ((length >> 24) & 0xff);
+          out[1] = (char) ((length >> 16) & 0xff);
+          out[2] = (char) ((length >> 8) & 0xff); 
+          out[3] = (char) ((length >> 0) & 0xff);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the required content-type string

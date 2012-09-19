@@ -34,6 +34,10 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "V8Client/SharedCounter.h"
+#include "SimpleHttpClient/SimpleClient.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleBinaryClient.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "BinaryServer/BinaryMessage.h"
 #include "ProtocolBuffers/arangodb.pb.h"
 
@@ -95,8 +99,13 @@ namespace triagens {
           if (_connection != 0 && _connection->isConnected()) {
             _connection->disconnect();
           }
+
           if (_connection != 0) {
             delete _connection;
+          }
+
+          if (_client != 0) {
+            delete _client;
           }
         }
 
@@ -127,25 +136,29 @@ namespace triagens {
             cerr << "out of memory" << endl;
             exit(EXIT_FAILURE);
           }
-  
-          _client = new SimpleHttpClient(_connection, 10.0, true);
-          _client->setUserNamePassword("/", _username, _password);
-  
-          map<string, string> headerFields;
-          SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
-  
-          if (! result || ! result->isComplete()) {
-            if (result) {
-              delete result;
-            }
-            delete _client;
 
-            cerr << "could not connect to server" << endl;
-            exit(EXIT_FAILURE);
+          bool isBinary = _endpoint->isBinary();
+
+          if (isBinary) {
+            _client = new SimpleBinaryClient(_connection, 10.0, true);
           }
+          else {
+            _client = new SimpleHttpClient(_connection, 10.0, true);
+            _client->setUserNamePassword("/", _username, _password);
+            map<string, string> headerFields;
+            SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+  
+            if (! result || ! result->isComplete()) {
+              if (result) {
+                delete result;
+              }
+              cerr << "could not connect to server" << endl;
+              exit(EXIT_FAILURE);
+            }
 
-          delete result;
-          
+            delete result;
+          }
+  
           {
             ConditionLocker guard(_startCondition);
             guard.wait();
@@ -158,7 +171,7 @@ namespace triagens {
               break;
             }
 
-            if (_batchSize == 1) {
+            if (_batchSize == 1 && ! isBinary) {
               executeRequest();
             } 
             else {
@@ -214,6 +227,11 @@ namespace triagens {
           size_t messageSize = messages.ByteSize();
           char* message = new char[messageSize];
 
+          if (message == 0) {
+            cerr << "out of memory" << endl;
+            exit(EXIT_FAILURE);
+          }
+
           if (! messages.SerializeToArray(message, messageSize)) {
             cerr << "out of memory" << endl;
             exit(EXIT_FAILURE);
@@ -221,6 +239,7 @@ namespace triagens {
 
           map<string, string> headerFields;
           headerFields["Content-Type"] = BinaryMessage::getContentType();
+
           SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/batch", message, (size_t) messageSize, headerFields);
           delete message;
 
@@ -325,7 +344,7 @@ namespace triagens {
 /// @brief underlying client
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::httpclient::SimpleHttpClient* _client;
+        triagens::httpclient::SimpleClient* _client;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection to the server

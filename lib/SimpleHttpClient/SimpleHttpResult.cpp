@@ -84,8 +84,8 @@ namespace triagens {
           return "Error while writing to server.";
         case (READ_ERROR):
           return "Error while reading from server.";
-        default:
-          return "Unknown error.";
+      default:
+        return "Unknown error.";
       }
     }
 
