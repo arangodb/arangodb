@@ -93,7 +93,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         T operator() () {
-          MutexLocker(&this->_mutex);
+          MUTEX_LOCKER(this->_mutex);
           return _value;
         }
 
@@ -102,7 +102,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         T next (const T value) {
-          MutexLocker(&this->_mutex);
+          MUTEX_LOCKER(this->_mutex);
 
           T oldValue = _value;
           if (oldValue + value > _maxValue) {

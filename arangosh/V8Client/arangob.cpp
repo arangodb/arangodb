@@ -79,13 +79,13 @@ static int Concurrency = 1;
 /// @brief number of operations to perform
 ////////////////////////////////////////////////////////////////////////////////
 
-static unsigned long Operations = 1000;
+static long Operations = 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of operations in one batch
 ////////////////////////////////////////////////////////////////////////////////
 
-static unsigned long BatchSize = 1;
+static long BatchSize = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -106,11 +106,11 @@ static unsigned long BatchSize = 1;
 
 static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
-
+  
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
-    ("batch-size", &BatchSize, "number of operations in one batch")
+   // ("batch-size", &BatchSize, "number of operations in one batch")
   ;
 
   BaseClient.setupGeneral(description);
@@ -191,7 +191,7 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  SharedCounter<unsigned long> operationsCounter(0, Operations);
+  SharedCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
 
   vector<Endpoint*> endpoints;
@@ -202,7 +202,7 @@ int main (int argc, char* argv[]) {
 
     BenchmarkThread* thread =  new BenchmarkThread(&InsertFunc,
                                                    &startCondition, 
-                                                   BatchSize,
+                                                   (unsigned long) BatchSize,
                                                    &operationsCounter,
                                                    endpoint,
                                                    BaseClient.username(), 
@@ -225,7 +225,7 @@ int main (int argc, char* argv[]) {
   while (1) {
     size_t numOperations = operationsCounter();
 
-    if (numOperations >= Operations) {
+    if (numOperations >= (size_t) Operations) {
       break;
     }
 
