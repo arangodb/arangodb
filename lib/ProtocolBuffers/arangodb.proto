@@ -47,6 +47,7 @@ enum PB_ArangoRequestType {
   PB_REQUEST_TYPE_HEAD = 2;
   PB_REQUEST_TYPE_POST = 3;
   PB_REQUEST_TYPE_PUT = 4;
+  PB_REQUEST_TYPE_PATCH = 5;
 }
 
 // -----------------------------------------------------------------------------

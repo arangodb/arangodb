@@ -52,7 +52,6 @@ using namespace triagens::arango;
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
   : RestVocbaseBaseHandler(request, vocbase),
-    _missingResponses(0),
     _outputMessages(new PB_ArangoMessage) {
 }
 
@@ -65,8 +64,6 @@ RestBatchHandler::~RestBatchHandler () {
     // delete protobuf message
     delete _outputMessages;
   }
-
-  destroyHandlers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,54 +101,33 @@ string const& RestBatchHandler::queue () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job* RestBatchHandler::createJob (AsyncJobServer* server) {
-  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
-
-  if (httpServer == 0) {
-    LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
-    return 0;
-  }
-
-  BatchJob<HttpServer>* batchJob = new BatchJob<HttpServer>(httpServer, this);
-
-  return batchJob;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-        
-vector<HttpHandler*> RestBatchHandler::subhandlers () {
-  return _handlers;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 Handler::status_e RestBatchHandler::execute() {
   // extract the request type
   HttpRequest::HttpRequestType type = _request->requestType();
-  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
   
-  if (type != HttpRequest::HTTP_REQUEST_POST || contentType != getContentType()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid request data sent");
+  if (type != HttpRequest::HTTP_REQUEST_POST && type != HttpRequest::HTTP_REQUEST_PUT) {
+    generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
-    return Handler::HANDLER_FAILED;
+    return Handler::HANDLER_DONE;
+  }
+
+  // extra content type
+  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
+    
+  if (contentType != getContentType()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type sent");
+
+    return Handler::HANDLER_DONE;
   }
 
   if (! _inputMessages.ParseFromArray(_request->body(), _request->bodySize())) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid protobuf input message");
+    LOGGER_DEBUG << "could not unserialize protobuf message";
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid request message data sent");
 
-    return Handler::HANDLER_FAILED;
+    return Handler::HANDLER_DONE; 
   }
 
 
-  // loop over the input messages once to set up the output structures without concurrency
   for (int i = 0; i < _inputMessages.messages_size(); ++i) {
     _outputMessages->add_messages();
   
@@ -171,55 +147,48 @@ Handler::status_e RestBatchHandler::execute() {
 
       return Handler::HANDLER_FAILED;
     }
-    
-    ++_missingResponses;
-    _handlers.push_back(handler);
-  }
 
-  // success
-  return Handler::HANDLER_DONE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a single handler response to the output array
-////////////////////////////////////////////////////////////////////////////////
-  
-void RestBatchHandler::addResponse (HttpHandler* handler) {
-  for (size_t i = 0; i < _handlers.size(); ++i) {
-    if (_handlers[i] == handler) {
-
-      // avoid concurrent modifications to the structure
-      MUTEX_LOCKER(_handlerLock);
-      PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
-
-      handler->getResponse()->write(batch);
-      if (--_missingResponses == 0) {
-        assembleResponse();
+    Handler::status_e status = Handler::HANDLER_FAILED;
+    do {
+      try {
+        status = handler->execute();
       }
-      return;
+      catch (triagens::basics::TriagensError const& ex) {
+        handler->handleError(ex);
+      }
+      catch (std::exception const& ex) {
+        triagens::basics::InternalError err(ex, __FILE__, __LINE__);
+
+        handler->handleError(err);
+      }
+      catch (...) {
+        triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+        handler->handleError(err);
+      }
+    }
+    while (status == Handler::HANDLER_REQUEUE);
+  
+   
+    if (status == Handler::HANDLER_DONE) {
+      PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
+      handler->getResponse()->write(batch);
+    }
+
+
+    delete handler;
+
+    if (status == Handler::HANDLER_FAILED) {
+      return Handler::HANDLER_DONE; 
     }
   }
   
-  // handler not found
-  LOGGER_WARNING << "handler not found. this should not happen."; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an overall protobuf response from the array of responses
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBatchHandler::assembleResponse () {
-  assert(_missingResponses == 0);
-  
   size_t messageSize = _outputMessages->ByteSize();
-
+  
   // allocate output buffer
   char* output = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * messageSize, false);
   if (output == NULL) {
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory");
-    return;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    return Handler::HANDLER_DONE; //FAILED;
   }
 
   _response = new HttpResponse(HttpResponse::OK);
@@ -230,26 +199,15 @@ void RestBatchHandler::assembleResponse () {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
     delete _response;
 
-    generateError(HttpResponse::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory");
-    return;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    return Handler::HANDLER_DONE; //FAILED;
   }
-/*
-  for (char* x = output; x < output + messageSize; ++x) {
-    if (*x >= ' ' && *x <= 'z') {
-      printf("%c", *x);
-    }
-    else if (*x == '\n' || *x == '\0') {
-      printf("\n");
-    } 
-    else {
-      printf(".");
-    }
-  }
-  */ 
+  
   _response->body().appendText(output, messageSize);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
+
+  // success
+  return Handler::HANDLER_DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,25 +215,11 @@ void RestBatchHandler::assembleResponse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& RestBatchHandler::getContentType () {
-  static string const contentType = "application/x-protobuf"; 
+  static string const contentType = "application/x-arangodb-batch"; 
   
   return contentType;
 }
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy handlers in case setup went wrong
-////////////////////////////////////////////////////////////////////////////////
-  
-void RestBatchHandler::destroyHandlers () {
-  for (size_t i = 0; i < _handlers.size(); ++i) {
-    HttpHandler* handler = _handlers[i];
-
-    delete handler;
-  }
-
-  _handlers.clear();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
