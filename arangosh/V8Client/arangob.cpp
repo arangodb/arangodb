@@ -136,15 +136,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-void GenFunc (string& url, string& payload, SimpleHttpClient::http_method& method) {
-  *url = "/_api/document?collection=" + CollectionName;
-  *payload = "{\"der hans\": 1}";
-
-  *method = SimpleHttpClient::POST;
-}
-*/
-
 BenchmarkRequest VersionFunc () {
   map<string, string> params;
   BenchmarkRequest r("/_api/version", params, "", SimpleHttpClient::GET);
@@ -191,6 +182,7 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
+
   SharedCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
 
@@ -200,13 +192,13 @@ int main (int argc, char* argv[]) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
     endpoints.push_back(endpoint);
 
-    BenchmarkThread* thread =  new BenchmarkThread(&InsertFunc,
-                                                   &startCondition, 
-                                                   (unsigned long) BatchSize,
-                                                   &operationsCounter,
-                                                   endpoint,
-                                                   BaseClient.username(), 
-                                                   BaseClient.password());
+    BenchmarkThread* thread = new BenchmarkThread(&InsertFunc,
+        &startCondition, 
+        (unsigned long) BatchSize,
+        &operationsCounter,
+        endpoint,
+        BaseClient.username(), 
+        BaseClient.password());
 
     threads.push_back(thread);
     thread->start();
@@ -214,7 +206,7 @@ int main (int argc, char* argv[]) {
 
   usleep(500000);
 
-  
+
   Timing timer(Timing::TI_WALLCLOCK);
 
   {
@@ -238,6 +230,10 @@ int main (int argc, char* argv[]) {
   cout << "Total duration: " << fixed << time << " s" << endl;
   cout << "Duration per operation: " << fixed << (time / Operations) << " s" << endl;
   cout << "Duration per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl << endl;
+
+  if (operationsCounter.failures() > 0) {
+    cout << "WARNING: " << operationsCounter.failures() << " request(s) failed!!" << endl << endl;
+  }
 
   for (int i = 0; i < Concurrency; ++i) {
     threads[i]->join();
