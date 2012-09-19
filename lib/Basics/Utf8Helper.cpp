@@ -184,6 +184,20 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
 #ifdef TRI_HAVE_ICU
   
   UErrorCode status = U_ZERO_ERROR;   
+    
+  if (_coll) {
+    ULocDataLocaleType type = ULOC_ACTUAL_LOCALE;
+    const Locale& locale = _coll->getLocale(type, status);
+    
+    if(U_FAILURE(status)) {
+      LOGGER_ERROR << "error in Collator::getLocale(...): " << u_errorName(status);
+      return;
+    }
+    if (lang == locale.getName()) {
+      return;
+    }
+  }
+  
   Collator* coll;
   if (lang == "") {
     coll = Collator::createInstance(status); 
@@ -216,6 +230,22 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
 #endif
 }
 
+string Utf8Helper::getCollatorLanguage () {
+#ifdef TRI_HAVE_ICU
+  if (_coll) {
+    UErrorCode status = U_ZERO_ERROR;
+    ULocDataLocaleType type = ULOC_VALID_LOCALE;
+    const Locale& locale = _coll->getLocale(type, status);
+    
+    if(U_FAILURE(status)) {
+      LOGGER_ERROR << "error in Collator::getLocale(...): " << u_errorName(status);
+      return "";
+    }
+    return locale.getLanguage();
+  }
+#endif
+  return "";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
