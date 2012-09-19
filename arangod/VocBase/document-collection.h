@@ -427,14 +427,16 @@ struct TRI_index_s* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_coll
                                                                const TRI_vector_pointer_t* attributes);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a skiplist index exists
+/// @brief ensures that a bitarray index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               const TRI_vector_pointer_t* attributes,
-                                                               const TRI_vector_pointer_t* values,
-                                                               bool supportUndef, 
-                                                               bool* created);
+struct TRI_index_s* TRI_EnsureBitarrayIndexSimCollection (TRI_document_collection_t*,
+                                                          const TRI_vector_pointer_t* attributes,
+                                                          const TRI_vector_pointer_t* values,
+                                                          bool supportUndef, 
+                                                          bool* created,
+                                                          int* errorNum,
+                                                          char** errorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
