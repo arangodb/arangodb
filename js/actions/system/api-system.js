@@ -56,7 +56,8 @@ function Routing (req, res) {
     var callback;
 
     if (callbacks.length <= current) {
-      actions.resultNotFound(req, res, "unknown path '" + req.suffix.join("/") + "'");
+      actions.resultNotImplemented(req, res, 
+                                   "unknown path '" + req.suffix.join("/") + "'");
       return;
     }
 
