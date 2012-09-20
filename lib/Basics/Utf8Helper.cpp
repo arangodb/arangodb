@@ -29,7 +29,7 @@
 #include "Utf8Helper.h"
 
 #ifdef TRI_HAVE_ICU
-#include "BasicsC/utf8-helper.h"
+#include "unicode/normalizer2.h"
 #else
 #include "string.h"
 #endif
@@ -160,7 +160,7 @@ v8::Handle<v8::Value> Utf8Helper::normalize (v8::Handle<v8::Value> obj) {
   if (str_len > 0) {
 #ifdef TRI_HAVE_ICU  
     UErrorCode erroCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer = Normalizer2::getNFCInstance(erroCode);
+    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
     
     if (U_FAILURE(erroCode)) {
       LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
