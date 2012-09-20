@@ -11,8 +11,8 @@ dnl --- do we need "-ffunction-sections -fdata-sections" in ICU_CPPFLAGS?
 dnl --- ICU_LIBS was: " -lpthread -ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a ${icu_lib_dir}/libicuio.a ${icu_lib_dir}/libicule.a ${icu_lib_dir}/libiculx.a -lpthread -ldl -lm "
 
 ICU_CPPFLAGS="-D_REENTRANT -I${icu_build_dir}/include"
-ICU_LDFLAGS=" -ldl -lm "
-ICU_LIBS=" ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a "
+ICU_LDFLAGS=""
+ICU_LIBS=" -ldl -lm  ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm  "
 
 TRI_ICU_VERSION="49.1.2"
 
