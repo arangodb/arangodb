@@ -30,6 +30,8 @@
 
 #include "GeneralServer/GeneralCommTask.h"
 
+#include "BasicsC/hashes.h"
+
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 
@@ -90,8 +92,7 @@ namespace triagens {
                         ConnectionInfo const& info,
                         double keepAliveTimeout) 
         : Task("BinaryCommTask"),
-          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout),
-          _binaryMessage(0) {
+          GeneralCommTask<S, HttpHandlerFactory>(server, fd, info, keepAliveTimeout) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -105,18 +106,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~BinaryCommTask () {
-          if (_binaryMessage != 0) {
-            delete _binaryMessage;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        BinaryMessage* _binaryMessage;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           GeneralCommTask methods
@@ -137,90 +131,123 @@ namespace triagens {
           if (this->_requestPending || this->_readBuffer->c_str() == 0) {
             return true;
           }
+          
+          bool handleRequest = false;
 
-          assert(this->_readPosition == 0);
-
+          if (! this->_readRequestBody) {
 #ifdef TRI_ENABLE_FIGURES
 
-          if (this->_readBuffer->c_str() != this->_readBuffer->end()) {
-            RequestStatisticsAgent::acquire();
-            RequestStatisticsAgentSetReadStart(this);
-          }
+            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
+              RequestStatisticsAgent::acquire();
+              RequestStatisticsAgentSetReadStart(this);
+            }
 
 #endif
-        
-          assert(_binaryMessage == 0);
+            
+            const char * ptr = this->_readBuffer->c_str() + this->_readPosition;
+            const char * end = this->_readBuffer->end();
 
-          _binaryMessage = BinaryMessage::createFromRequest(this->_readBuffer->c_str(), this->_readBuffer->end());
+            if (end - ptr >= BinaryMessage::getHeaderLength()) {
+              this->_readPosition = BinaryMessage::getHeaderLength();
 
-          if (_binaryMessage == 0) {
-            HttpResponse response(HttpResponse::BAD);
-            this->handleResponse(&response);
-            this->_requestPending = true;
-            return false;
-          }
+              LOGGER_TRACE << "BINARY READ FOR " << static_cast<Task*>(this);
 
-          this->_readPosition = BinaryMessage::getHeaderLength();
-          this->_bodyPosition = this->_readPosition;
-          this->_bodyLength = _binaryMessage->bodyLength();
-          
+              // create a fake HTTP request
+              triagens::basics::StringBuffer fakeRequest(TRI_UNKNOWN_MEM_ZONE);
+              fakeRequest.appendText("POST /_api/batch HTTP/1.1\r\nContent-Type: ");
+              fakeRequest.appendText(BinaryMessage::getContentType());
+              fakeRequest.appendText("\r\nContent-Length: ");
+              fakeRequest.appendInteger(this->_bodyLength);
+              fakeRequest.appendText("\r\nConnection: Close\r\n\r\n");
 
-          LOGGER_TRACE << "BINARY READ FOR " << static_cast<Task*>(this) << ": BODY SIZE: " << this->_bodyLength;
-
-          // create a fake HTTP request
-          triagens::basics::StringBuffer fakeRequest(TRI_UNKNOWN_MEM_ZONE);
-          fakeRequest.appendText("POST /_api/batch HTTP/1.1\r\nContent-Type: ");
-          fakeRequest.appendText(BinaryMessage::getContentType());
-          fakeRequest.appendText("\r\nContent-Length: ");
-          fakeRequest.appendInteger(this->_bodyLength);
-          fakeRequest.appendText("\r\nConnection: Close\r\n\r\n");
-
-          this->_request = new HttpRequestPlain(fakeRequest.begin(), fakeRequest.length());
-
-          // pass the body pointer to the request, not copying it
-          this->_request->setBodyReference(_binaryMessage->body(), this->_bodyLength);
-
-          // update the connection information, i. e. client and server addresses and ports
-          this->_request->setConnectionInfo(this->_connectionInfo);
-
-          LOGGER_TRACE << "server port = " << this->_connectionInfo.serverPort << ", client port = " << this->_connectionInfo.clientPort;
+              this->_request = new HttpRequestPlain(fakeRequest.begin(), fakeRequest.length());
               
-          // we have to delete request in here or pass it to a handler, which will delete it
-          RequestStatisticsAgentSetReadEnd(this);
-          RequestStatisticsAgentAddReceivedBytes(this, this->_bodyLength);
+              if (this->_request == 0) {
+                LOGGER_ERROR << "cannot generate request";
+                return false;
+              }
 
-          this->_requestPending = true;
-          this->_readPosition = 0;
-          this->_bodyPosition = 0;
-          this->_bodyLength = 0;
+              // update the connection information, i. e. client and server addresses and ports
+              this->_request->setConnectionInfo(this->_connectionInfo);
 
-          HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
-
-          if (handler == 0) {
-            LOGGER_TRACE << "no handler is known, giving up";
-            delete this->_request;
-            this->_request = 0;
-
-            HttpResponse response(HttpResponse::NOT_FOUND);
-            this->handleResponse(&response);
+              LOGGER_TRACE << "server port = " << this->_connectionInfo.serverPort << ", client port = " << this->_connectionInfo.clientPort;
+              
+              // set body start to current position
+              this->_bodyPosition = this->_readPosition;
+                  
+              this->_bodyLength = (size_t) BinaryMessage::decodeLength((const uint8_t*) (this->_readBuffer->c_str() + 4));
+              this->_readRequestBody = true;
+            }
+            else {
+              if (this->_readBuffer->c_str() < end) {
+                this->_readPosition = end - this->_readBuffer->c_str();
+              } 
+            }
           }
-          else {
-            this->RequestStatisticsAgent::transfer(handler);
 
-            this->_request = 0;
-            bool ok = this->_server->handleRequest(this, handler);
+          // readRequestBody might have changed, so cannot use else
+          if (this->_readRequestBody) {
+            if (this->_readBuffer->length() - this->_bodyPosition < this->_bodyLength) {
+              return true;
+            }
 
-            delete this->_binaryMessage;
-            this->_binaryMessage = 0;
+            // read "bodyLength" from read buffer and add this body to "httpRequest"
+            this->_request->setBody(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength);
+      
+//            std::cout << "body length: " << this->_bodyLength << ", hash: " << TRI_FnvHashPointer(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength) << "\n";
 
-            if (! ok) {
-              HttpResponse response(HttpResponse::SERVER_ERROR);
+            // remove body from read buffer and reset read position
+            this->_readRequestBody = false;
+            handleRequest = true;
+          }
+          
+          // we have to delete request in here or pass it to a handler, which will delete it
+          if (handleRequest) {
+            RequestStatisticsAgentSetReadEnd(this);
+            RequestStatisticsAgentAddReceivedBytes(this, this->_bodyPosition + this->_bodyLength);
+
+            this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
+
+            this->_requestPending = true;
+
+            if (this->_keepAliveTimeout <= 0.0) {
+              this->_closeRequested = true;
+            }
+            else {
+              this->_closeRequested = false;
+            }
+
+            this->_readPosition = 0;
+            this->_bodyPosition = 0;
+            this->_bodyLength = 0;
+
+            HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
+            if (handler == 0) {
+              LOGGER_TRACE << "no handler is known, giving up";
+              delete this->_request;
+              this->_request = 0;
+
+              HttpResponse response(HttpResponse::NOT_FOUND);
               this->handleResponse(&response);
             }
+            else {
+              this->RequestStatisticsAgent::transfer(handler);
+
+              this->_request = 0;
+              bool ok = this->_server->handleRequest(this, handler);
+
+              if (! ok) {
+                HttpResponse response(HttpResponse::SERVER_ERROR);
+                this->handleResponse(&response);
+              }
+            }
+
+            return processRead();
           }
 
           return true;
         }
+        
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}

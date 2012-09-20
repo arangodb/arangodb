@@ -31,6 +31,8 @@
 #include <string>
 #include <errno.h>
 
+#include "BasicsC/hashes.h"
+
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
@@ -205,6 +207,8 @@ namespace triagens {
       }
 
       _writeBuffer.appendText(body, bodyLength);
+
+      //std::cout << "buffer length: " << _writeBuffer.length() << ", hash: " << TRI_FnvHashPointer(_writeBuffer.c_str(), _writeBuffer.length()) << "\n";
       //////////////////////////////////////////////////////////////////////////
 
       if (_state != FINISHED) {
