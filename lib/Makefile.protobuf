@@ -20,7 +20,7 @@ CLEANUP += $(PROTOBUF_FILES)
 ### @brief protocol buffers
 ################################################################################
 
-%.pb.cpp: %.proto
+%.pb.cpp: %.proto @PROTOBUF_PROTOC@
 	@PROTOBUF_PROTOC@ --cpp_out . $<
 	mv $(addsuffix .cc,$(basename $@)) $@
 
