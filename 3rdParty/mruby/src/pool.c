@@ -8,6 +8,18 @@
 #include <stddef.h>
 #include <string.h>
 
+/* configuration section */
+/* allocated memory address should be multiple of POOL_ALIGNMENT */
+/* or undef it if alignment does not matter */
+#ifndef POOL_ALIGNMENT
+#define POOL_ALIGNMENT 4
+#endif
+/* page size of memory pool */
+#ifndef POOL_PAGE_SIZE
+#define POOL_PAGE_SIZE 16000
+#endif
+/* end of configuration section */
+
 struct mrb_pool_page {
   struct mrb_pool_page *next;
   size_t offset;
@@ -23,16 +35,13 @@ struct mrb_pool {
 
 #undef TEST_POOL
 #ifdef TEST_POOL
-#include <stdio.h>
 
 #define mrb_malloc(m,s) malloc(s)
 #define mrb_free(m,p) free(p)
 #endif
 
-#define POOL_PAGE_SIZE 16000
-
-#ifdef ALLOC_ALIGN
-#  define ALIGN_PADDING(x) ((x % ALLOC_ALIGN) ? ALLOC_ALIGN - (x % ALLOC_ALIGN) : 0)
+#ifdef POOL_ALIGNMENT
+#  define ALIGN_PADDING(x) ((-x) & (POOL_ALIGNMENT - 1))
 #else
 #  define ALIGN_PADDING(x) (0)
 #endif
@@ -40,7 +49,7 @@ struct mrb_pool {
 mrb_pool*
 mrb_pool_open(mrb_state *mrb)
 {
-  mrb_pool *pool = mrb_malloc(mrb, sizeof(mrb_pool));
+  mrb_pool *pool = (mrb_pool *)mrb_malloc(mrb, sizeof(mrb_pool));
 
   if (pool) {
     pool->mrb = mrb;
@@ -72,7 +81,7 @@ page_alloc(mrb_pool *pool, size_t len)
 
   if (len < POOL_PAGE_SIZE)
     len = POOL_PAGE_SIZE;
-  page = mrb_malloc(pool->mrb, sizeof(struct mrb_pool_page)+len-1);
+  page = (struct mrb_pool_page *)mrb_malloc(pool->mrb, sizeof(struct mrb_pool_page)+len-1);
   if (page) {
     page->offset = 0;
     page->len = len;
@@ -114,7 +123,7 @@ mrb_pool_can_realloc(mrb_pool *pool, void *p, size_t len)
 {
   struct mrb_pool_page *page;
 
-  if (!pool) return 0;
+  if (!pool) return FALSE;
   len += ALIGN_PADDING(len);
   page = pool->pages;
   while (page) {
@@ -122,12 +131,12 @@ mrb_pool_can_realloc(mrb_pool *pool, void *p, size_t len)
       size_t beg;
 
       beg = (char*)p - page->page;
-      if (beg + len > page->len) return 0;
-      return 1;
+      if (beg + len > page->len) return FALSE;
+      return TRUE;
     }
     page = page->next;
   }
-  return 0;
+  return FALSE;
 }
 
 void*

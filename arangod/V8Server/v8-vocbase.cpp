@@ -119,7 +119,7 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
+ 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    HELPER CLASSES
 // -----------------------------------------------------------------------------
@@ -2186,7 +2186,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
 
   return scope.Close(WrapGeneralCursor(cursor));
 }
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a (persistent) cursor by its id
 ////////////////////////////////////////////////////////////////////////////////
@@ -2375,8 +2375,8 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   v8::Handle<v8::Value> result;
   result = TRI_ObjectJson(explain);
-  context.free();
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, explain);
+  context.free();
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
@@ -2418,7 +2418,6 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   }
   string queryString = TRI_ObjectToString(queryArg);
 
- 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
@@ -2429,7 +2428,6 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   // parse & validate
   if (!TRI_ValidateQueryContextAql(context.ptr())) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
-
     return scope.Close(v8::ThrowException(errorObject));
   }
 
@@ -3636,7 +3634,7 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv,
 
   return scope.Close(result);
 }
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 ///

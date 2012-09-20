@@ -10,7 +10,8 @@
  SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT,
  SYS_PROCESS_STAT, SYS_READ, SYS_SPRINTF, SYS_TIME,
  SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUIET, MODULES_PATH,
- COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT */
+ COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT,
+ SYS_SHA256, SYS_WAIT, SYS_GETLINE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -93,13 +94,7 @@ Module.prototype.require = function (path) {
           + raw.content 
           + "\n});";
 
-  try {
-    f = SYS_EXECUTE(content, undefined, path);
-  }
-  catch (err) {
-    require("console").error("in file %s: %o", path, err.stack);
-    throw err;
-  }
+  f = SYS_EXECUTE(content, undefined, path);
 
   if (f === undefined) {
     throw "cannot create context function";
@@ -185,6 +180,20 @@ Module.prototype.unload = function (path) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads module
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.unloadAll = function () {
+  var path;
+
+  for (path in ModuleCache) {
+    if (ModuleCache.hasOwnProperty(path)) {
+      this.unload(path);
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,7 +240,7 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fs module
+/// @brief file-system module
 ////////////////////////////////////////////////////////////////////////////////
 
 ModuleCache["/fs"] = new Module("/fs");
@@ -362,18 +371,19 @@ ModuleCache["/internal"] = new Module("/internal");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a file
+/// @brief reads a file from the module path or the database
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.readFile = function (path) {
     var i;
+    var mc;
+    var n;
 
     // try to load the file
     var paths = internal.MODULES_PATH;
 
     for (i = 0;  i < paths.length;  ++i) {
       var p = paths[i];
-      var n;
 
       if (p === "") {
         n = "." + path + ".js";
@@ -383,7 +393,18 @@ ModuleCache["/internal"] = new Module("/internal");
       }
 
       if (fs.exists(n)) {
-        return { path : n, content : SYS_READ(n) };
+        return { path : n, content : internal.read(n) };
+      }
+    }
+
+    // try to load the module from the database
+    mc = internal.db._collection("_modules");
+
+    if (mc !== null) {
+      n = mc.firstExample({ path: path });
+
+      if (n !== null) {
+        return { path : "_collection/" + path, content : n.module };
       }
     }
 
@@ -394,7 +415,7 @@ ModuleCache["/internal"] = new Module("/internal");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a file
+/// @brief loads a file from the file-system
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.loadFile = function (path) {
@@ -423,6 +444,35 @@ ModuleCache["/internal"] = new Module("/internal");
         + path 
         + "' using the module path(s) '" 
         + internal.MODULES_PATH + "'";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a module
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.defineModule = function (path, file) {
+    var content;
+    var m;
+    var mc;
+
+    content = internal.read(file);
+
+    mc = internal.db._collection("_modules");
+
+    if (mc === null) {
+      throw "you need to upgrade your database using 'arango-upgrade'";
+    }
+
+    path = module.normalise(path);
+    m = mc.firstExample({ path: path });
+
+    if (m === null) {
+      mc.save({ path: path, module: content });
+    }
+    else {
+      m.module = content;
+      mc.replace(m, m);
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,6 +624,10 @@ ModuleCache["/console"] = new Module("/console");
 ////////////////////////////////////////////////////////////////////////////////
 
 }());
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

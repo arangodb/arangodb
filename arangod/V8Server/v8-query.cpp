@@ -1119,6 +1119,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // ...........................................................................
 
   TRI_document_collection_t* sim = 0;
+
   if (lock) {  
     sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
   }
@@ -1243,6 +1244,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
 
       TRI_ReleaseCollection(collection);
     }
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "setting up bitarray index operator failed")));
   }
 

@@ -5,6 +5,10 @@ assert('Integer', '15.2.8') do
   Integer.class == Class
 end
 
+assert('Integer superclass', '15.2.8.2') do
+  Integer.superclass == Numeric
+end
+
 assert('Integer#+', '15.2.8.3.1') do
   a = 1+1
   b = 1+1.0
@@ -167,4 +171,20 @@ assert('Integer#upto', '15.2.8.3.27') do
     a += i
   end
   a == 6
+end
+
+# Not ISO specified
+
+assert('Integer#step') do
+  a = []
+  b = []
+  1.step(3) do |i|
+    a << i
+  end
+  1.step(6, 2) do |i|
+    b << i
+  end
+
+  a == [1, 2, 3] and
+    b == [1, 3, 5]
 end

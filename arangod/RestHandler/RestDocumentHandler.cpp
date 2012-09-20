@@ -268,6 +268,7 @@ bool RestDocumentHandler::createDocument () {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), create);
 
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -412,6 +413,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
   
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -503,6 +505,7 @@ bool RestDocumentHandler::readAllDocuments () {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
   
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -747,6 +750,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
 
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -930,6 +934,7 @@ bool RestDocumentHandler::deleteDocument () {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
 
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;

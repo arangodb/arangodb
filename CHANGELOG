@@ -73,7 +73,20 @@ not released yet
 v1.0.1 (2012-XX-XX)
 -------------------
 
+* updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
+
+* fix for issue #190: install doesn't create log directory
+
+* fix for issue #194: potential race condition between creating and dropping collections
+
+* fix for issue #193: REST API HEAD request returns a message body on 404
+
+* fix for issue #188: intermittent issues with 1.0.0 
+
 * fix for issue #163: server cannot create collection because of abandoned files
+  
+* fix for issue #150: call V8 garbage collection on server periodically 
+
 
 v1.0.0 (2012-08-17)
 -------------------
