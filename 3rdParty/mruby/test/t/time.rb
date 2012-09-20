@@ -187,5 +187,15 @@ if Object.const_defined?(:Time)
   assert('Time#zone', '15.2.19.7.33') do
     Time.at(1300000000.0).utc.zone == 'UTC'
   end
+
+  # Not ISO specified
+
+  assert('Time#to_s') do
+    Time.at(1300000000.0).utc.to_s == "Sun Mar 13 07:06:40 UTC 2011"
+  end
+
+  assert('Time#inspect') do
+    Time.at(1300000000.0).utc.inspect == "Sun Mar 13 07:06:40 UTC 2011"
+  end
 end
 

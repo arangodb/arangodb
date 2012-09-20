@@ -13,6 +13,7 @@
 #include "node.h"
 #include "regex.h"
 #include "encoding.h"
+#include "st.h"
 
 #define BEG(no) regs->beg[no]
 #define END(no) regs->end[no]
@@ -30,20 +31,15 @@ struct rmatch {
     struct rmatch_offset *char_offset;
 };
 
-//struct RMatch {
-//  MRUBY_OBJECT_HEADER;
-//  mrb_value str;
-//  struct re_registers *regs;
-//};
 struct RMatch {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
   struct RString *str;
   struct rmatch *rmatch;
   struct RRegexp *regexp;
 };
 
 struct RRegexp {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
   struct re_pattern_buffer *ptr;
   struct RString *src;
   unsigned long usecnt;

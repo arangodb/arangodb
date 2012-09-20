@@ -51,14 +51,6 @@ end
 class KeyError < IndexError
 end
 
-# ISO 15.2.37
-class ScriptError < Exception
-end
-
-# ISO 15.2.38
-class SyntaxError < ScriptError
-end
-
 class NotImplementedError < ScriptError
 end
 

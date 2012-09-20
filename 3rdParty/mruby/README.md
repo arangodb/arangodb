@@ -53,6 +53,11 @@ To subscribe to the mruby mailing list....[T.B.D.]
 
 See the INSTALL file.
 
+## Running Tests
+
+To run the tests, execute the following from the project's root directory.
+
+    $ make test
 
 ## License
 
