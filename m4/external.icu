@@ -36,8 +36,8 @@ if test "x$tr_ICU" = xyes;  then
 
   if $ICU_CONFIG --version > /dev/null 2>&1; then
     ICU_CPPFLAGS="$($ICU_CONFIG --cppflags)"
-    ICU_LDFLAGS="$($ICU_CONFIG --ldflags)"
-    ICU_LIBS=""
+    ICU_LDFLAGS=""
+    ICU_LIBS="$($ICU_CONFIG --ldflags)"
     TRI_ICU_VERSION="$($ICU_CONFIG --version)"
     AC_MSG_RESULT([yes])
   else
