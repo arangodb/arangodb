@@ -120,7 +120,13 @@ namespace triagens {
 /// @brief encode the size_t length in a char[4]
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void encodeLength (const uint32_t length, uint8_t* out) {
+        static void writeHeader (const uint32_t length, uint8_t* out) {
+          static const char* signature = getSignature();
+
+          for (size_t i = 0; i < 4; ++i) {
+            *(out++) = (uint8_t) signature[i];
+          }
+
           *(out++) = ((uint32_t) length >> 24);
           *(out++) = ((uint32_t) length >> 16) & 0xff;
           *(out++) = ((uint32_t) length >> 8) & 0xff;

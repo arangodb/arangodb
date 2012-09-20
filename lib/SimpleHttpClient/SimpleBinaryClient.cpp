@@ -102,15 +102,39 @@ namespace triagens {
             break;
           }
 
-          case (IN_READ_HEADER): {
+          case (IN_READ_HEADER): 
+          case (IN_READ_BODY): {
             if (_connection->handleRead(remainingTime, _readBuffer)) {
               switch (_state) {
-                case (IN_READ_HEADER):
-                 // _result->setData(_readBuffer.c_str(), _readBuffer.length());
-                 //  _result->getBody().write(_readBuffer.c_str(), _result->getContentLength());
-                  _result->setResultType(SimpleHttpResult::COMPLETE);
-                  _state = FINISHED;
+                case (IN_READ_HEADER): {
+                  const size_t headerLength = BinaryMessage::getHeaderLength();
+                  if (_readBuffer.length() >= headerLength) {
+                    const size_t foundLength = BinaryMessage::decodeLength((uint8_t*) (_readBuffer.c_str() + 4));
+                    _result->setContentLength(foundLength);
+
+                    if (foundLength + headerLength == _readBuffer.length()) {
+                      _result->getBody().write(_readBuffer.c_str() + headerLength, foundLength);
+                      _readBuffer.erase_front(_readBuffer.length());
+                      _result->setResultType(SimpleHttpResult::COMPLETE);
+                      _state = FINISHED;
+                    }
+                    else {
+                      _readBuffer.erase_front(headerLength);
+                      _state = IN_READ_BODY;
+                      readBody();
+                    }
+                  }
+                  else {
+                    setErrorMessage("return message truncated", errno);
+                    close();
+                  }
                   break;
+                }
+
+                case (IN_READ_BODY):
+                  readBody();
+                  break;
+
                 default:
                   break;
               }
@@ -150,6 +174,17 @@ namespace triagens {
       if (_result) {
         _result->clear();
       }
+    }
+    
+    bool SimpleBinaryClient::readBody () {
+      if (_readBuffer.length() >= _result->getContentLength()) {
+        _result->getBody().write(_readBuffer.c_str(), _readBuffer.length());
+        _readBuffer.erase_front(_readBuffer.length());
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+      }
+
+      return true;
     }
 
     SimpleHttpResult* SimpleBinaryClient::getResult () {
@@ -193,18 +228,11 @@ namespace triagens {
       ///////////////////// fill the write buffer //////////////////////////////      
       _writeBuffer.clear();
 
-      // write signature
-      const char* signature = BinaryMessage::getSignature();
-      for (int i = 0; i < 4; ++i) {
-        _writeBuffer.appendChar(signature[i]);
-      }
+      // write some dummy output (will be overwritten later)
+      _writeBuffer.appendText("00000000");
 
-      // write length
-      uint8_t length[4];
-      BinaryMessage::encodeLength(bodyLength, &length[0]);
-      for (int i = 0; i < 4; ++i) {
-        _writeBuffer.appendChar((char) length[i]);
-      }
+      uint8_t* outPtr = (uint8_t*) _writeBuffer.c_str();
+      BinaryMessage::writeHeader(bodyLength, outPtr);
 
       _writeBuffer.appendText(body, bodyLength);
 

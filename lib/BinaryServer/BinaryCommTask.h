@@ -256,12 +256,24 @@ namespace triagens {
         void addResponse (HttpResponse* response) {
           triagens::basics::StringBuffer * buffer;
 
-          response->setHeader("connection", strlen("connection"), "Close");
-
+          if (this->_closeRequested) {
+            response->setHeader("connection", strlen("connection"), "Close");
+          }
+          else {
+            // keep-alive is the default
+            response->setHeader("connection", strlen("connection"), "Keep-Alive");
+          }
+    
           // save header
           buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
-          response->writeHeader(buffer);
+          buffer->appendText("\0\0\0\0\0\0\0\0", 8);
+          uint8_t* outPointer = (uint8_t*) buffer->c_str();
+
+          BinaryMessage::writeHeader((uint32_t) response->body().length(), outPointer);
+          
           buffer->appendText(response->body());
+
+          // LOGGER_TRACE << "binary body length: " << response->body().length() << ", hash: " << TRI_FnvHashPointer(response->body().c_str(), response->body().length());
 
           this->_writeBuffers.push_back(buffer);
 
@@ -270,8 +282,6 @@ namespace triagens {
           this->_writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
 #endif
-
-          LOGGER_TRACE << "HTTP WRITE FOR " << static_cast<Task*>(this) << ":\n" << buffer->c_str();
 
           // clear body
           response->body().clear();
