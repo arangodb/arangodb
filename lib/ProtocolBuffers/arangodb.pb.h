@@ -33,6 +33,8 @@ void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
 class PB_ArangoKeyValue;
 class PB_ArangoMessage;
 class PB_ArangoBatchMessage;
+class PB_ArangoJsonValue;
+class PB_ArangoJsonContent;
 class PB_ArangoBlobRequest;
 class PB_ArangoBlobResponse;
 class PB_ArangoErrorResponse;
@@ -99,6 +101,29 @@ inline bool PB_ArangoRequestType_Parse(
     const ::std::string& name, PB_ArangoRequestType* value) {
   return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoRequestType>(
     PB_ArangoRequestType_descriptor(), name, value);
+}
+enum PB_ArangoJsonType {
+  PB_REQUEST_TYPE_NULL = 0,
+  PB_REQUEST_TYPE_BOOLEAN = 1,
+  PB_REQUEST_TYPE_NUMBER = 2,
+  PB_REQUEST_TYPE_STRING = 3,
+  PB_REQUEST_TYPE_ARRAY = 4,
+  PB_REQUEST_TYPE_LIST = 5
+};
+bool PB_ArangoJsonType_IsValid(int value);
+const PB_ArangoJsonType PB_ArangoJsonType_MIN = PB_REQUEST_TYPE_NULL;
+const PB_ArangoJsonType PB_ArangoJsonType_MAX = PB_REQUEST_TYPE_LIST;
+const int PB_ArangoJsonType_ARRAYSIZE = PB_ArangoJsonType_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* PB_ArangoJsonType_descriptor();
+inline const ::std::string& PB_ArangoJsonType_Name(PB_ArangoJsonType value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    PB_ArangoJsonType_descriptor(), value);
+}
+inline bool PB_ArangoJsonType_Parse(
+    const ::std::string& name, PB_ArangoJsonType* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<PB_ArangoJsonType>(
+    PB_ArangoJsonType_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -402,6 +427,218 @@ class PB_ArangoBatchMessage : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class PB_ArangoJsonValue : public ::google::protobuf::Message {
+ public:
+  PB_ArangoJsonValue();
+  virtual ~PB_ArangoJsonValue();
+  
+  PB_ArangoJsonValue(const PB_ArangoJsonValue& from);
+  
+  inline PB_ArangoJsonValue& operator=(const PB_ArangoJsonValue& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoJsonValue& default_instance();
+  
+  void Swap(PB_ArangoJsonValue* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoJsonValue* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoJsonValue& from);
+  void MergeFrom(const PB_ArangoJsonValue& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // optional bool booleanValue = 1;
+  inline bool has_booleanvalue() const;
+  inline void clear_booleanvalue();
+  static const int kBooleanValueFieldNumber = 1;
+  inline bool booleanvalue() const;
+  inline void set_booleanvalue(bool value);
+  
+  // optional double numberValue = 2;
+  inline bool has_numbervalue() const;
+  inline void clear_numbervalue();
+  static const int kNumberValueFieldNumber = 2;
+  inline double numbervalue() const;
+  inline void set_numbervalue(double value);
+  
+  // optional string stringValue = 3;
+  inline bool has_stringvalue() const;
+  inline void clear_stringvalue();
+  static const int kStringValueFieldNumber = 3;
+  inline const ::std::string& stringvalue() const;
+  inline void set_stringvalue(const ::std::string& value);
+  inline void set_stringvalue(const char* value);
+  inline void set_stringvalue(const char* value, size_t size);
+  inline ::std::string* mutable_stringvalue();
+  inline ::std::string* release_stringvalue();
+  
+  // repeated .PB_ArangoJsonContent objects = 4;
+  inline int objects_size() const;
+  inline void clear_objects();
+  static const int kObjectsFieldNumber = 4;
+  inline const ::PB_ArangoJsonContent& objects(int index) const;
+  inline ::PB_ArangoJsonContent* mutable_objects(int index);
+  inline ::PB_ArangoJsonContent* add_objects();
+  inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoJsonContent >&
+      objects() const;
+  inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoJsonContent >*
+      mutable_objects();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoJsonValue)
+ private:
+  inline void set_has_booleanvalue();
+  inline void clear_has_booleanvalue();
+  inline void set_has_numbervalue();
+  inline void clear_has_numbervalue();
+  inline void set_has_stringvalue();
+  inline void clear_has_stringvalue();
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  double numbervalue_;
+  ::std::string* stringvalue_;
+  ::google::protobuf::RepeatedPtrField< ::PB_ArangoJsonContent > objects_;
+  bool booleanvalue_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoJsonValue* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class PB_ArangoJsonContent : public ::google::protobuf::Message {
+ public:
+  PB_ArangoJsonContent();
+  virtual ~PB_ArangoJsonContent();
+  
+  PB_ArangoJsonContent(const PB_ArangoJsonContent& from);
+  
+  inline PB_ArangoJsonContent& operator=(const PB_ArangoJsonContent& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+  
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+  
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const PB_ArangoJsonContent& default_instance();
+  
+  void Swap(PB_ArangoJsonContent* other);
+  
+  // implements Message ----------------------------------------------
+  
+  PB_ArangoJsonContent* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const PB_ArangoJsonContent& from);
+  void MergeFrom(const PB_ArangoJsonContent& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::google::protobuf::Metadata GetMetadata() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // required .PB_ArangoJsonType type = 1;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 1;
+  inline PB_ArangoJsonType type() const;
+  inline void set_type(PB_ArangoJsonType value);
+  
+  // optional .PB_ArangoJsonValue value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::PB_ArangoJsonValue& value() const;
+  inline ::PB_ArangoJsonValue* mutable_value();
+  inline ::PB_ArangoJsonValue* release_value();
+  
+  // @@protoc_insertion_point(class_scope:PB_ArangoJsonContent)
+ private:
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_value();
+  inline void clear_has_value();
+  
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+  
+  ::PB_ArangoJsonValue* value_;
+  int type_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  
+  friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
+  friend void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto();
+  
+  void InitAsDefaultInstance();
+  static PB_ArangoJsonContent* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class PB_ArangoBlobRequest : public ::google::protobuf::Message {
  public:
   PB_ArangoBlobRequest();
@@ -516,6 +753,14 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline ::std::string* mutable_content();
   inline ::std::string* release_content();
   
+  // optional .PB_ArangoJsonContent json = 8;
+  inline bool has_json() const;
+  inline void clear_json();
+  static const int kJsonFieldNumber = 8;
+  inline const ::PB_ArangoJsonContent& json() const;
+  inline ::PB_ArangoJsonContent* mutable_json();
+  inline ::PB_ArangoJsonContent* release_json();
+  
   // @@protoc_insertion_point(class_scope:PB_ArangoBlobRequest)
  private:
   inline void set_has_requesttype();
@@ -526,6 +771,8 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   inline void clear_has_contenttype();
   inline void set_has_content();
   inline void clear_has_content();
+  inline void set_has_json();
+  inline void clear_has_json();
   
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
@@ -535,9 +782,10 @@ class PB_ArangoBlobRequest : public ::google::protobuf::Message {
   int contenttype_;
   ::google::protobuf::RepeatedPtrField< ::PB_ArangoKeyValue > headers_;
   ::std::string* content_;
+  ::PB_ArangoJsonContent* json_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
   
   friend void  protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
   friend void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto();
@@ -1029,6 +1277,193 @@ inline ::PB_ArangoErrorResponse* PB_ArangoBatchMessage::release_errorresponse() 
 
 // -------------------------------------------------------------------
 
+// PB_ArangoJsonValue
+
+// optional bool booleanValue = 1;
+inline bool PB_ArangoJsonValue::has_booleanvalue() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void PB_ArangoJsonValue::set_has_booleanvalue() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void PB_ArangoJsonValue::clear_has_booleanvalue() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoJsonValue::clear_booleanvalue() {
+  booleanvalue_ = false;
+  clear_has_booleanvalue();
+}
+inline bool PB_ArangoJsonValue::booleanvalue() const {
+  return booleanvalue_;
+}
+inline void PB_ArangoJsonValue::set_booleanvalue(bool value) {
+  set_has_booleanvalue();
+  booleanvalue_ = value;
+}
+
+// optional double numberValue = 2;
+inline bool PB_ArangoJsonValue::has_numbervalue() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void PB_ArangoJsonValue::set_has_numbervalue() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void PB_ArangoJsonValue::clear_has_numbervalue() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void PB_ArangoJsonValue::clear_numbervalue() {
+  numbervalue_ = 0;
+  clear_has_numbervalue();
+}
+inline double PB_ArangoJsonValue::numbervalue() const {
+  return numbervalue_;
+}
+inline void PB_ArangoJsonValue::set_numbervalue(double value) {
+  set_has_numbervalue();
+  numbervalue_ = value;
+}
+
+// optional string stringValue = 3;
+inline bool PB_ArangoJsonValue::has_stringvalue() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void PB_ArangoJsonValue::set_has_stringvalue() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void PB_ArangoJsonValue::clear_has_stringvalue() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void PB_ArangoJsonValue::clear_stringvalue() {
+  if (stringvalue_ != &::google::protobuf::internal::kEmptyString) {
+    stringvalue_->clear();
+  }
+  clear_has_stringvalue();
+}
+inline const ::std::string& PB_ArangoJsonValue::stringvalue() const {
+  return *stringvalue_;
+}
+inline void PB_ArangoJsonValue::set_stringvalue(const ::std::string& value) {
+  set_has_stringvalue();
+  if (stringvalue_ == &::google::protobuf::internal::kEmptyString) {
+    stringvalue_ = new ::std::string;
+  }
+  stringvalue_->assign(value);
+}
+inline void PB_ArangoJsonValue::set_stringvalue(const char* value) {
+  set_has_stringvalue();
+  if (stringvalue_ == &::google::protobuf::internal::kEmptyString) {
+    stringvalue_ = new ::std::string;
+  }
+  stringvalue_->assign(value);
+}
+inline void PB_ArangoJsonValue::set_stringvalue(const char* value, size_t size) {
+  set_has_stringvalue();
+  if (stringvalue_ == &::google::protobuf::internal::kEmptyString) {
+    stringvalue_ = new ::std::string;
+  }
+  stringvalue_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* PB_ArangoJsonValue::mutable_stringvalue() {
+  set_has_stringvalue();
+  if (stringvalue_ == &::google::protobuf::internal::kEmptyString) {
+    stringvalue_ = new ::std::string;
+  }
+  return stringvalue_;
+}
+inline ::std::string* PB_ArangoJsonValue::release_stringvalue() {
+  clear_has_stringvalue();
+  if (stringvalue_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = stringvalue_;
+    stringvalue_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+
+// repeated .PB_ArangoJsonContent objects = 4;
+inline int PB_ArangoJsonValue::objects_size() const {
+  return objects_.size();
+}
+inline void PB_ArangoJsonValue::clear_objects() {
+  objects_.Clear();
+}
+inline const ::PB_ArangoJsonContent& PB_ArangoJsonValue::objects(int index) const {
+  return objects_.Get(index);
+}
+inline ::PB_ArangoJsonContent* PB_ArangoJsonValue::mutable_objects(int index) {
+  return objects_.Mutable(index);
+}
+inline ::PB_ArangoJsonContent* PB_ArangoJsonValue::add_objects() {
+  return objects_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::PB_ArangoJsonContent >&
+PB_ArangoJsonValue::objects() const {
+  return objects_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::PB_ArangoJsonContent >*
+PB_ArangoJsonValue::mutable_objects() {
+  return &objects_;
+}
+
+// -------------------------------------------------------------------
+
+// PB_ArangoJsonContent
+
+// required .PB_ArangoJsonType type = 1;
+inline bool PB_ArangoJsonContent::has_type() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void PB_ArangoJsonContent::set_has_type() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void PB_ArangoJsonContent::clear_has_type() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void PB_ArangoJsonContent::clear_type() {
+  type_ = 0;
+  clear_has_type();
+}
+inline PB_ArangoJsonType PB_ArangoJsonContent::type() const {
+  return static_cast< PB_ArangoJsonType >(type_);
+}
+inline void PB_ArangoJsonContent::set_type(PB_ArangoJsonType value) {
+  GOOGLE_DCHECK(PB_ArangoJsonType_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional .PB_ArangoJsonValue value = 2;
+inline bool PB_ArangoJsonContent::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void PB_ArangoJsonContent::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void PB_ArangoJsonContent::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void PB_ArangoJsonContent::clear_value() {
+  if (value_ != NULL) value_->::PB_ArangoJsonValue::Clear();
+  clear_has_value();
+}
+inline const ::PB_ArangoJsonValue& PB_ArangoJsonContent::value() const {
+  return value_ != NULL ? *value_ : *default_instance_->value_;
+}
+inline ::PB_ArangoJsonValue* PB_ArangoJsonContent::mutable_value() {
+  set_has_value();
+  if (value_ == NULL) value_ = new ::PB_ArangoJsonValue;
+  return value_;
+}
+inline ::PB_ArangoJsonValue* PB_ArangoJsonContent::release_value() {
+  clear_has_value();
+  ::PB_ArangoJsonValue* temp = value_;
+  value_ = NULL;
+  return temp;
+}
+
+// -------------------------------------------------------------------
+
 // PB_ArangoBlobRequest
 
 // required .PB_ArangoRequestType requestType = 1;
@@ -1241,6 +1676,35 @@ inline ::std::string* PB_ArangoBlobRequest::release_content() {
     content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
+}
+
+// optional .PB_ArangoJsonContent json = 8;
+inline bool PB_ArangoBlobRequest::has_json() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void PB_ArangoBlobRequest::set_has_json() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void PB_ArangoBlobRequest::clear_has_json() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void PB_ArangoBlobRequest::clear_json() {
+  if (json_ != NULL) json_->::PB_ArangoJsonContent::Clear();
+  clear_has_json();
+}
+inline const ::PB_ArangoJsonContent& PB_ArangoBlobRequest::json() const {
+  return json_ != NULL ? *json_ : *default_instance_->json_;
+}
+inline ::PB_ArangoJsonContent* PB_ArangoBlobRequest::mutable_json() {
+  set_has_json();
+  if (json_ == NULL) json_ = new ::PB_ArangoJsonContent;
+  return json_;
+}
+inline ::PB_ArangoJsonContent* PB_ArangoBlobRequest::release_json() {
+  clear_has_json();
+  ::PB_ArangoJsonContent* temp = json_;
+  json_ = NULL;
+  return temp;
 }
 
 // -------------------------------------------------------------------
@@ -1477,6 +1941,10 @@ inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoMessageContentType>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoRequestType>() {
   return PB_ArangoRequestType_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< PB_ArangoJsonType>() {
+  return PB_ArangoJsonType_descriptor();
 }
 
 }  // namespace google

@@ -30,6 +30,7 @@
 
 #include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
+#include "ProtocolBuffers/JsonConverterProtobuf.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -113,6 +114,19 @@ HttpRequestProtobuf::~HttpRequestProtobuf () {
 /// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* HttpRequestProtobuf::toJson (char*& errmsg) {
+  if (_request->contenttype() != PB_JSON_CONTENT) { 
+    return 0;
+  }
+
+  TRI_json_t* json = JsonConverterProtobuf::ParseObject(TRI_UNKNOWN_MEM_ZONE, _request->json()); 
+  return json;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
