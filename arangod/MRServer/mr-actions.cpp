@@ -343,7 +343,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   args[0] = req;
   args[1] = res;
 
-  mrb_funcall_argv(mrb, callback, "service", 2, args);
+  id = mrb_intern(mrb, "service");
+  mrb_funcall_argv(mrb, callback, id, 2, args);
 
   if (mrb->exc) {
     TRI_LogRubyException(mrb, mrb->exc);

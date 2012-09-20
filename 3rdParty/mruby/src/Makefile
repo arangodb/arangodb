@@ -1,4 +1,4 @@
-# makefile discription.
+# Makefile description.
 # basic build file for mruby library
 
 # project-specific macros
@@ -51,11 +51,11 @@ $(TARGET) : $(OBJS) $(OBJY)
 $(OBJS) : %.o : %.c
 	$(CC) $(ALL_CFLAGS) -MMD $(INCLUDES) -c $< -o $@
 
-# parser complie
+# parser compile
 $(OBJY) : $(YC) $(LDEF)
 	$(CC) $(ALL_CFLAGS) -MMD $(INCLUDES) -c $(YC) -o $(OBJY)
 
-# yacc complie
+# yacc compile
 $(YC) : $(YSRC)
 	$(YACC) -o $(YC) $(YSRC)
 

@@ -26,8 +26,10 @@ main(int argc, char *argv[])
       i++;
       if (i < argc)
         output = argv[i];
-      else
+      else {
+        usage(argv[0]);
         return EXIT_FAILURE;
+      }
     }
   }
 
@@ -40,7 +42,10 @@ main(int argc, char *argv[])
     setbuf(outfile, NULL);
 
     for (i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "-o") == 0) { i++; continue; }
+      if (strcmp(argv[i], "-o") == 0) {
+        i++;
+        continue;
+      }
 
       infile = fopen(argv[i], "rb");
       if (!infile) {
@@ -60,9 +65,7 @@ main(int argc, char *argv[])
     }
   }
 
-done:
   fclose(outfile);
-
   return EXIT_SUCCESS;
 }
 

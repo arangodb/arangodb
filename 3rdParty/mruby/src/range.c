@@ -7,12 +7,7 @@
 #include "mruby.h"
 #include "mruby/class.h"
 #include "mruby/range.h"
-#include "mruby/variable.h"
-#include "error.h"
-#include "mruby/numeric.h"
 #include "mruby/string.h"
-
-#include <stdio.h>
 #include <string.h>
 
 #ifndef OTHER
@@ -21,13 +16,35 @@
 
 #define RANGE_CLASS (mrb_class_obj_get(mrb, "Range"))
 
+static void
+range_check(mrb_state *mrb, mrb_value a, mrb_value b)
+{
+  mrb_value ans;
+  int ta;
+  int tb;
+
+  ta = mrb_type(a);
+  tb = mrb_type(b);
+  if ((ta == MRB_TT_FIXNUM || ta == MRB_TT_FLOAT) &&
+      (tb == MRB_TT_FIXNUM || tb == MRB_TT_FLOAT)) {
+    return;
+  }
+
+  ans =  mrb_funcall(mrb, a, "<=>", 1, b);
+  if (mrb_nil_p(ans)) {
+    /* can not be compared */
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "bad value for range");
+  }
+}
+
 mrb_value
 mrb_range_new(mrb_state *mrb, mrb_value beg, mrb_value end, int excl)
 {
   struct RRange *r;
 
   r = (struct RRange*)mrb_obj_alloc(mrb, MRB_TT_RANGE, RANGE_CLASS);
-  r->edges = mrb_malloc(mrb, sizeof(struct mrb_range_edges));
+  r->edges = (struct mrb_range_edges *)mrb_malloc(mrb, sizeof(struct mrb_range_edges));
+  range_check(mrb, beg, end);
   r->edges->beg = beg;
   r->edges->end = end;
   r->excl = excl;
@@ -82,39 +99,12 @@ mrb_range_excl(mrb_state *mrb, mrb_value range)
   return r->excl ? mrb_true_value() : mrb_false_value();
 }
 
-/*
- *  call-seq:
- *      beg        end
- *     args[0] <= args[1]    => true
- *     args[0] >  args[1]    => false
- */
-static int
-range_check(mrb_state *mrb, mrb_value *args)
-{
-  mrb_value ans =  mrb_funcall(mrb, args[0], "<=>", 1, args[1]);
-  /*       beg       end
-     ans :args[0] < args[1] => -1
-          args[0] = args[1] =>  0
-          args[0] > args[1] => +1 */
-  if (mrb_nil_p(ans)) return FALSE;
-  //if (mrb_obj_equal(mrb, ans, mrb_fixnum_value(1))) return FALSE;
-  if (mrb_fixnum(ans) == 1) return FALSE;
-  return TRUE;
-}
-
 static void
 range_init(mrb_state *mrb, mrb_value range, mrb_value beg, mrb_value end, mrb_int exclude_end)
 {
-  mrb_value args[2];
   struct RRange *r = mrb_range_ptr(range);
 
-  if ((mrb_type(beg) != MRB_TT_FIXNUM) || (mrb_type(end) != MRB_TT_FIXNUM)) {
-    args[0] = beg;
-    args[1] = end;
-    if (!range_check(mrb, args)) {
-      printf("range_failed()\n");
-    }
-  }
+  range_check(mrb, beg, end);
   r->excl = exclude_end;
   r->edges->beg = beg;
   r->edges->end = end;
@@ -166,7 +156,6 @@ mrb_range_eq(mrb_state *mrb, mrb_value range)
   if (mrb_obj_equal(mrb, range, obj)) return mrb_true_value();
 
   /* same class? */
-  //  if (!rb_obj_is_instance_of(obj, rb_obj_class(range)))
   if (!mrb_obj_is_instance_of(mrb, obj, mrb_obj_class(mrb, range)))
     return mrb_false_value();
 
@@ -185,41 +174,41 @@ mrb_range_eq(mrb_state *mrb, mrb_value range)
 static int
 r_le(mrb_state *mrb, mrb_value a, mrb_value b)
 {
-  //int c;
   mrb_value r = mrb_funcall(mrb, a, "<=>", 1, b); /* compare result */
   /* output :a < b => -1, a = b =>  0, a > b => +1 */
 
-  if (mrb_nil_p(r)) return FALSE;
+  if (mrb_type(r) == MRB_TT_FIXNUM) {
+    int c = mrb_fixnum(r);
+    if (c == 0 || c == -1) return TRUE;
+  }
 
-  if (mrb_obj_equal(mrb, r, mrb_fixnum_value(0))) return TRUE;
-  if (mrb_obj_equal(mrb, r, mrb_fixnum_value(-1))) return TRUE;
   return FALSE;
 }
 
 static int
 r_gt(mrb_state *mrb, mrb_value a, mrb_value b)
 {
-  //int c;
   mrb_value r = mrb_funcall(mrb, a, "<=>", 1, b);
   /* output :a < b => -1, a = b =>  0, a > b => +1 */
 
-  if (mrb_nil_p(r)) return FALSE;
+  if (mrb_type(r) == MRB_TT_FIXNUM) {
+    if (mrb_fixnum(r) == 1) return TRUE;
+  }
 
-  if (mrb_obj_equal(mrb, r, mrb_fixnum_value(1))) return TRUE;
   return FALSE;
 }
 
 static int
 r_ge(mrb_state *mrb, mrb_value a, mrb_value b)
 {
-  //int c;
   mrb_value r = mrb_funcall(mrb, a, "<=>", 1, b); /* compare result */
   /* output :a < b => -1, a = b =>  0, a > b => +1 */
 
-  if (mrb_nil_p(r)) return FALSE;
+  if (mrb_type(r) == MRB_TT_FIXNUM) {
+    int c = mrb_fixnum(r);
+    if (c == 0 || c == 1) return TRUE;
+  }
 
-  if (mrb_obj_equal(mrb, r, mrb_fixnum_value(0))) return TRUE;
-  if (mrb_obj_equal(mrb, r, mrb_fixnum_value(1))) return TRUE;
   return FALSE;
 }
 
@@ -403,7 +392,7 @@ range_eql(mrb_state *mrb, mrb_value range)
     return mrb_false_value();
 
   r = mrb_range_ptr(range);
-  if (obj.tt != MRB_TT_RANGE) return mrb_false_value();
+  if (mrb_type(obj) != MRB_TT_RANGE) return mrb_false_value();
   o = mrb_range_ptr(obj);
   if (!mrb_eql(mrb, r->edges->beg, o->edges->beg))
     return mrb_false_value();
@@ -423,7 +412,6 @@ range_initialize_copy(mrb_state *mrb, mrb_value copy)
   mrb_get_args(mrb, "o", &src);
 
   if (mrb_obj_equal(mrb, copy, src)) return copy;
-  //mrb_check_frozen(copy);
   if (!mrb_obj_is_instance_of(mrb, src, mrb_obj_class(mrb, copy))) {
     mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
   }

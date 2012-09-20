@@ -10,16 +10,14 @@
 #include <string.h>
 #include "mruby/string.h"
 #include <ctype.h>
-#include "mruby/numeric.h"
+#include <limits.h>
 #include "mruby/range.h"
 #include "mruby/array.h"
 #include "mruby/class.h"
-#include "mruby/variable.h"
 #include <stdio.h>
-#include "re.h"
 #ifdef ENABLE_REGEXP
+#include "re.h"
 #include "regex.h"
-#include "st.h"
 #endif //ENABLE_REGEXP
 
 const char mrb_digitmap[] = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -31,7 +29,7 @@ static mrb_value str_replace(mrb_state *mrb, struct RString *s1, struct RString 
 static mrb_value mrb_str_subseq(mrb_state *mrb, mrb_value str, int beg, int len);
 
 #define RESIZE_CAPA(s,capacity) do {\
-      s->ptr = mrb_realloc(mrb, s->ptr, (capacity)+1);\
+      s->ptr = (char *)mrb_realloc(mrb, s->ptr, (capacity)+1);\
       s->aux.capa = capacity;\
 } while (0)
 
@@ -62,7 +60,7 @@ str_modify(mrb_state *mrb, struct RString *s)
 
       p = s->ptr;
       len = s->len;
-      ptr = mrb_malloc(mrb, len+1);
+      ptr = (char *)mrb_malloc(mrb, len+1);
       if (p) {
 	memcpy(ptr, p, len);
       }
@@ -85,7 +83,7 @@ mrb_str_resize(mrb_state *mrb, mrb_value str, int len)
   slen = s->len;
   if (len != slen) {
     if (slen < len || slen -len > 1024) {
-      s->ptr = mrb_realloc(mrb, s->ptr, len+1);
+      s->ptr = (char *)mrb_realloc(mrb, s->ptr, len+1);
     }
     s->aux.capa = len;
     s->len = len;
@@ -135,7 +133,7 @@ str_new(mrb_state *mrb, const char *p, int len)
 
   s->len = len;
   s->aux.capa = len;
-  s->ptr = mrb_malloc(mrb, len+1);
+  s->ptr = (char *)mrb_malloc(mrb, len+1);
   if (p) {
     memcpy(s->ptr, p, len);
   }
@@ -170,7 +168,7 @@ mrb_str_buf_new(mrb_state *mrb, int capa)
   }
   s->len = 0;
   s->aux.capa = capa;
-  s->ptr = mrb_malloc(mrb, capa+1);
+  s->ptr = (char *)mrb_malloc(mrb, capa+1);
   s->ptr[0] = '\0';
 
   return mrb_obj_value(s);
@@ -251,7 +249,7 @@ mrb_str_new_cstr(mrb_state *mrb, const char *p)
   int len = strlen(p);
 
   s = mrb_obj_alloc_string(mrb);
-  s->ptr = mrb_malloc(mrb, len+1);
+  s->ptr = (char *)mrb_malloc(mrb, len+1);
   memcpy(s->ptr, p, len);
   s->ptr[len] = 0;
   s->len = len;
@@ -264,11 +262,11 @@ static void
 str_make_shared(mrb_state *mrb, struct RString *s)
 {
   if (!(s->flags & MRB_STR_SHARED)) {
-    struct mrb_shared_string *shared = mrb_malloc(mrb, sizeof(struct mrb_shared_string));
+    struct mrb_shared_string *shared = (struct mrb_shared_string *)mrb_malloc(mrb, sizeof(struct mrb_shared_string));
 
     shared->refcnt = 1;
     if (s->aux.capa > s->len) {
-      s->ptr = shared->ptr = mrb_realloc(mrb, s->ptr, s->len+1);
+      s->ptr = shared->ptr = (char *)mrb_realloc(mrb, s->ptr, s->len+1);
     }
     else {
       shared->ptr = s->ptr;
@@ -343,7 +341,7 @@ mrb_str_concat(mrb_state *mrb, mrb_value self, mrb_value other)
 
   if (s1->aux.capa < len) {
     s1->aux.capa = len;
-    s1->ptr = mrb_realloc(mrb, s1->ptr, len+1);
+    s1->ptr = (char *)mrb_realloc(mrb, s1->ptr, len+1);
   }
   memcpy(s1->ptr+s1->len, s2->ptr, s2->len);
   s1->len = len;
@@ -381,7 +379,10 @@ mrb_str_plus(mrb_state *mrb, mrb_value a, mrb_value b)
 static mrb_value
 mrb_str_plus_m(mrb_state *mrb, mrb_value self)
 {
-  return mrb_nil_value();
+  mrb_value str;
+
+  mrb_get_args(mrb, "S", &str);
+  return mrb_str_plus(mrb, self, str);
 }
 
 /*
@@ -433,7 +434,7 @@ mrb_str_times(mrb_state *mrb, mrb_value self)
   if (times < 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "negative argument");
   }
-  if (times && INT32_MAX/times < RSTRING_LEN(self)) {
+  if (times && INT_MAX/times < RSTRING_LEN(self)) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "argument too big");
   }
 
@@ -666,7 +667,7 @@ mrb_memsearch_qs(const unsigned char *xs, long m, const unsigned char *ys, long 
 static int
 mrb_memsearch(const void *x0, int m, const void *y0, int n)
 {
-  const unsigned char *x = x0, *y = y0;
+  const unsigned char *x = (const unsigned char *)x0, *y = (const unsigned char *)y0;
 
   if (m > n) return -1;
   else if (m == n) {
@@ -683,7 +684,7 @@ mrb_memsearch(const void *x0, int m, const void *y0, int n)
     }
     return -1;
   }
-  return mrb_memsearch_qs(x0, m, y0, n);
+  return mrb_memsearch_qs((const unsigned char *)x0, m, (const unsigned char *)y0, n);
 }
 
 static mrb_int
@@ -868,12 +869,12 @@ mrb_str_capitalize_bang(mrb_state *mrb, mrb_value str)
   if (s->len == 0 || !s->ptr) return mrb_nil_value();
   p = s->ptr; pend = s->ptr + s->len;
   if (ISLOWER(*p)) {
-    *p = toupper(*p);
+    *p = TOUPPER(*p);
     modify = 1;
   }
   while (++p < pend) {
     if (ISUPPER(*p)) {
-      *p = tolower(*p);
+      *p = TOLOWER(*p);
       modify = 1;
     }
   }
@@ -1081,7 +1082,7 @@ mrb_str_downcase_bang(mrb_state *mrb, mrb_value str)
   pend = s->ptr + s->len;
   while (p < pend) {
     if (ISUPPER(*p)) {
-      *p = tolower(*p);
+      *p = TOLOWER(*p);
       modify = 1;
     }
     p++;
@@ -1356,7 +1357,6 @@ str_gsub(mrb_state *mrb, mrb_value str, mrb_int bang)
 static mrb_value
 mrb_str_gsub(mrb_state *mrb, mrb_value self)
 {
-  //return str_gsub(argc, argv, self, 0);
   return str_gsub(mrb, self, 0);
 }
 
@@ -1471,10 +1471,8 @@ mrb_str_index_m(mrb_state *mrb, mrb_value str)
   int argc;
 
   mrb_value sub;
-  //mrb_value initpos;
   mrb_int pos;
 
-  //if (mrb_scan_args(argc, argv, "11", &sub, &initpos) == 2) {
   mrb_get_args(mrb, "*", &argv, &argc);
   if (argc == 2) {
     pos = mrb_fixnum(argv[1]);
@@ -1569,10 +1567,10 @@ str_replace(mrb_state *mrb, struct RString *s1, struct RString *s2)
     if (s1->flags & MRB_STR_SHARED) {
       mrb_str_decref(mrb, s1->aux.shared);
       s1->flags &= ~MRB_STR_SHARED;
-      s1->ptr = mrb_malloc(mrb, s2->len+1);
+      s1->ptr = (char *)mrb_malloc(mrb, s2->len+1);
     }
     else {
-      s1->ptr = mrb_realloc(mrb, s1->ptr, s2->len+1);
+      s1->ptr = (char *)mrb_realloc(mrb, s1->ptr, s2->len+1);
     }
     memcpy(s1->ptr, s2->ptr, s2->len);
     s1->ptr[s2->len] = 0;
@@ -1726,7 +1724,6 @@ mrb_str_match_m(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (%d for 1..2)", argc);
   re = argv[0];
   argv[0] = self;
-  //  result = mrb_funcall2(get_pat(re, 0), mrb_intern("match"), argc, argv);
   result = mrb_funcall(mrb, get_pat(mrb, re, 0), "match", 1, self);
   if (!mrb_nil_p(result) && mrb_block_given_p()) {
     return mrb_yield(mrb, b, result);
@@ -1961,7 +1958,6 @@ scan_once(mrb_state *mrb, mrb_value str, mrb_value pat, mrb_int *start)
 
   if (mrb_reg_search(mrb, pat, str, *start, 0) >= 0) {
     match = mrb_backref_get(mrb);
-    //regs = RMATCH(match)->regs;
     pmatch = mrb_match_ptr(match);
     regs = &pmatch->rmatch->regs;
     if (regs->beg[0] == regs->end[0]) {
@@ -2145,7 +2141,6 @@ mrb_str_split_m(mrb_state *mrb, mrb_value str)
     split_type = awk;
   }
   else {
-//fs_set:
     if (mrb_type(spat) == MRB_TT_STRING) {
       split_type = string;
 #ifdef ENABLE_REGEXP
@@ -2303,7 +2298,7 @@ mrb_block_given_p()
 {
   /*if (ruby_frame->iter == ITER_CUR && ruby_block)
     return 1;*//*Qtrue*/
-  return 0/*Qfalse*/;
+  return FALSE;
 }
 
 /* 15.2.10.5.37 */
@@ -2381,17 +2376,10 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
   #define BDIGIT unsigned int
   #define BDIGIT_DBL unsigned long
 
-//  const char *s = str;
   char *end;
   char sign = 1;
-//  char nondigit = 0;
   int c;
-//  BDIGIT_DBL num;
   long len;
-//  long blen = 1;
-//  long i;
-//  mrb_value z;
-//  BDIGIT *zds;
   unsigned long val;
 
 #undef ISDIGIT
@@ -2508,21 +2496,22 @@ mrb_cstr_to_inum(mrb_state *mrb, const char *str, int base, int badcheck)
   }
   len *= strlen(str)*sizeof(char);
 
-    val = strtoul((char*)str, &end, base);
+  val = strtoul((char*)str, &end, base);
 
-    if (badcheck) {
-      if (end == str) goto bad; /* no number */
-      while (*end && ISSPACE(*end)) end++;
-      if (*end) goto bad;        /* trailing garbage */
-    }
+  if (badcheck) {
+    if (end == str) goto bad; /* no number */
+    while (*end && ISSPACE(*end)) end++;
+    if (*end) goto bad;        /* trailing garbage */
+  }
 
-      if (sign) return mrb_fixnum_value(val);
-      else {
-        long result = -(long)val;
-        return mrb_fixnum_value(result);
-      }
+  if (sign) return mrb_fixnum_value(val);
+  else {
+    long result = -(long)val;
+    return mrb_fixnum_value(result);
+  }
 bad:
-      printf("Integer");
+  mrb_raise(mrb, E_ARGUMENT_ERROR, "invalide string for number(%s)", str);
+  /* not reached */
   return mrb_fixnum_value(0);
 }
 
@@ -2554,8 +2543,7 @@ mrb_str_to_inum(mrb_state *mrb, mrb_value str, int base, int badcheck)
   if (s) {
     len = RSTRING_LEN(str);
     if (s[len]) {    /* no sentinel somehow */
-      //char *p = ALLOCA_N(char, len+1);
-      char *p = mrb_malloc(mrb, len+1);
+      char *p = (char *)mrb_malloc(mrb, len+1);
 
       //MEMCPY(p, s, char, len);
       memcpy(p, s, sizeof(char)*len);
@@ -2592,10 +2580,8 @@ mrb_str_to_i(mrb_state *mrb, mrb_value self)
 {
   mrb_value *argv;
   int argc;
-  //mrb_value b;
   int base;
 
-  //mrb_scan_args(argc, *argv, "01", &b);
   mrb_get_args(mrb, "*", &argv, &argc);
   if (argc == 0)
     base = 10;
@@ -2615,7 +2601,10 @@ mrb_cstr_to_dbl(mrb_state *mrb, const char * p, int badcheck)
   double d;
 //  const char *ellipsis = "";
 //  int w;
-#define DBL_DIG 16
+#if !defined(DBL_DIG)
+  #define DBL_DIG 16
+#endif
+
   enum {max_width = 20};
 #define OutOfRange() (((w = end - p) > max_width) ? \
       (w = max_width, ellipsis = "...") : \
@@ -2631,8 +2620,8 @@ mrb_cstr_to_dbl(mrb_state *mrb, const char * p, int badcheck)
   if (p == end) {
     if (badcheck) {
 bad:
-      //mrb_invalid_str(q, "Float()");
-      printf("Float()\n");
+      mrb_raise(mrb, E_ARGUMENT_ERROR, "invalide string for float(%s)", p);
+      /* not reached */
     }
     return d;
   }
@@ -2691,7 +2680,7 @@ mrb_str_to_dbl(mrb_state *mrb, mrb_value str, int badcheck)
       mrb_raise(mrb, E_ARGUMENT_ERROR, "string for Float contains null byte");
     }
     if (s[len]) {    /* no sentinel somehow */
-      char *p = mrb_malloc(mrb, len+1);
+      char *p = (char *)mrb_malloc(mrb, len+1);
 
       memcpy(p, s, sizeof(char)*len);
       p[len] = '\0';
@@ -2718,7 +2707,6 @@ mrb_str_to_dbl(mrb_state *mrb, mrb_value str, int badcheck)
 static mrb_value
 mrb_str_to_f(mrb_state *mrb, mrb_value self)
 {
-  //return mrb_float_new(mrb_str_to_dbl(self, 0/*Qfalse*/));
   return mrb_float_value(mrb_str_to_dbl(mrb, self, 0/*Qfalse*/));
 }
 
@@ -2759,7 +2747,7 @@ mrb_str_upcase_bang(mrb_state *mrb, mrb_value str)
   pend = RSTRING_END(str);
   while (p < pend) {
     if (ISLOWER(*p)) {
-      *p = toupper(*p);
+      *p = TOUPPER(*p);
       modify = 1;
     }
     p++;

@@ -1,5 +1,5 @@
 /*
-** object.h - Object, NilClass, TrueClass, FalseClass class
+** mruby/object.h - Object, NilClass, TrueClass, FalseClass class
 **
 ** See Copyright Notice in mruby.h
 */
@@ -7,17 +7,12 @@
 #ifndef MRUBY_OBJECT_H
 #define MRUBY_OBJECT_H
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-#define MRUBY_OBJECT_HEADER \
-  enum mrb_vtype tt:8; \
+#define MRB_OBJECT_HEADER \
+  enum mrb_vtype tt:8;\
   unsigned int color:3;\
   unsigned int flags:21;\
   struct RClass *c;\
   struct RBasic *gcnext
-
 
 /* white: 011, black: 100, gray: 000 */
 #define MRB_GC_GRAY 0
@@ -39,12 +34,12 @@ extern "C" {
 #define other_white_part(s) ((s)->current_white_part ^ MRB_GC_WHITES)
 
 struct RBasic {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
 };
 
 struct RObject {
-  MRUBY_OBJECT_HEADER;
-  struct kh_iv *iv;
+  MRB_OBJECT_HEADER;
+  struct iv_tbl *iv;
 };
 
 #define mrb_obj_ptr(v)    ((struct RObject*)((v).value.p))
@@ -53,9 +48,5 @@ struct RObject {
 #define ROBJECT(v) ((struct RObject*)((v).value.p))
 #define ROBJECT_IVPTR(v) (((struct RObject*)((v).value.p))->iv)
 #define ROBJECT_NUMIV(v) (ROBJECT_IVPTR(v) ? ROBJECT_IVPTR(v)->size : 0)
-
-#if defined(__cplusplus)
-}  /* extern "C" { */
-#endif
 
 #endif  /* MRUBY_OBJECT_H */

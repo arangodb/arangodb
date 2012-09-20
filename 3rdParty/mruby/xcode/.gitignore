@@ -1,3 +1,5 @@
 xcuserdata
-build/lib
-build/m*
+build/
+bin/
+lib/
+DerivedData/

@@ -6,15 +6,9 @@
 
 #include "mruby.h"
 #include "mruby/string.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "mruby/proc.h"
-#include "mruby/range.h"
 #include "mruby/array.h"
-#include "mruby/hash.h"
 #include "mruby/class.h"
-#include "mruby/struct.h"
 #include "mruby/variable.h"
 #include "error.h"
 
@@ -38,53 +32,13 @@ struct obj_ivar_tag {
   void * arg;
 };
 
-static mrb_value
-inspect_obj(mrb_state *mrb, mrb_value obj, mrb_value str, int recur)
-{
-  if (recur) {
-    mrb_str_cat2(mrb, str, " ...");
-  }
-  else {
-    khiter_t k;
-    kh_iv_t *h = RCLASS_IV_TBL(obj);
-
-    if (h) {
-      for (k = kh_begin(h); k != kh_end(h); k++) {
-        if (kh_exist(h, k)){
-          mrb_sym id = kh_key(h, k);
-          mrb_value value = kh_value(h, k);
-
-          /* need not to show internal data */
-          if (RSTRING_PTR(str)[0] == '-') { /* first element */
-            RSTRING_PTR(str)[0] = '#';
-            mrb_str_cat2(mrb, str, " ");
-          }
-          else {
-            mrb_str_cat2(mrb, str, ", ");
-          }
-          mrb_str_cat2(mrb, str, mrb_sym2name(mrb, id));
-          mrb_str_cat2(mrb, str, "=");
-          mrb_str_append(mrb, str, mrb_inspect(mrb, value));
-        }
-      }
-    }
-  }
-  mrb_str_cat2(mrb, str, ">");
-  RSTRING_PTR(str)[0] = '#';
-
-  return str;
-}
-
 int
 mrb_obj_basic_to_s_p(mrb_state *mrb, mrb_value obj)
 {
-    //const mrb_method_entry_t *me = mrb_method_entry(CLASS_OF(obj), mrb_intern("to_s"));
-    //if (me && me->def && me->def->type == VM_METHOD_TYPE_CFUNC &&
-    //me->def->body.cfunc.func == mrb_any_to_s)
     struct RProc *me = mrb_method_search(mrb, mrb_class(mrb, obj), mrb_intern(mrb, "to_s"));
     if (me && MRB_PROC_CFUNC_P(me) && (me->body.func == mrb_any_to_s))
-      return 1;
-    return 0;
+      return TRUE;
+    return FALSE;
 }
 
 /* 15.3.1.3.17 */
@@ -105,21 +59,15 @@ mrb_value
 mrb_obj_inspect(mrb_state *mrb, mrb_value obj)
 {
   if ((mrb_type(obj) == MRB_TT_OBJECT) && mrb_obj_basic_to_s_p(mrb, obj)) {
-    long len = ROBJECT_NUMIV(obj);
-
-    if (len > 0) {
-      mrb_value str;
-      const char *c = mrb_obj_classname(mrb, obj);
-
-      str = mrb_sprintf(mrb, "-<%s:%p", c, (void*)&obj);
-      return inspect_obj(mrb, obj, str, 0);
-    }
-    return mrb_any_to_s(mrb, obj);
+    return mrb_obj_iv_inspect(mrb, mrb_obj_ptr(obj));
   }
   else if (mrb_nil_p(obj)) {
     return mrb_str_new(mrb, "nil", 3);
   }
-  return mrb_funcall(mrb, obj, "to_s", 0, 0);
+  else if (mrb_type(obj) == MRB_TT_MAIN) {
+    return mrb_str_new(mrb, "main", 4);
+  }
+  return mrb_any_to_s(mrb, obj);
 }
 
 /* 15.3.1.3.1  */
@@ -207,14 +155,19 @@ mrb_equal_m(mrb_state *mrb, mrb_value self)
 /* 15.3.1.3.3  */
 /* 15.3.1.3.33 */
 /*
- *  call-seq:
- *     obj.hash    -> fixnum
+ *  Document-method: __id__
+ *  Document-method: object_id
  *
- *  Generates a <code>Fixnum</code> hash value for this object. This
- *  function must have the property that <code>a.eql?(b)</code> implies
- *  <code>a.hash == b.hash</code>. The hash value is used by class
- *  <code>Hash</code>. Any hash value that exceeds the capacity of a
- *  <code>Fixnum</code> will be truncated before being used.
+ *  call-seq:
+ *     obj.__id__       -> fixnum
+ *     obj.object_id    -> fixnum
+ *
+ *  Returns an integer identifier for <i>obj</i>. The same number will
+ *  be returned on all calls to <code>id</code> for a given object, and
+ *  no two active objects will share an id.
+ *  <code>Object#object_id</code> is a different concept from the
+ *  <code>:name</code> notation, which returns the symbol id of
+ *  <code>name</code>. Replaces the deprecated <code>Object#id</code>.
  */
 static mrb_value
 mrb_obj_id_m(mrb_state *mrb, mrb_value self)
@@ -249,7 +202,7 @@ mrb_f_send(mrb_state *mrb, mrb_value self)
   int argc;
   
   mrb_get_args(mrb, "n*&", &name, &argv, &argc, &block);
-  return mrb_funcall_with_block(mrb,self, mrb_sym2name(mrb, name), argc, argv, block);
+  return mrb_funcall_with_block(mrb,self, name, argc, argv, block);
 }
 
 /* 15.3.1.2.2  */
@@ -315,63 +268,43 @@ mrb_singleton_class_clone(mrb_state *mrb, mrb_value obj)
 {
   struct RClass *klass = RBASIC(obj)->c;
 
-  //if (!FL_TEST(klass, FL_SINGLETON))
-      //return klass;
   if (klass->tt != MRB_TT_SCLASS)
     return klass;
   else {
-      //struct clone_method_data data;
-      /* copy singleton(unnamed) class */
-      //VALUE clone = class_alloc(RBASIC(klass)->flags, 0);
+    /* copy singleton(unnamed) class */
     struct RClass *clone = (struct RClass*)mrb_obj_alloc(mrb, klass->tt, mrb->class_class);
-    //clone->super = objklass->super;
 
-      if ((mrb_type(obj) == MRB_TT_CLASS) ||
-          (mrb_type(obj) == MRB_TT_SCLASS)) { /* BUILTIN_TYPE(obj) == T_CLASS */
-          clone->c = clone;
-      }
-      else {
-          clone->c = mrb_singleton_class_clone(mrb, mrb_obj_value(klass));
-      }
+    if ((mrb_type(obj) == MRB_TT_CLASS) ||
+      (mrb_type(obj) == MRB_TT_SCLASS)) { /* BUILTIN_TYPE(obj) == T_CLASS */
+      clone->c = clone;
+    }
+    else {
+      clone->c = mrb_singleton_class_clone(mrb, mrb_obj_value(klass));
+    }
 
-      clone->super = klass->super;
-      if (klass->iv) {
-          clone->iv = klass->iv;
-      }
-      if (klass->mt) {
-          clone->mt = kh_copy(mt, mrb, klass->mt);
-      }
-      else {
-          clone->mt = kh_init(mt, mrb);
-      }
-      clone->tt = MRB_TT_SCLASS;
-      return clone;
+    clone->super = klass->super;
+    if (klass->iv) {
+      clone->iv = klass->iv;
+    }
+    if (klass->mt) {
+      clone->mt = kh_copy(mt, mrb, klass->mt);
+    }
+    else {
+      clone->mt = kh_init(mt, mrb);
+    }
+    clone->tt = MRB_TT_SCLASS;
+    return clone;
   }
 }
 
 static void
 init_copy(mrb_state *mrb, mrb_value dest, mrb_value obj)
 {
-    //if (OBJ_FROZEN(dest)) {
-    //    rb_raise(rb_eTypeError, "[bug] frozen object (%s) allocated", rb_obj_classname(dest));
-    //}
-    //RBASIC(dest)->flags &= ~(T_MASK|FL_EXIVAR);
-    //RBASIC(dest)->flags |= RBASIC(obj)->flags & (T_MASK|FL_EXIVAR|FL_TAINT);
-    //if (FL_TEST(obj, FL_EXIVAR)) {
-    //    mrb_copy_generic_ivar(dest, obj);
-    //}
-    //mrb_gc_copy_finalizer(dest, obj);
     switch (mrb_type(obj)) {
       case MRB_TT_OBJECT:
       case MRB_TT_CLASS:
       case MRB_TT_MODULE:
-        if (ROBJECT(dest)->iv) {
-            kh_destroy(iv, ROBJECT(dest)->iv);
-            ROBJECT(dest)->iv = 0;
-        }
-        if (ROBJECT(obj)->iv) {
-            ROBJECT(dest)->iv = kh_copy(iv, mrb, ROBJECT(obj)->iv);
-        }
+	mrb_iv_copy(mrb, dest, obj);
         break;
 
       default:
@@ -414,11 +347,9 @@ mrb_obj_clone(mrb_state *mrb, mrb_value self)
   if (mrb_special_const_p(self)) {
       mrb_raise(mrb, E_TYPE_ERROR, "can't clone %s", mrb_obj_classname(mrb, self));
   }
-  clone = (struct RObject*)mrb_obj_alloc(mrb, self.tt, mrb_obj_class(mrb, self));
+  clone = (struct RObject*)mrb_obj_alloc(mrb, mrb_type(self), mrb_obj_class(mrb, self));
   clone->c = mrb_singleton_class_clone(mrb, self);
   init_copy(mrb, mrb_obj_value(clone), self);
-  //1-9-2 no bug mrb_funcall(mrb, clone, "initialize_clone", 1, self);
-  //RBASIC(clone)->flags |= RBASIC(obj)->flags & FL_FREEZE;
 
   return mrb_obj_value(clone);
 }
@@ -467,7 +398,6 @@ mrb_obj_extend(mrb_state *mrb, int argc, mrb_value *argv, mrb_value obj)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "wrong number of arguments (at least 1)");
   }
   for (i = 0; i < argc; i++) {
-    //Check_Type(argv[i], T_MODULE);
     mrb_check_type(mrb, argv[i], MRB_TT_MODULE);
   }
   while (argc--) {
@@ -512,20 +442,17 @@ mrb_obj_extend_m(mrb_state *mrb, mrb_value self)
   return mrb_obj_extend(mrb, argc, argv, self);
 }
 
-/* 15.3.1.2.4  */
-/* 15.3.1.3.14 */
+/* 15.3.1.3.15 */
 /*
  *  call-seq:
- *     global_variables    -> array
+ *     obj.hash    -> fixnum
  *
- *  Returns an array of the names of global variables.
- *
- *     global_variables.grep /std/   #=> [:$stdin, :$stdout, :$stderr]
+ *  Generates a <code>Fixnum</code> hash value for this object. This
+ *  function must have the property that <code>a.eql?(b)</code> implies
+ *  <code>a.hash == b.hash</code>. The hash value is used by class
+ *  <code>Hash</code>. Any hash value that exceeds the capacity of a
+ *  <code>Fixnum</code> will be truncated before being used.
  */
-//mrb_value
-//mrb_f_global_variables(mrb_state *mrb, mrb_value self)
-
-/* 15.3.1.3.15 */
 mrb_value
 mrb_obj_hash(mrb_state *mrb, mrb_value self)
 {
@@ -545,6 +472,8 @@ mrb_obj_init_copy(mrb_state *mrb, mrb_value self)
   }
   return self;
 }
+
+mrb_value mrb_yield_internal(mrb_state *mrb, mrb_value b, int argc, mrb_value *argv, mrb_value self, struct RClass *c);
 
 /* 15.3.1.3.18 */
 /*
@@ -571,11 +500,23 @@ mrb_value
 mrb_obj_instance_eval(mrb_state *mrb, mrb_value self)
 {
   mrb_value a, b;
+  mrb_value cv;
+  struct RClass *c;
 
   if (mrb_get_args(mrb, "|S&", &a, &b) == 1) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "instance_eval with string not implemented");
+    mrb_raise(mrb, E_NOTIMP_ERROR, "instance_eval with string not implemented");
   }
-  return mrb_yield_with_self(mrb, b, 0, 0, self);
+  switch (mrb_type(self)) {
+  case MRB_TT_SYMBOL:
+  case MRB_TT_FIXNUM:
+  case MRB_TT_FLOAT:
+    c = 0;
+    break;
+  default:
+    cv = mrb_singleton_class(mrb, self);
+    c = mrb_class_ptr(cv);
+  }
+  return mrb_yield_internal(mrb, b, 0, 0, self, c);
 }
 
 int
@@ -607,6 +548,18 @@ obj_is_instance_of(mrb_state *mrb, mrb_value self)
   }
 }
 
+static void
+check_iv_name(mrb_state *mrb, mrb_sym id)
+{
+  const char *s;
+  int len;
+
+  s = mrb_sym2name_len(mrb, id, &len);
+  if (len < 2 || s[0] != '@') {
+    mrb_name_error(mrb, id, "`%s' is not allowed as an instance variable name", s);
+  }
+}
+
 /* 15.3.1.3.20 */
 /*
  *  call-seq:
@@ -628,20 +581,12 @@ obj_is_instance_of(mrb_state *mrb, mrb_value self)
 mrb_value
 mrb_obj_ivar_defined(mrb_state *mrb, mrb_value self)
 {
-  mrb_value arg;
-  khiter_t k;
-  kh_iv_t *h = RCLASS_IV_TBL(self);
   mrb_sym mid;
 
-  mrb_get_args(mrb, "o", &arg);
-  mid = mrb_to_id(mrb, arg);
-
-  if (h) {
-    k = kh_get(iv, h, mid);
-    if (k != kh_end(h)) {
-      return mrb_true_value();
-    }
-  }
+  mrb_get_args(mrb, "n", &mid);
+  check_iv_name(mrb, mid);
+  if (mrb_obj_iv_defined(mrb, mrb_obj_ptr(self), mid))
+    return mrb_true_value();
   return mrb_false_value();
 }
 
@@ -668,15 +613,11 @@ mrb_obj_ivar_defined(mrb_state *mrb, mrb_value self)
 mrb_value
 mrb_obj_ivar_get(mrb_state *mrb, mrb_value self)
 {
-  mrb_value arg;
   mrb_sym id;
 
-  mrb_get_args(mrb, "o", &arg);
-  id = mrb_to_id(mrb, arg);
+  mrb_get_args(mrb, "n", &id);
 
-  //if (!mrb_is_instance_id(id)) {
-  //    mrb_name_error(mrb, id, "`%s' is not allowed as an instance variable name", mrb_sym2name(mrb, id));
-  //}
+  check_iv_name(mrb, id);
   return mrb_iv_get(mrb, self, id);
 }
 
@@ -703,12 +644,11 @@ mrb_obj_ivar_get(mrb_state *mrb, mrb_value self)
 mrb_value
 mrb_obj_ivar_set(mrb_state *mrb, mrb_value self)
 {
-  mrb_value key;
-  mrb_value val;
   mrb_sym id;
+  mrb_value val;
 
-  mrb_get_args(mrb, "oo", &key, &val);
-  id = mrb_to_id(mrb, key);
+  mrb_get_args(mrb, "no", &id, &val);
+  check_iv_name(mrb, id);
   mrb_iv_set(mrb, self, id, val);
   return val;
 }
@@ -811,7 +751,6 @@ mrb_obj_singleton_methods(mrb_state *mrb, int argc, mrb_value *argv, mrb_value o
       recur = mrb_true_value();
   }
   else {
-      //mrb_scan_args(argc, argv, "01", &recur);
       recur = argv[0];
   }
   klass = mrb_class(mrb, obj);
@@ -840,7 +779,6 @@ retry:
   else {
       mrb_value recur;
 
-      //mrb_scan_args(argc, argv, "1", &recur);
       recur = argv[0];
       if (mrb_test(recur)) {
           argc = 0;
@@ -875,7 +813,7 @@ mrb_obj_methods_m(mrb_state *mrb, mrb_value self)
   int argc;
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  return mrb_obj_methods(mrb, argc, argv, self, 0); /* everything but private */
+  return mrb_obj_methods(mrb, argc, argv, self, (mrb_method_flag_t)0); /* everything but private */
 }
 
 /* 15.3.1.3.32 */
@@ -1023,8 +961,9 @@ mrb_obj_remove_instance_variable(mrb_state *mrb, mrb_value self)
   mrb_value val;
 
   mrb_get_args(mrb, "n", &sym);
+  check_iv_name(mrb, sym);
   val = mrb_iv_remove(mrb, self, sym);
-  if (UNDEF_P(val)) {
+  if (mrb_undef_p(val)) {
     mrb_name_error(mrb, sym, "instance variable %s not defined", mrb_sym2name(mrb, sym));
   }
   return val;
@@ -1060,7 +999,6 @@ obj_respond_to(mrb_state *mrb, mrb_value self)
   mrb_sym id;
 
   mrb_get_args(mrb, "*", &argv, &argc);
-  //mrb_scan_args(argc, argv, "11", &mid, &priv);
   mid = argv[0];
   if (argc > 1) priv = argv[1];
   else priv = mrb_nil_value();
