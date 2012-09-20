@@ -247,9 +247,25 @@ namespace triagens {
             _operationsCounter->incFailures();
             return;
           }
+          
+          if (_endpoint->isBinary()) {
+            PB_ArangoMessage returnMessage;
 
-          if (result->getHttpReturnCode() >= 400) { 
-            _operationsCounter->incFailures();
+            if (! returnMessage.ParseFromArray(result->getBody().str().c_str(), result->getContentLength())) {
+              _operationsCounter->incFailures();
+            }
+            else {
+              for (int i = 0; i < returnMessage.messages_size(); ++i) {
+                if (returnMessage.messages(i).blobresponse().status() >= 400) {
+                  _operationsCounter->incFailures();
+                } 
+              }
+            }
+          }
+          else {
+            if (result->getHttpReturnCode() >= 400) { 
+              _operationsCounter->incFailures();
+            }
           }
           delete result;
         }

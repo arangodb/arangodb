@@ -171,6 +171,7 @@ Handler::status_e RestBatchHandler::execute() {
   
    
     if (status == Handler::HANDLER_DONE) {
+      // capture output of handler
       PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
       handler->getResponse()->write(batch);
     }
@@ -183,13 +184,12 @@ Handler::status_e RestBatchHandler::execute() {
     }
   }
   
-  size_t messageSize = _outputMessages->ByteSize();
-  
   // allocate output buffer
+  uint32_t messageSize = _outputMessages->ByteSize();
   char* output = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * messageSize, false);
   if (output == NULL) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
-    return Handler::HANDLER_DONE; //FAILED;
+    return Handler::HANDLER_DONE;
   }
 
   _response = new HttpResponse(HttpResponse::OK);
@@ -201,10 +201,10 @@ Handler::status_e RestBatchHandler::execute() {
     delete _response;
 
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
-    return Handler::HANDLER_DONE; //FAILED;
+    return Handler::HANDLER_DONE;
   }
   
-  _response->body().appendText(output, messageSize);
+  _response->body().appendText(output, (size_t) messageSize);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
 
   // success
