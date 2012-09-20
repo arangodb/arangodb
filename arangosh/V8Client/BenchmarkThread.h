@@ -30,6 +30,8 @@
 
 #include "Basics/Common.h"
 
+#include "BasicsC/hashes.h"
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
@@ -96,16 +98,12 @@ namespace triagens {
         }
         
         ~BenchmarkThread () {
-          if (_connection != 0 && _connection->isConnected()) {
-            _connection->disconnect();
-          }
-
-          if (_connection != 0) {
-            delete _connection;
-          }
-
           if (_client != 0) {
             delete _client;
+          }
+          
+          if (_connection != 0) {
+            delete _connection;
           }
         }
 
@@ -239,9 +237,11 @@ namespace triagens {
 
           map<string, string> headerFields;
           headerFields["Content-Type"] = BinaryMessage::getContentType();
+            
+          //std::cout << "body length: " << messageSize << ", hash: " << TRI_FnvHashPointer(message, (size_t) messageSize) << "\n";
 
           SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/batch", message, (size_t) messageSize, headerFields);
-          delete message;
+          delete[] message;
 
           if (result == 0) {
             _operationsCounter->incFailures();

@@ -387,6 +387,7 @@ void ApplicationEndpointServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::createSslContext () {
+  LOGGER_INFO << "using " << OPENSSL_VERSION_TEXT;
 
   // check keyfile
   if (_httpsKeyfile.empty()) {
