@@ -262,7 +262,7 @@ static void RunShell (MR_state_t* mrs) {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_nstring(&mrs->_mrb, input, strlen(input));
+    struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input), NULL);
     TRI_FreeString(TRI_CORE_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -270,7 +270,7 @@ static void RunShell (MR_state_t* mrs) {
       continue;
     }
 
-    int n = mrb_generate_code(&mrs->_mrb, p->tree);
+    int n = mrb_generate_code(mrb, p);
 
     if (n < 0) {
       cout << "UPPS: " << n << " returned by mrb_generate_code\n";

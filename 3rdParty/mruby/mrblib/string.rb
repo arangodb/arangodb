@@ -33,12 +33,15 @@ class String
     end
 
     ### *** TODO *** ###
+    unless Object.const_defined?(:Regexp)
+      raise NotImplementedError, "gsub not available (yet)"
+    end
   end
 
   ##
   # Replace all matches of +pattern+ with +replacement+.
   # Call block (if given) for each match and replace
-  # +pattern+ with the value of the block. Modify 
+  # +pattern+ with the value of the block. Modify
   # +self+ with the final value.
   #
   # ISO 15.2.10.5.19
@@ -56,15 +59,18 @@ class String
   # Calls the given block for each match of +pattern+
   # If no block is given return an array with all
   # matches of +pattern+.
-  # 
+  #
   # ISO 15.2.10.5.32
   def scan(reg, &block)
     ### *** TODO *** ###
+    unless Object.const_defined?(:Regexp)
+      raise NotImplementedError, "scan not available (yet)"
+    end
   end
 
   ##
-  # Replace only the first match of +pattern+ with 
-  # +replacement+. Call block (if given) for each 
+  # Replace only the first match of +pattern+ with
+  # +replacement+. Call block (if given) for each
   # match and replace +pattern+ with the value of the
   # block. Return the final value.
   #
@@ -75,12 +81,15 @@ class String
     end
 
     ### *** TODO *** ###
+    unless Object.const_defined?(:Regexp)
+      raise NotImplementedError, "sub not available (yet)"
+    end
   end
 
   ##
-  # Replace only the first match of +pattern+ with   
-  # +replacement+. Call block (if given) for each 
-  # match and replace +pattern+ with the value of the 
+  # Replace only the first match of +pattern+ with
+  # +replacement+. Call block (if given) for each
+  # match and replace +pattern+ with the value of the
   # block. Modify +self+ with the final value.
   #
   # ISO 15.2.10.5.37

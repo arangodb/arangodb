@@ -233,9 +233,7 @@ namespace triagens {
                   this->_writeBuffers.push_back(buffer);
 
 #ifdef TRI_ENABLE_FIGURES
-
                   this->_writeBuffersStats.push_back(0);
-
 #endif
 
                   this->fillWriteBuffer();
@@ -416,7 +414,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-
         HttpRequest::HttpRequestType _requestType;
     };
   }

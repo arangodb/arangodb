@@ -385,7 +385,7 @@ void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
   TRI_LockMutex(&store->_lock);
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 
-  if (shadow) {
+  if (shadow && !shadow->_deleted) {
     DecreaseRefCount(store, shadow); // this might delete the shadow
   } 
 
@@ -409,7 +409,7 @@ void TRI_EndUsageIdShadowData (TRI_shadow_store_t* const store,
   TRI_LockMutex(&store->_lock);
   shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
 
-  if (shadow && !shadow->_deleted) {
+  if (shadow) {
     DecreaseRefCount(store, shadow); // this might delete the shadow
   } 
 

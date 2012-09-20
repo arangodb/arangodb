@@ -244,6 +244,19 @@ nobase_pkgdata_DATA += \
 
 endif
 
+################################################################################
+### @brief /var data
+################################################################################
+
+#if ENABLE_RELATIVE
+#else
+
+install-data-local:
+	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
+	test -d $(DESTDIR)$(TRI_LOGDIR) || mkdir -p $(DESTDIR)$(TRI_LOGDIR)
+
+#endif
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
 ## -----------------------------------------------------------------------------

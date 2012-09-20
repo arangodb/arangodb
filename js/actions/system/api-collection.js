@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  var actions = require("actions");
+  var actions = require("org/arangodb/actions");
   var API = "_api/collection";
 
 // -----------------------------------------------------------------------------

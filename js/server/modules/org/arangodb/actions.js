@@ -29,6 +29,178 @@ var internal = require("internal");
 var console = require("console");
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+var RoutingCache = {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a string
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackString (callback) {
+  var components;
+  var module;
+  var fn;
+
+  if (callback == "") {
+    return undefined;
+  }
+
+  components = callback.split("/");
+  fn = components[components.length - 1];
+
+  components.pop();
+  module = components.join("/");
+
+  try {
+    module = require(module);
+  }
+  catch (err) {
+    console.error("cannot load callback '%s' from module '%s': %s",
+                  fn, module, "" + err);
+    return undefined;
+  }
+
+  if (fn in module) {
+    return module[fn];
+  }
+
+  console.error("callback '%s' is not defined in module '%s'", fn, module);
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a function
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackFunction (callback) {
+  var module;
+  var fn;
+
+  try {
+    module = require(callback.module);
+  }
+  catch (err) {
+    console.error("cannot load callback '%s' from module '%s': %s",
+                  fn, callback.module, "" + err);
+    return undefined;
+  }
+
+  fn = callback.function;
+
+  if (fn in module) {
+    return module[fn];
+  }
+
+  console.error("callback '%s' is not defined in module '%s'", fn, module);
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for static data
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackStatic (callback) {
+  var type;
+  var body;
+
+  type = callback.contentType || "text/plain";
+  body = callback.body || "";
+
+  return function (req, res) {
+    res.responseCode = exports.HTTP_OK;
+    res.contentType = type;
+    res.body = body;
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback for a redirect
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallbackRedirect (callback) {
+  var redirect;
+
+  redirect = callback.redirect;
+
+  if (redirect == "") {
+    console.error("empty redirect not allowed");
+    return undefined;
+  }
+
+  return function (req, res, next, options) {
+    var perm = true;
+
+    if ('permanent' in options) {
+      perm = options.perm;
+    }
+
+    if (perm) {
+      actions.resultPermanentRedirect(req, res, redirect);
+    }
+    else {
+      actions.resultTemporaryRedirect(req, res, redirect);
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a callback
+////////////////////////////////////////////////////////////////////////////////
+
+function LookupCallback (callback) {
+  var type;
+
+  if (typeof callback === 'object') {
+    if ('body' in callback) {
+      return LookupCallbackStatic(callback);
+    }
+    else if ('for' in callback && 'do' in callback) {
+      return LookupCallbackFunction(callback);
+    }
+    else if ('redirect' in callback) {
+      return LookupCallbackRedirect(callback);
+    }
+    else {
+      console.error("unknown callback type '%s'", JSON.stringify(callback));
+      return undefined;
+    }
+  }
+  else if (typeof callback === "string") {
+    return LookupCallbackString(callback);
+  }
+
+  return undefined;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -53,7 +225,7 @@ var console = require("console");
 ///
 /// @FA{options.prefix}
 ///
-/// If @LIT{false}, then only use the action for excat matches. The default is
+/// If @LIT{false}, then only use the action for exact matches. The default is
 /// @LIT{true}.
 ///
 /// @FA{options.context}
@@ -220,7 +392,7 @@ function GetJsonBody (req, res, code) {
 
 function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
   res.responseCode = httpReturnCode;
-  res.contentType = "application/json";
+  res.contentType = "application/json; charset=utf-8";
 
   if (typeof errorNum === "string") {
     keyvals = headers;
@@ -252,6 +424,257 @@ function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes cache and reload routing information
+////////////////////////////////////////////////////////////////////////////////
+
+function ReloadRouting () {
+  var all = [ exports.DELETE, exports.GET, exports.HEAD, exports.POST, exports.PUT, exports.PATCH ];
+  var callbacks;
+  var i;
+  var method;
+  var routes;
+  var routing = internal.db._collection("_routing");
+  var routings;
+
+  RoutingCache = {};
+
+  for (i = 0;  i < all.length;  ++i) {
+    method = all[i];
+    RoutingCache[method] = {};
+  }
+
+  if (routing === null) {
+    return;
+  }
+
+  routes = routing.all();
+
+  while (routes.hasNext()) {
+    var route = routes.next();
+
+    var callback;
+    var methods = [ exports.GET, exports.HEAD ];
+    var topdown = false;
+    var path;
+    var prefix = false;
+    var prio = 1.0;
+    var tmp;
+
+    // extract path
+    if (! ('path' in route)) {
+      console.error("route %s is missing the 'path' attribute", route._id);
+      continue;
+    }
+
+    path = route.path;
+
+    // extract callback
+    if (! ('callback' in route)) {
+      console.error("route %s is missing the 'callback' attribute", route._id);
+      continue;
+    }
+
+    callback = route.callback;
+
+    if ( !(callback instanceof Array)) {
+      callback = [ callback ];
+    }
+
+    tmp = [];
+
+    for (i = 0;  i < callback.length;  ++i) {
+      var cb = LookupCallback(callback[i]);
+
+      if (cb === undefined) {
+        console.error("route '%s' contains invalid callback '%s'", 
+                      route._id, JSON.stringify(callback[i]));
+      }
+      else if (typeof cb !== "function") {
+        console.error("route '%s' contains non-function callback '%s'",
+                      route._id, JSON.stringify(callback[i]));
+      }
+      else {
+        var result = { 
+          func: cb,
+          options: callback[i].options || {}
+        };
+
+        tmp.push(result);
+      }
+    }
+
+    callback = tmp;
+
+    // extract method
+    if ('method' in route) {
+      methods = route.method;
+
+      if (typeof methods === 'string') {
+        if (methods === "all" || methods === "*") {
+          methods = all;
+        }
+        else {
+          methods = [ methods ];
+        }
+      }
+    }
+
+    // extract priority
+    if ('priority' in route) {
+      prio = route.priority;
+    }
+
+    // extract topdown flag
+    if ('topdown' in route) {
+      topdown = route.topdown;
+    }
+
+    // extract prefix flag
+    if ('prefix' in route) {
+      prefix = route.prefix;
+    }
+
+    for (i = 0;  i < methods.length;  ++i) {
+      method = methods[i].toUpperCase();
+      routings = RoutingCache[method];
+
+      if (routings === undefined) {
+        console.error("unknown method '%s' in route %s", method, route._id);
+        continue;
+      }
+
+      if (path in routings) {
+        callbacks = routings[path];
+      }
+      else {
+        callbacks = routings[path] = []
+      }
+
+      callbacks.push({
+        route : route._id,
+        path : path,
+        topdown : topdown,
+        priority : prio,
+        prefix : prefix,
+        callback : callback
+      });
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extratcs the routing for a path and a a method
+////////////////////////////////////////////////////////////////////////////////
+
+function Routing (method, path) {
+  var bottomup;
+  var components;
+  var current;
+  var i;
+  var j;
+  var l;
+  var result;
+  var routings;
+  var topdown;
+
+  routings = RoutingCache[method];
+
+  if (routings === undefined) {
+    return [];
+  }
+
+  topdown = [];
+  bottomup = [];
+
+  current = "/";
+  components = [""].concat(path);
+
+  l = components.length;
+
+  for (i = 0;  i < l;  ++i) {
+    var full = (i + 1) == l;
+
+    if (1 < i) {
+      current += "/";
+    }
+
+    current += components[i];
+
+    if (current in routings) {
+      var callbacks = routings[current];
+
+      for (j = 0;  j < callbacks.length;  ++j) {
+        var callback = callbacks[j];
+
+        if (callback.prefix || full) {
+          if (callback.topdown) {
+            topdown.push(callback);
+          }
+          else {
+            bottomup.push(callback);
+          }
+        }
+      }
+    }
+  }
+
+  var sortTD = function (a, b) {
+    var la = a.path.length;
+    var lb = b.path.length;
+
+    if (la == lb) {
+      return a.priority - b.priority;
+    }
+
+    return la - lb;
+  }
+
+  var sortBU = function (a, b) {
+    var la = a.path.length;
+    var lb = b.path.length;
+
+    if (la == lb) {
+      return b.priority - a.priority;
+    }
+
+    return lb - la;
+  }
+
+  topdown.sort(sortTD);
+  bottomup.sort(sortBU);
+
+  result = [];
+
+  for (i = 0;  i < topdown.length;  ++i) {
+    var td = topdown[i];
+    var callback = td.callback;
+
+    for (j = 0;  j < callback.length;  ++j) {
+      result.push({ 
+        func: callback[j].func,
+        options: callback[j].options,
+        path: td.path
+      });
+    }
+  }
+
+  for (i = 0;  i < bottomup.length;  ++i) {
+    var bu = bottomup[i];
+    var callback = bu.callback;
+
+    for (j = 0;  j < callback.length;  ++j) {
+      result.push({
+        func: callback[j].func,
+        options: callback[j].options,
+        path: bu.path
+      });
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -278,7 +701,7 @@ function ResultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 
 function ResultOk (req, res, httpReturnCode, result, headers) {  
   res.responseCode = httpReturnCode;
-  res.contentType = "application/json";
+  res.contentType = "application/json; charset=utf-8";
   
   // add some default attributes to result
   if (result === undefined) {
@@ -327,6 +750,18 @@ function ResultNotFound (req, res, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an error for not implemented
+///
+/// @FUN{actions.resultNotImplemented(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultNotImplemented (req, res, msg, headers) {
+  ResultError(req, res, exports.HTTP_NOT_IMPLEMENTED, exports.ERROR_NOT_IMPLEMENTED, "" + msg, headers);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for unsupported methods
 ///
 /// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
@@ -339,6 +774,62 @@ function ResultUnsupported (req, res, headers) {
               exports.HTTP_METHOD_NOT_ALLOWED, exports.ERROR_HTTP_METHOD_NOT_ALLOWED,
               "Unsupported method",
               headers);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a permanently redirect
+///
+/// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultPermanentRedirect (req, res, destination, headers) {
+  res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
+  res.contentType = "text/html";
+
+  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + destination
+    + "\">"
+    + destination
+    + "</a>.</p></body></html>";
+
+  if (headers !== undefined) {
+    res.headers = headers.shallowCopy;
+  }
+  else {
+    res.headers = {};
+  }
+
+  res.headers.location = dest;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a temporary redirect
+///
+/// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
+///
+/// The functions generates an error response.
+////////////////////////////////////////////////////////////////////////////////
+
+function ResultTemporaryRedirect (req, res, destination, headers) {
+  res.responseCode = actions.HTTP_TEMPORARY_REDIRECT;
+  res.contentType = "text/html";
+
+  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+    + destination
+    + "\">"
+    + destination
+    + "</a>.</p></body></html>";
+
+  if (headers !== undefined) {
+    res.headers = headers.shallowCopy;
+  }
+  else {
+    res.headers = {};
+  }
+
+  res.headers.location = dest;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,6 +987,80 @@ function ResultException (req, res, err, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                      ArangoDB specific responses
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief echos a request
+////////////////////////////////////////////////////////////////////////////////
+
+function EchoRequest (req, res, next, options) {
+  var result;
+
+  result = { request : req, options : options };
+
+  res.responseCode = exports.HTTP_OK;
+  res.contentType = "application/json; charset=utf-8";
+  res.body = JSON.stringify(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a request
+////////////////////////////////////////////////////////////////////////////////
+
+function LogRequest (req, res, next, options) {
+  var log;
+  var level;
+  var token;
+
+  if ('level' in options) {
+    level = options.level;
+
+    if (level === "debug") {
+      log = console.debug;
+    }
+    else if (level === "error") {
+      log = console.error;
+    }
+    else if (level === "info") {
+      log = console.info;
+    }
+    else if (level === "log") {
+      log = console.log;
+    }
+    else if (level === "warn") {
+      log = console.warn;
+    }
+    else {
+      log = console.log;
+    }
+  }
+  else {
+    log = console.log;
+  }
+
+  if ('token' in options) {
+    token = options.token;
+  }
+  else {
+    token = "@(#" + internal.time() + ") ";
+  }
+
+  log("received request %s: %s", token, JSON.stringify(req));
+  next();
+  log("produced response %s: %s", token, JSON.stringify(res));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -508,19 +1073,28 @@ function ResultException (req, res, err, headers) {
 exports.defineHttp              = DefineHttp;
 exports.getErrorMessage         = GetErrorMessage;
 exports.getJsonBody             = GetJsonBody;
+exports.reloadRouting           = ReloadRouting;
+exports.routing                 = Routing;
 
 // standard HTTP responses
 exports.resultBad               = ResultBad;
-exports.resultNotFound          = ResultNotFound;
-exports.resultOk                = ResultOk;
-exports.resultUnsupported       = ResultUnsupported;
 exports.resultError             = ResultError;
+exports.resultNotFound          = ResultNotFound;
+exports.resultNotImplemented    = ResultNotImplemented;
+exports.resultOk                = ResultOk;
+exports.resultPermanentRedirect = ResultPermanentRedirect;
+exports.resultTemporaryRedirect = ResultTemporaryRedirect;
+exports.resultUnsupported       = ResultUnsupported;
 
 // ArangoDB specific responses
 exports.resultCursor            = ResultCursor;
 exports.collectionNotFound      = CollectionNotFound;
 exports.indexNotFound           = IndexNotFound;
 exports.resultException         = ResultException;
+
+// standard actions
+exports.echoRequest             = EchoRequest;
+exports.logRequest              = LogRequest;
 
 // some useful constants
 exports.COLLECTION              = "collection";
@@ -573,9 +1147,16 @@ for (var name in internal.errors) {
   }
 }
 
+// load routing
+ReloadRouting();
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

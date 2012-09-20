@@ -318,14 +318,22 @@ bool TRI_ExecuteRubyString (mrb_state* mrb,
   mrb_value r;
   int n;
 
-  p = mrb_parse_nstring(mrb, script, strlen(script));
+  parser = mrb_parse_nstring(mrb, script, strlen(script), NULL);
+
+  if (parser == 0 || parser->tree == 0 || 0 < parser->nerr) {
+    LOG_DEBUG("failed to parse ruby script");
+
+    if (parser != 0 && parser->pool != 0) {
+      mrb_pool_close(parser->pool);
+    }
 
   if (p == 0 || p->tree == 0 || 0 < p->nerr) {
     printf("failed to parse script\n");
     return false;
   }
 
-  n = mrb_generate_code(mrb, p->tree);
+  n = mrb_generate_code(mrb, parser);
+  mrb_pool_close(parser->pool);
 
   if (n < 0) {
     printf("failed to generate code: %d\n", n);
