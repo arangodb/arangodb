@@ -98,14 +98,14 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        MRubyClientConnection (MR_state_t*,
+        MRubyClientConnection (mrb_state*,
                                triagens::rest::Endpoint*,
-                               const string&,
-                               const string&,
-                               double,
-                               double,
-                               size_t,
-                               bool);
+                               const string& username,
+                               const string& passwort,
+                               double requestTimeout,
+                               double connectionTimeout,
+                               size_t numRetries,
+                               bool warn);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -279,7 +279,7 @@ namespace triagens {
 /// @brief ruby state
 ////////////////////////////////////////////////////////////////////////////////
 
-      MR_state_t* _mrs;
+      mrb_state* _mrb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection

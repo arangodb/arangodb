@@ -168,8 +168,8 @@ static int IsCodeBlockOpen (struct mrb_parser_state *parser)
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-MRLineEditor::MRLineEditor (MR_state_t* mrs, string const& history)
-  : LineEditor(history), _current(), _mrs(mrs) {
+MRLineEditor::MRLineEditor (mrb_state* mrb, string const& history)
+  : LineEditor(history), _current(), _mrb(mrb) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
