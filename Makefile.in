@@ -1092,9 +1092,11 @@ dist_man_MANS = Doxygen/man/man1/arangoimp.1 \
 ### @brief cleanup
 ################################################################################
 CLEANUP = .setup-js-directories .setup-mr-directories \
-	bin/arango-password bin/arango-upgrade bin/arango-dfdb \
-	$(DOXYGEN) $(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
-	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
+	lib/ProtocolBuffers/arangodb.pb.h \
+	arangod/Ahuacatl/ahuacatl-grammar.h bin/arango-password \
+	bin/arango-upgrade bin/arango-dfdb $(DOXYGEN) $(addsuffix \
+	.md,$(addprefix Doxygen/xml/,$(WIKI))) $(addsuffix \
+	.md,$(addprefix Doxygen/wiki/,$(WIKI))) \
 	Doxygen/.setup-directories $(JAVASCRIPT_HEADER) \
 	.setup-js-directories $(am__append_17) $(am__append_20) \
 	$(am__append_22) $(PROTOBUF_FILES) $(am__append_24) \

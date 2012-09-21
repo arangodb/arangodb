@@ -128,6 +128,9 @@ FLEX_FILES += \
 BISON_FILES += \
 	arangod/Ahuacatl/ahuacatl-grammar.c
 
+CLEANUP += \
+	arangod/Ahuacatl/ahuacatl-grammar.h
+
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE
 ################################################################################
