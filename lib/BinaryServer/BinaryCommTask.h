@@ -147,7 +147,7 @@ namespace triagens {
             const char * ptr = this->_readBuffer->c_str() + this->_readPosition;
             const char * end = this->_readBuffer->end();
 
-            if (end - ptr >= BinaryMessage::getHeaderLength()) {
+            if (end - ptr >= (ptrdiff_t) BinaryMessage::getHeaderLength()) {
               this->_readPosition = BinaryMessage::getHeaderLength();
 
               LOGGER_TRACE << "BINARY READ FOR " << static_cast<Task*>(this);

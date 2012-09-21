@@ -551,7 +551,7 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), &errmsg);
+  TRI_json_t* json = _request->toJson(&errmsg);
 
   if (json == 0) {
     if (errmsg == 0) {
