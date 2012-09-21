@@ -24,6 +24,12 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* PB_ArangoBatchMessage_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   PB_ArangoBatchMessage_reflection_ = NULL;
+const ::google::protobuf::Descriptor* PB_ArangoJsonValue_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  PB_ArangoJsonValue_reflection_ = NULL;
+const ::google::protobuf::Descriptor* PB_ArangoJsonContent_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  PB_ArangoJsonContent_reflection_ = NULL;
 const ::google::protobuf::Descriptor* PB_ArangoBlobRequest_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   PB_ArangoBlobRequest_reflection_ = NULL;
@@ -36,6 +42,7 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::EnumDescriptor* PB_ArangoMessageType_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* PB_ArangoMessageContentType_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* PB_ArangoRequestType_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* PB_ArangoJsonType_descriptor_ = NULL;
 
 }  // namespace
 
@@ -95,14 +102,49 @@ void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(PB_ArangoBatchMessage));
-  PB_ArangoBlobRequest_descriptor_ = file->message_type(3);
-  static const int PB_ArangoBlobRequest_offsets_[6] = {
+  PB_ArangoJsonValue_descriptor_ = file->message_type(3);
+  static const int PB_ArangoJsonValue_offsets_[4] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonValue, booleanvalue_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonValue, numbervalue_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonValue, stringvalue_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonValue, objects_),
+  };
+  PB_ArangoJsonValue_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      PB_ArangoJsonValue_descriptor_,
+      PB_ArangoJsonValue::default_instance_,
+      PB_ArangoJsonValue_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonValue, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonValue, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(PB_ArangoJsonValue));
+  PB_ArangoJsonContent_descriptor_ = file->message_type(4);
+  static const int PB_ArangoJsonContent_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonContent, type_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonContent, value_),
+  };
+  PB_ArangoJsonContent_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      PB_ArangoJsonContent_descriptor_,
+      PB_ArangoJsonContent::default_instance_,
+      PB_ArangoJsonContent_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonContent, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoJsonContent, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(PB_ArangoJsonContent));
+  PB_ArangoBlobRequest_descriptor_ = file->message_type(5);
+  static const int PB_ArangoBlobRequest_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, requesttype_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, url_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, values_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, headers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, contenttype_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, content_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobRequest, json_),
   };
   PB_ArangoBlobRequest_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -115,7 +157,7 @@ void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(PB_ArangoBlobRequest));
-  PB_ArangoBlobResponse_descriptor_ = file->message_type(4);
+  PB_ArangoBlobResponse_descriptor_ = file->message_type(6);
   static const int PB_ArangoBlobResponse_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, status_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoBlobResponse, headers_),
@@ -134,7 +176,7 @@ void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(PB_ArangoBlobResponse));
-  PB_ArangoErrorResponse_descriptor_ = file->message_type(5);
+  PB_ArangoErrorResponse_descriptor_ = file->message_type(7);
   static const int PB_ArangoErrorResponse_offsets_[1] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PB_ArangoErrorResponse, message_),
   };
@@ -152,6 +194,7 @@ void protobuf_AssignDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
   PB_ArangoMessageType_descriptor_ = file->enum_type(0);
   PB_ArangoMessageContentType_descriptor_ = file->enum_type(1);
   PB_ArangoRequestType_descriptor_ = file->enum_type(2);
+  PB_ArangoJsonType_descriptor_ = file->enum_type(3);
 }
 
 namespace {
@@ -171,6 +214,10 @@ void protobuf_RegisterTypes(const ::std::string&) {
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     PB_ArangoBatchMessage_descriptor_, &PB_ArangoBatchMessage::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    PB_ArangoJsonValue_descriptor_, &PB_ArangoJsonValue::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    PB_ArangoJsonContent_descriptor_, &PB_ArangoJsonContent::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     PB_ArangoBlobRequest_descriptor_, &PB_ArangoBlobRequest::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     PB_ArangoBlobResponse_descriptor_, &PB_ArangoBlobResponse::default_instance());
@@ -187,6 +234,10 @@ void protobuf_ShutdownFile_lib_2fProtocolBuffers_2farangodb_2eproto() {
   delete PB_ArangoMessage_reflection_;
   delete PB_ArangoBatchMessage::default_instance_;
   delete PB_ArangoBatchMessage_reflection_;
+  delete PB_ArangoJsonValue::default_instance_;
+  delete PB_ArangoJsonValue_reflection_;
+  delete PB_ArangoJsonContent::default_instance_;
+  delete PB_ArangoJsonContent_reflection_;
   delete PB_ArangoBlobRequest::default_instance_;
   delete PB_ArangoBlobRequest_reflection_;
   delete PB_ArangoBlobResponse::default_instance_;
@@ -210,38 +261,53 @@ void protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto() {
     "essageType\022*\n\013blobRequest\030\002 \001(\0132\025.PB_Ara"
     "ngoBlobRequest\022,\n\014blobResponse\030\003 \001(\0132\026.P"
     "B_ArangoBlobResponse\022.\n\rerrorResponse\030\004 "
-    "\001(\0132\027.PB_ArangoErrorResponse\"\334\001\n\024PB_Aran"
-    "goBlobRequest\022*\n\013requestType\030\001 \002(\0162\025.PB_"
-    "ArangoRequestType\022\013\n\003url\030\002 \002(\t\022\"\n\006values"
-    "\030\003 \003(\0132\022.PB_ArangoKeyValue\022#\n\007headers\030\004 "
-    "\003(\0132\022.PB_ArangoKeyValue\0221\n\013contentType\030\005"
-    " \002(\0162\034.PB_ArangoMessageContentType\022\017\n\007co"
-    "ntent\030\007 \001(\t\"\247\001\n\025PB_ArangoBlobResponse\022\016\n"
-    "\006status\030\001 \002(\005\022#\n\007headers\030\002 \003(\0132\022.PB_Aran"
-    "goKeyValue\0221\n\013contentType\030\003 \002(\0162\034.PB_Ara"
-    "ngoMessageContentType\022\025\n\rcontentLength\030\006"
-    " \002(\005\022\017\n\007content\030\004 \001(\t\")\n\026PB_ArangoErrorR"
-    "esponse\022\017\n\007message\030\001 \002(\t*X\n\024PB_ArangoMes"
-    "sageType\022\023\n\017PB_BLOB_REQUEST\020\000\022\024\n\020PB_BLOB"
-    "_RESPONSE\020\001\022\025\n\021PB_ERROR_RESPONSE\020\002*Z\n\033PB"
-    "_ArangoMessageContentType\022\021\n\rPB_NO_CONTE"
-    "NT\020\000\022\023\n\017PB_TEXT_CONTENT\020\001\022\023\n\017PB_JSON_CON"
-    "TENT\020\002*\263\001\n\024PB_ArangoRequestType\022\032\n\026PB_RE"
-    "QUEST_TYPE_DELETE\020\000\022\027\n\023PB_REQUEST_TYPE_G"
-    "ET\020\001\022\030\n\024PB_REQUEST_TYPE_HEAD\020\002\022\030\n\024PB_REQ"
-    "UEST_TYPE_POST\020\003\022\027\n\023PB_REQUEST_TYPE_PUT\020"
-    "\004\022\031\n\025PB_REQUEST_TYPE_PATCH\020\005", 1148);
+    "\001(\0132\027.PB_ArangoErrorResponse\"|\n\022PB_Arang"
+    "oJsonValue\022\024\n\014booleanValue\030\001 \001(\010\022\023\n\013numb"
+    "erValue\030\002 \001(\001\022\023\n\013stringValue\030\003 \001(\t\022&\n\007ob"
+    "jects\030\004 \003(\0132\025.PB_ArangoJsonContent\"\\\n\024PB"
+    "_ArangoJsonContent\022 \n\004type\030\001 \002(\0162\022.PB_Ar"
+    "angoJsonType\022\"\n\005value\030\002 \001(\0132\023.PB_ArangoJ"
+    "sonValue\"\201\002\n\024PB_ArangoBlobRequest\022*\n\013req"
+    "uestType\030\001 \002(\0162\025.PB_ArangoRequestType\022\013\n"
+    "\003url\030\002 \002(\t\022\"\n\006values\030\003 \003(\0132\022.PB_ArangoKe"
+    "yValue\022#\n\007headers\030\004 \003(\0132\022.PB_ArangoKeyVa"
+    "lue\0221\n\013contentType\030\005 \002(\0162\034.PB_ArangoMess"
+    "ageContentType\022\017\n\007content\030\007 \001(\t\022#\n\004json\030"
+    "\010 \001(\0132\025.PB_ArangoJsonContent\"\247\001\n\025PB_Aran"
+    "goBlobResponse\022\016\n\006status\030\001 \002(\005\022#\n\007header"
+    "s\030\002 \003(\0132\022.PB_ArangoKeyValue\0221\n\013contentTy"
+    "pe\030\003 \002(\0162\034.PB_ArangoMessageContentType\022\025"
+    "\n\rcontentLength\030\006 \002(\005\022\017\n\007content\030\004 \001(\t\")"
+    "\n\026PB_ArangoErrorResponse\022\017\n\007message\030\001 \002("
+    "\t*X\n\024PB_ArangoMessageType\022\023\n\017PB_BLOB_REQ"
+    "UEST\020\000\022\024\n\020PB_BLOB_RESPONSE\020\001\022\025\n\021PB_ERROR"
+    "_RESPONSE\020\002*Z\n\033PB_ArangoMessageContentTy"
+    "pe\022\021\n\rPB_NO_CONTENT\020\000\022\023\n\017PB_TEXT_CONTENT"
+    "\020\001\022\023\n\017PB_JSON_CONTENT\020\002*\263\001\n\024PB_ArangoReq"
+    "uestType\022\032\n\026PB_REQUEST_TYPE_DELETE\020\000\022\027\n\023"
+    "PB_REQUEST_TYPE_GET\020\001\022\030\n\024PB_REQUEST_TYPE"
+    "_HEAD\020\002\022\030\n\024PB_REQUEST_TYPE_POST\020\003\022\027\n\023PB_"
+    "REQUEST_TYPE_PUT\020\004\022\031\n\025PB_REQUEST_TYPE_PA"
+    "TCH\020\005*\267\001\n\021PB_ArangoJsonType\022\030\n\024PB_REQUES"
+    "T_TYPE_NULL\020\000\022\033\n\027PB_REQUEST_TYPE_BOOLEAN"
+    "\020\001\022\032\n\026PB_REQUEST_TYPE_NUMBER\020\002\022\032\n\026PB_REQ"
+    "UEST_TYPE_STRING\020\003\022\031\n\025PB_REQUEST_TYPE_AR"
+    "RAY\020\004\022\030\n\024PB_REQUEST_TYPE_LIST\020\005", 1591);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "lib/ProtocolBuffers/arangodb.proto", &protobuf_RegisterTypes);
   PB_ArangoKeyValue::default_instance_ = new PB_ArangoKeyValue();
   PB_ArangoMessage::default_instance_ = new PB_ArangoMessage();
   PB_ArangoBatchMessage::default_instance_ = new PB_ArangoBatchMessage();
+  PB_ArangoJsonValue::default_instance_ = new PB_ArangoJsonValue();
+  PB_ArangoJsonContent::default_instance_ = new PB_ArangoJsonContent();
   PB_ArangoBlobRequest::default_instance_ = new PB_ArangoBlobRequest();
   PB_ArangoBlobResponse::default_instance_ = new PB_ArangoBlobResponse();
   PB_ArangoErrorResponse::default_instance_ = new PB_ArangoErrorResponse();
   PB_ArangoKeyValue::default_instance_->InitAsDefaultInstance();
   PB_ArangoMessage::default_instance_->InitAsDefaultInstance();
   PB_ArangoBatchMessage::default_instance_->InitAsDefaultInstance();
+  PB_ArangoJsonValue::default_instance_->InitAsDefaultInstance();
+  PB_ArangoJsonContent::default_instance_->InitAsDefaultInstance();
   PB_ArangoBlobRequest::default_instance_->InitAsDefaultInstance();
   PB_ArangoBlobResponse::default_instance_->InitAsDefaultInstance();
   PB_ArangoErrorResponse::default_instance_->InitAsDefaultInstance();
@@ -290,6 +356,24 @@ const ::google::protobuf::EnumDescriptor* PB_ArangoRequestType_descriptor() {
   return PB_ArangoRequestType_descriptor_;
 }
 bool PB_ArangoRequestType_IsValid(int value) {
+  switch(value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::google::protobuf::EnumDescriptor* PB_ArangoJsonType_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return PB_ArangoJsonType_descriptor_;
+}
+bool PB_ArangoJsonType_IsValid(int value) {
   switch(value) {
     case 0:
     case 1:
@@ -1152,12 +1236,618 @@ void PB_ArangoBatchMessage::Swap(PB_ArangoBatchMessage* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int PB_ArangoJsonValue::kBooleanValueFieldNumber;
+const int PB_ArangoJsonValue::kNumberValueFieldNumber;
+const int PB_ArangoJsonValue::kStringValueFieldNumber;
+const int PB_ArangoJsonValue::kObjectsFieldNumber;
+#endif  // !_MSC_VER
+
+PB_ArangoJsonValue::PB_ArangoJsonValue()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void PB_ArangoJsonValue::InitAsDefaultInstance() {
+}
+
+PB_ArangoJsonValue::PB_ArangoJsonValue(const PB_ArangoJsonValue& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void PB_ArangoJsonValue::SharedCtor() {
+  _cached_size_ = 0;
+  booleanvalue_ = false;
+  numbervalue_ = 0;
+  stringvalue_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+PB_ArangoJsonValue::~PB_ArangoJsonValue() {
+  SharedDtor();
+}
+
+void PB_ArangoJsonValue::SharedDtor() {
+  if (stringvalue_ != &::google::protobuf::internal::kEmptyString) {
+    delete stringvalue_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void PB_ArangoJsonValue::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* PB_ArangoJsonValue::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return PB_ArangoJsonValue_descriptor_;
+}
+
+const PB_ArangoJsonValue& PB_ArangoJsonValue::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();  return *default_instance_;
+}
+
+PB_ArangoJsonValue* PB_ArangoJsonValue::default_instance_ = NULL;
+
+PB_ArangoJsonValue* PB_ArangoJsonValue::New() const {
+  return new PB_ArangoJsonValue;
+}
+
+void PB_ArangoJsonValue::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    booleanvalue_ = false;
+    numbervalue_ = 0;
+    if (has_stringvalue()) {
+      if (stringvalue_ != &::google::protobuf::internal::kEmptyString) {
+        stringvalue_->clear();
+      }
+    }
+  }
+  objects_.Clear();
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool PB_ArangoJsonValue::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional bool booleanValue = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &booleanvalue_)));
+          set_has_booleanvalue();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(17)) goto parse_numberValue;
+        break;
+      }
+      
+      // optional double numberValue = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
+         parse_numberValue:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
+                 input, &numbervalue_)));
+          set_has_numbervalue();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_stringValue;
+        break;
+      }
+      
+      // optional string stringValue = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_stringValue:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_stringvalue()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->stringvalue().data(), this->stringvalue().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(34)) goto parse_objects;
+        break;
+      }
+      
+      // repeated .PB_ArangoJsonContent objects = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_objects:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_objects()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(34)) goto parse_objects;
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+      
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void PB_ArangoJsonValue::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // optional bool booleanValue = 1;
+  if (has_booleanvalue()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->booleanvalue(), output);
+  }
+  
+  // optional double numberValue = 2;
+  if (has_numbervalue()) {
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(2, this->numbervalue(), output);
+  }
+  
+  // optional string stringValue = 3;
+  if (has_stringvalue()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->stringvalue().data(), this->stringvalue().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      3, this->stringvalue(), output);
+  }
+  
+  // repeated .PB_ArangoJsonContent objects = 4;
+  for (int i = 0; i < this->objects_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      4, this->objects(i), output);
+  }
+  
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* PB_ArangoJsonValue::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // optional bool booleanValue = 1;
+  if (has_booleanvalue()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->booleanvalue(), target);
+  }
+  
+  // optional double numberValue = 2;
+  if (has_numbervalue()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(2, this->numbervalue(), target);
+  }
+  
+  // optional string stringValue = 3;
+  if (has_stringvalue()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->stringvalue().data(), this->stringvalue().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        3, this->stringvalue(), target);
+  }
+  
+  // repeated .PB_ArangoJsonContent objects = 4;
+  for (int i = 0; i < this->objects_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        4, this->objects(i), target);
+  }
+  
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int PB_ArangoJsonValue::ByteSize() const {
+  int total_size = 0;
+  
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional bool booleanValue = 1;
+    if (has_booleanvalue()) {
+      total_size += 1 + 1;
+    }
+    
+    // optional double numberValue = 2;
+    if (has_numbervalue()) {
+      total_size += 1 + 8;
+    }
+    
+    // optional string stringValue = 3;
+    if (has_stringvalue()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->stringvalue());
+    }
+    
+  }
+  // repeated .PB_ArangoJsonContent objects = 4;
+  total_size += 1 * this->objects_size();
+  for (int i = 0; i < this->objects_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->objects(i));
+  }
+  
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void PB_ArangoJsonValue::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const PB_ArangoJsonValue* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const PB_ArangoJsonValue*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void PB_ArangoJsonValue::MergeFrom(const PB_ArangoJsonValue& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  objects_.MergeFrom(from.objects_);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_booleanvalue()) {
+      set_booleanvalue(from.booleanvalue());
+    }
+    if (from.has_numbervalue()) {
+      set_numbervalue(from.numbervalue());
+    }
+    if (from.has_stringvalue()) {
+      set_stringvalue(from.stringvalue());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void PB_ArangoJsonValue::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void PB_ArangoJsonValue::CopyFrom(const PB_ArangoJsonValue& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool PB_ArangoJsonValue::IsInitialized() const {
+  
+  for (int i = 0; i < objects_size(); i++) {
+    if (!this->objects(i).IsInitialized()) return false;
+  }
+  return true;
+}
+
+void PB_ArangoJsonValue::Swap(PB_ArangoJsonValue* other) {
+  if (other != this) {
+    std::swap(booleanvalue_, other->booleanvalue_);
+    std::swap(numbervalue_, other->numbervalue_);
+    std::swap(stringvalue_, other->stringvalue_);
+    objects_.Swap(&other->objects_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata PB_ArangoJsonValue::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = PB_ArangoJsonValue_descriptor_;
+  metadata.reflection = PB_ArangoJsonValue_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int PB_ArangoJsonContent::kTypeFieldNumber;
+const int PB_ArangoJsonContent::kValueFieldNumber;
+#endif  // !_MSC_VER
+
+PB_ArangoJsonContent::PB_ArangoJsonContent()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void PB_ArangoJsonContent::InitAsDefaultInstance() {
+  value_ = const_cast< ::PB_ArangoJsonValue*>(&::PB_ArangoJsonValue::default_instance());
+}
+
+PB_ArangoJsonContent::PB_ArangoJsonContent(const PB_ArangoJsonContent& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void PB_ArangoJsonContent::SharedCtor() {
+  _cached_size_ = 0;
+  type_ = 0;
+  value_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+PB_ArangoJsonContent::~PB_ArangoJsonContent() {
+  SharedDtor();
+}
+
+void PB_ArangoJsonContent::SharedDtor() {
+  if (this != default_instance_) {
+    delete value_;
+  }
+}
+
+void PB_ArangoJsonContent::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* PB_ArangoJsonContent::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return PB_ArangoJsonContent_descriptor_;
+}
+
+const PB_ArangoJsonContent& PB_ArangoJsonContent::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_lib_2fProtocolBuffers_2farangodb_2eproto();  return *default_instance_;
+}
+
+PB_ArangoJsonContent* PB_ArangoJsonContent::default_instance_ = NULL;
+
+PB_ArangoJsonContent* PB_ArangoJsonContent::New() const {
+  return new PB_ArangoJsonContent;
+}
+
+void PB_ArangoJsonContent::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    type_ = 0;
+    if (has_value()) {
+      if (value_ != NULL) value_->::PB_ArangoJsonValue::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool PB_ArangoJsonContent::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required .PB_ArangoJsonType type = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (PB_ArangoJsonType_IsValid(value)) {
+            set_type(static_cast< PB_ArangoJsonType >(value));
+          } else {
+            mutable_unknown_fields()->AddVarint(1, value);
+          }
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_value;
+        break;
+      }
+      
+      // optional .PB_ArangoJsonValue value = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_value:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_value()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+      
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void PB_ArangoJsonContent::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required .PB_ArangoJsonType type = 1;
+  if (has_type()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      1, this->type(), output);
+  }
+  
+  // optional .PB_ArangoJsonValue value = 2;
+  if (has_value()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      2, this->value(), output);
+  }
+  
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* PB_ArangoJsonContent::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required .PB_ArangoJsonType type = 1;
+  if (has_type()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
+      1, this->type(), target);
+  }
+  
+  // optional .PB_ArangoJsonValue value = 2;
+  if (has_value()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        2, this->value(), target);
+  }
+  
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int PB_ArangoJsonContent::ByteSize() const {
+  int total_size = 0;
+  
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required .PB_ArangoJsonType type = 1;
+    if (has_type()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->type());
+    }
+    
+    // optional .PB_ArangoJsonValue value = 2;
+    if (has_value()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->value());
+    }
+    
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void PB_ArangoJsonContent::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const PB_ArangoJsonContent* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const PB_ArangoJsonContent*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void PB_ArangoJsonContent::MergeFrom(const PB_ArangoJsonContent& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_type()) {
+      set_type(from.type());
+    }
+    if (from.has_value()) {
+      mutable_value()->::PB_ArangoJsonValue::MergeFrom(from.value());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void PB_ArangoJsonContent::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void PB_ArangoJsonContent::CopyFrom(const PB_ArangoJsonContent& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool PB_ArangoJsonContent::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+  
+  if (has_value()) {
+    if (!this->value().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void PB_ArangoJsonContent::Swap(PB_ArangoJsonContent* other) {
+  if (other != this) {
+    std::swap(type_, other->type_);
+    std::swap(value_, other->value_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata PB_ArangoJsonContent::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = PB_ArangoJsonContent_descriptor_;
+  metadata.reflection = PB_ArangoJsonContent_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int PB_ArangoBlobRequest::kRequestTypeFieldNumber;
 const int PB_ArangoBlobRequest::kUrlFieldNumber;
 const int PB_ArangoBlobRequest::kValuesFieldNumber;
 const int PB_ArangoBlobRequest::kHeadersFieldNumber;
 const int PB_ArangoBlobRequest::kContentTypeFieldNumber;
 const int PB_ArangoBlobRequest::kContentFieldNumber;
+const int PB_ArangoBlobRequest::kJsonFieldNumber;
 #endif  // !_MSC_VER
 
 PB_ArangoBlobRequest::PB_ArangoBlobRequest()
@@ -1166,6 +1856,7 @@ PB_ArangoBlobRequest::PB_ArangoBlobRequest()
 }
 
 void PB_ArangoBlobRequest::InitAsDefaultInstance() {
+  json_ = const_cast< ::PB_ArangoJsonContent*>(&::PB_ArangoJsonContent::default_instance());
 }
 
 PB_ArangoBlobRequest::PB_ArangoBlobRequest(const PB_ArangoBlobRequest& from)
@@ -1180,6 +1871,7 @@ void PB_ArangoBlobRequest::SharedCtor() {
   url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   contenttype_ = 0;
   content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  json_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1195,6 +1887,7 @@ void PB_ArangoBlobRequest::SharedDtor() {
     delete content_;
   }
   if (this != default_instance_) {
+    delete json_;
   }
 }
 
@@ -1231,6 +1924,9 @@ void PB_ArangoBlobRequest::Clear() {
       if (content_ != &::google::protobuf::internal::kEmptyString) {
         content_->clear();
       }
+    }
+    if (has_json()) {
+      if (json_ != NULL) json_->::PB_ArangoJsonContent::Clear();
     }
   }
   values_.Clear();
@@ -1346,6 +2042,20 @@ bool PB_ArangoBlobRequest::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(66)) goto parse_json;
+        break;
+      }
+      
+      // optional .PB_ArangoJsonContent json = 8;
+      case 8: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_json:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_json()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1410,6 +2120,12 @@ void PB_ArangoBlobRequest::SerializeWithCachedSizes(
       7, this->content(), output);
   }
   
+  // optional .PB_ArangoJsonContent json = 8;
+  if (has_json()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      8, this->json(), output);
+  }
+  
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -1464,6 +2180,13 @@ void PB_ArangoBlobRequest::SerializeWithCachedSizes(
         7, this->content(), target);
   }
   
+  // optional .PB_ArangoJsonContent json = 8;
+  if (has_json()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        8, this->json(), target);
+  }
+  
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -1499,6 +2222,13 @@ int PB_ArangoBlobRequest::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->content());
+    }
+    
+    // optional .PB_ArangoJsonContent json = 8;
+    if (has_json()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->json());
     }
     
   }
@@ -1558,6 +2288,9 @@ void PB_ArangoBlobRequest::MergeFrom(const PB_ArangoBlobRequest& from) {
     if (from.has_content()) {
       set_content(from.content());
     }
+    if (from.has_json()) {
+      mutable_json()->::PB_ArangoJsonContent::MergeFrom(from.json());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -1583,6 +2316,9 @@ bool PB_ArangoBlobRequest::IsInitialized() const {
   for (int i = 0; i < headers_size(); i++) {
     if (!this->headers(i).IsInitialized()) return false;
   }
+  if (has_json()) {
+    if (!this->json().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -1594,6 +2330,7 @@ void PB_ArangoBlobRequest::Swap(PB_ArangoBlobRequest* other) {
     headers_.Swap(&other->headers_);
     std::swap(contenttype_, other->contenttype_);
     std::swap(content_, other->content_);
+    std::swap(json_, other->json_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
