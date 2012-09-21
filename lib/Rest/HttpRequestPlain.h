@@ -116,7 +116,7 @@ namespace triagens {
 
       public:
         
-        virtual TRI_json_t* toJson (char*&);
+        virtual TRI_json_t* toJson (char**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}

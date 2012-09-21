@@ -117,8 +117,8 @@ HttpRequestPlain::~HttpRequestPlain () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* HttpRequestPlain::toJson (char*& errmsg) {
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), &errmsg);
+TRI_json_t* HttpRequestPlain::toJson (char** errmsg) {
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
 
   return json;
 }
