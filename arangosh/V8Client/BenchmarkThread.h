@@ -52,16 +52,22 @@ namespace triagens {
   namespace v8client {
 
     struct BenchmarkRequest {
-      BenchmarkRequest (const char* url, map<string, string> params, const char* payload, SimpleHttpClient::http_method type) :
+      BenchmarkRequest (const char* url, 
+                        map<string, string> params, 
+                        const char* payload, 
+                        PB_ArangoMessageContentType contentType, 
+                        SimpleHttpClient::http_method type) :
         url(url),
         params(params),
         payload(payload),
+        contentType(contentType),
         type(type) {
       };
 
       string url;
       map<string, string> params;
       string payload;
+      PB_ArangoMessageContentType contentType;
       SimpleHttpClient::http_method type;
     };
 
@@ -212,7 +218,7 @@ namespace triagens {
       
             blob->set_requesttype(getRequestType(r.type));
             blob->set_url(r.url);
-            blob->set_contenttype(PB_NO_CONTENT);
+            blob->set_contenttype(r.contentType);
             blob->set_content(r.payload);
       
             for (map<string, string>::const_iterator it = r.params.begin(); it != r.params.end(); ++it) {

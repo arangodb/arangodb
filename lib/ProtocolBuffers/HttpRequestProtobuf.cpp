@@ -119,12 +119,16 @@ HttpRequestProtobuf::~HttpRequestProtobuf () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* HttpRequestProtobuf::toJson (char*& errmsg) {
-  if (_request->contenttype() != PB_JSON_CONTENT) { 
-    return 0;
+TRI_json_t* HttpRequestProtobuf::toJson (char** errmsg) {
+  TRI_json_t* json = 0;
+
+  if (_request->contenttype() == PB_JSON_CONTENT) { 
+    json = JsonConverterProtobuf::ParseObject(TRI_UNKNOWN_MEM_ZONE, _request->json()); 
+  }
+  else if (_request->contenttype() == PB_NO_CONTENT) {
+    json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
   }
 
-  TRI_json_t* json = JsonConverterProtobuf::ParseObject(TRI_UNKNOWN_MEM_ZONE, _request->json()); 
   return json;
 }
 

@@ -138,7 +138,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
 BenchmarkRequest VersionFunc () {
   map<string, string> params;
-  BenchmarkRequest r("/_api/version", params, "", SimpleHttpClient::GET);
+  BenchmarkRequest r("/_api/version", params, "", PB_NO_CONTENT, SimpleHttpClient::GET);
 
   return r;
 }
@@ -148,7 +148,7 @@ BenchmarkRequest InsertFunc () {
   params["createCollection"] = "true";
   params["collection"] = "BenchmarkInsert";
 
-  BenchmarkRequest r("/_api/document", params, "{\"some value\" : 1}", SimpleHttpClient::POST);
+  BenchmarkRequest r("/_api/document", params, "{\"some value\" : 1}", PB_NO_CONTENT, SimpleHttpClient::POST);
 
   return r;
 }
