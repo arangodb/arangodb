@@ -1,5 +1,5 @@
 /*
-** range.h - Range class
+** mruby/range.h - Range class
 **
 ** See Copyright Notice in mruby.h
 */
@@ -17,7 +17,7 @@ struct mrb_range_edges {
 };
 
 struct RRange {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
   struct mrb_range_edges *edges;
   int excl;
 };

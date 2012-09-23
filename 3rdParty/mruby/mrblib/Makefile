@@ -1,4 +1,4 @@
-# makefile discription.
+# Makefile description.
 # basic build file for mruby library (Ruby part)
 
 # project-specific macros
@@ -65,7 +65,7 @@ $(MLIB) : $(CLIB)
 $(CLIB) : $(RLIB) $(MRBC)
 	$(MRBC) -Bmrblib_irep -o$(DLIB) $(RLIB); $(CAT) init_$(TARGET).c $(DLIB) > $@
 
-$(MRBC) : ../src/opcode.h ../src/codegen.c ../src/parse.y
+$(MRBC) : $(LIBR0)
 	$(MAKE) -C ../tools/mrbc $(MAKE_FLAGS)
 
 # merge mruby sources

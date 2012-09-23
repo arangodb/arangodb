@@ -81,7 +81,7 @@ end
 # Performs fuzzy check for equality on methods returning floats
 # on the basis of the Math::TOLERANCE constant.
 def check_float(a, b)
-  tolerance = 1e-12
+  tolerance = Math::TOLERANCE
   a = a.to_f
   b = b.to_f
   if a.finite? and b.finite?
@@ -90,4 +90,3 @@ def check_float(a, b)
     true
   end
 end
-

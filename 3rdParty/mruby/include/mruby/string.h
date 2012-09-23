@@ -1,5 +1,5 @@
 /*
-** string.h - String class
+** mruby/string.h - String class
 **
 ** See Copyright Notice in mruby.h
 */
@@ -32,7 +32,7 @@ struct mrb_shared_string {
 };
 
 struct RString {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
   int len;
   union {
     int capa;
@@ -52,7 +52,6 @@ struct RString {
 void mrb_str_decref(mrb_state*, struct mrb_shared_string*);
 mrb_value mrb_str_literal(mrb_state*, mrb_value);
 void mrb_str_concat(mrb_state*, mrb_value, mrb_value);
-mrb_value mrb_obj_to_str(mrb_state*, mrb_value);
 mrb_value mrb_str_plus(mrb_state*, mrb_value, mrb_value);
 mrb_value mrb_obj_as_string(mrb_state *mrb, mrb_value obj);
 mrb_value mrb_str_resize(mrb_state *mrb, mrb_value str, int len); /* mrb_str_resize */
@@ -78,8 +77,6 @@ int mrb_str_hash_cmp(mrb_state *mrb, mrb_value str1, mrb_value str2);
 mrb_value mrb_str_buf_append(mrb_state *mrb, mrb_value str, mrb_value str2);
 mrb_value mrb_str_inspect(mrb_state *mrb, mrb_value str);
 int mrb_str_equal(mrb_state *mrb, mrb_value str1, mrb_value str2);
-mrb_value * mrb_svar(mrb_int cnt);
-mrb_value mrb_str_drop_bytes(mrb_state *mrb, mrb_value str, long len);
 mrb_value mrb_str_dump(mrb_state *mrb, mrb_value str);
 mrb_value mrb_str_cat(mrb_state *mrb, mrb_value str, const char *ptr, long len);
 mrb_value mrb_str_append(mrb_state *mrb, mrb_value str, mrb_value str2);

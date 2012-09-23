@@ -11,6 +11,7 @@
 #include <mruby/proc.h>
 #include <mruby/data.h>
 #include <mruby/compile.h>
+#include <mruby/variable.h>
 
 void
 mrb_init_mrbtest(mrb_state *);
@@ -23,14 +24,24 @@ void print_hint(void)
   printf("Thanks :)\n\n");
 }
 
+static int
+check_error(mrb_state *mrb)
+{
+  /* Error check */
+  /* $ko_test and $kill_test should be 0 */
+  mrb_value ko_test = mrb_gv_get(mrb, mrb_intern(mrb, "$ko_test"));
+  mrb_value kill_test = mrb_gv_get(mrb, mrb_intern(mrb, "$kill_test"));
+
+  return FIXNUM_P(ko_test) && mrb_fixnum(ko_test) == 0 && FIXNUM_P(kill_test) && mrb_fixnum(kill_test) == 0;
+}
+
 int
 main(void)
 {
-  struct mrb_parser_state *parser;
   mrb_state *mrb;
   mrb_value return_value;
-  int byte_code;
   const char *prog = "report()";
+  int ret = EXIT_SUCCESS;
 
   print_hint();
 
@@ -42,25 +53,18 @@ main(void)
   }
 
   mrb_init_mrbtest(mrb);
-  parser = mrb_parse_nstring(mrb, prog, strlen(prog));
-
-  /* generate bytecode */
-  byte_code = mrb_generate_code(mrb, parser->tree);
-
-  /* evaluate the bytecode */
-  return_value = mrb_run(mrb,
-    /* pass a proc for evaulation */
-    mrb_proc_new(mrb, mrb->irep[byte_code]),
-    mrb_top_self(mrb));
+  /* evaluate the test */
+  return_value = mrb_load_string(mrb, prog);
   /* did an exception occur? */
   if (mrb->exc) {
     mrb_p(mrb, return_value);
     mrb->exc = 0;
+    ret = EXIT_FAILURE;
   }
-  else {
-    /* no */
+  else if (!check_error(mrb)) {
+    ret = EXIT_FAILURE;
   }
   mrb_close(mrb);
 
-  return 0;
+  return ret;
 }

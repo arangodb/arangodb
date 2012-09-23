@@ -1,5 +1,5 @@
 /*
-** irep.h - mrb_irep structure
+** mruby/irep.h - mrb_irep structure
 **
 ** See Copyright Notice in mruby.h
 */
@@ -14,7 +14,6 @@ extern "C" {
 typedef struct mrb_irep {
   int idx;
 
-  int flags;
   int nlocals;
   int nregs;
 
@@ -22,11 +21,12 @@ typedef struct mrb_irep {
   mrb_value *pool;
   mrb_sym *syms;
 
+  /* debug info */
+  const char *filename;
+  short *lines;
+
   int ilen, plen, slen;
 } mrb_irep;
-
-#define MRB_IREP_NOFREE 3
-#define MRB_ISEQ_NOFREE 1
 
 void mrb_add_irep(mrb_state *mrb, int n);
 

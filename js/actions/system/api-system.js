@@ -190,7 +190,7 @@ actions.defineHttp({
   prefix : true,
   callback : function (req, res) {
     res.responseCode = actions.HTTP_OK;
-    res.contentType = "application/json";
+    res.contentType = "application/json; charset=utf-8";
     res.body = JSON.stringify(req);
   }
 });

@@ -5,6 +5,7 @@
 */
 
 #include "mruby.h"
+#include "mruby/array.h"
 
 #ifdef ENABLE_MATH
 #include <math.h>
@@ -87,10 +88,6 @@ erfc(double x)
 }
 
 #endif
-
-
-mrb_value
-mrb_assoc_new(mrb_state *mrb, mrb_value car, mrb_value cdr);
 
 /*
   TRIGONOMETRIC FUNCTIONS
@@ -637,18 +634,24 @@ mrb_init_math(mrb_state *mrb)
   struct RClass *mrb_math;
   mrb_math = mrb_define_module(mrb, "Math");
   
-  #ifdef M_PI
-      mrb_define_const(mrb, mrb_math, "PI", mrb_float_value(M_PI));
-  #else
-      mrb_define_const(mrb, mrb_math, "PI", mrb_float_value(atan(1.0)*4.0));
-  #endif
+#ifdef M_PI
+  mrb_define_const(mrb, mrb_math, "PI", mrb_float_value(M_PI));
+#else
+  mrb_define_const(mrb, mrb_math, "PI", mrb_float_value(atan(1.0)*4.0));
+#endif
   
-  #ifdef M_E
-      mrb_define_const(mrb, mrb_math, "E", mrb_float_value(M_E));
-  #else
-      mrb_define_const(mrb, mrb_math, "E", mrb_float_value(exp(1.0)));
-  #endif
-  
+#ifdef M_E
+  mrb_define_const(mrb, mrb_math, "E", mrb_float_value(M_E));
+#else
+  mrb_define_const(mrb, mrb_math, "E", mrb_float_value(exp(1.0)));
+#endif
+
+#ifdef MRB_USE_FLOAT
+  mrb_define_const(mrb, mrb_math, "TOLERANCE", mrb_float_value(1e-5));
+#else
+  mrb_define_const(mrb, mrb_math, "TOLERANCE", mrb_float_value(1e-12));
+#endif
+
   mrb_define_module_function(mrb, mrb_math, "sin", math_sin, ARGS_REQ(1));
   mrb_define_module_function(mrb, mrb_math, "cos", math_cos, ARGS_REQ(1));
   mrb_define_module_function(mrb, mrb_math, "tan", math_tan, ARGS_REQ(1));

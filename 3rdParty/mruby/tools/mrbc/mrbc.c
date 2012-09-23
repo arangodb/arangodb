@@ -17,6 +17,7 @@ void codedump_all(mrb_state*, int);
 struct _args {
   FILE *rfp;
   FILE *wfp;
+  char *filename;
   char *initname;
   char *ext;
   int check_syntax : 1;
@@ -69,8 +70,9 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
   char *infile = NULL;
   char *outfile = NULL;
   char **origargv = argv;
+  static const struct _args args_zero = { 0 };
 
-  memset(args, 0, sizeof(*args));
+  *args = args_zero;
   args->ext = RITEBIN_EXT;
 
   for (argc--,argv++; argc > 0; argc--,argv++) {
@@ -114,10 +116,12 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
         }
         else return -3;
         return 0;
+      default:
+	break;
       }
     }
     else if (args->rfp == NULL) {
-      infile = *argv;
+      args->filename = infile = *argv;
       if ((args->rfp = fopen(infile, "r")) == NULL) {
         printf("%s: Cannot open program file. (%s)\n", *origargv, infile);
         return 0;
@@ -133,7 +137,10 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
   if (outfile == NULL)
     outfile = get_outfilename(infile, args->ext);
 
-  if ((args->wfp = fopen(outfile, "wb")) == NULL) {
+  if (strcmp("-", outfile) == 0) {
+    args->wfp = stdout;
+  }
+  else if ((args->wfp = fopen(outfile, "wb")) == NULL) {
     printf("%s: Cannot open output file. (%s)\n", *origargv, outfile);
     return 0;
   }
@@ -142,12 +149,13 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
 }
 
 static void
-cleanup(struct _args *args)
+cleanup(mrb_state *mrb, struct _args *args)
 {
   if (args->rfp)
     fclose(args->rfp);
   if (args->wfp)
     fclose(args->wfp);
+  mrb_close(mrb);
 }
 
 int
@@ -156,7 +164,8 @@ main(int argc, char **argv)
   mrb_state *mrb = mrb_open();
   int n = -1;
   struct _args args;
-  struct mrb_parser_state *p;
+  mrbc_context *c;
+  mrb_value result;
 
   if (mrb == NULL) {
     fprintf(stderr, "Invalid mrb_state, exiting mrbc");
@@ -164,34 +173,26 @@ main(int argc, char **argv)
   }
 
   n = parse_args(mrb, argc, argv, &args);
-
   if (n < 0 || args.rfp == NULL) {
-    cleanup(&args);
+    cleanup(mrb, &args);
     usage(argv[0]);
-    mrb_close(mrb);
     return n;
   }
 
-  p = mrb_parse_file(mrb, args.rfp);
-  if (!p || !p->tree || p->nerr) {
-    cleanup(&args);
-    mrb_close(mrb);
-    return -1;
+  c = mrbc_context_new(mrb);
+  if (args.verbose)
+    c->dump_result = 1;
+  c->no_exec = 1;
+  c->filename = args.filename;
+  result = mrb_load_file_cxt(mrb, args.rfp, c);
+  if (mrb_undef_p(result) || mrb_fixnum(result) < 0) {
+    cleanup(mrb, &args);
+    return EXIT_FAILURE;
   }
-
-  if (args.verbose)
-    parser_dump(mrb, p->tree, 0);
-
-  n = mrb_generate_code(mrb, p->tree);
-  mrb_pool_close(p->pool);
-
-  if (args.verbose)
-    codedump_all(mrb, n);
-
-  if (n < 0 || args.check_syntax) {
-    cleanup(&args);
-    mrb_close(mrb);
-    return n;
+  if (args.check_syntax) {
+    printf("Syntax OK\n");
+    cleanup(mrb, &args);
+    return EXIT_SUCCESS;
   }
   if (args.initname) {
     if (args.dump_type == DUMP_TYPE_BIN)
@@ -203,14 +204,11 @@ main(int argc, char **argv)
     n = mrb_dump_irep(mrb, n, args.wfp);
   }
 
-  cleanup(&args);
-  mrb_close(mrb);
-
-  return n;
+  cleanup(mrb, &args);
+  return EXIT_SUCCESS;
 }
 
 void
 mrb_init_mrblib(mrb_state *mrb)
 {
 }
-
