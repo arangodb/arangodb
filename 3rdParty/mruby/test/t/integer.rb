@@ -172,3 +172,19 @@ assert('Integer#upto', '15.2.8.3.27') do
   end
   a == 6
 end
+
+# Not ISO specified
+
+assert('Integer#step') do
+  a = []
+  b = []
+  1.step(3) do |i|
+    a << i
+  end
+  1.step(6, 2) do |i|
+    b << i
+  end
+
+  a == [1, 2, 3] and
+    b == [1, 3, 5]
+end

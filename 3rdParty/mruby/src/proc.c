@@ -6,7 +6,6 @@
 
 #include "mruby.h"
 #include "mruby/proc.h"
-#include "mruby/array.h"
 #include "mruby/class.h"
 #include "opcode.h"
 
@@ -16,8 +15,8 @@ mrb_proc_new(mrb_state *mrb, mrb_irep *irep)
   struct RProc *p;
 
   p = (struct RProc*)mrb_obj_alloc(mrb, MRB_TT_PROC, mrb->proc_class);
-  p->body.irep = irep;
   p->target_class = (mrb->ci) ? mrb->ci->target_class : 0;
+  p->body.irep = irep;
   p->env = 0;
 
   return p;
@@ -56,8 +55,8 @@ mrb_proc_new_cfunc(mrb_state *mrb, mrb_func_t func)
   return p;
 }
 
-static inline void
-proc_copy(struct RProc *a, struct RProc *b)
+void
+mrb_proc_copy(struct RProc *a, struct RProc *b)
 {
   a->flags = b->flags;
   a->body = b->body;
@@ -76,7 +75,7 @@ mrb_proc_initialize(mrb_state *mrb, mrb_value self)
     mrb_raise(mrb, E_ARGUMENT_ERROR, "tried to create Proc object without a block");
   }
   else {
-    proc_copy(mrb_proc_ptr(self), mrb_proc_ptr(blk));
+    mrb_proc_copy(mrb_proc_ptr(self), mrb_proc_ptr(blk));
   }
   return self;
 }
@@ -90,7 +89,7 @@ mrb_proc_init_copy(mrb_state *mrb, mrb_value self)
   if (mrb_type(proc) != MRB_TT_PROC) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "not a proc");
   }
-  proc_copy(mrb_proc_ptr(self), mrb_proc_ptr(proc));
+  mrb_proc_copy(mrb_proc_ptr(self), mrb_proc_ptr(proc));
   return self;
 }
 
@@ -134,26 +133,26 @@ proc_lambda(mrb_state *mrb, mrb_value self)
   p = mrb_proc_ptr(blk);
   if (!MRB_PROC_STRICT_P(p)) {
     struct RProc *p2 = (struct RProc*)mrb_obj_alloc(mrb, MRB_TT_PROC, p->c);
-    proc_copy(p2, p);
+    mrb_proc_copy(p2, p);
     p2->flags |= MRB_PROC_STRICT;
     return mrb_obj_value(p2);
   }
-  return self;
+  return blk;
 }
 
 void
 mrb_init_proc(mrb_state *mrb)
 {
   struct RProc *m;
-  mrb_code *call_iseq = mrb_malloc(mrb, sizeof(mrb_code));
-  mrb_irep *call_irep = mrb_calloc(mrb, sizeof(mrb_irep), 1);
+  mrb_code *call_iseq = (mrb_code *)mrb_alloca(mrb, sizeof(mrb_code));
+  mrb_irep *call_irep = (mrb_irep *)mrb_alloca(mrb, sizeof(mrb_irep));
 
   if ( call_iseq == NULL || call_irep == NULL )
     return;
 
+  memset(call_irep, 0, sizeof(mrb_irep));
   *call_iseq = MKOP_A(OP_CALL, 0);
   call_irep->idx = -1;
-  call_irep->flags = MRB_IREP_NOFREE;
   call_irep->iseq = call_iseq;
   call_irep->ilen = 1;
 

@@ -14,17 +14,17 @@ assert('TrueClass true', '15.2.5.1') do
 end
 
 assert('TrueClass#&', '15.2.5.3.1') do
-  TrueClass.new.&(true) and not TrueClass.new.&(false)
+  true.&(true) and not true.&(false)
 end
 
 assert('TrueClass#^', '15.2.5.3.2') do
-  not TrueClass.new.^(true) and TrueClass.new.^(false)
+  not true.^(true) and true.^(false)
 end
 
 assert('TrueClass#to_s', '15.2.5.3.3') do
-  TrueClass.new.to_s == 'true'
+  true.to_s == 'true'
 end
 
 assert('TrueClass#|', '15.2.5.3.4') do
-  TrueClass.new.|(true) and TrueClass.new.|(false)
+  true.|(true) and true.|(false)
 end

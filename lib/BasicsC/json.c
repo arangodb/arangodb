@@ -891,7 +891,6 @@ TRI_json_t* TRI_CopyJson (TRI_memory_zone_t* zone, TRI_json_t* src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
-
   if (left == NULL && right == NULL) {
     return true;
   }
@@ -905,7 +904,6 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
   }
 
   switch (left->_type) {
-  
     case TRI_JSON_UNUSED: {
       return true;
     }
@@ -927,13 +925,13 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
     }    
     
     case TRI_JSON_ARRAY: {
-      int j;
+      size_t j;
       
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;
       }
       
-      for (j = 0; j < (left->_value._objects._length / 2); ++j) {
+      for (j = 0;  j < (left->_value._objects._length / 2);  ++j) {
         TRI_json_t* leftName;
         TRI_json_t* leftValue;
         TRI_json_t* rightValue;
@@ -956,7 +954,7 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
     }    
     
     case TRI_JSON_LIST: {
-      int j;
+      size_t j;
       
       if (left->_value._objects._length != right->_value._objects._length) {
         return false;

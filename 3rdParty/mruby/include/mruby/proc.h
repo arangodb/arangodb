@@ -1,5 +1,5 @@
 /*
-** proc.h - Proc class
+** mruby/proc.h - Proc class
 **
 ** See Copyright Notice in mruby.h
 */
@@ -7,21 +7,21 @@
 #ifndef MRUBY_PROC_H
 #define MRUBY_PROC_H
 
-#include "irep.h"
+#include "mruby/irep.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 struct REnv {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
   mrb_value *stack;
   mrb_sym mid;
   int cioff;
 };
 
 struct RProc {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
   union {
     mrb_irep *irep;
     mrb_func_t func;
@@ -49,6 +49,7 @@ struct RProc {
 struct RProc *mrb_proc_new(mrb_state*, mrb_irep*);
 struct RProc *mrb_proc_new_cfunc(mrb_state*, mrb_func_t);
 struct RProc *mrb_closure_new(mrb_state*, mrb_irep*);
+void mrb_proc_copy(struct RProc *a, struct RProc *b);
 
 #include "mruby/khash.h"
 KHASH_DECLARE(mt, mrb_sym, struct RProc*, 1);

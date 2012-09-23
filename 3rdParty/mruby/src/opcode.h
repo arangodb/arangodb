@@ -83,8 +83,8 @@ OP_EPUSH,/*     Bx      ensure_push(SEQ[Bx])                            */
 OP_EPOP,/*      A       A.times{ensure_pop().call}                      */
 
 OP_SEND,/*      A B C   R(A) := call(R(A),mSym(B),R(A+1),...,R(A+C))    */
+OP_SENDB,/*     A B C   R(A) := call(R(A),mSym(B),R(A+1),...,R(A+C),&R(A+C+1))*/
 OP_FSEND,/*     A B C   R(A) := fcall(R(A),mSym(B),R(A+1),...,R(A+C-1)) */
-OP_VSEND,/*     A B     R(A) := vcall(R(A),mSym(B))                     */
 OP_CALL,/*      A B C   R(A) := self.call(R(A),.., R(A+C))              */
 OP_SUPER,/*     A B C   R(A) := super(R(A+1),... ,R(A+C-1))             */
 OP_ARGARY,/*    A Bx    R(A) := argument array (16=6:1:5:4)             */
