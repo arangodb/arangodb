@@ -166,10 +166,10 @@ Handler::status_e RestBatchHandler::execute() {
     }
    
     // set up request object for the part
-    LOGGER_DEBUG << "part header is " << string(headerStart, headerLength); 
+    LOGGER_TRACE << "part header is " << string(headerStart, headerLength); 
     HttpRequestPlain* request = new HttpRequestPlain(headerStart, headerLength);
     if (bodyLength > 0) {
-      LOGGER_INFO << "part body is " << string(bodyStart, bodyLength);
+      LOGGER_TRACE << "part body is " << string(bodyStart, bodyLength);
       request->setBody(bodyStart, bodyLength);
     }
     
@@ -261,7 +261,7 @@ bool RestBatchHandler::getBoundary (string* result) {
     return false;
   }
 
-  LOGGER_INFO << "boundary of multipart-message is " << boundary;
+  LOGGER_TRACE << "boundary of multipart-message is " << boundary;
 
   *result = boundary;
   return true;

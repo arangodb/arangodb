@@ -94,7 +94,6 @@ namespace triagens {
 
         enum Protocol {
           PROTOCOL_UNKNOWN,
-          PROTOCOL_BINARY,
           PROTOCOL_HTTP
         };
 
@@ -246,14 +245,6 @@ namespace triagens {
 
         Protocol getProtocol () const {
           return _protocol;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the protocol is binary
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isBinary () const {
-          return _protocol == PROTOCOL_BINARY;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

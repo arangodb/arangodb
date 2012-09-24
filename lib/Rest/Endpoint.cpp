@@ -150,11 +150,7 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
   size_t found = copy.find('@');
   if (found != string::npos) {
     string protoString = StringUtils::tolower(copy.substr(0, found));
-    if (protoString == "binary") {
-      protocol = PROTOCOL_BINARY;
-      copy = copy.substr(strlen("binary@"));
-    }
-    else if (protoString == "http") {
+    if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
     }
     else {

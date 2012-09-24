@@ -65,18 +65,6 @@ AC_ARG_ENABLE(all-in-one-libev,
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_LIBEV, test "x$tr_ALL_IN_ONE_LIBEV" = xyes)
 
 dnl ----------------------------------------------------------------------------
-dnl PROTOBUF
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-protobuf,
-  AS_HELP_STRING([--enable-all-in-one-protobuf], [use supplied PROTOBUF from 3rdParty directory]),
-  [tr_ALL_IN_ONE_PROTOBUF="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_PROTOBUF=yes]
-)
-
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE_PROTOBUF, test "x$tr_ALL_IN_ONE_PROTOBUF" = xyes)
-
-dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 
@@ -186,16 +174,6 @@ dnl MRUBY
 dnl ----------------------------------------------------------------------------
 
 m4_include([m4/all-in-one.mruby])
-
-dnl ----------------------------------------------------------------------------
-dnl PROTOBUF
-dnl ----------------------------------------------------------------------------
-
-if test "x$tr_ALL_IN_ONE_PROTOBUF" = xyes;  then
-  m4_include([m4/all-in-one.protobuf])
-else
-  m4_include([m4/external.protobuf])
-fi
 
 dnl ----------------------------------------------------------------------------
 dnl V8
