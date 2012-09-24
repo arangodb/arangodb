@@ -249,13 +249,15 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     // find longest match
     string prefix;
     vector<string> const& jj = _prefixes;
+    const size_t pathLength = path.size();
 
     for (vector<string>::const_iterator j = jj.begin();  j != jj.end();  ++j) {
       string const& p = *j;
+      const size_t pSize = p.size();
 
-      if (path.compare(0, p.size(), p) == 0) {
-        if (p.size() < path.size() && path[p.size()] == '/') {
-          if (prefix.size() < p.size()) {
+      if (path.compare(0, pSize, p) == 0) {
+        if (pSize < pathLength && path[pSize] == '/') {
+          if (prefix.size() < pSize) {
             prefix = p;
           }
         }

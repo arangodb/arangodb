@@ -366,8 +366,9 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Rest/Endpoint.$(OBJEXT) lib/Rest/Handler.$(OBJEXT) \
 	lib/Rest/HttpRequest.$(OBJEXT) \
 	lib/Rest/HttpRequestPlain.$(OBJEXT) \
-	lib/Rest/HttpResponse.$(OBJEXT) lib/Rest/Initialise.$(OBJEXT) \
-	lib/Rest/JsonContainer.$(OBJEXT) \
+	lib/Rest/HttpResponse.$(OBJEXT) \
+	lib/Rest/HttpResponsePart.$(OBJEXT) \
+	lib/Rest/Initialise.$(OBJEXT) lib/Rest/JsonContainer.$(OBJEXT) \
 	lib/Rest/SslInterface.$(OBJEXT) lib/Rest/Url.$(OBJEXT) \
 	lib/ShapedJson/json-shaper.$(OBJEXT) \
 	lib/ShapedJson/shape-accessor.$(OBJEXT) \
@@ -1250,6 +1251,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp \
 	lib/Rest/HttpResponse.cpp \
+	lib/Rest/HttpResponsePart.cpp \
 	lib/Rest/Initialise.cpp \
 	lib/Rest/JsonContainer.cpp \
 	lib/Rest/SslInterface.cpp \
@@ -1903,6 +1905,8 @@ lib/Rest/HttpRequest.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 lib/Rest/HttpRequestPlain.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/HttpResponse.$(OBJEXT): lib/Rest/$(am__dirstamp) \
+	lib/Rest/$(DEPDIR)/$(am__dirstamp)
+lib/Rest/HttpResponsePart.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
 lib/Rest/Initialise.$(OBJEXT): lib/Rest/$(am__dirstamp) \
 	lib/Rest/$(DEPDIR)/$(am__dirstamp)
@@ -2923,6 +2927,7 @@ mostlyclean-compile:
 	-rm -f lib/Rest/HttpRequest.$(OBJEXT)
 	-rm -f lib/Rest/HttpRequestPlain.$(OBJEXT)
 	-rm -f lib/Rest/HttpResponse.$(OBJEXT)
+	-rm -f lib/Rest/HttpResponsePart.$(OBJEXT)
 	-rm -f lib/Rest/Initialise.$(OBJEXT)
 	-rm -f lib/Rest/JsonContainer.$(OBJEXT)
 	-rm -f lib/Rest/SslInterface.$(OBJEXT)
@@ -3177,6 +3182,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpRequestPlain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpResponse.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/HttpResponsePart.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/Initialise.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/JsonContainer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Rest/$(DEPDIR)/SslInterface.Po@am__quote@
