@@ -410,13 +410,26 @@ void ArangoServer::buildApplicationServer () {
     exit(EXIT_FAILURE);
   }
   
+#ifdef TRI_HAVE_ICU  
   // .............................................................................
   // set language of default collator
   // .............................................................................
-#ifdef TRI_HAVE_ICU  
+
+  UVersionInfo icuVersion;
+  char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
+  u_getVersion(icuVersion);
+  u_versionToString(icuVersion, icuVersionString);  
+  LOGGER_INFO << "using ICU " << icuVersionString;        
+  
   Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
-  LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'";
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'";    
+  }
+  else {
+    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
+  }
 #endif  
+  
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................
