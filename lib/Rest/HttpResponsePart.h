@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief batch sub job
+/// @brief http response, part of a multipart message
 ///
 /// @file
 ///
@@ -21,39 +21,38 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_BATCH_SUBJOB_H
-#define TRIAGENS_REST_HANDLER_BATCH_SUBJOB_H 1
+#ifndef TRIAGENS_REST_HTTP_RESPONSE_PART_H
+#define TRIAGENS_REST_HTTP_RESPONSE_PART_H 1
 
-#include "GeneralServer/GeneralServerJob.h"
-#include "HttpServer/HttpHandler.h"
+#include "Rest/HttpResponse.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class BatchSubjob
+// --SECTION--                                            class HttpResponsePart
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace rest {
-    template<typename S> class BatchJob;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
+/// @brief http response part
+///
+/// this class is a specialisation of HttpResponse. it can be used for sub
+/// responses in a multipart response
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S>
-    class BatchSubjob : public GeneralServerJob<S, HttpHandler> {
+    class HttpResponsePart : public HttpResponse {
       private:
-        BatchSubjob (BatchSubjob const&);
-        BatchSubjob& operator= (BatchSubjob const&);
+        HttpResponsePart (HttpResponsePart const&);
+        HttpResponsePart& operator= (HttpResponsePart const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -64,83 +63,55 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new server job
+/// @brief constructs a new http response part
 ////////////////////////////////////////////////////////////////////////////////
 
-        BatchSubjob (BatchJob<S>* parent, S* server, HttpHandler* handler)
-        : GeneralServerJob<S, HttpHandler>(server, handler),
-          _parent(parent) {
-        }
+        explicit
+        HttpResponsePart (HttpResponseCode);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a server job
+/// @brief deletes a http response
+///
+/// The descrutor will free the string buffers used. After the http response
+/// is deleted, the string buffers returned by body() become invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~BatchSubjob () {
-        }
+        virtual ~HttpResponsePart ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Job methods
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief writes the header
+///
+/// You should call writeHeader only after the body has been created.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup () {
-          bool abandon;
-
-          {
-            MUTEX_LOCKER(this->_abandonLock);
-            abandon = this->_abandon;
-          }
-
-          if (! abandon) {
-            // signal the parent (batch job) that a subjob is done
-            _parent->jobDone(this);
-          }
-
-          delete this;
-        }
+        void writeHeader (basics::StringBuffer*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parent job
-////////////////////////////////////////////////////////////////////////////////
-
-        BatchJob<S>* _parent;
     };
   }
 }

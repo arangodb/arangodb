@@ -225,6 +225,7 @@ void ApplicationServer::setupLogging () {
   }
 
   TRI_SetLineNumberLogging(_logLineNumber);
+
   TRI_SetLogLevelLogging(_logLevel);
   TRI_SetLogSeverityLogging(_logSeverity);
   TRI_SetPrefixLogging(_logPrefix);

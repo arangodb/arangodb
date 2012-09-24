@@ -28,8 +28,10 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequestPlain.h"
+#include "Rest/HttpResponsePart.h"
 
 using namespace std;
 using namespace triagens::basics;

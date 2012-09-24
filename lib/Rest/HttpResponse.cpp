@@ -158,20 +158,6 @@ HttpResponse::HttpResponse ()
 /// @brief constructs a new http response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponse (string const& header)
-  : _code(NOT_IMPLEMENTED),
-    _headers(6),
-    _body(TRI_UNKNOWN_MEM_ZONE),
-    _isHeadResponse(false),
-    _bodySize(0),
-    _freeables() {
-  setHeaders(header, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response
-////////////////////////////////////////////////////////////////////////////////
-
 HttpResponse::HttpResponse (HttpResponseCode code)
   : _code(code),
     _headers(6),
@@ -212,7 +198,7 @@ HttpResponse::~HttpResponse () {
 /// @brief returns the response code
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode () {
+HttpResponse::HttpResponseCode HttpResponse::responseCode () const {
   return _code;
 }
 
@@ -578,7 +564,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
 /// @brief returns the size of the body
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpResponse::bodySize () {
+size_t HttpResponse::bodySize () const {
   if (_isHeadResponse) {
     return _bodySize;
   }

@@ -35,12 +35,6 @@
 #include "Basics/StringBuffer.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-class PB_ArangoBatchMessage;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                class HttpResponse
 // -----------------------------------------------------------------------------
 
@@ -57,6 +51,8 @@ namespace triagens {
 ///
 /// A http request handler is called to handle a http request. It returns its
 /// answer as http response.
+///
+/// note: HttpResponsePart is a specialisation of this class
 ////////////////////////////////////////////////////////////////////////////////
 
     class HttpResponse {
@@ -170,13 +166,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
-        HttpResponse (string const& lines);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response
-////////////////////////////////////////////////////////////////////////////////
-
-        explicit
         HttpResponse (HttpResponseCode);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +196,7 @@ namespace triagens {
 /// @brief returns the response code
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponseCode responseCode ();
+        HttpResponseCode responseCode () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the content length
@@ -322,18 +311,10 @@ namespace triagens {
         void writeHeader (basics::StringBuffer*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the message to a protocol buffer
-///
-/// You should call write only after the body has been created.
-////////////////////////////////////////////////////////////////////////////////
-
-        void write (PB_ArangoBatchMessage*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of the body
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t bodySize ();
+        size_t bodySize () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the body
@@ -361,7 +342,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,7 +350,7 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief response code
