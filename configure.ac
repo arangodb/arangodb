@@ -43,16 +43,6 @@ AC_ARG_WITH([boost-test],
 AM_CONDITIONAL(ENABLE_BOOST_TEST, test "x$tr_BOOST_TEST" = xyes)
 
 dnl ----------------------------------------------------------------------------
-dnl BOOST
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-boost,
-  AS_HELP_STRING([--enable-all-in-one-boost], [use supplied BOOST from 3rdParty directory]),
-  [tr_ALL_IN_ONE_BOOST="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_BOOST=yes]
-)
-
-dnl ----------------------------------------------------------------------------
 dnl LIBEV
 dnl ----------------------------------------------------------------------------
 
@@ -148,16 +138,6 @@ dnl OPENSSL
 dnl ----------------------------------------------------------------------------
 
 m4_include([m4/external.openssl])
-
-dnl ----------------------------------------------------------------------------
-dnl BOOST
-dnl ----------------------------------------------------------------------------
-
-if test "x$tr_ALL_IN_ONE_BOOST" = xyes;  then
-  m4_include([m4/all-in-one.boost])
-else
-  m4_include([m4/external.boost])
-fi
 
 dnl ----------------------------------------------------------------------------
 dnl LIBEV

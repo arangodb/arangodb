@@ -273,7 +273,6 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
-	$(top_srcdir)/m4/ax_boost_base.m4 \
 	$(top_srcdir)/m4/ax_cxx_check_lib.m4 \
 	$(top_srcdir)/m4/configure.basics \
 	$(top_srcdir)/m4/configure.static \
@@ -288,8 +287,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
-	$(top_srcdir)/m4/all-in-one.boost \
-	$(top_srcdir)/m4/external.boost \
 	$(top_srcdir)/m4/all-in-one.libev \
 	$(top_srcdir)/m4/external.libev \
 	$(top_srcdir)/m4/all-in-one.mruby \
@@ -326,7 +323,8 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/MutexLocker.$(OBJEXT) \
 	lib/Basics/ProgramOptions.$(OBJEXT) \
 	lib/Basics/ProgramOptionsDescription.$(OBJEXT) \
-	lib/Basics/Random.$(OBJEXT) lib/Basics/ReadLocker.$(OBJEXT) \
+	lib/Basics/Random.$(OBJEXT) lib/Basics/RandMT.$(OBJEXT) \
+	lib/Basics/ReadLocker.$(OBJEXT) \
 	lib/Basics/ReadUnlocker.$(OBJEXT) \
 	lib/Basics/ReadWriteLock.$(OBJEXT) \
 	lib/Basics/StringUtils.$(OBJEXT) lib/Basics/Thread.$(OBJEXT) \
@@ -788,9 +786,6 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
-BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
-BOOST_LDFLAGS = @BOOST_LDFLAGS@
-BOOST_LIBS = @BOOST_LIBS@
 BUILD_H = @BUILD_H@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -838,7 +833,7 @@ LIBOBJS = @LIBOBJS@
 ################################################################################
 ### @brief libraries
 ################################################################################
-LIBS = @BOOST_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ \
+LIBS = @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ \
 	@READLINE_LIBS@ $(am__append_4)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -1036,16 +1031,15 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
-AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @BOOST_CPPFLAGS@ \
-	@LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ @OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ @ICU_CPPFLAGS@ @V8_CPPFLAGS@ \
-	$(am__append_1) $(am__append_2) $(am__append_3)
+AM_CPPFLAGS = -I@top_srcdir@/lib -I@top_builddir@/lib @LIBEV_CPPFLAGS@ \
+	@MATH_CPPFLAGS@ @OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ \
+	@ICU_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1) $(am__append_2) \
+	$(am__append_3)
 
 ################################################################################
 ### @brief linker flags
 ################################################################################
 AM_LDFLAGS = \
-	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
 	@MATH_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
@@ -1199,6 +1193,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/Random.cpp \
+	lib/Basics/RandMT.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
@@ -1769,6 +1764,8 @@ lib/Basics/ProgramOptionsDescription.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/Random.$(OBJEXT): lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/RandMT.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/ReadLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -2860,6 +2857,7 @@ mostlyclean-compile:
 	-rm -f lib/Basics/MutexLocker.$(OBJEXT)
 	-rm -f lib/Basics/ProgramOptions.$(OBJEXT)
 	-rm -f lib/Basics/ProgramOptionsDescription.$(OBJEXT)
+	-rm -f lib/Basics/RandMT.$(OBJEXT)
 	-rm -f lib/Basics/Random.$(OBJEXT)
 	-rm -f lib/Basics/ReadLocker.$(OBJEXT)
 	-rm -f lib/Basics/ReadUnlocker.$(OBJEXT)
@@ -3115,6 +3113,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/MutexLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ProgramOptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ProgramOptionsDescription.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/RandMT.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ReadLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ReadUnlocker.Po@am__quote@
