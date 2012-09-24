@@ -54,21 +54,58 @@ namespace triagens {
     struct BenchmarkRequest {
       BenchmarkRequest (const char* url, 
                         map<string, string> params, 
-                        const char* payload, 
-                        PB_ArangoMessageContentType contentType, 
+                        char* (*genFunc)(),
+                        void (*jsonFunc)(PB_ArangoBlobRequest*),
                         SimpleHttpClient::http_method type) :
         url(url),
         params(params),
-        payload(payload),
-        contentType(contentType),
-        type(type) {
+        genFunc(genFunc),
+        jsonFunc(jsonFunc),
+        type(type),
+        ptr(0) {
       };
+
+      ~BenchmarkRequest () {
+        if (ptr) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
+        }
+      }
+
+      void createString () {
+        if (genFunc == NULL) {
+          cerr << "invalid call to createString" << endl;
+          exit(EXIT_FAILURE);
+        }
+        ptr = (void*) genFunc();
+      }
+      
+      void createString (PB_ArangoBlobRequest* blob) {
+        createString();
+        blob->set_content(getString(), getStringLength());
+      }
+      
+      void createJson (PB_ArangoBlobRequest* blob) {
+        if (jsonFunc == NULL) {
+          cerr << "invalid call to createJson" << endl;
+          exit(EXIT_FAILURE);
+        }
+        jsonFunc(blob);
+      }
+
+      char* getString () {
+        return (char*) ptr;
+      }
+      
+      size_t getStringLength () {
+        return strlen((char*) ptr);
+      }
 
       string url;
       map<string, string> params;
-      string payload;
-      PB_ArangoMessageContentType contentType;
+      char* (*genFunc)();
+      void (*jsonFunc)(PB_ArangoBlobRequest*);
       SimpleHttpClient::http_method type;
+      void* ptr;
     };
 
 // -----------------------------------------------------------------------------
@@ -88,6 +125,7 @@ namespace triagens {
                          ConditionVariable* condition, 
                          const unsigned long batchSize,
                          SharedCounter<unsigned long>* operationsCounter,
+                         bool useJson,
                          Endpoint* endpoint, 
                          const string& username, 
                          const string& password) 
@@ -96,11 +134,13 @@ namespace triagens {
             _startCondition(condition),
             _batchSize(batchSize),
             _operationsCounter(operationsCounter),
+            _useJson(useJson),
             _endpoint(endpoint),
             _username(username),
             _password(password),
             _client(0),
-            _connection(0) {
+            _connection(0),
+            _time(0.0) {
         }
         
         ~BenchmarkThread () {
@@ -218,16 +258,23 @@ namespace triagens {
       
             blob->set_requesttype(getRequestType(r.type));
             blob->set_url(r.url);
-            blob->set_contenttype(r.contentType);
-            blob->set_content(r.payload);
-      
+            
+            if (_useJson) {
+              r.createJson(blob);
+              blob->set_contenttype(PB_JSON_CONTENT);
+            }
+            else {
+              r.createString(blob);
+              blob->set_contenttype(PB_NO_CONTENT);
+            }
+            
             for (map<string, string>::const_iterator it = r.params.begin(); it != r.params.end(); ++it) {
               kv = blob->add_values();
               kv->set_key((*it).first);
               kv->set_value((*it).second);
             }
           }
-    
+
           size_t messageSize = messages.ByteSize();
           char* message = new char[messageSize];
 
@@ -246,7 +293,9 @@ namespace triagens {
             
           //std::cout << "body length: " << messageSize << ", hash: " << TRI_FnvHashPointer(message, (size_t) messageSize) << "\n";
 
+          Timing timer(Timing::TI_WALLCLOCK);
           SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/batch", message, (size_t) messageSize, headerFields);
+          _time += ((double) timer.time()) / 1000000.0;
           delete[] message;
 
           if (result == 0) {
@@ -296,8 +345,14 @@ namespace triagens {
             url.append((*i).second);
           }
 
+          r.createString();
+
           map<string, string> headerFields;
-          SimpleHttpResult* result = _client->request(r.type, url, r.payload.c_str(), r.payload.size(), headerFields);
+          Timing timer(Timing::TI_WALLCLOCK);
+
+          SimpleHttpResult* result = _client->request(r.type, url, r.getString(), r.getStringLength(), headerFields);
+          _time += ((double) timer.time()) / 1000000.0;
+
           if (result == 0) {
             _operationsCounter->incFailures();
             return;
@@ -307,6 +362,13 @@ namespace triagens {
             _operationsCounter->incFailures();
           }
           delete result;
+        }
+
+
+      public:
+
+        double getTime () const {
+          return _time;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,6 +407,12 @@ namespace triagens {
         SharedCounter<unsigned long>* _operationsCounter;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief use binary json?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _useJson;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to use
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -373,6 +441,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::httpclient::GeneralClientConnection* _connection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time
+////////////////////////////////////////////////////////////////////////////////
+
+        double _time;
 
     };
   }
