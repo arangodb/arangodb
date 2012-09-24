@@ -14,7 +14,10 @@ BUILT_SOURCES += $(FLEX_FILES) $(FLEXXX_FILES)
 ### @brief cleanup
 ################################################################################
 
+if ENABLE_FLEX
 CLEANUP += $(FLEX_FILES) $(FLEXXX_FILES)
+
+endif
 
 ################################################################################
 ### @brief flex

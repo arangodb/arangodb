@@ -225,9 +225,6 @@ FLEXXX_FILES += \
 PROTOBUF_FILES += \
 	lib/ProtocolBuffers/arangodb.pb.cpp
 
-CLEANUP += \
-	lib/ProtocolBuffers/arangodb.pb.h
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
