@@ -31,7 +31,6 @@
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "ProtocolBuffers/HttpRequestProtobuf.h"
 #include "Rest/HttpResponse.h"
 
 using namespace triagens::basics;
@@ -56,12 +55,13 @@ ZeroMQBatchJob::ZeroMQBatchJob (zframe_t* address,
                                 char const* data,
                                 size_t length) 
   : Job("ZeroMQBatchJob"),
-    _requests(),
-    _responses(),
     _address(address),
     _handlerFactory(handlerFactory),
     _handler(0),
     _nrCurrentRequest(0) {
+
+  // removed the protocolbuffers so this will not work anymore
+  /*
   int ok = _requests.ParseFromArray(data, length);
 
   if (! ok) {
@@ -76,6 +76,8 @@ ZeroMQBatchJob::ZeroMQBatchJob (zframe_t* address,
 
     _nrCurrentRequest = (size_t) _requests.messages().size();
   }
+  */
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,8 +111,11 @@ ZeroMQBatchJob::~ZeroMQBatchJob () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ZeroMQBatchJob::isDone () {
-  return ! (_nrCurrentRequest < (size_t) _requests.messages().size());
+  // removed the protocol buffers so this will not work anymore
+  //return ! (_nrCurrentRequest < (size_t) _requests.messages().size());
 
+  assert(false);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +212,8 @@ void ZeroMQBatchJob::cleanup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ZeroMQBatchJob::finish (void* bridge) {
-
+  // removed the protocolbuffers so this will not work anymore
+  /*
   // need a bridge the ZeroMQ queue
   if (bridge != 0) {
 
@@ -232,6 +238,8 @@ void ZeroMQBatchJob::finish (void* bridge) {
 
   // commit suicide
   cleanup();
+  */
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,6 +271,8 @@ void ZeroMQBatchJob::extractNextRequest () {
     _handler = 0;
   }
 
+  // removed the protocol buffers so this will not work anymore
+  /*
   if (_nrCurrentRequest < (size_t) _requests.messages().size()) {
     HttpRequest* request = new HttpRequestProtobuf(_requests.messages().Get(_nrCurrentRequest));
 
@@ -274,6 +284,8 @@ void ZeroMQBatchJob::extractNextRequest () {
       delete request;
     }
   }
+  */
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,12 +321,12 @@ Handler::status_e ZeroMQBatchJob::executeCurrentRequest () {
         _handler->handleError(ex);
       }
       catch (std::exception const& ex) {
-        basics::InternalError err(ex);
+        triagens::basics::InternalError err(ex, __FILE__, __LINE__);
 
         _handler->handleError(err);
       }
       catch (...) {
-        basics::InternalError err;
+        triagens::basics::InternalError err("executeCurrentRequest", __FILE__, __LINE__);
         _handler->handleError(err);
       }
 
@@ -352,12 +364,14 @@ void ZeroMQBatchJob::handleResponse () {
 
   // we need a response, otherwise create an error object
   if (response == 0) {
-    InternalError err("no response received from handler");
+    triagens::basics::InternalError err("executeCurrentRequest", __FILE__, __LINE__);
 
     _handler->handleError(err);
     response = _handler->getResponse();
   }
 
+  // removed the protocolbuffers so this will not work anymore
+  /*
   // send the response to ZeroMQ
   PB_ArangoBatchMessage* message = _responses.add_messages();
 
@@ -372,6 +386,8 @@ void ZeroMQBatchJob::handleResponse () {
     PB_ArangoErrorResponse* em = message->mutable_errorresponse();
     em->set_message("cannot get any response from handler");
   }
+  */
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,6 +395,8 @@ void ZeroMQBatchJob::handleResponse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ZeroMQBatchJob::handleNotFound () {
+  // removed the protocolbuffers so this will not work anymore
+  /*
   PB_ArangoBatchMessage* message = _responses.add_messages();
 
   message->set_type(PB_BLOB_RESPONSE);
@@ -388,6 +406,8 @@ void ZeroMQBatchJob::handleNotFound () {
   response->set_status(HttpResponse::NOT_FOUND);
   response->set_contenttype(PB_NO_CONTENT);
   response->set_contentlength(0);
+  */
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,6 +416,8 @@ void ZeroMQBatchJob::handleNotFound () {
 
 void ZeroMQBatchJob::handleInternalError () {
   HttpResponse* response = _handler->getResponse();
+  // removed the protocolbuffers so this will not work anymore
+  /*
   PB_ArangoBatchMessage* message = _responses.add_messages();
 
   if (response == 0) {
@@ -409,6 +431,8 @@ void ZeroMQBatchJob::handleInternalError () {
   else {
     response->write(message);
   }
+  */
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
