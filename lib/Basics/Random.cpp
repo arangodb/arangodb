@@ -28,7 +28,6 @@
 
 #include "Random.h"
 
-#include <boost/scoped_array.hpp>
 #include <boost/scoped_ptr.hpp>
 
 #include <boost/random.hpp>
@@ -444,39 +443,22 @@ namespace triagens {
 
 
       string UniformCharacter::random () {
-        boost::scoped_array<char> buffer(new char[length + 1]);
-
-        char* ptr = buffer.get();
-        char* end = ptr + length;
-
-        for (;  ptr < end;  ++ptr) {
-          size_t r = generator.random();
-
-          *ptr = characters[r];
-        }
-
-        *ptr = '\0';
-
-        return string(buffer.get());
+        return random(length);
       }
 
 
 
       string UniformCharacter::random (size_t length) {
-        boost::scoped_array<char> buffer(new char[length + 1]);
+        string buffer;
+        buffer.reserve(length);
 
-        char* ptr = buffer.get();
-        char* end = ptr + length;
-
-        for (;  ptr < end;  ++ptr) {
+        for (size_t i = 0; i < length; ++i) {
           size_t r = generator.random();
 
-          *ptr = characters[r];
+          buffer.push_back(characters[r]);
         }
 
-        *ptr = '\0';
-
-        return string(buffer.get());
+        return buffer;
       }
 
 // -----------------------------------------------------------------------------
