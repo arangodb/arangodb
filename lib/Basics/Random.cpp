@@ -28,8 +28,6 @@
 
 #include "Random.h"
 
-#include <boost/scoped_ptr.hpp>
-
 #include <boost/random.hpp>
 
 #include "BasicsC/socket-utils.h"
