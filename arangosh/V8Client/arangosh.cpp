@@ -361,7 +361,7 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
                                                "usage: NORMALIZE_STRING(<string>)")));
   }
 
-  return scope.Close(Utf8Helper::DefaultUtf8Helper.normalize(argv[0]));
+  return scope.Close(TRI_normalize_V8_Obj(argv[0]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

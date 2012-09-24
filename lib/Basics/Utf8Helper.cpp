@@ -65,6 +65,7 @@ Utf8Helper::~Utf8Helper () {
   }
 }
 
+/*
 int Utf8Helper::compareUtf8 (const char* left, size_t leftLength, const char* right, size_t rightLength) {
 #ifdef TRI_HAVE_ICU  
   if (!_coll) {
@@ -78,17 +79,7 @@ int Utf8Helper::compareUtf8 (const char* left, size_t leftLength, const char* ri
     LOGGER_ERROR << "error in Collator::compareUTF8(...): " << u_errorName(status);
     return 0;
   }
-  
-  switch (result) {
-    case (UCOL_GREATER):
-      return 1;
-      
-    case (UCOL_LESS):
-      return -1;
-      
-    default:
-      return 0;
-  }
+  return result;  
 #else
   if (leftLength == rightLength) {
     return memcmp((const void*)left, (const void*)right, leftLength);
@@ -102,12 +93,28 @@ int Utf8Helper::compareUtf8 (const char* left, size_t leftLength, const char* ri
     }
     return 1;
   }
-  else if (result < 0) {
-    return -1;
+  return result;
+#endif
+}
+*/
+
+int Utf8Helper::compareUtf8 (const char* left, const char* right) {
+#ifdef TRI_HAVE_ICU  
+  if (!_coll) {
+    LOGGER_ERROR << "no Collator in Utf8Helper::compareUtf8()!";
+    return (strcmp(left, right));
   }
-  else {
-    return 1;
+  
+  UErrorCode status = U_ZERO_ERROR;
+  int result = _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
+  if(U_FAILURE(status)) {
+    LOGGER_ERROR << "error in Collator::compareUTF8(...): " << u_errorName(status);
+    return (strcmp(left, right));
   }
+  
+  return result;
+#else
+  return (strcmp(left, right));
 #endif
 }
 
@@ -115,73 +122,27 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
 #ifdef TRI_HAVE_ICU 
   if (!_coll) {
     LOGGER_ERROR << "no Collator in Utf8Helper::compareUtf16()!";
-    return 0;
-  }
-  
-  int result = _coll->compare((const UChar *)left, leftLength, (const UChar *)right, rightLength);
-  
-  switch (result) {
-    case (UCOL_GREATER):
-      return 1;
-      
-    case (UCOL_LESS):
-      return -1;
-      
-    default:
-      return 0;
-  }
-#else 
-  if (leftLength == rightLength) {
-    return memcmp((const void*)left, (const void*)right, leftLength * 2);
-  }
-  
-  int result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength * 2 : rightLength * 2);
-  
-  if (result == 0) {
-    if (leftLength < rightLength) {
-      return -1;
-    }
-    return 1;
-  }
-  else if (result < 0) {
-    return -1;
-  }
-  else {
-    return 1;
-  } 
 #endif  
-}
-
-v8::Handle<v8::Value> Utf8Helper::normalize (v8::Handle<v8::Value> obj) {
-  v8::HandleScope scope;
+    
+    if (leftLength == rightLength) {
+      return memcmp((const void*)left, (const void*)right, leftLength * 2);
+    }
   
-  v8::String::Value str(obj);
-  size_t str_len = str.length();
-  if (str_len > 0) {
-#ifdef TRI_HAVE_ICU  
-    UErrorCode erroCode = U_ZERO_ERROR;
-    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
-    
-    if (U_FAILURE(erroCode)) {
-      LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
-      return scope.Close(v8::Null()); 
+    int result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength * 2 : rightLength * 2);
+  
+    if (result == 0) {
+      if (leftLength < rightLength) {
+        return -1;
+      }
+      return 1;
     }
     
-    UnicodeString result = normalizer->normalize(UnicodeString(*str, str_len), erroCode);
-
-    if (U_FAILURE(erroCode)) {
-      LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
-      return scope.Close(v8::Null()); 
-    }
-    
-    return scope.Close(v8::String::New(result.getBuffer(), result.length())); 
-#else
-    return scope.Close(v8::String::New(*str, str_len)); 
-#endif
+    return result;    
+#ifdef TRI_HAVE_ICU 
   }
-  else {
-    return scope.Close(v8::String::New("")); 
-  }
+  
+  return _coll->compare((const UChar *)left, leftLength, (const UChar *)right, rightLength);
+#endif  
 }
 
 void Utf8Helper::setCollatorLanguage (const string& lang) {
@@ -204,6 +165,7 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
   
   Collator* coll;
   if (lang == "") {
+    // get default collator for empty language
     coll = Collator::createInstance(status); 
   }
   else {
@@ -213,16 +175,20 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
   
   if(U_FAILURE(status)) {
     LOGGER_ERROR << "error in Collator::createInstance(): " << u_errorName(status);
+    if (coll) {
+      delete coll;
+    }
     return;
   }
   
   // set the default attributes for sorting:
   coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
-  coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF, status);
+  coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF, status);  // no normalization
   coll->setAttribute(UCOL_STRENGTH, UCOL_IDENTICAL, status);      // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
   if(U_FAILURE(status)) {
     LOGGER_ERROR << "error in Collator::setAttribute(...): " << u_errorName(status);
+    delete coll;
     return;
   }
   
@@ -250,6 +216,47 @@ string Utf8Helper::getCollatorLanguage () {
 #endif
   return "";
 }
+
+string Utf8Helper::getCollatorCountry () {
+#ifdef TRI_HAVE_ICU
+  if (_coll) {
+    UErrorCode status = U_ZERO_ERROR;
+    ULocDataLocaleType type = ULOC_VALID_LOCALE;
+    const Locale& locale = _coll->getLocale(type, status);
+    
+    if(U_FAILURE(status)) {
+      LOGGER_ERROR << "error in Collator::getLocale(...): " << u_errorName(status);
+      return "";
+    }
+    return locale.getCountry();
+  }
+#endif
+  return "";
+}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+  ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two utf16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {  
+  return Utf8Helper::DefaultUtf8Helper.compareUtf16(left, leftLength, right, rightLength);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two utf8 strings
+////////////////////////////////////////////////////////////////////////////////
+
+int TR_compare_utf8 (const char* left, const char* right) {  
+  return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);  
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
