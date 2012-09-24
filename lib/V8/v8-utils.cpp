@@ -43,6 +43,10 @@
 #include "Rest/SslInterface.h"
 #include "V8/v8-conv.h"
 
+#ifdef TRI_HAVE_ICU
+#include "unicode/normalizer2.h"
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -1635,6 +1639,38 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8:
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
 }
 #endif
+
+v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
+  v8::HandleScope scope;
+  
+  v8::String::Value str(obj);
+  size_t str_len = str.length();
+  if (str_len > 0) {
+#ifdef TRI_HAVE_ICU  
+    UErrorCode erroCode = U_ZERO_ERROR;
+    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
+    
+    if (U_FAILURE(erroCode)) {
+      //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
+      return scope.Close(v8::String::New(*str, str_len)); 
+    }
+    
+    UnicodeString result = normalizer->normalize(UnicodeString(*str, str_len), erroCode);
+
+    if (U_FAILURE(erroCode)) {
+      //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
+      return scope.Close(v8::String::New(*str, str_len)); 
+    }
+    
+    return scope.Close(v8::String::New(result.getBuffer(), result.length())); 
+#else
+    return scope.Close(v8::String::New(*str, str_len)); 
+#endif
+  }
+  else {
+    return scope.Close(v8::String::New("")); 
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
