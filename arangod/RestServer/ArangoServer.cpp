@@ -593,7 +593,7 @@ int ArangoServer::startupServer () {
 
     DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
 
-    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
+    DefineAdminHandlers(factory, _applicationAdminServer, _vocbase);
 
     // add action handler
     factory->addPrefixHandler("/",
