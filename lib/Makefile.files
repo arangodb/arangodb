@@ -65,8 +65,6 @@ lib_libarango_a_SOURCES = \
 	lib/Logger/LoggerStream.cpp \
 	lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
-	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \
@@ -125,7 +123,6 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
 	lib/SimpleHttpClient/SimpleClient.cpp \
-	lib/SimpleHttpClient/SimpleBinaryClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -217,13 +214,6 @@ FLEX_FILES += \
 
 FLEXXX_FILES += \
 	lib/V8/v8-json.cpp
-
-################################################################################
-### @brief protocol buffers
-################################################################################
-
-PROTOBUF_FILES += \
-	lib/ProtocolBuffers/arangodb.pb.cpp
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

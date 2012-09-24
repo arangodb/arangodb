@@ -46,12 +46,6 @@ BISON_FILES =
 
 BISONXX_FILES = 
 
-################################################################################
-### @brief protocol buffers files
-################################################################################
-
-PROTOBUF_FILES =
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
 ## -----------------------------------------------------------------------------
@@ -95,7 +89,6 @@ AM_CPPFLAGS = \
 	@OPENSSL_CPPFLAGS@ \
 	@READLINE_CPPFLAGS@ \
 	@ICU_CPPFLAGS@ \
-	@PROTOBUF_CPPFLAGS@ \
 	@V8_CPPFLAGS@
 
 
@@ -130,7 +123,6 @@ AM_LDFLAGS = \
 	@MATH_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
-	@PROTOBUF_LDFLAGS@ \
 	@ICU_LDFLAGS@ \
 	@V8_LDFLAGS@
 
@@ -151,7 +143,6 @@ LIBS = \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@ICU_LIBS@ \
-	@PROTOBUF_LIBS@ \
 	@READLINE_LIBS@
 
 ################################################################################
@@ -397,12 +388,6 @@ if ENABLE_BISON
 include lib/Makefile.bison
 endif
 
-################################################################################
-### @brief generate all protocol buffers
-################################################################################
-
-include lib/Makefile.protobuf
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                EXTERNAL LIBRARIES
 ## -----------------------------------------------------------------------------
@@ -413,14 +398,6 @@ include lib/Makefile.protobuf
 
 if ENABLE_ALL_IN_ONE_LIBEV
 include 3rdParty/Makefile.all-in-one-libev
-endif
-
-################################################################################
-### @brief protcol buffers
-################################################################################
-
-if ENABLE_ALL_IN_ONE_PROTOBUF
-include 3rdParty/Makefile.all-in-one-protobuf
 endif
 
 ################################################################################

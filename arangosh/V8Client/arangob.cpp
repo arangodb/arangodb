@@ -88,12 +88,6 @@ static int Operations = 1000;
 static int BatchSize = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use binary json?
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UseJson = false;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +111,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch")
-    ("binary-json", &UseJson, "use binary json")
   ;
 
   BaseClient.setupGeneral(description);
@@ -147,12 +140,9 @@ char* SEmpty () {
   return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "");
 }
 
-void JEmpty (PB_ArangoBlobRequest* blob) {
-}
-
 BenchmarkRequest VersionFunc () {
   map<string, string> params;
-  BenchmarkRequest r("/_api/version", params, &SEmpty, &JEmpty, SimpleHttpClient::GET);
+  BenchmarkRequest r("/_api/version", params, &SEmpty, SimpleHttpClient::GET);
 
   return r;
 }
@@ -161,28 +151,12 @@ char* SFunc1 () {
   return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "{\"some value\" : 1}");
 }
 
-void JFunc1 (PB_ArangoBlobRequest* blob) {
-  PB_ArangoJsonContent* json = blob->mutable_json();
-  json->set_type(PB_REQUEST_TYPE_ARRAY);
-
-  json->mutable_value()->add_objects(); // key
-  json->mutable_value()->add_objects(); // value
-
-  PB_ArangoJsonContent* k = json->mutable_value()->mutable_objects(0);
-  PB_ArangoJsonContent* v = json->mutable_value()->mutable_objects(1);
-
-  k->set_type(PB_REQUEST_TYPE_STRING);
-  k->mutable_value()->set_stringvalue("some value");
-  v->set_type(PB_REQUEST_TYPE_NUMBER);
-  v->mutable_value()->set_numbervalue(1.0);
-}
-
 BenchmarkRequest InsertFunc1 () {
   map<string, string> params;
   params["createCollection"] = "true";
   params["collection"] = "BenchmarkInsert";
 
-  BenchmarkRequest r("/_api/document", params, &SFunc1, &JFunc1, SimpleHttpClient::POST);
+  BenchmarkRequest r("/_api/document", params, &SFunc1, SimpleHttpClient::POST);
 
   return r;
 }
@@ -206,32 +180,12 @@ char* SFunc2 () {
   return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, s.c_str());
 }
 
-void JFunc2 (PB_ArangoBlobRequest* blob) {
-  PB_ArangoJsonContent* json = blob->mutable_json();
-  json->set_type(PB_REQUEST_TYPE_ARRAY);
-
-  for (size_t i = 0; i < 1; ++i) {
-    json->mutable_value()->add_objects(); // key
-    json->mutable_value()->add_objects(); // value
-
-    PB_ArangoJsonContent* k = json->mutable_value()->mutable_objects(i * 2);
-    PB_ArangoJsonContent* v = json->mutable_value()->mutable_objects((i * 2) + 1);
-  
-    k->set_type(PB_REQUEST_TYPE_STRING);
-    ostringstream ks;
-    ks << "some value " << i;
-    k->mutable_value()->set_stringvalue(ks.str());
-    v->set_type(PB_REQUEST_TYPE_NUMBER);
-    v->mutable_value()->set_numbervalue((double) i);
-  }
-}
-
 BenchmarkRequest InsertFunc2 () {
   map<string, string> params;
   params["createCollection"] = "true";
   params["collection"] = "BenchmarkInsert";
 
-  BenchmarkRequest r("/_api/document", params, &SFunc2, &JFunc2, SimpleHttpClient::POST);
+  BenchmarkRequest r("/_api/document", params, &SFunc2, SimpleHttpClient::POST);
 
   return r;
 }
@@ -279,7 +233,6 @@ int main (int argc, char* argv[]) {
         &startCondition, 
         (unsigned long) BatchSize,
         &operationsCounter,
-        UseJson,
         endpoint,
         BaseClient.username(), 
         BaseClient.password());

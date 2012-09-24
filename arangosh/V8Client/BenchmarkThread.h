@@ -38,10 +38,7 @@
 #include "V8Client/SharedCounter.h"
 #include "SimpleHttpClient/SimpleClient.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleBinaryClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "BinaryServer/BinaryMessage.h"
-#include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -55,12 +52,10 @@ namespace triagens {
       BenchmarkRequest (const char* url, 
                         map<string, string> params, 
                         char* (*genFunc)(),
-                        void (*jsonFunc)(PB_ArangoBlobRequest*),
                         SimpleHttpClient::http_method type) :
         url(url),
         params(params),
         genFunc(genFunc),
-        jsonFunc(jsonFunc),
         type(type),
         ptr(0) {
       };
@@ -79,19 +74,6 @@ namespace triagens {
         ptr = (void*) genFunc();
       }
       
-      void createString (PB_ArangoBlobRequest* blob) {
-        createString();
-        blob->set_content(getString(), getStringLength());
-      }
-      
-      void createJson (PB_ArangoBlobRequest* blob) {
-        if (jsonFunc == NULL) {
-          cerr << "invalid call to createJson" << endl;
-          exit(EXIT_FAILURE);
-        }
-        jsonFunc(blob);
-      }
-
       char* getString () {
         return (char*) ptr;
       }
@@ -103,7 +85,6 @@ namespace triagens {
       string url;
       map<string, string> params;
       char* (*genFunc)();
-      void (*jsonFunc)(PB_ArangoBlobRequest*);
       SimpleHttpClient::http_method type;
       void* ptr;
     };
@@ -125,7 +106,6 @@ namespace triagens {
                          ConditionVariable* condition, 
                          const unsigned long batchSize,
                          SharedCounter<unsigned long>* operationsCounter,
-                         bool useJson,
                          Endpoint* endpoint, 
                          const string& username, 
                          const string& password) 
@@ -134,7 +114,6 @@ namespace triagens {
             _startCondition(condition),
             _batchSize(batchSize),
             _operationsCounter(operationsCounter),
-            _useJson(useJson),
             _endpoint(endpoint),
             _username(username),
             _password(password),
@@ -181,27 +160,20 @@ namespace triagens {
             exit(EXIT_FAILURE);
           }
 
-          bool isBinary = _endpoint->isBinary();
-
-          if (isBinary) {
-            _client = new SimpleBinaryClient(_connection, 10.0, true);
-          }
-          else {
-            _client = new SimpleHttpClient(_connection, 10.0, true);
-            _client->setUserNamePassword("/", _username, _password);
-            map<string, string> headerFields;
-            SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+          _client = new SimpleHttpClient(_connection, 10.0, true);
+          _client->setUserNamePassword("/", _username, _password);
+          map<string, string> headerFields;
+          SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
   
-            if (! result || ! result->isComplete()) {
-              if (result) {
-                delete result;
-              }
-              cerr << "could not connect to server" << endl;
-              exit(EXIT_FAILURE);
+          if (! result || ! result->isComplete()) {
+            if (result) {
+              delete result;
             }
-
-            delete result;
+            cerr << "could not connect to server" << endl;
+            exit(EXIT_FAILURE);
           }
+
+          delete result;
   
           {
             ConditionLocker guard(_startCondition);
@@ -215,7 +187,7 @@ namespace triagens {
               break;
             }
 
-            if (_batchSize == 1 && ! isBinary) {
+            if (_batchSize == 1) {
               executeRequest();
             } 
             else {
@@ -224,26 +196,8 @@ namespace triagens {
           }
         }
 
-
-        PB_ArangoRequestType getRequestType (const SimpleHttpClient::http_method type) const {
-          if (type == SimpleHttpClient::GET) {
-            return PB_REQUEST_TYPE_GET;
-          }
-          if (type == SimpleHttpClient::POST) {
-            return PB_REQUEST_TYPE_POST;
-          }
-          if (type == SimpleHttpClient::PUT) {
-            return PB_REQUEST_TYPE_PUT;
-          }
-          if (type == SimpleHttpClient::DELETE) {
-            return PB_REQUEST_TYPE_DELETE;
-          }
-          cerr << "invalid request type" << endl;
-          exit(EXIT_FAILURE);
-        }
-
-        
         void executeRequest (const unsigned long numOperations) {
+          /*
           PB_ArangoMessage messages;
           PB_ArangoBatchMessage* batch;
           PB_ArangoBlobRequest* blob;
@@ -323,6 +277,7 @@ namespace triagens {
             }
           }
           delete result;
+          */
         }
 
 
@@ -405,12 +360,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SharedCounter<unsigned long>* _operationsCounter;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use binary json?
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _useJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to use

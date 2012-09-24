@@ -30,8 +30,6 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
-#include "RestHandler/BatchJob.h"
-#include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
