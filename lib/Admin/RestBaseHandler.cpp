@@ -27,8 +27,6 @@
 
 #include "RestBaseHandler.h"
 
-#include <boost/scoped_ptr.hpp>
-
 #include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
