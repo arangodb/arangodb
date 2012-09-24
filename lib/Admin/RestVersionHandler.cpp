@@ -107,20 +107,6 @@ HttpHandler::status_e RestVersionHandler::execute () {
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 
-  if (! _isDirect) {
-    bool found;
-    char const* valueStr = _request->value("sleep", found);
-
-    if (found) {
-      double s = TRI_DoubleString(valueStr);
-
-      if (0 < s) {
-        usleep(s * 1000.0 * 1000.0);
-      }
-    }
-  }
-  
-
   return HANDLER_DONE;
 }
 

@@ -567,7 +567,7 @@ bool RestDocumentHandler::readAllDocuments () {
   TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
 
   _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));

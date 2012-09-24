@@ -116,7 +116,7 @@ Handler::status_e RestBatchHandler::execute() {
   }
 
   // create the response 
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
@@ -175,7 +175,7 @@ Handler::status_e RestBatchHandler::execute() {
       request->setBody(bodyStart, bodyLength);
     }
     
-    HttpHandler* handler = _server->createHandler(request);
+    HttpHandler* handler = _server->createHandler(request, true);
     if (! handler) {
       delete request;
 

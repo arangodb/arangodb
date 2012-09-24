@@ -192,7 +192,7 @@ namespace triagens {
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual HttpHandler* createHandler (HttpRequest*);
+        virtual HttpHandler* createHandler (HttpRequest*, const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a maintenance handler

@@ -228,7 +228,7 @@ HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) 
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
+HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request, const bool isSubPart) {
 #if 0
   READ_LOCKER(_maintenanceLock);
 
@@ -315,7 +315,11 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   // no match
   if (i == ii.end()) {
     if (_notFound != 0) {
-      return _notFound(request, data);
+      HttpHandler* notFoundHandler = _notFound(request, data);
+      notFoundHandler->setServer(this);
+      notFoundHandler->setIsSubPart(isSubPart);
+
+      return notFoundHandler;
     }
     else {
       LOGGER_TRACE << "no not-found handler, giving up";
@@ -335,6 +339,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);
+  handler->setIsSubPart(isSubPart);
 
   return handler;
 }
