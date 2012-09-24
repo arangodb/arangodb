@@ -92,14 +92,6 @@ AM_CPPFLAGS = \
 	@V8_CPPFLAGS@
 
 
-if ENABLE_ZEROMQ
-
-AM_CPPFLAGS += \
-	@ZEROMQ_CPPFLAGS@
-
-endif
-
-
 if ENABLE_RELATIVE
 
 AM_CPPFLAGS += \
@@ -125,13 +117,6 @@ AM_LDFLAGS = \
 	@READLINE_LDFLAGS@ \
 	@ICU_LDFLAGS@ \
 	@V8_LDFLAGS@
-
-if ENABLE_ZEROMQ
-
-AM_LDFLAGS += \
-	@ZEROMQ_LDFLAGS@
-
-endif
 
 ################################################################################
 ### @brief libraries
@@ -414,14 +399,6 @@ endif
 
 if ENABLE_MRUBY
 include 3rdParty/Makefile.all-in-one-mruby
-endif
-
-################################################################################
-### @brief zeromq
-################################################################################
-
-if ENABLE_ZEROMQ
-include 3rdParty/Makefile.all-in-one-zeromq
 endif
 
 ################################################################################

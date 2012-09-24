@@ -103,17 +103,6 @@ lib_libarango_a_SOURCES = \
 	lib/Variant/VariantUInt8.cpp \
 	lib/Variant/VariantVector.cpp
 
-if ENABLE_ZEROMQ
-
-lib_libarango_a_SOURCES += \
-	lib/ZeroMQ/ApplicationZeroMQ.cpp \
-	lib/ZeroMQ/ZeroMQBatchJob.cpp \
-	lib/ZeroMQ/ZeroMQThread.cpp \
-	lib/ZeroMQ/ZeroMQQueueThread.cpp \
-	lib/ZeroMQ/ZeroMQWorkerThread.cpp
-
-endif
-
 ################################################################################
 ### @brief library "libarango.a", client part
 ################################################################################
