@@ -176,7 +176,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-create-for-limit-return", cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should be_kind_of(Integer)
@@ -190,7 +190,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_put("#{prefix}-create-for-limit-return-cont", cmd)
 	
 	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['hasMore'].should eq(true)
@@ -201,7 +201,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
 
 	doc.code.should eq(202)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(202)
       end
@@ -237,7 +237,7 @@ describe ArangoDB do
 	doc = ArangoDB.post(cmd, :body => body)
 	
 	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(201)
 	doc.parsed_response['id'].should be_kind_of(Integer)
@@ -251,14 +251,14 @@ describe ArangoDB do
 	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
 
 	doc.code.should eq(202)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(202)
 	
         doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
 
 	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(404);
 	doc.parsed_response['code'].should eq(404)
@@ -270,7 +270,7 @@ describe ArangoDB do
 	doc = ArangoDB.log_delete("#{prefix}-delete", cmd)
 
 	doc.code.should eq(404)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(true);
 	doc.parsed_response['errorNum'].should eq(404);
 	doc.parsed_response['code'].should eq(404)
