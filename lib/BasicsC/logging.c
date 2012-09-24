@@ -818,8 +818,9 @@ void TRI_SetLogLevelLogging (char const* level) {
   else {
     IsError = 1;
     IsWarning = 1;
+    IsInfo = 1;
 
-    LOG_ERROR("strange log level '%s'", level);
+    LOG_ERROR("strange log level '%s'. using log level 'info'", level);
   }
 }
 
