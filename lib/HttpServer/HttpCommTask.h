@@ -313,7 +313,7 @@ namespace triagens {
 
             // authenticated
             if (auth) {
-              HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
+              HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request, false);
               bool ok = false;
 
               if (handler == 0) {

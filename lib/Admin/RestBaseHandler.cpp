@@ -98,9 +98,7 @@ void RestBaseHandler::handleError (TriagensError const& error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (TRI_json_t* json) {
-  removePreviousResponse();
-
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
 
   int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
@@ -118,9 +116,7 @@ void RestBaseHandler::generateResult (TRI_json_t* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (VariantObject* result) {
-  removePreviousResponse();
-
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
 
   string contentType;
   bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
@@ -158,9 +154,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
-  removePreviousResponse();
-
-  _response = new HttpResponse(code);
+  _response = createResponse(code);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
