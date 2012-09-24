@@ -28,10 +28,8 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Basics/MutexLocker.h"
 #include "HttpServer/HttpServer.h"
-#include "ProtocolBuffers/HttpRequestProtobuf.h"
-#include "BinaryServer/BinaryMessage.h"
+#include "Rest/HttpRequestPlain.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -52,8 +50,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase),
-    _outputMessages(new PB_ArangoMessage) {
+  : RestVocbaseBaseHandler(request, vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,10 +58,6 @@ RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::~RestBatchHandler () {
-  if (_outputMessages) {
-    // delete protobuf message
-    delete _outputMessages;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +97,7 @@ string const& RestBatchHandler::queue () {
 
 Handler::status_e RestBatchHandler::execute() {
   // extract the request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  const HttpRequest::HttpRequestType type = _request->requestType();
   
   if (type != HttpRequest::HTTP_REQUEST_POST && type != HttpRequest::HTTP_REQUEST_PUT) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -112,39 +105,79 @@ Handler::status_e RestBatchHandler::execute() {
     return Handler::HANDLER_DONE;
   }
 
-  // extra content type
-  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
-    
-  if (contentType != BinaryMessage::getContentType()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type sent");
+  string boundary;
+  if (! getBoundary(&boundary)) {
+    // invalid content-type or boundary sent
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type or boundary received");
 
-    return Handler::HANDLER_DONE;
+    return Handler::HANDLER_FAILED;
   }
 
-  if (! _inputMessages.ParseFromArray(_request->body(), _request->bodySize())) {
-    LOGGER_DEBUG << "could not unserialize protobuf message";
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid request message data sent");
+  // create the response 
+  _response = new HttpResponse(HttpResponse::OK);
+  _response->setContentType(_request->header("content-type"));
 
-    return Handler::HANDLER_DONE; 
-  }
+  // setup some auxiliary structures to parse the multipart message
+  MultipartMessage message(boundary.c_str(), boundary.size(), _request->body(), _request->body() + _request->bodySize());
 
+  SearchHelper helper;
+  helper.message = &message;
+  helper.searchStart = (char*) message.messageStart;
 
-  for (int i = 0; i < _inputMessages.messages_size(); ++i) {
-    _outputMessages->add_messages();
-  
-    // create a handler for each input part 
-    const PB_ArangoBatchMessage* inputMessage = _inputMessages.mutable_messages(i);
-    HttpRequestProtobuf* request = new HttpRequestProtobuf(*inputMessage);
+  while (true) {
+    // get the next part from the multipart message
+    if (! extractPart(&helper)) {
+      // error
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
+      LOGGER_WARNING << "received a corrupted multipart message";
 
-    if (! request) {
       return Handler::HANDLER_FAILED;
     }
 
-    // handler is responsible for freeing the request later
-    HttpHandler* handler = _server->createHandler(request);
+    // split part into header & body
+    const char* partStart = helper.foundStart;
+    const char* partEnd = partStart + helper.foundLength;
+    const size_t partLength = helper.foundLength;
 
+    const char* headerStart = partStart;
+    char* bodyStart = NULL;
+    size_t headerLength = 0;
+    size_t bodyLength = 0;
+
+    // assume \r\n\r\n as delimiter
+    char* p = strstr((char*) headerStart, "\r\n\r\n");
+    if (p != NULL) {
+      headerLength = p - partStart;
+      bodyStart = p + 4;
+      bodyLength = partEnd - bodyStart;
+    }
+    else {
+      // \r\n\r\n not found, try \n\n
+      p = strstr((char*) headerStart, "\n\n");
+      if (p != NULL) {
+        headerLength = p - partStart;
+        bodyStart = p + 2;
+        bodyLength = partEnd - bodyStart;
+      }
+      else {
+        // no delimiter found, assume we have only a header
+        headerLength = partLength;
+      }
+    }
+   
+    // set up request object for the part
+    LOGGER_DEBUG << "part header is " << string(headerStart, headerLength); 
+    HttpRequestPlain* request = new HttpRequestPlain(headerStart, headerLength);
+    if (bodyLength > 0) {
+      LOGGER_INFO << "part body is " << string(bodyStart, bodyLength);
+      request->setBody(bodyStart, bodyLength);
+    }
+    
+    HttpHandler* handler = _server->createHandler(request);
     if (! handler) {
       delete request;
+
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "an error occured during part request processing");
 
       return Handler::HANDLER_FAILED;
     }
@@ -168,47 +201,150 @@ Handler::status_e RestBatchHandler::execute() {
       }
     }
     while (status == Handler::HANDLER_REQUEUE);
-  
-   
-    if (status == Handler::HANDLER_DONE) {
-      // capture output of handler
-      PB_ArangoBatchMessage* batch = _outputMessages->mutable_messages(i);
-      handler->getResponse()->write(batch);
+    
+    
+    if (status == Handler::HANDLER_FAILED) {
+      // one of the handlers failed, we must exit now
+      return Handler::HANDLER_FAILED; 
     }
 
+    // append the boundary for this subpart
+    _response->body().appendText(boundary + "\r\n");
+
+    // append the response header
+    handler->getResponse()->writeHeader(&_response->body());
+    // append the response body
+    _response->body().appendText(handler->getResponse()->body());
+    _response->body().appendText("\r\n");
 
     delete handler;
 
-    if (status == Handler::HANDLER_FAILED) {
-      return Handler::HANDLER_DONE; 
+
+    if (! helper.containsMore) {
+      // we've read the last part
+      break;
     }
   }
-  
-  // allocate output buffer
-  uint32_t messageSize = _outputMessages->ByteSize();
-  char* output = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * messageSize, false);
-  if (output == NULL) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
-    return Handler::HANDLER_DONE;
-  }
 
-  _response = new HttpResponse(HttpResponse::OK);
-  _response->setContentType(BinaryMessage::getContentType());
-
-  // content of message is binary, cannot use null-terminated std::string
-  if (!_outputMessages->SerializeToArray(output, messageSize)) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
-    delete _response;
-
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY, "out of memory");
-    return Handler::HANDLER_DONE;
-  }
-  
-  _response->body().appendText(output, (size_t) messageSize);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, output);
+  // append final boundary + "--"
+  _response->body().appendText(boundary + "--");
 
   // success
   return Handler::HANDLER_DONE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the boundary of a multipart message
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestBatchHandler::getBoundary (string* result) {
+  assert(_request);
+
+  // extract content type
+  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
+
+  // content type is expect to contain a boundary like this:
+  // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
+  vector<string> parts = StringUtils::split(contentType, ';');
+  if (parts.size() != 2 || parts[0] != "multipart/form-data") {
+    return false;
+  }
+
+  // trim 2nd part
+  StringUtils::trimInPlace(parts[1]);
+  if (parts[1].substr(0, 9) != "boundary=") {
+    return false;
+  }
+
+  string boundary = "--" + parts[1].substr(9);
+  if (boundary.size() < 10) {
+    return false;
+  }
+
+  LOGGER_INFO << "boundary of multipart-message is " << boundary;
+
+  *result = boundary;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the next part from a multipart message
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestBatchHandler::extractPart (SearchHelper* helper) {
+  assert(helper->searchStart != NULL);
+
+  // init the response
+  helper->foundStart = NULL;
+  helper->foundLength = 0;
+  helper->containsMore = false;
+  
+  const char* searchEnd = helper->message->messageEnd;
+
+  if (helper->searchStart >= searchEnd) {
+    // we're at the end already
+    return false;
+  }
+
+  // search for boundary
+  char* found = strstr(helper->searchStart, helper->message->boundary);
+  if (found == NULL) {
+    // not contained. this is an error
+    return false;
+  }
+
+  if (found != helper->searchStart) {
+    // boundary not located at beginning. this is an error
+    return false;
+  }
+
+  found += helper->message->boundaryLength; 
+  if (found + 1 >= searchEnd) {
+    // we're outside the buffer. this is an error
+    return false;
+  }
+
+  while (found < searchEnd && *found == ' ') {
+    ++found;
+  }
+
+  if (found + 2 >= searchEnd) {
+    // we're outside the buffer. this is an error
+    return false;
+  }
+
+  if (*found == '\r') {
+    ++found;
+  }
+  if (*found == '\n') {
+    ++found;
+  }
+
+  // we're at the start of the body part. set the return value
+  helper->foundStart = found;
+
+  // search for the end of the boundary
+  found = strstr(helper->foundStart, helper->message->boundary);
+  if (found == NULL || found >= searchEnd) {
+    // did not find the end. this is an error
+    return false;
+  }
+
+  helper->foundLength = found - helper->foundStart;
+
+  char* p = found + helper->message->boundaryLength;
+  if (p + 2 >= searchEnd) {
+    // end of boundary is outside the buffer
+    return false;
+  }
+
+  if (*p != '-' || *(p + 1) != '-') {
+    // we've not reached the end yet
+    helper->containsMore = true;
+    helper->searchStart = found;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
