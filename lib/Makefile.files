@@ -20,6 +20,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/Random.cpp \
+	lib/Basics/RandMT.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \

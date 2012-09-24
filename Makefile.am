@@ -83,7 +83,6 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
-	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
@@ -110,7 +109,6 @@ endif
 ################################################################################
 
 AM_LDFLAGS = \
-	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
 	@MATH_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
@@ -123,7 +121,6 @@ AM_LDFLAGS = \
 ################################################################################
 
 LIBS = \
-	@BOOST_LIBS@ \
 	@LIBEV_LIBS@ \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
