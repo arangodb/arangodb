@@ -37,6 +37,7 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/string-buffer.h"
 #include "BasicsC/terminal-utils.h"
 #include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
@@ -86,7 +87,7 @@ struct VersionTest : public BenchmarkOperation {
     return HttpRequest::HTTP_REQUEST_GET;
   }
   
-  const char* payload (size_t* length) {
+  const char* payload (size_t* length, const size_t counter) {
     static const char* payload = "";
     *length = 0;
     return payload;
@@ -103,7 +104,7 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            document creation test
+// --SECTION--                                      small document creation test
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +130,7 @@ struct SmallDocumentCreationTest : public BenchmarkOperation {
     return HttpRequest::HTTP_REQUEST_POST;
   }
   
-  const char* payload (size_t* length) {
+  const char* payload (size_t* length, const size_t counter) {
     static const char* payload = "{\"test\":1}";
     *length = 10;
     return payload;
@@ -139,6 +140,68 @@ struct SmallDocumentCreationTest : public BenchmarkOperation {
     static const map<string, string> headers;
     return headers;
   }
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        big document creation test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct BigDocumentCreationTest : public BenchmarkOperation {
+  BigDocumentCreationTest () 
+    : BenchmarkOperation () {
+
+    const size_t n = 100;
+
+    _buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+    TRI_AppendCharStringBuffer(_buffer, '{');
+
+    for (size_t i = 1; i <= n; ++i) {
+      TRI_AppendStringStringBuffer(_buffer, "\"test");
+      TRI_AppendUInt32StringBuffer(_buffer, (uint32_t) i);
+      TRI_AppendStringStringBuffer(_buffer, "\":\"some test value\"");
+      if (i != n) {
+        TRI_AppendCharStringBuffer(_buffer, ',');
+      }
+    }
+    
+    TRI_AppendCharStringBuffer(_buffer, '}');
+
+    _length = TRI_LengthStringBuffer(_buffer);
+  }
+
+  ~BigDocumentCreationTest () {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer);
+  }
+
+  const string& url () {
+    static string url = "/_api/document?collection=ArangoBenchmark&createCollection=true";
+    
+    return url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+  
+  const char* payload (size_t* length, const size_t counter) {
+    *length = _length;
+    return (const char*) _buffer->_buffer;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+
+  TRI_string_buffer_t* _buffer;
+  
+  size_t _length;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +324,7 @@ int main (int argc, char* argv[]) {
   BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
 
-  SmallDocumentCreationTest benchmarkOperation;
+  BigDocumentCreationTest benchmarkOperation;
 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
@@ -280,6 +343,7 @@ int main (int argc, char* argv[]) {
         BaseClient.password());
 
     threads.push_back(thread);
+    thread->setOffset(i * (Operations / Concurrency));
     thread->start();
   }
  
@@ -312,11 +376,16 @@ int main (int argc, char* argv[]) {
     requestTime += threads[i]->getTime();
   }
 
-  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level: " << Concurrency << endl;
-  cout << "Request/response duration: " << fixed << requestTime << " s" << endl;
-  cout << "Total duration: " << fixed << time << " s" << endl;
-  cout << "Duration per operation: " << fixed << (time / Operations) << " s" << endl;
-  cout << "Duration per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl << endl;
+  cout << endl;
+
+  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
+  cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
+  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
+  cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
+  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
+  cout << "Elapsed time since start: " << fixed << time << " s" << endl;
+
+  cout << endl;
 
   if (operationsCounter.failures() > 0) {
     cout << "WARNING: " << operationsCounter.failures() << " request(s) failed!!" << endl << endl;
