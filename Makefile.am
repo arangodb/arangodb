@@ -166,8 +166,11 @@ sbin_PROGRAMS = \
 
 bin_PROGRAMS = \
 	bin/arangosh \
-	bin/arangoimp \
-	bin/arangob
+	bin/arangoimp
+
+if ENABLE_ARANGOB	
+bin_PROGRAMS += bin/arangob
+endif
 
 ################################################################################
 ### @brief uninstalled programs
