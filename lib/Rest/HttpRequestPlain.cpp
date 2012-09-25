@@ -209,14 +209,16 @@ void HttpRequestPlain::write (TRI_string_buffer_t* buffer) const {
       continue;
     }
 
-    if (strcmp(key, "content-length") == 0) {
+    const size_t keyLength = strlen(key);
+    
+    if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
+    
+    TRI_AppendString2StringBuffer(buffer, key, keyLength);
+    TRI_AppendString2StringBuffer(buffer, ": ", 2);
 
     char const* value = begin->_value;
-
-    TRI_AppendStringStringBuffer(buffer, key);
-    TRI_AppendString2StringBuffer(buffer, ": ", 2);
     TRI_AppendStringStringBuffer(buffer, value);
     TRI_AppendString2StringBuffer(buffer, "\r\n", 2);
   }
@@ -883,7 +885,7 @@ void HttpRequestPlain::setValues (char* buffer, char* end) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequestPlain::setHeader (char const* key, size_t keyLength, char const* value) {
-  if (keyLength == 14 && TRI_EqualString2(key, "content-length", keyLength)) {
+  if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
     _contentLength = TRI_UInt64String(value);
   }
   else {

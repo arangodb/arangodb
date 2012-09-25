@@ -361,7 +361,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addResponse (HttpResponse* response) {
-          triagens::basics::StringBuffer * buffer;
 
           if (this->_closeRequested) {
             response->setHeader("connection", strlen("connection"), "Close");
@@ -377,10 +376,12 @@ namespace triagens {
             response->headResponse(response->bodySize());
           }
 
-          // save header
-          buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+          const size_t len = response->bodySize() + 128;
+          triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
+          // write header
           response->writeHeader(buffer);
 
+          // write body
           buffer->appendText(response->body());
 
           this->_writeBuffers.push_back(buffer);
