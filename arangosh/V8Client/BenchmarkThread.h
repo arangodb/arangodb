@@ -87,6 +87,8 @@ namespace triagens {
             _password(password),
             _client(0),
             _connection(0),
+            _offset(0),
+            _counter(0),
             _time(0.0) {
         }
 
@@ -207,7 +209,7 @@ namespace triagens {
             const HttpRequest::HttpRequestType type = _operation->type();
             const string url = _operation->url();
             size_t payloadLength = 0;
-            const char* payload = _operation->payload(&payloadLength);
+            const char* payload = _operation->payload(&payloadLength, _offset + _counter++);
             const map<string, string>& headers = _operation->headers();
 
             // headline, e.g. POST /... HTTP/1.1
@@ -258,7 +260,7 @@ namespace triagens {
           const HttpRequest::HttpRequestType type = _operation->type();
           const string url = _operation->url();
           size_t payloadLength = 0;
-          const char* payload = _operation->payload(&payloadLength);
+          const char* payload = _operation->payload(&payloadLength, _offset + _counter++);
           const map<string, string>& headers = _operation->headers();
 
           Timing timer(Timing::TI_WALLCLOCK);
@@ -294,6 +296,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the threads offset value
+////////////////////////////////////////////////////////////////////////////////
+
+        void setOffset (size_t offset) {
+          _offset = offset;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the total time accumulated by the thread
@@ -371,6 +381,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::httpclient::GeneralClientConnection* _connection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread offset value
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _offset;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread counter value
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _counter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time
