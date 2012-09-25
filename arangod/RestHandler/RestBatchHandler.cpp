@@ -210,13 +210,21 @@ Handler::status_e RestBatchHandler::execute() {
       return Handler::HANDLER_FAILED; 
     }
 
+    HttpResponsePart* partResponse = dynamic_cast<HttpResponsePart*>(handler->getResponse());
+    if (partResponse == 0) {
+      delete handler;
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "an error occured during part request processing");
+
+      return Handler::HANDLER_FAILED;
+    }
+
     // append the boundary for this subpart
     _response->body().appendText(boundary + "\r\n");
 
     // append the response header
-    handler->getResponse()->writeHeader(&_response->body());
+    partResponse->writeHeader(&_response->body());
     // append the response body
-    _response->body().appendText(handler->getResponse()->body());
+    _response->body().appendText(partResponse->body());
     _response->body().appendText("\r\n");
 
     delete handler;

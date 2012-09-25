@@ -79,7 +79,7 @@ HttpResponsePart::~HttpResponsePart () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponsePart::writeHeader (StringBuffer* output) {
-  output->appendText("HTTP/1.1 ");
+  output->appendText("X-Arango-status: ");
   output->appendText(responseString(_code));
   output->appendText("\r\n");
   
@@ -108,7 +108,12 @@ void HttpResponsePart::writeHeader (StringBuffer* output) {
     }
     
     char const* value = begin->_value;
-    
+   
+    if (! TRI_EqualString(key, "content-type")) {
+      // for all headers but content-type, we'll add the prefix "X-Arango-"
+      output->appendText("X-Arango-");
+    } 
+
     output->appendText(key);
     output->appendText(": ");
     output->appendText(value);
@@ -116,16 +121,16 @@ void HttpResponsePart::writeHeader (StringBuffer* output) {
   }
   
   if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("transfer-encoding: chunked\r\n\r\n");
+    output->appendText("X-Arango-transfer-encoding: chunked\r\n\r\n");
   }
   else {
     if (seenTransferEncoding) {
-      output->appendText("transfer-encoding: ");
+      output->appendText("X-Arango-transfer-encoding: ");
       output->appendText(transferEncoding);
       output->appendText("\r\n");
     }
    
-    output->appendText("content-length: ");
+    output->appendText("X-Arango-content-length: ");
     
     if (_isHeadResponse) {
       output->appendInteger(_bodySize);
