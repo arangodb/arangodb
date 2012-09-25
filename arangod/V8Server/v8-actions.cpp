@@ -186,7 +186,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
   if (parameter == "collection") {
     p = TRI_ACT_COLLECTION;
   }
-  if (parameter == "collection-name") {
+  else if (parameter == "collection-name") {
     p = TRI_ACT_COLLECTION_NAME;
   }
   else if (parameter == "collection-identifier") {
