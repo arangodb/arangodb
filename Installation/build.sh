@@ -54,42 +54,42 @@ case $TRI_OS_LONG in
 
   Linux-ArchLinux*)
     echo "Using configuration for Arch Linux"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-LinuxMint-13*)
     echo "Using configuration for LinuxMint 13"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-flex --enable-bison --enable-all-in-one --disable-mruby --disable-all-in-one-icu --enable-icu "
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-11.4*)
     echo "Using configuration for openSuSE 11.4"
-    OPTIONS="$OPTIONS --enable-all-in-one --with-boost-test --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --with-boost-test --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-11*)
     echo "Using configuration for openSuSE 11"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian-6*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -108,14 +108,14 @@ case $TRI_OS_LONG in
 
   Linux-Ubuntu-11.10*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
