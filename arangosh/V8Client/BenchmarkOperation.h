@@ -78,7 +78,7 @@ namespace triagens {
 /// @brief return the HTTP method of the operation to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual const SimpleHttpClient::http_method type () = 0;
+      virtual const HttpRequest::HttpRequestType type () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the payload (body) of the HTTP request to execute 

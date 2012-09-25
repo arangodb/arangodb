@@ -196,6 +196,70 @@ void HttpRequest::addSuffix (char const* part) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             public static methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Rest
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the request method string to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
+  switch (method) {
+    case HTTP_REQUEST_GET:
+      buffer->appendText("GET ");
+      break;
+    case HTTP_REQUEST_POST:
+      buffer->appendText("POST ");
+      break;
+    case HTTP_REQUEST_PUT:
+      buffer->appendText("PUT ");
+      break;
+    case HTTP_REQUEST_DELETE:
+      buffer->appendText("DELETE ");
+      break;
+    case HTTP_REQUEST_PATCH:
+      buffer->appendText("PATCH ");
+      break;
+    case HTTP_REQUEST_HEAD:
+      buffer->appendText("HEAD ");
+      break;
+    case HTTP_REQUEST_ILLEGAL:
+      buffer->appendText("UNKNOWN ");
+      LOGGER_WARNING << "illegal http request method encountered in switch";
+      break;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the expected content-type for a subpart
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpRequest::getPartContentType () {
+  static const string contentType = "Content-Type: application/x-arango-batchpart\r\n\r\n";
+
+  return contentType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the expected content-type for a multipart message
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpRequest::getMultipartContentType () {
+  static const string contentType = "multipart/form-data";
+
+  return contentType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
