@@ -8,6 +8,8 @@ dnl ============================================================================
 
 AC_INIT([triAGENS ArangoDB], [1.0.0], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
+AM_CONDITIONAL(ENABLE_ARANGOB, test "x$tr_ENABLE_ARANGOB" = xyes)
+
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
 dnl ----------------------------------------------------------------------------
