@@ -376,15 +376,12 @@ namespace triagens {
       // MERSENNE
       struct UniformIntegerMersenne : public UniformIntegerImpl {
         int32_t random (int32_t left, int32_t right) {
-          RandMT randomGenerator((uint32_t) time(NULL));
+          RandMT randomGenerator((uint32_t) RandomHelper::RandomDevice::getSeed());
 
-          int32_t result = ((int32_t) randomGenerator.randomMT()) + left;
+          const int32_t range = right - left + 1;
+          int32_t result = ((int32_t) randomGenerator.randomMT());
 
-          if (result > right) {
-            result %= right;
-            result += left;
-          }
-
+          result = (int32_t) abs(result % range) + left;
           return result;
         }
       };
