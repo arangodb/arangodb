@@ -49,6 +49,7 @@ bin_arangoimp_SOURCES = \
 ################################################################################
 ### @brief program "arangob"
 ################################################################################
+if ENABLE_ARANGOB
 
 bin_arangob_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
@@ -66,6 +67,8 @@ bin_arangob_SOURCES = \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \
 	arangosh/V8Client/arangob.cpp
+
+endif
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE
