@@ -33,6 +33,9 @@ case "$1" in
       exit 0
     fi
 
+    ARANGO_PIDDIR=`dirname $PIDFILE`
+    test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
+
     $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb
     log_end_msg $?
     ;;

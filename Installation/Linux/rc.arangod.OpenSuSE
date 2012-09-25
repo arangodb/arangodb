@@ -54,7 +54,7 @@ case "$1" in
     echo -n "Starting ARANGODB daemon"
 
     ARANGO_PIDDIR=`dirname $ARANGO_PIDFILE`
-    test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arango $ARANGO_PIDDIR)
+    test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arangodb $ARANGO_PIDDIR)
  
     $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arangodb
 
