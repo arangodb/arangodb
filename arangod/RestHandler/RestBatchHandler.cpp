@@ -154,17 +154,8 @@ Handler::status_e RestBatchHandler::execute() {
       bodyLength = partEnd - bodyStart;
     }
     else {
-      // \r\n\r\n not found, try \n\n
-      p = strstr((char*) headerStart, "\n\n");
-      if (p != NULL) {
-        headerLength = p - partStart;
-        bodyStart = p + 2;
-        bodyLength = partEnd - bodyStart;
-      }
-      else {
-        // no delimiter found, assume we have only a header
-        headerLength = partLength;
-      }
+      // no delimiter found, assume we have only a header
+      headerLength = partLength;
     }
    
     // set up request object for the part
@@ -251,18 +242,21 @@ bool RestBatchHandler::getBoundary (string* result) {
   assert(_request);
 
   // extract content type
-  string contentType = StringUtils::tolower(StringUtils::trim(_request->header("content-type")));
+  string contentType = StringUtils::trim(_request->header("content-type"));
 
   // content type is expect to contain a boundary like this:
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   vector<string> parts = StringUtils::split(contentType, ';');
-  if (parts.size() != 2 || parts[0] != "multipart/form-data") {
+  if (parts.size() != 2 || parts[0] != HttpRequest::getMultipartContentType().c_str()) {
     return false;
   }
 
   // trim 2nd part
   StringUtils::trimInPlace(parts[1]);
-  if (parts[1].substr(0, 9) != "boundary=") {
+  string p = parts[1].substr(0, 9);
+  StringUtils::tolowerInPlace(&p);
+ 
+  if (p != "boundary=") {
     return false;
   }
 
@@ -328,6 +322,20 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   }
   if (*found == '\n') {
     ++found;
+  }
+
+  // look for part content type
+  static const string& expectedPartType = HttpRequest::getPartContentType();
+
+  if (strstr(found, expectedPartType.c_str()) != found) {
+    // part content type not located at expected position. this is an error
+    return false;
+  }
+  found += expectedPartType.size();
+
+  if (found >= searchEnd) {
+    // we're outside the buffer. this is an error
+    return false;
   }
 
   // we're at the start of the body part. set the return value

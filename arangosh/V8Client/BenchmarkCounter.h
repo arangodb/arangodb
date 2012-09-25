@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_CLIENT_SHARED_COUNTER_H
-#define TRIAGENS_V8_CLIENT_SHARED_COUNTER_H 1
+#ifndef TRIAGENS_V8_CLIENT_BENCHMARK_COUNTER_H
+#define TRIAGENS_V8_CLIENT_BENCHMARK_COUNTER_H 1
 
 #include "Basics/Common.h"
 
@@ -39,7 +39,7 @@ namespace triagens {
   namespace v8client {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class SharedCounter
+// --SECTION--                                            class BenchmarkCounter
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -52,15 +52,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     template<class T>
-    class SharedCounter {
+    class BenchmarkCounter {
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a shared counter
+/// @brief create the counter
 ////////////////////////////////////////////////////////////////////////////////
 
-        SharedCounter (T initialValue, const T maxValue) : 
+        BenchmarkCounter (T initialValue, const T maxValue) : 
           _mutex(),
           _value(initialValue),
           _maxValue(maxValue),
@@ -68,10 +68,10 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a shared counter
+/// @brief destroy the counter
 ////////////////////////////////////////////////////////////////////////////////
         
-        ~SharedCounter () {
+        ~BenchmarkCounter () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,16 +112,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         T next (const T value) {
+          T realValue = value;
+
+          if (value == 0) {
+            realValue = 1;
+          }
+
           MUTEX_LOCKER(this->_mutex);
 
           T oldValue = _value;
-          if (oldValue + value > _maxValue) {
+          if (oldValue + realValue > _maxValue) {
             _value = _maxValue;
             return _maxValue - oldValue;
           }
 
-          _value += value;
-          return value;
+          _value += realValue;
+          return realValue;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

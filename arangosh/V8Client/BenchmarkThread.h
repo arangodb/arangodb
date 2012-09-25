@@ -35,10 +35,11 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "V8Client/SharedCounter.h"
 #include "SimpleHttpClient/SimpleClient.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "V8Client/BenchmarkCounter.h"
+#include "V8Client/BenchmarkOperation.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -47,50 +48,13 @@ using namespace triagens::rest;
 
 namespace triagens {
   namespace v8client {
-
-    struct BenchmarkRequest {
-      BenchmarkRequest (const char* url, 
-                        map<string, string> params, 
-                        char* (*genFunc)(),
-                        SimpleHttpClient::http_method type) :
-        url(url),
-        params(params),
-        genFunc(genFunc),
-        type(type),
-        ptr(0) {
-      };
-
-      ~BenchmarkRequest () {
-        if (ptr) {
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
-        }
-      }
-
-      void createString () {
-        if (genFunc == NULL) {
-          cerr << "invalid call to createString" << endl;
-          exit(EXIT_FAILURE);
-        }
-        ptr = (void*) genFunc();
-      }
-      
-      char* getString () {
-        return (char*) ptr;
-      }
-      
-      size_t getStringLength () {
-        return strlen((char*) ptr);
-      }
-
-      string url;
-      map<string, string> params;
-      char* (*genFunc)();
-      SimpleHttpClient::http_method type;
-      void* ptr;
-    };
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class BenchmarkThread
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,18 +63,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class BenchmarkThread : public Thread {
-      public:
-        typedef BenchmarkRequest (*GenFunc)();
 
-        BenchmarkThread (GenFunc generate,
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct the benchmark thread
+////////////////////////////////////////////////////////////////////////////////
+
+        BenchmarkThread (BenchmarkOperation* operation,
                          ConditionVariable* condition, 
                          const unsigned long batchSize,
-                         SharedCounter<unsigned long>* operationsCounter,
+                         BenchmarkCounter<unsigned long>* operationsCounter,
                          Endpoint* endpoint, 
                          const string& username, 
                          const string& password) 
           : Thread("arangob"), 
-            _generate(generate),
+            _operation(operation),
             _startCondition(condition),
             _batchSize(batchSize),
             _operationsCounter(operationsCounter),
@@ -121,6 +89,10 @@ namespace triagens {
             _connection(0),
             _time(0.0) {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the benchmark thread
+////////////////////////////////////////////////////////////////////////////////
         
         ~BenchmarkThread () {
           if (_client != 0) {
@@ -163,7 +135,11 @@ namespace triagens {
           _client = new SimpleHttpClient(_connection, 10.0, true);
           _client->setUserNamePassword("/", _username, _password);
           map<string, string> headerFields;
-          SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, 
+                                                      "/_api/version", 
+                                                      0, 
+                                                      0, 
+                                                      headerFields);
   
           if (! result || ! result->isComplete()) {
             if (result) {
@@ -174,7 +150,8 @@ namespace triagens {
           }
 
           delete result;
-  
+ 
+          // wait for start condition to be broadcasted 
           {
             ConditionLocker guard(_startCondition);
             guard.wait();
@@ -187,125 +164,79 @@ namespace triagens {
               break;
             }
 
-            if (_batchSize == 1) {
-              executeRequest();
+            if (_batchSize < 1) {
+              executeSingleRequest();
             } 
             else {
-              executeRequest(numOps);
+              executeBatchRequest(numOps);
             }
           }
         }
 
-        void executeRequest (const unsigned long numOperations) {
-          /*
-          PB_ArangoMessage messages;
-          PB_ArangoBatchMessage* batch;
-          PB_ArangoBlobRequest* blob;
-          PB_ArangoKeyValue* kv;
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Client
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a batch request with numOperations parts
+////////////////////////////////////////////////////////////////////////////////
+
+        void executeBatchRequest (const unsigned long numOperations) {
+          const string boundary = "XXXarangob-benchmarkXXX";
+
+          StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
 
           for (unsigned long i = 0; i < numOperations; ++i) {
-            BenchmarkRequest r = _generate();
+            // append boundary
+            batchPayload.appendText("--" + boundary + "\r\n");
+            // append content-type, this will also begin the body
+            batchPayload.appendText(HttpRequest::getPartContentType());
 
-            batch = messages.add_messages();
-            batch->set_type(PB_BLOB_REQUEST);
-            blob = batch->mutable_blobrequest();
-      
-            blob->set_requesttype(getRequestType(r.type));
-            blob->set_url(r.url);
-            
-            if (_useJson) {
-              r.createJson(blob);
-              blob->set_contenttype(PB_JSON_CONTENT);
+            // everything else (i.e. part request header & body) will get into the body
+            const HttpRequest::HttpRequestType type = _operation->type();
+            const string url = _operation->url();
+            size_t payloadLength = 0;
+            const char* payload = _operation->payload(&payloadLength);
+            const map<string, string>& headers = _operation->headers();
+
+            // headline, e.g. POST /... HTTP/1.1
+            HttpRequest::appendMethod(type, &batchPayload);
+            batchPayload.appendText(url + " HTTP/1.1\r\n");
+            // extra headers
+            for (map<string, string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+              batchPayload.appendText((*it).first + ": " + (*it).second + "\r\n");
             }
-            else {
-              r.createString(blob);
-              blob->set_contenttype(PB_NO_CONTENT);
-            }
+            batchPayload.appendText("\r\n");
             
-            for (map<string, string>::const_iterator it = r.params.begin(); it != r.params.end(); ++it) {
-              kv = blob->add_values();
-              kv->set_key((*it).first);
-              kv->set_value((*it).second);
-            }
+            // body
+            batchPayload.appendText(payload, payloadLength);
+            batchPayload.appendText("\r\n");
           }
 
-          size_t messageSize = messages.ByteSize();
-          char* message = new char[messageSize];
-
-          if (message == 0) {
-            cerr << "out of memory" << endl;
-            exit(EXIT_FAILURE);
-          }
-
-          if (! messages.SerializeToArray(message, messageSize)) {
-            cerr << "out of memory" << endl;
-            exit(EXIT_FAILURE);
-          }
-
-          map<string, string> headerFields;
-          headerFields["Content-Type"] = BinaryMessage::getContentType();
-            
-          //std::cout << "body length: " << messageSize << ", hash: " << TRI_FnvHashPointer(message, (size_t) messageSize) << "\n";
-
-          Timing timer(Timing::TI_WALLCLOCK);
-          SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/batch", message, (size_t) messageSize, headerFields);
-          _time += ((double) timer.time()) / 1000000.0;
-          delete[] message;
-
-          if (result == 0) {
-            _operationsCounter->incFailures();
-            return;
-          }
+          // end of MIME
+          batchPayload.appendText("--" + boundary + "--\r\n");
           
-          if (_endpoint->isBinary()) {
-            PB_ArangoMessage returnMessage;
+          map<string, string> batchHeaders;
+          batchHeaders["Content-Type"] = HttpRequest::getMultipartContentType() + 
+                                         "; boundary=" + boundary;
 
-            if (! returnMessage.ParseFromArray(result->getBody().str().c_str(), result->getContentLength())) {
-              _operationsCounter->incFailures();
-            }
-            else {
-              for (int i = 0; i < returnMessage.messages_size(); ++i) {
-                if (returnMessage.messages(i).blobresponse().status() >= 400) {
-                  _operationsCounter->incFailures();
-                } 
-              }
-            }
-          }
-          else {
-            if (result->getHttpReturnCode() >= 400) { 
-              _operationsCounter->incFailures();
-            }
-          }
-          delete result;
-          */
-        }
-
-
-        void executeRequest () {
-          BenchmarkRequest r = _generate();
-          string url = r.url;
-
-          bool found = false;
-          for (map<string, string>::const_iterator i = r.params.begin(); i != r.params.end(); ++i) {
-            if (! found) {
-              url.append("?");
-              found = true;
-            }
-            else {
-              url.append("&");
-            }
-
-            url.append((*i).first);
-            url.append("=");
-            url.append((*i).second);
-          }
-
-          r.createString();
-
-          map<string, string> headerFields;
           Timing timer(Timing::TI_WALLCLOCK);
-
-          SimpleHttpResult* result = _client->request(r.type, url, r.getString(), r.getStringLength(), headerFields);
+          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST,
+                                                      "/_api/batch",
+                                                      batchPayload.c_str(),
+                                                      batchPayload.length(),
+                                                      batchHeaders);
           _time += ((double) timer.time()) / 1000000.0;
 
           if (result == 0) {
@@ -319,8 +250,54 @@ namespace triagens {
           delete result;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a single request
+////////////////////////////////////////////////////////////////////////////////
+
+        void executeSingleRequest () {
+          const HttpRequest::HttpRequestType type = _operation->type();
+          const string url = _operation->url();
+          size_t payloadLength = 0;
+          const char* payload = _operation->payload(&payloadLength);
+          const map<string, string>& headers = _operation->headers();
+
+          Timing timer(Timing::TI_WALLCLOCK);
+          SimpleHttpResult* result = _client->request(type,
+                                                      url,
+                                                      payload,
+                                                      payloadLength,
+                                                      headers);
+          _time += ((double) timer.time()) / 1000000.0;
+
+          if (result == 0) {
+            _operationsCounter->incFailures();
+            return;
+          }
+
+          if (result->getHttpReturnCode() >= 400) { 
+            _operationsCounter->incFailures();
+          }
+          delete result;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Client
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the total time accumulated by the thread
+////////////////////////////////////////////////////////////////////////////////
 
         double getTime () const {
           return _time;
@@ -335,13 +312,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
+/// @addtogroup V8Client
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
 
-        GenFunc _generate;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the operation to benchmark
+////////////////////////////////////////////////////////////////////////////////
+
+        BenchmarkOperation* _operation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
@@ -356,10 +337,10 @@ namespace triagens {
         const unsigned long _batchSize;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shared operations counter
+/// @brief benchmark counter
 ////////////////////////////////////////////////////////////////////////////////
 
-        SharedCounter<unsigned long>* _operationsCounter;
+        BenchmarkCounter<unsigned long>* _operationsCounter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to use

@@ -60,7 +60,7 @@ namespace triagens {
     // public methods
     // -----------------------------------------------------------------------------
 
-    SimpleHttpResult* SimpleHttpClient::request (int method,
+    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
             const string& location,
             const char* body,
             size_t bodyLength,
@@ -200,7 +200,7 @@ namespace triagens {
       return _result;
     }
 
-    void SimpleHttpClient::setRequest (int method,
+    void SimpleHttpClient::setRequest (rest::HttpRequest::HttpRequestType method,
             const string& location,
             const char* body,
             size_t bodyLength,
@@ -213,29 +213,7 @@ namespace triagens {
       ///////////////////// fill the write buffer //////////////////////////////      
       _writeBuffer.clear();
 
-      switch (method) {
-        case GET:
-          _writeBuffer.appendText("GET ");
-          break;
-        case POST:
-          _writeBuffer.appendText("POST ");
-          break;
-        case PUT:
-          _writeBuffer.appendText("PUT ");
-          break;
-        case DELETE:
-          _writeBuffer.appendText("DELETE ");
-          break;
-        case PATCH:
-          _writeBuffer.appendText("PATCH ");
-          break;
-        case HEAD:
-          _writeBuffer.appendText("HEAD ");
-          break;
-        default:
-          _writeBuffer.appendText("POST ");
-          break;
-      }
+      HttpRequest::appendMethod(method, &_writeBuffer);
 
       string l = location;
       if (location.length() == 0 || location[0] != '/') {

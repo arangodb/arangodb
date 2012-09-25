@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http response, part of a multipart message
+/// @brief interface definition for benchmark operations
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,74 +21,86 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpResponsePart.h"
+#ifndef TRIAGENS_V8_CLIENT_BENCHMARK_OPERATION_H
+#define TRIAGENS_V8_CLIENT_BENCHMARK_OPERATION_H 1
 
-#include "BasicsC/strings.h"
-#include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Basics/Common.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
 using namespace std;
+using namespace triagens::basics;
+using namespace triagens::httpclient;
+using namespace triagens::rest;
+
+namespace triagens {
+  namespace v8client {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                          class BenchmarkOperation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
+/// @addtogroup V8Client
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response part
+/// @brief simple interface for benchmark operations
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponsePart::HttpResponsePart (HttpResponseCode code) 
-  : HttpResponse() {
-    _code = code;
-}
+    struct BenchmarkOperation {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a http response part
+/// @brief ctor, derived class can implemented something sensible
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponsePart::~HttpResponsePart () {
+      BenchmarkOperation () {
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dtor, derived class can implemented something sensible
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual ~BenchmarkOperation () {
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the URL of the operation to execute
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual const string& url () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the HTTP method of the operation to execute
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual const HttpRequest::HttpRequestType type () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the payload (body) of the HTTP request to execute 
+////////////////////////////////////////////////////////////////////////////////
+      
+      virtual const char* payload (size_t* length) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the HTTP headers for the oepration to execute
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual const map<string, string>& headers () = 0;
+
+    };
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the header
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponsePart::writeHeader (StringBuffer* output) {
-  // content-type: application/x-arango-batchpart\r\n\r\n
-  output->appendText(HttpRequest::getPartContentType());
- 
-  HttpResponse::writeHeader(output);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -96,5 +108,5 @@ void HttpResponsePart::writeHeader (StringBuffer* output) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
