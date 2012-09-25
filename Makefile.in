@@ -203,14 +203,14 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/ApplicationMR.cpp \
 @ENABLE_MRUBY_TRUE@	arangod/MRServer/mr-actions.cpp
 
-@ENABLE_BISON_TRUE@am__append_11 = \
-@ENABLE_BISON_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.h
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_11 = \
+@ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.h
 
-@ENABLE_BOOST_TEST_TRUE@am__append_12 = UnitTests/basics_suite UnitTests/geo_suite
-@ENABLE_BOOST_TEST_FALSE@UnitTests_basics_suite_DEPENDENCIES =
-@ENABLE_BOOST_TEST_FALSE@UnitTests_geo_suite_DEPENDENCIES =
-@ENABLE_ERRORS_DEPENDENCY_TRUE@am__append_13 = \
-@ENABLE_ERRORS_DEPENDENCY_TRUE@	errorfiles
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_12 = UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_MAINTAINER_MODE_FALSE@UnitTests_basics_suite_DEPENDENCIES =
+@ENABLE_MAINTAINER_MODE_FALSE@UnitTests_geo_suite_DEPENDENCIES =
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_13 = \
+@ENABLE_MAINTAINER_MODE_TRUE@	errorfiles
 
 @ENABLE_MRUBY_TRUE@am__append_14 = @builddir@/.setup-mr-directories
 
@@ -235,42 +235,44 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 ### @brief generate readme
 ################################################################################
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_16 = README
-@ENABLE_FLEX_TRUE@am__append_17 = $(FLEX_FILES) $(FLEXXX_FILES)
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_17 = $(FLEX_FILES) \
+@ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
+@ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
 
 ################################################################################
 ### @brief cleanup
 ################################################################################
-@ENABLE_FLEX_TRUE@am__append_18 = $(FLEX_FILES) $(FLEXXX_FILES)
-@ENABLE_BISON_TRUE@am__append_19 = $(BISON_FILES) $(BISONXX_FILES)
 
 ################################################################################
 ### @brief CLEANUP
 ################################################################################
-@ENABLE_BISON_TRUE@am__append_20 = $(BISON_FILES) $(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_21 = @LIBEV_LIBS@
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_18 = $(FLEX_FILES) \
+@ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
+@ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_19 = @LIBEV_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_22 = .libev-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 = @V8_LIBS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_20 = .libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_21 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_24 = .v8-build-@TRI_BITS@
-@ENABLE_MRUBY_TRUE@am__append_25 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_22 = .v8-build-@TRI_BITS@
+@ENABLE_MRUBY_TRUE@am__append_23 = @MRUBY_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_26 = .mruby-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_27 = @ICU_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_24 = .mruby-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_25 = @ICU_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_28 = .icu-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_26 = .icu-build-@TRI_BITS@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -283,8 +285,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.threads \
 	$(top_srcdir)/m4/configure.documentation \
 	$(top_srcdir)/m4/configure.coverage \
-	$(top_srcdir)/m4/configure.flex \
-	$(top_srcdir)/m4/configure.bison \
+	$(top_srcdir)/m4/configure.maintainer \
 	$(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
@@ -470,9 +471,9 @@ lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)"
-@ENABLE_BOOST_TEST_TRUE@am__EXEEXT_3 =  \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/basics_suite$(EXEEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/geo_suite$(EXEEXT)
+@ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_3 =  \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/basics_suite$(EXEEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/geo_suite$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
@@ -488,27 +489,27 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Jutland/EndpointTest.cpp \
 	UnitTests/Jutland/StringBufferTest.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
-@ENABLE_BOOST_TEST_TRUE@am_UnitTests_basics_suite_OBJECTS =  \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-utilities-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/EndpointTest.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
+@ENABLE_MAINTAINER_MODE_TRUE@am_UnitTests_basics_suite_OBJECTS =  \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-utilities-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-utf8-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/vector-pointer-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/vector-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Jutland/EndpointTest.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Jutland/StringBufferTest.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 UnitTests_basics_suite_OBJECTS = $(am_UnitTests_basics_suite_OBJECTS)
 am__UnitTests_geo_suite_SOURCES_DIST = UnitTests/Cambridge/Runner.cpp \
 	UnitTests/Cambridge/georeg.cpp arangod/GeoIndex/GeoIndex.c
-@ENABLE_BOOST_TEST_TRUE@am_UnitTests_geo_suite_OBJECTS = UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT) \
-@ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
+@ENABLE_MAINTAINER_MODE_TRUE@am_UnitTests_geo_suite_OBJECTS = UnitTests/Cambridge/UnitTests_geo_suite-Runner.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Cambridge/UnitTests_geo_suite-georeg.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	arangod/GeoIndex/UnitTests_geo_suite-GeoIndex.$(OBJEXT)
 UnitTests_geo_suite_OBJECTS = $(am_UnitTests_geo_suite_OBJECTS)
 am_bin_arango_dfdb_OBJECTS =
 bin_arango_dfdb_OBJECTS = $(am_bin_arango_dfdb_OBJECTS)
@@ -952,8 +953,7 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(am__append_13) Doxygen/.setup-directories \
 	@builddir@/.setup-js-directories $(am__append_14) \
 	$(am__append_16) $(am__append_17) $(am__append_19) \
-	$(am__append_21) $(am__append_23) $(am__append_25) \
-	$(am__append_27)
+	$(am__append_21) $(am__append_23) $(am__append_25)
 
 ################################################################################
 ### @brief man pages to install
@@ -986,7 +986,7 @@ CLEANUP = .setup-js-directories .setup-mr-directories $(am__append_11) \
 	Doxygen/.setup-directories $(JAVASCRIPT_HEADER) \
 	.setup-js-directories $(am__append_15) $(am__append_18) \
 	$(am__append_20) $(am__append_22) $(am__append_24) \
-	$(am__append_26) $(am__append_28)
+	$(am__append_26)
 
 ################################################################################
 ### @brief flex files
@@ -1576,31 +1576,31 @@ CLIENT_OPT := \
 	--no-colors \
 	--quiet
 
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
-@ENABLE_BOOST_TEST_TRUE@UnitTests_basics_suite_SOURCES = \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Runner.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/json-utilities-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/string-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/EndpointTest.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_SOURCES = \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-utilities-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-utf8-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/vector-pointer-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/vector-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Jutland/EndpointTest.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Jutland/StringBufferTest.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Jutland/StringUtilsTest.cpp
 
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
-@ENABLE_BOOST_TEST_TRUE@UnitTests_geo_suite_SOURCES = \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/Runner.cpp \
-@ENABLE_BOOST_TEST_TRUE@	UnitTests/Cambridge/georeg.cpp \
-@ENABLE_BOOST_TEST_TRUE@	arangod/GeoIndex/GeoIndex.c
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
+@ENABLE_MAINTAINER_MODE_TRUE@UnitTests_geo_suite_SOURCES = \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Cambridge/Runner.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Cambridge/georeg.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	arangod/GeoIndex/GeoIndex.c
 
 
 ################################################################################
@@ -5230,28 +5230,28 @@ unittests-make:
 
 .PHONY: unittests-boost
 
-@ENABLE_BOOST_TEST_TRUE@unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
-@ENABLE_BOOST_TEST_TRUE@	@echo
-@ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_TRUE@	@echo "<< BOOST TESTS                                                                >>"
-@ENABLE_BOOST_TEST_TRUE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_TRUE@	@echo
+@ENABLE_MAINTAINER_MODE_TRUE@unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
+@ENABLE_MAINTAINER_MODE_TRUE@	@echo
+@ENABLE_MAINTAINER_MODE_TRUE@	@echo "================================================================================"
+@ENABLE_MAINTAINER_MODE_TRUE@	@echo "<< BOOST TESTS                                                                >>"
+@ENABLE_MAINTAINER_MODE_TRUE@	@echo "================================================================================"
+@ENABLE_MAINTAINER_MODE_TRUE@	@echo
 
-@ENABLE_BOOST_TEST_TRUE@	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
-@ENABLE_BOOST_TEST_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
+@ENABLE_MAINTAINER_MODE_TRUE@	test "x$(SKIP_BOOST)" == "x1" || $(VALGRIND) @builddir@/UnitTests/basics_suite --show_progress || test "x$(FORCE)" == "x1"
+@ENABLE_MAINTAINER_MODE_TRUE@	test "x$(SKIP_GEO)" == "x1" || $(VALGRIND) @builddir@/UnitTests/geo_suite --show_progress || test "x$(FORCE)" == "x1"
 
-@ENABLE_BOOST_TEST_TRUE@	@echo
+@ENABLE_MAINTAINER_MODE_TRUE@	@echo
 
-@ENABLE_BOOST_TEST_FALSE@unittests-boost:
-@ENABLE_BOOST_TEST_FALSE@	@echo
-@ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_FALSE@	@echo "<< BOOST TESTS                                                                >>"
-@ENABLE_BOOST_TEST_FALSE@	@echo "================================================================================"
-@ENABLE_BOOST_TEST_FALSE@	@echo
+@ENABLE_MAINTAINER_MODE_FALSE@unittests-boost:
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo "================================================================================"
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo "<< BOOST TESTS                                                                >>"
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo "================================================================================"
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo
 
-@ENABLE_BOOST_TEST_FALSE@	@echo "enable unit-testing with 'configure --with-boost-test'"
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo "enable unit-testing with 'configure --enable-maintainer-mode'"
 
-@ENABLE_BOOST_TEST_FALSE@	@echo
+@ENABLE_MAINTAINER_MODE_FALSE@	@echo
 
 .PHONY: unittests-shell-server
 
@@ -5419,10 +5419,10 @@ unittests-bitarray-index:
 
 .PHONY: errorfiles
 
-@ENABLE_ERRORS_DEPENDENCY_TRUE@errorfiles: lib/BasicsC/errors.dat
-@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
-@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
-@ENABLE_ERRORS_DEPENDENCY_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
+@ENABLE_MAINTAINER_MODE_TRUE@errorfiles: lib/BasicsC/errors.dat
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
 
 ################################################################################
 ################################################################################
@@ -5611,29 +5611,29 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ### @brief flex
 ################################################################################
 
-@ENABLE_FLEX_TRUE@%.c: %.l
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@%.c: %.l
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
 
 ################################################################################
 ### @brief flex++
 ################################################################################
 
-@ENABLE_FLEX_TRUE@%.cpp: %.ll
-@ENABLE_FLEX_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.ll
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
 
 ################################################################################
 ### @brief BISON
 ################################################################################
 
-@ENABLE_BISON_TRUE@%.c: %.y
-@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@%.c: %.y
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
 
 ################################################################################
 ### @brief BISON++
 ################################################################################
 
-@ENABLE_BISON_TRUE@%.cpp: %.yy
-@ENABLE_BISON_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.yy
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
 
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 
