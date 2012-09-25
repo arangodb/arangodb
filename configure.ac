@@ -8,8 +8,6 @@ dnl ============================================================================
 
 AC_INIT([triAGENS ArangoDB], [1.0.0], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
-AM_CONDITIONAL(ENABLE_ARANGOB, test "x$tr_ENABLE_ARANGOB" = xyes)
-
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
 dnl ----------------------------------------------------------------------------
@@ -101,6 +99,19 @@ if test "x$tr_RELATIVE" != xno;  then
 else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
+
+
+dnl ----------------------------------------------------------------------------
+dnl ARANGOB
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE([arangob],
+  AS_HELP_STRING([--enable-arangob], [install arangob (default: no)]),
+  [tr_ARANGOB="${enableval:-yes}"],
+  [tr_ARANGOB=no])
+
+AM_CONDITIONAL(ENABLE_ARANGOB, test "x$tr_ARANGOB" = xyes)
+
 
 dnl ============================================================================
 dnl --SECTION--                                                    CONFIGURATION
