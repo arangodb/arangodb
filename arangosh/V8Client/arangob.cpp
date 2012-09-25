@@ -157,7 +157,7 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
 
     const size_t n = 100;
 
-    _buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
     TRI_AppendCharStringBuffer(_buffer, '{');
 
     for (size_t i = 1; i <= n; ++i) {
@@ -308,7 +308,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-
+  
   // .............................................................................
   // set-up client connection
   // .............................................................................
