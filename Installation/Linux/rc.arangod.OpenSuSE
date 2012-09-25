@@ -3,14 +3,14 @@
 #
 # Author: Achim Brandt <a.brandt@triagens.de>
 #
-# /etc/init.d/arangod
+# /etc/init.d/arangodb
 #
 #   and symbolic its link
 #
-# /usr/sbin/rcarangod
+# /usr/sbin/rcarangodb
 #
 ### BEGIN INIT INFO
-# Provides: arangod
+# Provides: arangodb
 # Required-Start: $network $remote_fs
 # Required-Stop: $network $remote_fs
 # Default-Start: 3 5
@@ -51,12 +51,12 @@ case "$1" in
   ################################################################################
 
   start)
-    echo -n "Starting ARANGO daemon"
+    echo -n "Starting ARANGODB daemon"
 
     ARANGO_PIDDIR=`dirname $ARANGO_PIDFILE`
     test -d $ARANGO_PIDDIR || (mkdir $ARANGO_PIDDIR && chown arango $ARANGO_PIDDIR)
  
-    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arango
+    $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$ARANGO_PIDFILE" --supervisor --uid arangodb
 
     # Remember status and be verbose
     rc_status -v
@@ -68,7 +68,7 @@ case "$1" in
   ################################################################################
 
   stop)
-    echo -n "Shutting down ARANGO daemon"
+    echo -n "Shutting down ARANGODB daemon"
 
     killproc -t $ARANGO_TIMEOUT -p $ARANGO_PIDFILE -TERM $ARANGO_BIN
 
@@ -108,7 +108,7 @@ case "$1" in
   ################################################################################
 
   force-reload|reload)
-    echo -n "Reload service ARANGO"
+    echo -n "Reload service ARANGODB"
 
     echo "reload is currently not supported"
 
@@ -128,7 +128,7 @@ case "$1" in
   ################################################################################
 
   status)
-    echo -n "Checking for service ARANGO "
+    echo -n "Checking for service ARANGODB"
 
     checkproc -p $ARANGO_PIDFILE $ARANGO_BIN
 
