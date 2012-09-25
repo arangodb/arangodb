@@ -248,20 +248,24 @@ bool RestBatchHandler::getBoundary (string* result) {
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   vector<string> parts = StringUtils::split(contentType, ';');
   if (parts.size() != 2 || parts[0] != HttpRequest::getMultipartContentType().c_str()) {
+    // content-type is not formatted as expected
     return false;
   }
 
-  // trim 2nd part
+  static const size_t boundaryLength = 9; // strlen("boundary=");
+
+  // trim 2nd part and lowercase it
   StringUtils::trimInPlace(parts[1]);
-  string p = parts[1].substr(0, 9);
+  string p = parts[1].substr(0, boundaryLength);
   StringUtils::tolowerInPlace(&p);
  
   if (p != "boundary=") {
     return false;
   }
 
-  string boundary = "--" + parts[1].substr(9);
-  if (boundary.size() < 10) {
+  string boundary = "--" + parts[1].substr(boundaryLength);
+  if (boundary.size() < 5) {
+    // 3 bytes is min length for boundary (without "--")
     return false;
   }
 
