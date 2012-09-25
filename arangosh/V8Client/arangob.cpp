@@ -56,6 +56,97 @@ using namespace triagens::v8client;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              benchmark test cases
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            version retrieval test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct VersionTest : public BenchmarkOperation {
+  VersionTest () 
+    : BenchmarkOperation () {
+  }
+
+  ~VersionTest () {
+  }
+
+  const string& url () {
+    static string url = "/_api/version";
+    
+    return url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_GET;
+  }
+  
+  const char* payload (size_t* length) {
+    static const char* payload = "";
+    *length = 0;
+    return payload;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            document creation test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct SmallDocumentCreationTest : public BenchmarkOperation {
+  SmallDocumentCreationTest () 
+    : BenchmarkOperation () {
+  }
+
+  ~SmallDocumentCreationTest () {
+  }
+
+  const string& url () {
+    static string url = "/_api/document?collection=ArangoBenchmark&createCollection=true";
+    
+    return url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+  
+  const char* payload (size_t* length) {
+    static const char* payload = "{\"test\":1}";
+    *length = 10;
+    return payload;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -91,37 +182,6 @@ static int BatchSize = 0;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-struct VersionTest : public BenchmarkOperation {
-  VersionTest () 
-    : BenchmarkOperation () {
-  }
-
-  ~VersionTest () {
-  }
-
-  const string& url () {
-    static string url = "/_api/version";
-    
-    return url;
-  }
-
-  const HttpRequest::HttpRequestType type () {
-    return HttpRequest::HTTP_REQUEST_GET;
-  }
-  
-  const char* payload (size_t* length) {
-    static const char* payload = "";
-    *length = 0;
-    return payload;
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -201,7 +261,7 @@ int main (int argc, char* argv[]) {
   BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
 
-  VersionTest benchmarkOperation;
+  SmallDocumentCreationTest benchmarkOperation;
 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
