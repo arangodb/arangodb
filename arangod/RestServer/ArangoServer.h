@@ -42,9 +42,6 @@ namespace triagens {
     class ApplicationDispatcher;
     class ApplicationEndpointServer;
     class ApplicationScheduler;
-#ifdef TRI_ENABLE_ZEROMQ
-    class ApplicationZeroMQ;
-#endif 
     class HttpServer;
 #ifdef TRI_OPENSSL_VERSION
     class HttpsServer;
@@ -257,14 +254,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ApplicationV8* _applicationV8;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ZeroMQ server
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_ZEROMQ
-        rest::ApplicationZeroMQ* _applicationZeroMQ;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
