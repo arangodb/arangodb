@@ -25,7 +25,7 @@ RETVAL=0
 
 start() {
   echo -n $"Starting $ARANGO_BIN: "
-  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arango
+  $ARANGO_BIN -c $ARANGO_SYSCONFIG --pid-file "$pidfile" --supervisor --uid arangodb
 
   RETVAL=$?
   echo
