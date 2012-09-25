@@ -49,7 +49,7 @@ d 0755 ${susr} ${sgrp} /var/run/arangodb -
 # logfile directory
 d 0755 ${susr} ${sgrp} /var/log/arangodb -
 
-%include ${project_dir}/Installation/arangodb.sublist
+%include ${project_dir}/Installation/epm/arangodb.sublist
 
 ################################################################################
 ## Pre/Post Install
@@ -80,8 +80,8 @@ EOF
 
 %else
 %preinstall <<EOF
-getent group arango >/dev/null || groupadd -r arango 
-getent passwd arango >/dev/null || useradd -r -g arango -d ${static_dir}/arangodb -s /bin/false -c "ArangoDB Application User" arango 
+getent group arangodb >/dev/null || groupadd -r arangodb 
+getent passwd arangodb >/dev/null || useradd -r -g arangodb -d ${static_dir}/arangodb -s /bin/false -c "ArangoDB Application User" arangodb 
 EOF
 %endif
 
@@ -90,16 +90,16 @@ EOF
 ## -----------------------------------------------------------------------------
 
 %ifdef chkconf
-f 0755 ${rusr} ${rgrp} ${initdir}/arangod ${project_dir}/Installation/${START_SCRIPT}
+f 0755 ${rusr} ${rgrp} ${initdir}/arangodb ${project_dir}/Installation/Linux/${START_SCRIPT}
 
 %postinstall <<EOF
-chkconfig --level ${runlevels} arangod on
+chkconfig --level ${runlevels} arangodb on
 exit 0
 EOF
 
 %preremove <<EOF
-${initdir}/arangod stop 2&>1 > /dev/null || true
-chkconfig --del arangod
+${initdir}/arangodb stop 2&>1 > /dev/null || true
+chkconfig --del arangodb
 exit 0
 EOF
 
@@ -108,16 +108,16 @@ EOF
 ## -----------------------------------------------------------------------------
 
 %elseifdef insserv
-f 0755 ${rusr} ${rgrp} ${initdir}/arangod ${project_dir}/Installation/${START_SCRIPT}
+f 0755 ${rusr} ${rgrp} ${initdir}/arangodb ${project_dir}/Installation/Linux/${START_SCRIPT}
 
 %postinstall <<EOF
-test -x /sbin/insserv && /sbin/insserv /etc/init.d/arangod 2&>1 > /dev/null
+test -x /sbin/insserv && /sbin/insserv /etc/init.d/arangodb 2&>1 > /dev/null
 exit 0
 EOF
 
 %preremove <<EOF
-${initdir}/arangod stop 2&>1 > /dev/null || true
-test -x /sbin/insserv && /sbin/insserv -r /etc/init.d/arangod 2&>1 > /dev/null
+${initdir}/arangodb stop 2&>1 > /dev/null || true
+test -x /sbin/insserv && /sbin/insserv -r /etc/init.d/arangodb 2&>1 > /dev/null
 exit 0
 EOF
 
@@ -128,7 +128,7 @@ EOF
 %else
 
 %system linux
-i 0755 ${rusr} ${rgrp} arangod ${project_dir}/Installation/${START_SCRIPT} runlevel(${runlevels})
+i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
 
 %endif
 
@@ -137,4 +137,4 @@ i 0755 ${rusr} ${rgrp} arangod ${project_dir}/Installation/${START_SCRIPT} runle
 ## -----------------------------------------------------------------------------
 
 %system linux
-l 000 ${rusr} ${rgrp} ${sbindir}/rcarangod /etc/init.d/arangod 
+l 000 ${rusr} ${rgrp} ${sbindir}/rcarangodb /etc/init.d/arangodb

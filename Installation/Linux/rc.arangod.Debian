@@ -33,7 +33,7 @@ case "$1" in
       exit 0
     fi
 
-    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arango
+    $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb
     log_end_msg $?
     ;;
 
