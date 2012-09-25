@@ -41,6 +41,7 @@
 #include <Basics/Common.h>
 
 #include "MRuby/mr-utils.h"
+#include "Rest/HttpRequest.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -255,7 +256,7 @@ namespace triagens {
 /// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      mrb_value requestData (int method, 
+      mrb_value requestData (rest::HttpRequest::HttpRequestType method, 
                              std::string const& location,
                              std::string const& body,
                              map<string, string> const& headerFields);
