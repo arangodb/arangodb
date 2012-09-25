@@ -43,6 +43,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -90,7 +91,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
   // connect to server and get version number
   map<string, string> headerFields;
-  SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version", 0, 0, headerFields);
 
   if (! result || ! result->isComplete()) {
     // save error message
@@ -220,7 +221,7 @@ triagens::httpclient::SimpleHttpClient* V8ClientConnection::getHttpClient() {
 
 v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
                                                    map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::GET, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +230,7 @@ v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& location,
                                                       map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::DELETE, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +239,7 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& locatio
 
 v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
                                                     map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::HEAD, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
 }    
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +249,7 @@ v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
 v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
                                                     std::string const& body,
                                                     map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::POST, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +259,7 @@ v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
 v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
                                                    std::string const& body, 
                                                    map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::PUT, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +269,7 @@ v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
 v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location,
                                                      std::string const& body, 
                                                      map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::PATCH, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,10 +286,10 @@ v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a request
+/// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
+v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestType method,
                                                        string const& location,
                                                        string const& body,
                                                        map<string, string> const& headerFields) {

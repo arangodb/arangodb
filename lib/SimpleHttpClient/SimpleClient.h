@@ -33,6 +33,7 @@
 
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
 
 namespace triagens {
   namespace httpclient {
@@ -102,7 +103,7 @@ namespace triagens {
       /// the caller has to delete the result object
       ////////////////////////////////////////////////////////////////////////////////
 
-      virtual SimpleHttpResult* request (int method, 
+      virtual SimpleHttpResult* request (rest::HttpRequest::HttpRequestType method, 
                                          const string& location,
                                          const char* body, 
                                          size_t bodyLength,

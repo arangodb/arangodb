@@ -33,6 +33,7 @@
 
 #include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/SimpleClient.h"
 
 namespace triagens {
@@ -54,14 +55,6 @@ namespace triagens {
     public:
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief supported request methods
-      ////////////////////////////////////////////////////////////////////////////////
-
-      enum http_method {
-        GET, POST, PUT, DELETE, HEAD, PATCH
-      };
-
-      ////////////////////////////////////////////////////////////////////////////////
       /// @brief constructs a new http client
       ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,7 +73,7 @@ namespace triagens {
       /// the caller has to delete the result object
       ////////////////////////////////////////////////////////////////////////////////
 
-      virtual SimpleHttpResult* request (int method, 
+      virtual SimpleHttpResult* request (rest::HttpRequest::HttpRequestType method, 
                                          const string& location,
                                          const char* body, 
                                          size_t bodyLength,
@@ -123,7 +116,7 @@ namespace triagens {
       /// @param headerFields                   list of header fields
       ////////////////////////////////////////////////////////////////////////////////
       
-      void setRequest (int method,
+      void setRequest (rest::HttpRequest::HttpRequestType method,
                        const string& location,
                        const char* body, 
                        size_t bodyLength,

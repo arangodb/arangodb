@@ -1394,6 +1394,18 @@ namespace triagens {
       }
 
 
+      void tolowerInPlace (string* str) {
+        size_t len = str->length();
+
+        if (len == 0) {
+          return;
+        }
+
+        for (string::iterator i = str->begin(); i != str->end(); ++i) {
+          *i = ::tolower(*i);
+        }
+      }
+
 
       string tolower (string const& str) {
         size_t len = str.length();
@@ -1417,6 +1429,18 @@ namespace triagens {
         return result;
       }
 
+      
+      void toupperInPlace (string* str) {
+        size_t len = str->length();
+
+        if (len == 0) {
+          return;
+        }
+
+        for (string::iterator i = str->begin(); i != str->end(); ++i) {
+          *i = ::toupper(*i);
+        }
+      }
 
 
       string toupper (string const& str) {
