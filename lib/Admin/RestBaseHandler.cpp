@@ -104,7 +104,6 @@ void RestBaseHandler::generateResult (TRI_json_t* json) {
   int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    delete _response;
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -125,7 +124,6 @@ void RestBaseHandler::generateResult (VariantObject* result) {
     _response->setContentType(contentType);
   }
   else {
-    delete _response;
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
