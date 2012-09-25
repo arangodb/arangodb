@@ -31,6 +31,7 @@
 #include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -79,69 +80,10 @@ HttpResponsePart::~HttpResponsePart () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponsePart::writeHeader (StringBuffer* output) {
-  output->appendText("X-Arango-status: ");
-  output->appendText(responseString(_code));
-  output->appendText("\r\n");
-  
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-  
-  bool seenTransferEncoding = false;
-  string transferEncoding;
-  
-  for (_headers.range(begin, end);  begin < end;  ++begin) {
-    char const* key = begin->_key;
-    
-    if (key == 0) {
-      continue;
-    }
-    
-    // ignore content-length
-    if (*key == 'c' && TRI_EqualString(key, "content-length")) {
-      continue;
-    }
-    
-    if (*key == 't' && TRI_EqualString(key, "transfer-encoding")) {
-      seenTransferEncoding = true;
-      transferEncoding = begin->_value;
-      continue;
-    }
-    
-    char const* value = begin->_value;
-   
-    if (! TRI_EqualString(key, "content-type")) {
-      // for all headers but content-type, we'll add the prefix "X-Arango-"
-      output->appendText("X-Arango-");
-    } 
-
-    output->appendText(key);
-    output->appendText(": ");
-    output->appendText(value);
-    output->appendText("\r\n");
-  }
-  
-  if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("X-Arango-transfer-encoding: chunked\r\n\r\n");
-  }
-  else {
-    if (seenTransferEncoding) {
-      output->appendText("X-Arango-transfer-encoding: ");
-      output->appendText(transferEncoding);
-      output->appendText("\r\n");
-    }
-   
-    output->appendText("X-Arango-content-length: ");
-    
-    if (_isHeadResponse) {
-      output->appendInteger(_bodySize);
-    }
-    else {
-      output->appendInteger(_body.length());
-    }
-    
-    output->appendText("\r\n\r\n");
-  }
-  // end of header, body to follow
+  // content-type: application/x-arango-batchpart\r\n\r\n
+  output->appendText(HttpRequest::getPartContentType());
+ 
+  HttpResponse::writeHeader(output);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

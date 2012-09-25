@@ -38,9 +38,9 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/terminal-utils.h"
-#include "ImportHelper.h"
 #include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -107,8 +107,8 @@ struct VersionTest : public BenchmarkOperation {
     return url;
   }
 
-  const SimpleHttpClient::http_method type () {
-    return SimpleHttpClient::GET;
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_GET;
   }
   
   const char* payload (size_t* length) {
