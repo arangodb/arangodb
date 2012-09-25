@@ -516,13 +516,15 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     if (key == 0) {
       continue;
     }
+
+    const size_t keyLength = strlen(key);
     
     // ignore content-length
-    if (*key == 'c' && TRI_EqualString(key, "content-length")) {
+    if (keyLength == 14 && *key == 'c' && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
     
-    if (*key == 't' && TRI_EqualString(key, "transfer-encoding")) {
+    if (keyLength == 17 && *key == 't' && memcmp(key, "transfer-encoding", keyLength) == 0) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
@@ -530,23 +532,23 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     
     char const* value = begin->_value;
     
-    output->appendText(key);
-    output->appendText(": ");
+    output->appendText(key, keyLength);
+    output->appendText(": ", 2);
     output->appendText(value);
-    output->appendText("\r\n");
+    output->appendText("\r\n", 2);
   }
   
   if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("transfer-encoding: chunked\r\n\r\n");
+    output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
   }
   else {
     if (seenTransferEncoding) {
-      output->appendText("transfer-encoding: ");
+      output->appendText("transfer-encoding: ", 19);
       output->appendText(transferEncoding);
-      output->appendText("\r\n");
+      output->appendText("\r\n", 2);
     }
    
-    output->appendText("content-length: ");
+    output->appendText("content-length: ", 16);
     
     if (_isHeadResponse) {
       output->appendInteger(_bodySize);
@@ -555,7 +557,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendInteger(_body.length());
     }
     
-    output->appendText("\r\n\r\n");
+    output->appendText("\r\n\r\n", 4);
   }
   // end of header, body to follow
 }
