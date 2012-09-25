@@ -134,7 +134,7 @@ unittests-make:
 
 .PHONY: unittests-boost
 
-if ENABLE_BOOST_TEST
+if ENABLE_MAINTAINER_MODE
 
 unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
@@ -187,7 +187,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "enable unit-testing with 'configure --with-boost-test'"
+	@echo "enable unit-testing with 'configure --enable-maintainer-mode'"
 
 	@echo
 endif

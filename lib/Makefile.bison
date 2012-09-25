@@ -14,7 +14,7 @@ BUILT_SOURCES += $(BISON_FILES) $(BISONXX_FILES)
 ### @brief CLEANUP
 ################################################################################
 
-if ENABLE_BISON 
+if ENABLE_MAINTAINER_MODE 
 
 CLEANUP += $(BISON_FILES) $(BISONXX_FILES)
 endif
