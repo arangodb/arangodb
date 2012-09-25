@@ -44,8 +44,9 @@
 #include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "V8Client/BenchmarkCounter.h"
+#include "V8Client/BenchmarkOperation.h"
 #include "V8Client/BenchmarkThread.h"
-#include "V8Client/SharedCounter.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -85,11 +86,42 @@ static int Operations = 1000;
 /// @brief number of operations in one batch
 ////////////////////////////////////////////////////////////////////////////////
 
-static int BatchSize = 1;
+static int BatchSize = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+
+struct VersionTest : public BenchmarkOperation {
+  VersionTest () 
+    : BenchmarkOperation () {
+  }
+
+  ~VersionTest () {
+  }
+
+  const string& url () {
+    static string url = "/_api/version";
+    
+    return url;
+  }
+
+  const SimpleHttpClient::http_method type () {
+    return SimpleHttpClient::GET;
+  }
+  
+  const char* payload (size_t* length) {
+    static const char* payload = "";
+    *length = 0;
+    return payload;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -110,7 +142,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
-    ("batch-size", &BatchSize, "number of operations in one batch")
+    ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
   ;
 
   BaseClient.setupGeneral(description);
@@ -135,60 +167,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @addtogroup arangoimp
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-char* SEmpty () {
-  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "");
-}
-
-BenchmarkRequest VersionFunc () {
-  map<string, string> params;
-  BenchmarkRequest r("/_api/version", params, &SEmpty, SimpleHttpClient::GET);
-
-  return r;
-}
-
-char* SFunc1 () {
-  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "{\"some value\" : 1}");
-}
-
-BenchmarkRequest InsertFunc1 () {
-  map<string, string> params;
-  params["createCollection"] = "true";
-  params["collection"] = "BenchmarkInsert";
-
-  BenchmarkRequest r("/_api/document", params, &SFunc1, SimpleHttpClient::POST);
-
-  return r;
-}
-
-char* SFunc2 () {
-  StringBuffer s(TRI_UNKNOWN_MEM_ZONE);
-
-  s.appendChar('{');
-  for (size_t i = 0; i < 1; ++i) {
-    s.appendText("\"some value");
-    s.appendInteger(i);
-    s.appendText("\":");
-    s.appendDecimal((double) i);
-    if (i < 0) {
-      s.appendChar(',');
-    }
-  }
-  
-  s.appendChar('}');
-
-  return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, s.c_str());
-}
-
-BenchmarkRequest InsertFunc2 () {
-  map<string, string> params;
-  params["createCollection"] = "true";
-  params["collection"] = "BenchmarkInsert";
-
-  BenchmarkRequest r("/_api/document", params, &SFunc2, SimpleHttpClient::POST);
-
-  return r;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main
@@ -220,16 +198,20 @@ int main (int argc, char* argv[]) {
   }
 
 
-  SharedCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
+  BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
+
+  VersionTest benchmarkOperation;
 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
+
+  // start client threads
   for (int i = 0; i < Concurrency; ++i) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
     endpoints.push_back(endpoint);
 
-    BenchmarkThread* thread = new BenchmarkThread(&InsertFunc2,
+    BenchmarkThread* thread = new BenchmarkThread(&benchmarkOperation,
         &startCondition, 
         (unsigned long) BatchSize,
         &operationsCounter,
@@ -240,12 +222,14 @@ int main (int argc, char* argv[]) {
     threads.push_back(thread);
     thread->start();
   }
-
+ 
+  // give all threads a chance to start so they will not miss the broadcast
   usleep(500000);
 
 
   Timing timer(Timing::TI_WALLCLOCK);
 
+  // broadcast the start signal to all threads
   {
     ConditionLocker guard(&startCondition);
     guard.broadcast();
@@ -269,8 +253,8 @@ int main (int argc, char* argv[]) {
   }
 
   cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level: " << Concurrency << endl;
+  cout << "Request/response duration: " << fixed << requestTime << " s" << endl;
   cout << "Total duration: " << fixed << time << " s" << endl;
-  cout << "Total request duration: " << fixed << requestTime << " s" << endl;
   cout << "Duration per operation: " << fixed << (time / Operations) << " s" << endl;
   cout << "Duration per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl << endl;
 
