@@ -20,7 +20,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/Random.cpp \
-	lib/Basics/RandMT.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
@@ -46,6 +45,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c \
 	lib/BasicsC/memory.c \
+	lib/BasicsC/mersenne.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
 	lib/BasicsC/socket-utils.c \

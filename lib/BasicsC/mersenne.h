@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force symbols into programm, initialise globals
+/// @brief mersenne twister implementation
 ///
 /// @file
 ///
@@ -21,64 +21,70 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann 
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "init.h"
+#ifndef TRIAGENS_BASICS_C_MERSENNE_H
+#define TRIAGENS_BASICS_C_MERSENNE_H 1
 
-#include "BasicsC/hashes.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/mersenne.h"
-#include "BasicsC/process-utils.h"
-#include "BasicsC/random.h"
-#include "BasicsC/socket-utils.h"
+#include "BasicsC/common.h"
 
-#include "build.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  MERSENNE TWISTER
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Random
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function
+/// @brief initialise the mersenne twister
+/// this function needs to be called just once on startup
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseC (int argc, char* argv[]) {
-  TRI_InitialiseMemory();
-  TRI_InitialiseMersenneTwister();
-  TRI_InitialiseError();
-  TRI_InitialiseLogging(true);
-  TRI_InitialiseHashes();
-  TRI_InitialiseRandom();
-  TRI_InitialiseProcess(argc, argv);
-  TRI_InitialiseSockets();
-
-  LOG_TRACE("%s", "$Revision: BASICS-C " TRIAGENS_VERSION " (c) triAGENS GmbH $");
-
-}
+void TRI_InitialiseMersenneTwister (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown function
+/// @brief explicitly seed the mersenne twister
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownC () {
-  TRI_ShutdownSockets();
-  TRI_ShutdownProcess();
-  TRI_ShutdownRandom();
-  TRI_ShutdownHashes();
-  TRI_ShutdownLogging();
-  TRI_ShutdownError();
-}
+void TRI_SeedMersenneTwister (uint32_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a 31 bit random number
+///
+/// generates a random number on [0,0x7fffffff]-interval  
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t TRI_Int31MersenneTwister (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a 32 bit random number
+///
+/// generates a random number on [0,0xffffffff]-interval
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t TRI_Int32MersenneTwister (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 
 // Local Variables:
 // mode: outline-minor

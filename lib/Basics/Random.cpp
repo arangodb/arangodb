@@ -28,11 +28,11 @@
 
 #include "Random.h"
 
+#include "BasicsC/mersenne.h"
 #include "BasicsC/socket-utils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/RandMT.h"
 #include "Logger/Logger.h"
 
 using namespace std;
@@ -55,12 +55,6 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   Mutex RandomLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pseudo random generator (mersenne twister)
-////////////////////////////////////////////////////////////////////////////////
-
-  RandMT mersenneDevice;
 }
 
 // -----------------------------------------------------------------------------
@@ -159,8 +153,7 @@ namespace RandomHelper {
   class RandomDeviceCombined : public RandomDevice {
     public:
       RandomDeviceCombined (string path)
-        : randomDevice(),
-          fd(0),
+        : fd(0),
           pos(0),
           rseed(0) {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
@@ -223,10 +216,10 @@ namespace RandomHelper {
 
         if (0 < n) {
           unsigned long seed = RandomDevice::getSeed();
-          randomDevice.seedMT((uint32_t) (rseed ^ (uint32_t) seed));
+          TRI_SeedMersenneTwister((uint32_t) (rseed ^ (uint32_t) seed));
 
           while (0 < n) {
-            *ptr++ = randomDevice.randomMT();
+            *ptr++ = TRI_Int32MersenneTwister();
             --n;
           }
         }
@@ -235,7 +228,6 @@ namespace RandomHelper {
       }
 
     private:
-      RandMT randomDevice;
       int fd;
       uint32_t buffer[N];
       size_t pos;
@@ -376,12 +368,11 @@ namespace triagens {
       // MERSENNE
       struct UniformIntegerMersenne : public UniformIntegerImpl {
         int32_t random (int32_t left, int32_t right) {
-          RandMT randomGenerator((uint32_t) RandomHelper::RandomDevice::getSeed());
-
           const int32_t range = right - left + 1;
-          int32_t result = ((int32_t) randomGenerator.randomMT());
+          int32_t result = (int32_t) TRI_Int32MersenneTwister();
 
           result = (int32_t) abs(result % range) + left;
+
           return result;
         }
       };
@@ -468,15 +459,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       // public methods
 // -----------------------------------------------------------------------------
-
-      void seed () {
-        MUTEX_LOCKER(RandomLock);
-
-        unsigned long seed = RandomHelper::RandomDevice::getSeed();
-        mersenneDevice.seedMT((uint32_t) seed);
-      }
-
-
+      
       random_e selectVersion (random_e newVersion) {
         MUTEX_LOCKER(RandomLock);
 
