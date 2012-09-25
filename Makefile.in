@@ -325,8 +325,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/Basics/MutexLocker.$(OBJEXT) \
 	lib/Basics/ProgramOptions.$(OBJEXT) \
 	lib/Basics/ProgramOptionsDescription.$(OBJEXT) \
-	lib/Basics/Random.$(OBJEXT) lib/Basics/RandMT.$(OBJEXT) \
-	lib/Basics/ReadLocker.$(OBJEXT) \
+	lib/Basics/Random.$(OBJEXT) lib/Basics/ReadLocker.$(OBJEXT) \
 	lib/Basics/ReadUnlocker.$(OBJEXT) \
 	lib/Basics/ReadWriteLock.$(OBJEXT) \
 	lib/Basics/StringUtils.$(OBJEXT) lib/Basics/Thread.$(OBJEXT) \
@@ -345,6 +344,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/locks-macos.$(OBJEXT) \
 	lib/BasicsC/locks-posix.$(OBJEXT) \
 	lib/BasicsC/logging.$(OBJEXT) lib/BasicsC/memory.$(OBJEXT) \
+	lib/BasicsC/mersenne.$(OBJEXT) \
 	lib/BasicsC/process-utils.$(OBJEXT) \
 	lib/BasicsC/random.$(OBJEXT) \
 	lib/BasicsC/socket-utils.$(OBJEXT) \
@@ -479,6 +479,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
 	UnitTests/Philadelphia/json-utilities-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
+	UnitTests/Philadelphia/mersenne-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
@@ -494,6 +495,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-utilities-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/mersenne-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-buffer-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT) \
@@ -1209,7 +1211,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/Random.cpp \
-	lib/Basics/RandMT.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
@@ -1235,6 +1236,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c \
 	lib/BasicsC/memory.c \
+	lib/BasicsC/mersenne.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
 	lib/BasicsC/socket-utils.c \
@@ -1583,6 +1585,7 @@ CLIENT_OPT := \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-utilities-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/mersenne-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/associative-pointer-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-buffer-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
@@ -1778,8 +1781,6 @@ lib/Basics/ProgramOptionsDescription.$(OBJEXT):  \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/Random.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/RandMT.$(OBJEXT): lib/Basics/$(am__dirstamp) \
-	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/ReadLocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/ReadUnlocker.$(OBJEXT): lib/Basics/$(am__dirstamp) \
@@ -1835,6 +1836,8 @@ lib/BasicsC/locks-posix.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 lib/BasicsC/logging.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/memory.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
+	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
+lib/BasicsC/mersenne.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/process-utils.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -2315,6 +2318,9 @@ UnitTests/Philadelphia/json-utilities-test.$(OBJEXT):  \
 UnitTests/Philadelphia/hashes-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/mersenne-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
@@ -2759,6 +2765,7 @@ mostlyclean-compile:
 	-rm -f UnitTests/Philadelphia/hashes-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/json-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/json-utilities-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/mersenne-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-buffer-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/string-utf8-normalize-test.$(OBJEXT)
@@ -2870,7 +2877,6 @@ mostlyclean-compile:
 	-rm -f lib/Basics/MutexLocker.$(OBJEXT)
 	-rm -f lib/Basics/ProgramOptions.$(OBJEXT)
 	-rm -f lib/Basics/ProgramOptionsDescription.$(OBJEXT)
-	-rm -f lib/Basics/RandMT.$(OBJEXT)
 	-rm -f lib/Basics/Random.$(OBJEXT)
 	-rm -f lib/Basics/ReadLocker.$(OBJEXT)
 	-rm -f lib/Basics/ReadUnlocker.$(OBJEXT)
@@ -2897,6 +2903,7 @@ mostlyclean-compile:
 	-rm -f lib/BasicsC/locks-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/logging.$(OBJEXT)
 	-rm -f lib/BasicsC/memory.$(OBJEXT)
+	-rm -f lib/BasicsC/mersenne.$(OBJEXT)
 	-rm -f lib/BasicsC/process-utils.$(OBJEXT)
 	-rm -f lib/BasicsC/random.$(OBJEXT)
 	-rm -f lib/BasicsC/socket-utils.$(OBJEXT)
@@ -3016,6 +3023,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/hashes-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-utilities-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/mersenne-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-buffer-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/string-utf8-normalize-test.Po@am__quote@
@@ -3126,7 +3134,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/MutexLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ProgramOptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ProgramOptionsDescription.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/RandMT.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/Random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ReadLocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/ReadUnlocker.Po@am__quote@
@@ -3153,6 +3160,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/locks-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/logging.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/memory.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/mersenne.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/process-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/random.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/socket-utils.Po@am__quote@
