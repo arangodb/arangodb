@@ -49,7 +49,7 @@ function CompactionSuite () {
       var maxWait;
       var waited;
       var cn = "example";
-      var n = 1000;
+      var n = 750;
       var payload = "the quick brown fox jumped over the lazy dog. the quick dog jumped over the lazy brown fox";
 
       for (var i = 0; i < 5; ++i) {
@@ -58,6 +58,7 @@ function CompactionSuite () {
 
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+      internal.wait(2);
 
       for (var i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
