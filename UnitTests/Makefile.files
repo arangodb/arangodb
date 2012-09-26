@@ -24,7 +24,7 @@ PROTO = http
 
 .PHONY: unittests unittests-brief unittests-verbose
 
-unittests: unittests-verbose unittests-brief
+unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-make \
@@ -188,7 +188,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "enable unit-testing with 'configure --enable-maintainer-mode'"
+	@echo "to enable unit-testing, configure with --enable-maintainer-mode"
 
 	@echo
 endif
