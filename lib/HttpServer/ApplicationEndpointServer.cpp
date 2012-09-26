@@ -36,7 +36,6 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
-#include "BinaryServer/BinaryServer.h"
 #include "Logger/Logger.h"
 #include "Rest/OperationMode.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -161,18 +160,6 @@ bool ApplicationEndpointServer::buildServers () {
     _servers.push_back(server);
   }
   
-  if (_endpointList.count(Endpoint::PROTOCOL_BINARY, Endpoint::ENCRYPTION_NONE) > 0) {
-    // binary endpoints 
-    server = new BinaryServer(_applicationScheduler->scheduler(), 
-                              _applicationDispatcher->dispatcher(), 
-                              _keepAliveTimeout,
-                              _handlerFactory); 
- 
-    server->setEndpointList(&_endpointList);
-    _servers.push_back(server);
-  }
-
-
   // ssl endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
     // check the ssl context
@@ -387,6 +374,7 @@ void ApplicationEndpointServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::createSslContext () {
+  LOGGER_INFO << "using " << OPENSSL_VERSION_TEXT;
 
   // check keyfile
   if (_httpsKeyfile.empty()) {

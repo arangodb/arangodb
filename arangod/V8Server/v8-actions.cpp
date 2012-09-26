@@ -186,7 +186,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
   if (parameter == "collection") {
     p = TRI_ACT_COLLECTION;
   }
-  if (parameter == "collection-name") {
+  else if (parameter == "collection-name") {
     p = TRI_ACT_COLLECTION_NAME;
   }
   else if (parameter == "collection-identifier") {
@@ -283,6 +283,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   // Example:
   //      {
+  //        path : "/full/path/suffix1/suffix2",
+  //
+  //        prefix : "/full/path",
+  //
   //        "suffix" : [
   //          "suffix1",
   //          "suffix2"
@@ -314,18 +318,30 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     req->Set(v8g->UserKey, v8::String::New(user.c_str()));
   }
 
+  // copy prefix
+  string path = request->prefix();
+
+  req->Set(v8g->PrefixKey, v8::String::New(path.c_str()));
+  
   // copy suffix
   v8::Handle<v8::Array> suffixArray = v8::Array::New();
   vector<string> const& suffix = request->suffix();
 
   uint32_t index = 0;
+  char const* sep = "";
 
   for (size_t s = action->_urlParts;  s < suffix.size();  ++s) {
     suffixArray->Set(index++, v8::String::New(suffix[s].c_str()));
+
+    path += sep + suffix[s];
+    sep = "/";
   }
 
   req->Set(v8g->SuffixKey, suffixArray);
 
+  // copy full path
+  req->Set(v8g->PathKey, v8::String::New(path.c_str()));
+  
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New();
 
@@ -587,6 +603,34 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief eventually executes a function in all contexts
+///
+/// @FUN{internal.executeGlobalContextFunction(@FA{function-definition})}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteGlobalContextFunction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION(<function-definition>)")));
+  }
+
+  // extract the action name
+  v8::String::Utf8Value utf8def(argv[0]);
+
+  if (*utf8def == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<defition> must be a UTF8 function definition")));
+  }
+
+  string def = *utf8def;
+
+  // and pass it to the V8 contexts
+  GlobalV8Dealer->addGlobalContextMethod(def);
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -625,6 +669,10 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
                          v8::FunctionTemplate::New(JS_DefineAction)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
+                         v8::FunctionTemplate::New(JS_ExecuteGlobalContextFunction)->GetFunction(),
+                         v8::ReadOnly);
+
   // .............................................................................
   // keys
   // .............................................................................
@@ -633,6 +681,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->ContentTypeKey = v8::Persistent<v8::String>::New(v8::String::New("contentType"));
   v8g->HeadersKey = v8::Persistent<v8::String>::New(v8::String::New("headers"));
   v8g->ParametersKey = v8::Persistent<v8::String>::New(v8::String::New("parameters"));
+  v8g->PathKey = v8::Persistent<v8::String>::New(v8::String::New("path"));
   v8g->PrefixKey = v8::Persistent<v8::String>::New(v8::String::New("prefix"));
   v8g->RequestBodyKey = v8::Persistent<v8::String>::New(v8::String::New("requestBody"));
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));

@@ -37,15 +37,17 @@
 #include "BasicsC/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/string-buffer.h"
 #include "BasicsC/terminal-utils.h"
-#include "ImportHelper.h"
 #include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "V8Client/BenchmarkCounter.h"
+#include "V8Client/BenchmarkOperation.h"
 #include "V8Client/BenchmarkThread.h"
-#include "V8Client/SharedCounter.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -79,13 +81,182 @@ static int Concurrency = 1;
 /// @brief number of operations to perform
 ////////////////////////////////////////////////////////////////////////////////
 
-static long Operations = 1000;
+static int Operations = 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of operations in one batch
 ////////////////////////////////////////////////////////////////////////////////
 
-static long BatchSize = 1;
+static int BatchSize = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection to use
+////////////////////////////////////////////////////////////////////////////////
+
+static string Collection = "ArangoBenchmark";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case to use
+////////////////////////////////////////////////////////////////////////////////
+
+static string TestCase = "version";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              benchmark test cases
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            version retrieval test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct VersionTest : public BenchmarkOperation {
+  VersionTest () 
+    : BenchmarkOperation () {
+  }
+
+  ~VersionTest () {
+  }
+
+  const string& url () {
+    static string url = "/_api/version";
+    
+    return url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_GET;
+  }
+  
+  const char* payload (size_t* length, const size_t counter) {
+    static const char* payload = "";
+    *length = 0;
+    return payload;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      small document creation test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct SmallDocumentCreationTest : public BenchmarkOperation {
+  SmallDocumentCreationTest ()
+    : BenchmarkOperation(),
+      _url() {
+    _url = "/_api/document?collection=" + Collection + "&createCollection=true";
+  }
+
+  ~SmallDocumentCreationTest () {
+  }
+
+  const string& url () {
+    return _url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+  
+  const char* payload (size_t* length, const size_t counter) {
+    static const char* payload = "{\"test\":1}";
+    *length = 10;
+    return payload;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+  string _url;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        big document creation test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct BigDocumentCreationTest : public BenchmarkOperation {
+  BigDocumentCreationTest () 
+    : BenchmarkOperation (),
+      _url(),
+      _buffer(0) {
+    _url = "/_api/document?collection=" + Collection + "&createCollection=true";
+
+    const size_t n = 100;
+
+    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
+    TRI_AppendCharStringBuffer(_buffer, '{');
+
+    for (size_t i = 1; i <= n; ++i) {
+      TRI_AppendStringStringBuffer(_buffer, "\"test");
+      TRI_AppendUInt32StringBuffer(_buffer, (uint32_t) i);
+      TRI_AppendStringStringBuffer(_buffer, "\":\"some test value\"");
+      if (i != n) {
+        TRI_AppendCharStringBuffer(_buffer, ',');
+      }
+    }
+    
+    TRI_AppendCharStringBuffer(_buffer, '}');
+
+    _length = TRI_LengthStringBuffer(_buffer);
+  
+  }
+
+  ~BigDocumentCreationTest () {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer);
+  }
+
+  const string& url () {
+    return _url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+  
+  const char* payload (size_t* length, const size_t counter) {
+    *length = _length;
+    return (const char*) _buffer->_buffer;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+  string _url;
+
+  TRI_string_buffer_t* _buffer;
+  
+  size_t _length;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -110,7 +281,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   description
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
-   // ("batch-size", &BatchSize, "number of operations in one batch")
+    ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
+    ("collection", &Collection, "collection name to use in tests")
+    ("test-case", &TestCase, "test case to use")
   ;
 
   BaseClient.setupGeneral(description);
@@ -136,32 +309,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-void GenFunc (string& url, string& payload, SimpleHttpClient::http_method& method) {
-  *url = "/_api/document?collection=" + CollectionName;
-  *payload = "{\"der hans\": 1}";
-
-  *method = SimpleHttpClient::POST;
-}
-*/
-
-BenchmarkRequest VersionFunc () {
-  map<string, string> params;
-  BenchmarkRequest r("/_api/version", params, "", SimpleHttpClient::GET);
-
-  return r;
-}
-
-BenchmarkRequest InsertFunc () {
-  map<string, string> params;
-  params["createCollection"] = "true";
-  params["collection"] = "BenchmarkInsert";
-
-  BenchmarkRequest r("/_api/document", params, "{\"some value\" : 1}", SimpleHttpClient::POST);
-
-  return r;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +326,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-
+  
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -191,32 +338,55 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  SharedCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
+  BenchmarkOperation* testCase;
+
+  if (TestCase == "version") {
+    testCase = new VersionTest();
+  }
+  else if (TestCase == "smalldoc") {
+    testCase = new SmallDocumentCreationTest();
+  }
+  else if (TestCase == "bigdoc") {
+    testCase = new BigDocumentCreationTest();
+  }
+  else {
+    cerr << "invalid test case name " << TestCase << endl;
+    exit(EXIT_FAILURE);
+  }
+
+
+  BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
+
 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
+
+  // start client threads
   for (int i = 0; i < Concurrency; ++i) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
     endpoints.push_back(endpoint);
 
-    BenchmarkThread* thread =  new BenchmarkThread(&InsertFunc,
-                                                   &startCondition, 
-                                                   (unsigned long) BatchSize,
-                                                   &operationsCounter,
-                                                   endpoint,
-                                                   BaseClient.username(), 
-                                                   BaseClient.password());
+    BenchmarkThread* thread = new BenchmarkThread(testCase,
+        &startCondition, 
+        (unsigned long) BatchSize,
+        &operationsCounter,
+        endpoint,
+        BaseClient.username(), 
+        BaseClient.password());
 
     threads.push_back(thread);
+    thread->setOffset(i * (Operations / Concurrency));
     thread->start();
   }
-
+ 
+  // give all threads a chance to start so they will not miss the broadcast
   usleep(500000);
 
-  
+
   Timing timer(Timing::TI_WALLCLOCK);
 
+  // broadcast the start signal to all threads
   {
     ConditionLocker guard(&startCondition);
     guard.broadcast();
@@ -233,17 +403,35 @@ int main (int argc, char* argv[]) {
   }
 
   double time = ((double) timer.time()) / 1000000.0;
+  double requestTime = 0.0;
 
-  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level: " << Concurrency << endl;
-  cout << "Total duration: " << fixed << time << " s" << endl;
-  cout << "Duration per operation: " << fixed << (time / Operations) << " s" << endl;
-  cout << "Duration per operation per thread: " << fixed << (time / Operations * (double) Concurrency) << " s" << endl << endl;
+  for (int i = 0; i < Concurrency; ++i) {
+    requestTime += threads[i]->getTime();
+  }
+
+  cout << endl;
+
+  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
+  cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
+  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
+  cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
+  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
+  cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
+  cout << "Elapsed time since start: " << fixed << time << " s" << endl;
+
+  cout << endl;
+
+  if (operationsCounter.failures() > 0) {
+    cout << "WARNING: " << operationsCounter.failures() << " request(s) failed!!" << endl << endl;
+  }
 
   for (int i = 0; i < Concurrency; ++i) {
     threads[i]->join();
     delete threads[i];
     delete endpoints[i];
   }
+
+  delete testCase;
 
   TRIAGENS_REST_SHUTDOWN;
 

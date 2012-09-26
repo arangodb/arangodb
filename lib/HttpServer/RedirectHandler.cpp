@@ -54,7 +54,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     HttpHandler::status_e RedirectHandler::execute () {
-      _response = new HttpResponse(HttpResponse::MOVED_PERMANENTLY);
+      _response = createResponse(HttpResponse::MOVED_PERMANENTLY);
 
       _response->setHeader("location", _redirect);
       _response->setContentType("text/html");
@@ -71,7 +71,7 @@ namespace triagens {
 
 
     void RedirectHandler::handleError (TriagensError const&) {
-      _response = new HttpResponse(HttpResponse::SERVER_ERROR);
+      _response = createResponse(HttpResponse::SERVER_ERROR);
     }
   }
 }

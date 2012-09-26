@@ -45,6 +45,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c \
 	lib/BasicsC/memory.c \
+	lib/BasicsC/mersenne.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
 	lib/BasicsC/socket-utils.c \
@@ -65,8 +66,6 @@ lib_libarango_a_SOURCES = \
 	lib/Logger/LoggerStream.cpp \
 	lib/Logger/LoggerTiming.cpp \
 	lib/ProgramOptions/program-options.c \
-	lib/ProtocolBuffers/HttpRequestProtobuf.cpp \
-	lib/ProtocolBuffers/arangodb.pb.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \
@@ -74,6 +73,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpRequestPlain.cpp \
 	lib/Rest/HttpResponse.cpp \
+	lib/Rest/HttpResponsePart.cpp \
 	lib/Rest/Initialise.cpp \
 	lib/Rest/JsonContainer.cpp \
 	lib/Rest/SslInterface.cpp \
@@ -105,17 +105,6 @@ lib_libarango_a_SOURCES = \
 	lib/Variant/VariantUInt8.cpp \
 	lib/Variant/VariantVector.cpp
 
-if ENABLE_ZEROMQ
-
-lib_libarango_a_SOURCES += \
-	lib/ZeroMQ/ApplicationZeroMQ.cpp \
-	lib/ZeroMQ/ZeroMQBatchJob.cpp \
-	lib/ZeroMQ/ZeroMQThread.cpp \
-	lib/ZeroMQ/ZeroMQQueueThread.cpp \
-	lib/ZeroMQ/ZeroMQWorkerThread.cpp
-
-endif
-
 ################################################################################
 ### @brief library "libarango.a", client part
 ################################################################################
@@ -124,6 +113,7 @@ lib_libarango_client_a_SOURCES = \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
 	lib/SimpleHttpClient/SslClientConnection.cpp \
+	lib/SimpleHttpClient/SimpleClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp
 
@@ -215,13 +205,6 @@ FLEX_FILES += \
 
 FLEXXX_FILES += \
 	lib/V8/v8-json.cpp
-
-################################################################################
-### @brief protocol buffers
-################################################################################
-
-PROTOBUF_FILES += \
-	lib/ProtocolBuffers/arangodb.pb.cpp
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

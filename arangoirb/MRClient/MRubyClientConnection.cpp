@@ -43,6 +43,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -73,7 +74,7 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-MRubyClientConnection::MRubyClientConnection (MR_state_t* mrs,
+MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
                                               Endpoint* endpoint,
                                               const string& username,
                                               const string& password,
@@ -81,7 +82,7 @@ MRubyClientConnection::MRubyClientConnection (MR_state_t* mrs,
                                               double connectionTimeout,
                                               size_t numRetries,
                                               bool warn)
-  : _mrs(mrs),
+  : _mrb(mrb),
     _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
@@ -98,7 +99,7 @@ MRubyClientConnection::MRubyClientConnection (MR_state_t* mrs,
 
   // connect to server and get version number
   map<string, string> headerFields;
-  SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version", 0, 0, headerFields);
 
   if (!result->isComplete()) {
     // save error message
@@ -222,7 +223,7 @@ triagens::httpclient::SimpleHttpClient* MRubyClientConnection::getHttpClient() {
 
 mrb_value MRubyClientConnection::getData (std::string const& location,
                                           map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::GET, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +232,7 @@ mrb_value MRubyClientConnection::getData (std::string const& location,
 
 mrb_value MRubyClientConnection::deleteData (std::string const& location,
                                              map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::DELETE, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +241,7 @@ mrb_value MRubyClientConnection::deleteData (std::string const& location,
 
 mrb_value MRubyClientConnection::headData (std::string const& location,
                                            map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::HEAD, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
 }    
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +251,7 @@ mrb_value MRubyClientConnection::headData (std::string const& location,
 mrb_value MRubyClientConnection::postData (std::string const& location,
                                            std::string const& body,
                                            map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::POST, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +261,7 @@ mrb_value MRubyClientConnection::postData (std::string const& location,
 mrb_value MRubyClientConnection::putData (std::string const& location,
                                           std::string const& body, 
                                           map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::PUT, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,10 +277,14 @@ mrb_value MRubyClientConnection::putData (std::string const& location,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-mrb_value MRubyClientConnection::requestData (int method,
+mrb_value MRubyClientConnection::requestData (HttpRequest::HttpRequestType method,
                                               string const& location,
                                               string const& body,
                                               map<string, string> const& headerFields) {
+  MR_state_t* mrs;
+
+  mrs = (MR_state_t*) _mrb->ud;
+
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
       
@@ -304,10 +309,10 @@ mrb_value MRubyClientConnection::requestData (int method,
         
     _lastHttpReturnCode = SimpleHttpResult::HTTP_STATUS_SERVER_ERROR;
         
-    mrb_value result = mrb_hash_new_capa(&_mrs->_mrb, 2);
+    mrb_value result = mrb_hash_new_capa(_mrb, 2);
 
-    mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorSym, mrb_true_value());
-    mrb_hash_set(&_mrs->_mrb, result, _mrs->_codeSym, mrb_fixnum_value(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
+    mrb_hash_set(_mrb, result, mrs->_errorSym, mrb_true_value());
+    mrb_hash_set(_mrb, result, mrs->_codeSym, mrb_fixnum_value(SimpleHttpResult::HTTP_STATUS_SERVER_ERROR));
 
     int errorNumber = 0;
 
@@ -329,11 +334,11 @@ mrb_value MRubyClientConnection::requestData (int method,
         break;
     }        
         
-    mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorNumSym, mrb_fixnum_value(errorNumber));
-    mrb_hash_set(&_mrs->_mrb,
+    mrb_hash_set(_mrb, result, mrs->_errorNumSym, mrb_fixnum_value(errorNumber));
+    mrb_hash_set(_mrb,
                  result,
-                 _mrs->_errorMessageSym, 
-                 mrb_str_new(&_mrs->_mrb, _lastErrorMessage.c_str(), _lastErrorMessage.length()));
+                 mrs->_errorMessageSym, 
+                 mrb_str_new(_mrb, _lastErrorMessage.c_str(), _lastErrorMessage.length()));
 
     return result;
   }
@@ -350,7 +355,7 @@ mrb_value MRubyClientConnection::requestData (int method,
 
         if (js != NULL) {
           // return v8 object
-          mrb_value result = MR_ObjectJson(&_mrs->_mrb, js);
+          mrb_value result = MR_ObjectJson(_mrb, js);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, js);
 
           return result;
@@ -358,7 +363,7 @@ mrb_value MRubyClientConnection::requestData (int method,
       }
 
       // return body as string
-      mrb_value result = mrb_str_new(&_mrs->_mrb, 
+      mrb_value result = mrb_str_new(_mrb, 
                                      _httpResult->getBody().str().c_str(),
                                      _httpResult->getBody().str().length());
 
@@ -369,8 +374,8 @@ mrb_value MRubyClientConnection::requestData (int method,
       // this should not happen
       mrb_value result;
 
-      mrb_hash_set(&_mrs->_mrb, result, _mrs->_errorSym, mrb_false_value());
-      mrb_hash_set(&_mrs->_mrb, result, _mrs->_codeSym, mrb_fixnum_value(_httpResult->getHttpReturnCode()));
+      mrb_hash_set(_mrb, result, mrs->_errorSym, mrb_false_value());
+      mrb_hash_set(_mrb, result, mrs->_codeSym, mrb_fixnum_value(_httpResult->getHttpReturnCode()));
 
       return result;
     }        

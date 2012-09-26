@@ -103,13 +103,6 @@ bin_arangod_SOURCES += \
 endif
 
 
-
-if ENABLE_ZEROMQ
-
-bin_arangod_LDADD += \
-	@ZEROMQ_LIBS@
-endif
-
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
 ################################################################################
@@ -127,6 +120,12 @@ FLEX_FILES += \
 
 BISON_FILES += \
 	arangod/Ahuacatl/ahuacatl-grammar.c
+
+if ENABLE_MAINTAINER_MODE
+
+CLEANUP += \
+	arangod/Ahuacatl/ahuacatl-grammar.h
+endif
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

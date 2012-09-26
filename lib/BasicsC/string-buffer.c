@@ -115,16 +115,52 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new string buffer and initialise it with a specific size
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone, 
+                                                  const size_t size) {
+  TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t), false);
+
+  if (self == NULL) {
+    return NULL;
+  }
+  
+  TRI_InitSizedStringBuffer(self, zone, size);
+
+  return self;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the string buffer
 ///
 /// @warning You must call initialise before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
-  memset(self, 0, sizeof(TRI_string_buffer_t));
   self->_memoryZone = zone;
+  self->_buffer = 0;
+  self->_current = 0;
+  self->_len = 0;
 
   Reserve(self, 100);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises the string buffer with a specific size
+///
+/// @warning You must call initialise before using the string buffer.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitSizedStringBuffer (TRI_string_buffer_t * self, 
+                                TRI_memory_zone_t* zone, 
+                                const size_t length) {
+  self->_memoryZone = zone;
+  self->_buffer = 0;
+  self->_current = 0;
+  self->_len = 0;
+
+  Reserve(self, length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

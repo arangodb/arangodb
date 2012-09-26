@@ -26,70 +26,72 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  var actions = require("actions");
+  var actions = require("org/arangodb/actions");
   var internal = require("internal");
   var console = require("internal");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    helper actions
+// --SECTION--                                                  standard routing
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ActionsAdmin
+/// @addtogroup ArangoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system time
+/// @brief routing function
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_time (req, res) {
-    actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
-  }
+function Routing (req, res) {
+  var callbacks;
+  var current;
+  var i;
+  var next;
 
-  actions.defineHttp({
-    url : "_api/time",
-    context : "api",
-    prefix : false,
-    callback : GET_time
-  });
+  callbacks = actions.routing(req.requestType, req.suffix);
+  current = 0;
 
-  actions.defineHttp({
-    url : "_admin/time",
-    context : "admin",
-    prefix : false,
-    callback : GET_time
-  });
+  next = function () {
+    var callback;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns V8 version
-////////////////////////////////////////////////////////////////////////////////
-
-  function GET_v8_version (req, res) {
-    actions.resultOk(req, res, actions.HTTP_OK, { version : "V8" });
-  }
-
-  actions.defineHttp({
-    url : "_admin/v8-version",
-    context : "admin",
-    prefix : false,
-    callback : GET_v8_version
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the request
-////////////////////////////////////////////////////////////////////////////////
-
-  actions.defineHttp({
-    url : "_admin/echo",
-    context : "admin",
-    prefix : true,
-    callback : function (req, res) {
-      res.responseCode = actions.HTTP_OK;
-      res.contentType = "application/json";
-      res.body = JSON.stringify(req);
+    if (callbacks.length <= current) {
+      actions.resultNotImplemented(req, res, 
+                                   "unknown path '" + req.suffix.join("/") + "'");
+      return;
     }
-  });
+
+    callback = callbacks[current++];
+
+    if (callback == null) {
+      actions.resultNotImplemented(req, res,
+                                   "not implemented '" + req.suffix.join("/") + "'");
+    }
+    else {
+      req.prefix = callback.path;
+      callback.func(req, res, next, callback.options);
+    }
+  }
+
+  next();
+}
+
+actions.defineHttp({
+  url : "",
+  prefix : true,
+  context : "admin",
+  callback : Routing
+});
+
+actions.defineHttp({
+  url : "_admin/reloadRouting",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -136,6 +138,58 @@
     prefix : false,
     callback : AdminRedirect
   });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system time
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_time (req, res) {
+  actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
+}
+
+actions.defineHttp({
+  url : "_api/time",
+  context : "api",
+  prefix : false,
+  callback : GET_time
+});
+
+actions.defineHttp({
+  url : "_admin/time",
+  context : "admin",
+  prefix : false,
+  callback : GET_time
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns V8 version
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_v8_version (req, res) {
+  actions.resultOk(req, res, actions.HTTP_OK, { version : "V8" });
+}
+
+actions.defineHttp({
+  url : "_admin/v8-version",
+  context : "admin",
+  prefix : false,
+  callback : GET_v8_version
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the request
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/echo",
+  context : "admin",
+  prefix : true,
+  callback : function (req, res) {
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = "application/json; charset=utf-8";
+    res.body = JSON.stringify(req);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_status
@@ -415,3 +469,4 @@
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
+

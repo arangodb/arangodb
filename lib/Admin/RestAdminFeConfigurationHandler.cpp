@@ -153,7 +153,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeRead () {
     result = "{}";
   }
   
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(result);
   
@@ -180,7 +180,7 @@ HttpHandler::status_e RestAdminFeConfigurationHandler::executeWrite () {
     }
   }
   
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   return HANDLER_DONE;
 }
 

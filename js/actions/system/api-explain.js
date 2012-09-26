@@ -34,7 +34,7 @@
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-var actions = require("actions");
+var actions = require("org/arangodb/actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explain a query and return information about it

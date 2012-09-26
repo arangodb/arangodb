@@ -42,11 +42,13 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace std;
 
 namespace triagens {
@@ -379,7 +381,7 @@ namespace triagens {
       }
 
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?" + getCollectionUrlPart(), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
+      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?" + getCollectionUrlPart(), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
 
       handleResult(result);
 
@@ -392,7 +394,7 @@ namespace triagens {
       }
       
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
+      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
 
       handleResult(result);
     }

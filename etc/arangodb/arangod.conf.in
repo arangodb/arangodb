@@ -6,6 +6,7 @@ directory= @DATABASEDIR@
 [server]
 endpoint = tcp://localhost:8529
 disable-admin-interface = no
+disable-authentication = yes
 admin-directory= @PKGDATADIR@/html/admin
 threads = 5
 

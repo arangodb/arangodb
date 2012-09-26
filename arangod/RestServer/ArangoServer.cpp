@@ -48,6 +48,7 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/Random.h"
+#include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
 #include "BasicsC/strings.h"
@@ -78,10 +79,6 @@
 #include "MRServer/mr-actions.h"
 #include "MRuby/MRLineEditor.h"
 #include "MRuby/MRLoader.h"
-#endif
-
-#ifdef TRI_ENABLE_ZEROMQ
-#include "ZeroMQ/ApplicationZeroMQ.h"
 #endif
 
 using namespace std;
@@ -219,6 +216,9 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   // set working directory and database directory
   _workingDirectory = "/var/tmp";
+#ifdef TRI_HAVE_ICU  
+  _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,17 +286,6 @@ void ArangoServer::buildApplicationServer () {
 #endif
 
   // .............................................................................
-  // ZeroMQ
-  // .............................................................................
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-  _applicationZeroMQ = new ApplicationZeroMQ(_applicationServer);
-  _applicationServer->addFeature(_applicationZeroMQ);
-
-#endif
-
-  // .............................................................................
   // and start a simple admin server
   // .............................................................................
 
@@ -330,6 +319,9 @@ void ArangoServer::buildApplicationServer () {
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
     ("working-directory", &_workingDirectory, "working directory in daemon mode")
+#ifdef TRI_HAVE_ICU
+    ("default-language", &_defaultLanguage, "ISO-639 language code")
+#endif  
   ;
   
   // .............................................................................
@@ -402,6 +394,26 @@ void ArangoServer::buildApplicationServer () {
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
+  
+#ifdef TRI_HAVE_ICU  
+  // .............................................................................
+  // set language of default collator
+  // .............................................................................
+
+  UVersionInfo icuVersion;
+  char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
+  u_getVersion(icuVersion);
+  u_versionToString(icuVersion, icuVersionString);  
+  LOGGER_INFO << "using ICU " << icuVersionString;        
+  
+  Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'";    
+  }
+  else {
+    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
+  }
+#endif  
   
   // .............................................................................
   // disable access to the HTML admin interface
@@ -549,35 +561,6 @@ int ArangoServer::startupServer () {
                                    (void*) &httpOptions);
   
 
-  // .............................................................................
-  // create a http handler factory for zeromq
-  // .............................................................................
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t zeromqOptions;
-  zeromqOptions._vocbase = _vocbase;
-  zeromqOptions._queue = "CLIENT";
-
-  // only construct factory if ZeroMQ is active
-  if (_applicationZeroMQ->isActive()) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", TRI_CheckAuthenticationAuthInfo);
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-
-    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-
-    // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &httpOptions);
-
-    _applicationZeroMQ->setHttpHandlerFactory(factory);
-  }
-
-#endif
-  
   // .............................................................................
   // start the statistics collector thread
   // .............................................................................
@@ -984,7 +967,7 @@ int ArangoServer::executeRubyConsole () {
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(context->_mrs, ".arango-mrb");
+  MRLineEditor* console = new MRLineEditor(context->_mrb, ".arango-mrb");
 
   console->open(false);
 
@@ -1003,7 +986,7 @@ int ArangoServer::executeRubyConsole () {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_string(&context->_mrs->_mrb, input);
+    struct mrb_parser_state* p = mrb_parse_string(context->_mrb, input, NULL);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1011,24 +994,24 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(&context->_mrs->_mrb, p->tree);
+    int n = mrb_generate_code(context->_mrb, p);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(&context->_mrs->_mrb,
-                               mrb_proc_new(&context->_mrs->_mrb, context->_mrs->_mrb.irep[n]),
-                               mrb_top_self(&context->_mrs->_mrb));
+    mrb_value result = mrb_run(context->_mrb,
+                               mrb_proc_new(context->_mrb, context->_mrb->irep[n]),
+                               mrb_top_self(context->_mrb));
 
-    if (context->_mrs->_mrb.exc) {
+    if (context->_mrb->exc != 0) {
       LOGGER_ERROR << "caught Ruby exception";
-      mrb_p(&context->_mrs->_mrb, mrb_obj_value(context->_mrs->_mrb.exc));
-      context->_mrs->_mrb.exc = 0;
+      mrb_p(context->_mrb, mrb_obj_value(context->_mrb->exc));
+      context->_mrb->exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(&context->_mrs->_mrb, result);
+      mrb_p(context->_mrb, result);
     }
   }
 

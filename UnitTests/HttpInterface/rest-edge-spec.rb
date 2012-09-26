@@ -52,7 +52,7 @@ describe ArangoDB do
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(400)
 	doc.parsed_response['code'].should eq(400)
-	doc.headers['content-type'].should eq("application/json")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	ArangoDB.drop_collection(cn)
       end

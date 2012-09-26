@@ -41,6 +41,7 @@
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/primary-collection.h"
+#include "BasicsC/utf8-helper.h"
 
 #define USE_STATIC_SKIPLIST_COMPARE 1
 
@@ -417,7 +418,11 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right->_data.data);
           }         
           
-          result = strcmp(leftString,rightString);          
+#ifdef TRI_HAVE_ICU  
+          result = TR_compare_utf8(leftString,rightString);
+#else
+          result = strcmp(leftString,rightString);
+#endif
           return result;
         }
         case TRI_SHAPE_ARRAY:

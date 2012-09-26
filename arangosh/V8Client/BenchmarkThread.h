@@ -30,11 +30,17 @@
 
 #include "Basics/Common.h"
 
+#include "BasicsC/hashes.h"
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "V8Client/SharedCounter.h"
-#include "ProtocolBuffers/arangodb.pb.h"
+#include "Rest/HttpResponsePart.h"
+#include "SimpleHttpClient/SimpleClient.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "V8Client/BenchmarkCounter.h"
+#include "V8Client/BenchmarkOperation.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -43,23 +49,13 @@ using namespace triagens::rest;
 
 namespace triagens {
   namespace v8client {
-
-    struct BenchmarkRequest {
-      BenchmarkRequest (const char* url, map<string, string> params, const char* payload, SimpleHttpClient::http_method type) :
-        url(url),
-        params(params),
-        payload(payload),
-        type(type) {
-      };
-
-      string url;
-      map<string, string> params;
-      string payload;
-      SimpleHttpClient::http_method type;
-    };
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class BenchmarkThread
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,18 +64,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class BenchmarkThread : public Thread {
-      public:
-        typedef BenchmarkRequest (*GenFunc)();
 
-        BenchmarkThread (GenFunc generate,
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct the benchmark thread
+////////////////////////////////////////////////////////////////////////////////
+
+        BenchmarkThread (BenchmarkOperation* operation,
                          ConditionVariable* condition, 
                          const unsigned long batchSize,
-                         SharedCounter<unsigned long>* operationsCounter,
+                         BenchmarkCounter<unsigned long>* operationsCounter,
                          Endpoint* endpoint, 
                          const string& username, 
                          const string& password) 
           : Thread("arangob"), 
-            _generate(generate),
+            _operation(operation),
             _startCondition(condition),
             _batchSize(batchSize),
             _operationsCounter(operationsCounter),
@@ -87,12 +87,25 @@ namespace triagens {
             _username(username),
             _password(password),
             _client(0),
-            _connection(0) {
+            _connection(0),
+            _offset(0),
+            _counter(0),
+            _time(0.0) {
+            
+          _errorHeader = StringUtils::tolower(HttpResponsePart::getErrorHeader());
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the benchmark thread
+////////////////////////////////////////////////////////////////////////////////
         
         ~BenchmarkThread () {
-          if (_connection != 0 && _connection->isConnected()) {
-            _connection->disconnect();
+          if (_client != 0) {
+            delete _client;
+          }
+          
+          if (_connection != 0) {
+            delete _connection;
           }
         }
 
@@ -120,21 +133,30 @@ namespace triagens {
 
           _connection = GeneralClientConnection::factory(_endpoint, 5.0, 10.0, 3);
           if (_connection == 0) {
-            throw "out of memory";
+            cerr << "out of memory" << endl;
+            exit(EXIT_FAILURE);
           }
-  
+
           _client = new SimpleHttpClient(_connection, 10.0, true);
           _client->setUserNamePassword("/", _username, _password);
-  
           map<string, string> headerFields;
-          SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, 
+                                                      "/_api/version", 
+                                                      0, 
+                                                      0, 
+                                                      headerFields);
   
           if (! result || ! result->isComplete()) {
-            throw "could not connect to server";
+            if (result) {
+              delete result;
+            }
+            cerr << "could not connect to server" << endl;
+            exit(EXIT_FAILURE);
           }
 
           delete result;
-          
+ 
+          // wait for start condition to be broadcasted 
           {
             ConditionLocker guard(_startCondition);
             guard.wait();
@@ -147,95 +169,160 @@ namespace triagens {
               break;
             }
 
-            if (_batchSize == 1) {
-              executeRequest();
+            if (_batchSize < 1) {
+              executeSingleRequest();
             } 
             else {
-              executeRequest(numOps);
+              executeBatchRequest(numOps);
             }
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-        PB_ArangoRequestType getRequestType (const SimpleHttpClient::http_method type) const {
-          if (type == SimpleHttpClient::GET) {
-            return PB_REQUEST_TYPE_GET;
-          }
-          if (type == SimpleHttpClient::POST) {
-            return PB_REQUEST_TYPE_POST;
-          }
-          if (type == SimpleHttpClient::PUT) {
-            return PB_REQUEST_TYPE_PUT;
-          }
-          if (type == SimpleHttpClient::DELETE) {
-            return PB_REQUEST_TYPE_DELETE;
-          }
-          throw "invalid request type";
-        }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
-        
-        void executeRequest (const unsigned long numOperations) {
-          PB_ArangoMessage messages;
-          PB_ArangoBatchMessage* batch;
-          PB_ArangoBlobRequest* blob;
-          PB_ArangoKeyValue* kv;
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Client
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a batch request with numOperations parts
+////////////////////////////////////////////////////////////////////////////////
+
+        void executeBatchRequest (const unsigned long numOperations) {
+          const string boundary = "XXXarangob-benchmarkXXX";
+
+          StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
 
           for (unsigned long i = 0; i < numOperations; ++i) {
-            BenchmarkRequest r = _generate();
+            // append boundary
+            batchPayload.appendText("--" + boundary + "\r\n");
+            // append content-type, this will also begin the body
+            batchPayload.appendText(HttpRequest::getPartContentType());
 
-            batch = messages.add_messages();
-            batch->set_type(PB_BLOB_REQUEST);
-            blob = batch->mutable_blobrequest();
-      
-            blob->set_requesttype(getRequestType(r.type));
-            blob->set_url(r.url);
-            blob->set_contenttype(PB_NO_CONTENT);
-            blob->set_content(r.payload);
-      
-            for (map<string, string>::const_iterator it = r.params.begin(); it != r.params.end(); ++it) {
-              kv = blob->add_values();
-              kv->set_key((*it).first);
-              kv->set_value((*it).second);
+            // everything else (i.e. part request header & body) will get into the body
+            const HttpRequest::HttpRequestType type = _operation->type();
+            const string url = _operation->url();
+            size_t payloadLength = 0;
+            const char* payload = _operation->payload(&payloadLength, _offset + _counter++);
+            const map<string, string>& headers = _operation->headers();
+
+            // headline, e.g. POST /... HTTP/1.1
+            HttpRequest::appendMethod(type, &batchPayload);
+            batchPayload.appendText(url + " HTTP/1.1\r\n");
+            // extra headers
+            for (map<string, string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+              batchPayload.appendText((*it).first + ": " + (*it).second + "\r\n");
+            }
+            batchPayload.appendText("\r\n", 2);
+            
+            // body
+            batchPayload.appendText(payload, payloadLength);
+            batchPayload.appendText("\r\n", 2);
+          }
+
+          // end of MIME
+          batchPayload.appendText("--" + boundary + "--\r\n");
+          
+          map<string, string> batchHeaders;
+          batchHeaders["Content-Type"] = HttpRequest::getMultipartContentType() + 
+                                         "; boundary=" + boundary;
+
+          Timing timer(Timing::TI_WALLCLOCK);
+          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST,
+                                                      "/_api/batch",
+                                                      batchPayload.c_str(),
+                                                      batchPayload.length(),
+                                                      batchHeaders);
+          _time += ((double) timer.time()) / 1000000.0;
+
+          if (result == 0) {
+            _operationsCounter->incFailures(numOperations);
+            return;
+          }
+
+          if (result->getHttpReturnCode() >= 400) { 
+            _operationsCounter->incFailures(numOperations);
+          }
+          else {
+            const std::map<string, string>& headers = result->getHeaderFields();
+            map<string, string>::const_iterator it = headers.find(_errorHeader);
+
+            if (it != headers.end()) {
+              size_t errorCount = (size_t) StringUtils::uint32((*it).second);
+              _operationsCounter->incFailures(errorCount);
             }
           }
-    
-          size_t messageSize = messages.ByteSize();
-          char* message = new char[messageSize];
-
-          if (! messages.SerializeToArray(message, messageSize)) {
-            throw "out of memory";
-          }
-
-          map<string, string> headerFields;
-          headerFields["Content-Type"] = "application/x-arangodb-batch";
-          SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/batch", message, (size_t) messageSize, headerFields);
           delete result;
-          delete message;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a single request
+////////////////////////////////////////////////////////////////////////////////
 
-        void executeRequest () {
-          BenchmarkRequest r = _generate();
-          string url = r.url;
+        void executeSingleRequest () {
+          const HttpRequest::HttpRequestType type = _operation->type();
+          const string url = _operation->url();
+          size_t payloadLength = 0;
+          const char* payload = _operation->payload(&payloadLength, _offset + _counter++);
+          const map<string, string>& headers = _operation->headers();
 
-          bool found = false;
-          for (map<string, string>::const_iterator i = r.params.begin(); i != r.params.end(); ++i) {
-            if (! found) {
-              url.append("?");
-              found = true;
-            }
-            else {
-              url.append("&");
-            }
+          Timing timer(Timing::TI_WALLCLOCK);
+          SimpleHttpResult* result = _client->request(type,
+                                                      url,
+                                                      payload,
+                                                      payloadLength,
+                                                      headers);
+          _time += ((double) timer.time()) / 1000000.0;
 
-            url.append((*i).first);
-            url.append("=");
-            url.append((*i).second);
+          if (result == 0) {
+            _operationsCounter->incFailures(1);
+            return;
           }
 
-          map<string, string> headerFields;
-          SimpleHttpResult* result = _client->request(r.type, url, r.payload.c_str(), r.payload.size(), headerFields);
+          if (result->getHttpReturnCode() >= 400) { 
+            _operationsCounter->incFailures(1);
+          }
           delete result;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Client
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the threads offset value
+////////////////////////////////////////////////////////////////////////////////
+
+        void setOffset (size_t offset) {
+          _offset = offset;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the total time accumulated by the thread
+////////////////////////////////////////////////////////////////////////////////
+
+        double getTime () const {
+          return _time;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,13 +334,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
+/// @addtogroup V8Client
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
 
-        GenFunc _generate;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the operation to benchmark
+////////////////////////////////////////////////////////////////////////////////
+
+        BenchmarkOperation* _operation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
@@ -268,10 +359,10 @@ namespace triagens {
         const unsigned long _batchSize;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shared operations counter
+/// @brief benchmark counter
 ////////////////////////////////////////////////////////////////////////////////
 
-        SharedCounter<unsigned long>* _operationsCounter;
+        BenchmarkCounter<unsigned long>* _operationsCounter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint to use
@@ -295,13 +386,37 @@ namespace triagens {
 /// @brief underlying client
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::httpclient::SimpleHttpClient* _client;
+        triagens::httpclient::SimpleClient* _client;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection to the server
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::httpclient::GeneralClientConnection* _connection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread offset value
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _offset;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread counter value
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _counter;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time
+////////////////////////////////////////////////////////////////////////////////
+
+        double _time;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lower-case error header we look for
+////////////////////////////////////////////////////////////////////////////////
+
+        string _errorHeader;
 
     };
   }
