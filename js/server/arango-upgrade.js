@@ -214,10 +214,11 @@ function main (argv) {
   // loop through all tasks and execute them
   console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
 
+  var taskNumber = 0;
   for (var i in activeTasks) {
     var task = activeTasks[i];
 
-    console.log("Executing task #" + parseInt(i + 1) + ": " + task.description);
+    console.log("Executing task #" + (++taskNumber) + ": " + task.description);
 
     var result = task.code();
 
