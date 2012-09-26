@@ -1378,7 +1378,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
 
   // we might have wasted some space if the unescaped string is shorter than the
   // escaped one. this is the case if the string contained escaped characters
-  if (*outLength < (ptr - in)) {
+  if (((ptr - in) > 0) && (*outLength < (size_t)(ptr - in))) {
     // result string is shorter than original string
     qtr = TRI_Allocate(zone, *outLength + 1, false);
  

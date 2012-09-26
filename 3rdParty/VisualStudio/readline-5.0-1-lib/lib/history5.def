@@ -1,0 +1,65 @@
+LIBRARY history5.dll
+EXPORTS
+DllGetVersion
+_rl_adjust_point
+_rl_compare_chars
+_rl_find_next_mbchar
+_rl_find_prev_mbchar
+_rl_get_char_len
+_rl_get_user_registry_string
+_rl_is_mbchar_matched
+add_history
+add_history_time
+append_history
+clear_history
+current_history
+free_history_entry
+get_history_event
+history_arg_extract
+history_base DATA
+history_comment_char DATA
+history_expand
+history_expansion_char DATA
+history_get
+history_get_history_state
+history_get_time
+history_inhibit_expansion_function DATA
+history_is_stifled
+history_length DATA
+history_list
+history_max_entries DATA
+history_no_expand_chars DATA
+history_offset DATA
+history_quotes_inhibit_expansion DATA
+history_search
+history_search_delimiter_chars DATA
+history_search_pos
+history_search_prefix
+history_set_history_state
+history_set_pos
+history_subst_char DATA
+history_tokenize
+history_total_bytes
+history_truncate_file
+history_word_delimiters DATA
+history_write_timestamps DATA
+max_input_history DATA
+next_history
+previous_history
+read_history
+read_history_range
+remove_history
+replace_history_entry
+rl_byte_oriented DATA
+sh_get_env_value
+sh_get_home_dir
+sh_set_lines_and_columns
+sh_single_quote
+stifle_history
+unstifle_history
+using_history
+where_history
+write_history
+xfree
+xmalloc
+xrealloc

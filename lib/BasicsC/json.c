@@ -1065,7 +1065,8 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
     default: {
       assert(false);
     }  
-  }        
+  }
+  return false; // stops the vc++ compiler from complaining
 }
 
 
