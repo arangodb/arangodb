@@ -228,7 +228,7 @@ HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) 
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
+HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request, const bool isSubPart) {
 #if 0
   READ_LOCKER(_maintenanceLock);
 
@@ -249,13 +249,15 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     // find longest match
     string prefix;
     vector<string> const& jj = _prefixes;
+    const size_t pathLength = path.size();
 
     for (vector<string>::const_iterator j = jj.begin();  j != jj.end();  ++j) {
       string const& p = *j;
+      const size_t pSize = p.size();
 
-      if (path.compare(0, p.size(), p) == 0) {
-        if (p.size() < path.size() && path[p.size()] == '/') {
-          if (prefix.size() < p.size()) {
+      if (path.compare(0, pSize, p) == 0) {
+        if (pSize < pathLength && path[pSize] == '/') {
+          if (prefix.size() < pSize) {
             prefix = p;
           }
         }
@@ -313,7 +315,11 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   // no match
   if (i == ii.end()) {
     if (_notFound != 0) {
-      return _notFound(request, data);
+      HttpHandler* notFoundHandler = _notFound(request, data);
+      notFoundHandler->setServer(this);
+      notFoundHandler->setIsSubPart(isSubPart);
+
+      return notFoundHandler;
     }
     else {
       LOGGER_TRACE << "no not-found handler, giving up";
@@ -333,6 +339,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);
+  handler->setIsSubPart(isSubPart);
 
   return handler;
 }

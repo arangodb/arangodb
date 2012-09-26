@@ -50,29 +50,17 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
-      _connection(connection),
-      _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _requestTimeout(requestTimeout),
-      _warn(warn) {
-
-      _result = 0;
-      _errorMessage = "";
-      _written = 0;
-      _state = IN_CONNECT;
-      
-      reset();
+      SimpleClient(connection, requestTimeout, warn), _result(0) {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      _connection->disconnect();
     }
 
     // -----------------------------------------------------------------------------
     // public methods
     // -----------------------------------------------------------------------------
 
-    SimpleHttpResult* SimpleHttpClient::request (int method,
+    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
             const string& location,
             const char* body,
             size_t bodyLength,
@@ -162,19 +150,14 @@ namespace triagens {
     // -----------------------------------------------------------------------------
     // private methods
     // -----------------------------------------------------------------------------
-
-    void SimpleHttpClient::handleConnect () {
-      if (! _connection->connect()) {
-        setErrorMessage("Could not connect to '" +  _connection->getEndpoint()->getSpecification() + "'", errno);
-        _state = DEAD;
-      }
-      else {
-        // can write now
-        _state = IN_WRITE;
-        _written = 0;
+    
+    void SimpleHttpClient::reset () {
+      SimpleClient::reset();
+      if (_result) {
+        _result->clear();
       }
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief sets username and password 
     ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +200,7 @@ namespace triagens {
       return _result;
     }
 
-    void SimpleHttpClient::setRequest (int method,
+    void SimpleHttpClient::setRequest (rest::HttpRequest::HttpRequestType method,
             const string& location,
             const char* body,
             size_t bodyLength,
@@ -230,29 +213,7 @@ namespace triagens {
       ///////////////////// fill the write buffer //////////////////////////////      
       _writeBuffer.clear();
 
-      switch (method) {
-        case GET:
-          _writeBuffer.appendText("GET ");
-          break;
-        case POST:
-          _writeBuffer.appendText("POST ");
-          break;
-        case PUT:
-          _writeBuffer.appendText("PUT ");
-          break;
-        case DELETE:
-          _writeBuffer.appendText("DELETE ");
-          break;
-        case PATCH:
-          _writeBuffer.appendText("PATCH ");
-          break;
-        case HEAD:
-          _writeBuffer.appendText("HEAD ");
-          break;
-        default:
-          _writeBuffer.appendText("POST ");
-          break;
-      }
+      HttpRequest::appendMethod(method, &_writeBuffer);
 
       string l = location;
       if (location.length() == 0 || location[0] != '/') {
@@ -328,15 +289,6 @@ namespace triagens {
     // -----------------------------------------------------------------------------
     // private methods
     // -----------------------------------------------------------------------------
-
-    bool SimpleHttpClient::close () {
-      _connection->disconnect();
-      _state = IN_CONNECT;
-
-      reset();
-
-      return true;
-    }
 
     bool SimpleHttpClient::readHeader () {
       char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
@@ -455,25 +407,6 @@ namespace triagens {
       }
 
       return true;
-    }
-
-
-    void SimpleHttpClient::reset () {
-      if (_result) {
-        _result->clear();
-      }
-
-      _readBuffer.clear();
-    }
-
-    double SimpleHttpClient::now () {
-      struct timeval tv;
-      gettimeofday(&tv, 0);
-
-      double sec = tv.tv_sec; // seconds
-      double usc = tv.tv_usec; // microseconds
-
-      return sec + usc / 1000000.0;
     }
 
   }

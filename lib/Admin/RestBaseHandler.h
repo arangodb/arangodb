@@ -148,6 +148,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string selectResultGenerator (rest::HttpRequest* request);
+
     };
   }
 }

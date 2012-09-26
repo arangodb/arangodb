@@ -41,6 +41,7 @@
 #include <Basics/Common.h>
 
 #include "MRuby/mr-utils.h"
+#include "Rest/HttpRequest.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -98,14 +99,14 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        MRubyClientConnection (MR_state_t*,
+        MRubyClientConnection (mrb_state*,
                                triagens::rest::Endpoint*,
-                               const string&,
-                               const string&,
-                               double,
-                               double,
-                               size_t,
-                               bool);
+                               const string& username,
+                               const string& passwort,
+                               double requestTimeout,
+                               double connectionTimeout,
+                               size_t numRetries,
+                               bool warn);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -255,7 +256,7 @@ namespace triagens {
 /// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      mrb_value requestData (int method, 
+      mrb_value requestData (rest::HttpRequest::HttpRequestType method, 
                              std::string const& location,
                              std::string const& body,
                              map<string, string> const& headerFields);
@@ -279,7 +280,7 @@ namespace triagens {
 /// @brief ruby state
 ////////////////////////////////////////////////////////////////////////////////
 
-      MR_state_t* _mrs;
+      mrb_state* _mrb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection

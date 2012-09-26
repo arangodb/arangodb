@@ -138,7 +138,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* sim) {
   bool worked;
   size_t i;
   size_t n;
-
+      
   worked = false;
   base = &sim->base.base;
 
@@ -209,7 +209,7 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* sim
   double ti;
   size_t i;
   size_t n;
-
+  
   worked = false;
   base = &sim->base.base;
 
@@ -270,7 +270,7 @@ static bool CheckCompactorDocumentCollection (TRI_document_collection_t* sim) {
   bool worked;
   size_t i;
   size_t n;
-
+  
   worked = false;
   base = &sim->base.base;
 

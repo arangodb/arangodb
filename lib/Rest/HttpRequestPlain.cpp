@@ -117,6 +117,12 @@ HttpRequestPlain::~HttpRequestPlain () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+TRI_json_t* HttpRequestPlain::toJson (char** errmsg) {
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
+
+  return json;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,14 +209,16 @@ void HttpRequestPlain::write (TRI_string_buffer_t* buffer) const {
       continue;
     }
 
-    if (strcmp(key, "content-length") == 0) {
+    const size_t keyLength = strlen(key);
+    
+    if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
+    
+    TRI_AppendString2StringBuffer(buffer, key, keyLength);
+    TRI_AppendString2StringBuffer(buffer, ": ", 2);
 
     char const* value = begin->_value;
-
-    TRI_AppendStringStringBuffer(buffer, key);
-    TRI_AppendString2StringBuffer(buffer, ": ", 2);
     TRI_AppendStringStringBuffer(buffer, value);
     TRI_AppendString2StringBuffer(buffer, "\r\n", 2);
   }
@@ -371,6 +379,19 @@ int HttpRequestPlain::setBody (char const* newBody, size_t length) {
   _freeables.push_back(_body);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpRequestPlain::setHeader (char const* key, size_t keyLength, char const* value) {
+  if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
+    _contentLength = TRI_UInt64String(value);
+  }
+  else {
+    _headers.insert(key, keyLength, value);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -858,19 +879,6 @@ void HttpRequestPlain::setValues (char* buffer, char* end) {
     }
 
     _values.insert(keyBegin, key - keyBegin, valueBegin);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set a header field
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequestPlain::setHeader (char const* key, size_t keyLength, char const* value) {
-  if (keyLength == 14 && TRI_EqualString2(key, "content-length", keyLength)) {
-    _contentLength = TRI_UInt64String(value);
-  }
-  else {
-    _headers.insert(key, keyLength, value);
   }
 }
 

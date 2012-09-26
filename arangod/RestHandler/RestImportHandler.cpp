@@ -458,8 +458,7 @@ bool RestImportHandler::createByList () {
 
 
 void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError, size_t numEmpty) {
-  _response = new HttpResponse(HttpResponse::CREATED);
-
+  _response = createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   _response->body()

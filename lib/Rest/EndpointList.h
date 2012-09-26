@@ -125,8 +125,6 @@ namespace triagens {
 
         static const string getProtocolName (const Endpoint::Protocol protocol) {
           switch (protocol) {
-            case Endpoint::PROTOCOL_BINARY:
-              return "binary";
             case Endpoint::PROTOCOL_HTTP:
               return "http";
             default:

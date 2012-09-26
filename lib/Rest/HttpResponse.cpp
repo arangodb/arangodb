@@ -31,7 +31,6 @@
 #include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "ProtocolBuffers/arangodb.pb.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -159,20 +158,6 @@ HttpResponse::HttpResponse ()
 /// @brief constructs a new http response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponse (string const& header)
-  : _code(NOT_IMPLEMENTED),
-    _headers(6),
-    _body(TRI_UNKNOWN_MEM_ZONE),
-    _isHeadResponse(false),
-    _bodySize(0),
-    _freeables() {
-  setHeaders(header, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response
-////////////////////////////////////////////////////////////////////////////////
-
 HttpResponse::HttpResponse (HttpResponseCode code)
   : _code(code),
     _headers(6),
@@ -213,7 +198,7 @@ HttpResponse::~HttpResponse () {
 /// @brief returns the response code
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode () {
+HttpResponse::HttpResponseCode HttpResponse::responseCode () const {
   return _code;
 }
 
@@ -531,13 +516,15 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     if (key == 0) {
       continue;
     }
+
+    const size_t keyLength = strlen(key);
     
     // ignore content-length
-    if (*key == 'c' && TRI_EqualString(key, "content-length")) {
+    if (keyLength == 14 && *key == 'c' && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
     
-    if (*key == 't' && TRI_EqualString(key, "transfer-encoding")) {
+    if (keyLength == 17 && *key == 't' && memcmp(key, "transfer-encoding", keyLength) == 0) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
@@ -545,23 +532,23 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     
     char const* value = begin->_value;
     
-    output->appendText(key);
-    output->appendText(": ");
+    output->appendText(key, keyLength);
+    output->appendText(": ", 2);
     output->appendText(value);
-    output->appendText("\r\n");
+    output->appendText("\r\n", 2);
   }
   
   if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("transfer-encoding: chunked\r\n\r\n");
+    output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
   }
   else {
     if (seenTransferEncoding) {
-      output->appendText("transfer-encoding: ");
+      output->appendText("transfer-encoding: ", 19);
       output->appendText(transferEncoding);
-      output->appendText("\r\n");
+      output->appendText("\r\n", 2);
     }
    
-    output->appendText("content-length: ");
+    output->appendText("content-length: ", 16);
     
     if (_isHeadResponse) {
       output->appendInteger(_bodySize);
@@ -570,89 +557,16 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendInteger(_body.length());
     }
     
-    output->appendText("\r\n\r\n");
+    output->appendText("\r\n\r\n", 4);
   }
   // end of header, body to follow
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the message to a protocol buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::write (PB_ArangoBatchMessage* message) {
-  message->set_type(PB_BLOB_RESPONSE);
-  PB_ArangoBlobResponse* blob = message->mutable_blobresponse();
-
-  blob->set_status((int32_t) _code);
-
-  // copy the headers
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-  
-  string contentType = "text/plain";
-
-  for (_headers.range(begin, end);  begin < end;  ++begin) {
-    char const* key = begin->_key;
-    
-    if (key == 0) {
-      continue;
-    }
-    
-    // ignore content-length
-    if (strcmp(key, "content-length") == 0) {
-      continue;
-    }
-    
-    if (strcmp(key, "transfer-encoding") == 0) {
-      continue;
-    }
-
-    if (strcmp(key, "connection") == 0) {
-      continue;
-    }
-
-    if (strcmp(key, "server") == 0) {
-      continue;
-    }
-
-    char const* value = begin->_value;
-    
-    if (strcmp(key, "content-type") == 0) {
-      contentType = value;
-      continue;
-    }
-    
-    PB_ArangoKeyValue* kv = blob->add_headers();
-
-    kv->set_key(key);
-    kv->set_value(value);
-  }
-
-  // set the content type
-  if (StringUtils::isPrefix(contentType, "application/json")) {
-    blob->set_contenttype(PB_JSON_CONTENT);
-  }
-  else {
-    blob->set_contenttype(PB_TEXT_CONTENT);
-  }
-
-  // check the body
-  if (_isHeadResponse) {
-    blob->set_contentlength(_bodySize);
-  }
-  else {
-    blob->set_contentlength(_body.length());
-
-    string content(_body.c_str(), _body.length());
-    blob->set_content(content);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of the body
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpResponse::bodySize () {
+size_t HttpResponse::bodySize () const {
   if (_isHeadResponse) {
     return _bodySize;
   }

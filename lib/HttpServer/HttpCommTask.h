@@ -233,9 +233,7 @@ namespace triagens {
                   this->_writeBuffers.push_back(buffer);
 
 #ifdef TRI_ENABLE_FIGURES
-
                   this->_writeBuffersStats.push_back(0);
-
 #endif
 
                   this->fillWriteBuffer();
@@ -315,7 +313,7 @@ namespace triagens {
 
             // authenticated
             if (auth) {
-              HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
+              HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request, false);
               bool ok = false;
 
               if (handler == 0) {
@@ -363,7 +361,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addResponse (HttpResponse* response) {
-          triagens::basics::StringBuffer * buffer;
 
           if (this->_closeRequested) {
             response->setHeader("connection", strlen("connection"), "Close");
@@ -379,10 +376,12 @@ namespace triagens {
             response->headResponse(response->bodySize());
           }
 
-          // save header
-          buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+          const size_t len = response->bodySize() + 128;
+          triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
+          // write header
           response->writeHeader(buffer);
 
+          // write body
           buffer->appendText(response->body());
 
           this->_writeBuffers.push_back(buffer);
@@ -416,7 +415,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-
         HttpRequest::HttpRequestType _requestType;
     };
   }

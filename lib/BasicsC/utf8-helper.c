@@ -54,6 +54,12 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
   char * utf8_dest = NULL;
   *outLength = 0;
   
+  if (inLength == 0) {
+    utf8_dest = TRI_Allocate(zone, sizeof(char), false);
+    utf8_dest[0] = '\0';
+    return utf8_dest;
+  }
+  
   // 1. convert utf8 string to utf16
   
   // calculate utf16 string length
@@ -96,8 +102,15 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   int32_t utf16_dest_length = 0;
   char * utf8_dest = NULL;
   int32_t out_length = 0;
-  const UNormalizer2 * norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
   *outLength = 0;
+  
+  if (inLength == 0) {
+    utf8_dest = TRI_Allocate(zone, sizeof(char), false);
+    utf8_dest[0] = '\0';
+    return utf8_dest;
+  }
+  
+  const UNormalizer2 * norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
 
   if (status != U_ZERO_ERROR) {
     printf("error in unorm2_getInstance: %s\n", u_errorName(status));
@@ -157,50 +170,6 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   free(utf16_dest);
   
   return utf8_dest;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings
-////////////////////////////////////////////////////////////////////////////////
-
-int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength, UCollator* coll) {
-  UErrorCode status = U_ZERO_ERROR; 
-  UCollationResult result = UCOL_EQUAL;
-  
-  if (!coll) {
-    coll = ucol_open("de_DE", &status); 
-    if(U_FAILURE(status)) {
-      printf("error in ucol_open %s\n", u_errorName(status));      
-      return 0;
-    }
-    
-    ucol_setAttribute(coll, UCOL_CASE_FIRST, UCOL_UPPER_FIRST, &status); // A < a
-    ucol_setAttribute(coll, UCOL_NORMALIZATION_MODE, UCOL_OFF, &status);
-    ucol_setAttribute(coll, UCOL_STRENGTH, UCOL_IDENTICAL, &status);     //UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
-  
-    if(U_FAILURE(status)) {
-      printf("error in ucol_setAttribute %s\n", u_errorName(status));      
-      return 0;
-    }
-    
-    result = ucol_strcoll(coll, (const UChar *)left, leftLength, (const UChar *)right, rightLength);
-    
-    ucol_close(coll);
-  }
-  else {
-    result = ucol_strcoll(coll, (const UChar *)left, leftLength, (const UChar *)right, rightLength);
-  }
-    
-  switch (result) {
-    case (UCOL_GREATER):
-      return 1;
-      
-    case (UCOL_LESS):
-      return -1;
-      
-    default:
-      return 0;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

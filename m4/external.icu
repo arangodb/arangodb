@@ -4,10 +4,6 @@ dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                             ICU
 dnl ----------------------------------------------------------------------------
 
-AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-AC_MSG_NOTICE([CHECKING FOR ICU])
-AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-
 AC_LANG(C)
 
 AC_ARG_ENABLE(icu,
@@ -16,22 +12,14 @@ AC_ARG_ENABLE(icu,
   tr_ICU="maybe"
 )
 
-AC_ARG_WITH(ICU,
-  AS_HELP_STRING([--with-icu=DIR], [where the ICU library and includes are located]),
-  [ICU_CPPFLAGS="-I$withval/include"
-   ICU_LDFLAGS="-L$withval/lib"
-   ICU="$withval"]
-)
-
-AC_ARG_WITH(ICU-lib,
-  AS_HELP_STRING([--with-icu-lib=DIR], [where the ICU library is located]),
-  [ICU_LDFLAGS="-L$withval"]
+AC_ARG_WITH(icu-config,
+  AS_HELP_STRING([--with-icu-config=FILE], [where the icu-config program is located]),
+  [ICU_CONFIG="$withval"]
 )
 
 TR_STATIC_ENABLE([ICU])
 
 if test "x$tr_ICU" = xyes;  then
-
   AC_MSG_NOTICE([--------------------------------------------------------------------------------])
   AC_MSG_NOTICE([CHECKING FOR ICU])
   AC_MSG_NOTICE([--------------------------------------------------------------------------------])
@@ -40,18 +28,20 @@ if test "x$tr_ICU" = xyes;  then
   dnl checks for the icu-config
   dnl ----------------------------------------------------------------------------
 
-  ICU_CONFIG="icu-config"
+  if test "x$ICU_CONFIG" == "x" ; then
+    ICU_CONFIG="icu-config"
+  fi
+
+  AC_MSG_CHECKING([for "${ICU_CONFIG} --version"])
 
   if $ICU_CONFIG --version > /dev/null 2>&1; then
     ICU_CPPFLAGS="$($ICU_CONFIG --cppflags)"
-    ICU_LDFLAGS="$($ICU_CONFIG --ldflags)"
-    ICU_LIBS=""    
+    ICU_LDFLAGS=""
+    ICU_LIBS="$($ICU_CONFIG --ldflags)"
     TRI_ICU_VERSION="$($ICU_CONFIG --version)"
+    AC_MSG_RESULT([yes])
   else
-    ICU_CPPFLAGS="$ICU_CPPFLAGS"
-    ICU_LDFLAGS="$ICU_LDFLAGS"
-    ICU_LIBS="-licui18n -licuuc -licudata  -licuio -licule -liculx"
-    TRI_ICU_VERSION="unknown"
+    AC_MSG_ERROR([config program "${ICU_CONFIG}" not found.])
   fi
 
   ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"' -DTRI_HAVE_ICU=1"

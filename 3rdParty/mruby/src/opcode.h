@@ -14,15 +14,15 @@
 /*              OP:A:Bx  = 7:9:16            */
 /*              OP:Ax    = 7:25              */
 
-#define GET_OPCODE(i) (((mrb_code)(i)) & 0x7f)
-#define GETARG_A(i)   ((((mrb_code)(i)) >> 23) & 0x1ff)
-#define GETARG_B(i)   ((((mrb_code)(i)) >> 14) & 0x1ff)
-#define GETARG_C(i)   ((((mrb_code)(i)) >>  7) & 0x7f)
-#define GETARG_Bx(i)  ((((mrb_code)(i)) >>  7) & 0xffff)
-#define GETARG_sBx(i) (GETARG_Bx(i)-MAXARG_sBx)
-#define GETARG_Ax(i)  ((((mrb_code)(i)) >>  7) & 0x1ffffff)
-#define GETARG_UNPACK_b(i,n1,n2) ((((mrb_code)(i)) >> (7+n2)) & (((1<<n1)-1)))
-#define GETARG_UNPACK_c(i,n1,n2) ((((mrb_code)(i)) >> 7) & (((1<<n2)-1)))
+#define GET_OPCODE(i) ((int)(((mrb_code)(i)) & 0x7f))
+#define GETARG_A(i)   ((int)((((mrb_code)(i)) >> 23) & 0x1ff))
+#define GETARG_B(i)   ((int)((((mrb_code)(i)) >> 14) & 0x1ff))
+#define GETARG_C(i)   ((int)((((mrb_code)(i)) >>  7) & 0x7f))
+#define GETARG_Bx(i)  ((int)((((mrb_code)(i)) >>  7) & 0xffff))
+#define GETARG_sBx(i) ((int)(GETARG_Bx(i)-MAXARG_sBx))
+#define GETARG_Ax(i)  ((int)((((mrb_code)(i)) >>  7) & 0x1ffffff))
+#define GETARG_UNPACK_b(i,n1,n2) ((int)((((mrb_code)(i)) >> (7+n2)) & (((1<<n1)-1))))
+#define GETARG_UNPACK_c(i,n1,n2) ((int)((((mrb_code)(i)) >> 7) & (((1<<n2)-1))))
 #define GETARG_b(i)   GETARG_UNPACK_b(i,14,2)
 #define GETARG_c(i)   GETARG_UNPACK_c(i,14,2)
 
@@ -83,8 +83,8 @@ OP_EPUSH,/*     Bx      ensure_push(SEQ[Bx])                            */
 OP_EPOP,/*      A       A.times{ensure_pop().call}                      */
 
 OP_SEND,/*      A B C   R(A) := call(R(A),mSym(B),R(A+1),...,R(A+C))    */
+OP_SENDB,/*     A B C   R(A) := call(R(A),mSym(B),R(A+1),...,R(A+C),&R(A+C+1))*/
 OP_FSEND,/*     A B C   R(A) := fcall(R(A),mSym(B),R(A+1),...,R(A+C-1)) */
-OP_VSEND,/*     A B     R(A) := vcall(R(A),mSym(B))                     */
 OP_CALL,/*      A B C   R(A) := self.call(R(A),.., R(A+C))              */
 OP_SUPER,/*     A B C   R(A) := super(R(A+1),... ,R(A+C-1))             */
 OP_ARGARY,/*    A Bx    R(A) := argument array (16=6:1:5:4)             */

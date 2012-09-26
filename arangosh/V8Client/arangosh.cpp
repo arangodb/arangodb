@@ -361,7 +361,7 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
                                                "usage: NORMALIZE_STRING(<string>)")));
   }
 
-  return scope.Close(Utf8Helper::DefaultUtf8Helper.normalize(argv[0]));
+  return scope.Close(TRI_normalize_V8_Obj(argv[0]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1145,8 +1145,17 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
                          v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
                          v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("COMPARE_STRING"),
                          v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("HAS_ICU"),
+#ifdef TRI_ICU_VERSION
+                         v8::Boolean::New(true),
+#else
+                         v8::Boolean::New(false),
+#endif
                          v8::ReadOnly);
   
   // .............................................................................

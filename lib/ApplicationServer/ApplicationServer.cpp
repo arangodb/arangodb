@@ -225,6 +225,7 @@ void ApplicationServer::setupLogging () {
   }
 
   TRI_SetLineNumberLogging(_logLineNumber);
+
   TRI_SetLogLevelLogging(_logLevel);
   TRI_SetLogSeverityLogging(_logSeverity);
   TRI_SetPrefixLogging(_logPrefix);
@@ -373,10 +374,6 @@ bool ApplicationServer::parse (int argc,
   // .............................................................................
   // parse phase 2
   // .............................................................................
-
-  if (! _options.has("random.no-seed")) {
-    Random::seed();
-  }
 
   try {
     switch (_randomGenerator) {

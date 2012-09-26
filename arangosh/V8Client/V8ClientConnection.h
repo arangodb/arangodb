@@ -40,6 +40,7 @@
 #define TRIAGENS_V8_CLIENT_CONNECTION_H 1
 
 #include <Basics/Common.h>
+#include "Rest/HttpRequest.h"
 
 #include <v8.h>
 
@@ -269,7 +270,7 @@ namespace triagens {
 /// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> requestData (int method, 
+      v8::Handle<v8::Value> requestData (rest::HttpRequest::HttpRequestType method, 
                                          std::string const& location,
                                          std::string const& body,
                                          map<string, string> const& headerFields);

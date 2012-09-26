@@ -1,5 +1,5 @@
 /*
-** compile.h - mruby parser
+** mruby/compile.h - mruby parser
 **
 ** See Copyright Notice in mruby.h
 */
@@ -15,12 +15,28 @@ extern "C" {
 #include <stdio.h>
 #include <setjmp.h>
 
+/* load context */
+typedef struct mrbc_context {
+  mrb_sym *syms;
+  int slen;
+  char *filename;
+  short lineno;
+  int capture_errors:1;
+  int dump_result:1;
+  int no_exec:1;
+} mrbc_context;
+
+mrbc_context* mrbc_context_new(mrb_state *mrb);
+void mrbc_context_free(mrb_state *mrb, mrbc_context *cxt);
+const char *mrbc_filename(mrb_state *mrb, mrbc_context *c, const char *s);
+
+/* AST node structure */
 typedef struct mrb_ast_node {
   struct mrb_ast_node *car, *cdr;
+  short lineno;
 } mrb_ast_node;
 
-#include <stdio.h>
-
+/* lexer states */
 enum mrb_lex_state_enum {
     EXPR_BEG,                   /* ignore newline, +/- is a sign. */
     EXPR_END,                   /* newline significant, +/- is an operator. */
@@ -36,21 +52,23 @@ enum mrb_lex_state_enum {
     EXPR_MAX_STATE
 };
 
+/* saved error message */
 struct mrb_parser_message {
   int lineno;
   int column;
   char* message;
 };
 
+/* parser structure */
 struct mrb_parser_state {
   mrb_state *mrb;
   struct mrb_pool *pool;
   mrb_ast_node *cells;
   const char *s, *send;
   FILE *f;
+  char *filename;
   int lineno;
   int column;
-  const char *filename;
 
   enum mrb_lex_state_enum lstate;
   int sterm;
@@ -59,6 +77,8 @@ struct mrb_parser_state {
   unsigned int cmdarg_stack;
   int paren_nest;
   int lpar_beg;
+  int in_def, in_single, cmd_start;
+  mrb_ast_node *locals;
 
   mrb_ast_node *pb;
   char buf[1024];
@@ -66,14 +86,11 @@ struct mrb_parser_state {
 
   mrb_ast_node *heredoc;
 
-  int in_def, in_single, cmd_start;
-  mrb_ast_node *locals;
-
   void *ylval;
 
   int nerr;
   int nwarn;
-  mrb_ast_node *tree, *begin_tree;
+  mrb_ast_node *tree;
 
   int capture_errors;
   struct mrb_parser_message error_buffer[10];
@@ -82,21 +99,24 @@ struct mrb_parser_state {
   jmp_buf jmp;
 };
 
-/* parser structure */
 struct mrb_parser_state* mrb_parser_new(mrb_state*);
+void mrb_parser_free(struct mrb_parser_state*);
 const char *mrb_parser_filename(struct mrb_parser_state*, const char*);
-int mrb_parser_lineno(struct mrb_parser_state*, int);
-void mrb_parser_parse(struct mrb_parser_state*);
+void mrb_parser_parse(struct mrb_parser_state*,mrbc_context*);
 
 /* utility functions */
-struct mrb_parser_state* mrb_parse_file(mrb_state*,FILE*);
-struct mrb_parser_state* mrb_parse_string(mrb_state*,const char*);
-struct mrb_parser_state* mrb_parse_nstring(mrb_state*,const char*,size_t);
-int mrb_generate_code(mrb_state*, mrb_ast_node*);
+struct mrb_parser_state* mrb_parse_file(mrb_state*,FILE*,mrbc_context*);
+struct mrb_parser_state* mrb_parse_string(mrb_state*,const char*,mrbc_context*);
+struct mrb_parser_state* mrb_parse_nstring(mrb_state*,const char*,int,mrbc_context*);
+int mrb_generate_code(mrb_state*, struct mrb_parser_state*);
 
-int mrb_compile_file(mrb_state*,FILE*);
-int mrb_compile_string(mrb_state*,char*);
-int mrb_compile_nstring(mrb_state*,char*,size_t);
+/* program load functions */
+mrb_value mrb_load_file(mrb_state*,FILE*);
+mrb_value mrb_load_string(mrb_state *mrb, const char *s);
+mrb_value mrb_load_nstring(mrb_state *mrb, const char *s, int len);
+mrb_value mrb_load_file_cxt(mrb_state*,FILE*, mrbc_context *cxt);
+mrb_value mrb_load_string_cxt(mrb_state *mrb, const char *s, mrbc_context *cxt);
+mrb_value mrb_load_nstring_cxt(mrb_state *mrb, const char *s, int len, mrbc_context *cxt);
 
 #if defined(__cplusplus)
 }  /* extern "C" { */
