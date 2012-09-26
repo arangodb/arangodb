@@ -1368,12 +1368,14 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *outLength = qtr - buffer;
 
 #ifdef TRI_HAVE_ICU
-  utf8_nfc = TR_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
-  if (utf8_nfc) {
-    *outLength = tmpLength;
-    TRI_Free(zone, buffer);
-    return utf8_nfc;
-  }    
+  if (*outLength > 0) {
+    utf8_nfc = TR_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
+    if (utf8_nfc) {
+      *outLength = tmpLength;
+      TRI_Free(zone, buffer);
+      return utf8_nfc;
+    }    
+  }
 #endif
 
   // we might have wasted some space if the unescaped string is shorter than the
