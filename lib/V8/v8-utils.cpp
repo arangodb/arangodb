@@ -1615,13 +1615,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8:
    v8::String::Value str(obj);
    size_t str_len = str.length();
 
-   if (str_len > 0) {
-     _str = TR_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);     
-   }
-   else {
-     _str = (char*) TRI_Allocate(memoryZone, sizeof(char), false);
-     _str[0] = '\0';
-   }
+   _str = TR_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);     
 }
 
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
