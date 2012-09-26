@@ -134,9 +134,9 @@ namespace triagens {
 /// @brief register a failure
 ////////////////////////////////////////////////////////////////////////////////
 
-        void incFailures () {
+        void incFailures (const size_t value) {
           MUTEX_LOCKER(this->_mutex);
-          ++_failures;
+          _failures += value;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

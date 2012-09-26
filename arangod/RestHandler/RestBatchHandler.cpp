@@ -115,6 +115,8 @@ Handler::status_e RestBatchHandler::execute() {
     return Handler::HANDLER_FAILED;
   }
 
+  size_t errors = 0;
+
   // get authorization header. we will inject this into the subparts
   string authorization = _request->header("authorization");
 
@@ -208,6 +210,9 @@ Handler::status_e RestBatchHandler::execute() {
     
     if (status == Handler::HANDLER_FAILED) {
       // one of the handlers failed, we must exit now
+      delete handler;
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "an error occured during part request processing");
+
       return Handler::HANDLER_FAILED; 
     }
 
@@ -219,6 +224,12 @@ Handler::status_e RestBatchHandler::execute() {
       return Handler::HANDLER_FAILED;
     }
 
+    const HttpResponse::HttpResponseCode code = partResponse->responseCode();
+    if (code >= 400) {
+      // error
+      ++errors;
+    }
+
     // append the boundary for this subpart
     _response->body().appendText(boundary + "\r\n");
 
@@ -226,7 +237,7 @@ Handler::status_e RestBatchHandler::execute() {
     partResponse->writeHeader(&_response->body());
     // append the response body
     _response->body().appendText(partResponse->body());
-    _response->body().appendText("\r\n");
+    _response->body().appendText("\r\n", 2);
 
     delete handler;
 
@@ -235,10 +246,14 @@ Handler::status_e RestBatchHandler::execute() {
       // we've read the last part
       break;
     }
-  }
+  } // next part
 
   // append final boundary + "--"
   _response->body().appendText(boundary + "--");
+
+  if (errors > 0) {
+    _response->setHeader(HttpResponsePart::getErrorHeader(), StringUtils::itoa(errors)); 
+  }
 
   // success
   return Handler::HANDLER_DONE;

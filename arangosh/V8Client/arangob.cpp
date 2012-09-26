@@ -57,6 +57,55 @@ using namespace triagens::v8client;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base class for clients
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoClient BaseClient;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concurrency
+////////////////////////////////////////////////////////////////////////////////
+
+static int Concurrency = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of operations to perform
+////////////////////////////////////////////////////////////////////////////////
+
+static int Operations = 1000;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of operations in one batch
+////////////////////////////////////////////////////////////////////////////////
+
+static int BatchSize = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection to use
+////////////////////////////////////////////////////////////////////////////////
+
+static string Collection = "ArangoBenchmark";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case to use
+////////////////////////////////////////////////////////////////////////////////
+
+static string TestCase = "version";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              benchmark test cases
 // -----------------------------------------------------------------------------
 
@@ -113,17 +162,17 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct SmallDocumentCreationTest : public BenchmarkOperation {
-  SmallDocumentCreationTest () 
-    : BenchmarkOperation () {
+  SmallDocumentCreationTest ()
+    : BenchmarkOperation(),
+      _url() {
+    _url = "/_api/document?collection=" + Collection + "&createCollection=true";
   }
 
   ~SmallDocumentCreationTest () {
   }
 
   const string& url () {
-    static string url = "/_api/document?collection=ArangoBenchmark&createCollection=true";
-    
-    return url;
+    return _url;
   }
 
   const HttpRequest::HttpRequestType type () {
@@ -140,6 +189,8 @@ struct SmallDocumentCreationTest : public BenchmarkOperation {
     static const map<string, string> headers;
     return headers;
   }
+
+  string _url;
 };
 
 // -----------------------------------------------------------------------------
@@ -153,7 +204,10 @@ struct SmallDocumentCreationTest : public BenchmarkOperation {
 
 struct BigDocumentCreationTest : public BenchmarkOperation {
   BigDocumentCreationTest () 
-    : BenchmarkOperation () {
+    : BenchmarkOperation (),
+      _url(),
+      _buffer(0) {
+    _url = "/_api/document?collection=" + Collection + "&createCollection=true";
 
     const size_t n = 100;
 
@@ -172,6 +226,7 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
     TRI_AppendCharStringBuffer(_buffer, '}');
 
     _length = TRI_LengthStringBuffer(_buffer);
+  
   }
 
   ~BigDocumentCreationTest () {
@@ -179,9 +234,7 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
   }
 
   const string& url () {
-    static string url = "/_api/document?collection=ArangoBenchmark&createCollection=true";
-    
-    return url;
+    return _url;
   }
 
   const HttpRequest::HttpRequestType type () {
@@ -198,49 +251,12 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
     return headers;
   }
 
+  string _url;
 
   TRI_string_buffer_t* _buffer;
   
   size_t _length;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief base class for clients
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoClient BaseClient;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief concurrency
-////////////////////////////////////////////////////////////////////////////////
-
-static int Concurrency = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of operations to perform
-////////////////////////////////////////////////////////////////////////////////
-
-static int Operations = 1000;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of operations in one batch
-////////////////////////////////////////////////////////////////////////////////
-
-static int BatchSize = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -266,6 +282,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("concurrency", &Concurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
+    ("collection", &Collection, "collection name to use in tests")
+    ("test-case", &TestCase, "test case to use")
   ;
 
   BaseClient.setupGeneral(description);
@@ -320,11 +338,26 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  BenchmarkOperation* testCase;
+
+  if (TestCase == "version") {
+    testCase = new VersionTest();
+  }
+  else if (TestCase == "smalldoc") {
+    testCase = new SmallDocumentCreationTest();
+  }
+  else if (TestCase == "bigdoc") {
+    testCase = new BigDocumentCreationTest();
+  }
+  else {
+    cerr << "invalid test case name " << TestCase << endl;
+    exit(EXIT_FAILURE);
+  }
+
 
   BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
 
-  BigDocumentCreationTest benchmarkOperation;
 
   vector<Endpoint*> endpoints;
   vector<BenchmarkThread*> threads;
@@ -334,7 +367,7 @@ int main (int argc, char* argv[]) {
     Endpoint* endpoint = Endpoint::clientFactory(BaseClient.endpointString());
     endpoints.push_back(endpoint);
 
-    BenchmarkThread* thread = new BenchmarkThread(&benchmarkOperation,
+    BenchmarkThread* thread = new BenchmarkThread(testCase,
         &startCondition, 
         (unsigned long) BatchSize,
         &operationsCounter,
@@ -383,6 +416,7 @@ int main (int argc, char* argv[]) {
   cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
   cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
   cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
+  cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
   cout << "Elapsed time since start: " << fixed << time << " s" << endl;
 
   cout << endl;
@@ -396,6 +430,8 @@ int main (int argc, char* argv[]) {
     delete threads[i];
     delete endpoints[i];
   }
+
+  delete testCase;
 
   TRIAGENS_REST_SHUTDOWN;
 
