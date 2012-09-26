@@ -3,6 +3,7 @@
 require 'rubygems'
 require 'httparty'
 require 'json'
+require 'json'
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 
@@ -64,7 +65,7 @@ class ArangoDB
 
   def self.log_get (output, url, args = {})
     doc = self.get(url, args);
-    self.log(:method => :get, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    self.log(:method => :get, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
     return doc
   end
 
@@ -74,7 +75,7 @@ class ArangoDB
 
   def self.log_head (output, url, args = {})
     doc = self.head(url, args);
-    self.log(:method => :head, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    self.log(:method => :head, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
     return doc
   end
 
@@ -84,7 +85,7 @@ class ArangoDB
 
   def self.log_post (output, url, args = {})
     doc = self.post(url, args);
-    self.log(:method => :post, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    self.log(:method => :post, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
     return doc
   end
 
@@ -94,7 +95,7 @@ class ArangoDB
 
   def self.log_put (output, url, args = {})
     doc = self.put(url, args);
-    self.log(:method => :put, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    self.log(:method => :put, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
     return doc
   end
 
@@ -104,7 +105,7 @@ class ArangoDB
 
   def self.log_delete (output, url, args = {})
     doc = self.delete(url, args);
-    self.log(:method => :delete, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    self.log(:method => :delete, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
     return doc
   end
 
@@ -114,7 +115,7 @@ class ArangoDB
 
   def self.log_patch (output, url, args = {})
     doc = self.patch(url, args);
-    self.log(:method => :patch, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    self.log(:method => :patch, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output, :format => args[:format]);
     return doc
   end
 
@@ -203,8 +204,15 @@ class ArangoDB
     end
 
     if response != nil
-      logfile.puts
-      logfile.puts JSON.pretty_generate(response)
+      format = "json"
+      if args[:format] != nil
+        format = args[:format]
+      end
+
+      if format == "json" 
+        logfile.puts
+        logfile.puts JSON.pretty_generate(response)
+      end
     end
 
     logfile.close

@@ -23,7 +23,7 @@ class ArangoMultipartBody
 ## get the message boundary
 ################################################################################
 
-  def self.getBoundary ()
+  def getBoundary
     return @boundary
   end
 
@@ -31,7 +31,7 @@ class ArangoMultipartBody
 ## add a part to a multipart message body
 ################################################################################
 
-  def self.addPart (method, url, headers, body)
+  def addPart (method, url, headers, body)
     part = { :method => method, :url => url, :headers => headers, :body => body }
     @parts.push(part)
   end
@@ -40,20 +40,24 @@ class ArangoMultipartBody
 ## get the string representation of a multipart message body
 ################################################################################
 
-  def self.toString ()
+  def to_s 
     body = ""
     @parts.each do|part|
+      # boundary
       body += "--" + @boundary + "\r\n"
+      # header
+      body += "Content-Type: application/x-arango-batchpart\r\n\r\n";
+
+      # inner header
       body += part[:method] + " " + part[:url] + " HTTP/1.1\r\n"
 
       part[:headers].each do|key, value|
         body += key + ": " + value + "\r\n"
       end
+      # body
       body += part[:body] + "\r\n"
     end 
     body += "--" + @boundary + "--\r\n"
-
-    return body
   end
 
 end
