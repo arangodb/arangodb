@@ -134,7 +134,7 @@ unittests-make:
 
 .PHONY: unittests-boost
 
-if ENABLE_BOOST_TEST
+if ENABLE_MAINTAINER_MODE
 
 unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
@@ -158,6 +158,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Philadelphia/json-test.cpp \
 	UnitTests/Philadelphia/json-utilities-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
+	UnitTests/Philadelphia/mersenne-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
 	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
@@ -187,7 +188,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "enable unit-testing with 'configure --with-boost-test'"
+	@echo "enable unit-testing with 'configure --enable-maintainer-mode'"
 
 	@echo
 endif

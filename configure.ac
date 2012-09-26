@@ -15,32 +15,9 @@ dnl ----------------------------------------------------------------------------
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
-dnl ----------------------------------------------------------------------------
-dnl ERRORS
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(errors-dependency,
-  AS_HELP_STRING([--enable-errors-dependency], [generate dependencies for error files]),
-  [tr_ERRORS_DEPENDENCY="${enableval:-yes}"],
-  [tr_ERRORS_DEPENDENCY=no]
-)
-
-AM_CONDITIONAL(ENABLE_ERRORS_DEPENDENCY, test "x$tr_ERRORS_DEPENDENCY" = xyes)
-
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================
-
-dnl ----------------------------------------------------------------------------
-dnl BOOST TEST
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_WITH([boost-test],
-  AS_HELP_STRING([--with-boost-test], [use boost unit test framework]),
-  [tr_BOOST_TEST=yes],
-  [tr_BOOST_TEST=no])
-
-AM_CONDITIONAL(ENABLE_BOOST_TEST, test "x$tr_BOOST_TEST" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl LIBEV
@@ -127,8 +104,7 @@ m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])
 m4_include([m4/configure.coverage])
-m4_include([m4/configure.flex])
-m4_include([m4/configure.bison])
+m4_include([m4/configure.maintainer])
 
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
