@@ -54,6 +54,12 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
   char * utf8_dest = NULL;
   *outLength = 0;
   
+  if (inLength == 0) {
+    utf8_dest = TRI_Allocate(zone, sizeof(char), false);
+    utf8_dest[0] = '\0';
+    return utf8_dest;
+  }
+  
   // 1. convert utf8 string to utf16
   
   // calculate utf16 string length
@@ -96,8 +102,15 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   int32_t utf16_dest_length = 0;
   char * utf8_dest = NULL;
   int32_t out_length = 0;
-  const UNormalizer2 * norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
   *outLength = 0;
+  
+  if (inLength == 0) {
+    utf8_dest = TRI_Allocate(zone, sizeof(char), false);
+    utf8_dest[0] = '\0';
+    return utf8_dest;
+  }
+  
+  const UNormalizer2 * norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
 
   if (status != U_ZERO_ERROR) {
     printf("error in unorm2_getInstance: %s\n", u_errorName(status));
