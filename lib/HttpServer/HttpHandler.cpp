@@ -156,6 +156,7 @@ void HttpHandler::removePreviousResponse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) {
+  // avoid having multiple responses. this would be a memleak
   removePreviousResponse();
 
   if (_isSubPart) {
