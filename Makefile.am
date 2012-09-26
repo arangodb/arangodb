@@ -277,7 +277,7 @@ include UnitTests/Makefile.files
 
 .PHONY: errorfiles
 
-if ENABLE_ERRORS_DEPENDENCY
+if ENABLE_MAINTAINER_MODE
 
 errorfiles: lib/BasicsC/errors.dat
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
@@ -361,7 +361,7 @@ endif
 ### @brief generate all flex files
 ################################################################################
 
-if ENABLE_FLEX
+if ENABLE_MAINTAINER_MODE
 include lib/Makefile.flex
 endif
 
@@ -369,7 +369,7 @@ endif
 ### @brief generate all bison files
 ################################################################################
 
-if ENABLE_BISON
+if ENABLE_MAINTAINER_MODE
 include lib/Makefile.bison
 endif
 

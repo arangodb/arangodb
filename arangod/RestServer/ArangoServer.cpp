@@ -81,10 +81,6 @@
 #include "MRuby/MRLoader.h"
 #endif
 
-#ifdef TRI_ENABLE_ZEROMQ
-#include "ZeroMQ/ApplicationZeroMQ.h"
-#endif
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -286,17 +282,6 @@ void ArangoServer::buildApplicationServer () {
     ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
   ;
-
-#endif
-
-  // .............................................................................
-  // ZeroMQ
-  // .............................................................................
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-  _applicationZeroMQ = new ApplicationZeroMQ(_applicationServer);
-  _applicationServer->addFeature(_applicationZeroMQ);
 
 #endif
 
@@ -576,35 +561,6 @@ int ArangoServer::startupServer () {
                                    (void*) &httpOptions);
   
 
-  // .............................................................................
-  // create a http handler factory for zeromq
-  // .............................................................................
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t zeromqOptions;
-  zeromqOptions._vocbase = _vocbase;
-  zeromqOptions._queue = "CLIENT";
-
-  // only construct factory if ZeroMQ is active
-  if (_applicationZeroMQ->isActive()) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", TRI_CheckAuthenticationAuthInfo);
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-
-    DefineAdminHandlers(factory, _applicationAdminServer, _vocbase);
-
-    // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &httpOptions);
-
-    _applicationZeroMQ->setHttpHandlerFactory(factory);
-  }
-
-#endif
-  
   // .............................................................................
   // start the statistics collector thread
   // .............................................................................

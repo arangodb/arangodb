@@ -375,10 +375,6 @@ bool ApplicationServer::parse (int argc,
   // parse phase 2
   // .............................................................................
 
-  if (! _options.has("random.no-seed")) {
-    Random::seed();
-  }
-
   try {
     switch (_randomGenerator) {
       case 1: Random::selectVersion(Random::RAND_MERSENNE);  break;

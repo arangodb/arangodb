@@ -1,22 +1,22 @@
 dnl -*- mode: Autoconf; -*-
 
 dnl ----------------------------------------------------------------------------
-dnl --SECTION--                                                            BISON
+dnl --SECTION--                                                  MAINTAINER MODE
 dnl ----------------------------------------------------------------------------
 
-AC_ARG_ENABLE(bison,
-  AS_HELP_STRING([--enable-bison], [enable BISON support (default: no)]),
-  [tr_BISON="${enableval:-yes}"],
-  [tr_BISON=no]
+AC_ARG_ENABLE(maintainer-mode,
+  AS_HELP_STRING([--enable-maintainer-mode], [enable maintainer mode (default: no)]),
+  [tr_MAINTAINER_MODE="${enableval:-yes}"],
+  [tr_MAINTAINER_MODE=no]
 )
 
-AM_CONDITIONAL(ENABLE_BISON, test "x$tr_BISON" = xyes)
+AM_CONDITIONAL(ENABLE_MAINTAINER_MODE, test "x$tr_MAINTAINER_MODE" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl check for bison
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_BISON" = xyes;  then
+if test "x$tr_MAINTAINER_MODE" = xyes;  then
   AC_MSG_NOTICE([................................................................................])
   AC_MSG_NOTICE([CHECKING BISON])
   AC_MSG_NOTICE([................................................................................])
@@ -45,11 +45,47 @@ if test "x$tr_BISON" = xyes;  then
   TRI_BISON_VERSION=`$BISON --version | head -1`
   AC_MSG_RESULT([$TRI_BISON_VERSION])
 
-  AM_CONDITIONAL(ENABLE_BISON, test "x$tr_bison_usable" = xyes)
-
   BASIC_INFO="$BASIC_INFO|BISON: ${TRI_BISON_VERSION}"
 else
   BASIC_INFO="$BASIC_INFO|BISON: disabled"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl check for flex
+dnl ----------------------------------------------------------------------------
+
+if test "x$tr_MAINTAINER_MODE" = xyes;  then
+  AC_MSG_NOTICE([................................................................................])
+  AC_MSG_NOTICE([CHECKING FLEX])
+  AC_MSG_NOTICE([................................................................................])
+
+  AC_PROG_LEX
+
+  tr_flex_usable=no
+
+  if test "x$LEX" != x -a "x$LEX" != "x:";  then
+    AC_MSG_CHECKING([if flex supports required features])
+
+    [tr_flex_version=`$LEX --version | sed -e 's:^[^0-9]*::' | awk -F. '{print $1 * 10000 + $2 * 100 + $3}'`]
+
+    if test "$tr_flex_version" -ge 20535;  then
+      tr_flex_usable=yes
+    fi
+
+    AC_MSG_RESULT($tr_flex_usable)
+  fi
+
+  if test "x$tr_flex_usable" != "xyes"; then
+    AC_MSG_ERROR([Please install flex version 2.5.35 or higher from http://ftp.gnu.org/gnu/flex/])
+  fi
+
+  AC_MSG_CHECKING([FLEX version])
+  TRI_FLEX_VERSION=`$LEX --version`
+  AC_MSG_RESULT([$TRI_FLEX_VERSION])
+
+  BASIC_INFO="$BASIC_INFO|FLEX: ${TRI_FLEX_VERSION}"
+else
+  BASIC_INFO="$BASIC_INFO|FLEX: disabled"
 fi
 
 dnl ----------------------------------------------------------------------------

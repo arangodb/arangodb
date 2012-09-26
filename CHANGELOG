@@ -1,6 +1,14 @@
 not released yet
 ----------------
 
+* introduced new configure option "--enable-maintainer-mode" for
+  ArangoDB maintainers. this option replaces the previous compile switches
+  --with-boost-test, --enable-bison, --enable-flex and --enable-errors-dependency
+  the individual configure options have been removed. --enable-maintainer-mode
+  turns them all on.
+
+* removed potentially unused configure option --enable-memfail
+
 * fixed issue #197: HTML web interface calls /_admin/user-manager/session
 
 * fixed issue #195: VERSION file in database directory
