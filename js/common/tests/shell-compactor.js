@@ -49,7 +49,7 @@ function CompactionSuite () {
       var maxWait;
       var waited;
       var cn = "example";
-      var n = 1500;
+      var n = 1000;
       var payload = "the quick brown fox jumped over the lazy dog. the quick dog jumped over the lazy brown fox";
 
       for (var i = 0; i < 5; ++i) {
@@ -73,6 +73,7 @@ function CompactionSuite () {
 
       c1.truncate();
       c1.unload();
+      internal.wait(2);
 
       c1 = null;
       
