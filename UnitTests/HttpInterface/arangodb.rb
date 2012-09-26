@@ -109,6 +109,16 @@ class ArangoDB
   end
 
 ################################################################################
+## issues a patch
+################################################################################
+
+  def self.log_patch (output, url, args = {})
+    doc = self.patch(url, args);
+    self.log(:method => :patch, :url => url, :body => args[:body], :headers => args[:headers], :result => doc, :output => output);
+    return doc
+  end
+
+################################################################################
 ## generate log file
 ################################################################################
 
@@ -153,21 +163,27 @@ class ArangoDB
     elsif method == :post
       if body == nil
 	logfile.puts "> curl -X POST #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts
       else
 	logfile.puts "> curl --data @- -X POST #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts body
-	logfile.puts
       end
+      logfile.puts
     elsif method == :put
       if body == nil
 	logfile.puts "> curl -X PUT #{h_option}--dump - http://localhost:8529#{url}"
-	logfile.puts
       else
 	logfile.puts "> curl --data @- -X PUT #{h_option}--dump - http://localhost:8529#{url}"
 	logfile.puts body
-	logfile.puts
       end
+      logfile.puts
+    elsif method == :patch
+      if body == nil
+	logfile.puts "> curl -X PATCH #{h_option}--dump - http://localhost:8529#{url}"
+      else
+	logfile.puts "> curl --data @- -X PATCH #{h_option}--dump - http://localhost:8529#{url}"
+	logfile.puts body
+      end
+      logfile.puts
     else
       logfile.puts "MISSING"
     end
