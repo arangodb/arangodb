@@ -83,10 +83,10 @@ function CompactionSuite () {
 
       // set max wait time
       if (VALGRIND) {
-        maxWait = 900;
+        maxWait = 750;
       }
       else {
-        maxWait = 90;
+        maxWait = 75;
       }
 
       waited = 0;
