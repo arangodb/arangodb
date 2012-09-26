@@ -102,6 +102,7 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   int32_t utf16_dest_length = 0;
   char * utf8_dest = NULL;
   int32_t out_length = 0;
+  const UNormalizer2 *norm2;
   *outLength = 0;
   
   if (inLength == 0) {
@@ -110,7 +111,7 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
     return utf8_dest;
   }
   
-  const UNormalizer2 * norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
+  norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
 
   if (status != U_ZERO_ERROR) {
     printf("error in unorm2_getInstance: %s\n", u_errorName(status));
