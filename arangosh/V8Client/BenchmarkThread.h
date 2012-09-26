@@ -35,6 +35,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Rest/HttpResponsePart.h"
 #include "SimpleHttpClient/SimpleClient.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -90,6 +91,8 @@ namespace triagens {
             _offset(0),
             _counter(0),
             _time(0.0) {
+            
+          _errorHeader = StringUtils::tolower(HttpResponsePart::getErrorHeader());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,11 +222,11 @@ namespace triagens {
             for (map<string, string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
               batchPayload.appendText((*it).first + ": " + (*it).second + "\r\n");
             }
-            batchPayload.appendText("\r\n");
+            batchPayload.appendText("\r\n", 2);
             
             // body
             batchPayload.appendText(payload, payloadLength);
-            batchPayload.appendText("\r\n");
+            batchPayload.appendText("\r\n", 2);
           }
 
           // end of MIME
@@ -242,12 +245,21 @@ namespace triagens {
           _time += ((double) timer.time()) / 1000000.0;
 
           if (result == 0) {
-            _operationsCounter->incFailures();
+            _operationsCounter->incFailures(numOperations);
             return;
           }
 
           if (result->getHttpReturnCode() >= 400) { 
-            _operationsCounter->incFailures();
+            _operationsCounter->incFailures(numOperations);
+          }
+          else {
+            const std::map<string, string>& headers = result->getHeaderFields();
+            map<string, string>::const_iterator it = headers.find(_errorHeader);
+
+            if (it != headers.end()) {
+              size_t errorCount = (size_t) StringUtils::uint32((*it).second);
+              _operationsCounter->incFailures(errorCount);
+            }
           }
           delete result;
         }
@@ -272,12 +284,12 @@ namespace triagens {
           _time += ((double) timer.time()) / 1000000.0;
 
           if (result == 0) {
-            _operationsCounter->incFailures();
+            _operationsCounter->incFailures(1);
             return;
           }
 
           if (result->getHttpReturnCode() >= 400) { 
-            _operationsCounter->incFailures();
+            _operationsCounter->incFailures(1);
           }
           delete result;
         }
@@ -399,6 +411,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _time;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lower-case error header we look for
+////////////////////////////////////////////////////////////////////////////////
+
+        string _errorHeader;
 
     };
   }
