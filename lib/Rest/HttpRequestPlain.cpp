@@ -382,14 +382,16 @@ int HttpRequestPlain::setBody (char const* newBody, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief set a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpRequestPlain::setBodyReference (char* newBody, size_t length) {
-  _body = newBody;
-  _contentLength = _bodySize = length;
-
-  return TRI_ERROR_NO_ERROR;
+void HttpRequestPlain::setHeader (char const* key, size_t keyLength, char const* value) {
+  if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
+    _contentLength = TRI_UInt64String(value);
+  }
+  else {
+    _headers.insert(key, keyLength, value);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -877,19 +879,6 @@ void HttpRequestPlain::setValues (char* buffer, char* end) {
     }
 
     _values.insert(keyBegin, key - keyBegin, valueBegin);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set a header field
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequestPlain::setHeader (char const* key, size_t keyLength, char const* value) {
-  if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
-    _contentLength = TRI_UInt64String(value);
-  }
-  else {
-    _headers.insert(key, keyLength, value);
   }
 }
 
