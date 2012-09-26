@@ -115,6 +115,9 @@ Handler::status_e RestBatchHandler::execute() {
     return Handler::HANDLER_FAILED;
   }
 
+  // get authorization header. we will inject this into the subparts
+  string authorization = _request->header("authorization");
+
   // create the response 
   _response = createResponse(HttpResponse::OK);
   _response->setContentType(_request->header("content-type"));
@@ -126,6 +129,7 @@ Handler::status_e RestBatchHandler::execute() {
   helper.message = &message;
   helper.searchStart = (char*) message.messageStart;
 
+  // iterate over all parts of the multipart message
   while (true) {
     // get the next part from the multipart message
     if (! extractPart(&helper)) {
@@ -165,6 +169,12 @@ Handler::status_e RestBatchHandler::execute() {
       LOGGER_TRACE << "part body is " << string(bodyStart, bodyLength);
       request->setBody(bodyStart, bodyLength);
     }
+
+    if (authorization.size()) {
+      // inject Authorization header of multipart message into part message
+      request->setHeader("authorization", 13, authorization.c_str());
+    }
+
     
     HttpHandler* handler = _server->createHandler(request, true);
     if (! handler) {
