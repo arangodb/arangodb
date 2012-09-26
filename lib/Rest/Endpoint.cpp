@@ -27,11 +27,7 @@
 
 #include "Endpoint.h"
 
-#include <netinet/in.h>
-#include <sys/file.h>
-
 #include "BasicsC/socket-utils.h"
-
 #include "Basics/StringUtils.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
@@ -81,7 +77,7 @@ Endpoint::Endpoint (const Endpoint::Type type,
                     const Endpoint::DomainType domainType, 
                     const Endpoint::Protocol protocol,
                     const Endpoint::Encryption encryption,
-                    const string& specification) :
+                    const std::string& specification) :
   _connected(false),
   _socket(0),
   _type(type),
@@ -115,7 +111,7 @@ Endpoint::~Endpoint () {
 /// @brief create a client endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::clientFactory (const string& specification) {
+Endpoint* Endpoint::clientFactory (const std::string& specification) {
   return Endpoint::factory(ENDPOINT_CLIENT, specification);
 }
 
@@ -123,7 +119,7 @@ Endpoint* Endpoint::clientFactory (const string& specification) {
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory (const string& specification) {
+Endpoint* Endpoint::serverFactory (const std::string& specification) {
   return Endpoint::factory(ENDPOINT_SERVER, specification);
 }
 
@@ -132,7 +128,7 @@ Endpoint* Endpoint::serverFactory (const string& specification) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::factory (const Endpoint::Type type, 
-                             const string& specification) {
+                             const std::string& specification) {
   if (specification.size() < 7) {
     return 0;
   }
@@ -477,8 +473,8 @@ EndpointIp::EndpointIp (const Endpoint::Type type,
                         const Endpoint::DomainType domainType, 
                         const Endpoint::Protocol protocol,
                         const Endpoint::Encryption encryption,
-                        string const& specification, 
-                        string const& host, 
+                        const std::string& specification, 
+                        const std::string& host, 
                         const uint16_t port) :
     Endpoint(type, domainType, protocol, encryption, specification), _host(host), _port(port) {
   

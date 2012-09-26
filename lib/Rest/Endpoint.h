@@ -31,16 +31,22 @@
 #include <Basics/Common.h>
 #include <Basics/StringUtils.h>
 
+
+
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
-#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <sys/un.h>
-#endif 
-
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/file.h>
+#endif 
+
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#endif
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          Endpoint
@@ -129,7 +135,7 @@ namespace triagens {
                   const DomainType, 
                   const Protocol, 
                   const Encryption,
-                  const string&);
+                  const std::string&);
 
       public:
 
@@ -158,20 +164,20 @@ namespace triagens {
 /// @brief creates a server endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Endpoint* serverFactory (const string&);
+        static Endpoint* serverFactory (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a client endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Endpoint* clientFactory (const string&);
+        static Endpoint* clientFactory (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
         static Endpoint* factory (const Type type, 
-                                  const string&);
+                                  const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two endpoints
@@ -259,7 +265,7 @@ namespace triagens {
 /// @brief get the original endpoint specification
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getSpecification () const {
+        std::string getSpecification () const {
           return _specification;
         }
 
@@ -279,13 +285,13 @@ namespace triagens {
 /// @brief get host name
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual string getHost () const = 0;
+        virtual std::string getHost () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get address
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual string getHostString () const = 0;
+        virtual std::string getHostString () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -342,7 +348,7 @@ namespace triagens {
 /// @brief original endpoint specification
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _specification;
+        std::string _specification;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
