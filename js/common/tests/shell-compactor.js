@@ -49,8 +49,8 @@ function CompactionSuite () {
       var maxWait;
       var waited;
       var cn = "example";
-      var n = 750;
-      var payload = "the quick brown fox jumped over the lazy dog. the quick dog jumped over the lazy brown fox";
+      var n = 500;
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
 
       for (var i = 0; i < 5; ++i) {
         payload += payload;
@@ -62,6 +62,9 @@ function CompactionSuite () {
 
       for (var i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
+        if ((i > 0) && (i % 100 == 0)) {
+          internal.wait(2);
+        }
       }
 
       var fig = c1.figures();
