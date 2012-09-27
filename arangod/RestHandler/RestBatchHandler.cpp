@@ -30,7 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
-#include "Rest/HttpRequestPlain.h"
+#include "Rest/HttpRequest.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -165,7 +165,7 @@ Handler::status_e RestBatchHandler::execute() {
    
     // set up request object for the part
     LOGGER_TRACE << "part header is " << string(headerStart, headerLength); 
-    HttpRequestPlain* request = new HttpRequestPlain(headerStart, headerLength);
+    HttpRequest* request = new HttpRequest(headerStart, headerLength);
     if (bodyLength > 0) {
       LOGGER_TRACE << "part body is " << string(bodyStart, bodyLength);
       request->setBody(bodyStart, bodyLength);

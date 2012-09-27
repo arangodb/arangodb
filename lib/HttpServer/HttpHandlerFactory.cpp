@@ -34,7 +34,7 @@
 #include "BasicsC/strings.h"
 #include "HttpServer/HttpHandler.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequestPlain.h"
+#include "Rest/HttpRequest.h"
 #include "Rest/MaintenanceCallback.h"
 #include "Rest/SslInterface.h"
 
@@ -221,7 +221,7 @@ HttpRequest* HttpHandlerFactory::createRequest (char const* ptr, size_t length) 
   }
 #endif
 
-  return new HttpRequestPlain(ptr, length);
+  return new HttpRequest(ptr, length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
