@@ -32,7 +32,6 @@
 #include "HttpServer/HttpsServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Rest/HttpResponsePart.h"
 #include "GeneralServer/GeneralServerJob.h"
 
 using namespace triagens::rest;
@@ -53,8 +52,7 @@ using namespace triagens::rest;
 HttpHandler::HttpHandler (HttpRequest* request)
   : _request(request),
     _response(0),
-    _server(0),
-    _isSubPart(false) {
+    _server(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +86,7 @@ HttpHandler::~HttpHandler () {
 /// @brief returns the response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::getResponse () {
+HttpResponse* HttpHandler::getResponse () const {
   return _response;
 }
 
@@ -159,12 +157,6 @@ HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) 
   // avoid having multiple responses. this would be a memleak
   removePreviousResponse();
 
-  if (_isSubPart) {
-    // if the handler is invoked as a sub handler in a multipart request, we
-    // return an instance of HttpResponsePart
-    return new HttpResponsePart(code);
-  }
- 
   // otherwise, we return a "standard" (standalone) Http response
   return new HttpResponse(code);
 }

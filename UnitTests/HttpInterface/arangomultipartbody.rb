@@ -134,6 +134,9 @@ class ArangoMultipartBody
       part[:headers].each do|key, value|
         body += key + ": " + value + "\r\n"
       end
+      # header/body separator
+      body += "\r\n"
+
       # body
       body += part[:body] + "\r\n"
     end 

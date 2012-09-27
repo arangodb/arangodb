@@ -35,7 +35,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Rest/HttpResponsePart.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleClient.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -92,7 +92,7 @@ namespace triagens {
             _counter(0),
             _time(0.0) {
             
-          _errorHeader = StringUtils::tolower(HttpResponsePart::getErrorHeader());
+          _errorHeader = StringUtils::tolower(HttpResponse::getBatchErrorHeader());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
