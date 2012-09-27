@@ -16,8 +16,14 @@ class ArangoDB
     base_uri "http://#{$address}"
   end 
 
+  # set HTTP basic authorization
   basic_auth ENV['ARANGO_USER'], ENV['ARANGO_PASSWORD']
+
+  # expect json as output/response format
   format :json
+
+  # set timeout to 30 seconds
+  default_timeout 30 
 
 ################################################################################
 ## create a collection
