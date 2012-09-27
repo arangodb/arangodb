@@ -1525,8 +1525,6 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* parameter) {
-  v8::HandleScope scope;
-
   LOG_TRACE("weak-callback for general cursor called");
 
   TRI_vocbase_t* vocbase = GetContextVocBase();

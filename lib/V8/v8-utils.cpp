@@ -107,10 +107,10 @@ wd_key_pair_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak dictionary callback
+/// @brief weak dictionary entry weak callback
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakDictionaryEntryCallback (v8::Persistent<v8::Value> object, void* parameter) {
   typedef Dictionary< v8::Persistent<v8::Value>* > WD;
 
   WD* dictionary;
@@ -119,7 +119,7 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
   dictionary = (WD*) ((wd_key_pair_t*) parameter)->_dictionary;
   key = ((wd_key_pair_t*) parameter)->_key;
 
-  LOG_TRACE("weak-callback for dictionary called");
+  LOG_TRACE("weak-callback for dictionary entry called");
 
   // dispose and clear the persistent handle
   WD::KeyValue const* kv = dictionary->lookup(key);
@@ -138,7 +138,43 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief invocation callback
+/// @brief weak dictionary weak callback
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  WD* dictionary;
+
+  LOG_TRACE("weak-callback for dictionary called");
+
+  dictionary = (WD*) parameter;
+  if (dictionary == 0) {
+    return;
+  }
+
+  // iterate over dictionary entries and delete them
+  WD::KeyValue const* begin;
+  WD::KeyValue const* end;
+  WD::KeyValue const* ptr;
+
+  dictionary->range(begin, end);
+
+  for (ptr = begin;  ptr < end;  ++ptr) {
+    if (ptr->_key != 0) {
+      ptr->_value->Dispose();
+      ptr->_value->Clear();
+
+      delete ptr->_value;
+    }
+  }
+
+  // delete the dictionary itself
+  delete dictionary;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak dictionary invocation callback
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments const& args) {
@@ -152,10 +188,12 @@ static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments con
   }
 
   WD* dictionary = new WD(MIN_SIZE);
-  v8::Handle<v8::Value> external = v8::Persistent<v8::Value>::New(v8::External::New(dictionary));
+  v8::Persistent<v8::Value> external = v8::Persistent<v8::Value>::New(v8::External::New(dictionary));
 
   self->SetInternalField(SLOT_CLASS, external);
   self->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_WEAK_DIRECTORY_TYPE));
+  
+  external.MakeWeak(dictionary, WeakDictionaryCallback);
 
   return self;
 }
@@ -329,7 +367,7 @@ static v8::Handle<v8::Value> MapSetWeakDictionary (v8::Local<v8::String> name,
   p->_dictionary = dictionary;
   p->_key = ckey;
 
-  persistent->MakeWeak(p, WeakDictionaryCallback);
+  persistent->MakeWeak(p, WeakDictionaryEntryCallback);
 
   return scope.Close(value);
 }
