@@ -88,10 +88,14 @@ describe ArangoDB do
 ################################################################################
 
     context "get requests" do
-      before do
-      end
+      it "checks a non-existing URL" do
+	cmd = "/xxxx/yyyy"
+        doc = ArangoDB.log_get("#{prefix}-get-non-existing-url", cmd)
 
-      after do
+	doc.code.should eq(501)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(501)
       end
 
       it "checks whether GET returns a body" do
