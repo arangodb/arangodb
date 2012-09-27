@@ -409,20 +409,28 @@ int main (int argc, char* argv[]) {
     requestTime += threads[i]->getTime();
   }
 
-  cout << endl;
+  size_t failures = operationsCounter.failures();
 
-  cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
-  cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
-  cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
-  cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
-  cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
-  cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
-  cout << "Elapsed time since start: " << fixed << time << " s" << endl;
+  if (! BaseClient.quiet()) {
+    cout << endl;
+    cout << "Total number of operations: " << Operations << ", batch size: " << BatchSize << ", concurrency level (threads): " << Concurrency << endl;
+    cout << "Total request/response duration (sum of all threads): " << fixed << requestTime << " s" << endl;
+    cout << "Request/response duration (per thread): " << fixed << (requestTime / (double) Concurrency) << " s" << endl;
+    cout << "Time needed per operation: " << fixed << (time / Operations) << " s" << endl;
+    cout << "Time needed per operation per thread: " << fixed << (time / (double) Operations * (double) Concurrency) << " s" << endl;
+    cout << "Operations per second rate: " << fixed << ((double) Operations / time) << endl;
+    cout << "Elapsed time since start: " << fixed << time << " s" << endl;
 
-  cout << endl;
+    cout << endl;
 
-  if (operationsCounter.failures() > 0) {
-    cout << "WARNING: " << operationsCounter.failures() << " request(s) failed!!" << endl << endl;
+    if (failures > 0) {
+      cerr << "WARNING: " << failures << " request(s) failed!!" << endl << endl;
+    }
+  }
+  else {
+    if (failures > 0) {
+      cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
+    }
   }
 
   for (int i = 0; i < Concurrency; ++i) {
@@ -435,7 +443,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  return EXIT_SUCCESS;
+  return (failures == 0) ? EXIT_SUCCESS : 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
