@@ -173,6 +173,8 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
   {
     MUTEX_LOCKER(writeBufferLock);
 
+    // size_t is unsigned, should never get < 0
+    assert(_writeBuffer->length() >= writeLength);
     size_t len = _writeBuffer->length() - writeLength;
 
     int nr = 0;
