@@ -95,6 +95,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _endpoints(),
     _disableAuthentication(false),
     _keepAliveTimeout(300.0),
+    _backlogSize(10),
     _httpsKeyfile(),
     _cafile(),
     _sslProtocol(HttpsServer::TLS_V1),
@@ -215,6 +216,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
+    ("server.backlog-size", &_backlogSize, "listen backlog size")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
@@ -239,6 +241,13 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     return false;
   }
 
+  if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
+    LOGGER_FATAL << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN;
+    cerr << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN << "\n";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+
   if (_httpPort != "") {
     // issue #175: add hidden option --server.http-port for downwards-compatibility
     string httpEndpoint("tcp://" + _httpPort);
@@ -256,7 +265,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    Endpoint* endpoint = Endpoint::serverFactory(*i);
+    Endpoint* endpoint = Endpoint::serverFactory(*i, _backlogSize);
   
     if (endpoint == 0) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";

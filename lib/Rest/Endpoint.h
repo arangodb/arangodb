@@ -135,7 +135,8 @@ namespace triagens {
                   const DomainType, 
                   const Protocol, 
                   const Encryption,
-                  const std::string&);
+                  const std::string&,
+                  int);
 
       public:
 
@@ -164,7 +165,7 @@ namespace triagens {
 /// @brief creates a server endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Endpoint* serverFactory (const std::string&);
+        static Endpoint* serverFactory (const std::string&, int = 10);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a client endpoint from a string value
@@ -177,7 +178,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static Endpoint* factory (const Type type, 
-                                  const std::string&);
+                                  const std::string&,
+                                  int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two endpoints
@@ -351,6 +353,12 @@ namespace triagens {
         std::string _specification;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief listen backlog size
+////////////////////////////////////////////////////////////////////////////////
+
+        int _listenBacklog;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -382,6 +390,7 @@ namespace triagens {
         EndpointUnix (const Type, 
                       const Protocol,
                       string const&, 
+                      int,
                       string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,6 +519,7 @@ namespace triagens {
                     const Protocol,
                     const Encryption,
                     string const&, 
+                    int,
                     string const&, 
                     const uint16_t);
 
@@ -685,6 +695,7 @@ namespace triagens {
                       const Protocol,
                       const Encryption,
                       string const&, 
+                      int,
                       string const&, 
                       const uint16_t);
 
@@ -748,6 +759,7 @@ namespace triagens {
                       const Protocol, 
                       const Encryption,
                       string const&, 
+                      int,
                       string const&, 
                       const uint16_t);
 

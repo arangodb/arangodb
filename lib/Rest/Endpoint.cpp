@@ -77,14 +77,16 @@ Endpoint::Endpoint (const Endpoint::Type type,
                     const Endpoint::DomainType domainType, 
                     const Endpoint::Protocol protocol,
                     const Endpoint::Encryption encryption,
-                    const std::string& specification) :
+                    const std::string& specification,
+                    int listenBacklog) :
   _connected(false),
   _socket(0),
   _type(type),
   _domainType(domainType),
   _protocol(protocol),
   _encryption(encryption),
-  _specification(specification) {
+  _specification(specification),
+  _listenBacklog(listenBacklog) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,15 +114,15 @@ Endpoint::~Endpoint () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::clientFactory (const std::string& specification) {
-  return Endpoint::factory(ENDPOINT_CLIENT, specification);
+  return Endpoint::factory(ENDPOINT_CLIENT, specification, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory (const std::string& specification) {
-  return Endpoint::factory(ENDPOINT_SERVER, specification);
+Endpoint* Endpoint::serverFactory (const std::string& specification, int listenBacklog) {
+  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,9 +130,15 @@ Endpoint* Endpoint::serverFactory (const std::string& specification) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::factory (const Endpoint::Type type, 
-                             const std::string& specification) {
+                             const std::string& specification,
+                             int listenBacklog) {
   if (specification.size() < 7) {
     return 0;
+  }
+
+  if (listenBacklog > 0 && type == ENDPOINT_CLIENT) {
+    // backlog is only allowed for server endpoints
+    assert(false);
   }
 
   string copy = specification;
@@ -157,14 +165,16 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
   
   Encryption encryption = ENCRYPTION_NONE;
   string domainType = StringUtils::tolower(copy.substr(0, 7));
-  if (StringUtils::isPrefix(domainType, "unix://")) {
-    // unix socket
-    return new EndpointUnix(type, protocol, specification, copy.substr(strlen("unix://")));
-  }
-  else if (StringUtils::isPrefix(domainType, "ssl://")) {
+  if (StringUtils::isPrefix(domainType, "ssl://")) {
     // ssl 
     encryption = ENCRYPTION_SSL;
   }
+#if TRI_HAVE_LINUX_SOCKETS  
+  else if (StringUtils::isPrefix(domainType, "unix://")) {
+    // unix socket
+    return new EndpointUnix(type, protocol, specification, listenBacklog, copy.substr(strlen("unix://")));
+  }
+#endif  
   else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
     return 0;
@@ -180,14 +190,14 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(0, found + 1), port);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(0, found + 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -201,11 +211,11 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, protocol, encryption, specification, copy.substr(0, found), port);
+    return new EndpointIpV4(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found), port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, protocol, encryption, specification, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, protocol, encryption, specification, listenBacklog, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,8 +302,9 @@ bool Endpoint::setSocketFlags (socket_t _socket) {
 EndpointUnix::EndpointUnix (const Endpoint::Type type, 
                             const Endpoint::Protocol protocol,
                             string const& specification, 
+                            int listenBacklog,
                             string const& path) :
-    Endpoint(type, ENDPOINT_UNIX, protocol, ENCRYPTION_NONE, specification),
+    Endpoint(type, ENDPOINT_UNIX, protocol, ENCRYPTION_NONE, specification, listenBacklog),
     _path(path) {
 }
 
@@ -379,7 +390,8 @@ socket_t EndpointUnix::connect (double connectTimeout, double requestTimeout) {
     }
     
     // listen for new connection, executed for server endpoints only
-    result = listen(listenSocket, 10);
+    LOGGER_TRACE << "using backlog size " << _listenBacklog;
+    result = listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
       close(listenSocket);
@@ -474,9 +486,10 @@ EndpointIp::EndpointIp (const Endpoint::Type type,
                         const Endpoint::Protocol protocol,
                         const Endpoint::Encryption encryption,
                         const std::string& specification, 
+                        int listenBacklog,
                         const std::string& host, 
                         const uint16_t port) :
-    Endpoint(type, domainType, protocol, encryption, specification), _host(host), _port(port) {
+    Endpoint(type, domainType, protocol, encryption, specification, listenBacklog), _host(host), _port(port) {
   
   assert(domainType == ENDPOINT_IPV4 || domainType == ENDPOINT_IPV6);
 }
@@ -539,8 +552,11 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
 
       return 0;
     }
+
     // listen for new connection, executed for server endpoints only
-    result = listen(listenSocket, 10);
+    LOGGER_TRACE << "using backlog size " << _listenBacklog;
+    result = listen(listenSocket, _listenBacklog);
+
     if (result < 0) {
       close(listenSocket);
 
@@ -700,9 +716,10 @@ EndpointIpV4::EndpointIpV4 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol,
                             const Endpoint::Encryption encryption,
                             string const& specification, 
+                            int listenBacklog,
                             string const& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV4, protocol, encryption, specification, host, port) {
+    EndpointIp(type, ENDPOINT_IPV4, protocol, encryption, specification, listenBacklog, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -736,10 +753,11 @@ EndpointIpV4::~EndpointIpV4 () {
 EndpointIpV6::EndpointIpV6 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol, 
                             const Endpoint::Encryption encryption,
-                            string const& specification, 
+                            string const& specification,
+                            int listenBacklog, 
                             string const& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV6, protocol, encryption, specification, host, port) {
+    EndpointIp(type, ENDPOINT_IPV6, protocol, encryption, specification, listenBacklog, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
