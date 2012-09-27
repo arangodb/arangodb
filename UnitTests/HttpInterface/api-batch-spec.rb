@@ -249,10 +249,10 @@ describe ArangoDB do
     end
 
 ################################################################################
-## checking document creation
+## checking batch document creation
 ################################################################################
     
-    context "checking document creation:" do
+    context "checking batch document creation:" do
 
       before do
 	@cn = "UnitTestsBatch"
@@ -266,6 +266,7 @@ describe ArangoDB do
       it "checks batch document creation" do
         cmd = "/_api/batch"
 
+        # create 10 documents
         multipart = ArangoMultipartBody.new()
         multipart.addPart("POST", "/_api/collection", { }, "{\"name\":\"#{@cn}\"}")
         (1..10).each do
@@ -275,6 +276,7 @@ describe ArangoDB do
         doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
 
         doc.code.should eq(200)
+        doc.headers['X-Arango-Errors'].should be_nil
 
         parts = multipart.getParts(multipart.getBoundary, doc.response.body)
 
@@ -288,6 +290,126 @@ describe ArangoDB do
 
           partNumber = partNumber + 1
         end
+
+        # check number of documents in collection	
+        doc = ArangoDB.log_get("#{prefix}-get-collection-figures", "/_api/collection/#{@cn}/figures")
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['count'].should eq(10)
+      end
+    
+    end
+
+################################################################################
+## checking document creation with a few errors
+################################################################################
+    
+    context "checking batch document creation with some errors:" do
+
+      before do
+	@cn = "UnitTestsBatch"
+	@cn2 = "UnitTestsBatch2"
+	ArangoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn2)
+	cid = ArangoDB.create_collection(@cn)
+      end
+      
+      after do
+	@cn = "UnitTestsBatch"
+	@cn2 = "UnitTestsBatch2"
+	ArangoDB.drop_collection(@cn)
+	ArangoDB.drop_collection(@cn2)
+      end
+
+      it "checks batch document creation" do
+        cmd = "/_api/batch"
+
+        n = 10
+        multipart = ArangoMultipartBody.new()
+        (1..n).each do |partNumber|
+          if partNumber % 2 == 1
+            # should succeed
+            multipart.addPart("POST", "/_api/document?collection=#{@cn}", { }, "{\"a\":1,\"b\":2}")
+          else
+            # should fail
+            multipart.addPart("POST", "/_api/document?collection=#{@cn2}", { }, "{\"a\":1,\"b\":2}")
+          end
+        end
+
+        doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+        doc.headers['X-Arango-Errors'].should eq("5")
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        partNumber = 1
+        parts.each do|part|
+          if partNumber % 2 == 1
+            # assert success
+            part[:status].should eq(201)
+          else
+            # assert failure
+            part[:status].should eq(404)
+          end
+          partNumber = partNumber + 1
+        end
+
+        # check number of documents in collection	
+        doc = ArangoDB.log_get("#{prefix}-get-collection-figures", "/_api/collection/#{@cn}/figures")
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['count'].should eq(n / 2)
+      end
+    
+    end
+
+################################################################################
+## checking document creation with errors
+################################################################################
+    
+    context "checking batch document creation with non-existing collection:" do
+
+      before do
+	@cn = "UnitTestsBatch"
+	ArangoDB.drop_collection(@cn)
+      end
+
+      it "checks batch document creation" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        (1..10).each do
+          multipart.addPart("POST", "/_api/document?collection=#{@cn}", { }, "{\"a\":1,\"b\":2}")
+        end
+
+        doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+        doc.headers['X-Arango-Errors'].should eq("10")
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        parts.each do|part|
+          part[:status].should eq(404)
+        end
+
+        # check number of documents in collection	
+        doc = ArangoDB.log_get("#{prefix}-get-collection-figures", "/_api/collection/#{@cn}/figures")
+
+	doc.code.should eq(404)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['code'].should eq(404)
+	doc.parsed_response['errorNum'].should eq(1203)
       end
     
     end
