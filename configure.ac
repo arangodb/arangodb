@@ -48,9 +48,9 @@ dnl ICU
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(all-in-one-icu,
-  AS_HELP_STRING([--enable-all-in-one-icu], [use supplied ICU from 3rdParty directory]),
+  AS_HELP_STRING([--enable-all-in-one-icu], [use supplied ICU from 3rdParty directory (default: no)]),
   [tr_ALL_IN_ONE_ICU="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_ICU=yes]
+  [tr_ALL_IN_ONE_ICU=no]
 )
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ICU, test "x$tr_ALL_IN_ONE_ICU" = xyes)
