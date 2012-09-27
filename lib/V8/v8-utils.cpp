@@ -134,7 +134,7 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
   }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, key);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
+  delete parameter;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
