@@ -126,6 +126,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true) 
         doc.parsed_response['code'].should eq(400)
       end
+
     end
 
 ################################################################################
@@ -180,6 +181,112 @@ describe ArangoDB do
 
         parts.each do|part|
           part[:status].should eq(200)
+        end
+      end
+      
+      it "checks a multipart message with many operations" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+
+        (1..128).each do
+          multipart.addPart("GET", "/_api/version", { }, "")
+        end
+        doc = ArangoDB.log_post("#{prefix}-post-version-many", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        parts.each do|part|
+          part[:status].should eq(200)
+        end
+      end
+      
+      it "checks a multipart message inside a multipart message" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        inner = ArangoMultipartBody.new("innerBoundary")
+        inner.addPart("GET", "/_api/version", { }, "")
+
+        multipart.addPart("POST", "/_api/batch", { "Content-Type" => "multipart/form-data; boundary=innerBoundary"}, inner.to_s)
+        doc = ArangoDB.log_post("#{prefix}-post-version-nested", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        parts.each do|part|
+          part[:status].should eq(200)
+        end
+      end
+      
+      it "checks a few multipart messages inside a multipart message" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        inner = ArangoMultipartBody.new("innerBoundary")
+        inner.addPart("GET", "/_api/version", { }, "")
+        inner.addPart("GET", "/_api/version", { }, "")
+        inner.addPart("GET", "/_api/version", { }, "")
+        inner.addPart("GET", "/_api/version", { }, "")
+        inner.addPart("GET", "/_api/version", { }, "")
+        inner.addPart("GET", "/_api/version", { }, "")
+
+        multipart.addPart("POST", "/_api/batch", { "Content-Type" => "multipart/form-data; boundary=innerBoundary"}, inner.to_s)
+        doc = ArangoDB.log_post("#{prefix}-post-version-nested", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        parts.each do|part|
+          part[:status].should eq(200)
+        end
+      end
+
+    end
+
+################################################################################
+## checking document creation
+################################################################################
+    
+    context "checking document creation:" do
+
+      before do
+	@cn = "UnitTestsBatch"
+	ArangoDB.drop_collection(@cn)
+      end
+
+      after do
+	ArangoDB.drop_collection(@cn)
+      end
+      
+      it "checks batch document creation" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        multipart.addPart("POST", "/_api/collection", { }, "{\"name\":\"#{@cn}\"}")
+        (1..10).each do
+          multipart.addPart("POST", "/_api/document?collection=#{@cn}", { }, "{\"a\":1,\"b\":2}")
+        end
+
+        doc = ArangoDB.log_post("#{prefix}-post-documents", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        partNumber = 0
+        parts.each do|part|
+          if partNumber == 0
+            part[:status].should eq(200)
+          else
+            part[:status].should eq(202)
+          end
+
+          partNumber = partNumber + 1
         end
       end
     

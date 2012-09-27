@@ -31,7 +31,6 @@
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequestPlain.h"
-#include "Rest/HttpResponsePart.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -178,11 +177,11 @@ Handler::status_e RestBatchHandler::execute() {
     }
 
     
-    HttpHandler* handler = _server->createHandler(request, true);
+    HttpHandler* handler = _server->createHandler(request);
     if (! handler) {
       delete request;
 
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "an error occured during part request processing");
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create handler for batch part processing");
 
       return Handler::HANDLER_FAILED;
     }
@@ -211,15 +210,15 @@ Handler::status_e RestBatchHandler::execute() {
     if (status == Handler::HANDLER_FAILED) {
       // one of the handlers failed, we must exit now
       delete handler;
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "an error occured during part request processing");
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "executing a handler for batch part failed");
 
       return Handler::HANDLER_FAILED; 
     }
 
-    HttpResponsePart* partResponse = dynamic_cast<HttpResponsePart*>(handler->getResponse());
+    HttpResponse* partResponse = handler->getResponse(); 
     if (partResponse == 0) {
       delete handler;
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "an error occured during part request processing");
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
 
       return Handler::HANDLER_FAILED;
     }
@@ -232,6 +231,7 @@ Handler::status_e RestBatchHandler::execute() {
 
     // append the boundary for this subpart
     _response->body().appendText(boundary + "\r\n");
+    _response->body().appendText(HttpRequest::getPartContentType());
 
     // append the response header
     partResponse->writeHeader(&_response->body());
@@ -252,7 +252,7 @@ Handler::status_e RestBatchHandler::execute() {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeader(HttpResponsePart::getErrorHeader(), StringUtils::itoa(errors)); 
+    _response->setHeader(HttpResponse::getBatchErrorHeader(), StringUtils::itoa(errors)); 
   }
 
   // success
