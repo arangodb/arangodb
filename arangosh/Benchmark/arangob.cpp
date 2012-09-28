@@ -86,6 +86,12 @@ static volatile int Started = 0;
 Mutex StartMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief use a startup delay
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Delay = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief concurrency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -102,6 +108,12 @@ static int Operations = 1000;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BatchSize = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief complexity parameter for tests
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t Complexity = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection to use
@@ -175,7 +187,7 @@ struct VersionTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      small document creation test
+// --SECTION--                                            document creation test
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,63 +195,14 @@ struct VersionTest : public BenchmarkOperation {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-struct SmallDocumentCreationTest : public BenchmarkOperation {
-  SmallDocumentCreationTest ()
-    : BenchmarkOperation(),
-      _url() {
-    _url = "/_api/document?collection=" + Collection + "&createCollection=true";
-  }
-
-  ~SmallDocumentCreationTest () {
-  }
-  
-  string collectionName () {
-    return Collection;
-  }
-
-  const bool useCollection () const {
-    return true;
-  }
-
-  const string& url () {
-    return _url;
-  }
-
-  const HttpRequest::HttpRequestType type () {
-    return HttpRequest::HTTP_REQUEST_POST;
-  }
-  
-  const char* payload (size_t* length, const size_t counter) {
-    static const char* payload = "{\"test\":1}";
-    *length = 10;
-    return payload;
-  }
-  
-  const map<string, string>& headers () {
-    static const map<string, string> headers;
-    return headers;
-  }
-
-  string _url;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        big document creation test
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-struct BigDocumentCreationTest : public BenchmarkOperation {
-  BigDocumentCreationTest () 
+struct DocumentCreationTest : public BenchmarkOperation {
+  DocumentCreationTest () 
     : BenchmarkOperation (),
       _url(),
       _buffer(0) {
     _url = "/_api/document?collection=" + Collection + "&createCollection=true";
 
-    const size_t n = 100;
+    const size_t n = Complexity;
 
     _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
     TRI_AppendCharStringBuffer(_buffer, '{');
@@ -259,7 +222,7 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
   
   }
 
-  ~BigDocumentCreationTest () {
+  ~DocumentCreationTest () {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
   
@@ -319,9 +282,23 @@ static void UpdateStartCounter () {
   ++Started;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the value of the number of started threads counter
+////////////////////////////////////////////////////////////////////////////////
+
 static int GetStartCounter () {
   MUTEX_LOCKER(StartMutex);
   return Started;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print a status line (if ! quiet)
+////////////////////////////////////////////////////////////////////////////////
+
+static void Status (const string& value) {    
+  if (! BaseClient.quiet()) {
+    cout << value << endl;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,6 +314,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching")
     ("collection", &Collection, "collection name to use in tests")
     ("test-case", &TestCase, "test case to use")
+    ("complexity", &Complexity, "complexity parameter for the test")
+    ("delay", &Delay, "use a startup delay (necessary only when run in series)")
   ;
 
   BaseClient.setupGeneral(description);
@@ -396,17 +375,15 @@ int main (int argc, char* argv[]) {
   if (TestCase == "version") {
     testCase = new VersionTest();
   }
-  else if (TestCase == "smalldoc") {
-    testCase = new SmallDocumentCreationTest();
-  }
-  else if (TestCase == "bigdoc") {
-    testCase = new BigDocumentCreationTest();
+  else if (TestCase == "document") {
+    testCase = new DocumentCreationTest();
   }
   else {
     cerr << "invalid test case name " << TestCase << endl;
     exit(EXIT_FAILURE);
   }
 
+  Status("starting threads...");
 
   BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long) Operations);
   ConditionVariable startCondition;
@@ -439,6 +416,12 @@ int main (int argc, char* argv[]) {
   while (GetStartCounter() < Concurrency) {
     usleep(5000);
   }
+
+  if (Delay) {
+    Status("sleeping (startup delay)...");
+    sleep(15);
+  }
+  Status("executing tests...");
 
   Timing timer(Timing::TI_WALLCLOCK);
 
