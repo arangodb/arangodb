@@ -176,7 +176,7 @@ LoggerStream::~LoggerStream () {
 /// @brief catches a special stream operator
 ////////////////////////////////////////////////////////////////////////////////
 
-LoggerStream& LoggerStream::operator<< (ostream& (*fptr) (ostream&)) {
+LoggerStream& LoggerStream::operator<< (std::ostream& (*fptr) (std::ostream&)) {
   if (_stream != 0) {
     *_stream << fptr;
   }

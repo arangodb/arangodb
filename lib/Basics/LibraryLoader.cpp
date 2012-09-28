@@ -27,7 +27,7 @@
 
 #include "LibraryLoader.h"
 
-#if defined(TRI_HAVE_DLFCN_H)
+#ifdef TRI_HAVE_DLFCN_H
 #include <dlfcn.h>
 #endif
 
@@ -37,9 +37,11 @@ namespace triagens {
   namespace rest {
     namespace LibraryLoader {
 
-// -----------------------------------------------------------------------------
+      // -----------------------------------------------------------------------------
       // private functions
-// -----------------------------------------------------------------------------
+      // -----------------------------------------------------------------------------
+
+#ifdef TRI_HAVE_DLFCN_H
 
       void* loadSharedLibrary (char const* filename, string const& symbol, void*& handle) {
         LOGGER_DEBUG << "trying to use library file '" << (filename ? filename : "self") << "'";
@@ -70,6 +72,19 @@ namespace triagens {
       void closeLibrary (void* handle) {
         dlclose(handle);
       }
+
+#else
+
+      void* loadShardLibrary(char const* filename, string const& symbol, void*& handle) {
+        // ...........................................................................
+        // TODO: implement load for windows
+        // ...........................................................................
+        assert(0);
+        return 0;
+      }
+
+#endif
+
     }
   }
 }
