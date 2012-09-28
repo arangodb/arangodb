@@ -159,12 +159,7 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
   string domainType = StringUtils::tolower(copy.substr(0, 7));
   if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
-#ifdef TRI_HAVE_LINUX_SOCKETS
     return new EndpointUnix(type, protocol, specification, copy.substr(strlen("unix://")));
-#else
-    return 0;
-#endif
-    
   }
   else if (StringUtils::isPrefix(domainType, "ssl://")) {
     // ssl 
@@ -238,8 +233,8 @@ void Endpoint::setTimeout (socket_t s, double timeout) {
   tv.tv_sec = (uint64_t) timeout;
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
-  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv));
-  setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+  setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,8 +699,8 @@ bool EndpointIp::initIncoming (socket_t incoming) {
 EndpointIpV4::EndpointIpV4 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol,
                             const Endpoint::Encryption encryption,
-                            const std::string& specification, 
-                            const std::string& host, 
+                            string const& specification, 
+                            string const& host, 
                             const uint16_t port) :
     EndpointIp(type, ENDPOINT_IPV4, protocol, encryption, specification, host, port) {
 }
@@ -741,8 +736,8 @@ EndpointIpV4::~EndpointIpV4 () {
 EndpointIpV6::EndpointIpV6 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol, 
                             const Endpoint::Encryption encryption,
-                            const std::string& specification, 
-                            const std::string& host, 
+                            string const& specification, 
+                            string const& host, 
                             const uint16_t port) :
     EndpointIp(type, ENDPOINT_IPV6, protocol, encryption, specification, host, port) {
 }

@@ -32,7 +32,6 @@
 #include <Basics/StringUtils.h>
 
 
-
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -45,6 +44,8 @@
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 
 

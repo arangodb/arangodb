@@ -110,8 +110,7 @@ TRI_tid_t Thread::currentThreadId () {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread (const string& name)
-  : _name(name),
+Thread::Thread(const std::string& name) : _name(name),
     _asynchronousCancelation(false),
     _thread(),
     _finishedCondition(0),
@@ -119,6 +118,7 @@ Thread::Thread (const string& name)
     _running(0) {
   TRI_InitThread(&_thread);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the thread
@@ -158,8 +158,8 @@ bool Thread::isRunning () {
 /// @brief returns a thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-intptr_t Thread::threadId () {
-  return (intptr_t) _thread;
+TRI_tid_t Thread::threadId () {
+  return (TRI_tid_t) _thread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief threads in win32
+/// @brief connection endpoints
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,169 +21,173 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "threads.h"
+#ifndef TRIAGENS_FYN_REST_ENDPOINT_UNIX_DOMAIN_H
+#define TRIAGENS_FYN_REST_ENDPOINT_UNIX_DOMAIN_H 1
 
-#include "BasicsC/logging.h"
-#include "BasicsC/strings.h"
+#include <Basics/Common.h>
+#include <Basics/StringUtils.h>
+#include "EndpointBase.h"
+
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                            THREAD
+// --SECTION--                                                          Endpoint
 // -----------------------------------------------------------------------------
 
+namespace triagens {
+  namespace rest {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint specification
+////////////////////////////////////////////////////////////////////////////////
+
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
+// --SECTION--                                                      EndpointUnix
+// -----------------------------------------------------------------------------
+
+    class EndpointUnixDomain : public EndpointBase {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief data block for thread starter
+/// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct thread_data_s {
-  void (*starter) (void*);
-  void* _data;
-  char* _name;
-}
-thread_data_t;
+#ifdef TRI_HAVE_LINUX_SOCKETS
+        EndpointUnixDomain (const EndpointBase::EndpointType, 
+                            const EndpointBase::Protocol,
+                            const std::string&, 
+                            const std::string&);
+#else
+      private:
+        EndpointUnixDomain (const EndpointBase::EndpointType, 
+                            const EndpointBase::Protocol,
+                            const std::string&, 
+                            const std::string&);
+      public:            
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an endpoint
+////////////////////////////////////////////////////////////////////////////////
+      
+        virtual ~EndpointUnixDomain ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+    
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starter function for thread
+/// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-static DWORD __stdcall ThreadStarter (void* data) {
-  thread_data_t* d;
+        socket_t connect (double, double);
 
-  d = data;
-  d->starter(d->_data);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnect the endpoint
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual void disconnect ();
 
-  TRI_Free(TRI_CORE_MEM_ZONE, d);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief init an incoming connection
+////////////////////////////////////////////////////////////////////////////////
 
-  return 0;
-}
+        virtual bool initIncoming (socket_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get endpoint domain
+////////////////////////////////////////////////////////////////////////////////
+        
+        int getDomain () const {
+#ifdef TRI_HAVE_LINUX_SOCKETS
+          return AF_UNIX;
+#else
+          return -1;
+#endif          
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get port
+////////////////////////////////////////////////////////////////////////////////
+
+        int getPort () const {
+          return 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get host name
+////////////////////////////////////////////////////////////////////////////////
+
+        string getHost () const {
+          return "localhost";
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get host string for HTTP requests
+////////////////////////////////////////////////////////////////////////////////
+
+        string getHostString () const {
+          return "localhost";
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+    
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a thread
+/// @brief socket file
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitThread (TRI_thread_t* thread) {
-  *thread = 0;
-}
+        string _path;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+    };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current process identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_pid_t TRI_CurrentProcessId () {
-  return _getpid();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current thread process identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_tpid_t TRI_CurrentThreadProcessId () {
-  return _getpid();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current thread identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_tid_t TRI_CurrentThreadId () {
-  return GetCurrentThreadId();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a thread
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_StartThread (TRI_thread_t* thread,  const char* name, void (*starter)(void*), void* data) {
-  DWORD threadId;
-  thread_data_t* d;
-
-  d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
-
-  d->starter = starter;
-  d->_data = data;
-  d->_name = TRI_DuplicateString(name);
-
-  *thread = CreateThread(0, // default security attributes
-                         0, // use default stack size
-                         ThreadStarter, // thread function name
-                         d, // argument to thread function
-                         0, // use default creation flags
-                         &threadId); // returns the thread identifier
-
-  if (*thread == 0) {
-    TRI_Free(TRI_CORE_MEM_ZONE, d);
-    LOG_ERROR("could not start thread: %s ", strerror(errno));
-    return false;
   }
-
-  return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for a thread to finish
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_JoinThread (TRI_thread_t* thread) {
-  WaitForSingleObject(*thread, INFINITE);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#endif
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

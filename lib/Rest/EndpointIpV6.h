@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tasks used to establish connections
+/// @brief connection endpoints
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,123 +21,98 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SCHEDULER_LISTEN_TASK_H
-#define TRIAGENS_SCHEDULER_LISTEN_TASK_H 1
+#ifndef TRIAGENS_FYN_REST_ENDPOINT_IPV6_H
+#define TRIAGENS_FYN_REST_ENDPOINT_IPV6_H 1
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <netdb.h>
-#endif
+#include <Basics/Common.h>
+#include <Basics/StringUtils.h>
 
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#endif
 
-#include "Scheduler/Task.h"
-
-#include "Basics/Mutex.h"
-#include "Rest/ConnectionInfo.h"
-#include "Rest/Endpoint.h"
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          Endpoint
+// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Scheduler
-/// @brief task used to establish connections
+/// @brief endpoint specification
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ListenTask : virtual public Task {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      EndpointIpV6
+// -----------------------------------------------------------------------------
+
+    class EndpointIpV6 : public EndpointIp {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Rest
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximal number of failed connects
+/// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const MAX_ACCEPT_ERRORS = 128;
+        EndpointIpV6 (const Type,
+                      const Protocol, 
+                      const Encryption,
+                      const std::string&, 
+                      const std::string&, 
+                      const uint16_t);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an endpoint
+////////////////////////////////////////////////////////////////////////////////
+      
+        ~EndpointIpV6 ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Rest
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+    
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given endpoint
+/// @brief get endpoint domain
 ////////////////////////////////////////////////////////////////////////////////
-
-        ListenTask (Endpoint*, bool);
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if listen socket is bound
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isBound () const;
-
-      protected:
+        
+        int getDomain () const {
+          return AF_INET6;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called by the task to indicate connection success
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleConnected (socket_t fd, ConnectionInfo const& info) = 0;
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a listen task
-///
-/// This method will close the underlying socket.
-////////////////////////////////////////////////////////////////////////////////
-
-        ~ListenTask ();
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-///
-/// Note that registerTask must only be called when the socket is bound.
-////////////////////////////////////////////////////////////////////////////////
-
-        void setup (Scheduler*, EventLoop);
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void cleanup ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool handleEvent (EventToken token, EventType);
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief event for read
-////////////////////////////////////////////////////////////////////////////////
-
-        EventToken readWatcher;
-
-      private:
-        bool bindSocket ();
-
-      private:
-        bool reuseAddress;
-        Endpoint* _endpoint;
-        socket_t listenSocket;
-
-        size_t acceptFailures;
-
-        mutable basics::Mutex changeLock;
     };
+
   }
 }
 
 #endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

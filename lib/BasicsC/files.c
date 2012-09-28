@@ -35,7 +35,10 @@
 #include <direct.h>
 #endif
 
+#ifdef TRI_HAVE_SYS_FILE_H
 #include <sys/file.h>
+#endif
+
 
 #include "BasicsC/conversions.h"
 #include "BasicsC/locks.h"
@@ -664,6 +667,83 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone, char const* filename) {
 /// @brief creates a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+
+int TRI_CreateLockFile (char const* filename) {
+  TRI_pid_t pid;
+  char* buf;
+  char* fn;
+  int fd;
+  int rv;
+  int res;
+
+  InitialiseLockFiles();
+
+  if (0 <= LookupElementVectorString(&FileNames, filename)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+  if (fd == -1) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  pid = TRI_CurrentProcessId();
+  buf = TRI_StringUInt32(pid);
+
+  rv = TRI_WRITE(fd, buf, strlen(buf));
+
+  if (rv == -1) {
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
+
+    TRI_CLOSE(fd);
+    TRI_UNLINK(filename);
+
+    return res;
+  }
+
+  TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
+  TRI_CLOSE(fd);
+
+  // try to open pid file
+  fd = TRI_OPEN(filename, O_RDONLY);
+
+  if (fd < 0) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  // ..........................................................................
+  // TODO: use windows LockFile to lock the file
+  // ..........................................................................
+  //rv = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK, 0, 0, 0, 0);
+  // rv = flock(fd, LOCK_EX);
+  rv = true;
+
+  if (!rv) {
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    TRI_CLOSE(fd);
+    TRI_UNLINK(filename);
+
+    return res;
+  }
+
+  fn = TRI_DuplicateString(filename);
+
+  TRI_WriteLockReadWriteLock(&FileNamesLock);
+  TRI_PushBackVectorString(&FileNames, fn);
+  TRI_PushBackVector(&FileDescriptors, &fd);
+  TRI_WriteUnlockReadWriteLock(&FileNamesLock);
+
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+#else
+
 int TRI_CreateLockFile (char const* filename) {
   TRI_pid_t pid;
   char* buf;
@@ -731,10 +811,90 @@ int TRI_CreateLockFile (char const* filename) {
 
   return TRI_ERROR_NO_ERROR;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+
+int TRI_VerifyLockFile (char const* filename) {
+  TRI_pid_t pid;
+  char buffer[128];
+  int can_lock;
+  int fd;
+  int res;
+  ssize_t n;
+  uint32_t fc;
+
+  if (! TRI_ExistsFile(filename)) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+  n = TRI_READ(fd, buffer, sizeof(buffer));
+  TRI_CLOSE(fd);
+
+  // file empty
+  if (n == 0) {
+    return TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
+  }
+
+  // not really necessary, but this shuts up valgrind
+  memset(buffer, 0, sizeof(buffer));
+
+  fc = TRI_UInt32String(buffer);
+  res = TRI_errno();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  pid = fc;
+
+
+  // ..........................................................................
+  // determine if a process with pid exists
+  // ..........................................................................
+  // use OpenProcess / TerminateProcess as a replacement for kill
+  //if (kill(pid, 0) == -1) {
+  //  return TRI_set_errno(TRI_ERROR_DEAD_PID);
+  //}
+
+  fd = TRI_OPEN(filename, O_RDONLY);
+
+  if (fd < 0) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
+
+  // ..........................................................................
+  // TODO: Use windows LockFileEx to determine if file can be locked
+  // ..........................................................................
+  // = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK, 0, 0, 0, 0);
+  //can_lock = flock(fd, LOCK_EX | LOCK_NB);
+  can_lock = true;
+
+
+  // file was not yet be locked
+  if (can_lock == 0) {
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    // ........................................................................
+    // TODO: Use windows LockFileEx to determine if file can be locked
+    // ........................................................................
+    //flock(fd, LOCK_UN);
+
+    TRI_CLOSE(fd);
+
+    return res;
+  }
+
+  TRI_CLOSE(fd);
+  return TRI_ERROR_NO_ERROR;
+}
+
+#else
 
 int TRI_VerifyLockFile (char const* filename) {
   TRI_pid_t pid;
@@ -796,9 +956,53 @@ int TRI_VerifyLockFile (char const* filename) {
   return TRI_ERROR_NO_ERROR;
 }
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+
+int TRI_DestroyLockFile (char const* filename) {
+  int fd;
+  int n;
+  int res;
+
+  InitialiseLockFiles();
+  n = LookupElementVectorString(&FileNames, filename);
+
+  if (n < 0) {
+    return false;
+  }
+
+  fd = TRI_OPEN(filename, O_RDWR);
+
+  // ..........................................................................
+  // TODO: Use windows LockFileEx to determine if file can be locked
+  // ..........................................................................
+  //flock(fd, LOCK_UN);
+  //res = flock(fd, LOCK_UN);
+  res = 0;
+
+  TRI_CLOSE(fd);
+
+  if (res == 0) {
+    TRI_UnlinkFile(filename);
+
+    TRI_WriteLockReadWriteLock(&FileNamesLock);
+
+    TRI_RemoveVectorString(&FileNames, n);
+    fd = * (int*) TRI_AtVector(&FileDescriptors, n);
+    TRI_CLOSE(fd);
+
+    TRI_WriteUnlockReadWriteLock(&FileNamesLock);
+  }
+
+  return res;
+}
+
+#else
 
 int TRI_DestroyLockFile (char const* filename) {
   int fd;
@@ -830,6 +1034,8 @@ int TRI_DestroyLockFile (char const* filename) {
 
   return res;
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program

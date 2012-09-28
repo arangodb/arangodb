@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief High-Performance Database Framework made by triagens
+/// @brief connection endpoints
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,140 +21,99 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_COMMON_H
-#define TRIAGENS_BASICS_C_COMMON_H 1
+#ifndef TRIAGENS_FYN_REST_ENDPOINT_IPV4_H
+#define TRIAGENS_FYN_REST_ENDPOINT_IPV4_H 1
+
+#include <Basics/Common.h>
+#include <Basics/StringUtils.h>
+
+
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             configuration options
+// --SECTION--                                                          Endpoint
+// -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace rest {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoint specification
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      EndpointIpV4
+// -----------------------------------------------------------------------------
+
+    class EndpointIpV4 : public EndpointIp {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WITHIN_COMMON 1
-#include "BasicsC/operating-system.h"
-#include "BasicsC/local-configuration.h"
-#undef TRI_WITHIN_COMMON
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+        EndpointIpV4 (const Type, 
+                      const Protocol,
+                      const Encryption,
+                      const std::string&, 
+                      const std::string&, 
+                      const uint16_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an endpoint
+////////////////////////////////////////////////////////////////////////////////
+      
+        ~EndpointIpV4 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--             C header files that are always present on all systems
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+    
+      public:
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include <sys/stat.h>
-#include <sys/types.h>
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get endpoint domain
+////////////////////////////////////////////////////////////////////////////////
+        
+        int getDomain () const {
+          return AF_INET;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   system dependent C header files
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
-typedef long suseconds_t;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+    };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            basic triAGENS headers
+// --SECTION--                                                      EndpointIpV6
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_WITHIN_COMMON 1
-#include "BasicsC/voc-errors.h"
-#include "BasicsC/error.h"
-#include "BasicsC/memory.h"
-#include "BasicsC/structures.h"
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              basic compiler stuff
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WITHIN_COMMON 1
-#include "BasicsC/system-compiler.h"
-#include "BasicsC/system-functions.h"
-#undef TRI_WITHIN_COMMON
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  }
+}
 
 #endif
 

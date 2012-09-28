@@ -32,6 +32,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 
+#include <iterator>
+
 using namespace std;
 using namespace triagens::basics;
 
@@ -498,7 +500,7 @@ string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOp
     }
     else {
       set<string> is;
-      set_intersection(ho.begin(), ho.end(), help.begin(), help.end(), inserter(is, is.end()));
+      set_intersection(ho.begin(), ho.end(), help.begin(), help.end(), std::inserter(is, is.end()));
 
       if (! is.empty()) {
         subDescriptions.push_back(pod);
