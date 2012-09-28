@@ -1,6 +1,10 @@
 not released yet
 ----------------
 
+* added startup option --server.backlog-size
+  this allows setting the value of the backlog for the listen() system call.
+  the default value is 10, the maximum value is platform-dependent
+
 * introduced new configure option "--enable-maintainer-mode" for
   ArangoDB maintainers. this option replaces the previous compile switches
   --with-boost-test, --enable-bison, --enable-flex and --enable-errors-dependency
