@@ -31,6 +31,8 @@
 #include "build.h"
 
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
@@ -70,6 +72,18 @@ using namespace triagens::arangob;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoClient BaseClient;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief started counter
+////////////////////////////////////////////////////////////////////////////////
+
+static volatile int Started = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex for start counter
+////////////////////////////////////////////////////////////////////////////////
+
+Mutex StartMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concurrency
@@ -126,6 +140,14 @@ struct VersionTest : public BenchmarkOperation {
   ~VersionTest () {
   }
 
+  string collectionName () {
+    return "";
+  }
+  
+  const bool useCollection () const {
+    return false;
+  }
+
   const string& url () {
     static string url = "/_api/version";
     
@@ -169,6 +191,14 @@ struct SmallDocumentCreationTest : public BenchmarkOperation {
   }
 
   ~SmallDocumentCreationTest () {
+  }
+  
+  string collectionName () {
+    return Collection;
+  }
+
+  const bool useCollection () const {
+    return true;
   }
 
   const string& url () {
@@ -232,6 +262,14 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
   ~BigDocumentCreationTest () {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
+  
+  string collectionName () {
+    return Collection;
+  }
+  
+  const bool useCollection () const {
+    return true;
+  }
 
   const string& url () {
     return _url;
@@ -270,6 +308,21 @@ struct BigDocumentCreationTest : public BenchmarkOperation {
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the number of ready threads. this is a callback function
+/// that is called by each thread after it is created
+////////////////////////////////////////////////////////////////////////////////
+
+static void UpdateStartCounter () {
+  MUTEX_LOCKER(StartMutex);
+  ++Started;
+}
+
+static int GetStartCounter () {
+  MUTEX_LOCKER(StartMutex);
+  return Started;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
@@ -368,7 +421,9 @@ int main (int argc, char* argv[]) {
     endpoints.push_back(endpoint);
 
     BenchmarkThread* thread = new BenchmarkThread(testCase,
-        &startCondition, 
+        &startCondition,
+        &UpdateStartCounter,
+        i, 
         (unsigned long) BatchSize,
         &operationsCounter,
         endpoint,
@@ -381,8 +436,9 @@ int main (int argc, char* argv[]) {
   }
  
   // give all threads a chance to start so they will not miss the broadcast
-  usleep(500000);
-
+  while (GetStartCounter() < Concurrency) {
+    usleep(5000);
+  }
 
   Timing timer(Timing::TI_WALLCLOCK);
 
