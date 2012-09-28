@@ -11,8 +11,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "getopt_mb_uni_vc10 Library"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "regex-2.7 Library", "..\3rdParty\VisualStudio\regex-2.7\regex-2.7.vcxproj", "{23313837-C0F8-46E2-8F16-6396D72FBF08}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arrango Client Library", "Arrango Client Library\Arrango Client Library.vcxproj", "{2A28D666-954C-494C-92BB-950C7E361810}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arango Front End Library", "Arango Front End Library\Arango Front End Library.vcxproj", "{4E48A2A8-9F42-41DA-8DEF-6548198E8964}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arango V8 Library", "Arango V8 Library\Arango V8 Library.vcxproj", "{8985F67A-A9CC-41C8-80D4-364678550F2F}"
@@ -20,6 +18,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arango MRuby Library", "Arango MRuby Library\Arango MRuby Library.vcxproj", "{13A4B4F9-4D59-4F4C-8B14-AFFCCDA5002B}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arangod Binary", "Arangod Binary\Arangod Binary.vcxproj", "{00364934-E6C8-44F2-957C-0E71383504D0}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arango Client Library", "Arango Client Library\Arango Client Library.vcxproj", "{604036DD-7013-4463-B827-D06016BD41FC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,10 +39,6 @@ Global
 		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Debug|Win32.Build.0 = Debug|Win32
 		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Release|Win32.ActiveCfg = Release|Win32
 		{23313837-C0F8-46E2-8F16-6396D72FBF08}.Release|Win32.Build.0 = Release|Win32
-		{2A28D666-954C-494C-92BB-950C7E361810}.Debug|Win32.ActiveCfg = Debug|Win32
-		{2A28D666-954C-494C-92BB-950C7E361810}.Debug|Win32.Build.0 = Debug|Win32
-		{2A28D666-954C-494C-92BB-950C7E361810}.Release|Win32.ActiveCfg = Release|Win32
-		{2A28D666-954C-494C-92BB-950C7E361810}.Release|Win32.Build.0 = Release|Win32
 		{4E48A2A8-9F42-41DA-8DEF-6548198E8964}.Debug|Win32.ActiveCfg = Debug|Win32
 		{4E48A2A8-9F42-41DA-8DEF-6548198E8964}.Debug|Win32.Build.0 = Debug|Win32
 		{4E48A2A8-9F42-41DA-8DEF-6548198E8964}.Release|Win32.ActiveCfg = Release|Win32
@@ -59,6 +55,10 @@ Global
 		{00364934-E6C8-44F2-957C-0E71383504D0}.Debug|Win32.Build.0 = Debug|Win32
 		{00364934-E6C8-44F2-957C-0E71383504D0}.Release|Win32.ActiveCfg = Release|Win32
 		{00364934-E6C8-44F2-957C-0E71383504D0}.Release|Win32.Build.0 = Release|Win32
+		{604036DD-7013-4463-B827-D06016BD41FC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{604036DD-7013-4463-B827-D06016BD41FC}.Debug|Win32.Build.0 = Debug|Win32
+		{604036DD-7013-4463-B827-D06016BD41FC}.Release|Win32.ActiveCfg = Release|Win32
+		{604036DD-7013-4463-B827-D06016BD41FC}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

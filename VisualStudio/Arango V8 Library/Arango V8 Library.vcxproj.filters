@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="V8 Source">
+      <UniqueIdentifier>{5f61dead-1e38-47d7-b610-6226a4dd2980}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="V8 Header">
+      <UniqueIdentifier>{96aaec03-439d-49b0-a2a8-4413b23226dd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
