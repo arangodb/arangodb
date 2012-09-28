@@ -83,7 +83,9 @@ EndpointList::~EndpointList () {
 /// @brief count the number of elements in a sub-list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t EndpointList::count (const Endpoint::Protocol protocol, const Endpoint::Encryption encryption) const {
+size_t EndpointList::count (const Endpoint::ProtocolType protocol, 
+                            const Endpoint::EncryptionType encryption) const {
+
    map<string, ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
 
    if (i == _lists.end()) {
@@ -108,7 +110,9 @@ void EndpointList::dump () const {
 /// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointList::ListType EndpointList::getEndpoints (const Endpoint::Protocol protocol, const Endpoint::Encryption encryption) const {
+EndpointList::ListType EndpointList::getEndpoints (const Endpoint::ProtocolType protocol, 
+                                                   const Endpoint::EncryptionType encryption) const {
+
   EndpointList::ListType result;
   map<string, EndpointList::ListType>::const_iterator i = _lists.find(getKey(protocol, encryption));
 
@@ -125,7 +129,9 @@ EndpointList::ListType EndpointList::getEndpoints (const Endpoint::Protocol prot
 /// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::addEndpoint (const Endpoint::Protocol protocol, const Endpoint::Encryption encryption, Endpoint* endpoint) {
+bool EndpointList::addEndpoint (const Endpoint::ProtocolType protocol, 
+                                const Endpoint::EncryptionType encryption, Endpoint* endpoint) {
+
   _lists[getKey(protocol, encryption)].insert(endpoint);
 
   return true;

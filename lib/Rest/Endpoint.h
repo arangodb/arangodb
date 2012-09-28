@@ -45,6 +45,8 @@
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #endif
 
 
@@ -76,7 +78,7 @@ namespace triagens {
 /// @brief endpoint types
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum Type {
+        enum EndpointType {
           ENDPOINT_SERVER,
           ENDPOINT_CLIENT 
         };
@@ -86,19 +88,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum DomainType {
-          ENDPOINT_UNKNOWN = 0,
-#ifdef TRI_HAVE_LINUX_SOCKETS
-          ENDPOINT_UNIX,
-#endif
-          ENDPOINT_IPV4,
-          ENDPOINT_IPV6
+          DOMAIN_UNKNOWN = 0,
+          DOMAIN_UNIX,
+          DOMAIN_IPV4,
+          DOMAIN_IPV6
         };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief protocols used for endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum Protocol {
+        enum ProtocolType {
           PROTOCOL_UNKNOWN,
           PROTOCOL_HTTP
         };
@@ -107,7 +107,7 @@ namespace triagens {
 /// @brief encryption used when talking to endpoint
 ////////////////////////////////////////////////////////////////////////////////
         
-        enum Encryption {
+        enum EncryptionType {
           ENCRYPTION_NONE = 0, 
           ENCRYPTION_SSL
         };
@@ -131,10 +131,10 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        Endpoint (const Type, 
+        Endpoint (const EndpointType, 
                   const DomainType, 
-                  const Protocol, 
-                  const Encryption,
+                  const ProtocolType, 
+                  const EncryptionType,
                   const std::string&,
                   int);
 
@@ -177,7 +177,7 @@ namespace triagens {
 /// @brief creates an endpoint from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Endpoint* factory (const Type type, 
+        static Endpoint* factory (const EndpointType type, 
                                   const std::string&,
                                   int);
 
@@ -235,7 +235,7 @@ namespace triagens {
 /// @brief get the type of an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        Type getType () const {
+        EndpointType getType () const {
           return _type;
         }
 
@@ -251,7 +251,7 @@ namespace triagens {
 /// @brief get the protocol of an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        Protocol getProtocol () const {
+        ProtocolType getProtocol () const {
           return _protocol;
         }
 
@@ -259,7 +259,7 @@ namespace triagens {
 /// @brief get the encryption used
 ////////////////////////////////////////////////////////////////////////////////
 
-        Encryption getEncryption () const {
+        EncryptionType getEncryption () const {
           return _encryption;
         }
 
@@ -326,7 +326,7 @@ namespace triagens {
 /// @brief endpoint type
 ////////////////////////////////////////////////////////////////////////////////
       
-        Type _type;
+        EndpointType _type;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint domain type
@@ -338,13 +338,13 @@ namespace triagens {
 /// @brief protocol used
 ////////////////////////////////////////////////////////////////////////////////
 
-        Protocol _protocol;
+        ProtocolType _protocol;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encryption used
 ////////////////////////////////////////////////////////////////////////////////
 
-        Encryption _encryption;
+        EncryptionType _encryption;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief original endpoint specification
@@ -387,11 +387,11 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointUnix (const Type, 
-                      const Protocol,
-                      string const&, 
+        EndpointUnix (const EndpointType, 
+                      const ProtocolType,
+                      const std::string&, 
                       int,
-                      string const&);
+                      const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
@@ -514,13 +514,13 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIp (const Type, 
+        EndpointIp (const EndpointType, 
                     const DomainType, 
-                    const Protocol,
-                    const Encryption,
-                    string const&, 
+                    const ProtocolType,
+                    const EncryptionType,
+                    const std::string&, 
                     int,
-                    string const&, 
+                    const std::string&, 
                     const uint16_t);
 
       public:
@@ -625,7 +625,7 @@ namespace triagens {
 /// @brief get host 
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHost () const {
+        std::string getHost () const {
           return _host;
         }
 
@@ -633,7 +633,7 @@ namespace triagens {
 /// @brief get host strin for HTTP requests
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHostString  () const {
+        std::string getHostString  () const {
           return _host + ':' + triagens::basics::StringUtils::itoa(_port);
         }
 
@@ -656,7 +656,7 @@ namespace triagens {
 /// @brief host name / address (IPv4 or IPv6)
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _host;
+        std::string _host;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief port number
@@ -691,12 +691,12 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV4 (const Type, 
-                      const Protocol,
-                      const Encryption,
-                      string const&, 
+        EndpointIpV4 (const EndpointType, 
+                      const ProtocolType,
+                      const EncryptionType,
+                      const std::string&, 
                       int,
-                      string const&, 
+                      const std::string&, 
                       const uint16_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -755,12 +755,12 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV6 (const Type,
-                      const Protocol, 
-                      const Encryption,
-                      string const&, 
+        EndpointIpV6 (const EndpointType,
+                      const ProtocolType, 
+                      const EncryptionType,
+                      const std::string&, 
                       int,
-                      string const&, 
+                      const std::string&, 
                       const uint16_t);
 
 ////////////////////////////////////////////////////////////////////////////////
