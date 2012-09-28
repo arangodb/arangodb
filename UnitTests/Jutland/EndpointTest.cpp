@@ -187,44 +187,44 @@ BOOST_AUTO_TEST_CASE (EndpointDomains) {
 BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "TCP://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "Tcp://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tCP://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "TCP://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "Tcp://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tCP://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
   
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", DomainType, Endpoint::ENDPOINT_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "Ssl://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "sSL://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", DomainType, Endpoint::ENDPOINT_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", DomainType, Endpoint::DOMAIN_IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "Ssl://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "sSL://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", DomainType, Endpoint::ENDPOINT_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", DomainType, Endpoint::ENDPOINT_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket", DomainType, Endpoint::ENDPOINT_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket", DomainType, Endpoint::ENDPOINT_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket", DomainType, Endpoint::ENDPOINT_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", DomainType, Endpoint::ENDPOINT_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", DomainType, Endpoint::DOMAIN_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,7 +574,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
   e = Endpoint::serverFactory("tcp://127.0.0.1:667");
   BOOST_CHECK_EQUAL("tcp://127.0.0.1:667", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_IPV4, e->getDomainType());
+  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV4, e->getDomainType());
   BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET, e->getDomain());
@@ -595,7 +595,7 @@ BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   e = Endpoint::serverFactory("unix:///path/to/arango.sock");
   BOOST_CHECK_EQUAL("unix:///path/to/arango.sock", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_UNIX, e->getDomainType());
+  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_UNIX, e->getDomainType());
   BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_UNIX, e->getDomain());
@@ -616,7 +616,7 @@ BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
   e = Endpoint::clientFactory("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425");
   BOOST_CHECK_EQUAL("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_CLIENT, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_IPV6, e->getDomainType());
+  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV6, e->getDomainType());
   BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_SSL, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
@@ -637,7 +637,7 @@ BOOST_AUTO_TEST_CASE (EndpointClientTcpIpv6WithoutPort) {
   e = Endpoint::clientFactory("tcp://[::]");
   BOOST_CHECK_EQUAL("tcp://[::]", e->getSpecification());
   BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_CLIENT, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_IPV6, e->getDomainType());
+  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV6, e->getDomainType());
   BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
