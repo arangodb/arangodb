@@ -371,9 +371,6 @@
     <ClInclude Include="..\..\lib\Rest\HttpRequest.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\Rest\HttpRequestPlain.h">
-      <Filter>RestHeader</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Rest\HttpResponse.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
@@ -659,9 +656,6 @@
       <Filter>RestSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Rest\HttpRequest.cpp">
-      <Filter>RestSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Rest\HttpRequestPlain.cpp">
       <Filter>RestSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Rest\HttpResponse.cpp">
