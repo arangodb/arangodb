@@ -1304,6 +1304,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       markerSize = sizeof(TRI_doc_document_marker_t);
     }
     else if (marker->_type == TRI_DOC_MARKER_EDGE) {
+      // if we do not use the ifdef, the compiler will complain about e being unused
+#ifdef TRI_ENABLE_LOGGER
       TRI_doc_edge_marker_t const* e = (TRI_doc_edge_marker_t const*) marker;
 
       LOG_TRACE("edge: fid %lu, did %lu, rid %lu, edge (%lu,%lu) -> (%lu,%lu)",
@@ -1314,7 +1316,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
                 (unsigned long) e->_fromDid,
                 (unsigned long) e->_toCid,
                 (unsigned long) e->_toDid);
-
+#endif
       markerSize = sizeof(TRI_doc_edge_marker_t);
     }
     else {
