@@ -1,0 +1,20 @@
+> curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
+--XXXsubpartXXX
+Content-Type: application/x-arango-batchpart
+
+POST /_api/document?collection=xyz&createCollection=true HTTP/1.1
+
+{"a":1,"b":2,"c":3}
+--XXXsubpartXXX
+Content-Type: application/x-arango-batchpart
+
+POST /_api/document?collection=xyz HTTP/1.1
+
+{"a":1,"b":2,"c":3,"d":4}
+--XXXsubpartXXX
+Content-Type: application/x-arango-batchpart
+
+POST /_api/document?collection=xyz HTTP/1.1
+
+{"a":1,"b":2,"c":3,"d":4,"e":5}
+--XXXsubpartXXX--

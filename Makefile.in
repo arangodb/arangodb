@@ -1141,6 +1141,7 @@ WIKI = \
 	Glossary \
 	Graphs \
 	Home \
+	HttpBatch \
 	HttpCollection \
 	HttpCursor \
 	HttpImport \
