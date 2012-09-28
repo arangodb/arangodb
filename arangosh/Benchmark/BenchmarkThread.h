@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_CLIENT_BENCHMARK_THREAD_H
-#define TRIAGENS_V8_CLIENT_BENCHMARK_THREAD_H 1
+#ifndef TRIAGENS_BENCHMARK_BENCHMARK_THREAD_H
+#define TRIAGENS_BENCHMARK_BENCHMARK_THREAD_H 1
 
 #include "Basics/Common.h"
 
@@ -39,8 +39,8 @@
 #include "SimpleHttpClient/SimpleClient.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "V8Client/BenchmarkCounter.h"
-#include "V8Client/BenchmarkOperation.h"
+#include "Benchmark/BenchmarkCounter.h"
+#include "Benchmark/BenchmarkOperation.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -48,7 +48,7 @@ using namespace triagens::httpclient;
 using namespace triagens::rest;
 
 namespace triagens {
-  namespace v8client {
+  namespace arangob {
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class BenchmarkThread

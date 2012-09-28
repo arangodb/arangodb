@@ -64,9 +64,7 @@ bin_arangob_LDADD = \
 
 bin_arangob_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
-	arangosh/V8Client/ImportHelper.cpp \
-	arangosh/V8Client/V8ClientConnection.cpp \
-	arangosh/V8Client/arangob.cpp
+	arangosh/Benchmark/arangob.cpp
 
 endif
 

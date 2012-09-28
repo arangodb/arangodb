@@ -45,16 +45,16 @@
 #include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "V8Client/BenchmarkCounter.h"
-#include "V8Client/BenchmarkOperation.h"
-#include "V8Client/BenchmarkThread.h"
+#include "Benchmark/BenchmarkCounter.h"
+#include "Benchmark/BenchmarkOperation.h"
+#include "Benchmark/BenchmarkThread.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
-using namespace triagens::v8client;
 using namespace triagens::arango;
+using namespace triagens::arangob;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
