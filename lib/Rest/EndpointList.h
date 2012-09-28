@@ -102,8 +102,8 @@ namespace triagens {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
         
-        static const string getKey (const Endpoint::Protocol protocol, 
-                                    const Endpoint::Encryption encryption) {
+        static const string getKey (const Endpoint::ProtocolType protocol, 
+                                    const Endpoint::EncryptionType encryption) {
           return string(getProtocolName(protocol) + " " + getEncryptionName(encryption));
         }
 
@@ -123,7 +123,7 @@ namespace triagens {
 /// @brief return a protocol name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string getProtocolName (const Endpoint::Protocol protocol) {
+        static const string getProtocolName (const Endpoint::ProtocolType protocol) {
           switch (protocol) {
             case Endpoint::PROTOCOL_HTTP:
               return "http";
@@ -136,7 +136,7 @@ namespace triagens {
 /// @brief return a encryption name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string getEncryptionName (const Endpoint::Encryption encryption) {
+        static const string getEncryptionName (const Endpoint::EncryptionType encryption) {
           switch (encryption) {
             case Endpoint::ENCRYPTION_SSL:
               return "ssl";
@@ -150,7 +150,7 @@ namespace triagens {
 /// @brief count the number of elements in a sub-list
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t count (const Endpoint::Protocol, const Endpoint::Encryption) const;
+        size_t count (const Endpoint::ProtocolType, const Endpoint::EncryptionType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump all used endpoints
@@ -162,13 +162,13 @@ namespace triagens {
 /// @brief return all endpoints for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListType getEndpoints (const Endpoint::Protocol, const Endpoint::Encryption) const;
+        ListType getEndpoints (const Endpoint::ProtocolType, const Endpoint::EncryptionType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an endpoint for a specific protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addEndpoint (const Endpoint::Protocol, const Endpoint::Encryption, Endpoint*);
+        bool addEndpoint (const Endpoint::ProtocolType, const Endpoint::EncryptionType, Endpoint*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
