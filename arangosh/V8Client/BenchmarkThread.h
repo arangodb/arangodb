@@ -207,6 +207,7 @@ namespace triagens {
             batchPayload.appendText("--" + boundary + "\r\n");
             // append content-type, this will also begin the body
             batchPayload.appendText(HttpRequest::getPartContentType());
+            batchPayload.appendText("\r\n\r\n", 4);
 
             // everything else (i.e. part request header & body) will get into the body
             const HttpRequest::HttpRequestType type = _operation->type();
