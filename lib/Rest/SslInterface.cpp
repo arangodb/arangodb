@@ -21,7 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Oreste Costa-Panaia
+/// @author Dr. O
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -94,7 +94,7 @@ struct option
 	int val;
 };
 
-extern _GETOPT_API int getopt(int argc, TCHAR *const *argv, const TCHAR *optstring) _GETOPT_THROW;
+extern _GETOPT_API int getopt(int argc, TCHAR* const *argv, const TCHAR *optstring) _GETOPT_THROW;
 extern _GETOPT_API int getopt_long(int ___argc, TCHAR *const *___argv, const TCHAR *__shortopts, const struct option *__longopts, int *__longind) _GETOPT_THROW;
 extern _GETOPT_API int getopt_long_only(int ___argc, TCHAR *const *___argv, const TCHAR *__shortopts, const struct option *__longopts, int *__longind) _GETOPT_THROW;
 _END_EXTERN_C
