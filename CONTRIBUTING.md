@@ -16,7 +16,8 @@ Please follow these guidelines if you want to contribute to ArangoDB:
   * the "devel" branch is normally used for new features 
   * bug fixes should be done in the "devel" first, before being applied to master or other branches
 * If missing, install the required prerequisites. They are listed [here](https://github.com/triAGENS/ArangoDB/wiki/Compiling).
-* Make sure the unmodified clone works locally before making any code changes. You can do so by running the included test suite (i.e. make unittests)
+* configure and make your local clone. If you intend to modify the parser files, please make sure to active the --enable-maintainer-mode configure option. In this case, you also need to have Python installed.
+* Make sure your local unmodified clone works locally before making any code changes. You can do so by running the included test suite (i.e. make unittests)
 * If you intend to do documentation changes, you also must install Doxygen in any recent version.
 
 ## Making Changes
