@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_CLIENT_BENCHMARK_COUNTER_H
-#define TRIAGENS_V8_CLIENT_BENCHMARK_COUNTER_H 1
+#ifndef TRIAGENS_BENCHMARK_BENCHMARK_COUNTER_H
+#define TRIAGENS_BENCHMARK_BENCHMARK_COUNTER_H 1
 
 #include "Basics/Common.h"
 
@@ -36,7 +36,7 @@
 using namespace triagens::basics;
 
 namespace triagens {
-  namespace v8client {
+  namespace arangob {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class BenchmarkCounter
