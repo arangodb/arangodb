@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Admin Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Admin Header">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="App Server Source">
+      <UniqueIdentifier>{e2280a22-c4c5-4009-8e14-9c47d27aa4da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="App Server Header">
+      <UniqueIdentifier>{993b8d0b-0429-4e09-8a72-6e57d4fa7f0d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Dispatcher Source">
+      <UniqueIdentifier>{ea3091f3-e0c6-42f2-ac50-47a3afb06060}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Dispatcher Header">
+      <UniqueIdentifier>{6864000c-6aec-4d23-912f-cc413d696a83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Http Server Source">
+      <UniqueIdentifier>{67b74899-011b-4254-a82d-86cf442a25d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Http Server Header">
+      <UniqueIdentifier>{77913628-8193-462a-9f10-d49158efad9c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Result Generator Source">
+      <UniqueIdentifier>{91fa95ce-57ae-40d8-b6e4-7be1cedc3b1e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Result Generator Header">
+      <UniqueIdentifier>{b27618f6-c3a8-45b7-9f53-4a4826d1c643}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scheduler Source">
+      <UniqueIdentifier>{4735afb3-3596-4d17-b779-d0a524afecbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scheduler Header">
+      <UniqueIdentifier>{5bcf4578-d074-498d-99fe-b604c78fd975}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+</Project>
