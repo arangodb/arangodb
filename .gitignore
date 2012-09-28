@@ -153,3 +153,9 @@ UnitTests/Philadelphia/Makefile.py
 UnitTests/Philadelphia/Runner.cpp
 .v8-build-*
 VC++
+VisualStudio/Arango Front End Library/Debug/*
+VisualStudio/Arango MRuby Library/Debug/*
+VisualStudio/Arango V8 Library/Debug/*
+VisualStudio/ArangoDB/Debug/*
+VisualStudio/Arangod Binary/Debug/*
+VisualStudio/Debug/*
