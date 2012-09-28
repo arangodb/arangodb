@@ -72,7 +72,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         BenchmarkThread (BenchmarkOperation* operation,
-                         ConditionVariable* condition, 
+                         ConditionVariable* condition,
+                         void (*callback) (),
+                         int threadNumber, 
                          const unsigned long batchSize,
                          BenchmarkCounter<unsigned long>* operationsCounter,
                          Endpoint* endpoint, 
@@ -81,6 +83,8 @@ namespace triagens {
           : Thread("arangob"), 
             _operation(operation),
             _startCondition(condition),
+            _callback(callback),
+            _threadNumber(threadNumber),
             _batchSize(batchSize),
             _operationsCounter(operationsCounter),
             _endpoint(endpoint),
@@ -139,6 +143,8 @@ namespace triagens {
 
           _client = new SimpleHttpClient(_connection, 10.0, true);
           _client->setUserNamePassword("/", _username, _password);
+
+          // test the connection
           map<string, string> headerFields;
           SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, 
                                                       "/_api/version", 
@@ -155,6 +161,42 @@ namespace triagens {
           }
 
           delete result;
+
+
+          // if we're the first thread, wipe the existing collection
+          if (_threadNumber == 0 && _operation->useCollection()) {
+            result = _client->request(HttpRequest::HTTP_REQUEST_DELETE,
+                                      "/_api/collection/" + _operation->collectionName(),
+                                      "",
+                                      0, 
+                                      headerFields); 
+
+            if (result == 0 || (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 404)) {
+              cerr << "could not wipe existing collection " << _operation->collectionName() << endl;
+              exit(EXIT_FAILURE);
+            }
+            else {
+              delete result;
+            }
+            
+            // now create the collection
+            string payload = "{\"name\":\"" + _operation->collectionName() + "\"}";
+            result = _client->request(HttpRequest::HTTP_REQUEST_POST,
+                                      "/_api/collection",
+                                      payload.c_str(),
+                                      payload.size(), 
+                                      headerFields); 
+
+            if (result == 0 || (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 201)) {
+              cerr << "could not create collection " << _operation->collectionName() << endl;
+              exit(EXIT_FAILURE);
+            }
+            else {
+              delete result;
+            }
+          }
+
+          _callback();
  
           // wait for start condition to be broadcasted 
           {
@@ -352,6 +394,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ConditionVariable* _startCondition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start callback function
+////////////////////////////////////////////////////////////////////////////////
+
+        void (*_callback) ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our thread number
+////////////////////////////////////////////////////////////////////////////////
+
+        int _threadNumber;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size
