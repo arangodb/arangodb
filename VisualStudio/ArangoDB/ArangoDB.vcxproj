@@ -137,7 +137,6 @@
     <ClInclude Include="..\..\lib\Rest\EndpointList.h" />
     <ClInclude Include="..\..\lib\Rest\Handler.h" />
     <ClInclude Include="..\..\lib\Rest\HttpRequest.h" />
-    <ClInclude Include="..\..\lib\Rest\HttpRequestPlain.h" />
     <ClInclude Include="..\..\lib\Rest\HttpResponse.h" />
     <ClInclude Include="..\..\lib\Rest\Initialise.h" />
     <ClInclude Include="..\..\lib\Rest\JsonContainer.h" />
@@ -238,7 +237,6 @@
     <ClCompile Include="..\..\lib\Rest\EndpointList.cpp" />
     <ClCompile Include="..\..\lib\Rest\Handler.cpp" />
     <ClCompile Include="..\..\lib\Rest\HttpRequest.cpp" />
-    <ClCompile Include="..\..\lib\Rest\HttpRequestPlain.cpp" />
     <ClCompile Include="..\..\lib\Rest\HttpResponse.cpp" />
     <ClCompile Include="..\..\lib\Rest\Initialise.cpp" />
     <ClCompile Include="..\..\lib\Rest\JsonContainer.cpp" />

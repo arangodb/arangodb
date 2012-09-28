@@ -43,4 +43,260 @@
   <ItemGroup>
     <None Include="ReadMe.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lib\Admin\ApplicationAdminServer.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestAdminBaseHandler.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestAdminLogHandler.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestBaseHandler.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestHandlerCreator.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Admin\RestVersionHandler.h">
+      <Filter>Admin Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ApplicationServer\ApplicationFeature.h">
+      <Filter>App Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ApplicationServer\ApplicationServer.h">
+      <Filter>App Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Dispatcher\ApplicationDispatcher.h">
+      <Filter>Dispatcher Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Dispatcher\Dispatcher.h">
+      <Filter>Dispatcher Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Dispatcher\DispatcherQueue.h">
+      <Filter>Dispatcher Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Dispatcher\DispatcherThread.h">
+      <Filter>Dispatcher Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Dispatcher\Job.h">
+      <Filter>Dispatcher Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Dispatcher\JobObserver.h">
+      <Filter>Dispatcher Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\ApplicationEndpointServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\GeneralHttpServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\HttpCommTask.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\HttpHandler.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\HttpHandlerFactory.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\HttpServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\HttpsServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\PathHandler.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\RedirectHandler.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\HttpServer\ServiceUnavailableHandler.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\HtmlResultGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\Initialise.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\JsonResultGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\JsonXResultGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\OutputGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\PhpResultGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\ResultGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\XmlResultGenerator.h">
+      <Filter>Result Generator Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\ApplicationScheduler.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\AsyncTask.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\events.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\ListenTask.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\PeriodicTask.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\Scheduler.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\SchedulerLibev.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\SchedulerThread.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\SignalTask.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\SocketTask.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\Task.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\TaskManager.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Scheduler\TimerTask.h">
+      <Filter>Scheduler Header</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp">
+      <Filter>Admin Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Admin\RestAdminBaseHandler.cpp">
+      <Filter>Admin Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.cpp">
+      <Filter>Admin Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Admin\RestAdminLogHandler.cpp">
+      <Filter>Admin Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Admin\RestBaseHandler.cpp">
+      <Filter>Admin Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Admin\RestVersionHandler.cpp">
+      <Filter>Admin Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ApplicationServer\ApplicationFeature.cpp">
+      <Filter>App Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ApplicationServer\ApplicationServer.cpp">
+      <Filter>App Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Dispatcher\ApplicationDispatcher.cpp">
+      <Filter>Dispatcher Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Dispatcher\Dispatcher.cpp">
+      <Filter>Dispatcher Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Dispatcher\DispatcherQueue.cpp">
+      <Filter>Dispatcher Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Dispatcher\DispatcherThread.cpp">
+      <Filter>Dispatcher Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Dispatcher\Job.cpp">
+      <Filter>Dispatcher Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\HttpServer\ApplicationEndpointServer.cpp">
+      <Filter>Http Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\HttpServer\HttpHandler.cpp">
+      <Filter>Http Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\HttpServer\HttpHandlerFactory.cpp">
+      <Filter>Http Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\HttpServer\PathHandler.cpp">
+      <Filter>Http Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\HttpServer\RedirectHandler.cpp">
+      <Filter>Http Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\HttpServer\ServiceUnavailableHandler.cpp">
+      <Filter>Http Server Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\HtmlResultGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\Initialise.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\JsonResultGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\JsonXResultGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\OutputGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\PhpResultGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\ResultGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\ResultGenerator\XmlResultGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\ApplicationScheduler.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\AsyncTask.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\ListenTask.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\PeriodicTask.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\Scheduler.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\SchedulerLibev.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\SchedulerThread.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\SignalTask.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\SocketTask.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\TaskManager.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\TimerTask.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+  </ItemGroup>
 </Project>
