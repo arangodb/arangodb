@@ -1364,7 +1364,10 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
   else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, message->GetScriptResourceName());
     const char* filenameString = *filename;
+#ifdef TRI_ENABLE_LOGGER 
+    // if ifdef is not used, the compiler will complain about linenum being unused
     int linenum = message->GetLineNumber();
+#endif
     int start = message->GetStartColumn() + 1;
     int end = message->GetEndColumn();
 

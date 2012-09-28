@@ -109,7 +109,10 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   _timing << *task;
+#ifdef TRI_ENABLE_LOGGER
+  // if ifdef is not used, the compiler will complain
   LOGGER_REQUEST_IN_START_I(_timing);
+#endif
 
   // execute one of the CRUD methods
   bool res = false;
