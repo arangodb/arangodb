@@ -2063,7 +2063,8 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // ..........................................................................
 
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
-      acc = TRI_ShapeAccessor(pqIndex->base._collection->_shaper, shapedJson._sid, shape);
+      
+      acc = TRI_FindAccessorVocShaper(pqIndex->base._collection->_shaper, shapedJson._sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
@@ -3783,7 +3784,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape 
       // ..........................................................................
       
-      acc = TRI_ShapeAccessor(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
         return TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;

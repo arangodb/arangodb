@@ -42,7 +42,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_HAVE_DLFCN_H                    1
 #define TRI_HAVE_GETGRGID                   1
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
@@ -71,15 +70,20 @@
 
 #ifdef __APPLE__
 
+#define TRI_HAVE_DLFCN_H                    1
+
 #include <stdint.h>
 
 #define TRI_ENABLE_SYSLOG                   1
 
 #define TRI_HAVE_DIRENT_H                   1
+#define TRI_HAVE_FORK                       1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_SYS_TIME_H                 1
+#define TRI_HAVE_SYS_TYPES_H                1
+#define TRI_HAVE_SYS_WAIT_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_SYS_IOCTL_H                1
@@ -119,6 +123,22 @@
 #endif
 #endif
 
+#define TRI_CHDIR                       chdir
+#define TRI_CLOSE                       close
+#define TRI_CREATE(a,b,c)               open((a), (b), (c))
+#define TRI_GETCWD                      getcwd
+#define TRI_MKDIR(a,b)                  mkdir((a), (b))
+#define TRI_OPEN(a,b)                   open((a), (b))
+#define TRI_READ                        read
+#define TRI_RMDIR                       rmdir
+#define TRI_UNLINK                      unlink
+#define TRI_WRITE                       write
+
+#define TRI_LAST_ERROR_STR              strerror(errno)
+
+#define TRI_uid_t                       uid_t
+#define TRI_gid_t                       gid_t
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,15 +156,20 @@
 
 #ifdef __CYGWIN__
 
+#define TRI_HAVE_DLFCN_H                    1
+
 #include <bits/wordsize.h>
 #include <io.h>
 
 #define TRI_ENABLE_SYSLOG                   1
 
 #define TRI_HAVE_DIRENT_H                   1
+#define TRI_HAVE_FORK                       1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_UNISTD_H                   1
+#define TRI_HAVE_SYS_TYPES_H                1
+#define TRI_HAVE_SYS_WAIT_H                 1
 
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
@@ -164,6 +189,22 @@
 #define TRI_ALIGNOF_VOIDP                   4
 #endif
 
+#define TRI_CHDIR                       chdir
+#define TRI_CLOSE                       close
+#define TRI_CREATE(a,b,c)               open((a), (b), (c))
+#define TRI_GETCWD                      getcwd
+#define TRI_MKDIR(a,b)                  mkdir((a), (b))
+#define TRI_OPEN(a,b)                   open((a), (b))
+#define TRI_READ                        read
+#define TRI_RMDIR                       rmdir
+#define TRI_UNLINK                      unlink
+#define TRI_WRITE                       write
+
+#define TRI_LAST_ERROR_STR              strerror(errno)
+
+#define TRI_uid_t                       uid_t
+#define TRI_gid_t                       gid_t
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,6 +221,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __linux__
+
+#define TRI_HAVE_DLFCN_H                    1
 
 // force posix source
 #if ! defined(_POSIX_C_SOURCE)
@@ -209,11 +252,15 @@
 #define TRI_GCC_THREAD_LOCAL_STORAGE        1
 
 #define TRI_HAVE_DIRENT_H                   1
+#define TRI_HAVE_FORK                       1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
+#define TRI_HAVE_SYS_FILE_H                 1
 #define TRI_HAVE_SYS_PRCTL_H                1
 #define TRI_HAVE_SYS_RESOURCE_H             1
 #define TRI_HAVE_SYS_TIME_H                 1
+#define TRI_HAVE_SYS_TYPES_H                1
+#define TRI_HAVE_SYS_WAIT_H                 1
 #define TRI_HAVE_UNISTD_H                   1
 #define TRI_HAVE_TERMIOS_H                  1
 #define TRI_HAVE_SYS_IOCTL_H                1
@@ -240,6 +287,22 @@
 #define TRI_SIZEOF_SIZE_T                   4
 #define TRI_ALIGNOF_VOIDP                   4
 #endif
+
+#define TRI_CHDIR                       chdir
+#define TRI_CLOSE                       close
+#define TRI_CREATE(a,b,c)               open((a), (b), (c))
+#define TRI_GETCWD                      getcwd
+#define TRI_MKDIR(a,b)                  mkdir((a), (b))
+#define TRI_OPEN(a,b)                   open((a), (b))
+#define TRI_READ                        read
+#define TRI_RMDIR                       rmdir
+#define TRI_UNLINK                      unlink
+#define TRI_WRITE                       write
+
+#define TRI_LAST_ERROR_STR              strerror(errno)
+
+#define TRI_uid_t                       uid_t
+#define TRI_gid_t                       gid_t
 
 #endif
 
@@ -278,6 +341,7 @@
 #define TRI_HAVE_STRTOUI64                  1
 #define TRI_HAVE_WIN32_CLOSE_ON_EXEC        1
 #define TRI_HAVE_WIN32_GETTIMEOFDAY         1
+#define TRI_HAVE_WIN32_FILE_LOCKING         1
 #define TRI_HAVE_WIN32_LIST_FILES           1
 #define TRI_HAVE_WIN32_NON_BLOCKING         1
 #define TRI_HAVE_WIN32_SOCKETS              1
@@ -293,6 +357,7 @@
 #endif
 
 #define strcasecmp                      _stricmp
+#define strncasecmp                     _strnicmp
 #define snprintf                        _snprintf
 #define usleep                          Sleep
 #define srandom                         srand
@@ -320,6 +385,28 @@ typedef unsigned int bool;
 
 #define va_copy(d,s) ((d) = (s))
 
+
+#define O_RDONLY                        _O_RDONLY
+#define TRI_CHDIR                       _chdir
+#define TRI_CLOSE                       _close
+#define TRI_CREATE(a,b,c)               _open((a), (b))
+#define TRI_GETCWD                      _getcwd
+#define TRI_MKDIR(a,b)                  _mkdir((a))
+#define TRI_OPEN(a,b)                   _open((a), (b))
+#define TRI_READ                        _read
+#define TRI_RMDIR                       _rmdir
+#define TRI_UNLINK                      _unlink
+#define TRI_WRITE                       _write
+
+#define TRI_LAST_ERROR_STR              strerror(errno)
+
+// ...........................................................................
+// under windows group identifiers and user identifiers are
+// security identifiers (SID) which is a variable length structure
+// which can (should) not be accessed directly.
+// ...........................................................................
+#define TRI_uid_t                       void*
+#define TRI_gid_t                       void*
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,39 +424,6 @@ typedef unsigned int bool;
 
 typedef int socket_t;
 
-#if defined(_WIN32) && defined(_MSC_VER)
-
-#define O_RDONLY                        _O_RDONLY
-
-#define TRI_CHDIR                       _chdir
-#define TRI_CLOSE                       _close
-#define TRI_CREATE(a,b,c)               _open((a), (b))
-#define TRI_GETCWD                      _getcwd
-#define TRI_MKDIR(a,b)                  _mkdir((a))
-#define TRI_OPEN(a,b)                   _open((a), (b))
-#define TRI_READ                        _read
-#define TRI_RMDIR                       _rmdir
-#define TRI_UNLINK                      _unlink
-#define TRI_WRITE                       _write
-
-#define TRI_LAST_ERROR_STR              strerror(errno)
-
-#else
-
-#define TRI_CHDIR                       chdir
-#define TRI_CLOSE                       close
-#define TRI_CREATE(a,b,c)               open((a), (b), (c))
-#define TRI_GETCWD                      getcwd
-#define TRI_MKDIR(a,b)                  mkdir((a), (b))
-#define TRI_OPEN(a,b)                   open((a), (b))
-#define TRI_READ                        read
-#define TRI_RMDIR                       rmdir
-#define TRI_UNLINK                      unlink
-#define TRI_WRITE                       write
-
-#define TRI_LAST_ERROR_STR              strerror(errno)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -65,42 +65,37 @@ using namespace std;
 /// @brief request statistics description
 ////////////////////////////////////////////////////////////////////////////////
 
+
 struct StatisticsDesc {
-  RRF_DISTRIBUTION(StatisticsDesc,
-                   total,
+
 #ifdef TRI_ENABLE_HIRES_FIGURES
-                   (0.0001) << 
+  RRF_DISTRIBUTION(StatisticsDesc, total, (0.0001) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
+#else
+  RRF_DISTRIBUTION(StatisticsDesc, total, (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 #endif
-                   (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 
-  RRF_DISTRIBUTION(StatisticsDesc,
-                   queue,
+
 #ifdef TRI_ENABLE_HIRES_FIGURES
-                   (0.0001) << 
+  RRF_DISTRIBUTION(StatisticsDesc, queue,(0.0001) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
+#else
+  RRF_DISTRIBUTION(StatisticsDesc, queue, (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 #endif
-                   (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 
-  RRF_DISTRIBUTION(StatisticsDesc,
-                   request,
+
 #ifdef TRI_ENABLE_HIRES_FIGURES
-                   (0.0001) << 
+  RRF_DISTRIBUTION(StatisticsDesc, request, (0.0001) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
+#else
+  RRF_DISTRIBUTION(StatisticsDesc, request, (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 #endif
-                   (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0));
 
-  RRF_DISTRIBUTION(StatisticsDesc,
-                   bytesSent,
-                   (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000));
 
-  RRF_DISTRIBUTION(StatisticsDesc,
-                   bytesReceived,
-                   (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000));
+  RRF_DISTRIBUTION(StatisticsDesc, bytesSent, (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000));
 
-  RRF_COUNTER(StatisticsDesc,
-              httpConnections);
+  RRF_DISTRIBUTION(StatisticsDesc, bytesReceived, (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000));
 
-  RRF_DISTRIBUTION(StatisticsDesc,
-                   httpDuration,
-                   (0.1) << (1.0) << (60.0));
+  RRF_COUNTER(StatisticsDesc, httpConnections);
+
+  RRF_DISTRIBUTION(StatisticsDesc, httpDuration, (0.1) << (1.0) << (60.0));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -650,7 +645,7 @@ VariantArray* TRI_StatisticsInfo (TRI_statistics_granularity_e granularity,
     }
 
     for (;  k != t.end();  ++k) {
-      start->add(new VariantUInt32(*k));
+      start->add(new VariantUInt64(*k));
     }
 
     if (0 < offset) {
@@ -722,7 +717,7 @@ double TRI_StatisticsTime () {
 #else
 
 double TRI_StatisticsTime () { 
-  return time(NULL);
+  return time(0);
 }
 
 #endif
