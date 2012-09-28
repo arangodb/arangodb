@@ -26,7 +26,9 @@ number of parallel threads that will issue requests (default is 1 thread)
 OPTION "--requests <int32>"
 total number of requests to perform
 OPTION "--test-case <string>"
-name of test case to perform (possible values: version, smalldoc, bigdoc)
+name of test case to perform (possible values: "version" and "document")
+OPTION "--complexity <int32>"
+complexity value for test case (meaning depends on test case)
 OPTION "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
 OPTION "--server.username <string>"

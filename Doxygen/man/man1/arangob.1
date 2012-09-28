@@ -1,4 +1,4 @@
-.TH arangob 1 "Fr 28. Sep 11:56:58 CEST 2012" "" "ArangoDB"
+.TH arangob 1 "Fr 28. Sep 16:38:43 CEST 2012" "" "ArangoDB"
 .SH NAME
 arangob - the ArangoDB benchmark and test tool
 .SH SYNOPSIS
@@ -26,7 +26,9 @@ number of parallel threads that will issue requests (default is 1 thread)
 .IP "--requests <int32>"
 total number of requests to perform
 .IP "--test-case <string>"
-name of test case to perform (possible values: version, smalldoc, bigdoc)
+name of test case to perform (possible values: "version" and "document")
+.IP "--complexity <int32>"
+complexity value for test case (meaning depends on test case)
 .IP "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port 
 .IP "--server.username <string>"
