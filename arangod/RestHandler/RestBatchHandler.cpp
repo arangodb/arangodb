@@ -51,7 +51,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
-  : RestVocbaseBaseHandler(request, vocbase) {
+  : RestVocbaseBaseHandler(request, vocbase), 
+    _partContentType(HttpRequest::getPartContentType()) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +152,7 @@ Handler::status_e RestBatchHandler::execute() {
     size_t headerLength = 0;
     size_t bodyLength = 0;
 
-    // assume \r\n\r\n as delimiter
+    // assume Windows linebreak \r\n\r\n as delimiter
     char* p = strstr((char*) headerStart, "\r\n\r\n");
     if (p != NULL) {
       headerLength = p - partStart;
@@ -159,8 +160,17 @@ Handler::status_e RestBatchHandler::execute() {
       bodyLength = partEnd - bodyStart;
     }
     else {
-      // no delimiter found, assume we have only a header
-      headerLength = partLength;
+      // test Unix linebreak
+      p = strstr((char*) headerStart, "\n\n");
+      if (p != NULL) {
+        headerLength = p - partStart;
+        bodyStart = p + 2;
+        bodyLength = partEnd - bodyStart;
+      }
+      else {
+        // no delimiter found, assume we have only a header
+        headerLength = partLength;
+      }
     }
    
     // set up request object for the part
@@ -231,7 +241,8 @@ Handler::status_e RestBatchHandler::execute() {
 
     // append the boundary for this subpart
     _response->body().appendText(boundary + "\r\n");
-    _response->body().appendText(HttpRequest::getPartContentType());
+    _response->body().appendText(_partContentType);
+    _response->body().appendText("\r\n\r\n", 4);
 
     // append the response header
     partResponse->writeHeader(&_response->body());
@@ -349,23 +360,42 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   if (*found == '\r') {
     ++found;
   }
-  if (*found == '\n') {
-    ++found;
+  if (*found != '\n') {
+    // no linebreak found
+    return false;
   }
+  ++found;
 
   // look for part content type
-  static const string& expectedPartType = HttpRequest::getPartContentType();
-
-  if (strstr(found, expectedPartType.c_str()) != found) {
+  if (strstr(found, _partContentType.c_str()) != found) {
     // part content type not located at expected position. this is an error
     return false;
   }
-  found += expectedPartType.size();
+  found += _partContentType.size();
 
-  if (found >= searchEnd) {
+  if (found + 4 >= searchEnd) {
     // we're outside the buffer. this is an error
     return false;
   }
+
+  // assert two Windows or Unix linebreaks
+  if (*found == '\r') {
+    found++;
+  }
+  if (*found != '\n') {
+    // no linebreak. this is an error
+    return false;
+  }
+  ++found;
+
+  if (*found == '\r') {
+    found++;
+  }
+  if (*found != '\n') {
+    // no linebreak. this is an error
+    return false;
+  }
+  ++found;
 
   // we're at the start of the body part. set the return value
   helper->foundStart = found;

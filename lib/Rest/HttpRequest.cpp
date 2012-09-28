@@ -1052,7 +1052,7 @@ void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 const string& HttpRequest::getPartContentType () {
-  static const string contentType = "Content-Type: application/x-arango-batchpart\r\n\r\n";
+  static const string contentType = "Content-Type: application/x-arango-batchpart";
 
   return contentType;
 }
