@@ -294,6 +294,9 @@ namespace triagens {
       char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
 
       while (pos) {
+        // size_t is unsigned, should never get < 0
+        assert(pos >= _readBuffer.c_str());
+
         size_t len = pos - _readBuffer.c_str();
         string line(_readBuffer.c_str(), len);
         _readBuffer.erase_front(len + 1);

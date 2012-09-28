@@ -208,6 +208,7 @@ namespace triagens {
           readBlocked = false;
           readBlockedOnWrite = false;
 
+again:
           int nr = SSL_read(ssl, tmpReadBuffer, READ_BLOCK_SIZE);
 
           if (nr <= 0) {
@@ -263,6 +264,10 @@ namespace triagens {
           }
           else {
             this->_readBuffer->appendText(tmpReadBuffer, nr);
+
+            // we might have more data to read
+            // if we do not iterate again, the reading process would stop
+            goto again;
           }
 
           return true;
@@ -280,6 +285,9 @@ namespace triagens {
 
           {
             MUTEX_LOCKER(this->writeBufferLock);
+
+            // size_t is unsigned, should never get < 0
+            assert(this->_writeBuffer->length() >= this->writeLength);
 
             // write buffer to SSL connection
             size_t len = this->_writeBuffer->length() - this->writeLength;

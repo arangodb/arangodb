@@ -77,7 +77,7 @@ function main (argv) {
   // --------------------------------------------------------------------------
 
   // set up the collection _users 
-  addTask("setup _users collection", 0, function () {
+  addTask("setup _users collection", 1, function () {
     var users = db._collection("_users");
 
     if (users == null) {
@@ -93,7 +93,7 @@ function main (argv) {
   });
 
   // create a unique index on username attribute in _users
-  addTask("create index on username attribute in _users collection", 0, function () {
+  addTask("create index on username attribute in _users collection", 1, function () {
     var users = db._collection("_users");
 
     if (users == null) {
@@ -106,7 +106,7 @@ function main (argv) {
   });
   
   // add a default root user with no passwd
-  addTask("add default root user", 0, function () {
+  addTask("add default root user", 1, function () {
     var users = db._collection("_users");
 
     if (users == null) {
@@ -122,7 +122,7 @@ function main (argv) {
   });
   
   // set up the collection _graphs
-  addTask("setup _graphs collection", 0, function () {
+  addTask("setup _graphs collection", 1, function () {
     var graphs = db._collection("_graphs");
 
     if (graphs == null) {
@@ -138,7 +138,7 @@ function main (argv) {
   });
   
   // create a unique index on name attribute in _graphs
-  addTask("create index on name attribute in _graphs collection", 0, function () {
+  addTask("create index on name attribute in _graphs collection", 1, function () {
     var graphs = db._collection("_graphs");
 
     if (graphs == null) {
@@ -151,7 +151,7 @@ function main (argv) {
   });
 
   // make distinction between document and edge collections
-  addTask("set new collection type for edge collections and update collection version", 0, function () {
+  addTask("set new collection type for edge collections and update collection version", 1, function () {
     var collections = db._collections();
     
     for (var i in collections) {
@@ -201,7 +201,7 @@ function main (argv) {
   });
   
   // create the VERSION file
-  addTask("create VERSION file", 0, function () {
+  addTask("create VERSION file", 1, function () {
     // save "1" into VERSION file
     SYS_SAVE(versionFile, "1");
     return true;
@@ -214,10 +214,11 @@ function main (argv) {
   // loop through all tasks and execute them
   console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
 
+  var taskNumber = 0;
   for (var i in activeTasks) {
     var task = activeTasks[i];
 
-    console.log("Executing task #" + (i + 1) + ": " + task.description);
+    console.log("Executing task #" + (++taskNumber) + ": " + task.description);
 
     var result = task.code();
 

@@ -49,18 +49,23 @@ function CompactionSuite () {
       var maxWait;
       var waited;
       var cn = "example";
-      var n = 1500;
-      var payload = "the quick brown fox jumped over the lazy dog. the quick dog jumped over the lazy brown fox";
+      var n = 400;
+      var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
 
       for (var i = 0; i < 5; ++i) {
         payload += payload;
       }
 
       internal.db._drop(cn);
+      internal.wait(5);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
+      internal.wait(2);
 
       for (var i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
+        if ((i > 0) && (i % 100 == 0)) {
+          internal.wait(2);
+        }
       }
 
       var fig = c1.figures();
@@ -73,6 +78,7 @@ function CompactionSuite () {
 
       c1.truncate();
       c1.unload();
+      internal.wait(2);
 
       c1 = null;
       
@@ -81,10 +87,10 @@ function CompactionSuite () {
 
       // set max wait time
       if (VALGRIND) {
-        maxWait = 900;
+        maxWait = 750;
       }
       else {
-        maxWait = 90;
+        maxWait = 75;
       }
 
       waited = 0;

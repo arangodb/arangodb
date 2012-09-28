@@ -251,7 +251,7 @@ typedef struct USerializedSet {
  * @stable ICU 4.2
  */
 U_STABLE USet* U_EXPORT2
-uset_openEmpty();
+uset_openEmpty(void);
 
 /**
  * Creates a USet object that contains the range of characters
