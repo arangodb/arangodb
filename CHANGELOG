@@ -1,6 +1,9 @@
 not released yet
 ----------------
 
+* issue #204: extend the CSV import by TSV and by user configurable 
+  seperator character(s)
+
 * issue #180: added support for batch operations
 
 * added startup option --server.backlog-size
