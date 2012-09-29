@@ -76,6 +76,7 @@ function splitUrl (url) {
   var re1;
   var re2;
   var cut;
+  var ors;
 
   re1 = /^(:[a-z]+)(\|:[a-z]+)*$/;
   re2 = /^(:[a-z]+)\?$/;
@@ -98,13 +99,11 @@ function splitUrl (url) {
         cleaned.push({ prefix: true });
       }
       else if (re1.test(part)) {
-        var ors = part.split("|").map(cut);
-
+        ors = part.split("|").map(cut);
         cleaned.push({ parameters: ors });
       }
       else if (re2.test(part)) {
-        var ors = [ part.substr(1, part.length - 2) ];
-
+        ors = [ part.substr(1, part.length - 2) ];
         cleaned.push({ parameters: ors, optional: true });
       }
       else {
@@ -183,13 +182,18 @@ function lookupCallbackStatic (content) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupCallbackAction (action) {
+  var path;
+  var name;
+  var func;
+  var module;
+
   if (typeof action === 'string') {
-    var path = action.split("/");
-    var name = path.pop();
-    var func = null;
+    path = action.split("/");
+    name = path.pop();
+    func = null;
 
     try {
-      var module = require(path.join("/"));
+      module = require(path.join("/"));
 
       if (module.hasOwnProperty(name)) {
         func = module[name];
@@ -199,7 +203,8 @@ function lookupCallbackAction (action) {
       }
     }
     catch (err) {
-      console.error("cannot find action named '%s' in module '%s': %s", name, path.join("/"), String(err));
+      console.error("cannot find action named '%s' in module '%s': %s", 
+                    name, path.join("/"), String(err));
       return null;
     }
 
@@ -215,12 +220,12 @@ function lookupCallbackAction (action) {
   }
 
   if (action.hasOwnProperty('do')) {
-    var path = action.do.split("/");
-    var name = path.pop();
-    var func = null;
+    path = action['do'].split("/");
+    name = path.pop();
+    func = null;
 
     try {
-      var module = require(path.join("/"));
+      module = require(path.join("/"));
 
       if (module.hasOwnProperty(name)) {
         func = module[name];
@@ -230,7 +235,8 @@ function lookupCallbackAction (action) {
       }
     }
     catch (err) {
-      console.error("cannot find action named '%s' in module '%s': %s", name, path.join("/"), String(err));
+      console.error("cannot find action named '%s' in module '%s': %s",
+                    name, path.join("/"), String(err));
       return null;
     }
 
@@ -247,7 +253,7 @@ function lookupCallbackAction (action) {
 
   if (action.hasOwnProperty('controller')) {
     try {
-      var module = require(action.controller);
+      module = require(action.controller);
 
       return {
         controller: function (req, res, next, options) {
@@ -286,7 +292,8 @@ function lookupCallbackAction (action) {
       };
     }
     catch (err) {
-      console.error("cannot load action controller module '%s': %s", action.controller, String(err));
+      console.error("cannot load action controller module '%s': %s", 
+                    action.controller, String(err));
       return null;
     }
   }
@@ -385,7 +392,7 @@ function intersectMethods (a, b) {
     d[b[i].toUpperCase()] = true;
   }
 
-  for (var j = 0; j < a.length; j++) {
+  for (j = 0; j < a.length; j++) {
     var name = a[j].toUpperCase(); 
 
     if (d[name]) {
@@ -514,7 +521,11 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     for (k in routes.exact) {
       if (routes.exact.hasOwnProperty(k)) {
         cur = path + "/" + k.replace(/([\.\+\*\?\^\$\(\)\[\]])/g, "\\$1");
-        result = result.concat(flattenRouting(routes.exact[k], cur, urlParameters.shallowCopy, depth + 1, false));
+        result = result.concat(flattenRouting(routes.exact[k],
+                                              cur,
+                                              urlParameters.shallowCopy,
+                                              depth + 1,
+                                              false));
       }
     }
   }
@@ -548,7 +559,11 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 
       newUrlParameters[parameter.parameter] = depth;
 
-      result = result.concat(flattenRouting(parameter.match, cur, newUrlParameters, depth + 1, false));
+      result = result.concat(flattenRouting(parameter.match,
+                                            cur,
+                                            newUrlParameters,
+                                            depth + 1,
+                                            false));
     }
   }
 
@@ -570,7 +585,11 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
     }
     else {
       cur = path + "(/[^/]+)*";
-      result = result.concat(flattenRouting(routes.prefix, cur, urlParameters.shallowCopy, depth + 1, true));
+      result = result.concat(flattenRouting(routes.prefix,
+                             cur,
+                             urlParameters.shallowCopy,
+                             depth + 1,
+                             true));
     }
   }
 
@@ -747,7 +766,7 @@ function getJsonBody (req, res, code) {
     body = JSON.parse(req.requestBody || "{}") || {};
   }
   catch (err) {
-    resultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err);
+    exports.resultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err);
     return undefined;
   }
 
@@ -756,7 +775,7 @@ function getJsonBody (req, res, code) {
       code = exports.ERROR_HTTP_CORRUPTED_JSON;
     }
 
-    resultBad(req, res, code, err);
+    exports.resultBad(req, res, code, err);
     return undefined;
   }
 
@@ -766,7 +785,8 @@ function getJsonBody (req, res, code) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ///
-/// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum}, @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
+/// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum},
+///                          @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
 ///
 /// The functions generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message
@@ -777,6 +797,8 @@ function getJsonBody (req, res, code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
+  var i;
+
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
 
@@ -790,7 +812,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
   var result = {};
 
   if (keyvals !== undefined) {
-    for (var i in keyvals) {
+    for (i in keyvals) {
       if (keyvals.hasOwnProperty(i)) {
         result[i] = keyvals[i];
       }
@@ -819,6 +841,7 @@ function reloadRouting () {
   var routing;
   var handleRoute;
   var handleMiddleware;
+  var method;
 
   // .............................................................................
   // clear the routing cache
@@ -855,6 +878,7 @@ function reloadRouting () {
 
   handleRoute = function (storage, urlPrefix, modulePrefix, route) {
     var url;
+    var callback;
 
     url = lookupUrl(urlPrefix, route.url);
 
@@ -871,7 +895,7 @@ function reloadRouting () {
     }
 
     defineRoute(route, storage, url, callback);
-  }
+  };
 
   // .............................................................................
   // loop over the routes or routes bundle
@@ -879,13 +903,14 @@ function reloadRouting () {
 
   while (routes.hasNext()) {
     var route = routes.next();
+    var r;
 
     if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
       var urlPrefix = route.urlPrefix || "";
       var modulePrefix = route.modulePrefix || "";
 
       if (route.hasOwnProperty('routes')) {
-        var r = route.routes;
+        r = route.routes;
 
         for (i = 0;  i < r.length;  ++i) {
           handleRoute(RoutingCache.routes, urlPrefix, modulePrefix, r[i]);
@@ -893,7 +918,7 @@ function reloadRouting () {
       }
 
       if (route.hasOwnProperty('middleware')) {
-        var r = route.middleware;
+        r = route.middleware;
 
         for (i = 0;  i < r.length;  ++i) {
           handleRoute(RoutingCache.middleware, urlPrefix, modulePrefix, r[i]);
@@ -922,6 +947,53 @@ function reloadRouting () {
 
     RoutingCache.flat[method] = b.concat(a);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds the next routing
+////////////////////////////////////////////////////////////////////////////////
+
+function nextRouting (state) {
+  var i;
+  var k;
+
+  for (i = state.position + 1;  i < state.routing.length;  ++i) {
+    var route = state.routing[i];
+
+    if (route.regexp.test(state.url)) {
+      state.position = i;
+
+      state.route = route;
+
+      if (route.prefix) {
+        state.prefix = "/" + state.parts.slice(0, route.depth - 1).join("/");
+        state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
+      }
+      else {
+        state.prefix = undefined;
+        state.suffix = undefined;
+      }
+
+      state.urlParameters = {};
+
+      if (route.urlParameters) {
+        for (k in route.urlParameters) {
+          if (route.urlParameters.hasOwnProperty(k)) {
+            state.urlParameters[k] = state.parts[route.urlParameters[k]];
+          }
+        }
+      }
+
+      return state;
+    }
+  }
+
+  state.route = undefined;
+  state.prefix = undefined;
+  state.suffix = undefined;
+  state.urlParameters = {};
+
+  return state;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -965,51 +1037,6 @@ function firstRouting (type, parts) {
     suffix: undefined,
     urlParameters: {}
   });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds the next routing
-////////////////////////////////////////////////////////////////////////////////
-
-function nextRouting (state) {
-  var i;
-  var k;
-
-  for (i = state.position + 1;  i < state.routing.length;  ++i) {
-    var route = state.routing[i];
-
-    if (route.regexp.test(state.url)) {
-      state.position = i;
-
-      state.route = route;
-
-      if (route.prefix) {
-        state.prefix = "/" + state.parts.slice(0, route.depth - 1).join("/");
-        state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
-      }
-      else {
-        state.prefix = undefined;
-        state.suffix = undefined;
-      }
-
-      state.urlParameters = {};
-
-      if (route.urlParameters) {
-        for (k in route.urlParameters) {
-          state.urlParameters[k] = state.parts[route.urlParameters[k]];
-        }
-      }
-
-      return state;
-    }
-  }
-
-  state.route = undefined;
-  state.prefix = undefined;
-  state.suffix = undefined;
-  state.urlParameters = {};
-
-  return state;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1069,7 +1096,7 @@ function resultBad (req, res, code, msg, headers) {
     msg = getErrorMessage(code);
   }
   else {
-    msg = "" + msg;
+    msg = String(msg);
   }
 
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
@@ -1084,7 +1111,7 @@ function resultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotFound (req, res, msg, headers) {
-  resultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, "" + msg, headers);
+  resultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, String(msg), headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1096,7 +1123,12 @@ function resultNotFound (req, res, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
-  resultError(req, res, exports.HTTP_NOT_IMPLEMENTED, exports.ERROR_NOT_IMPLEMENTED, "" + msg, headers);
+  resultError(req, 
+              res,
+              exports.HTTP_NOT_IMPLEMENTED,
+              exports.ERROR_NOT_IMPLEMENTED,
+              String(msg),
+              headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1126,7 +1158,8 @@ function resultPermanentRedirect (req, res, destination, headers) {
   res.responseCode = exports.HTTP_MOVED_PERMANENTLY;
   res.contentType = "text/html";
 
-  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+  res.body = "<html><head><title>Moved</title>"
+    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
     + destination
     + "\">"
     + destination
@@ -1154,7 +1187,8 @@ function resultTemporaryRedirect (req, res, destination, headers) {
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
   res.contentType = "text/html";
 
-  res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
+  res.body = "<html><head><title>Moved</title>"
+    + "</head><body><h1>Moved</h1><p>This page has moved to <a href=\""
     + destination
     + "\">"
     + destination
@@ -1315,7 +1349,7 @@ function resultException (req, res, err, headers) {
   else {
     resultError(req, res,
                 exports.HTTP_SERVER_ERROR, exports.ERROR_HTTP_SERVER_ERROR,
-                "" + err,
+                String(err),
                 headers);
   }
 }
@@ -1356,7 +1390,7 @@ function logRequest (req, res, next, options) {
   var level;
   var token;
 
-  if ('level' in options) {
+  if (options.hasOwnProperty('level')) {
     level = options.level;
 
     if (level === "debug") {
@@ -1382,7 +1416,7 @@ function logRequest (req, res, next, options) {
     log = console.log;
   }
 
-  if ('token' in options) {
+  if (options.hasOwnProperty('token')) {
     token = options.token;
   }
   else {
@@ -1497,7 +1531,9 @@ exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
 
 // copy error codes
-for (var name in internal.errors) {
+var name;
+
+for (name in internal.errors) {
   if (internal.errors.hasOwnProperty(name)) {
     exports[name] = internal.errors[name].code;
   }
