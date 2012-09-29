@@ -66,8 +66,11 @@ typedef struct TRI_csv_parser_s {
   TRI_memory_zone_t* _memoryZone;
 
   char _quote;
-  char _separator;
-  char _eol;
+  bool _useQuote;
+  char* _separator;
+  size_t _separatorLength;
+  char* _eol;
+  size_t _eolLength;
 
   char* _begin;       // beginning of the input buffer
   char* _start;       // start of the unproccessed part
@@ -134,6 +137,34 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
 /// @addtogroup CSV
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the separator
+///
+/// note that the separator string must be valid until the parser is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser, 
+                                char* separator,
+                                size_t separatorLength);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the eol character(s)
+///
+/// note that the eol string must be valid until the parser is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetEolCsvParser (TRI_csv_parser_t* parser, 
+                          char* eol,
+                          size_t eolLength);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the quote character
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser, 
+                            char quote,
+                            bool useQuote); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a CSV line

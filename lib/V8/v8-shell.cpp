@@ -149,28 +149,27 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   v8::Handle<v8::String> separatorKey = v8::String::New("separator");
   v8::Handle<v8::String> quoteKey = v8::String::New("quote");
 
-  char separator = ',';
-  char quote = '"';
+  string separator = ",";
+  string quote = "\"";
 
   if (3 <= argv.Length()) {
     v8::Handle<v8::Object> options = argv[2]->ToObject();
-    bool error;
 
     // separator
     if (options->Has(separatorKey)) {
-      separator = TRI_ObjectToCharacter(options->Get(separatorKey), error);
+      separator = TRI_ObjectToString(options->Get(separatorKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be a character")));
+      if (separator.size() < 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
       }
     }
 
     // quote
     if (options->Has(quoteKey)) {
-      quote = TRI_ObjectToCharacter(options->Get(quoteKey), error);
+      quote = TRI_ObjectToString(options->Get(quoteKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be a character")));
+      if (quote.length() > 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
       }
     }
   }
@@ -190,8 +189,13 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
                     ProcessCsvAdd,
                     ProcessCsvEnd);
 
-  parser._separator = separator;
-  parser._quote = quote;
+  TRI_SetSeparatorCsvParser(&parser, (char*) separator.c_str(), separator.size());
+  if (quote.length() > 0) {
+    TRI_SetQuoteCsvParser(&parser, quote[0], true);
+  }
+  else {
+    TRI_SetQuoteCsvParser(&parser, '\0', false);
+  }
 
   parser._dataEnd = &cb;
 
