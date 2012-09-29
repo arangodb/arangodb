@@ -31,6 +31,8 @@ internal.db._drop("UnitTestsImportJson1");
 internal.db._drop("UnitTestsImportJson2");
 internal.db._drop("UnitTestsImportCsv1");
 internal.db._drop("UnitTestsImportCsv2");
+internal.db._drop("UnitTestsImportTsv1");
+internal.db._drop("UnitTestsImportTsv2");
 
 return true;
 

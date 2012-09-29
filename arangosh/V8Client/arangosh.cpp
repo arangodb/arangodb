@@ -252,28 +252,26 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   v8::Handle<v8::String> separatorKey = v8::String::New("separator");
   v8::Handle<v8::String> quoteKey = v8::String::New("quote");
 
-  char separator = ',';
-  char quote = '"';
+  string separator = ",";
+  string quote = "\"";
 
   if (3 <= argv.Length()) {
     v8::Handle<v8::Object> options = argv[2]->ToObject();
-    bool error;
-
     // separator
     if (options->Has(separatorKey)) {
-      separator = TRI_ObjectToCharacter(options->Get(separatorKey), error);
+      separator = TRI_ObjectToString(options->Get(separatorKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be a character")));
+      if (separator.length() < 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
       }
     }
 
     // quote
     if (options->Has(quoteKey)) {
-      quote = TRI_ObjectToCharacter(options->Get(quoteKey), error);
+      quote = TRI_ObjectToString(options->Get(quoteKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be a character")));
+      if (quote.length() > 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
       }
     }
   }
@@ -281,12 +279,12 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
   
   ih.setQuote(quote);
-  ih.setSeparator(separator);
+  ih.setSeparator(separator.c_str());
 
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
  
-  if (ih.importCsv(collectionName, fileName)) {
+  if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
     result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
