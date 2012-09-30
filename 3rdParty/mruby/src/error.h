@@ -8,7 +8,7 @@
 #define MRUBY_ERROR_H
 
 struct RException {
-  MRUBY_OBJECT_HEADER;
+  MRB_OBJECT_HEADER;
 };
 
 void mrb_sys_fail(mrb_state *mrb, const char *mesg);

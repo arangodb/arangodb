@@ -1,5 +1,11 @@
-v1.0.1 (2012-XX-XX)
+v1.0.1 (2012-09-30)
 -------------------
+
+* darft for issue #165: front-end application howto
+
+* updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
+
+* fix for issue #190: install doesn't create log directory
 
 * fix for issue #194: potential race condition between creating and dropping collections
 

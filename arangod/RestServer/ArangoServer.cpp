@@ -1125,7 +1125,7 @@ int ArangoServer::executeRubyConsole () {
 
     console->addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_string(mrb, input);
+    struct mrb_parser_state* p = mrb_parse_string(mrb, input, NULL);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1133,7 +1133,7 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(mrb, p->tree);
+    int n = mrb_generate_code(mrb, p);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";

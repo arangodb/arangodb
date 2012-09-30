@@ -27,6 +27,7 @@ Please follow these guidelines if you want to contribute to ArangoDB:
 * If the modifications change any documented behavior or add new features, document the changes. The documentation can be found in arangod/Documentation directory. To recreate the documentation locally, run make doxygen. This will re-create all documentation files in the Doxygen directory in your repository. You can inspect the documentation in this folder using a text editor or a browser
 * When done, run the complete test suite and make sure all tests pass
 * When finished, push the changes to your GitHub repository and send a pull request from your fork to the ArangoDB repository. Please make sure to select the appropriate branches there
+* You must use the Apache License for your changes
 
 ## Additional Resources
 

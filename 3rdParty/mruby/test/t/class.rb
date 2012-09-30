@@ -47,36 +47,82 @@ end
 # Not ISO specified
 
 assert('Class 1') do
-  class C; end
-  C.class == Class
+  class C1; end
+  C1.class == Class
 end
 
 assert('Class 2') do
-  class C; end
-  C.new.class == C
+  class C2; end
+  C2.new.class == C2
 end
 
 assert('Class 3') do
-  class C; end
-  C.new.class.class == Class
+  class C3; end
+  C3.new.class.class == Class
 end
 
 assert('Class 4') do
-  class A; end
-  class C < A; end
-  C.class == Class
+  class C4_A; end
+  class C4 < C4_A; end
+  C4.class == Class
 end
 
 assert('Class 5') do
-  class A; end
-  class C < A; end
-  C.new.class == C
+  class C5_A; end
+  class C5 < C5_A; end
+  C5.new.class == C5
 end
 
 assert('Class 6') do
-  class A; end
-  class C < A; end
-  C.new.class.class == Class
+  class C6_A; end
+  class C6 < C6_A; end
+  C6.new.class.class == Class
+end
+
+assert('Class 7') do
+  class C7_A; end
+  class C7_B; end
+
+  class C7 < C7_A; end
+
+  error = false
+  begin
+    # Different superclass.
+    class C7 < C7_B; end
+  rescue TypeError
+    error = true
+  end
+
+  error
+end
+
+assert('Class 8') do
+  class C8_A; end
+
+  class C8; end  # superclass is Object
+
+  error = false
+  begin
+    # Different superclass.
+    class C8 < C8_A; end
+  rescue TypeError
+    error = true
+  end
+
+  error
+end
+
+assert('Class 9') do
+  Class9Const = "a"
+
+  error = false
+  begin
+    class Class9Const; end
+  rescue TypeError
+    error = true
+  end
+
+  error
 end
 
 assert('Class Module 1') do
