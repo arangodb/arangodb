@@ -1,10 +1,7 @@
 # ArangoDB
 [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png)](http://travis-ci.org/triAGENS/ArangoDB)
 
-We recently started a new open source project - a nosql database
-called AvocadoDB which became ArangoDB in May 2012.  The current
-stable version of ArangoDB is 1.0. A multi server version is planned 
-for the end of 2012. For details see the roadmap.
+ArangoDB is a universal open-source database with flexible data model for documents, graphs, and key-values. Build high performance application using a convenient sql-like query language or JavaScript/Ruby extensions. 
 
 Key features include:
 
