@@ -12,7 +12,7 @@ if Object.const_defined?(:Math)
 
   assert('Fundamental trig identities') do
     result = true
-    N = 15
+    N = 13
     N.times do |i|
       a  = Math::PI / N * i
       ca = Math::PI / 2 - a

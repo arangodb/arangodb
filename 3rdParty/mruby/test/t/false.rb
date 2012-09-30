@@ -14,17 +14,17 @@ assert('FalseClass false', '15.2.6.1') do
 end
 
 assert('FalseClass#&', '15.2.6.3.1') do
-  not FalseClass.new.&(true) and not FalseClass.new.&(false)
+  not false.&(true) and not false.&(false)
 end
 
 assert('FalseClass#^', '15.2.6.3.2') do
-  FalseClass.new.^(true) and not FalseClass.new.^(false)
+  false.^(true) and not false.^(false)
 end
 
 assert('FalseClass#to_s', '15.2.6.3.3') do
-  FalseClass.new.to_s == 'false'
+  false.to_s == 'false'
 end
 
 assert('FalseClass#|', '15.2.6.3.4') do
-  FalseClass.new.|(true) and not FalseClass.new.|(false)
+  false.|(true) and not false.|(false)
 end

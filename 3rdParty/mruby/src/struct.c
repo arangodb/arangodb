@@ -17,13 +17,9 @@
 #include "encoding.h"
 #endif
 
-#include "mruby/numeric.h"
-#include "mruby/hash.h"
 #include "mruby/string.h"
 #include "mruby/class.h"
 #include "mruby/variable.h"
-#include "mruby/range.h"
-#include "error.h"
 //#include "defines.h"
 #define mrb_long2int(n) ((int)(n))
 
@@ -42,8 +38,6 @@ struct_ivar_get(mrb_state *mrb, mrb_value c, mrb_sym id)
 
   mrb_value ans;
     for (;;) {
-      //if (mrb_ivar_defined(c, id))
-      //    return mrb_iv_get(mrb, c, id);
       ans = mrb_iv_get(mrb, c, id);
       if (!mrb_nil_p(ans)) return ans;
       kclass = RCLASS_SUPER(c);
@@ -190,7 +184,7 @@ mrb_id_attrset(mrb_state *mrb, mrb_sym id)
   mrb_sym mid;
 
   name = mrb_sym2name_len(mrb, id, &len);
-  buf = mrb_malloc(mrb, len+2);
+  buf = (char *)mrb_malloc(mrb, len+2);
   memcpy(buf, name, len);
   buf[len] = '=';
   buf[len+1] = '\0';
@@ -264,19 +258,15 @@ make_struct(mrb_state *mrb, mrb_value name, mrb_value members, struct RClass * k
     //OBJ_FREEZE(members);
     if (mrb_nil_p(name)) {
       c = mrb_class_new(mrb, klass);
-      //mrb_make_metaclass(nstr, RBASIC(klass)->c);
-      //mrb_class_inherited(klass, nstr);
     }
     else {
       /* old style: should we warn? */
       name = mrb_str_to_str(mrb, name);
       id = mrb_to_id(mrb, name);
       if (!mrb_is_const_id(id)) {
-          //mrb_name_error(id, "identifier %s needs to be constant", StringValuePtr(name));
           mrb_name_error(mrb, id, "identifier %s needs to be constant", mrb_string_value_ptr(mrb, name));
       }
       if (mrb_const_defined_at(mrb, klass, id)) {
-          //mrb_warn("redefining constant Struct::%s", StringValuePtr(name));
           mrb_warn("redefining constant Struct::%s", mrb_string_value_ptr(mrb, name));
           //?rb_mod_remove_const(klass, mrb_sym2name(mrb, id));
       }
@@ -377,33 +367,36 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
 
   name = mrb_nil_value();
   rest = mrb_nil_value();
-  mrb_get_args(mrb, "&*", &b, &argv, &argc);
-  if (argc > 0) name = argv[0];
-  if (argc > 1) rest = argv[1];
-  //mrb_scan_args(argc, argv, "1*", &name, &rest);
-  if (mrb_type(rest) == MRB_TT_ARRAY) {
-    if (!mrb_nil_p(name) && SYMBOL_P(name)) {
-      /* 1stArgument:symbol -> name=nil rest=argv[0]-[n] */
-      mrb_ary_unshift(mrb, rest, name);
-      name = mrb_nil_value();
+  mrb_get_args(mrb, "*&", &argv, &argc, &b);
+  if (argc == 0) { /* special case to avoid crash */
+    rest = mrb_ary_new(mrb);
+  } 
+  else {   
+    if (argc > 0) name = argv[0];
+    if (argc > 1) rest = argv[1];
+    if (mrb_type(rest) == MRB_TT_ARRAY) {
+      if (!mrb_nil_p(name) && SYMBOL_P(name)) {
+        /* 1stArgument:symbol -> name=nil rest=argv[0]-[n] */
+        mrb_ary_unshift(mrb, rest, name);
+        name = mrb_nil_value();
+      }
     }
-  }
-  else {
-    pargv = &argv[1];
-    argcnt = argc-1;
-    if (!mrb_nil_p(name) && SYMBOL_P(name)) {
-      /* 1stArgument:symbol -> name=nil rest=argv[0]-[n] */
-      //mrb_ary_unshift(mrb, rest, name);
-      name = mrb_nil_value();
-      pargv = &argv[0];
-      argcnt++;
+    else {
+      pargv = &argv[1];
+      argcnt = argc-1;
+      if (!mrb_nil_p(name) && SYMBOL_P(name)) {
+        /* 1stArgument:symbol -> name=nil rest=argv[0]-[n] */
+        name = mrb_nil_value();
+        pargv = &argv[0];
+        argcnt++;
+      }
+      rest = mrb_ary_new_from_values(mrb, argcnt, pargv);
     }
-    rest = mrb_ary_new_from_values(mrb, argcnt, pargv);
-  }
-  for (i=0; i<RARRAY_LEN(rest); i++) {
-    id = mrb_to_id(mrb, RARRAY_PTR(rest)[i]);
-    RARRAY_PTR(rest)[i] = mrb_symbol_value(id);
-  }
+    for (i=0; i<RARRAY_LEN(rest); i++) {
+      id = mrb_to_id(mrb, RARRAY_PTR(rest)[i]);
+      RARRAY_PTR(rest)[i] = mrb_symbol_value(id);
+    }
+  }  
   st = make_struct(mrb, name, rest, struct_class(mrb));
   if (!mrb_nil_p(b)) {
     mrb_funcall(mrb, b, "call", 1, &st);
@@ -412,7 +405,7 @@ mrb_struct_s_def(mrb_state *mrb, mrb_value klass)
   return st;
 }
 
-static long
+static int
 num_members(mrb_state *mrb, struct RClass *klass)
 {
     mrb_value members;
@@ -430,7 +423,7 @@ static mrb_value
 mrb_struct_initialize_withArg(mrb_state *mrb, int argc, mrb_value *argv, mrb_value self)
 {
   struct RClass *klass = mrb_obj_class(mrb, self);
-  long n;
+  int n;
   struct RStruct *st;
 
   mrb_struct_modify(self);
@@ -439,7 +432,7 @@ mrb_struct_initialize_withArg(mrb_state *mrb, int argc, mrb_value *argv, mrb_val
     mrb_raise(mrb, E_ARGUMENT_ERROR, "struct size differs");
   }
   st = RSTRUCT(self);
-  st->ptr = mrb_calloc(mrb, sizeof(mrb_value), n);
+  st->ptr = (mrb_value *)mrb_calloc(mrb, sizeof(mrb_value), n);
   st->len = n;
   memcpy(st->ptr, argv, sizeof(mrb_value)*argc);
 
@@ -459,34 +452,7 @@ mrb_struct_initialize_m(mrb_state *mrb, /*int argc, mrb_value *argv,*/ mrb_value
 mrb_value
 mrb_struct_initialize(mrb_state *mrb, mrb_value self, mrb_value values)
 {
-    return mrb_struct_initialize_withArg(mrb, RARRAY_LEN/*INT*/(values), RARRAY_PTR(values), self);
-}
-
-mrb_value
-mrb_struct_alloc(mrb_state *mrb, mrb_value klass, mrb_value values)
-{
-    return mrb_class_new_instance(mrb, RARRAY_LEN(values), RARRAY_PTR(values), mrb_class(mrb, klass));
-}
-
-mrb_value
-mrb_struct_new(mrb_state *mrb, struct RClass *klass, ...)
-{
-    mrb_value tmpargs[N_REF_FUNC], *mem = tmpargs;
-    int size, i;
-    va_list args;
-
-    size = mrb_long2int(num_members(mrb, klass));
-    if (size > numberof(tmpargs)) {
-      tmpargs[0] = mrb_ary_new_capa(mrb, size);
-      mem = RARRAY_PTR(tmpargs[0]);
-    }
-    va_start(args, klass);
-    for (i=0; i<size; i++) {
-      mem[i] = va_arg(args, mrb_value);
-    }
-    va_end(args);
-
-    return mrb_class_new_instance(mrb, size, mem, klass);
+  return mrb_struct_initialize_withArg(mrb, RARRAY_LEN(values), RARRAY_PTR(values), self);
 }
 
 static mrb_value
@@ -561,7 +527,6 @@ mrb_struct_init_copy(mrb_state *mrb, mrb_value copy)
   mrb_get_args(mrb, "o", &s);
 
   if (mrb_obj_equal(mrb, copy, s)) return copy;
-  //mrb_check_frozen(copy);
   if (!mrb_obj_is_instance_of(mrb, s, mrb_obj_class(mrb, copy))) {
     mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
   }

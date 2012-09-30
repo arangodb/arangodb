@@ -36,7 +36,9 @@ assert('Kernel.lambda', '15.3.1.2.6') do
     true
   end
 
-  l.call and l.class == Proc
+  m = Kernel.lambda(&l)
+
+  l.call and l.class == Proc and m.call and m.class == Proc
 end
 
 # Not implemented at the moment
@@ -187,6 +189,21 @@ assert('Kernel#dup', '15.3.1.3.9') do
     c.respond_to?(:test) == false
 end
 
+assert('Kernel#extend', '15.3.1.3.13') do
+  class Test4ExtendClass
+  end
+
+  module Test4ExtendModule
+    def test_method; end
+  end
+
+  a = Test4ExtendClass.new
+  a.extend(Test4ExtendModule)
+  b = Test4ExtendClass.new
+
+  a.respond_to?(:test_method) == true && b.respond_to?(:test_method) == false
+end
+
 assert('Kernel#global_variables', '15.3.1.3.14') do
   global_variables.class == Array
 end
@@ -196,11 +213,18 @@ assert('Kernel#hash', '15.3.1.3.15') do
 end
 
 assert('Kernel#inspect', '15.3.1.3.17') do
-  inspect.class == String
+  s = inspect
+  s.class == String and s == "main"
 end
 
 assert('Kernel#instance_variables', '15.3.1.3.23') do
-  instance_variables.class == Array
+  o = Object.new
+  o.instance_eval do
+    @a = 11
+    @b = 12
+  end
+  ivars = o.instance_variables
+  ivars.class == Array and ivars.size == 2 and ivars.include?(:@a) and ivars.include?(:@b)
 end
 
 assert('Kernel#is_a?', '15.3.1.3.24') do
@@ -220,7 +244,9 @@ assert('Kernel#lambda', '15.3.1.3.27') do
     true
   end
 
-  l.call and l.class == Proc
+  m = lambda(&l)
+
+  l.call and l.class == Proc and m.call and m.class == Proc
 end
 
 # Not implemented yet
@@ -244,7 +270,7 @@ assert('Kernel#methods', '15.3.1.3.31') do
 end
 
 assert('Kernel#nil?', '15.3.1.3.32') do
-  nil.nil? == true
+  nil? == false
 end
 
 assert('Kernel#object_id', '15.3.1.3.33') do
@@ -285,7 +311,12 @@ assert('Kernel#raise', '15.3.1.3.40') do
 end
 
 assert('Kernel#respond_to?', '15.3.1.3.43') do
-  respond_to? :nil?
+  class Test4RespondTo
+    def test_method; end
+    undef test_method
+  end
+
+  respond_to?(:nil?) and Test4RespondTo.new.respond_to?(:test_method) == false
 end
 
 assert('Kernel#send', '15.3.1.3.44') do
@@ -306,6 +337,5 @@ assert('Kernel#singleton_methods', '15.3.1.3.45') do
 end
 
 assert('Kernel#to_s', '15.3.1.3.46') do
-  # TODO looks strange..
-  to_s == ''
+  to_s.class == String
 end

@@ -44,36 +44,31 @@ var actions = require("org/arangodb/actions");
 ////////////////////////////////////////////////////////////////////////////////
 
 function Routing (req, res) {
-  var callbacks;
-  var current;
-  var i;
+  var execute;
   var next;
 
-  callbacks = actions.routing(req.requestType, req.suffix);
-  current = 0;
+  action = actions.firstRouting(req.requestType, req.suffix);
 
-  next = function () {
-    var callback;
-
-    if (callbacks.length <= current) {
-      actions.resultNotImplemented(req, res, 
-                                   "unknown path '" + req.suffix.join("/") + "'");
+  execute = function () {
+    if (action.route === undefined) {
+      actions.resultNotImplemented(req, res, "unknown path '" + req.suffix.join("/") + "'");
       return;
     }
 
-    callback = callbacks[current++];
+    req.path = action.route.path;
+    req.prefix = action.prefix;
+    req.suffix = action.suffix;
+    req.urlParameters = action.urlParameters;
 
-    if (callback == null) {
-      actions.resultNotImplemented(req, res,
-                                   "not implemented '" + req.suffix.join("/") + "'");
-    }
-    else {
-      req.prefix = callback.path;
-      callback.func(req, res, next, callback.options);
-    }
+    action.route.callback.controller(req, res, next, action.route.callback.options);
   }
 
-  next();
+  next = function () {
+    action = actions.nextRouting(action);
+    execute();
+  }
+
+  execute();
 }
 
 actions.defineHttp({
@@ -101,12 +96,25 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/reloadRouting",
+  url : "_admin/routing/reload",
   context : "admin",
   prefix : false,
   callback : function (req, res) {
     internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
     actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/routing/routes",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
   }
 });
 

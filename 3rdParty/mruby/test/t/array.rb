@@ -65,6 +65,7 @@ assert('Array#[]=', '15.2.12.5.5') do
   end
 
   [1,2,3].[]=(1,4) == [1, 4, 3] and
+  [1,2,3].[]=(1,2,3) == [1, 3] and
     e2.class == ArgumentError and
     e3.class == ArgumentError
 end
@@ -117,7 +118,24 @@ assert('Array#first', '15.2.12.5.13') do
   a = []
   b = [1,2,3]
 
-  a.first == nil and b.first == 1
+  e2 = nil
+  e3 = nil
+  begin
+    # this will cause an exception due to the wrong argument
+    [1,2,3].first(-1)
+  rescue => e1
+    e2 = e1
+  end
+  begin
+    # this will cause an exception due to the wrong argument
+    [1,2,3].first(1,2)
+  rescue => e1
+    e3 = e1
+  end
+
+  a.first == nil and b.first == 1 and b.first(0) == [] and
+    b.first(1) == [1] and b.first(4) == [1,2,3] and
+    e2.class == ArgumentError and e3.class == ArgumentError
 end
 
 assert('Array#index', '15.2.12.5.14') do
@@ -152,7 +170,15 @@ end
 assert('Array#last', '15.2.12.5.18') do
   a = [1,2,3]
 
-  a.last == 3 and [].last == nil
+  e2 = nil
+  begin
+    # this will cause an exception due to the wrong argument
+    [1,2,3].last(-1)
+  rescue => e1
+    e2 = e1
+  end
+
+  a.last == 3 and [].last == nil and e2.class == ArgumentError
 end
 
 assert('Array#length', '15.2.12.5.19') do
@@ -242,4 +268,27 @@ assert('Array#to_s', '15.2.12.5.31') do
   r1 == r2 and r1 == "[2, 3, 4, 5]"
 end
 
+assert('Array#==', '15.2.12.5.33') do
+  r1 = [ "a", "c" ]    == [ "a", "c", 7 ]     #=> false
+  r2 = [ "a", "c", 7 ] == [ "a", "c", 7 ]     #=> true
+  r3 = [ "a", "c", 7 ] == [ "a", "d", "f" ]   #=> false
+
+  r1 == false and r2 == true and r3 == false
+end
+
+assert('Array#<=>', '15.2.12.5.36') do
+  r1 = [ "a", "a", "c" ]    <=> [ "a", "b", "c" ]   #=> -1
+  r2 = [ 1, 2, 3, 4, 5, 6 ] <=> [ 1, 2 ]            #=> +1
+
+  r1 == -1 and r2 == +1
+end
+
 # Not ISO specified
+
+assert("Array (Shared Array Corruption)") do
+  a = [ "a", "b", "c", "d", "e", "f" ]
+  b = a.slice(1, 3)
+  a.clear
+  b.clear
+end
+

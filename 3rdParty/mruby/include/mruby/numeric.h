@@ -1,5 +1,5 @@
 /*
-** numeric.h - Numeric, Integer, Float, Fixnum class
+** mruby/numeric.h - Numeric, Integer, Float, Fixnum class
 **
 ** See Copyright Notice in mruby.h
 */
@@ -18,7 +18,6 @@ extern "C" {
 #define FIXABLE(f) (POSFIXABLE(f) && NEGFIXABLE(f))
 
 mrb_value mrb_flt2big(mrb_state *mrb, mrb_float d);
-void mrb_num_zerodiv(mrb_state *mrb);
 mrb_value mrb_fix2str(mrb_state *mrb, mrb_value x, int base);
 
 mrb_value mrb_fixnum_plus(mrb_state *mrb, mrb_value x, mrb_value y);

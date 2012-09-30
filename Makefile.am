@@ -263,6 +263,7 @@ if ENABLE_INSTALL_DBDIR
 
 install-data-local:
 	test -d $(DESTDIR)$(TRI_DATABASE_DIR) || mkdir -p $(DESTDIR)$(TRI_DATABASE_DIR)
+	test -d $(DESTDIR)$(TRI_LOG_DIR) || mkdir -p $(DESTDIR)$(TRI_LOG_DIR)
 
 endif
 

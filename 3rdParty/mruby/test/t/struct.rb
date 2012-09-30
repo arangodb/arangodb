@@ -16,6 +16,12 @@ if Object.const_defined?(:Struct)
       c.members == [:m1,:m2]
   end
 
+  # Check crash bug with Struc.new and no params.
+  assert('Struct.new', '15.2.18.3.1') do
+     c = Struct.new()
+     c.superclass == Struct and c.members == []
+  end
+
   assert('Struct#==', '15.2.18.4.1') do
     c = Struct.new(:m1, :m2)
     cc1 = c.new(1,2)

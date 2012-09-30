@@ -24,21 +24,21 @@
 static int numcmp(long, long);
 static st_index_t numhash(long);
 static struct st_hash_type type_numhash = {
-    numcmp,
-    numhash,
+    (int (*)(ANYARGS))numcmp,
+    (st_index_t (*)(ANYARGS))numhash,
 };
 
 /* extern int strcmp(const char *, const char *); */
 static st_index_t strhash(const char*);
 static struct st_hash_type type_strhash = {
-    strcmp,
-    strhash,
+    (int (*)(ANYARGS))strcmp,
+    (st_index_t (*)(ANYARGS))strhash,
 };
 
 static st_index_t strcasehash(st_data_t);
 static const struct st_hash_type type_strcasehash = {
-    st_strcasecmp,
-    strcasehash,
+    (int (*)(ANYARGS))st_strcasecmp,
+    (st_index_t (*)(ANYARGS))strcasehash,
 };
 
 static void rehash(st_table*);
@@ -419,7 +419,7 @@ st_foreach(st_table *table, enum st_retval (*func)(ANYARGS), st_data_t arg)
                 for (tmp = table->bins[i]; tmp != ptr; tmp = tmp->next) {
                     if (!tmp) {
                         /* call func with error notice */
-                        retval = (*func)(0, 0, arg, 1);
+                        (*func)(0, 0, arg, 1);
                         return 1;
                     }
                 }

@@ -19,7 +19,6 @@ cscope.out
 /bin
 /mrblib/mrblib.c
 /mrblib/*.*tmp
-/build
 /test/mrbtest
 /test/mrbtest.c
 /test/*.*tmp

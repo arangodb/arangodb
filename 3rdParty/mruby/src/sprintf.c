@@ -15,7 +15,6 @@
 #include "mruby/hash.h"
 #include "mruby/numeric.h"
 #include <math.h>
-#include <stdarg.h>
 #include <ctype.h>
 
 #ifdef HAVE_IEEEFP_H
@@ -145,7 +144,7 @@ mrb_fix2binstr(mrb_state *mrb, mrb_value x, int base)
   blen += (l);\
 } while (0)
 
-#define GETARG() (!UNDEF_P(nextvalue) ? nextvalue : \
+#define GETARG() (!mrb_undef_p(nextvalue) ? nextvalue : \
   posarg == -1 ? \
   (mrb_raise(mrb, E_ARGUMENT_ERROR, "unnumbered(%d) mixed with numbered", nextarg), mrb_undef_value()) : \
   posarg == -2 ? \
@@ -201,7 +200,7 @@ get_hash(mrb_state *mrb, mrb_value *hash, int argc, const mrb_value *argv)
 {
   mrb_value tmp;
 
-  if (!UNDEF_P(*hash)) return *hash;
+  if (!mrb_undef_p(*hash)) return *hash;
   if (argc != 2) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "one hash required");
   }
@@ -476,15 +475,16 @@ get_hash(mrb_state *mrb, mrb_value *hash, int argc, const mrb_value *argv)
 mrb_value
 mrb_f_sprintf(mrb_state *mrb, mrb_value obj)
 {
-   int argc;
-   mrb_value *argv;
+  int argc;
+  mrb_value *argv;
 
   mrb_get_args(mrb, "*", &argv, &argc);
 
   if (argc <= 0) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "too few arguments");
     return mrb_nil_value();
-  } else {
+  }
+  else {
     return mrb_str_format(mrb, argc - 1, argv + 1, argv[0]);
   }
 }
@@ -551,120 +551,119 @@ retry:
         mrb_raise(mrb, E_ARGUMENT_ERROR, "malformed format string - %%%c", *p);
         break;
 
-    case ' ':
-      CHECK_FOR_FLAGS(flags);
-      flags |= FSPACE;
-      p++;
-      goto retry;
-
-    case '#':
-      CHECK_FOR_FLAGS(flags);
-      flags |= FSHARP;
-      p++;
-      goto retry;
-
-    case '+':
-      CHECK_FOR_FLAGS(flags);
-      flags |= FPLUS;
-      p++;
-      goto retry;
-
-    case '-':
-      CHECK_FOR_FLAGS(flags);
-      flags |= FMINUS;
-      p++;
-      goto retry;
-
-    case '0':
-      CHECK_FOR_FLAGS(flags);
-      flags |= FZERO;
-      p++;
-      goto retry;
-
-    case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-      n = 0;
-      GETNUM(n, width);
-      if (*p == '$') {
-        if (!UNDEF_P(nextvalue)) {
-          mrb_raise(mrb, E_ARGUMENT_ERROR, "value given twice - %d$", n);
-        }
-        nextvalue = GETPOSARG(n);
+      case ' ':
+        CHECK_FOR_FLAGS(flags);
+        flags |= FSPACE;
         p++;
         goto retry;
-      }
-      CHECK_FOR_WIDTH(flags);
-      width = n;
-      flags |= FWIDTH;
-      goto retry;
 
-    case '<':
-    case '{':
-      {
+      case '#':
+        CHECK_FOR_FLAGS(flags);
+        flags |= FSHARP;
+        p++;
+        goto retry;
+
+      case '+':
+        CHECK_FOR_FLAGS(flags);
+        flags |= FPLUS;
+        p++;
+        goto retry;
+
+      case '-':
+        CHECK_FOR_FLAGS(flags);
+        flags |= FMINUS;
+        p++;
+        goto retry;
+
+      case '0':
+        CHECK_FOR_FLAGS(flags);
+        flags |= FZERO;
+        p++;
+        goto retry;
+
+      case '1': case '2': case '3': case '4':
+      case '5': case '6': case '7': case '8': case '9':
+        n = 0;
+        GETNUM(n, width);
+        if (*p == '$') {
+          if (!mrb_undef_p(nextvalue)) {
+            mrb_raise(mrb, E_ARGUMENT_ERROR, "value given twice - %d$", n);
+          }
+          nextvalue = GETPOSARG(n);
+          p++;
+          goto retry;
+        }
+        CHECK_FOR_WIDTH(flags);
+        width = n;
+        flags |= FWIDTH;
+        goto retry;
+
+      case '<':
+      case '{': {
         const char *start = p;
         char term = (*p == '<') ? '>' : '}';
-	mrb_value symname;
+        mrb_value symname;
 
         for (; p < end && *p != term; )
           p++;
         if (id) {
           mrb_raise(mrb, E_ARGUMENT_ERROR, "name%.*s after <%s>",
-               (int)(p - start + 1), start, mrb_sym2name(mrb, id));
+                    (int)(p - start + 1), start, mrb_sym2name(mrb, id));
         }
         symname = mrb_str_new(mrb, start + 1, p - start - 1);
         id = mrb_intern_str(mrb, symname);
         nextvalue = GETNAMEARG(mrb_symbol_value(id), start, (int)(p - start + 1));
-        if (UNDEF_P(nextvalue)) {
+        if (mrb_undef_p(nextvalue)) {
           mrb_raise(mrb, E_KEY_ERROR, "key%.*s not found", (int)(p - start + 1), start);
         }
         if (term == '}') goto format_s;
         p++;
         goto retry;
       }
-
-    case '*':
-      CHECK_FOR_WIDTH(flags);
-      flags |= FWIDTH;
-      GETASTER(width);
-      if (width < 0) {
-        flags |= FMINUS;
-        width = -width;
-      }
-      p++;
-      goto retry;
-
-    case '.':
-      if (flags & FPREC0) {
-        mrb_raise(mrb, E_ARGUMENT_ERROR, "precision given twice");
-      }
-      flags |= FPREC|FPREC0;
-
-      prec = 0;
-      p++;
-      if (*p == '*') {
-        GETASTER(prec);
-        if (prec < 0) {  /* ignore negative precision */
-          flags &= ~FPREC;
+        
+      case '*':
+        CHECK_FOR_WIDTH(flags);
+        flags |= FWIDTH;
+        GETASTER(width);
+        if (width < 0) {
+          flags |= FMINUS;
+          width = -width;
         }
         p++;
         goto retry;
-      }
 
-      GETNUM(prec, precision);
-      goto retry;
+      case '.':
+        if (flags & FPREC0) {
+          mrb_raise(mrb, E_ARGUMENT_ERROR, "precision given twice");
+        }
+        flags |= FPREC|FPREC0;
 
-    case '\n':
-    case '\0':
-      p--;
-    case '%':
-      if (flags != FNONE) {
-        mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid format character - %%");
-      }
-      PUSH("%", 1);
-      break;
+        prec = 0;
+        p++;
+        if (*p == '*') {
+          GETASTER(prec);
+          if (prec < 0) {  /* ignore negative precision */
+            flags &= ~FPREC;
+          }
+          p++;
+          goto retry;
+        }
 
-    case 'c':
-      {
+        GETNUM(prec, precision);
+        goto retry;
+
+      case '\n':
+      case '\0':
+        p--;
+        
+      case '%':
+        if (flags != FNONE) {
+          mrb_raise(mrb, E_ARGUMENT_ERROR, "invalid format character - %%");
+        }
+        PUSH("%", 1);
+        break;
+
+      case 'c': {
         mrb_value val = GETARG();
         mrb_value tmp;
         unsigned int c;
@@ -686,27 +685,27 @@ retry:
         }
         if (!(flags & FWIDTH)) {
           CHECK(n);
-	  buf[blen] = c;
+          buf[blen] = c;
           blen += n;
         }
         else if ((flags & FMINUS)) {
           CHECK(n);
-	  buf[blen] = c;
+          buf[blen] = c;
           blen += n;
           FILL(' ', width-1);
         }
         else {
           FILL(' ', width-1);
           CHECK(n);
-	  buf[blen] = c;
+          buf[blen] = c;
           blen += n;
         }
       }
       break;
 
-    case 's':
-    case 'p':
-format_s:
+      case 's':
+      case 'p':
+  format_s:
       {
         mrb_value arg = GETARG();
         long len, slen;
@@ -714,7 +713,7 @@ format_s:
         if (*p == 'p') arg = mrb_inspect(mrb, arg);
         str = mrb_obj_as_string(mrb, arg);
         len = RSTRING_LEN(str);
-	RSTRING_LEN(result) = blen;
+        RSTRING_LEN(result) = blen;
         if (flags&(FPREC|FWIDTH)) {
           slen = RSTRING_LEN(str);
           if (slen < 0) {
@@ -750,15 +749,14 @@ format_s:
       }
       break;
 
-    case 'd':
-    case 'i':
-    case 'o':
-    case 'x':
-    case 'X':
-    case 'b':
-    case 'B':
-    case 'u':
-      {
+      case 'd':
+      case 'i':
+      case 'o':
+      case 'x':
+      case 'X':
+      case 'b':
+      case 'B':
+      case 'u': {
         mrb_value val = GETARG();
         char fbuf[32], nbuf[64], *s;
         const char *prefix = 0;
@@ -769,66 +767,66 @@ format_s:
         int len;
 
         switch (*p) {
-        case 'd':
-        case 'i':
-        case 'u':
-          sign = 1; break;
-        case 'o':
-        case 'x':
-        case 'X':
-        case 'b':
-        case 'B':
-          if (flags&(FPLUS|FSPACE)) sign = 1;
-          break;
-	default:
-	  break;
+          case 'd':
+          case 'i':
+          case 'u':
+            sign = 1; break;
+          case 'o':
+          case 'x':
+          case 'X':
+          case 'b':
+          case 'B':
+            if (flags&(FPLUS|FSPACE)) sign = 1;
+            break;
+          default:
+            break;
         }
         if (flags & FSHARP) {
           switch (*p) {
-          case 'o': prefix = "0"; break;
-          case 'x': prefix = "0x"; break;
-          case 'X': prefix = "0X"; break;
-          case 'b': prefix = "0b"; break;
-          case 'B': prefix = "0B"; break;
-	  default: break;
+            case 'o': prefix = "0"; break;
+            case 'x': prefix = "0x"; break;
+            case 'X': prefix = "0X"; break;
+            case 'b': prefix = "0b"; break;
+            case 'B': prefix = "0B"; break;
+            default: break;
           }
         }
 
-bin_retry:
+  bin_retry:
         switch (mrb_type(val)) {
-        case MRB_TT_FLOAT:
-          if (FIXABLE(mrb_float(val))) {
-            val = mrb_fixnum_value((mrb_int)mrb_float(val));
+          case MRB_TT_FLOAT:
+            if (FIXABLE(mrb_float(val))) {
+              val = mrb_fixnum_value((mrb_int)mrb_float(val));
+              goto bin_retry;
+            }
+            val = mrb_flt2big(mrb, mrb_float(val));
+            if (FIXNUM_P(val)) goto bin_retry;
+            break;
+          case MRB_TT_STRING:
+            val = mrb_str_to_inum(mrb, val, 0, TRUE);
             goto bin_retry;
-          }
-          val = mrb_flt2big(mrb, mrb_float(val));
-          if (FIXNUM_P(val)) goto bin_retry;
-          break;
-        case MRB_TT_STRING:
-          val = mrb_str_to_inum(mrb, val, 0, TRUE);
-          goto bin_retry;
-        case MRB_TT_FIXNUM:
-          v = (long)mrb_fixnum(val);
-          break;
-        default:
-          val = mrb_Integer(mrb, val);
-          goto bin_retry;
+          case MRB_TT_FIXNUM:
+            v = (long)mrb_fixnum(val);
+            break;
+          default:
+            val = mrb_Integer(mrb, val);
+            goto bin_retry;
         }
 
         switch (*p) {
-        case 'o':
-          base = 8; break;
-        case 'x':
-        case 'X':
-          base = 16; break;
-        case 'b':
-        case 'B':
-          base = 2; break;
-        case 'u':
-        case 'd':
-        case 'i':
-        default:
-          base = 10; break;
+          case 'o':
+            base = 8; break;
+          case 'x':
+          case 'X':
+            base = 16; break;
+          case 'b':
+          case 'B':
+            base = 2; break;
+          case 'u':
+          case 'd':
+          case 'i':
+          default:
+            base = 10; break;
         }
 
         if (base == 2) {
@@ -878,10 +876,10 @@ bin_retry:
 
             s = remove_sign_bits(s, base);
             switch (base) {
-            case 16: d = 'f'; break;
-            case 8:  d = '7'; break;
-            case 2:  d = '1'; break;
-	    default: d = 0; break;
+              case 16: d = 'f'; break;
+              case 8:  d = '7'; break;
+              case 2:  d = '1'; break;
+              default: d = 0; break;
             }
 
             if (d && *s != d) {
@@ -904,6 +902,7 @@ bin_retry:
             pp++;
           }
         }
+
         if (prefix && !prefix[1]) { /* octal */
           if (dots) {
             prefix = 0;
@@ -919,9 +918,11 @@ bin_retry:
         else if (len == 1 && *s == '0') {
           prefix = 0;
         }
+
         if (prefix) {
           width -= (int)strlen(prefix);
         }
+
         if ((flags & (FZERO|FMINUS|FPREC)) == FZERO) {
           prec = width;
           width = 0;
@@ -933,19 +934,23 @@ bin_retry:
           }
           width -= prec;
         }
+
         if (!(flags&FMINUS)) {
           CHECK(width);
           while (width-- > 0) {
             buf[blen++] = ' ';
           }
         }
+
         if (sc) PUSH(&sc, 1);
+
         if (prefix) {
           int plen = (int)strlen(prefix);
           PUSH(prefix, plen);
         }
         CHECK(prec - len);
         if (dots) PUSH("..", 2);
+
         if (v < 0 || (base == 2 && org_v < 0)) {
           char c = sign_bits(base, p);
           while (len < prec--) {
@@ -958,6 +963,7 @@ bin_retry:
             buf[blen++] = c;
           }
         }
+
         PUSH(s, len);
         CHECK(width);
         while (width-- > 0) {
@@ -966,14 +972,13 @@ bin_retry:
       }
       break;
 
-    case 'f':
-    case 'g':
-    case 'G':
-    case 'e':
-    case 'E':
-    case 'a':
-    case 'A':
-      {
+      case 'f':
+      case 'g':
+      case 'G':
+      case 'e':
+      case 'E':
+      case 'a':
+      case 'A': {
         mrb_value val = GETARG();
         double fval;
         int i, need = 6;
@@ -982,7 +987,7 @@ bin_retry:
         fval = mrb_float(mrb_Float(mrb, val));
         if (isnan(fval) || isinf(fval)) {
           const char *expr;
-	  const int elen = 3;
+          const int elen = 3;
 
           if (isnan(fval)) {
             expr = "NaN";
@@ -1058,28 +1063,28 @@ bin_retry:
 static void
 fmt_setup(char *buf, size_t size, int c, int flags, int width, int prec)
 {
-    char *end = buf + size;
-    int n;
+  char *end = buf + size;
+  int n;
 
-    *buf++ = '%';
-    if (flags & FSHARP) *buf++ = '#';
-    if (flags & FPLUS)  *buf++ = '+';
-    if (flags & FMINUS) *buf++ = '-';
-    if (flags & FZERO)  *buf++ = '0';
-    if (flags & FSPACE) *buf++ = ' ';
+  *buf++ = '%';
+  if (flags & FSHARP) *buf++ = '#';
+  if (flags & FPLUS)  *buf++ = '+';
+  if (flags & FMINUS) *buf++ = '-';
+  if (flags & FZERO)  *buf++ = '0';
+  if (flags & FSPACE) *buf++ = ' ';
 
-    if (flags & FWIDTH) {
-      n = snprintf(buf, end - buf, "%d", width);
-      buf += n;
-    }
+  if (flags & FWIDTH) {
+    n = snprintf(buf, end - buf, "%d", width);
+    buf += n;
+  }
 
-    if (flags & FPREC) {
-      n = snprintf(buf, end - buf, ".%d", prec);
-      buf += n;
-    }
+  if (flags & FPREC) {
+    n = snprintf(buf, end - buf, ".%d", prec);
+    buf += n;
+  }
 
-    *buf++ = c;
-    *buf = '\0';
+  *buf++ = c;
+  *buf = '\0';
 }
 
 #endif	/* ENABLE_SPRINTF */
