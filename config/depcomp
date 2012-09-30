@@ -1,7 +1,7 @@
 #! /bin/sh
 # depcomp - compile a program generating dependencies as side-effects
 
-scriptversion=2012-03-27.16; # UTC
+scriptversion=2012-07-12.20; # UTC
 
 # Copyright (C) 1999-2012 Free Software Foundation, Inc.
 
@@ -331,6 +331,79 @@ icc)
     /:$/d
     s/$/ :/
   ' < "$tmpdepfile" >> "$depfile"
+  rm -f "$tmpdepfile"
+  ;;
+
+## The order of this option in the case statement is important, since the
+## shell code in configure will try each of these formats in the order
+## listed in this file.  A plain '-MD' option would be understood by many
+## compilers, so we must ensure this comes after the gcc and icc options.
+pgcc)
+  # Portland's C compiler understands '-MD'.
+  # Will always output deps to 'file.d' where file is the root name of the
+  # source file under compilation, even if file resides in a subdirectory.
+  # The object file name does not affect the name of the '.d' file.
+  # pgcc 10.2 will output
+  #    foo.o: sub/foo.c sub/foo.h
+  # and will wrap long lines using '\' :
+  #    foo.o: sub/foo.c ... \
+  #     sub/foo.h ... \
+  #     ...
+  dir=`echo "$object" | sed -e 's|/[^/]*$|/|'`
+  test "x$dir" = "x$object" && dir=
+  # Use the source, not the object, to determine the base name, since
+  # that's sadly what pgcc will do too.
+  base=`echo "$source" | sed -e 's|^.*/||' -e 's/\.[-_a-zA-Z0-9]*$//'`
+  tmpdepfile="$base.d"
+
+  # For projects that build the same source file twice into different object
+  # files, the pgcc approach of using the *source* file root name can cause
+  # problems in parallel builds.  Use a locking strategy to avoid stomping on
+  # the same $tmpdepfile.
+  lockdir="$base.d-lock"
+  trap "echo '$0: caught signal, cleaning up...' >&2; rm -rf $lockdir" 1 2 13 15
+  numtries=100
+  i=$numtries
+  while test $i -gt 0 ; do
+    # mkdir is a portable test-and-set.
+    if mkdir $lockdir 2>/dev/null; then
+      # This process acquired the lock.
+      "$@" -MD
+      stat=$?
+      # Release the lock.
+      rm -rf $lockdir
+      break
+    else
+      ## the lock is being held by a different process,
+      ## wait until the winning process is done or we timeout
+      while test -d $lockdir && test $i -gt 0; do
+        sleep 1
+        i=`expr $i - 1`
+      done
+    fi
+    i=`expr $i - 1`
+  done
+  trap - 1 2 13 15
+  if test $i -le 0; then
+    echo "$0: failed to acquire lock after $numtries attempts" >&2
+    echo "$0: check lockdir '$lockdir'" >&2
+    exit 1
+  fi
+
+  if test $stat -ne 0; then
+    rm -f "$tmpdepfile"
+    exit $stat
+  fi
+  rm -f "$depfile"
+  # Each line is of the form `foo.o: dependent.h',
+  # or `foo.o: dep1.h dep2.h \', or ` dep3.h dep4.h \'.
+  # Do two passes, one to just change these to
+  # `$object: dependent.h' and one to simply `dependent.h:'.
+  sed "s,^[^:]*:,$object :," < "$tmpdepfile" > "$depfile"
+  # Some versions of the HPUX 10.20 sed can't process this invocation
+  # correctly.  Breaking it into two sed invocations is a workaround.
+  sed 's,^[^:]*: \(.*\)$,\1,;s/^\\$//;/^$/d;/:$/d' < "$tmpdepfile" |
+    sed -e 's/$/ :/' >> "$depfile"
   rm -f "$tmpdepfile"
   ;;
 

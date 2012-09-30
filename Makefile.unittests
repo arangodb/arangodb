@@ -149,7 +149,8 @@ SHELL_COMMON = @srcdir@/js/common/tests/shell-document.js \
                @srcdir@/js/common/tests/shell-unique-constraint.js \
                @srcdir@/js/common/tests/shell-hash-index.js
 
-SHELL_SERVER = $(SHELL_COMMON)
+SHELL_SERVER = $(SHELL_COMMON) \
+               @srcdir@/js/server/tests/routing.js
 
 .PHONY: unittests-shell-server
 

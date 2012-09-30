@@ -348,13 +348,7 @@ function RunTest (path) {
   var content;
   var f;
 
-  try {
-    content = SYS_READ(path);
-  }
-  catch (err) {
-    console.error("cannot load test file '%s'", path);
-    return;
-  }
+  content = SYS_READ(path);
 
   content = "(function(jsUnity){jsUnity.attachAssertions();" + content + "})";
   f = SYS_EXECUTE(content, undefined, path);

@@ -407,8 +407,22 @@ function help () {
 
   internal.reloadRouting = function () {
     if (typeof arango !== 'undefined') {
-      arango.POST("/_admin/reloadRouting", "");
+      arango.POST("/_admin/routing/reload", "");
     }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.routingCache = function () {
+    var result;
+
+    if (typeof arango !== 'undefined') {
+      result = arango.GET("/_admin/routing/routes", "");
+    }
+
+    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
