@@ -188,35 +188,7 @@ function lookupCallbackAction (action) {
   var module;
 
   if (typeof action === 'string') {
-    path = action.split("/");
-    name = path.pop();
-    func = null;
-
-    try {
-      module = require(path.join("/"));
-
-      if (module.hasOwnProperty(name)) {
-        func = module[name];
-      }
-      else {
-        console.error("cannot find action named '%s' in module '%s'", name, path.join("/"));
-      }
-    }
-    catch (err) {
-      console.error("cannot find action named '%s' in module '%s': %s", 
-                    name, path.join("/"), String(err));
-      return null;
-    }
-
-    if (func === null || typeof func !== 'function') {
-      return null;
-    }
-
-    return {
-      controller: func,
-      options: {},
-      methods: exports.ALL_METHODS
-    };
+    return lookupCallbackAction({ prefixController: action });
   }
 
   if (action.hasOwnProperty('do')) {
