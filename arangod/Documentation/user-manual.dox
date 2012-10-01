@@ -368,7 +368,6 @@
 ///      <li>@ref UserManualActionsContentAction</li>
 ///      <li>@ref UserManualActionsContentController</li>
 ///      <li>@ref UserManualActionsContentPrefix</li>
-///      <li>@ref UserManualActionsContentMethod</li>
 ///     </ul>
 ///    </li>
 ///    <li>@ref UserManualActionsReqRes</li>
@@ -838,18 +837,6 @@
 /// If you use an prefix controller, you should make certain that no unwanted
 /// actions are available under the prefix.
 /// 
-/// @subsection UserManualActionsContentMethod Method Restriction
-///
-/// You can restrict the match to specific methods.
-///
-/// If the definition is
-///
-/// @code
-/// { controller: "org/arangodb/actions/echoController", methods: [ "post", "put" ] }
-/// @endcode
-///
-/// then only @LIT{POST} and @LIT{PUT} requests will match.
-///
 /// @section UserManualActionsReqRes Requests and Responses
 ///////////////////////////////////////////////////////////
 ///
