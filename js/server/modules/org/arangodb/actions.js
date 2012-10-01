@@ -166,7 +166,7 @@ function lookupCallbackStatic (content) {
   }
 
   return {
-    controller: function (req, res, next, options) {
+    controller: function (req, res, options, next) {
       res.responseCode = exports.HTTP_OK;
       res.contentType = type;
       res.body = body;
@@ -256,33 +256,33 @@ function lookupCallbackAction (action) {
       module = require(action.controller);
 
       return {
-        controller: function (req, res, next, options) {
+        controller: function (req, res, options, next) {
           if (req.requestType === exports.GET && module.hasOwnProperty('get')) {
-            return module['get'](req, res, next, options);
+            return module['get'](req, res, options, next);
           }
 
           if (req.requestType === exports.HEAD && module.hasOwnProperty('head')) {
-            return module['head'](req, res, next, options);
+            return module['head'](req, res, options, next);
           }
 
           if (req.requestType === exports.PUT && module.hasOwnProperty('put')) {
-            return module['put'](req, res, next, options);
+            return module['put'](req, res, options, next);
           }
 
           if (req.requestType === exports.POST && module.hasOwnProperty('post')) {
-            return module['post'](req, res, next, options);
+            return module['post'](req, res, options, next);
           }
 
           if (req.requestType === exports.DELETE && module.hasOwnProperty('delete')) {
-            return module['delete'](req, res, next, options);
+            return module['delete'](req, res, options, next);
           }
 
           if (req.requestType === exports.PATCH && module.hasOwnProperty('patch')) {
-            return module['patch'](req, res, next, options);
+            return module['patch'](req, res, options, next);
           }
 
           if (module.hasOwnProperty('do')) {
-            return module['do'](req, res, next, options);
+            return module['do'](req, res, options, next);
           }
 
           next();
@@ -302,7 +302,7 @@ function lookupCallbackAction (action) {
     var prefixController = action.prefixController;
 
     return {
-      controller: function (req, res, next, options) {
+      controller: function (req, res, options, next) {
         var module;
 
         try {
@@ -321,31 +321,31 @@ function lookupCallbackAction (action) {
         }
 
         if (req.requestType === exports.GET && module.hasOwnProperty('get')) {
-          return module['get'](req, res, next, options);
+          return module['get'](req, res, options, next);
         }
 
         if (req.requestType === exports.HEAD && module.hasOwnProperty('head')) {
-          return module['head'](req, res, next, options);
+          return module['head'](req, res, options, next);
         }
 
         if (req.requestType === exports.PUT && module.hasOwnProperty('put')) {
-          return module['put'](req, res, next, options);
+          return module['put'](req, res, options, next);
         }
 
         if (req.requestType === exports.POST && module.hasOwnProperty('post')) {
-          return module['post'](req, res, next, options);
+          return module['post'](req, res, options, next);
         }
 
         if (req.requestType === exports.DELETE && module.hasOwnProperty('delete')) {
-          return module['delete'](req, res, next, options);
+          return module['delete'](req, res, options, next);
         }
 
         if (req.requestType === exports.PATCH && module.hasOwnProperty('patch')) {
-          return module['patch'](req, res, next, options);
+          return module['patch'](req, res, options, next);
         }
 
         if (module.hasOwnProperty('do')) {
-          return module['do'](req, res, next, options);
+          return module['do'](req, res, options, next);
         }
 
         next();
@@ -1371,7 +1371,7 @@ function resultException (req, res, err, headers) {
 /// @brief echos a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function echoRequest (req, res, next, options) {
+function echoRequest (req, res, options, next) {
   var result;
 
   result = { request : req, options : options };
@@ -1385,7 +1385,7 @@ function echoRequest (req, res, next, options) {
 /// @brief logs a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function logRequest (req, res, next, options) {
+function logRequest (req, res, options, next) {
   var log;
   var level;
   var token;
@@ -1432,7 +1432,7 @@ function logRequest (req, res, next, options) {
 /// @brief redirects a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function redirectRequest (req, res, next, options) {
+function redirectRequest (req, res, options, next) {
   if (options.permanently) {
     resultPermanentRedirect(req, res, options.destination);
   }
