@@ -97,6 +97,23 @@ void ScriptLoader::defineScript (string const& name, string const& script) {
   _scripts[name] = script;
 }
 
+void ScriptLoader::defineScript (const string& name, const char** script) {
+  string scriptString;
+  
+  MUTEX_LOCKER(_lock);
+  
+  while (true) {
+    string tempStr = string(*script);
+    if (tempStr == "//__end__") {
+      break;
+    }
+    scriptString += tempStr + "\n";
+    ++script;
+  }
+  
+  _scripts[name] = scriptString;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a named script
 ////////////////////////////////////////////////////////////////////////////////
