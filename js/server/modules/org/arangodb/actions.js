@@ -278,7 +278,6 @@ function lookupCallbackAction (action) {
         var module;
 
         try {
-
           if (req.hasOwnProperty('suffix')) {
             module = require(prefixController + "/" + req.suffix.join("/"));
           }
@@ -941,8 +940,8 @@ function nextRouting (state) {
         state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
       }
       else {
-        state.prefix = undefined;
-        state.suffix = undefined;
+        delete state.prefix;
+        delete state.suffix;
       }
 
       state.urlParameters = {};
@@ -959,9 +958,9 @@ function nextRouting (state) {
     }
   }
 
-  state.route = undefined;
-  state.prefix = undefined;
-  state.suffix = undefined;
+  delete state.route;
+  delete state.prefix;
+  delete state.suffix;
   state.urlParameters = {};
 
   return state;
@@ -987,13 +986,9 @@ function firstRouting (type, parts) {
 
   if (! RoutingCache.flat.hasOwnProperty(type)) {
     return {
-      routing: undefined,
       parts: parts,
       position: -1,
       url: url,
-      route: undefined,
-      prefix: undefined,
-      suffix: undefined,
       urlParameters: {}
     };
   }
@@ -1003,9 +998,6 @@ function firstRouting (type, parts) {
     parts: parts,
     position: -1,
     url: url,
-    route: undefined,
-    prefix: undefined,
-    suffix: undefined,
     urlParameters: {}
   });
 }

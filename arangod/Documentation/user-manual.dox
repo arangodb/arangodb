@@ -727,7 +727,7 @@
 /// The simplest dynamic action is:
 ///
 /// @code
-/// { action: "org/arangodb/actions/echoRequest" }
+/// { action: { controller: "org/arangodb/actions", do: "echoRequest" } }
 /// @endcode
 ///
 /// It is not possible to store functions directly in the routing table, but you
@@ -828,7 +828,7 @@
 /// You can use
 ///
 /// @code
-/// { prefixController: "org/arangodb/actions" }
+/// { action: { prefixController: "org/arangodb/actions" } }
 /// @endcode
 ///
 /// to define a prefix controller. If the URL @LIT{/hello/echoController} is
@@ -836,7 +836,15 @@
 ///
 /// If you use an prefix controller, you should make certain that no unwanted
 /// actions are available under the prefix.
+///
+/// The definition
 /// 
+/// @code
+/// { action: "org/arangodb/actions" }
+/// @endcode
+///
+/// is a short-cut for a prefix controller definition.
+///
 /// @section UserManualActionsReqRes Requests and Responses
 ///////////////////////////////////////////////////////////
 ///
