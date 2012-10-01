@@ -743,7 +743,7 @@
 /// The signature of such a function must be
 ///
 /// @code
-/// function (req, res, next, options)
+/// function (req, res, options, next)
 /// @endcode
 ///
 /// For example
@@ -860,7 +860,7 @@
 /// the module @LIT{org/arangodb/actions}.
 ///
 /// @code
-/// function (req, res, next, options) {
+/// function (req, res, options, next) {
 ///   var result;
 /// 
 ///   result = { request: req, options: options };
@@ -1010,7 +1010,7 @@
 /// the requests, calls the next in line, and logs the response.
 ///
 /// @code
-/// exports.logRequest = function (req, res, next, options) {
+/// exports.logRequest = function (req, res, options, next) {
 ///   console.log("received request: %s", JSON.stringify(req));
 ///   next();
 ///   console.log("produced response: %s", JSON.stringify(res));
