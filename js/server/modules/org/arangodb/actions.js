@@ -866,11 +866,10 @@ function reloadRouting () {
   routing = internal.db._collection("_routing");
 
   if (routing === null) {
-    routes = { hasNext: function() { return false; } };
+    routing = internal.db._create("_routing", { isSystem: true });
   }
-  else {
-    routes = routing.all();
-  }
+
+  routes = routing.all();
 
   // .............................................................................
   // defines a new route
