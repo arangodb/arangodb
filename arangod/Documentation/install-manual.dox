@@ -103,7 +103,7 @@
 /// [ArangoDB]
 /// name=ArangoDB Repository for CentOS
 /// failovermethod=priority
-/// baseurl=http://www.arangodb.org/repositories/CentOS-6.2
+/// baseurl=http://www.arangodb.org/repositories/CentOS-6.3
 /// enabled=1
 /// gpgcheck=1
 /// gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-www.arangodb.org
