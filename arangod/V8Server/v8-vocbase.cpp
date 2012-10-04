@@ -4521,6 +4521,12 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
+/// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
+///   system collection. In this case @FA{collection-name} should start with
+///   an underscore. End users should normally create non-system collections
+///   only. API implementors may be required to create system collections in
+///   very special occasions, but normally a regular collection will do.
+///
 /// @EXAMPLES
 ///
 /// With defaults:
