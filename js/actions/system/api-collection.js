@@ -110,7 +110,7 @@
 /// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
 ///   system collection. In this case @FA{collection-name} should start with
 ///   an underscore. End users should normally create non-system collections
-///   only. API implementors may be required to create System collections in
+///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
 ///
 /// @EXAMPLES

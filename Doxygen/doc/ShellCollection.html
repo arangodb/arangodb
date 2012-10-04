@@ -214,6 +214,9 @@ null
 <ul>
 <li><code>journalSize</code> (optional, default is a <a class="el" href="CommandLine.html#CommandLineArango">configuration parameter</a>): The maximal size of a journal or datafile. Note that this also limits the maximal size of a single object. Must be at least 1MB.</li>
 </ul>
+<ul>
+<li><code>isSystem</code> (optional, default is <code>false</code>): If true, create a system collection. In this case <em>collection-name</em> should start with an underscore. End users should normally create non-system collections only. API implementors may be required to create system collections in very special occasions, but normally a regular collection will do.</li>
+</ul>
 <p><b>Examples</b><br/>
 </p>
 <p>With defaults:</p>
