@@ -237,8 +237,10 @@ static int WriteElement (TRI_document_collection_t* sim,
 
   res = TRI_WriteElementDatafile(journal,
                                  result,
-                                 marker, markerSize,
-                                 body, bodySize,
+                                 marker, 
+                                 markerSize,
+                                 body, 
+                                 bodySize,
                                  false);
 
   if (res != TRI_ERROR_NO_ERROR) {
