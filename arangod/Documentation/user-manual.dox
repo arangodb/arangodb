@@ -83,7 +83,6 @@
 ///      <li>@ref UserManualShellStartStopOptions</li>
 ///     </ul>
 ///    </li>
-///    </li>
 ///    <li>@ref UserManualServerStartStopDebug
 ///    </li>
 ///   </ul>
@@ -378,7 +377,7 @@
 ///      <li>@ref UserManualActionsAdvancedBundles</li>
 ///      <li>@ref UserManualActionsAdvancedMiddleware</li>
 ///     </ul>
-//     </li>
+///    </li>
 ///   </ul>
 ///  </li>
 /// </ul>
