@@ -131,8 +131,10 @@ static int CopyDocument (TRI_document_collection_t* collection,
   // and write marker and blob
   return TRI_WriteElementDatafile(journal,
                                   *result,
-                                  marker, marker->_size,
-                                  NULL, 0,
+                                  marker, 
+                                  marker->_size,
+                                  NULL, 
+                                  0,
                                   false);
 }
 
