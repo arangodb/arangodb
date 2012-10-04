@@ -648,7 +648,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: replace(<document>, <data>, <overwrite>)")));
+                                               "usage: replace(<document>, <data>, <overwrite>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -689,6 +689,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
     }
   }
 
+  bool forceSync = false;
+  if (4 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[3]);
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
@@ -696,7 +701,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
   primary->beginWrite(primary);
 
   TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t mptr = primary->update(primary, shaped, did, rid, &oldRid, policy, true);
+  TRI_doc_mptr_t mptr = primary->update(primary, shaped, did, rid, &oldRid, policy, true, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -749,22 +754,27 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (argv.Length() != 1 && argv.Length() != 3) {
+  if (argv.Length() != 1 && argv.Length() != 3 && argv.Length() != 4) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: save(<data>)")));
+                                               "usage: save(<data>, <did>, <rid>, <waitForSync>)")));
   }
 
   // set document id and revision id
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
 
-  if (argv.Length() == 3) {
+  if (3 <= argv.Length()) {
     // use existing document and revision ids
     // this functionality is used when importing documents from another server etc.
     // the functionality is not advertised
     did = TRI_ObjectToUInt64(argv[1]);
     rid = TRI_ObjectToUInt64(argv[2]);
+  }
+
+  bool forceSync = false;
+  if (4 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[3]);
   }
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
@@ -782,7 +792,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   primary->beginWrite(primary);
 
   // the lock is freed in create
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true);
+  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -827,22 +837,27 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (argv.Length() != 3 && argv.Length() != 5) {
+  if (argv.Length() != 3 && argv.Length() != 5 && argv.Length() != 6) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: save(<from>, <to>, <data>)")));
+                                               "usage: save(<from>, <to>, <data>, <did>, <rid>, <waitForSync>)")));
   }
   
   // set document id and revision id
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
 
-  if (argv.Length() == 5) {
+  if (5 <= argv.Length()) {
     // use existing document and revision ids
     // this functionality is used when importing documents from another server etc.
     // the functionality is not advertised
     did = TRI_ObjectToUInt64(argv[3]);
     rid = TRI_ObjectToUInt64(argv[4]);
+  }
+
+  bool forceSync = false;
+  if (6 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[5]);
   }
 
   TRI_document_edge_t edge;
@@ -901,7 +916,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   primary->beginWrite(primary);
 
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true);
+  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -937,12 +952,12 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // check the arguments
-  if (argv.Length() < 2) {
+  if (2 > argv.Length()) {
     TRI_ReleaseCollection(collection);
 
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: update(<document>, <data>, <overwrite>, <keepnull>)")));
+                                               "usage: update(<document>, <data>, <overwrite>, <keepnull>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -993,6 +1008,11 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     nullMeansRemove = false; 
   }
 
+  bool forceSync = false;
+  if (5 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[4]);
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
@@ -1013,7 +1033,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     TRI_FreeJson(primary->_shaper->_memoryZone, old);
 
     if (patchedJson != 0) {
-      mptr = primary->updateJson(primary, patchedJson, did, rid, &oldRid, policy, true);
+      mptr = primary->updateJson(primary, patchedJson, did, rid, &oldRid, policy, true, forceSync);
 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
     }
@@ -1055,7 +1075,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   if (argv.Length() < 1) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                                "usage: delete(<document>, <overwrite>)")));
+                                                                "usage: delete(<document>, <overwrite>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -1085,6 +1105,11 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
     }
   }
 
+  bool forceSync = false;
+  if (3 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[2]);
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
@@ -1092,7 +1117,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t oldRid;
 
-  int res = primary->destroyLock(primary, did, rid, &oldRid, policy);
+  int res = primary->destroyLock(primary, did, rid, &oldRid, policy, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -4147,7 +4172,12 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
+  bool forceSync = false;
+  if (1 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[0]);
+  }
+
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
@@ -4184,7 +4214,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   for (size_t i = 0; i < documents._length; ++i) {
     TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
     
-    int res = primary->destroy(primary, d->_did, d->_rid, &oldRid, policy, false);
+    int res = primary->destroy(primary, d->_did, d->_rid, &oldRid, policy, false, forceSync);
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred, but we simply go on because truncate should remove all documents
     }

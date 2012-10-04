@@ -240,8 +240,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  // extract the cid
   bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
+  // extract the cid
   char const* collection = _request->value("collection", found);
 
   if (! found || *collection == '\0') {
@@ -286,7 +289,7 @@ bool RestDocumentHandler::createDocument () {
 
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false, forceSync);
 
   trx.end();
 
@@ -728,6 +731,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
   // split the document reference
   string collection = suffix[0];
   string didStr = suffix[1];
@@ -775,7 +782,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   if (isPatch) {
     // patching an existing document
     bool nullMeansRemove;
-    bool found;
 
     char const* valueStr = _request->value("keepNull", found);
     if (!found || StringUtils::boolean(valueStr)) {
@@ -798,7 +804,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_FreeJson(shaper->_memoryZone, old);
 
       if (patchedJson != 0) {
-        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false);
+        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false, forceSync);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
@@ -806,7 +812,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   else {
     // replacing an existing document
-    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false);
+    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false, forceSync);
   }
 
   trx.end();
@@ -913,6 +919,10 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
   // split the document reference
   string collection = suffix[0];
   string didStr = suffix[1];
@@ -953,7 +963,7 @@ bool RestDocumentHandler::deleteDocument () {
   WriteTransaction trx(&ca);
 
   // unlocking is performed in destroy()
-  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false);
+  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false, forceSync);
 
   trx.end();
 

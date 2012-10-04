@@ -62,21 +62,24 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       TRI_doc_update_policy_e policy,
                                       TRI_df_marker_t** result,
                                       bool release,
-                                      bool allowRollback);
+                                      bool allowRollback,
+                                      bool forceSync);
 
 static int DeleteDocument (TRI_document_collection_t* collection,
                            TRI_doc_deletion_marker_t* marker,
                            TRI_voc_rid_t rid,
                            TRI_voc_rid_t* oldRid,
                            TRI_doc_update_policy_e policy,
-                           bool release);
+                           bool release,
+                           bool forceSync);
 
 static int DeleteShapedJson (TRI_primary_collection_t* doc,
                              TRI_voc_did_t did,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
                              TRI_doc_update_policy_e policy,
-                             bool release);
+                             bool release,
+                             bool forceSync);
 
 static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
 static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old);
@@ -183,7 +186,8 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* sim,
 
 static void WaitSync (TRI_document_collection_t* sim,
                       TRI_datafile_t* journal,
-                      char const* position) {
+                      char const* position,
+                      bool forceSync) {
   TRI_collection_t* base;
 
   base = &sim->base.base;
@@ -191,7 +195,7 @@ static void WaitSync (TRI_document_collection_t* sim,
   // no condition at all. Do NOT acquire a lock, in the worst
   // case we will miss a parameter change.
 
-  if (! base->_waitForSync) {
+  if (! base->_waitForSync && ! forceSync) {
     return;
   }
 
@@ -216,7 +220,10 @@ static void WaitSync (TRI_document_collection_t* sim,
     }
 
     // we have to wait a bit longer
+    // signal the synchroniser that there is work to do
+    TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+    TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
@@ -308,7 +315,8 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
                                       void const* additional,
                                       TRI_voc_did_t did,
                                       TRI_voc_rid_t rid,
-                                      bool release) {
+                                      bool release, 
+                                      bool forceSync) {
 
   TRI_datafile_t* journal;
   TRI_primary_collection_t* primary;
@@ -393,7 +401,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
       LOG_DEBUG("encountered index violation during create, deleting newly created document");
 
       // rollback, ignore any additional errors
-      resRollback = DeleteShapedJson(primary, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false);
+      resRollback = DeleteShapedJson(primary, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false, false);
 
       if (resRollback != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
@@ -426,7 +434,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
           LOG_DEBUG("removing document '%lu' because of cap constraint",
                     (unsigned long) oldest->_did);
 
-          remRes = DeleteShapedJson(primary, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false);
+          remRes = DeleteShapedJson(primary, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false, false);
 
           if (remRes != TRI_ERROR_NO_ERROR) {
             LOG_WARNING("cannot cap collection: %s", TRI_last_error());
@@ -441,7 +449,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
       }
 
       // wait for sync
-      WaitSync(sim, journal, ((char const*) *result) + markerSize + bodySize);
+      WaitSync(sim, journal, ((char const*) *result) + markerSize + bodySize, forceSync);
 
       // and return
       return mptr;
@@ -529,12 +537,15 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_document_collection_t* sim,
 
   return UpdateDocument(sim,
                         header,
-                        marker, markerLength,
-                        data, dataLength,
+                        marker, 
+                        markerLength,
+                        data, 
+                        dataLength,
                         header->_rid,
                         NULL,
                         TRI_DOC_UPDATE_LAST_WRITE,
                         result,
+                        false,
                         false,
                         false);
 }
@@ -554,7 +565,8 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       TRI_doc_update_policy_e policy,
                                       TRI_df_marker_t** result,
                                       bool release,
-                                      bool allowRollback) {
+                                      bool allowRollback,
+                                      bool forceSync) {
   TRI_doc_mptr_t mptr;
   TRI_primary_collection_t* primary;
   TRI_datafile_t* journal;
@@ -704,7 +716,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
       }
 
       // wait for sync
-      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
+      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize, forceSync);
       
       // and return
       return mptr;
@@ -739,7 +751,8 @@ static int DeleteDocument (TRI_document_collection_t* collection,
                            TRI_voc_rid_t rid,
                            TRI_voc_rid_t* oldRid,
                            TRI_doc_update_policy_e policy,
-                           bool release) {
+                           bool release,
+                           bool forceSync) {
   TRI_datafile_t* journal;
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* header;
@@ -850,7 +863,7 @@ static int DeleteDocument (TRI_document_collection_t* collection,
     }
 
     // wait for sync
-    WaitSync(collection, journal, ((char const*) result) + sizeof(TRI_doc_deletion_marker_t));
+    WaitSync(collection, journal, ((char const*) result) + sizeof(TRI_doc_deletion_marker_t), forceSync);
   }
   else {
     if (release) {
@@ -978,7 +991,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
                                         void const* data,
                                         TRI_voc_did_t did,
                                         TRI_voc_rid_t rid,
-                                        bool release) {
+                                        bool release,
+                                        bool forceSync) {
   TRI_df_marker_t* result;
   TRI_document_collection_t* collection;
 
@@ -1002,7 +1016,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
                           data,
                           did,
                           rid,
-                          release);
+                          release,
+                          forceSync);
   }
   else if (type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_edge_marker_t marker;
@@ -1025,12 +1040,14 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
 
     return CreateDocument(collection,
                           &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
+                          json->_data.data, 
+                          json->_data.length,
                           &result,
                           data,
                           did,
                           rid,
-                          release);
+                          release,
+                          forceSync);
   }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
@@ -1069,7 +1086,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
                                         TRI_voc_rid_t rid,
                                         TRI_voc_rid_t* oldRid,
                                         TRI_doc_update_policy_e policy,
-                                        bool release) {
+                                        bool release,
+                                        bool forceSync) {
   TRI_df_marker_t const* original;
   TRI_df_marker_t* result;
   TRI_document_collection_t* collection;
@@ -1116,7 +1134,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
                           policy,
                           &result,
                           release,
-                          true);
+                          true,
+                          forceSync);
   }
 
   // the original is an edge
@@ -1143,14 +1162,17 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
 
     return UpdateDocument(collection,
                           header,
-                          &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
+                          &marker.base, 
+                          sizeof(marker),
+                          json->_data.data, 
+                          json->_data.length,
                           rid,
                           oldRid,
                           policy,
                           &result,
                           release,
-                          true);
+                          true,
+                          forceSync);
   }
   
   // do not know
@@ -1174,7 +1196,8 @@ static int DeleteShapedJson (TRI_primary_collection_t* primary,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
                              TRI_doc_update_policy_e policy,
-                             bool release) {
+                             bool release,
+                             bool forceSync) {
   TRI_document_collection_t* document;
   TRI_doc_deletion_marker_t marker;
 
@@ -1188,7 +1211,7 @@ static int DeleteShapedJson (TRI_primary_collection_t* primary,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(document, &marker, rid, oldRid, policy, release);
+  return DeleteDocument(document, &marker, rid, oldRid, policy, release, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
