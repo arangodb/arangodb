@@ -38,6 +38,7 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 
+using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace std;

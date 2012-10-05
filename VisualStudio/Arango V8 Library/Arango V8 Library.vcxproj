@@ -44,7 +44,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;USE_READLINE_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl-0.9.8k-lib\include;..\..\3rdParty\boost_1_48_0\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -70,6 +71,25 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lib\V8\JSLoader.cpp" />
+    <ClCompile Include="..\..\lib\V8\v8-conv.cpp" />
+    <ClCompile Include="..\..\lib\V8\v8-execution.cpp" />
+    <ClCompile Include="..\..\lib\V8\v8-json.cpp" />
+    <ClCompile Include="..\..\lib\V8\v8-shell.cpp" />
+    <ClCompile Include="..\..\lib\V8\v8-utils.cpp" />
+    <ClCompile Include="..\..\lib\V8\V8LineEditor.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lib\V8\JSLoader.h" />
+    <ClInclude Include="..\..\lib\V8\v8-conv.h" />
+    <ClInclude Include="..\..\lib\V8\v8-execution.h" />
+    <ClInclude Include="..\..\lib\V8\v8-globals.h" />
+    <ClInclude Include="..\..\lib\V8\v8-json.h" />
+    <ClInclude Include="..\..\lib\V8\v8-shell.h" />
+    <ClInclude Include="..\..\lib\V8\v8-utils.h" />
+    <ClInclude Include="..\..\lib\V8\V8LineEditor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

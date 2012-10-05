@@ -25,6 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "v8-utils.h"
 
 #include <fstream>
@@ -852,7 +856,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = write(1, ptr, len);
+      ssize_t n = TRI_WRITE(1, ptr, len);
 
       if (n < 0) {
         return v8::Undefined();

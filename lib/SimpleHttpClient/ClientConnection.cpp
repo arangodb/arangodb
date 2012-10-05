@@ -27,12 +27,20 @@
 
 #include "ClientConnection.h"
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#endif 
+
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+#include <sys/types.h>
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -89,7 +97,7 @@ bool ClientConnection::checkSocket () {
 
   assert(_socket > 0);
 
-  getsockopt(_socket, SOL_SOCKET, SO_ERROR, &so_error, &len);
+  getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
 
   if (so_error == 0) {
     return true;
@@ -183,11 +191,16 @@ bool ClientConnection::write (void* buffer, size_t length, size_t* bytesWritten)
     return false;
   }
 
-#ifdef __APPLE__
+#if defined(__APPLE__)
+  // MSG_NOSIGNAL not supported on apple platform
   int status = ::send(_socket, buffer, length, 0);
+#elif defined(_WIN32)
+  // MSG_NOSIGNAL not supported on windows platform
+  int status = ::send(_socket, (const char*)(buffer), length, 0);
 #else
   int status = ::send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
+
 
   *bytesWritten = status;
 

@@ -39,6 +39,12 @@
     <Filter Include="Scheduler Header">
       <UniqueIdentifier>{5bcf4578-d074-498d-99fe-b604c78fd975}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Libev header">
+      <UniqueIdentifier>{067753ed-09a5-4aea-b88f-4d6494535b08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libev source">
+      <UniqueIdentifier>{cf6a3132-a919-4092-8c66-faaf035c29df}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -182,6 +188,9 @@
     <ClInclude Include="..\..\lib\Scheduler\TimerTask.h">
       <Filter>Scheduler Header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\3rdParty\VisualStudio\libev-4.01\ev_wrap.h">
+      <Filter>Libev header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp">
@@ -297,6 +306,9 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\Scheduler\TimerTask.cpp">
       <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\VisualStudio\libev-4.01\evwrap.c">
+      <Filter>Libev source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

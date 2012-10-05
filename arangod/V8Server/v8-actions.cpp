@@ -471,7 +471,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
     if (res->Has(v8g->ResponseCodeKey)) {
-      code = (HttpResponse::HttpResponseCode) TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey));
+      // Windows has issues with converting from a double to an enumeration type
+      code = (HttpResponse::HttpResponseCode) ((int) (TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey))));
     }
 
     HttpResponse* response = new HttpResponse(code);

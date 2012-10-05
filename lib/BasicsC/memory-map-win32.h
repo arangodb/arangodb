@@ -1,11 +1,14 @@
+  // #define MS_ASYNC        1             /* sync memory asynchronously */
+  // #define MS_INVALIDATE   2               /* invalidate the caches */
+  // #define MS_SYNC         4               /* synchronous memory sync */
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread for actions
+/// @brief memory mapped files in windows
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,45 +24,53 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. O
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActionDispatcherThread.h"
+#ifndef TRIAGENS_BASICS_C_MEMORY_MAP_WIN32_H
+#define TRIAGENS_BASICS_C_MEMORY_MAP_WIN32_H 1
 
-using namespace std;
-using namespace triagens::arango;
+#include "BasicsC/common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class ActionDispatcherThread
-// -----------------------------------------------------------------------------
+#ifdef TRI_HAVE_WIN32_MMAP
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+#include <Windows.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+// Define some dummy flags which are ignored under windows.
+// Under windows only the MS_SYNC flag makes sense, that is, all memory map
+// file flushes are synchronous.
+////////////////////////////////////////////////////////////////////////////////
+
+#define MS_ASYNC        1             /* sync memory asynchronously */
+#define MS_INVALIDATE   2             /* invalidate the caches */
+#define MS_SYNC         4             /* synchronous memory sync */
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory_map
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new dispatcher thread
-////////////////////////////////////////////////////////////////////////////////
-
-ActionDispatcherThread::ActionDispatcherThread (triagens::rest::DispatcherQueue* queue)
-  : DispatcherThread(queue) {
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+#endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -30,12 +30,24 @@
 #include "Basics/ssl-helper.h"
 #include "BasicsC/socket-utils.h"
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#endif 
+
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+#include <sys/types.h>
+
+
+
+
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -265,7 +277,13 @@ bool SslClientConnection::readable () {
   // via SSL_read().
   // if we used select() to check whether there is more data available, select()
   // might return 0 already but we might not have consumed all bytes yet 
-  return SSL_pending(_ssl);
+
+  // ...........................................................................
+  // SSL_pending(...) is an OpenSSL function which returns the number of bytes 
+  // which are available inside ssl for reading.
+  // ...........................................................................
+
+  return (SSL_pending(_ssl) > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

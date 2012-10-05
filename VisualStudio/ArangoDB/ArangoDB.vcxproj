@@ -80,6 +80,8 @@
     <ClInclude Include="..\..\lib\BasicsC\locks-win32.h" />
     <ClInclude Include="..\..\lib\BasicsC\locks.h" />
     <ClInclude Include="..\..\lib\BasicsC\logging.h" />
+    <ClInclude Include="..\..\lib\BasicsC\memory-map-win32.h" />
+    <ClInclude Include="..\..\lib\BasicsC\memory-map.h" />
     <ClInclude Include="..\..\lib\BasicsC\memory.h" />
     <ClInclude Include="..\..\lib\BasicsC\mersenne.h" />
     <ClInclude Include="..\..\lib\BasicsC\operating-system.h" />
@@ -96,6 +98,7 @@
     <ClInclude Include="..\..\lib\BasicsC\threads.h" />
     <ClInclude Include="..\..\lib\BasicsC\vector.h" />
     <ClInclude Include="..\..\lib\BasicsC\voc-errors.h" />
+    <ClInclude Include="..\..\lib\BasicsC\win-utils.h" />
     <ClInclude Include="..\..\lib\Basics\AssociativeArray.h" />
     <ClInclude Include="..\..\lib\Basics\Common.h" />
     <ClInclude Include="..\..\lib\Basics\ConditionLocker.h" />
@@ -190,6 +193,7 @@
     <ClCompile Include="..\..\lib\BasicsC\linked-list.c" />
     <ClCompile Include="..\..\lib\BasicsC\locks-win32.c" />
     <ClCompile Include="..\..\lib\BasicsC\logging.c" />
+    <ClCompile Include="..\..\lib\BasicsC\memory-map-win32.c" />
     <ClCompile Include="..\..\lib\BasicsC\memory.c" />
     <ClCompile Include="..\..\lib\BasicsC\mersenne.c" />
     <ClCompile Include="..\..\lib\BasicsC\process-utils.c" />
@@ -204,6 +208,7 @@
     <ClCompile Include="..\..\lib\BasicsC\threads-win32.c" />
     <ClCompile Include="..\..\lib\BasicsC\vector.c" />
     <ClCompile Include="..\..\lib\BasicsC\voc-errors.c" />
+    <ClCompile Include="..\..\lib\BasicsC\win-utils.c" />
     <ClCompile Include="..\..\lib\Basics\ConditionLocker.cpp" />
     <ClCompile Include="..\..\lib\Basics\ConditionVariable.cpp" />
     <ClCompile Include="..\..\lib\Basics\Exceptions.cpp" />

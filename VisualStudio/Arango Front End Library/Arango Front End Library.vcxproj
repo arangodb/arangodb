@@ -44,7 +44,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;TRI_OPENSSL_VERSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl-0.9.8k-lib\include;..\..\3rdParty\boost_1_48_0\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\libev-4.01;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -72,6 +73,7 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\3rdParty\VisualStudio\libev-4.01\ev_wrap.h" />
     <ClInclude Include="..\..\lib\Admin\ApplicationAdminServer.h" />
     <ClInclude Include="..\..\lib\Admin\RestAdminBaseHandler.h" />
     <ClInclude Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.h" />
@@ -120,6 +122,7 @@
     <ClInclude Include="..\..\lib\Scheduler\TimerTask.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\3rdParty\VisualStudio\libev-4.01\evwrap.c" />
     <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminBaseHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.cpp" />

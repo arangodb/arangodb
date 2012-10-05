@@ -28,12 +28,12 @@
 #include "vocbase.h"
 
 #include <regex.h>
-#include <sys/mman.h>
 
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/memory-map.h"
 #include "BasicsC/random.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/threads.h"
@@ -1066,23 +1066,12 @@ bool TRI_msync (int fd, char const* begin, char const* end) {
   char* b = (char*)( (p / g) * g );
   char* e = (char*)( ((q + g - 1) / g) * g );
 
-  int res = msync(b, e - b, MS_SYNC);
-
-#ifdef __APPLE__
-
-  if (res == 0) {
-    res = fcntl(fd, F_FULLFSYNC, 0);
-  }
-
-#endif
-
-  if (res == 0) {
-    return true;
-  }
-  else {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  int result = TRI_FlushMMFile(&fd, b, e - b, MS_SYNC);
+  if (result != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(result);
     return false;
   }
+  return true;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////

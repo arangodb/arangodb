@@ -401,6 +401,15 @@
     <ClInclude Include="..\..\lib\BasicsC\mersenne.h">
       <Filter>BasicsCHeader</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\win-utils.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\memory-map.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\BasicsC\memory-map-win32.h">
+      <Filter>BasicsCHeader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\BasicsC\associative.c">
@@ -674,6 +683,12 @@
       <Filter>RestSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\mersenne.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\win-utils.c">
+      <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\BasicsC\memory-map-win32.c">
       <Filter>BasicsCSource</Filter>
     </ClCompile>
   </ItemGroup>

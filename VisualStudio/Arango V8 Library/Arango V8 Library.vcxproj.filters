@@ -11,4 +11,53 @@
       <UniqueIdentifier>{96aaec03-439d-49b0-a2a8-4413b23226dd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lib\V8\JSLoader.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-conv.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-execution.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-json.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\V8LineEditor.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-shell.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\v8-utils.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lib\V8\JSLoader.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-conv.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-execution.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-globals.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-json.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\V8LineEditor.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-shell.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\V8\v8-utils.h">
+      <Filter>V8 Header</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

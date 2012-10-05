@@ -11,4 +11,26 @@
       <UniqueIdentifier>{c5b908b0-941e-42e6-a218-5ff978dc07e5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lib\MRuby\MRLineEditor.cpp">
+      <Filter>MRuby Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\MRuby\MRLoader.cpp">
+      <Filter>MRuby Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\MRuby\mr-utils.c">
+      <Filter>MRuby Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lib\MRuby\MRLineEditor.h">
+      <Filter>MRuby Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\MRuby\MRLoader.h">
+      <Filter>MRuby Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\MRuby\mr-utils.h">
+      <Filter>MRuby Header</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

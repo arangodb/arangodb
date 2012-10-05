@@ -175,7 +175,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   }
 
   // read and convert
-  int fd = open(*filename, O_RDONLY);
+  int fd = TRI_OPEN(*filename, O_RDONLY);
 
   if (fd < 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
@@ -207,7 +207,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   while (true) {
     v8::HandleScope scope;
 
-    ssize_t n = read(fd, buffer, sizeof(buffer));
+    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
