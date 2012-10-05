@@ -30,15 +30,22 @@
 
 #include <errno.h>
 
+
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <netdb.h>
-
-#include <netinet/in.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
+#endif 
+
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+#include <sys/types.h>
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
@@ -143,7 +150,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     int res = getsockname(connfd, (sockaddr*) &addr_out, &len_out);
 
     if (res != 0) {
-      close(connfd);
+      TRI_CLOSE(connfd);
       
       LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
 
@@ -155,7 +162,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     // disable nagle's algorithm, set to non-blocking and close-on-exec  
     bool result = _endpoint->initIncoming(connfd); 
     if (!result) {
-      close(connfd);
+      TRI_CLOSE(connfd);
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
 

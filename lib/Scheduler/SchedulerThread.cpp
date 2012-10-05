@@ -26,6 +26,10 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "SchedulerThread.h"
 
 #include "Logger/Logger.h"
@@ -249,10 +253,11 @@ void SchedulerThread::run () {
   LOGGER_TRACE << "scheduler thread started (" << threadId() << ")";
 
   if (_defaultLoop) {
+#ifdef TRI_HAVE_POSIX_THREADS
     sigset_t all;
-    sigemptyset(&all);
-    
+    sigemptyset(&all);    
     pthread_sigmask(SIG_SETMASK, &all, 0);
+#endif
   }
 
   while (_stopping == 0 && _open == 0) {

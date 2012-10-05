@@ -26,6 +26,10 @@
 /// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "Thread.h"
 
 #include <errno.h>
@@ -33,6 +37,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Logger/Logger.h"
+
 
 using namespace triagens::basics;
 

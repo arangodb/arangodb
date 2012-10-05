@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "statistics.h"
 
 #include "Basics/MutexLocker.h"
@@ -35,6 +39,7 @@
 #include "Statistics/RoundRobinFigures.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantVector.h"
+
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -717,7 +722,7 @@ double TRI_StatisticsTime () {
 #else
 
 double TRI_StatisticsTime () { 
-  return time(0);
+  return (double)(time(0));
 }
 
 #endif

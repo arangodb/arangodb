@@ -45,7 +45,6 @@
 #define TRI_HAVE_GETGRGID                   1
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
-#define TRI_HAVE_GETRLIMIT                  1
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
 
@@ -77,6 +76,7 @@
 #define TRI_ENABLE_SYSLOG                   1
 
 #define TRI_HAVE_DIRENT_H                   1
+#define TRI_HAVE_GETRLIMIT                  1
 #define TRI_HAVE_FORK                       1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
@@ -92,6 +92,7 @@
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_MACOS_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_POSIX_MMAP                 1
 
 #define TRI_HAVE_GETPPID                    1
 #define TRI_HAVE_GETRUSAGE                  1
@@ -131,6 +132,7 @@
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
 #define TRI_RMDIR                       rmdir
+#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 
@@ -164,6 +166,7 @@
 #define TRI_ENABLE_SYSLOG                   1
 
 #define TRI_HAVE_DIRENT_H                   1
+#define TRI_HAVE_GETRLIMIT                  1
 #define TRI_HAVE_FORK                       1
 #define TRI_HAVE_STDBOOL_H                  1
 #define TRI_HAVE_SYS_RESOURCE_H             1
@@ -174,6 +177,7 @@
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_POSIX_MMAP                 1
 
 #define TRI_HAVE_GETLINE                    1
 #define TRI_HAVE_GETTIMEOFDAY               1
@@ -197,6 +201,7 @@
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
 #define TRI_RMDIR                       rmdir
+#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 
@@ -252,6 +257,7 @@
 #define TRI_GCC_THREAD_LOCAL_STORAGE        1
 
 #define TRI_HAVE_DIRENT_H                   1
+#define TRI_HAVE_GETRLIMIT                  1
 #define TRI_HAVE_FORK                       1
 #define TRI_HAVE_SIGNAL_H                   1
 #define TRI_HAVE_STDBOOL_H                  1
@@ -270,6 +276,7 @@
 #define TRI_HAVE_LINUX_SOCKETS              1
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
+#define TRI_HAVE_POSIX_MMAP                 1
 
 #define TRI_HAVE_GETLINE                    1
 #define TRI_HAVE_GETPPID                    1
@@ -296,6 +303,7 @@
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
 #define TRI_RMDIR                       rmdir
+#define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
 
@@ -347,6 +355,7 @@
 #define TRI_HAVE_WIN32_SOCKETS              1
 #define TRI_HAVE_WIN32_SYMBOLIC_LINK        1
 #define TRI_HAVE_WIN32_THREADS              1
+#define TRI_HAVE_WIN32_MMAP                 1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
@@ -359,7 +368,13 @@
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
 #define snprintf                        _snprintf
-#define usleep                          Sleep
+
+// ..............................................................
+// usleep in POSIX is for microseconds - not milliseconds
+// has been redefined in win-utils.h
+// ..............................................................
+// #define usleep                          Sleep 
+#define usleep                          TRI_usleep
 #define srandom                         srand
 #define fsync                           _commit
 #define isatty                          _isatty
@@ -395,6 +410,7 @@ typedef unsigned int bool;
 #define TRI_OPEN(a,b)                   _open((a), (b))
 #define TRI_READ                        _read
 #define TRI_RMDIR                       _rmdir
+#define TRI_SLEEP                       TRI_sleep
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
 

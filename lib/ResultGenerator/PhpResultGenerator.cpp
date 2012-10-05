@@ -335,7 +335,78 @@ namespace triagens {
     }
 
 
+#ifdef _WIN32
+    void PhpResultGenerator::generateAtom (StringBuffer& output, double value) const {
+      output.appendText("d:");
 
+      if (value == 0.0) {
+        output.appendText("0.0", 3);
+        output.appendText(";");
+        return;
+      }
+
+      int intType = _fpclass(value);
+
+      switch (intType) {
+        case _FPCLASS_PN:
+        case _FPCLASS_NN:
+        case _FPCLASS_NZ:
+        case _FPCLASS_PZ: {
+          output.appendDecimal(value);
+          break;
+        }
+        case _FPCLASS_NINF: {
+          output.appendText("-INF");
+          break;
+        }
+        case _FPCLASS_PINF: {
+          output.appendText("INF");
+          break;
+        }
+        default: {
+          output.appendText("NAN");
+          break;
+        }
+      }
+      output.appendText(";");
+    }
+
+    void PhpResultGenerator::generateAtom (StringBuffer& output, float value) const {
+      output.appendText("d:");
+
+      if (value == 0.0) {
+        output.appendText("0.0", 3);
+        output.appendText(";");
+        return;
+      }
+
+      int intType = _fpclass(value);
+
+      switch (intType) {
+        case _FPCLASS_PN:
+        case _FPCLASS_NN:
+        case _FPCLASS_NZ:
+        case _FPCLASS_PZ: {
+          output.appendDecimal(value);
+          break;
+        }
+        case _FPCLASS_NINF: {
+          output.appendText("-INF");
+          break;
+        }
+        case _FPCLASS_PINF: {
+          output.appendText("INF");
+          break;
+        }
+        default: {
+          output.appendText("NAN");
+          break;
+        }
+      }
+      output.appendText(";");
+    }
+
+#else
     void PhpResultGenerator::generateAtom (StringBuffer& output, double value) const {
       output.appendText("d:");
 
@@ -390,6 +461,7 @@ namespace triagens {
       output.appendText(";");
     }
 
+#endif
 
 
     void PhpResultGenerator::generateAtom (StringBuffer& output, int16_t value) const {

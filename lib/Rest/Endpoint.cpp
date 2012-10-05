@@ -548,7 +548,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
   if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 
-    close(listenSocket);
+    TRI_CLOSE(listenSocket);
 
     return 0;
   }
@@ -559,7 +559,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     int result = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
     if (result != 0) {
       // error 
-      close(listenSocket);
+      TRI_CLOSE(listenSocket);
 
       return 0;
     }
@@ -569,7 +569,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     result = listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
-      close(listenSocket);
+      TRI_CLOSE(listenSocket);
 
       LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
 
@@ -583,14 +583,14 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     setTimeout(listenSocket, connectTimeout);
 
     if (::connect(listenSocket, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen) != 0) {
-      close(listenSocket);
+      TRI_CLOSE(listenSocket);
 
       return 0;
     }
   }
     
   if (!setSocketFlags(listenSocket)) {
-    close(listenSocket);
+    TRI_CLOSE(listenSocket);
 
     return 0;
   }
@@ -678,7 +678,7 @@ void EndpointIp::disconnect () {
     assert(_socket);
 
     _connected = false;
-    close(_socket);
+    TRI_CLOSE(_socket);
 
     _socket = 0;
   }

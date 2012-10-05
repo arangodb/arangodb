@@ -25,6 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "win-utils.h"
+#endif
+
 #include "logging.h"
 
 #ifdef TRI_ENABLE_SYSLOG
