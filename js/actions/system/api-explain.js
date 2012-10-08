@@ -81,6 +81,10 @@ var actions = require("org/arangodb/actions");
 /// @LIT{FILTER} etc.). If the query optimiser removed some unnecessary statements,
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
+/// The following example shows a query with a non-sensible filter condition that
+/// the optimiser has removed so that there are less top-level statements:
+///
+/// @verbinclude api-explain-empty
 ///
 /// The top-level statements will appear in the result in the same order in which
 /// they have been used in the original query. Each result element has at most the 
@@ -93,8 +97,8 @@ var actions = require("org/arangodb/actions");
 /// used.
 /// Many top-level statements will provide an @LIT{expression} attribute that
 /// contains data about the expression they operate on. This is true for @LIT{FOR},
-/// @LIT{FILTER}, @LIT{SORT}, @LIT{COLLECT}, and @LIT{RETURN}. The @LIT{expression}
-/// attribute has the following sub-attributes:
+/// @LIT{FILTER}, @LIT{SORT}, @LIT{COLLECT}, and @LIT{RETURN} statements. The 
+/// @LIT{expression} attribute has the following sub-attributes:
 /// - @LIT{type}: the type of the expression. Some possible values are:
 ///   - @LIT{collection}: an iteration over documents from a collection. The 
 ///     @LIT{value} attribute will then contain the collection name. The @LIT{extra}
@@ -102,7 +106,9 @@ var actions = require("org/arangodb/actions");
 ///     accessing the documents from the collection. If no index is used, the 
 ///     @LIT{accessType} sub-attribute of the @LIT{extra} attribute will have the
 ///     value @LIT{all}, otherwise it will be @LIT{index}.
-///   - @LIT{list}: a list of values. The @LIT{value} attribute will contain the
+///   - @LIT{list}: a list of dynamic values. The @LIT{value} attribute will contain the
+///     list elements.
+///   - @LIT{const list}: a list of constant values. The @LIT{value} attribute will contain the
 ///     list elements.
 ///   - @LIT{reference}: a reference to another variable. The @LIT{value} attribute
 ///     will contain the name of the variable that is referenced.
