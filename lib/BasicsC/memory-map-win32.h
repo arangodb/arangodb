@@ -52,6 +52,14 @@ extern "C" {
 #define MS_SYNC         4             /* synchronous memory sync */
 
 
+#define PROT_READ       0x1             /* Page can be read.  */
+#define PROT_WRITE      0x2             /* Page can be written.  */
+#define PROT_EXEC       0x4             /* Page can be executed.  */
+#define PROT_NONE       0x0             /* Page can not be accessed.  */
+#define PROT_GROWSDOWN  0x01000000      /* Extend change to start of growsdown vma (mprotect only).  */
+#define PROT_GROWSUP    0x02000000      /* Extend change to start of growsup vma (mprotect only).  */
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Memory_map
 /// @{

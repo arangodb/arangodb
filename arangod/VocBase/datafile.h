@@ -222,8 +222,9 @@ typedef struct TRI_datafile_s {
 
   TRI_df_state_e _state;         // state of the datafile (READ or WRITE)
 
-  char* _filename;               // underlying filename
-  int _fd;                       // underlying file descriptor
+  char* _filename;             // underlying filename
+  int _fd;                     // underlying file descriptor
+  void* _mmHandle;             // underlying memory map object handle (windows only)
 
   TRI_voc_size_t _maximalSize;   // maximale size of the datafile
   TRI_voc_size_t _currentSize;   // current size of the datafile
