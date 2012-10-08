@@ -34,6 +34,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+int getpagesize(void) {
+  static int pageSize = 0; // only define it once
+
+  if (!pageSize) {
+    // first time, so call the system info function 
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo (&systemInfo);
+    pageSize = systemInfo.dwPageSize;
+  }
+
+  return pageSize;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Calls the windows Sleep function which always sleeps for milliseconds
