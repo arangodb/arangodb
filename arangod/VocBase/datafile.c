@@ -90,7 +90,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
 /// Create a truncated datafile, seal it and rename the old.
 ////////////////////////////////////////////////////////////////////////////////
 
-static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t size) {
+static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t vocSize) {
   char* filename;
   char* oldname;
   char zero;
@@ -102,7 +102,7 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t size) {
   void* mmHandle;
   
   // use multiples of page-size
-  maximalSize = ((size + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
+  maximalSize = ((vocSize + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > maximalSize) {
@@ -163,7 +163,7 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t size) {
   }
 
   // copy the data
-  memcpy(data, datafile->_data, size);
+  memcpy(data, datafile->_data, vocSize);
 
   // patch the datafile structure
   res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &(datafile->_fd), &(datafile->_mmHandle));
@@ -177,7 +177,7 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t size) {
   // the datafile->_mmHandle object has been closed in the underlying TRI_UNMMFile(...) call above
   
   datafile->_data = data;
-  datafile->_next = data + size;
+  datafile->_next = (char*)(data) + vocSize;
   datafile->_maximalSize = maximalSize;
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
