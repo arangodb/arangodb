@@ -27,6 +27,8 @@
 
 /* GeoIndex.c -   GeoIndex algorithms                */
 /* Version 2.1   8.1.2012  R. A. Parker              */
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #include "GeoIndex.h"
 
