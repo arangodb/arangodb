@@ -2032,15 +2032,19 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
     TRI_aql_node_t* rhs = TRI_AQL_NODE_MEMBER(node, 1);
+    TRI_vector_pointer_t* previous;
     TRI_aql_attribute_name_t* field;
     TRI_aql_node_t* node1;
     TRI_aql_node_t* node2; 
     TRI_aql_node_type_e operator;
+    bool useBoth;
 
     if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != TRI_AQL_NODE_LIST) {
       // in operator is special. if right operand is not a list, we must abort here
       return NULL;
     } 
+
+    useBoth = false;
 
     if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
         (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
@@ -2048,6 +2052,11 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
+      
+      if (rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
+        // expression of type reference|attribute access operator reference|attribute access
+        useBoth = true;
+      }
     }
     else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
              (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
@@ -2056,6 +2065,11 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
       assert(operator != TRI_AQL_NODE_NOP);
+      
+      if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
+        // expression of type reference|attribute access operator reference|attribute access
+        useBoth = true;
+      }
     }
     else {
       return NULL;
@@ -2070,6 +2084,10 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       return NULL;
     }
 
+    previous = NULL;
+
+again:
+    // we'll get back here for expressions of type a.x == b.y (where both sides are references)
     field = GetAttributeName(context, node1);
 
     if (field) {
@@ -2082,7 +2100,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       result = MergeVectors(context,
                             TRI_AQL_NODE_OPERATOR_BINARY_AND,
                             Vectorize(context, attributeAccess),
-                            NULL,
+                            previous,
                             inheritedRestrictions);
     
       if (result == NULL) {
@@ -2090,7 +2108,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       }
       else {
         if (TRI_ContainsImpossibleAql(result)) {
-          // inject a dummy false == true node into the true if the condition is always false
+          // inject a dummy false == true node into the tree if the condition is always false
           node->_type = TRI_AQL_NODE_OPERATOR_BINARY_EQ;
           node->_members._buffer[0] = TRI_CreateNodeValueBoolAql(context, false);
           node->_members._buffer[1] = TRI_CreateNodeValueBoolAql(context, true);
@@ -2098,6 +2116,24 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
           // set changed marker
           *changed = true;
         }
+      }
+
+      if (useBoth) {
+        // in this situation, we have an expression of type a.x == b.y
+        // we'll have to process both sides of the expression 
+        TRI_aql_node_t* tempNode; 
+
+        // swap node1 and node2
+        tempNode = node1;
+        node1 = node2;
+        node2 = tempNode;
+
+        operator = TRI_ReverseOperatorRelationalAql(node->_type);
+
+        // and try again
+        previous = result;
+        useBoth = false;
+        goto again;
       }
 
       return result;
