@@ -2088,8 +2088,13 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 
       var clonedEdges = AHUACATL_CLONE(edges);
       var clonedVertices = AHUACATL_CLONE(vertices);
-      clonedEdges.push(subEdge);
-      clonedVertices.push(internal.db._document_nl(targetId));
+      try {
+        clonedVertices.push(internal.db._document_nl(targetId));
+        clonedEdges.push(subEdge);
+      }
+      catch (e) {
+        // avoid "document not found error" in case referenced vertices were deleted
+      }
       
       var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
       for (k = 0; k < connected.length; ++k) {
