@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief delete object helper
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct DeleteObject {
+    struct DeleteObjectAny {
       template<typename T> void operator () (const T* ptr) const {
         if (ptr != 0) {
           delete ptr;
