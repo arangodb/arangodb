@@ -1,6 +1,22 @@
 not released yet
 ----------------
 
+* issue #221: more documentation on AQL explain functionality. Also added
+  ArangoStatement.explain() client method
+
+* added db._createStatement() method on server as well (was previously available
+  on the client only)
+
+* issue #219: continue in case of "document not found" error in PATHS() function
+
+* changed AQL optimiser to use indexes in more cases. Previously, indexes might
+  not have been used when in a reference expression the inner collection was 
+  specified last. Example: FOR u1 IN users FOR u2 IN users FILTER u1._id == u2._id
+  Previously, this only checked whether an index could be used for u2._id (not
+  possible). It was not checked whether an index on u1._id could be used (possible).
+  Now, for expressions that have references/attribute names on both sides of the
+  above as above, indexes are checked for both sides.
+  
 * issue #204: extend the CSV import by TSV and by user configurable 
   seperator character(s)
 
