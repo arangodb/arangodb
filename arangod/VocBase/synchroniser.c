@@ -99,7 +99,7 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* sim) {
 
     if (synced < written) {
       worked = true;
-      ok = TRI_msync(journal->_fd, synced, written);
+      ok = TRI_msync(journal->_fd, journal->_mmHandle, synced, written);
       ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
@@ -232,7 +232,7 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* sim
 
     if (synced < written) {
       worked = true;
-      ok = TRI_msync(journal->_fd, synced, written);
+      ok = TRI_msync(journal->_fd, journal->_mmHandle, synced, written);
       ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);

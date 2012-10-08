@@ -37,7 +37,8 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_FlushMMFile(void* fileHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
+int TRI_FlushMMFile(void* fileHandle, void** mmHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
+
   // ...........................................................................
   // Possible flags to send are (based upon the Ubuntu Linux ASM include files: 
   // #define MS_ASYNC        1             /* sync memory asynchronously */
@@ -53,8 +54,172 @@ bool TRI_FlushMMFile(void* fileHandle, void* startingAddress, size_t numOfBytesT
   if (ok && ((flags & MS_SYNC) == MS_SYNC)) {
     ok = FlushFileBuffers(fileHandle);
   }
-  return ok;
+  if (ok) {
+    return TRI_ERROR_NO_ERROR;
+  }  
+  return TRI_ERROR_SYS_ERROR;
 }
+
+
+int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryProtection, 
+               int flags,  void* fileHandle,  void** mmHandle, int64_t offset,  void** result) {
+
+  DWORD objectProtection = PAGE_READONLY;
+  DWORD viewProtection   = FILE_MAP_READ;
+  _LARGE_INTEGER mmLength;
+  
+
+  // ...........................................................................
+  // Set the high and low order 32 bits for using a 64 bit integer
+  // ...........................................................................
+
+  mmLength.QuadPart = numOfBytesToInitialise;
+
+
+  // ...........................................................................
+  // There are two steps for mapping a file:
+  // Create the handle and then bring the memory mapped file into 'view'
+  // ...........................................................................               
+  
+  // ...........................................................................               
+  // Create the memory-mapped file object. For windows there is no PROT_NONE
+  // so we assume no execution and only read access
+  // ...........................................................................               
+  
+  if (fileHandle == NULL) {
+    fileHandle = INVALID_HANDLE_VALUE; // lives in virtual memory rather than a real file
+  } 
+  
+  if ((flags & PROT_READ) == PROT_READ) {
+
+    if ((flags & PROT_EXEC) == PROT_EXEC) {
+      if ((flags & PROT_WRITE) == PROT_WRITE) {
+        objectProtection = PAGE_EXECUTE_READWRITE;
+        viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+      }
+      else {
+        objectProtection = PAGE_EXECUTE_READ;
+        viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+      }
+    }
+
+    else if ((flags & PROT_WRITE) == PROT_WRITE) {
+       objectProtection = PAGE_READWRITE;
+       viewProtection   = FILE_MAP_ALL_ACCESS;
+    }
+      
+    else {
+      objectProtection = PAGE_READONLY;
+    }  
+  } // end of PROT_READ
+
+  else if ((flags & PROT_EXEC) == PROT_EXEC) {
+
+    if ((flags & PROT_WRITE) == PROT_WRITE) {
+      objectProtection = PAGE_EXECUTE_READWRITE;
+      viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+    }
+    else {
+      objectProtection = PAGE_EXECUTE_READ;
+      viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+    }
+      
+  } // end of PROT_EXEC
+
+  else if ((flags & PROT_WRITE) == PROT_WRITE) {
+    objectProtection = PAGE_READWRITE;
+    viewProtection   = FILE_MAP_ALL_ACCESS;
+  }
+       
+  *mmHandle = CreateFileMapping(fileHandle, NULL, objectProtection, mmLength.HighPart, mmLength.LowPart, NULL);
+
+  if (*mmHandle == NULL) {
+    // we have failure for some reason
+    // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
+    return TRI_ERROR_SYS_ERROR;
+  }
+
+
+  // ........................................................................
+  // We have a valid handle, now map the view. We let the OS handle where the
+  // view is placed in memory.
+  // ........................................................................
+
+  *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0)
+
+  if (*result == NULL) {
+    CLOSE THE OBJECT HANDLE
+    // we have failure for some reason
+    // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
+    return TRI_ERROR_SYS_ERROR;
+  }
+
+  return TRI_ERROR_NO_ERROR; 
+);
+
+}               
+
+                
+int TRI_UNMMFile(void* memoryAddress,  size_t numOfBytesToUnMap, void* fileHandle, void** mmHandle) {
+ bool ok = UnmapViewOfFile(
+}
+
+
+int TRI_ProtectMMFile(void* memoryAddress,  size_t numOfBytesToProtect, int flags, void* fileHandle, void** mmHandle) {
+  DWORD objectProtection = PAGE_READONLY;
+  DWORD viewProtection   = FILE_MAP_READ;
+  _LARGE_INTEGER mmLength;
+  
+
+  // ...........................................................................
+  // TODO: 
+  // ...........................................................................
+
+  if ((flags & PROT_READ) == PROT_READ) {
+
+    if ((flags & PROT_EXEC) == PROT_EXEC) {
+      if ((flags & PROT_WRITE) == PROT_WRITE) {
+        objectProtection = PAGE_EXECUTE_READWRITE;
+        viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+      }
+      else {
+        objectProtection = PAGE_EXECUTE_READ;
+        viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+      }
+    }
+
+    else if ((flags & PROT_WRITE) == PROT_WRITE) {
+       objectProtection = PAGE_READWRITE;
+       viewProtection   = FILE_MAP_ALL_ACCESS;
+    }
+      
+    else {
+      objectProtection = PAGE_READONLY;
+    }  
+  } // end of PROT_READ
+
+  else if ((flags & PROT_EXEC) == PROT_EXEC) {
+
+    if ((flags & PROT_WRITE) == PROT_WRITE) {
+      objectProtection = PAGE_EXECUTE_READWRITE;
+      viewProtection   = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
+    }
+    else {
+      objectProtection = PAGE_EXECUTE_READ;
+      viewProtection   = FILE_MAP_READ | FILE_MAP_EXECUTE;
+    }
+      
+  } // end of PROT_EXEC
+
+  else if ((flags & PROT_WRITE) == PROT_WRITE) {
+    objectProtection = PAGE_READWRITE;
+    viewProtection   = FILE_MAP_ALL_ACCESS;
+  }
+       
+
+  return TRI_ERROR_NO_ERROR; 
+
+}                       
 
 
 ////////////////////////////////////////////////////////////////////////////////
