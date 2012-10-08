@@ -5634,10 +5634,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt = ft->InstanceTemplate();
 
   v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("ArangoError"), ft->GetFunction());
-
+  
   // .............................................................................
   // generate the general cursor template
   // .............................................................................
