@@ -347,6 +347,7 @@ am_lib_libarango_a_OBJECTS = lib/Basics/ConditionLocker.$(OBJEXT) \
 	lib/BasicsC/locks-macos.$(OBJEXT) \
 	lib/BasicsC/locks-posix.$(OBJEXT) \
 	lib/BasicsC/logging.$(OBJEXT) lib/BasicsC/memory.$(OBJEXT) \
+	lib/BasicsC/memory-map-posix.$(OBJEXT) \
 	lib/BasicsC/mersenne.$(OBJEXT) \
 	lib/BasicsC/process-utils.$(OBJEXT) \
 	lib/BasicsC/random.$(OBJEXT) \
@@ -476,6 +477,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/geo_suite$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/csv-test.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
 	UnitTests/Philadelphia/json-utilities-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
@@ -492,6 +494,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Runner.cpp \
 	UnitTests/Jutland/StringUtilsTest.cpp
 @ENABLE_MAINTAINER_MODE_TRUE@am_UnitTests_basics_suite_OBJECTS =  \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Runner.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/csv-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-utilities-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/hashes-test.$(OBJEXT) \
@@ -1223,6 +1226,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c \
 	lib/BasicsC/memory.c \
+	lib/BasicsC/memory-map-posix.c \
 	lib/BasicsC/mersenne.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
@@ -1565,6 +1569,7 @@ CLIENT_OPT := \
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 @ENABLE_MAINTAINER_MODE_TRUE@UnitTests_basics_suite_SOURCES = \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Runner.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/csv-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/json-utilities-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Philadelphia/hashes-test.cpp \
@@ -1593,25 +1598,28 @@ CLIENT_OPT := \
 ################################################################################
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
-               @top_srcdir@/js/common/tests/shell-graph.js \
-               @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
-               @top_srcdir@/js/common/tests/shell-graph-measurement.js \
                @top_srcdir@/js/common/tests/shell-compactor.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
+               @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
                @top_srcdir@/js/common/tests/shell-cap-constraint.js \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js
 
-SHELL_SERVER = $(SHELL_COMMON)
+SHELL_SERVER = $(SHELL_COMMON) \
+               @top_srcdir@/js/common/tests/shell-graph.js \
+               @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
+               @top_srcdir@/js/common/tests/shell-graph-measurement.js
+
 UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
 ################################################################################
 SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-ref.js \
 			@top_srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@top_srcdir@/js/server/tests/ahuacatl-functions.js \
 			@top_srcdir@/js/server/tests/ahuacatl-variables.js \
@@ -1825,6 +1833,8 @@ lib/BasicsC/locks-posix.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 lib/BasicsC/logging.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/memory.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
+	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
+lib/BasicsC/memory-map-posix.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
 lib/BasicsC/mersenne.$(OBJEXT): lib/BasicsC/$(am__dirstamp) \
 	lib/BasicsC/$(DEPDIR)/$(am__dirstamp)
@@ -2294,6 +2304,9 @@ UnitTests/Philadelphia/$(am__dirstamp):
 UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) UnitTests/Philadelphia/$(DEPDIR)
 	@: > UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Philadelphia/csv-test.$(OBJEXT):  \
+	UnitTests/Philadelphia/$(am__dirstamp) \
+	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Philadelphia/json-test.$(OBJEXT):  \
 	UnitTests/Philadelphia/$(am__dirstamp) \
 	UnitTests/Philadelphia/$(DEPDIR)/$(am__dirstamp)
@@ -2747,6 +2760,7 @@ mostlyclean-compile:
 	-rm -f UnitTests/Jutland/StringBufferTest.$(OBJEXT)
 	-rm -f UnitTests/Jutland/StringUtilsTest.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/associative-pointer-test.$(OBJEXT)
+	-rm -f UnitTests/Philadelphia/csv-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/hashes-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/json-test.$(OBJEXT)
 	-rm -f UnitTests/Philadelphia/json-utilities-test.$(OBJEXT)
@@ -2885,6 +2899,7 @@ mostlyclean-compile:
 	-rm -f lib/BasicsC/locks-macos.$(OBJEXT)
 	-rm -f lib/BasicsC/locks-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/logging.$(OBJEXT)
+	-rm -f lib/BasicsC/memory-map-posix.$(OBJEXT)
 	-rm -f lib/BasicsC/memory.$(OBJEXT)
 	-rm -f lib/BasicsC/mersenne.$(OBJEXT)
 	-rm -f lib/BasicsC/process-utils.$(OBJEXT)
@@ -3001,6 +3016,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringBufferTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Jutland/$(DEPDIR)/StringUtilsTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/associative-pointer-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/csv-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/hashes-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Philadelphia/$(DEPDIR)/json-utilities-test.Po@am__quote@
@@ -3138,6 +3154,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/locks-macos.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/locks-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/logging.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/memory-map-posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/memory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/mersenne.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/BasicsC/$(DEPDIR)/process-utils.Po@am__quote@
@@ -5500,6 +5517,7 @@ unittests-import:
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
+	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv --eol "\r\n" || test "x$(FORCE)" == "x1"; done
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-teardown.js || test "x$(FORCE)" == "x1"
 

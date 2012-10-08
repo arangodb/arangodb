@@ -60,7 +60,7 @@ static void LogIndexString (const char* const what,
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  LOG_TRACE("%s %s index (%s) for '%s'", 
+  LOG_DEBUG("%s %s index (%s) for '%s'", 
             what,
             TRI_TypeNameIndex(idx), 
             buffer->_buffer, 
@@ -290,7 +290,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         // these indexes are valid candidates
         break;
     }
-    
+   
     LogIndexString("checking", idx, collectionName);
 
     TRI_ClearVectorPointer(&matches);
