@@ -463,7 +463,7 @@ void TRI_UpdateTickVocBase (TRI_voc_tick_t tick);
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_msync (int fd, char const* begin, char const* end);
+bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

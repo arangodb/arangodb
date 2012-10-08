@@ -68,27 +68,45 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FlushMMFile (void* fileHandle, 
+                     void** mmHandle,
                      void* startingAddress, 
                      size_t numOfBytesToFlush, 
                      int flags);
 
+                     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maps a file on disk onto memory
+////////////////////////////////////////////////////////////////////////////////
+                     
 int TRI_MMFile (void* memoryAddress, 
                 size_t numOfBytesToInitialise, 
                 int memoryProtection, 
                 int flags,
                 void* fileHandle, 
+                void** mmHandle,
                 int64_t offset,
                 void** result); 
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 'unmaps' or removes memory associated with a memory mapped file
+////////////////////////////////////////////////////////////////////////////////
                 
 int TRI_UNMMFile (void* memoryAddress, 
                   size_t numOfBytesToUnMap, 
-                  void* fileHandle); 
+                  void* fileHandle,
+                  void** mmHandle); 
 
+                  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets various protection levels with the memory mapped file
+////////////////////////////////////////////////////////////////////////////////
+                  
 int TRI_ProtectMMFile (void* memoryAddress,
                        size_t numOfBytesToProtect, 
                        int flags,
-                       void* fileHandle);                       
+                       void* fileHandle,
+                       void** mmHandle);                       
                   
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

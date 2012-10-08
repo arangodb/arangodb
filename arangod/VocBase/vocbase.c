@@ -1058,7 +1058,7 @@ void TRI_UpdateTickVocBase (TRI_voc_tick_t tick) {
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_msync (int fd, char const* begin, char const* end) {
+bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
   intptr_t p = (intptr_t) begin;
   intptr_t q = (intptr_t) end;
   intptr_t g = (intptr_t) PageSize;
@@ -1066,7 +1066,7 @@ bool TRI_msync (int fd, char const* begin, char const* end) {
   char* b = (char*)( (p / g) * g );
   char* e = (char*)( ((q + g - 1) / g) * g );
 
-  int result = TRI_FlushMMFile(&fd, b, e - b, MS_SYNC);
+  int result = TRI_FlushMMFile(&fd, &mmHandle, b, e - b, MS_SYNC);
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(result);
     return false;

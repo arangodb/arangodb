@@ -48,7 +48,8 @@
 // Flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile(void* fileHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
+int TRI_FlushMMFile(void* fileHandle, void** mmHandle, void* startingAddress, size_t numOfBytesToFlush, int flags) {
+
   // ...........................................................................
   // Possible flags to send are (based upon the Ubuntu Linux ASM include files: 
   // #define MS_ASYNC        1             /* sync memory asynchronously */
@@ -56,10 +57,17 @@ int TRI_FlushMMFile(void* fileHandle, void* startingAddress, size_t numOfBytesTo
   // #define MS_SYNC         4               /* synchronous memory sync */
   // Note: under windows all flushes are achieved synchronously
   //
-  // Note: file handle is a pointer to the file descriptor, under windows 
-  // it is a HANDLE.
+  // Note: file handle is a pointer to the file descriptor (which is an integer)
+  // *mmHandle should always be NULL
   // ...........................................................................
-  int res = msync(startingAddress, numOfBytesToFlush, flags);
+  
+  int res;
+
+  assert(*mmHandle == NULL);
+  
+  res = msync(startingAddress, numOfBytesToFlush, flags);
+  
+  
 #ifdef __APPLE__
   if (res == 0) {
     if (fileHandle != NULL) {
@@ -79,11 +87,14 @@ int TRI_MMFile(void* memoryAddress,
            int memoryProtection, 
            int flags,
            void* fileHandle, 
+           void** mmHandle,
            int64_t offset,
            void** result) {
            
   int fd = -1;
   off_t offsetRetyped = (off_t)(offset);
+  
+  *mmHandle = NULL; // only useful for windows
   
   if (fileHandle != NULL) {           
     fd = *((int*)(fileHandle));           
@@ -102,8 +113,13 @@ int TRI_MMFile(void* memoryAddress,
 }
 
 
-int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap, void* fileHandle) {
-  int result = munmap(memoryAddress, numOfBytesToUnMap);
+int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap, void* fileHandle, void** mmHandle) {
+  int result;
+  
+  assert(*mmHandle == NULL);
+  
+  result = munmap(memoryAddress, numOfBytesToUnMap);
+  
   if (result == 0) {
     return TRI_ERROR_NO_ERROR;
   }  
@@ -116,8 +132,13 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap, void* fileHandle
 }
 
 
-int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,  int flags,  void* fileHandle) {
-  int result = mprotect(memoryAddress, numOfBytesToProtect, flags);
+int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,  int flags,  void* fileHandle, void** mmHandle) {
+  int result;
+
+  assert(*mmHandle == NULL);
+  
+  result = mprotect(memoryAddress, numOfBytesToProtect, flags);
+  
   if (result == 0) {
     return TRI_ERROR_NO_ERROR;
   }    
