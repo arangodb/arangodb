@@ -6,54 +6,50 @@ content-type: application/json
 
 {
   "plan": [
-    { "id": 1,
-      "level": 1,
-      "type": "for",
-      "resultVariable": "u",
-      "expression": {
-        "type": "collection",
-        "value": "users",
-        "extra": {
-          "accessType": "index",
-          "index": {
-            "id": "1392880787389/1425650910275",
-            "type": "hash",
-            "attributes": "id"
-          }
-        }
-      }
+    { 
+      "id" : 1, 
+      "loopLevel" : 1, 
+      "type" : "for", 
+      "resultVariable" : "u", 
+      "expression" : { 
+        "type" : "collection", 
+        "value" : "users", 
+        "extra" : { 
+          "accessType" : "all" 
+        } 
+      } 
     },
-    {
-      "id": 2,
-      "level": 1,
-      "type": "filter",
-      "expression": {
-        "type": "expression",
-        "value": "u.id == 3"
-      }
+    { 
+      "id" : 2, 
+      "loopLevel" : 1, 
+      "type" : "filter", 
+      "expression" : { 
+        "type" : "expression", 
+        "value" : "u.id == 3" 
+      } 
     },
-    {
-      "id": 3,
-      "level": 1,
-      "type": "limit",
-      "offset": 0,
-      "count": 2
+    { 
+      "id" : 3, 
+      "loopLevel" : 1, 
+      "type" : "limit", 
+      "offset" : 0, 
+      "count" : 2 
     },
-    {
-      "id": 4,
-      "level": 1,
-      "type": "limit",
-      "offset": 0,
-      "count": 2
+    { 
+      "id" : 4, 
+      "loopLevel" : 1, 
+      "type" : "limit", 
+      "offset" : 0, 
+      "count" : 2 
     },
-    {
-      "id": 5,
-      "level": 1,
-      "type": "return",
-      "expression": {
-        "type": "expression",
-        "value": "u.name"
-      }
+    { 
+      "id" : 5, 
+      "loopLevel" : 1, 
+      "type" : "return", 
+      "expression" : { 
+        "type" : "expression", 
+        "value" : "u.name" 
+      } 
     }
   ],
   "error": false,

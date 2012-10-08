@@ -12,8 +12,9 @@
 <em>POST /_api/explain</em> (explains a query)<hr/>
 <br/>
  <code><b>POST /_api/explain</b></code></p>
-<p>To explain how a query would be executed (without actually executing it), the query string can be passed to the server via an HTTP POST request.</p>
-<p>These query string needs to be passed in the attribute <code>query</code> of a JSON object as the body of the POST request. If the query references any bind variables, these must also be passed in the attribute <code>bindVars</code>.</p>
+<p>To explain how an AQL query would be executed on the server, the query string can be sent to the server via an HTTP POST request. The server will then validate the query and create an execution plan for it, but will not execute it.</p>
+<p>The execution plan that is returned by the server can be used to estimate the probable performance of an AQL query. Though the actual performance will depend on many different factors, the execution plan normally can give some good hint on the amount of work the server needs to do in order to actually run the query.</p>
+<p>The query string needs to be passed in the attribute <code>query</code> of a JSON object as the body of the POST request. If the query references any bind variables, these must also be passed in the attribute <code>bindVars</code>.</p>
 <p>If the query is valid, the server will respond with <code>HTTP 200</code> and return a list of the individual query execution steps in the <code>"plan"</code> attribute of the response.</p>
 <p>The server will respond with <code>HTTP 400</code> in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object. Omitting bind variables if the query references any will result also result in an <code>HTTP 400</code> error.</p>
 <p><b>Examples</b><br/>
@@ -27,54 +28,50 @@ content-type: application/json
 
 {
   "plan": [
-    { "id": 1,
-      "level": 1,
-      "type": "for",
-      "resultVariable": "u",
-      "expression": {
-        "type": "collection",
-        "value": "users",
-        "extra": {
-          "accessType": "index",
-          "index": {
-            "id": "1392880787389/1425650910275",
-            "type": "hash",
-            "attributes": "id"
-          }
-        }
-      }
+    { 
+      "id" : 1, 
+      "loopLevel" : 1, 
+      "type" : "for", 
+      "resultVariable" : "u", 
+      "expression" : { 
+        "type" : "collection", 
+        "value" : "users", 
+        "extra" : { 
+          "accessType" : "all" 
+        } 
+      } 
     },
-    {
-      "id": 2,
-      "level": 1,
-      "type": "filter",
-      "expression": {
-        "type": "expression",
-        "value": "u.id == 3"
-      }
+    { 
+      "id" : 2, 
+      "loopLevel" : 1, 
+      "type" : "filter", 
+      "expression" : { 
+        "type" : "expression", 
+        "value" : "u.id == 3" 
+      } 
     },
-    {
-      "id": 3,
-      "level": 1,
-      "type": "limit",
-      "offset": 0,
-      "count": 2
+    { 
+      "id" : 3, 
+      "loopLevel" : 1, 
+      "type" : "limit", 
+      "offset" : 0, 
+      "count" : 2 
     },
-    {
-      "id": 4,
-      "level": 1,
-      "type": "limit",
-      "offset": 0,
-      "count": 2
+    { 
+      "id" : 4, 
+      "loopLevel" : 1, 
+      "type" : "limit", 
+      "offset" : 0, 
+      "count" : 2 
     },
-    {
-      "id": 5,
-      "level": 1,
-      "type": "return",
-      "expression": {
-        "type": "expression",
-        "value": "u.name"
-      }
+    { 
+      "id" : 5, 
+      "loopLevel" : 1, 
+      "type" : "return", 
+      "expression" : { 
+        "type" : "expression", 
+        "value" : "u.name" 
+      } 
     }
   ],
   "error": false,
@@ -93,7 +90,21 @@ content-type: application/json
   "error": true,
   "code": 400
 }
-</pre></div> <p><a class="anchor" id="HttpQueryPost"></a> <hr/>
+</pre></div><p>The data returned in the <code>plan</code> attribute of the result contains one element per AQL top-level statement (i.e. <code>FOR</code>, <code>RETURN</code>, <code>FILTER</code> etc.). If the query optimiser removed some unnecessary statements, the result might also contain less elements than there were top-level statements in the AQL query.</p>
+<p>The top-level statements will appear in the result in the same order in which they have been used in the original query. Each result element has at most the following attributes:</p>
+<ul>
+<li><code>id</code>: the row number of the top-level statement, starting at 1</li>
+<li><code>type</code>: the type of the top-level statement (e.g. <code>for</code>, <code>return</code> ...)</li>
+<li><code>loopLevel</code>: the nesting level of the top-level statement, starting at 1 Depending on the type of top-level statement, there might be other attributes providing additional information, for example, if and which indexed will be used. Many top-level statements will provide an <code>expression</code> attribute that contains data about the expression they operate on. This is true for <code>FOR</code>, <code>FILTER</code>, <code>SORT</code>, <code>COLLECT</code>, and <code>RETURN</code>. The <code>expression</code> attribute has the following sub-attributes:</li>
+<li><code>type</code>: the type of the expression. Some possible values are:<ul>
+<li><code>collection</code>: an iteration over documents from a collection. The <code>value</code> attribute will then contain the collection name. The <code>extra</code> attribute will contain information about if and which index is used when accessing the documents from the collection. If no index is used, the <code>accessType</code> sub-attribute of the <code>extra</code> attribute will have the value <code>all</code>, otherwise it will be <code>index</code>.</li>
+<li><code>list</code>: a list of values. The <code>value</code> attribute will contain the list elements.</li>
+<li><code>reference</code>: a reference to another variable. The <code>value</code> attribute will contain the name of the variable that is referenced.</li>
+</ul>
+</li>
+</ul>
+<p>Please note that the structure of the explain result data might change in future versions of ArangoDB without further notice and without maintaining backwards compatibility. </p>
+<p><a class="anchor" id="HttpQueryPost"></a> <hr/>
 <em>POST /_api/query</em> (parses a query)<hr/>
 <br/>
  <code><b>POST /_api/query</b></code></p>
