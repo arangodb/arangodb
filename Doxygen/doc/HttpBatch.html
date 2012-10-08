@@ -70,6 +70,7 @@ etag: "9645371"
 content-length: 53
 
 {"error":false,"_id":"101059/9645371","_rev":9645371}
+--XXXsubpartXXX--
 </pre></div><p>In the above example, the server returned an overall status code of 200, and each part response contains its own status value (202 in the example):</p>
 <p>When constructing the multipart HTTP response, the server will use the same boundary that the client supplied. If any of the part responses has a status code of 400 or greater, the server will also return an HTTP header <code>x-arango-errors</code> containing the overall number of part requests that produced errors:</p>
 <div class="fragment"><pre class="fragment">&gt; curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
