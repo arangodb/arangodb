@@ -425,7 +425,7 @@ static string JS_common_bootstrap_modules =
   "    mc = internal.db._collection(\"_modules\");\n"
   "\n"
   "    if (mc === null) {\n"
-  "      throw \"you need to upgrade your database using 'arango-upgrade'\";\n"
+  "      mc = internal.db._create(\"_modules\", { isSystem: true });\n"
   "    }\n"
   "\n"
   "    path = module.normalise(path);\n"
