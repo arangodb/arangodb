@@ -223,7 +223,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   }
 
   ~DocumentCreationTest () {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
   
   string collectionName () {
