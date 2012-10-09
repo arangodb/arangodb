@@ -55,8 +55,8 @@ namespace triagens {
       MultipartMessage (const char* boundary, 
                         const size_t boundaryLength, 
                         const char* messageStart, 
-                        const char* messageEnd) :
-        boundary(boundary), 
+                        const char* messageEnd) 
+      : boundary(boundary), 
         boundaryLength(boundaryLength), 
         messageStart(messageStart), 
         messageEnd(messageEnd) {
@@ -78,6 +78,8 @@ namespace triagens {
       char* foundStart;
       size_t foundLength;
       bool containsMore;
+      char* contentId;
+      size_t contentIdLength;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

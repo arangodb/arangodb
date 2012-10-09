@@ -248,6 +248,7 @@ namespace triagens {
             // append boundary
             batchPayload.appendText("--" + boundary + "\r\n");
             // append content-type, this will also begin the body
+            batchPayload.appendText("Content-Type: ", 14);
             batchPayload.appendText(HttpRequest::getPartContentType());
             batchPayload.appendText("\r\n\r\n", 4);
 

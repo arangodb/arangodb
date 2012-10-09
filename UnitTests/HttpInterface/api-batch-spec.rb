@@ -413,6 +413,85 @@ describe ArangoDB do
       end
     
     end
+
+################################################################################
+## checking content ids
+################################################################################
+  
+    context "checking content ids:" do
+      
+      it "checks a multipart message with content-ids" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        multipart.addPart("GET", "/_api/version", { }, "", "part1")
+        multipart.addPart("GET", "/_api/version", { }, "", "part2")
+        multipart.addPart("GET", "/_api/version", { }, "", "part3")
+
+        doc = ArangoDB.log_post("#{prefix}-post-content-id", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        i = 1;
+        parts.each do|part|
+          part[:status].should eq(200)
+          part[:contentId].should eq("part" + i.to_s)
+          i = i + 1
+        end
+      end
+      
+      it "checks a multipart message with identical content-ids" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        multipart.addPart("GET", "/_api/version", { }, "", "part1")
+        multipart.addPart("GET", "/_api/version", { }, "", "part1")
+        multipart.addPart("GET", "/_api/version", { }, "", "part1")
+
+        doc = ArangoDB.log_post("#{prefix}-post-content-id", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        parts.each do|part|
+          part[:status].should eq(200)
+          part[:contentId].should eq("part1")
+        end
+      end
+      
+      it "checks a multipart message with very different content-ids" do
+        cmd = "/_api/batch"
+
+        multipart = ArangoMultipartBody.new()
+        multipart.addPart("GET", "/_api/version", { }, "", "    abcdef.gjhdjslrt.sjgfjss@024n5nhg.sdffns.gdfnkddgme-fghnsnfg")
+        multipart.addPart("GET", "/_api/version", { }, "", "a")
+        multipart.addPart("GET", "/_api/version", { }, "", "94325.566335.5555hd.3553-4354333333333333 ")
+
+        doc = ArangoDB.log_post("#{prefix}-post-content-id", cmd, :body => multipart.to_s, :format => :plain, :headers => { "Content-Type" => "multipart/form-data; boundary=" + multipart.getBoundary })
+
+        doc.code.should eq(200)
+
+        parts = multipart.getParts(multipart.getBoundary, doc.response.body)
+
+        i = 1
+        parts.each do|part|
+          part[:status].should eq(200)
+          if i == 1
+            part[:contentId].should eq("abcdef.gjhdjslrt.sjgfjss@024n5nhg.sdffns.gdfnkddgme-fghnsnfg")
+          elsif i == 2
+            part[:contentId].should eq("a")
+          elsif i == 3
+            part[:contentId].should eq("94325.566335.5555hd.3553-4354333333333333")
+          end
+          i = i + 1
+        end
+      end
+
+    end
+
       
   end
 

@@ -240,8 +240,14 @@ Handler::status_e RestBatchHandler::execute() {
     }
 
     // append the boundary for this subpart
-    _response->body().appendText(boundary + "\r\n");
+    _response->body().appendText(boundary + "\r\nContent-Type: ");
     _response->body().appendText(_partContentType);
+
+    if (helper.contentId != 0) {
+      // append content-id
+      _response->body().appendText("\r\nContent-Id: " + string(helper.contentId, helper.contentIdLength));
+    }
+
     _response->body().appendText("\r\n\r\n", 4);
 
     // append the response header
@@ -322,6 +328,8 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   helper->foundStart = NULL;
   helper->foundLength = 0;
   helper->containsMore = false;
+  helper->contentId = 0;
+  helper->contentIdLength = 0;
   
   const char* searchEnd = helper->message->messageEnd;
 
@@ -366,36 +374,59 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   }
   ++found;
 
-  // look for part content type
-  if (strstr(found, _partContentType.c_str()) != found) {
-    // part content type not located at expected position. this is an error
-    return false;
-  }
-  found += _partContentType.size();
+  bool hasTypeHeader = false;
 
-  if (found + 4 >= searchEnd) {
-    // we're outside the buffer. this is an error
-    return false;
+  while (found < searchEnd) {
+    char* eol = strstr(found, "\r\n");
+    if (0 == eol || eol == found) {
+      break;
+    }
+
+    // split key/value of header
+    char* colon = (char*) memchr(found, (int) ':', eol - found);
+
+    if (0 == colon) {
+      // invalid header, not containing ':'
+      return false;
+    }
+
+    // set up key/value pair
+    string key(found, colon - found);
+    StringUtils::trimInPlace(key);
+    StringUtils::tolowerInPlace(&key);
+
+    // skip the colon itself
+    ++colon;
+    // skip any whitespace
+    while (*colon == ' ') {
+      ++colon;
+    }
+
+    string value(colon, eol - colon);
+    StringUtils::trimInPlace(value);
+
+    if ("content-type" == key) {
+      if (_partContentType == value) {
+        hasTypeHeader = true;
+      }
+    }
+    else if ("content-id" == key) {
+      helper->contentId = colon;
+      helper->contentIdLength = eol - colon;
+    }
+    else {
+      // ignore other headers
+    }
+
+    found = eol + 2;
   }
 
-  // assert two Windows or Unix linebreaks
-  if (*found == '\r') {
-    found++;
-  }
-  if (*found != '\n') {
-    // no linebreak. this is an error
-    return false;
-  }
-  ++found;
+  found += 2; // for 2nd \r\n
 
-  if (*found == '\r') {
-    found++;
-  }
-  if (*found != '\n') {
-    // no linebreak. this is an error
+  if (!hasTypeHeader) {
+    // no Content-Type header. this is an error
     return false;
   }
-  ++found;
 
   // we're at the start of the body part. set the return value
   helper->foundStart = found;
