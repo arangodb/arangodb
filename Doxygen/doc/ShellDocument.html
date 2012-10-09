@@ -118,6 +118,9 @@ JavaScript exception in file '(arango)' at 1,12:
 <code><b><em>collection</em>.replace(<em>document</em>, <em>data</em>, true)</b></code><hr/>
  As before, but in case of a conflict, the conflict is ignored and the old document is overwritten.</p>
 <hr/>
+<code><b><em>collection</em>.replace(<em>document</em>, <em>data</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document replacement operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
+<hr/>
 <code><b><em>collection</em>.replace(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
 <p><b>Examples</b><br/>
@@ -142,6 +145,9 @@ arango&gt; a4 = db.example.replace(a1, { a : 4 }, true);
 <hr/>
 <code><b><em>collection</em>.remove(<em>document</em>, true)</b></code><hr/>
  Deletes a document. If there is revision mismatch, then mismatch is ignored and document is deleted. The function returns <code>true</code> if the document existed and was deleted. It returns <code>false</code>, if the document was already deleted.</p>
+<hr/>
+<code><b><em>collection</em>.remove(<em>document</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document deletion operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <hr/>
 <code><b><em>collection</em>.remove(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
@@ -195,6 +201,9 @@ Database Methods</h3>
 <code><b><em>db</em>._replace(<em>document</em>, <em>data</em>, true)</b></code><hr/>
  As before, but in case of a conflict, the conflict is ignored and the old document is overwritten.</p>
 <hr/>
+<code><b><em>db</em>._replace(<em>document</em>, <em>data</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document replacement operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
+<hr/>
 <code><b><em>db</em>._replace(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
 <p><b>Examples</b><br/>
@@ -216,6 +225,9 @@ arango&gt; a4 = db.example.replace(a1, { a : 4 }, true);
 <hr/>
 <code><b><em>db</em>._remove(<em>document</em>, true)</b></code><hr/>
  Deletes a document. If there is revision mismatch, then mismatch is ignored and document is deleted. The function returns <code>true</code> if the document existed and was deleted. It returns <code>false</code>, if the document was already deleted.</p>
+<hr/>
+<code><b><em>db</em>._remove(<em>document</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document deletion operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <hr/>
 <code><b><em>db</em>._remove(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>

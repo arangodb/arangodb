@@ -186,10 +186,21 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// @LIT{HTTP 202} is returned in order to indicate that the document has been
 /// accepted but not yet stored.
 ///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
 /// returned and the body of the response contains an error document.
 ///
-/// If the body does not contain a valid JSON representation of an document,
+/// If the body does not contain a valid JSON representation of a document,
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
 /// an error document.
 ///
@@ -209,9 +220,15 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @EXAMPLE{rest-create-document,create a document}
 ///
-/// Create a document in a collection where @LIT{waitForSync} is @LIT{false}.
+/// Create a document in a collection with a collection-level @LIT{waitForSync} 
+/// value of @LIT{false}.
 ///
 /// @EXAMPLE{rest-create-document-accept,accept a document}
+///
+/// Create a document in a collection with a collection-level @LIT{waitForSync} 
+/// value of @LIT{false}, but with using @FA{waitForSync} URL parameter.
+///
+/// @EXAMPLE{rest-create-document-wait,create a document}
 ///
 /// Create a document in a known, named collection
 ///
@@ -240,11 +257,10 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  bool found;
-  char const* forceStr = _request->value("waitForSync", found);
-  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+  bool forceSync = extractWaitForSync();
 
   // extract the cid
+  bool found;
   char const* collection = _request->value("collection", found);
 
   if (! found || *collection == '\0') {
@@ -281,7 +297,7 @@ bool RestDocumentHandler::createDocument () {
   }
   
   TRI_voc_cid_t cid = ca.cid();
-  const bool waitForSync = ca.waitForSync();
+  const bool waitForSync = forceSync || ca.waitForSync();
 
   // .............................................................................
   // inside write transaction
@@ -299,7 +315,7 @@ bool RestDocumentHandler::createDocument () {
 
   // generate result
   if (mptr._did != 0) {
-    if (waitForSync) {
+    if (waitForSync ) {
       generateCreated(cid, mptr._did, mptr._rid);
     }
     else {
@@ -628,6 +644,17 @@ bool RestDocumentHandler::checkDocument () {
 /// these attributes will be ignored. Only the URI and the "ETag" header are 
 /// relevant in order to avoid confusion when using proxies.
 ///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document replacement operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute @LIT{_id} contains the known
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
@@ -700,6 +727,17 @@ bool RestDocumentHandler::replaceDocument () {
 /// from the existing document that are contained in the patch document with an 
 /// attribute value of @LIT{null}.
 ///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document update operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute @LIT{_id} contains the known
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
@@ -731,9 +769,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
-  bool found;
-  char const* forceStr = _request->value("waitForSync", found);
-  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+  bool forceSync = extractWaitForSync();
 
   // split the document reference
   string collection = suffix[0];
@@ -782,7 +818,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   if (isPatch) {
     // patching an existing document
     bool nullMeansRemove;
-
+    bool found;
     char const* valueStr = _request->value("keepNull", found);
     if (!found || StringUtils::boolean(valueStr)) {
       // default: null values are saved as Null
@@ -894,6 +930,17 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// "If-Match" header. You must never supply both the "If-Match" header and the
 /// @LIT{rev} parameter.
 ///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document deletion operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// @EXAMPLES
 ///
 /// Using document handle:
@@ -919,9 +966,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  bool found;
-  char const* forceStr = _request->value("waitForSync", found);
-  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+  bool forceSync = extractWaitForSync();
 
   // split the document reference
   string collection = suffix[0];

@@ -108,14 +108,13 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  bool found;
-  char const* forceStr = _request->value("waitForSync", found);
-  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+  bool forceSync = extractWaitForSync();
 
   // edge
   TRI_document_edge_t edge;
 
   // extract the from
+  bool found;
   char const* from = _request->value("from", found);
 
   if (! found || *from == '\0') {
@@ -171,7 +170,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   TRI_voc_cid_t cid = ca.cid();
-  const bool waitForSync = ca.waitForSync();
+  const bool waitForSync = forceSync || ca.waitForSync();
 
   // split document handle
   edge._fromCid = cid;

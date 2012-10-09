@@ -122,8 +122,9 @@ content-type: application/json; charset=utf-8
 <p>If the document was created successfully, then a <code>HTTP 201</code> is returned and the "Location" header contains the path to the newly created document. The "ETag" header field contains the revision of the document.</p>
 <p>The body of the response contains a JSON object with the same information. The attribute <code>_id</code> contains the document handle of the newly created document, the attribute <code>_rev</code> contains the document revision.</p>
 <p>If the collection parameter <code>waitForSync</code> is <code>false</code>, then a <code>HTTP 202</code> is returned in order to indicate that the document has been accepted but not yet stored.</p>
+<p>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document creation operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <p>If the <em>collection-identifier</em> is unknown, then a <code>HTTP 404</code> is returned and the body of the response contains an error document.</p>
-<p>If the body does not contain a valid JSON representation of an document, then a <code>HTTP 400</code> is returned and the body of the response contains an error document.</p>
+<p>If the body does not contain a valid JSON representation of a document, then a <code>HTTP 400</code> is returned and the body of the response contains an error document.</p>
 <p><code><b>POST /_api/document?collection=<em>collection-name</em> &amp;createCollection=<em>create-flag</em></b></code></p>
 <p>Instead of a <em>collection-identifier</em>, a <em>collection-name</em> can be used. If <em>create-flag</em> has a value of <code>true</code> or <code>yes</code>, then the collection is created if it does not yet exist. Other values for <em>create-flag</em> will be ignored so the collection must be present for the operation to succeed.</p>
 <p><b>Examples</b><br/>
@@ -142,7 +143,7 @@ etag: "26445614"
   "_id": "73482/26445614",
   "error": false
 }
-</pre></div> <p>Create a document in a collection where <code>waitForSync</code> is <code>false</code>.</p>
+</pre></div> <p>Create a document in a collection with a collection-level <code>waitForSync</code> value of <code>false</code>.</p>
 <div class="fragment"><pre class="fragment">&gt; curl --data @- -X POST --dump - http://localhost:8529/_api/document?collection=2957066
 { "Hallo" : "World" }
 
@@ -154,6 +155,20 @@ etag: "26576686"
 {
   "_rev": 26576686,
   "_id": "2957066/26576686",
+  "error": false
+}
+</pre></div> <p>Create a document in a collection with a collection-level <code>waitForSync</code> value of <code>false</code>, but with using <em>waitForSync</em> URL parameter.</p>
+<div class="fragment"><pre class="fragment">&gt; curl --data @- -X POST --dump - http://localhost:8529/_api/document?collection=2957066&amp;waitForSync=true
+{ "Hello" : "World" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+location: /_api/document/2957066/26449614
+etag: "26449614"
+
+{
+  "_rev": 26449614,
+  "_id": "2957066/26449614",
   "error": false
 }
 </pre></div> <p>Create a document in a known, named collection</p>
@@ -216,6 +231,7 @@ content-type: application/json; charset=utf-8
  <code><b>PUT /_api/document/<em>document-handle</em></b></code></p>
 <p>Completely updates (i.e. replaces) the document identified by <em>document-handle</em>. If the document exists and can be updated, then a <code>HTTP 201</code> is returned and the "ETag" header field contains the new revision of the document.</p>
 <p>If the new document passed in the body of the request contains the <em>document-handle</em> in the attribute <code>_id</code> and the revision in <code>_rev</code>, these attributes will be ignored. Only the URI and the "ETag" header are relevant in order to avoid confusion when using proxies.</p>
+<p>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document replacement operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <p>The body of the response contains a JSON object with the information about the handle and the revision. The attribute <code>_id</code> contains the known <em>document-handle</em> of the updated document, the attribute <code>_rev</code> contains the new document revision.</p>
 <p>If the document does not exist, then a <code>HTTP 404</code> is returned and the body of the response contains an error document.</p>
 <p>If an etag is supplied in the "If-Match" header field, then the ArangoDB checks that the revision of the document is equal to the etag. If there is a mismatch, then a <code>HTTP 409</code> conflict is returned and no update is performed.</p>
@@ -292,6 +308,7 @@ content-type: application/json; charset=utf-8
  <code><b>PATCH /_api/document/<em>document-handle</em></b></code></p>
 <p>Partially updates the document identified by <em>document-handle</em>. The body of the request must contain a JSON document with the attributes to patch (the patch document). All attributes from the patch document will be added to the existing document if they do not yet exist, and overwritten in the existing document if they do exist there.</p>
 <p>Setting an attribute value to <code>null</code> in the patch document will cause a value of <code>null</code> be saved for the attribute by default. If the intention is to delete existing attributes with the patch command, the URL parameter <code>keepNull</code> can be used with a value of <code>false</code>. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of <code>null</code>.</p>
+<p>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document update operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <p>The body of the response contains a JSON object with the information about the handle and the revision. The attribute <code>_id</code> contains the known <em>document-handle</em> of the updated document, the attribute <code>_rev</code> contains the new document revision.</p>
 <p>If the document does not exist, then a <code>HTTP 404</code> is returned and the body of the response contains an error document.</p>
 <p><b>Examples</b><br/>
@@ -375,6 +392,7 @@ content-type: application/json; charset=utf-8
 <p>As before, if <em>policy</em> is <code>error</code>. If <em>policy</em> is <code>last</code>, then the last write will win.</p>
 <p><code><b>DELETE /_api/document/<em>document-handle</em>?rev=<em>etag</em></b></code></p>
 <p>You can also supply the etag using the parameter <code>rev</code> instead of an "If-Match" header. You must never supply both the "If-Match" header and the <code>rev</code> parameter.</p>
+<p>Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the document deletion operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <p><b>Examples</b><br/>
 </p>
 <p>Using document handle:</p>
