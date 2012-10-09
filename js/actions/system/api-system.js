@@ -46,21 +46,45 @@ var actions = require("org/arangodb/actions");
 function Routing (req, res) {
   var execute;
   var next;
+  var path = req.suffix.join("/");
 
   action = actions.firstRouting(req.requestType, req.suffix);
 
   execute = function () {
     if (action.route === undefined) {
-      actions.resultNotImplemented(req, res, "unknown path '" + req.suffix.join("/") + "'");
+      actions.resultNotImplemented(req, res, "unknown path '" + path + "'");
       return;
     }
 
-    req.path = action.route.path;
-    req.prefix = action.prefix;
-    req.suffix = action.suffix;
-    req.urlParameters = action.urlParameters;
+    if (action.route.path !== undefined) {
+      req.path = action.route.path;
+    }
+    else {
+      delete req.path;
+    }
 
-    action.route.callback.controller(req, res, next, action.route.callback.options);
+    if (action.prefix !== undefined) {
+      req.prefix = action.prefix;
+    }
+    else {
+      delete req.prefix;
+    }
+
+    if (action.suffix !== undefined) {
+      req.suffix = action.suffix;
+    }
+    else {
+      delete req.suffix;
+    }
+
+    if (action.urlParameters !== undefined) {
+      req.urlParameters = action.urlParameters;
+    }
+    else {
+      req.urlParameters = {};
+    }
+
+    action.route.callback.controller(req, res, action.route.callback.options, next);
   }
 
   next = function () {
