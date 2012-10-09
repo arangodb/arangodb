@@ -382,7 +382,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
   if (res == TRI_ERROR_NO_ERROR) {
 
     // fill the header
-    primary->createHeader(primary, journal, *result, markerSize, header, 0);
+    CreateHeader(primary, journal, *result, markerSize, header, 0);
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
@@ -667,7 +667,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
     TRI_doc_datafile_info_t* dfi;
 
     // update the header
-    primary->updateHeader(primary, journal, *result, markerSize, header, &update);
+    UpdateHeader(primary, journal, *result, markerSize, header, &update);
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
@@ -1365,7 +1365,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
-      primary->createHeader(primary, datafile, marker, markerSize, header, 0);
+      CreateHeader(primary, datafile, marker, markerSize, header, 0);
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
@@ -1389,7 +1389,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t update;
 
       // update the header info
-      primary->updateHeader(primary, datafile, marker, markerSize, found, &update);
+      UpdateHeader(primary, datafile, marker, markerSize, found, &update);
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
@@ -1740,9 +1740,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   TRI_PushBackVectorPointer(&collection->_secondaryIndexes, primary);
 
   // setup methods
-  collection->base.createHeader = CreateHeader;
-  collection->base.updateHeader = UpdateHeader;
-
   collection->base.beginRead = BeginRead;
   collection->base.endRead = EndRead;
 
