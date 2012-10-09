@@ -261,7 +261,7 @@
 ///
 /// The front-end allows you the browser through the collections and
 /// documents. If you need to administrate the database, please use
-/// the ArgangoDB shell described in the next section.
+/// the ArangoDB shell described in the next section.
 ///
 /// @section UserManualShellStartStop Starting the ArangoDB Shell
 /////////////////////////////////////////////////////////////////
