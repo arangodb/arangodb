@@ -27,15 +27,6 @@
 
 #include "edge-collection.h"
 
-//#include "BasicsC/conversions.h"
-//#include "BasicsC/files.h"
-//#include "BasicsC/hashes.h"
-//#include "BasicsC/logging.h"
-//#include "BasicsC/strings.h"
-//#include "ShapedJson/shape-accessor.h"
-//#include "VocBase/index.h"
-//#include "VocBase/voc-shaper.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       EDGES INDEX
 // -----------------------------------------------------------------------------
