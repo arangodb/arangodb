@@ -4838,7 +4838,7 @@ static v8::Handle<v8::Value> JS_DocumentNLVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Create and update a document:
+/// Create and replace a document:
 ///
 /// @TINYEXAMPLE{shell_replace-document-db,replacing a document}
 ////////////////////////////////////////////////////////////////////////////////
@@ -4860,6 +4860,27 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{@FA{db}._update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})}
 ///
+/// Updates an existing @FA{document}. The @FA{document} must be a document in
+/// the current collection. This document is then patched with the
+/// @FA{data} given as second argument. The optional @FA{overwrite} parameter can 
+/// be used to control the behavior in case of version conflicts (see below).
+/// The optional @FA{keepNull} parameter can be used to modify the behavior when
+/// handling @LIT{null} values. Normally, @LIT{null} values are stored in the
+/// database. By setting the @FA{keepNull} parameter to @LIT{false}, this behavior
+/// can be changed so that all attributes in @FA{data} with @LIT{null} values will 
+/// be removed from the target document.
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document update operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
 /// @LIT{_oldRev}. The attribute @LIT{_id} contains the document handle of the
 /// updated document, the attribute @LIT{_rev} contains the document revision of
@@ -4878,17 +4899,6 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
 /// first argument. 
-///
-/// The optional @FA{waitForSync} parameter can be used to force 
-/// synchronisation of the document update operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
 ///
 /// @EXAMPLES
 ///
