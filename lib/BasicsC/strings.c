@@ -652,6 +652,14 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
+  return TRI_Concatenate3StringZ(TRI_CORE_MEM_ZONE, a, b, c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate three strings using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate3StringZ (TRI_memory_zone_t* zone, char const* a, char const* b, char const* c) {
   char* result;
   size_t na;
   size_t nb;
@@ -661,13 +669,14 @@ char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
   nb = strlen(b);
   nc = strlen(c);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + 1, false);
+  result = TRI_Allocate(zone, na + nb + nc + 1, false);
+  if (result != NULL) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-
-  result[na + nb + nc] = '\0';
+    result[na + nb + nc] = '\0';
+  }
 
   return result;
 }
