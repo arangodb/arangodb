@@ -438,6 +438,8 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
     return NULL;
   }
 
+  copy->_memoryZone = zone;
+
   if (vector->_capacity == 0) {
     copy->_buffer = NULL;
     copy->_length = 0;
@@ -451,8 +453,8 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
       return NULL;
     }
 
-    copy->_capacity = vector->_length;
     copy->_length = vector->_length;
+    copy->_capacity = vector->_length;
 
     memcpy(copy->_buffer, vector->_buffer, vector->_length * sizeof(void*));
   }
@@ -720,6 +722,8 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
   if (copy == NULL) {
     return NULL;
   }
+  
+  copy->_memoryZone = zone;
 
   if (vector->_capacity == 0) {
     copy->_buffer = NULL;

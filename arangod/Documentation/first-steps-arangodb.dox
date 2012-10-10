@@ -50,7 +50,7 @@
 ///
 /// @LIT{> mkdir /tmp/vocbase}
 ///
-/// First start the ArgangoDB server. You can start it as daemon and
+/// First start the ArangoDB server. You can start it as daemon and
 /// redirect the output to a file as follows:
 ///
 /// @LIT{> ./arangod --daemon --pid-file /tmp/arangod.pid --log.file /tmp/arangod.log /tmp/vocbase}

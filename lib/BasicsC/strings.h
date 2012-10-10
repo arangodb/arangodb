@@ -52,7 +52,25 @@ extern "C" {
 /// tolower and toupper of ctype.h are not used because they depend on locale
 ////////////////////////////////////////////////////////////////////////////////
 
+char* TRI_LowerAsciiStringZ (TRI_memory_zone_t*, char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert an ASCII string to lower case
+///
+/// Note: this works with ASCII characters only. No umlauts, no UTF-8 characters
+/// tolower and toupper of ctype.h are not used because they depend on locale
+////////////////////////////////////////////////////////////////////////////////
+
 char* TRI_LowerAsciiString (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert an ASCII string to upper case
+///
+/// Note: this works with ASCII characters only. No umlauts, no UTF-8 characters
+/// tolower and toupper of ctype.h are not used because they depend on locale
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UpperAsciiStringZ (TRI_memory_zone_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to upper case

@@ -1,6 +1,13 @@
 not released yet
 ----------------
 
+* having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
+  removed the --enable-ssl configure option
+
+* added AQL function TO_LIST
+
+* issue #224: add optional Content-Id for batch requests
+
 * issue #221: more documentation on AQL explain functionality. Also added
   ArangoStatement.explain() client method
 
@@ -8,6 +15,8 @@ not released yet
   on the client only)
 
 * issue #219: continue in case of "document not found" error in PATHS() function
+
+* issue #213: make waitForSync overridable on specifc actions
 
 * changed AQL optimiser to use indexes in more cases. Previously, indexes might
   not have been used when in a reference expression the inner collection was 

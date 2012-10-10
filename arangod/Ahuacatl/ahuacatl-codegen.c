@@ -384,10 +384,11 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
   }
 
   variable->_register = registerIndex;
-  variable->_name = TRI_DuplicateString(name);
+  variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
   if (variable->_name == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
+
     return NULL;
   }
 

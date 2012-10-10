@@ -9,25 +9,28 @@
 <div class="textblock"><p>Clients normally send individual operations to ArangoDB in individual HTTP requests. This is straightforward and simple, but has the disadvantage that the network overhead can be significant if many small requests are issued in a row.</p>
 <p>To mititage this problem, ArangoDB offers a batch request API that clients can use to send multiple operations in one batch to ArangoDB. This method is especially useful when the client has to send many HTTP requests with a small body/payload and the individual request resulsts do not depend on each other.</p>
 <p>Clients can use ArangoDB's batch API by issuing a multipart HTTP POST request to the URL <code>/_api/batch</code> handler. The handler will accept the request if the Content-Type is <code>multipart/form-data</code> and a boundary string is specified. ArangoDB will then decompose the batch request into its individual parts using this boundary. This also means that the boundary string itself must not be contained in any of the parts. When ArangoDB has split the multipart request into its individual parts, it will process all parts sequentially as if it were a standalone request. When all parts are processed, ArangoDB will generate a multipart HTTP response that contains one part for each part operation result. For example, if you send a multipart request with 5 parts, ArangoDB will send back a multipart response with 5 parts as well.</p>
-<p>The server expects each part message to start with exactly the following literal: <code>Content-Type: application/x-arango-batchpart</code>, followed by two Windows linebreaks (i.e. <code>\r\n\r\n</code>). Any deviation will lead to the part being rejected or incorrectly interpreted. The part request payload, formatted as a regular HTTP request, must follow this literal directly.</p>
+<p>The server expects each part message to start with exactly the following "header": <code>Content-Type: application/x-arango-batchpart</code>. You can optionally specify a <code>Content-Id</code> "header" to uniquely identify each part message. The server will return the <code>Content-Id</code> in its response if it is specified. Otherwise, the server will not send a Content-Id "header" back. The server will not validate the uniqueness of the Content-Id. After the mandatory <code>Content-Type</code> and the optional <code>Content-Id</code> header, two Windows linebreaks (i.e. <code>\r\n\r\n</code>) must follow. Any deviation of this structure might lead to the part being rejected or incorrectly interpreted. The part request payload, formatted as a regular HTTP request, must follow the two Windows linebreaks literal directly.</p>
 <p>Note that the literal <code>Content-Type: application/x-arango-batchpart</code> technically is the header of the MIME part, and the HTTP request (including its headers) is the body part of the MIME part.</p>
 <p>An actual part request should start with the HTTP method, the called URL, and the HTTP protocol version as usual, followed by arbitrary HTTP headers. Its body should follow after the usual <code>\r\n\r\n</code> literal. Part requests are therefore regular HTTP requests, only embedded inside a multipart message.</p>
 <p>The following example will send a batch with 3 individual document creation operations. The boundary used in this example is <code>XXXsubpartXXX</code>.</p>
 <div class="fragment"><pre class="fragment">&gt; curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 1
 
 POST /_api/document?collection=xyz&amp;createCollection=true HTTP/1.1
 
 {"a":1,"b":2,"c":3}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 2
 
 POST /_api/document?collection=xyz HTTP/1.1
 
 {"a":1,"b":2,"c":3,"d":4}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 3
 
 POST /_api/document?collection=xyz HTTP/1.1
 
@@ -42,6 +45,7 @@ content-length: 1055
 
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 1
 
 HTTP/1.1 202 Accepted
 location: /_api/document/101059/9514299
@@ -52,6 +56,7 @@ content-length: 53
 {"error":false,"_id":"101059/9514299","_rev":9514299}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 2
 
 HTTP/1.1 202 Accepted
 location: /_api/document/101059/9579835
@@ -62,6 +67,7 @@ content-length: 53
 {"error":false,"_id":"101059/9579835","_rev":9579835}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 3
 
 HTTP/1.1 202 Accepted
 location: /_api/document/101059/9645371

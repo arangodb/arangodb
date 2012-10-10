@@ -394,7 +394,7 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiString (char const* value) {
+char* TRI_LowerAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -407,7 +407,10 @@ char* TRI_LowerAsciiString (char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+  buffer = TRI_Allocate(zone, (sizeof(char) * length) + 1, false);
+  if (buffer == NULL) {
+    return NULL;
+  }
 
   p = (char*) value;
   out = buffer;
@@ -427,10 +430,18 @@ char* TRI_LowerAsciiString (char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to lower case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_LowerAsciiString (char const* value) {
+  return TRI_LowerAsciiStringZ(TRI_CORE_MEM_ZONE, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to upper case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiString (char const* value) {
+char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -443,7 +454,10 @@ char* TRI_UpperAsciiString (char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+  buffer = TRI_Allocate(zone, (sizeof(char) * length) + 1, false);
+  if (buffer == NULL) {
+    return NULL;
+  }
   
   p = (char*) value;
   out = buffer;
@@ -460,6 +474,14 @@ char* TRI_UpperAsciiString (char const* value) {
   *out = '\0';
 
   return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to upper case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UpperAsciiString (char const* value) {
+  return TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1245,7 +1267,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
     memcpy(qtr, buffer, *outLength + 1);
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, buffer);
+  TRI_Free(zone, buffer);
   return qtr;
 }
 

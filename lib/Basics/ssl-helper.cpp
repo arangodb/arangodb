@@ -38,7 +38,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     string lastSSLError () {
-#ifdef TRI_OPENSSL_VERSION
       char buf[122];
       memset(buf, 0, sizeof(buf));
 
@@ -46,9 +45,6 @@ namespace triagens {
       ERR_error_string_n(err, buf, sizeof(buf) - 1);
 
       return string(buf);
-#else
-      return "not implemented";
-#endif
     }
 
   }

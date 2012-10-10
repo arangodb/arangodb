@@ -763,22 +763,28 @@
 ///
 /// - @FN{TO_BOOL(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into the appropriate boolean value as follows:
-///   - @LIT{null} is converted to false.
-///   - Numbers are converted to true if they are unequal to 0, and to false otherwise. 
-///   - Strings are converted to true if they are non-empty, and to false otherwise. 
-///   - Lists are converted to true if they are non-empty, and to false otherwise.
-///   - Documents are converted to true if they are non-empty, and to false otherwise.
+///   - @LIT{null} is converted to @LIT{false}.
+///   - Numbers are converted to @LIT{true} if they are unequal to 0, and to @LIT{false} otherwise. 
+///   - Strings are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise. 
+///   - Lists are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise.
+///   - Documents are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise.
 /// - @FN{TO_NUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a numeric value as follows:
-///   - @LIT{null}, false, lists, and documents are converted to the value @LIT{0}.
-///   - true is converted to @LIT{1}.
+///   - @LIT{null}, @LIT{false}, lists, and documents are converted to the value @LIT{0}.
+///   - @LIT{true} is converted to @LIT{1}.
 ///   - Strings are converted to their numeric equivalent if the full string content is
 ///     is a valid number, and to @LIT{0} otherwise.
 /// - @FN{TO_STRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a string value as follows:
 ///   - @LIT{null} is converted to the string @LIT{"null"}
-///   - false is converted to the string @LIT{"false"}, true to the string @LIT{"true"}
+///   - @LIT{false} is converted to the string @LIT{"false"}, @LIT{true} to the string @LIT{"true"}
 ///   - numbers, lists, and documents are converted to their string equivalents. 
+/// - @FN{TO_LIST(@FA{value})}: takes an input @FA{value} of any type and converts it 
+///   into a list value as follows:
+///   - @LIT{null} is converted to an empty list
+///   - Boolean values, numbers, and strings are converted to a list containing the original
+///     value as its single element
+///   - Documents are converted to a list containing their attribute values as list elements
 ///
 /// @subsubsection AqlFunctionsChecking Type check functions
 ///
@@ -917,8 +923,10 @@
 ///
 /// AQL offers the following functions to let the user control the flow of operations:
 ///
-/// - @FN{NOT_NULL(@FA{condition}\, @FA{alternative})}: returns @FA{condition} if it is not
+/// - @FN{NOT_NULL(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is not
 ///   @LIT{null}, and @FA{alternative} otherwise. 
+/// - @FN{NOT_LIST(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is a list,
+///   and @FA{alternative} otherwise. 
 ///
 /// @subsubsection AqlFunctionsMisc Miscellaneous functions
 ///
