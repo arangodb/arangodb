@@ -210,6 +210,28 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document, waitForSync=false
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentSyncFalse : function () {
+      var doc = collection.save({ "Hallo" : "World" }, false);
+
+      assertTypeOf("string", doc._id);
+      assertTypeOf("number", doc._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document, waitForSync=true
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveDocumentSyncTrue : function () {
+      var doc = collection.save({ "Hallo" : "World" }, true);
+
+      assertTypeOf("string", doc._id);
+      assertTypeOf("number", doc._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read a document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -295,6 +317,38 @@ function CollectionDocumentSuite () {
       assertEqual(a1._id, doc4._id);
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a document, waitForSync=false
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 }, true, false);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a document, waitForSync=true
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 }, true, true);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,6 +499,66 @@ function CollectionDocumentSuite () {
       var a4 = collection.remove(a1, true);
 
       assertEqual(a4, false);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document, waitForSync=false
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = collection.update(a1, { a : 2 }, true, false);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document, waitForSync=true
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = collection.update(a1, { a : 2 }, true, true);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document, waitForSync=false
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = collection.remove(a1, true, false);
+      assertEqual(a2, true);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document, waitForSync=true
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("number", a1._rev);
+
+      var a2 = collection.remove(a1, true, true);
+      assertEqual(a2, true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

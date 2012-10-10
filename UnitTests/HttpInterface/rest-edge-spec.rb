@@ -189,7 +189,112 @@ describe ArangoDB do
       end
     end
 
+################################################################################
+## known collection name, waitForSync URL param
+################################################################################
+
+    context "known collection name:" do
+      before do
+	@ce = "UnitTestsCollectionEdge"
+	@eid = ArangoDB.create_collection(@ce, false, 3) # type 3 = edge collection
+	@cv = "UnitTestsCollectionVertex"
+	@vid = ArangoDB.create_collection(@cv, true, 2) # type 2 = document collection
+      end
+
+      after do
+	ArangoDB.drop_collection(@ce)
+	ArangoDB.drop_collection(@cv)
+      end
+      
+      it "creating an edge, waitForSync URL param=false" do
+	# create first vertex
+	cmd = "/_api/document?collection=#{@vid}"
+	body = "{ \"a\" : 1 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id1 = doc.parsed_response['_id']
+
+	# create second vertex
+	body = "{ \"a\" : 2 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id2 = doc.parsed_response['_id']
+
+        # create edge
+	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}&waitForSync=false"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+
+	doc.code.should eq(202)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id3 = doc.parsed_response['_id']
+
+	# check edge
+	cmd = "/_api/edge/#{id3}"
+        doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['_id'].should eq(id3)
+	doc.parsed_response['_from'].should eq(id1)
+	doc.parsed_response['_to'].should eq(id2)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+      
+      it "creating an edge, waitForSync URL param=true" do
+	# create first vertex
+	cmd = "/_api/document?collection=#{@vid}"
+	body = "{ \"a\" : 1 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id1 = doc.parsed_response['_id']
+
+	# create second vertex
+	body = "{ \"a\" : 2 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id2 = doc.parsed_response['_id']
+
+        # create edge
+	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}&waitForSync=true"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id3 = doc.parsed_response['_id']
+
+	# check edge
+	cmd = "/_api/edge/#{id3}"
+        doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['_id'].should eq(id3)
+	doc.parsed_response['_from'].should eq(id1)
+	doc.parsed_response['_to'].should eq(id2)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+    end
+
   end
 end
-
 
