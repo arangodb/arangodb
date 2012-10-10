@@ -905,8 +905,28 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   size_t n;
 
   datafiles = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_datafiles);
+  if (datafiles == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
+
   journals = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_journals);
+  if (journals == NULL) {
+    TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
+
   compactors = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_compactors);
+  if (compactors == NULL) {
+    TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
+    TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
 
   // iterate over all datafiles
   n = datafiles->_length;
