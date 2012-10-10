@@ -11,6 +11,8 @@ not released yet
 
 * issue #219: continue in case of "document not found" error in PATHS() function
 
+* issue #213: make waitForSync overridable on specifc actions
+
 * changed AQL optimiser to use indexes in more cases. Previously, indexes might
   not have been used when in a reference expression the inner collection was 
   specified last. Example: FOR u1 IN users FOR u2 IN users FILTER u1._id == u2._id
