@@ -1642,52 +1642,6 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   }
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief hashes an edge header
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
-  TRI_edge_header_t const* h;
-  uint64_t hash[3];
-
-  h = data;
-
-  hash[0] = h->_direction;
-  hash[1] = h->_cid;
-  hash[2] = h->_did;
-
-  return TRI_FnvHashPointer(hash, sizeof(hash));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if key and element match
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualKeyEdge (TRI_multi_pointer_t* array, void const* left, void const* right) {
-  TRI_edge_header_t const* l;
-  TRI_edge_header_t const* r;
-
-  l = left;
-  r = right;
-
-  return l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, void const* right) {
-  TRI_edge_header_t const* l;
-  TRI_edge_header_t const* r;
-
-  l = left;
-  r = right;
-
-  return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a simple collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1715,12 +1669,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     return false;
   }
 
-  TRI_InitMultiPointer(&collection->_edgesIndex,
-                       TRI_UNKNOWN_MEM_ZONE, 
-                       HashElementEdge,
-                       HashElementEdge,
-                       IsEqualKeyEdge,
-                       IsEqualElementEdge);
+  if (collection->base.base._type == TRI_COL_TYPE_EDGE) {
+    TRI_InitEdgesDocumentCollection(collection);
+  }
 
   TRI_InitCondition(&collection->_journalsCondition);
 
@@ -1854,15 +1805,10 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
 
   TRI_DestroyCondition(&collection->_journalsCondition);
 
-  // free all elements in the edges index
-  n = collection->_edgesIndex._nrAlloc;
-  for (i = 0; i < n; ++i) {
-    void* element = collection->_edgesIndex._table[i];
-    if (element) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-    }
+  // only required for edge collections
+  if (collection->base.base._type == TRI_COL_TYPE_EDGE) {
+    TRI_FreeEdgesDocumentCollection(collection);
   }
-  TRI_DestroyMultiPointer(&collection->_edgesIndex);
 
   TRI_FreeSimpleHeaders(collection->_headers);
 
@@ -2234,79 +2180,22 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
     return TRI_ERROR_NO_ERROR;
   }
 
+  // check the document type
+  marker = header->_data;
+  
   // .............................................................................
   // update edges index
   // .............................................................................
 
-  // check the document type
-  marker = header->_data;
-
-  // add edges
   if (marker->_type == TRI_DOC_MARKER_EDGE) {
-    TRI_edge_header_t* entry;
-    TRI_doc_edge_marker_t const* edge;
-
-    edge = header->_data;
-
-    // IN
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entry == NULL) {
-      // OOM
-      // TODO: do we have to release the header and remove the entry from the primaryIndex?
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    if (sim->base.base._type != TRI_COL_TYPE_EDGE) {
+      // operation is only permitted for edge collections
+      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     }
 
-    entry->_mptr = header;
-    entry->_direction = TRI_EDGE_IN;
-    entry->_cid = edge->_toCid;
-    entry->_did = edge->_toDid;
-
-    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
-
-    // OUT
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entry == NULL) {
-      // OOM
-      // TODO: do we have to release the header and remove the entry from the primaryIndex?
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    entry->_mptr = header;
-    entry->_direction = TRI_EDGE_OUT;
-    entry->_cid = edge->_fromCid;
-    entry->_did = edge->_fromDid;
-
-    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
-
-    // ANY
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entry == NULL) {
-      // OOM
-      // TODO: do we have to release the header and remove the entry from the primaryIndex?
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    entry->_mptr = header;
-    entry->_direction = TRI_EDGE_ANY;
-    entry->_cid = edge->_toCid;
-    entry->_did = edge->_toDid;
-
-    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
-
-    if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
-      entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-      if (entry == NULL) {
-        // OOM
-        // TODO: do we have to release the header and remove the entry from the primaryIndex?
-        return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      entry->_mptr = header;
-      entry->_direction = TRI_EDGE_ANY;
-      entry->_cid = edge->_fromCid;
-      entry->_did = edge->_fromDid;
-
-      TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
+    result = TRI_InsertEdgeDocumentCollection(sim, header);
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
     }
   }
 
@@ -2432,7 +2321,7 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
   TRI_doc_mptr_t* found;
   size_t n;
   size_t i;
-  bool result;
+  int result;
 
   // set the deletion flag
   change.c = header;
@@ -2450,64 +2339,21 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
+  // check the document type
+  marker = header->_data;
+  
   // .............................................................................
   // update edges index
   // .............................................................................
 
-  // check the document type
-  marker = header->_data;
-
-  // add edges
+  // delete edges
   if (marker->_type == TRI_DOC_MARKER_EDGE) {
-    TRI_edge_header_t entry;
-    TRI_edge_header_t* old;
-    TRI_doc_edge_marker_t const* edge;
-
-    edge = header->_data;
-
-    memset(&entry, 0, sizeof(entry));
-    entry._mptr = header;
-
-    // IN
-    entry._direction = TRI_EDGE_IN;
-    entry._cid = edge->_toCid;
-    entry._did = edge->_toDid;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+    if (collection->base.base._type != TRI_COL_TYPE_EDGE) {
+      // operation is only permitted for edge collections
+      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     }
 
-    // OUT
-    entry._direction = TRI_EDGE_OUT;
-    entry._cid = edge->_fromCid;
-    entry._did = edge->_fromDid;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-    }
-
-    // ANY
-    entry._direction = TRI_EDGE_ANY;
-    entry._cid = edge->_toCid;
-    entry._did = edge->_toDid;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-    }
-
-    if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
-      entry._direction = TRI_EDGE_ANY;
-      entry._cid = edge->_fromCid;
-      entry._did = edge->_fromDid;
-      old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-      if (old != NULL) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-      }
-    }
+    TRI_DeleteEdgeDocumentCollection(collection, header);
   }
 
   // .............................................................................
