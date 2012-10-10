@@ -204,7 +204,6 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   }
 
   p = realloc(p, (size_t) n + sizeof(intptr_t));
-  p = p + sizeof(intptr_t);
 #else
   p = realloc(p, (size_t) n);
 #endif
@@ -232,6 +231,10 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     return TRI_Reallocate(zone, m, n);
 #endif
   }
+  
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  p += sizeof(intptr_t);
+#endif
 
   return p;
 }
