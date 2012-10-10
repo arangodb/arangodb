@@ -89,7 +89,7 @@ namespace triagens {
 ///
 /// @RESTHEADER{GET /_admin/connection-statistics,reads the connection statistics}
 ///
-/// @REST{GET /_admin/connection-statistics?granalurity=@FA{granularity}&figures=@FA{figures}&length=@FA{length}}
+/// @REST{GET /_admin/connection-statistics?granularity=@FA{granularity}&figures=@FA{figures}&length=@FA{length}}
 ///
 /// The call returns statistics about the current and past requests. The
 /// following parameter control which information is returned.
