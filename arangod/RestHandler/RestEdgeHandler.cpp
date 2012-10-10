@@ -32,6 +32,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 
 using namespace std;
 using namespace triagens::basics;

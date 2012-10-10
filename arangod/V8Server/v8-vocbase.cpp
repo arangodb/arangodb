@@ -48,6 +48,7 @@
 #include "VocBase/datafile.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/voc-shaper.h"
 #include "Basics/Utf8Helper.h"
 

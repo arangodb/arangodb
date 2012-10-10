@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple collection with global read-write lock
+/// @brief document collection with global read-write lock
 ///
 /// @file
 ///
@@ -33,6 +33,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/voc-shaper.h"
 
@@ -3195,56 +3196,6 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
 
   return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       EDGES INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
-                                                        TRI_edge_direction_e direction,
-                                                        TRI_voc_cid_t cid,
-                                                        TRI_voc_did_t did) {
-  union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
-  TRI_vector_pointer_t result;
-  TRI_edge_header_t entry;
-  TRI_vector_pointer_t found;
-  size_t i;
-
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
-
-  entry._direction = direction;
-  entry._cid = cid;
-  entry._did = did;
-
-  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &edges->_edgesIndex, &entry);
-
-  for (i = 0;  i < found._length;  ++i) {
-    cnv.c = ((TRI_edge_header_t*) found._buffer[i])->_mptr;
-
-    TRI_PushBackVectorPointer(&result, cnv.v);
-  }
-
-  TRI_DestroyVectorPointer(&found);
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
