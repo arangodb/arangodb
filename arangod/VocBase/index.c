@@ -204,8 +204,8 @@ TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_
 
   doc = (TRI_document_collection_t*) collection;
 
-  for (i = 0;  i < doc->_secondaryIndexes._length;  ++i) {
-    idx = doc->_secondaryIndexes._buffer[i];
+  for (i = 0;  i < doc->_allIndexes._length;  ++i) {
+    idx = doc->_allIndexes._buffer[i];
 
     if (idx->_iid == iid) {
       return idx;
