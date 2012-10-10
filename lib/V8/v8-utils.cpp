@@ -410,9 +410,10 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
   }
 
   if (execute) {
-    char* contentWrapper = TRI_Concatenate3String("(function() { ",
-                                                  content,
-                                                  "/* end-of-file */ })()");
+    char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, 
+                                                   "(function() { ",
+                                                   content,
+                                                   "/* end-of-file */ })()");
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 

@@ -268,6 +268,27 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free memory allocated by some low-level functions
+///
+/// this can be used to free memory that was not allocated by TRI_Allocate, but
+/// by malloc et al
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+void TRI_SystemFreeZ (void* p, char const* file, int line) {
+#else
+void TRI_SystemFree (void* p) {
+#endif
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  if (p == NULL) {
+    printf("MEMORY ZONE: freeing nil ptr\n");
+  }
+#endif
+  free(p);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
