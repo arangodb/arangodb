@@ -5,6 +5,7 @@ content-length: 1055
 
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 1
 
 HTTP/1.1 202 Accepted
 location: /_api/document/101059/9514299
@@ -15,6 +16,7 @@ content-length: 53
 {"error":false,"_id":"101059/9514299","_rev":9514299}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 2
 
 HTTP/1.1 202 Accepted
 location: /_api/document/101059/9579835
@@ -25,6 +27,7 @@ content-length: 53
 {"error":false,"_id":"101059/9579835","_rev":9579835}
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
+Content-Id: 3
 
 HTTP/1.1 202 Accepted
 location: /_api/document/101059/9645371

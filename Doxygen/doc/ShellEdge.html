@@ -38,6 +38,9 @@ Working with Edges</h2>
 <p><a class="anchor" id="ShellEdgeCreate"></a> <hr/>
 <code><b><em>edge-collection</em>.save(<em>from</em>, <em>to</em>, <em>document</em>)</b></code><hr/>
  Saves a new edge and returns the document-handle. <em>from</em> and <em>to</em> must be documents or document references.</p>
+<hr/>
+<code><b><em>edge-collection</em>.save(<em>from</em>, <em>to</em>, <em>document</em>, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document creation operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <p><b>Examples</b><br/>
 </p>
 <div class="fragment"><pre class="fragment">arango&gt; v1 = db.vertex.save({ name : "vertex 1" });

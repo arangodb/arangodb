@@ -109,7 +109,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
   hint->_collection = collection;
 
-  availableIndexes = &(((TRI_document_collection_t*) collection->_collection->_collection)->_secondaryIndexes);
+  availableIndexes = &(((TRI_document_collection_t*) collection->_collection->_collection)->_allIndexes);
 
   if (availableIndexes == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);

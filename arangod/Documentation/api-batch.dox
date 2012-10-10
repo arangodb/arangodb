@@ -61,11 +61,16 @@
 /// send back a multipart response with 5 parts as well.
 ///
 /// The server expects each part message to start with exactly the following 
-/// literal: @LIT{Content-Type: application/x-arango-batchpart}, followed by
-/// two Windows linebreaks (i.e. @LIT{\\r\\n\\r\\n}). Any deviation will lead 
-/// to the part being rejected or incorrectly interpreted.
-/// The part request payload, formatted as a regular HTTP request, must follow 
-/// this literal directly.
+/// "header": @LIT{Content-Type: application/x-arango-batchpart}. You can
+/// optionally specify a @LIT{Content-Id} "header" to uniquely identify each
+/// part message. The server will return the @LIT{Content-Id} in its response
+/// if it is specified. Otherwise, the server will not send a Content-Id "header"
+/// back. The server will not validate the uniqueness of the Content-Id.
+/// After the mandatory @LIT{Content-Type} and the optional @LIT{Content-Id}
+/// header, two Windows linebreaks (i.e. @LIT{\\r\\n\\r\\n}) must follow. 
+/// Any deviation of this structure might lead to the part being rejected or 
+/// incorrectly interpreted. The part request payload, formatted as a regular 
+/// HTTP request, must follow the two Windows linebreaks literal directly.
 ///
 /// Note that the literal @LIT{Content-Type: application/x-arango-batchpart}
 /// technically is the header of the MIME part, and the HTTP request (including

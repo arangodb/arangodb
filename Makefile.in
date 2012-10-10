@@ -587,6 +587,7 @@ am__bin_arangod_SOURCES_DIST = arangod/Actions/actions.cpp \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
+	arangod/VocBase/edge-collection.c \
 	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
 	arangod/VocBase/index.c arangod/VocBase/primary-collection.c \
 	arangod/VocBase/shadow-data.c \
@@ -656,6 +657,7 @@ am_bin_arangod_OBJECTS =  \
 	arangod/VocBase/bin_arangod-compactor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-datafile.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-document-collection.$(OBJEXT) \
+	arangod/VocBase/bin_arangod-edge-collection.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-headers.$(OBJEXT) \
 	arangod/VocBase/bin_arangod-index.$(OBJEXT) \
@@ -1422,6 +1424,7 @@ bin_arangod_SOURCES = arangod/Actions/actions.cpp \
 	arangod/VocBase/collection.c arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
+	arangod/VocBase/edge-collection.c \
 	arangod/VocBase/general-cursor.c arangod/VocBase/headers.c \
 	arangod/VocBase/index.c arangod/VocBase/primary-collection.c \
 	arangod/VocBase/shadow-data.c \
@@ -2655,6 +2658,9 @@ arangod/VocBase/bin_arangod-datafile.$(OBJEXT):  \
 arangod/VocBase/bin_arangod-document-collection.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
+arangod/VocBase/bin_arangod-edge-collection.$(OBJEXT):  \
+	arangod/VocBase/$(am__dirstamp) \
+	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
 arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT):  \
 	arangod/VocBase/$(am__dirstamp) \
 	arangod/VocBase/$(DEPDIR)/$(am__dirstamp)
@@ -2834,6 +2840,7 @@ mostlyclean-compile:
 	-rm -f arangod/VocBase/bin_arangod-compactor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-datafile.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-document-collection.$(OBJEXT)
+	-rm -f arangod/VocBase/bin_arangod-edge-collection.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-general-cursor.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-headers.$(OBJEXT)
 	-rm -f arangod/VocBase/bin_arangod-index.$(OBJEXT)
@@ -3089,6 +3096,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-compactor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-datafile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-document-collection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-headers.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/VocBase/$(DEPDIR)/bin_arangod-index.Po@am__quote@
@@ -3950,6 +3958,22 @@ arangod/VocBase/bin_arangod-document-collection.obj: arangod/VocBase/document-co
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/document-collection.c' object='arangod/VocBase/bin_arangod-document-collection.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-document-collection.obj `if test -f 'arangod/VocBase/document-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/document-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/document-collection.c'; fi`
+
+arangod/VocBase/bin_arangod-edge-collection.o: arangod/VocBase/edge-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-edge-collection.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Tpo -c -o arangod/VocBase/bin_arangod-edge-collection.o `test -f 'arangod/VocBase/edge-collection.c' || echo '$(srcdir)/'`arangod/VocBase/edge-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/edge-collection.c' object='arangod/VocBase/bin_arangod-edge-collection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-edge-collection.o `test -f 'arangod/VocBase/edge-collection.c' || echo '$(srcdir)/'`arangod/VocBase/edge-collection.c
+
+arangod/VocBase/bin_arangod-edge-collection.obj: arangod/VocBase/edge-collection.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-edge-collection.obj -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Tpo -c -o arangod/VocBase/bin_arangod-edge-collection.obj `if test -f 'arangod/VocBase/edge-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/edge-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/edge-collection.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Tpo arangod/VocBase/$(DEPDIR)/bin_arangod-edge-collection.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='arangod/VocBase/edge-collection.c' object='arangod/VocBase/bin_arangod-edge-collection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o arangod/VocBase/bin_arangod-edge-collection.obj `if test -f 'arangod/VocBase/edge-collection.c'; then $(CYGPATH_W) 'arangod/VocBase/edge-collection.c'; else $(CYGPATH_W) '$(srcdir)/arangod/VocBase/edge-collection.c'; fi`
 
 arangod/VocBase/bin_arangod-general-cursor.o: arangod/VocBase/general-cursor.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT arangod/VocBase/bin_arangod-general-cursor.o -MD -MP -MF arangod/VocBase/$(DEPDIR)/bin_arangod-general-cursor.Tpo -c -o arangod/VocBase/bin_arangod-general-cursor.o `test -f 'arangod/VocBase/general-cursor.c' || echo '$(srcdir)/'`arangod/VocBase/general-cursor.c

@@ -504,23 +504,29 @@ Type cast functions</h4>
 <p>In an AQL query, type casts are performed only upon request and not implicitly. This helps avoiding unexpected results. All type casts have to be performed by invoking a type cast function. AQL offers several type cast functions for this task. Each of the these functions takes an operand of any data type and returns a result value of type corresponding to the function name (e.g. <code>TO_NUMBER()</code> will return a number value):</p>
 <ul>
 <li><code>TO_BOOL(<em>value</em>)</code>: takes an input <em>value</em> of any type and converts it into the appropriate boolean value as follows:<ul>
-<li><code>null</code> is converted to false.</li>
-<li>Numbers are converted to true if they are unequal to 0, and to false otherwise.</li>
-<li>Strings are converted to true if they are non-empty, and to false otherwise.</li>
-<li>Lists are converted to true if they are non-empty, and to false otherwise.</li>
-<li>Documents are converted to true if they are non-empty, and to false otherwise.</li>
+<li><code>null</code> is converted to <code>false</code>.</li>
+<li>Numbers are converted to <code>true</code> if they are unequal to 0, and to <code>false</code> otherwise.</li>
+<li>Strings are converted to <code>true</code> if they are non-empty, and to <code>false</code> otherwise.</li>
+<li>Lists are converted to <code>true</code> if they are non-empty, and to <code>false</code> otherwise.</li>
+<li>Documents are converted to <code>true</code> if they are non-empty, and to <code>false</code> otherwise.</li>
 </ul>
 </li>
 <li><code>TO_NUMBER(<em>value</em>)</code>: takes an input <em>value</em> of any type and converts it into a numeric value as follows:<ul>
-<li><code>null</code>, false, lists, and documents are converted to the value <code>0</code>.</li>
-<li>true is converted to <code>1</code>.</li>
+<li><code>null</code>, <code>false</code>, lists, and documents are converted to the value <code>0</code>.</li>
+<li><code>true</code> is converted to <code>1</code>.</li>
 <li>Strings are converted to their numeric equivalent if the full string content is is a valid number, and to <code>0</code> otherwise.</li>
 </ul>
 </li>
 <li><code>TO_STRING(<em>value</em>)</code>: takes an input <em>value</em> of any type and converts it into a string value as follows:<ul>
 <li><code>null</code> is converted to the string <code>"null"</code></li>
-<li>false is converted to the string <code>"false"</code>, true to the string <code>"true"</code></li>
+<li><code>false</code> is converted to the string <code>"false"</code>, <code>true</code> to the string <code>"true"</code></li>
 <li>numbers, lists, and documents are converted to their string equivalents.</li>
+</ul>
+</li>
+<li><code>TO_LIST(<em>value</em>)</code>: takes an input <em>value</em> of any type and converts it into a list value as follows:<ul>
+<li><code>null</code> is converted to an empty list</li>
+<li>Boolean values, numbers, and strings are converted to a list containing the original value as its single element</li>
+<li>Documents are converted to a list containing their attribute values as list elements</li>
 </ul>
 </li>
 </ul>
@@ -614,7 +620,8 @@ FOR p IN PATHS(friends, friendrelations, "outbound")
 Control flow functions</h4>
 <p>AQL offers the following functions to let the user control the flow of operations:</p>
 <ul>
-<li><code>NOT_NULL(<em>condition</em>, <em>alternative</em>)</code>: returns <em>condition</em> if it is not <code>null</code>, and <em>alternative</em> otherwise.</li>
+<li><code>NOT_NULL(<em>check</em>, <em>alternative</em>)</code>: returns <em>check</em> if it is not <code>null</code>, and <em>alternative</em> otherwise.</li>
+<li><code>NOT_LIST(<em>check</em>, <em>alternative</em>)</code>: returns <em>check</em> if it is a list, and <em>alternative</em> otherwise.</li>
 </ul>
 <h4><a class="anchor" id="AqlFunctionsMisc"></a>
 Miscellaneous functions</h4>

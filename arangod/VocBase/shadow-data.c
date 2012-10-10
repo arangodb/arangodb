@@ -228,8 +228,9 @@ static bool EqualKeyData (TRI_associative_pointer_t* array, void const* k, void 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shadow_store_t* TRI_CreateShadowStore (void (*destroy) (void*)) {
-  TRI_shadow_store_t* store = 
-    (TRI_shadow_store_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_store_t), false);
+  TRI_shadow_store_t* store;
+  
+  store = (TRI_shadow_store_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shadow_store_t), false);
 
   if (store) {
     TRI_InitAssociativePointer(&store->_ids,

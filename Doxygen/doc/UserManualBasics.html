@@ -42,7 +42,7 @@ or give it a&#160;<a href="http://www.arangodb.org/try">try</a>. </li>
 <ul>
 <li><code>arangod</code>: The ArangoDB database daemon. This server program is intended to run as daemon process and to server the various clients connection to the server via TCP / HTTP. See <a class="el" href="UserManualBasics.html#UserManualServerStartStop">Starting the ArangoDB Server</a>.</li>
 <li><code>arangosh</code>: The ArangoDB shell. A client that implements a read-eval-print loop (REPL) and provides functions to access and administrate the ArangoDB server. See <a class="el" href="UserManualBasics.html#UserManualShellStartStop">Starting the ArangoDB Shell</a>.</li>
-<li><code>arangoimp</code>: A bulk importer for the ArangoDB server. See <a class="el" href="ImpManual.html">ArangoDB Importer Manual (1.0.0)</a></li>
+<li><code>arangoimp</code>: A bulk importer for the ArangoDB server. See <a class="el" href="ImpManual.html">ArangoDB Importer Manual (1.1.0)</a></li>
 </ul>
 <hr/>
 <ul>
@@ -133,11 +133,11 @@ Frequently Used Options</h3>
 <p>Runs the server as a daemon (as a background process).</p>
 <h2><a class="anchor" id="UserManualServerFE"></a>
 ArangoDB's Front-End</h2>
-<p>The ArangoDB server has a graphical front-end, which allows you to inspect the current state of the server. You can read the front-end using the following URL:</p>
+<p>The ArangoDB server has a graphical front-end, which allows you to inspect the current state of the server from within your browser. You can use the front-end using the following URL:</p>
 <p><code><a href="http://localhost:8529/_admin">http://localhost:8529/_admin</a></code></p>
 <p>Unless you have loaded an application into the ArangoDB server, which remaps the paths, the front-end will also be available under</p>
 <p><code><a href="http://localhost:8529/">http://localhost:8529/</a></code>.</p>
- <img src="images/front-end-example-1.png" alt="ArangoDB Front-End"> <p>The front-end allows you the browser through the collections and documents. If you need to administrate the database, please use the ArgangoDB shell described in the next section.</p>
+<p>The front-end allows you to browse through the collections and documents. If you need to administrate the database, please use the ArangoDB shell described in the next section.</p>
 <h2><a class="anchor" id="UserManualShellStartStop"></a>
 Starting the ArangoDB Shell</h2>
 <p>After the server has been <a class="el" href="UserManualBasics.html#UserManualServerStartStop">started</a>, you can use the ArangoDB shell (arangosh) to administrate the server. Without any arguments, the ArangoDB shell will try to contact the server on port 8529 on the localhost. For more information see <a class="el" href="UserManualArangosh.html">The Arango Shell</a>.</p>
