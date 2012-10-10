@@ -296,7 +296,7 @@ typedef struct TRI_primary_collection_s {
   TRI_collection_t base;
   
   // .............................................................................
-  // this lock protects the _primaryIndex plus the _secondaryIndexes, _edgesIndex,
+  // this lock protects the _primaryIndex plus the _allIndexes, _edgesIndex,
   // and _headers attributes in derived types
   // .............................................................................
 

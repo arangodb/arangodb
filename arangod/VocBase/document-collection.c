@@ -1723,7 +1723,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
 
   TRI_InitCondition(&collection->_journalsCondition);
 
-  TRI_InitVectorPointer(&collection->_secondaryIndexes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&collection->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&primary->_fields, id);
@@ -1737,7 +1737,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   primary->update = UpdatePrimary;
   primary->json = JsonPrimary;
 
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, primary);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, primary);
 
   // setup methods
   collection->base.beginRead = BeginRead;
@@ -1866,14 +1866,14 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
   TRI_FreeSimpleHeaders(collection->_headers);
 
   // free memory allocated for index field names
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
   for (i = 0 ; i < n ; ++i) {
-    TRI_index_t* idx = (TRI_index_t*) collection->_secondaryIndexes._buffer[i];
+    TRI_index_t* idx = (TRI_index_t*) collection->_allIndexes._buffer[i];
   
     TRI_FreeIndex(idx);
   }
   // free index vector
-  TRI_DestroyVectorPointer(&collection->_secondaryIndexes);
+  TRI_DestroyVectorPointer(&collection->_allIndexes);
 
   TRI_DestroyPrimaryCollection(&collection->base);
 }
@@ -2313,7 +2313,7 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
   // update all the other indices
   // .............................................................................
 
-  n = sim->_secondaryIndexes._length;
+  n = sim->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
   constraint = false;
 
@@ -2321,7 +2321,7 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
     TRI_index_t* idx;
     int res;
 
-    idx = sim->_secondaryIndexes._buffer[i];
+    idx = sim->_allIndexes._buffer[i];
     res = idx->insert(idx, header);
 
     // in case of no-memory, return immediately
@@ -2386,7 +2386,7 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
   // update all the other indices
   // .............................................................................
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
   constraint = false;
 
@@ -2394,7 +2394,7 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
     TRI_index_t* idx;
     int res;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
     res = idx->update(idx, header, &old);
 
     // in case of no-memory, return immediately
@@ -2513,14 +2513,14 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
   // remove from all other indexes
   // .............................................................................
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
     int res;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
     res = idx->remove(idx, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2611,8 +2611,8 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
   // go through every index and see if we have a match 
   // ...........................................................................
   
-  for (j = 0;  j < collection->_secondaryIndexes._length;  ++j) {
-    TRI_index_t* idx = collection->_secondaryIndexes._buffer[j];
+  for (j = 0;  j < collection->_allIndexes._length;  ++j) {
+    TRI_index_t* idx = collection->_allIndexes._buffer[j];
     bool found       = true;
 
     // .........................................................................
@@ -2968,13 +2968,13 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
-  n = sim->_secondaryIndexes._length;
+  n = sim->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
     TRI_json_t* json;
 
-    idx = sim->_secondaryIndexes._buffer[i];
+    idx = sim->_allIndexes._buffer[i];
 
     json = idx->json(idx, primary);
 
@@ -3018,15 +3018,15 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* sim, TRI_idx_ii
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  n = sim->_secondaryIndexes._length;
+  n = sim->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = sim->_secondaryIndexes._buffer[i];
+    idx = sim->_allIndexes._buffer[i];
 
     if (idx->_iid == iid) {
-      found = TRI_RemoveVectorPointer(&sim->_secondaryIndexes, i);
+      found = TRI_RemoveVectorPointer(&sim->_allIndexes, i);
 
       if (found != NULL) {
         found->removeIndex(found, primary);
@@ -3306,7 +3306,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&sim->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&sim->_allIndexes, idx);
   sim->base._capConstraint = (TRI_cap_constraint_t*) idx;
 
   if (created != NULL) {
@@ -3524,7 +3524,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&sim->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&sim->_allIndexes, idx);
 
   if (created != NULL) {
     *created = true;
@@ -3670,12 +3670,12 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* c
   size_t n;
   size_t i;
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
 
     if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -3703,12 +3703,12 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* c
   size_t n;
   size_t i;
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
 
     if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -3902,7 +3902,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
 
   if (created != NULL) {
     *created = true;
@@ -4110,7 +4110,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
   
   if (created != NULL) {
     *created = true;
@@ -4336,7 +4336,7 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
   // store index
   // ...........................................................................
 
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
   
   // ...........................................................................
   // release memory allocated to vector
@@ -4387,8 +4387,8 @@ TRI_index_t* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document_collec
   // go through every index and see if we have a match 
   // ........................................................................... 
   
-  for (j = 0;  j < collection->_secondaryIndexes._length;  ++j) {
-    TRI_index_t* idx                    = collection->_secondaryIndexes._buffer[j];
+  for (j = 0;  j < collection->_allIndexes._length;  ++j) {
+    TRI_index_t* idx                    = collection->_allIndexes._buffer[j];
     TRI_priorityqueue_index_t* pqIndex  = (TRI_priorityqueue_index_t*) idx;
     bool found                          = true;
 
@@ -4613,7 +4613,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // store index within the collection and return
   // ...........................................................................
   
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
   
   if (created != NULL) {
     *created = true;
