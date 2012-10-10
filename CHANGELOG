@@ -1,6 +1,9 @@
 not released yet
 ----------------
 
+* having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
+  removed the --enable-ssl configure option
+
 * added AQL function TO_LIST
 
 * issue #224: add optional Content-Id for batch requests
