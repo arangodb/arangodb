@@ -140,44 +140,41 @@ actions.defineHttp({
   });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system time
+/// @fn JSF_GET_admin_time
+/// @brief returns the system time
+///
+/// @RESTHEADER{GET /_admin/time,returns the system time}
+///
+/// @REST{GET /_admin/time}
+///
+/// The call returns an object with the attribute @LIT{time}. This contains the
+/// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
-
-function GET_time (req, res) {
-  actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
-}
-
-actions.defineHttp({
-  url : "_api/time",
-  context : "api",
-  prefix : false,
-  callback : GET_time
-});
 
 actions.defineHttp({
   url : "_admin/time",
   context : "admin",
   prefix : false,
-  callback : GET_time
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns V8 version
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_v8_version (req, res) {
-  actions.resultOk(req, res, actions.HTTP_OK, { version : "V8" });
-}
-
-actions.defineHttp({
-  url : "_admin/v8-version",
-  context : "admin",
-  prefix : false,
-  callback : GET_v8_version
-});
-
-////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_echo
 /// @brief returns the request
+///
+/// @RESTHEADER{GET /_admin/echo,returns the current request}
+///
+/// @REST{GET /_admin/echo}
+///
+/// The call returns an object with the following attributes:
+///
+/// - @LIT{headers}: a list of HTTP headers received
+///
+/// - @LIT{requestType}: the HTTP request method (e.g. GET)
+///
+/// - @LIT{parameters}: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
