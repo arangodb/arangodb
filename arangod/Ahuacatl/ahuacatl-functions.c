@@ -175,7 +175,7 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
     // we cannot yet determine the type of the parameter
     // this is the case if the argument is an expression, a function call etc.
 
-    if (!allowed->_collection) {
+    if (! allowed->_collection) {
       // if we do require anything else but a collection, we don't know the
       // type and must exit here
       return true;
@@ -469,13 +469,13 @@ TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t*
   assert(externalName);
 
   // normalize the name by upper-casing it
-  upperName = TRI_UpperAsciiString(externalName);
-  if (!upperName) {
+  upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
+  if (upperName == NULL) {
     return NULL;
   }
 
   function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
-  TRI_Free(TRI_CORE_MEM_ZONE, upperName);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   return function;
 }
@@ -502,19 +502,19 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
   
   function = (TRI_aql_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_function_t), false);
 
-  if (!function) {
+  if (function == NULL) {
     return false;
   }
 
-  function->_externalName = TRI_DuplicateString(externalName);
-  if (!function->_externalName) {
+  function->_externalName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
+  if (function->_externalName == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
 
   // normalize name by upper-casing it
-  function->_internalName = TRI_UpperAsciiString(internalName);
-  if (!function->_internalName) {
+  function->_internalName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, internalName);
+  if (function->_internalName == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function->_externalName);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
@@ -621,7 +621,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
 
       foundArg = false;
 
-      while (parse && !eof) {
+      while (parse && ! eof) {
         char c = *pattern++;
         
         switch (c) {

@@ -1457,7 +1457,8 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
 
   if (message) {
     std::string str(message);
-    TRI_Free(TRI_CORE_MEM_ZONE, message);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
+
     return TRI_CreateErrorObject(TRI_GetErrorCodeAql(error), str);
   }
 

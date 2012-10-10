@@ -118,7 +118,7 @@ static TRI_aql_field_access_t* CreateFieldAccess (TRI_aql_context_t* const conte
     return NULL;
   }
 
-  fieldAccess->_fullName = TRI_DuplicateString(fullName);
+  fieldAccess->_fullName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fullName);
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
@@ -1793,7 +1793,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return NULL;
   }
 
-  fieldAccess->_fullName = TRI_DuplicateString(field->_name._buffer);
+  fieldAccess->_fullName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, field->_name._buffer);
   if (fieldAccess->_fullName == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldAccess);
