@@ -1,7 +1,9 @@
 v1.0.1 (2012-09-30)
 -------------------
 
-* darft for issue #165: front-end application howto
+* added AQL function TO_LIST
+
+* draft for issue #165: front-end application howto
 
 * updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
 
