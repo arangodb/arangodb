@@ -102,10 +102,10 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
 TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
-  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
+/*  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
          file,
          line);
-
+*/
   return &TriUnknownMemZone;
 }
 #endif
@@ -231,7 +231,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     return TRI_Reallocate(zone, m, n);
 #endif
   }
-  
+
 #ifdef TRI_ENABLE_ZONE_DEBUG
   p += sizeof(intptr_t);
 #endif

@@ -1658,13 +1658,20 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     return false;
   }
 
-  id = TRI_DuplicateString("_id");
+  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_id");
+  if (id == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, primary);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
 
   TRI_InitPrimaryCollection(&collection->base, shaper);
 
   collection->_headers = TRI_CreateSimpleHeaders(sizeof(TRI_doc_mptr_t));
 
   if (collection->_headers == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, id);
     TRI_DestroyPrimaryCollection(&collection->base);
     return false;
   }
@@ -1678,6 +1685,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   TRI_InitVectorPointer(&collection->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
+  
   TRI_PushBackVectorString(&primary->_fields, id);
 
   primary->_iid = 0;
@@ -1900,7 +1908,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   }
 
   shaper = TRI_OpenVocShaper(vocbase, shapes);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, shapes);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, shapes);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot open shapes collection");

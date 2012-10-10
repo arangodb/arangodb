@@ -108,16 +108,18 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
     return NULL;
   }
 
-  parameter->_name = TRI_DuplicateString(name);
-  if (!parameter->_name) {
+  parameter->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+  if (parameter->_name == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
+
     return NULL;
   }
 
   parameter->_value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) value);
-  if (!parameter->_value) {
+  if (parameter->_value == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
+
     return NULL;
   }
 

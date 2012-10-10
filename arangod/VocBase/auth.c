@@ -96,7 +96,7 @@ static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
 
   result = TRI_DuplicateString2(json->_value._string.data, json->_value._string.length);
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;
 }
@@ -143,7 +143,7 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
   
   result = json->_value._boolean;
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;
 }
@@ -155,7 +155,7 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
 static void FreeAuthInfo (TRI_vocbase_auth_t* auth) {
   TRI_Free(TRI_CORE_MEM_ZONE, auth->_username);
   TRI_Free(TRI_CORE_MEM_ZONE, auth->_password);
-  TRI_Free(TRI_CORE_MEM_ZONE, auth);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, auth);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +201,14 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true);
+  if (result == NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, user);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, password);
+    LOG_ERROR("couldn't load auth information - out of memory");
+
+    return NULL;
+  }
 
   result->_username = user;
   result->_password = password;

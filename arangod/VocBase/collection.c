@@ -78,7 +78,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&collection->_journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&collection->_compactors, TRI_UNKNOWN_MEM_ZONE);
-  TRI_InitVectorString(&collection->_indexFiles, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorString(&collection->_indexFiles, TRI_CORE_MEM_ZONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +627,7 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
   FreeDatafilesVector(&collection->_compactors);
 
   TRI_DestroyVectorString(&collection->_indexFiles);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, collection->_directory);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1074,7 +1074,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   if (! ok) {
     LOG_ERROR("cannot open '%s', check failed", collection->_directory);
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, collection->_directory);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
 
     if (freeCol) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);

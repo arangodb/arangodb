@@ -722,6 +722,8 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
   if (copy == NULL) {
     return NULL;
   }
+  
+  copy->_memoryZone = zone;
 
   if (vector->_capacity == 0) {
     copy->_buffer = NULL;
