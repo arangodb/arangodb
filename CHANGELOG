@@ -1,6 +1,8 @@
 not released yet
 ----------------
 
+* added AQL function TO_LIST
+
 * issue #224: add optional Content-Id for batch requests
 
 * issue #221: more documentation on AQL explain functionality. Also added
