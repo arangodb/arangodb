@@ -581,7 +581,7 @@ actions.defineHttp({
 ///
 /// - @LIT{right}: The upper bound.
 ///
-/// - @LIT{closed}: If true, use intervall including @LIT{left} and @LIT{right},
+/// - @LIT{closed}: If true, use interval including @LIT{left} and @LIT{right},
 ///   otherwise exclude @LIT{right}, but include @LIT{left}.
 ///
 /// - @LIT{skip}: The documents to skip in the query. (optional)
