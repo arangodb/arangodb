@@ -365,6 +365,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("TO_NUMBER", "CAST_NUMBER", true, false, ".");
   REGISTER_FUNCTION("TO_STRING", "CAST_STRING", true, false, ".");
   REGISTER_FUNCTION("TO_BOOL", "CAST_BOOL", true, false, ".");
+  REGISTER_FUNCTION("TO_LIST", "CAST_LIST", true, false, ".");
 
   // string functions
   REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+"); 
@@ -409,6 +410,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
   REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, ""); 
   REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".,.");
+  REGISTER_FUNCTION("NOT_LIST", "NOT_LIST", true, false, ".,.");
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);

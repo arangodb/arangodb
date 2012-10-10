@@ -255,6 +255,22 @@ function AHUACATL_TYPEWEIGHT (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the values of an object in the order that they are defined
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_VALUES (value) {
+  var values = [];
+  
+  for (var k in value) {
+    if (value.hasOwnProperty(k)) {
+      values.push(value[k]);
+    }
+  }
+
+  return values;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the keys of an array or object in a comparable way
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1390,6 +1406,27 @@ function AHUACATL_CAST_STRING (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cast to a list
+///
+/// the operand can have any type, always returns a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_CAST_LIST (value) {
+  switch (AHUACATL_TYPEWEIGHT(value)) {
+    case AHUACATL_TYPEWEIGHT_LIST:
+      return value;
+    case AHUACATL_TYPEWEIGHT_NULL:
+      return [ ];
+    case AHUACATL_TYPEWEIGHT_BOOL:
+    case AHUACATL_TYPEWEIGHT_NUMBER:
+    case AHUACATL_TYPEWEIGHT_STRING:
+      return [ value ];
+    case AHUACATL_TYPEWEIGHT_DOCUMENT:
+      return AHUACATL_VALUES(value);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2076,7 +2113,21 @@ function AHUACATL_NOT_NULL (value, alternative) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a document has an attribute
+/// @brief return value if it's a list, otherwise return alternative
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NOT_LIST (value, alternative) {
+  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_LIST) {
+    return value;
+  }
+
+  return alternative;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a document has a specific attribute
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_HAS () {
