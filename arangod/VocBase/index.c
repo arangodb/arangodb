@@ -346,11 +346,16 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, TRI_primary_collection_t
   }
   
   // create json object and fill it
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (json == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id",   TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "cap"));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
+    return NULL;
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",   TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "cap"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, cap->_size));
 
   return json;
 }
@@ -424,7 +429,12 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collectio
                                       size_t size) {
   TRI_cap_constraint_t* cap;
 
-  cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  cap = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  if (cap == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
   
   cap->base._iid = TRI_NewTickVocBase();
   cap->base._type = TRI_IDX_TYPE_CAP_CONSTRAINT;
@@ -461,7 +471,7 @@ void TRI_DestroyCapConstraint (TRI_index_t* idx) {
 
 void TRI_FreeCapConstraint (TRI_index_t* idx) {
   TRI_DestroyCapConstraint(idx);
-  TRI_Free(TRI_CORE_MEM_ZONE, idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3171,6 +3181,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
     path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, shape);
     if (path == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
+
       return NULL;
     }  
     fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
@@ -3181,8 +3192,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
   // create json object and fill it
   // ..........................................................................  
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (!json) {
+  if (json == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
+
     return NULL;
   }
 
