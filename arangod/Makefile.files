@@ -21,7 +21,6 @@ bin_arangod_LDADD = \
 
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \
-	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
 	arangod/Ahuacatl/ahuacatl-ast-node.c \
