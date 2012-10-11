@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  var actions = require("actions");
+  var actions = require("org/arangodb/actions");
   var graph = require("graph");
 
 // -----------------------------------------------------------------------------

@@ -1892,7 +1892,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   collection = TRI_OpenCollection(vocbase, &sim->base.base, path);
 
   if (collection == NULL) {
-    LOG_ERROR("cannot open simple collection");
+    LOG_ERROR("cannot open document collection from path '%s'", path);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, sim);
     return NULL;
@@ -3097,6 +3097,11 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   // create a new index
   idx = TRI_CreateCapConstraint(&sim->base, size);
+  if (idx == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   if (iid) {
     idx->_iid = iid;

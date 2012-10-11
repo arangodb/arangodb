@@ -155,8 +155,6 @@ namespace triagens {
         FileUtils::slurp(name, _response->body());
       }
       catch (...) {
-        delete _response;
-
         LOGGER_WARNING << "file '" << name << "' not readable";
 
         _response = createResponse(HttpResponse::NOT_FOUND);
