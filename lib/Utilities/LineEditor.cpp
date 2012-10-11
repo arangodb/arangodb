@@ -202,7 +202,7 @@ char* LineEditor::prompt (char const* prompt) {
     bool ok = isComplete(_current, lineno, strlen(result));
 
     // cannot use TRI_Free, because it was allocated by the system call readline
-    free(originalLine);
+    TRI_SystemFree(originalLine);
 
     // stop if line is complete
     if (ok) {
