@@ -1,10 +1,7 @@
 # ArangoDB
 [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png)](http://travis-ci.org/triAGENS/ArangoDB)
- 
-We recently started a new open source project - a nosql database
-called AvocadoDB which became ArangoDB in May 2012.  The current
-stable version of ArangoDB is 1.0. A multi server version is planned 
-for the end of 2012. For details see the roadmap.
+
+ArangoDB is a universal open-source database with flexible data model for documents, graphs, and key-values. Build high performance application using a convenient sql-like query language or JavaScript/Ruby extensions. 
 
 Key features include:
 
@@ -49,14 +46,13 @@ The ArangoDB shell will be install as
 
 Start the server:
 
-    > mkdir /tmp/vocbase
-    > bin/arangod /tmp/vocbase
+    > /usr/sbin/arangod
     2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 1.x.y) is ready for business
     2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
 Start the shell in another windows:
 
-    > bin/arangosh
+    > /usr/bin/arangosh
                                            _     
       __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
      / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
@@ -81,7 +77,7 @@ Start the shell in another windows:
 
 ## Caveat
 
-Please note that this is a very early version of ArangoDB. There will be
+Please note that this is an early version of ArangoDB. There will be
 bugs and we'd really appreciate it if you [report](https://github.com/triAGENS/ArangoDB/issues")
 them:
 

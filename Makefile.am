@@ -287,6 +287,11 @@ errorfiles: lib/BasicsC/errors.dat
 BUILT_SOURCES += \
 	errorfiles
 
+CLEANUP += \
+	lib/BasicsC/voc-errors.h \
+	lib/BasicsC/voc-errors.c \
+	js/common/bootstrap/errors.js
+
 endif
 
 ################################################################################
@@ -294,7 +299,7 @@ endif
 ################################################################################
 
 clean-local:
-	rm -f $(CLEANUP); 
+	rm -f $(CLEANUP)
 
 ################################################################################
 ### @brief generated files
@@ -349,6 +354,7 @@ if ENABLE_MARKDOWN
 if ENABLE_HTML2TEXT
 
 BUILT_SOURCES += README
+CLEANUP += README
 
 README: README.md
 	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
