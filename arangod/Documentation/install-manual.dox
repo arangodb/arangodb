@@ -470,7 +470,7 @@
 /// - Google's V8 engine
 /// - the GNU readline library
 /// - the OpenSSL library
-/// - the Boost test framework
+/// - the Boost test framework library (boost_unit_test_framework)
 ///
 /// To compile Google V8 yourself, you will also need Python 2 and SCons.
 ///
