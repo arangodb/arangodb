@@ -797,7 +797,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           char* input = console->prompt("arangod> ");
 
           if (input == 0) {
-            printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+            printf("<ctrl-D>\nBye Bye! Auf Wiedersehen! Arrivederci! Na shledanou! До свидания! Εις το επανιδείν! さようなら");
             break;
           }
 
