@@ -1,5 +1,10 @@
-not released yet
-----------------
+v1.1.beta1 (2012-XX-XX)
+-----------------------
+
+* WARNING:
+  - the user has changed from "arango" to "arangodb", the start script has changed from
+    "arangod" to "arangodb", the database directory has changed from "/var/arangodb" to
+    "/var/lib/arangodb" to be compliant with various Linux policies
 
 * having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
   removed the --enable-ssl configure option
@@ -112,8 +117,13 @@ not released yet
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
-v1.0.1 (2012-XX-XX)
+
+v1.0.1 (2012-09-30)
 -------------------
+
+* added AQL function TO_LIST
+
+* draft for issue #165: front-end application howto
 
 * updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
 

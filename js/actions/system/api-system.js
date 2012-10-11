@@ -43,55 +43,74 @@
 /// @brief routing function
 ////////////////////////////////////////////////////////////////////////////////
 
-function Routing (req, res) {
-  var callbacks;
-  var current;
-  var i;
-  var next;
+  function Routing (req, res) {
+    var execute;
+    var next;
+    var path = req.suffix.join("/");
 
-  callbacks = actions.routing(req.requestType, req.suffix);
-  current = 0;
+    action = actions.firstRouting(req.requestType, req.suffix);
 
-  next = function () {
-    var callback;
+    execute = function () {
+      if (action.route === undefined) {
+	actions.resultNotImplemented(req, res, "unknown path '" + path + "'");
+	return;
+      }
 
-    if (callbacks.length <= current) {
-      actions.resultNotImplemented(req, res, 
-                                   "unknown path '" + req.suffix.join("/") + "'");
-      return;
+      if (action.route.path !== undefined) {
+	req.path = action.route.path;
+      }
+      else {
+	delete req.path;
+      }
+
+      if (action.prefix !== undefined) {
+	req.prefix = action.prefix;
+      }
+      else {
+	delete req.prefix;
+      }
+
+      if (action.suffix !== undefined) {
+	req.suffix = action.suffix;
+      }
+      else {
+	delete req.suffix;
+      }
+
+      if (action.urlParameters !== undefined) {
+	req.urlParameters = action.urlParameters;
+      }
+      else {
+	req.urlParameters = {};
+      }
+
+      action.route.callback.controller(req, res, action.route.callback.options, next);
     }
 
-    callback = callbacks[current++];
+    next = function () {
+      action = actions.nextRouting(action);
+      execute();
+    }
 
-    if (callback == null) {
-      actions.resultNotImplemented(req, res,
-                                   "not implemented '" + req.suffix.join("/") + "'");
-    }
-    else {
-      req.prefix = callback.path;
-      callback.func(req, res, next, callback.options);
-    }
+    execute();
   }
 
-  next();
-}
+  actions.defineHttp({
+    url : "",
+    prefix : true,
+    context : "admin",
+    callback : Routing
+  });
 
-actions.defineHttp({
-  url : "",
-  prefix : true,
-  context : "admin",
-  callback : Routing
-});
-
-actions.defineHttp({
-  url : "_admin/reloadRouting",
-  context : "admin",
-  prefix : false,
-  callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
-    actions.resultOk(req, res, actions.HTTP_OK);
-  }
-});
+  actions.defineHttp({
+    url : "_admin/routing/reload",
+    context : "admin",
+    prefix : false,
+    callback : function (req, res) {
+      internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+      actions.resultOk(req, res, actions.HTTP_OK);
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -107,39 +126,6 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns redirection to index page
-////////////////////////////////////////////////////////////////////////////////
-
-  function AdminRedirect (req, res) {
-    var dest = "/_admin/html/index.html";
-
-    res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
-    res.contentType = "text/html";
-
-    res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-      + dest
-      + "\">"
-      + dest
-      + "</a>.</p></body></html>";
-
-    res.headers = { location : dest };
-  }
-
-  actions.defineHttp({
-    url : "",
-    context : "admin",
-    prefix : false,
-    callback : AdminRedirect
-  });
-
-  actions.defineHttp({
-    url : "_admin",
-    context : "admin",
-    prefix : false,
-    callback : AdminRedirect
-  });
-
-////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_time
 /// @brief returns the system time
 ///
@@ -151,14 +137,14 @@ actions.defineHttp({
 /// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : "_admin/time",
-  context : "admin",
-  prefix : false,
-  callback : function (req, res) {
-    actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
-  }
-});
+  actions.defineHttp({
+    url : "_admin/time",
+    context : "admin",
+    prefix : false,
+    callback : function (req, res) {
+      actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_echo
@@ -177,16 +163,16 @@ actions.defineHttp({
 /// - @LIT{parameters}: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : "_admin/echo",
-  context : "admin",
-  prefix : true,
-  callback : function (req, res) {
-    res.responseCode = actions.HTTP_OK;
-    res.contentType = "application/json; charset=utf-8";
-    res.body = JSON.stringify(req);
-  }
-});
+  actions.defineHttp({
+    url : "_admin/echo",
+    context : "admin",
+    prefix : true,
+    callback : function (req, res) {
+      res.responseCode = actions.HTTP_OK;
+      res.contentType = "application/json; charset=utf-8";
+      res.body = JSON.stringify(req);
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_status
