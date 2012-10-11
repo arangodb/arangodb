@@ -9,6 +9,7 @@
 ################################################################################
 
 BUILT_SOURCES += @MRUBY_LIBS@
+CLEANUP += @srcdir@/.mruby-build-@TRI_BITS@
 
 @MRUBY_LIBS@: @srcdir@/.mruby-build-@TRI_BITS@
 
