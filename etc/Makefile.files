@@ -9,11 +9,6 @@ BUILT_SOURCES += \
 	etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangosh.conf
 
-CLEANUP += \
-	etc/arangodb/arangod.conf \
-	etc/arangodb/arangoirb.conf \
-	etc/arangodb/arangosh.conf
-
 ################################################################################
 ### @brief config
 ################################################################################

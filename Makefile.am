@@ -20,7 +20,7 @@ dist_man_MANS =
 ### @brief files to cleanup
 ################################################################################
 
-CLEANUP = .setup-js-directories .setup-mr-directories
+CLEANUP =
 
 ################################################################################
 ### @brief flex files
@@ -288,11 +288,6 @@ BUILT_SOURCES += \
 	@top_srcdir@/lib/BasicsC/voc-errors.c \
 	@top_srcdir@/js/common/bootstrap/errors.js
 
-CLEANUP += \
-	@top_srcdir@/lib/BasicsC/voc-errors.h \
-	@top_srcdir@/lib/BasicsC/voc-errors.c \
-	@top_srcdir@/js/common/bootstrap/errors.js
-
 @top_srcdir@/lib/BasicsC/voc-errors.h: lib/BasicsC/errors.dat
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.h
 
@@ -309,7 +304,8 @@ endif
 ################################################################################
 
 clean-local:
-	rm -f $(CLEANUP)
+	rm -rf $(CLEANUP)
+	rm -f $(BUILT_SOURCES)
 
 ################################################################################
 ### @brief generated files
@@ -336,7 +332,7 @@ GTAGS:
 ### @brief documentation
 ################################################################################
 
-include Documentation/Makefile.doxygen
+include Documentation/Makefile.files
 
 ################################################################################
 ### @brief javascript
@@ -364,7 +360,6 @@ if ENABLE_MARKDOWN
 if ENABLE_HTML2TEXT
 
 BUILT_SOURCES += README
-CLEANUP += README
 
 README: README.md
 	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
