@@ -1,3 +1,12 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
 ///
@@ -44,6 +53,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   function Routing (req, res) {
+    var action;
     var execute;
     var next;
     var path = req.suffix.join("/");
@@ -85,12 +95,12 @@
       }
 
       action.route.callback.controller(req, res, action.route.callback.options, next);
-    }
+    };
 
     next = function () {
       action = actions.nextRouting(action);
       execute();
-    }
+    };
 
     execute();
   }
@@ -102,6 +112,10 @@
     callback : Routing
   });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
   actions.defineHttp({
     url : "_admin/routing/reload",
     context : "admin",
@@ -109,6 +123,19 @@
     callback : function (req, res) {
       internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
       actions.resultOk(req, res, actions.HTTP_OK);
+    }
+  });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
+  actions.defineHttp({
+    url : "_admin/routing/routes",
+    context : "admin",
+    prefix : false,
+    callback : function (req, res) {
+      actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
     }
   });
 
@@ -214,6 +241,8 @@
     context : "admin",
 
     callback : function (req, res) {
+      var result;
+
       try {
         result = {};
         result.system = SYS_PROCESS_STAT();
@@ -221,7 +250,7 @@
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-        actions.resultError(req, res, err);
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -287,20 +316,25 @@
     context : "admin",
     prefix : false,
     callback : function (req, res) {
-      if (req.requestType === actions.GET) {
-        GET_admin_session(req, res);
+      try {
+        if (req.requestType === actions.GET) {
+          GET_admin_session(req, res);
+        }
+        else if (req.requestType === actions.DELETE) {
+          DELETE_admin_session(req, res);
+        }
+        else if (req.requestType === actions.POST) {
+          POST_admin_session(req, res);
+        }
+        else if (req.requestType === actions.PUT) {
+          PUT_admin_session(req, res);
+        }
+        else {
+          actions.resultUnsupported(req, res);
+        }
       }
-      else if (req.requestType === actions.DELETE) {
-        DELETE_admin_session(req, res);
-      }
-      else if (req.requestType === actions.POST) {
-        POST_admin_session(req, res);
-      }
-      else if (req.requestType === actions.PUT) {
-        PUT_admin_session(req, res);
-      }
-      else {
-        actions.resultUnsupported(req, res);
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });

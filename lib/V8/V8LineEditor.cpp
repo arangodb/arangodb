@@ -177,7 +177,7 @@ static char* CompletionGenerator (char const* text, int state) {
   }
 
   if (currentIndex < result.size()) {
-    return TRI_DuplicateString(result[currentIndex++].c_str());
+    return TRI_SystemDuplicateString(result[currentIndex++].c_str());
   }
   else {
     result.clear();
@@ -255,7 +255,7 @@ bool V8LineEditor::open (const bool autoComplete) {
 
     rl_bind_key('\t', rl_complete);
   }
-
+  
   return LineEditor::open(autoComplete);
 }
 

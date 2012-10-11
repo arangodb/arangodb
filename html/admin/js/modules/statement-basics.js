@@ -1,3 +1,4 @@
+module.define("statement-basics", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
 ///
@@ -224,3 +225,4 @@ exports.ArangoStatement = ArangoStatement;
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+});
