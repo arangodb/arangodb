@@ -281,22 +281,26 @@ include UnitTests/Makefile.files
 ### @brief error code file
 ################################################################################
 
-.PHONY: errorfiles
-
 if ENABLE_MAINTAINER_MODE
 
-errorfiles: lib/BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
-
 BUILT_SOURCES += \
-	errorfiles
+	@top_srcdir@/lib/BasicsC/voc-errors.h \
+	@top_srcdir@/lib/BasicsC/voc-errors.c \
+	@top_srcdir@/js/common/bootstrap/errors.js
 
 CLEANUP += \
-	lib/BasicsC/voc-errors.h \
-	lib/BasicsC/voc-errors.c \
-	js/common/bootstrap/errors.js
+	@top_srcdir@/lib/BasicsC/voc-errors.h \
+	@top_srcdir@/lib/BasicsC/voc-errors.c \
+	@top_srcdir@/js/common/bootstrap/errors.js
+
+@top_srcdir@/lib/BasicsC/voc-errors.h: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.h
+
+@top_srcdir@/lib/BasicsC/voc-errors.c: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.c
+
+@top_srcdir@/js/common/bootstrap/errors.js: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
 
 endif
 
@@ -338,7 +342,7 @@ include Documentation/Makefile.doxygen
 ### @brief javascript
 ################################################################################
 
-include js/Makefile.javascript
+include js/Makefile.files
 
 ################################################################################
 ### @brief mruby
