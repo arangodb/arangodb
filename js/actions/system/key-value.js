@@ -122,37 +122,32 @@ function postKeyValue(req, res) {
     return;
   }
 
-  try {
-    var collection = req.suffix[0];
+  var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) === null) {
-      actions.collectionNotFound(req, res, collection);
-      return;      
-    }
-
-    if (req.requestBody == "") {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_NO_VALUE, actions.getErrorMessage(actions.ERROR_KEYVALUE_NO_VALUE));
-      return;
-    }
-  
-    var doc = buildDocumentFromReq(req);
-
-    var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
-        
-    if (oldDoc != undefined) {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_EXISTS, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_EXISTS));
-    }
-    else {
-      var id = db[collection].save(doc);    
-      var result = {
-        "saved" : true,
-        "_id" : id
-      }
-      actions.resultOk(req, res, actions.HTTP_CREATED, result);      
-    }
+  if (internal.db._collection(collection) === null) {
+    actions.collectionNotFound(req, res, collection);
+    return;      
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+
+  if (req.requestBody == "") {
+    actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_NO_VALUE, actions.getErrorMessage(actions.ERROR_KEYVALUE_NO_VALUE));
+    return;
+  }
+  
+  var doc = buildDocumentFromReq(req);
+
+  var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
+        
+  if (oldDoc != undefined) {
+    actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_EXISTS, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_EXISTS));
+  }
+  else {
+    var id = db[collection].save(doc);    
+    var result = {
+      "saved" : true,
+      "_id" : id
+    }
+    actions.resultOk(req, res, actions.HTTP_CREATED, result);      
   }
 }
 
@@ -170,51 +165,46 @@ function putKeyValue(req, res) {
     return;
   }
 
-  try {
-    var collection = req.suffix[0];
+  var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) === null) {
-      actions.collectionNotFound(req, res);
-      return;      
-    }
+  if (internal.db._collection(collection) === null) {
+    actions.collectionNotFound(req, res);
+    return;      
+  }
     
-    var doc = buildDocumentFromReq(req);
+  var doc = buildDocumentFromReq(req);
 
-    var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
+  var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
         
-    if (oldDoc == undefined) {
-      if (req.parameters["create"] == 1) {
-        var id = db[collection].save(doc);    
-        var result = {
-          "saved" : true,
-          "_id" : id
-        }
-        actions.resultOk(req, res, actions.HTTP_CREATED, result);      
-        return;
+  if (oldDoc == undefined) {
+    if (req.parameters["create"] == 1) {
+      var id = db[collection].save(doc);    
+      var result = {
+        "saved" : true,
+        "_id" : id
       }
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+      actions.resultOk(req, res, actions.HTTP_CREATED, result);      
+      return;
+    }
+    actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+  }
+  else {
+    // get _id
+    var id = oldDoc._id;
+      
+    // save x-voc-created
+    var created = oldDoc["$created"];      
+    if (created != undefined) {
+      doc["x-voc-created"] = created;        
+    }
+      
+    // replace the document
+    if (db[collection].replace(id, doc)) {            
+      actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"changed" : true});                              
     }
     else {
-      // get _id
-      var id = oldDoc._id;
-      
-      // save x-voc-created
-      var created = oldDoc["$created"];      
-      if (created != undefined) {
-        doc["x-voc-created"] = created;        
-      }
-      
-      // replace the document
-      if (db[collection].replace(id, doc)) {            
-        actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"changed" : true});                              
-      }
-      else {
-        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_CHANGED));
-      }
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_CHANGED));
     }
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
   }
 }
 
@@ -231,37 +221,32 @@ function deleteKeyValue(req, res) {
     return;
   }
 
-  try {
-    var collection = req.suffix[0];
+  var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) === null) {
-      actions.collectionNotFound(req, res);
-      return;      
-    }
+  if (internal.db._collection(collection) === null) {
+    actions.collectionNotFound(req, res);
+    return;      
+  }
     
-    var key = req.suffix[1];
+  var key = req.suffix[1];
     
-    for (var i = 2; i < req.suffix.length; ++i) {
-      key += "/" + req.suffix[i];
-    }
+  for (var i = 2; i < req.suffix.length; ++i) {
+    key += "/" + req.suffix[i];
+  }
 
-    var doc = internal.db._collection(collection).firstExample("$key", key);
+  var doc = internal.db._collection(collection).firstExample("$key", key);
     
-    if (doc == undefined) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+  if (doc == undefined) {
+    actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+  }
+  else {
+    var id = doc._id;
+    if (db[collection].remove(id)) {            
+      actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"removed" : true});                              
     }
     else {
-      var id = doc._id;
-      if (db[collection].remove(id)) {            
-        actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"removed" : true});                              
-      }
-      else {
-        actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_REMOVED));
-      }
+      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_REMOVED));
     }
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
   }
 }
 
@@ -280,46 +265,41 @@ function getKeyValue(req, res) {
     return;
   }
 
-  try {
-    var collection = req.suffix[0];
+  var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) === null) {
-      actions.collectionNotFound(req, res);
-      return;      
-    }
-    
-    var key = req.suffix[1];
-    
-    for (var i = 2; i < req.suffix.length; ++i) {
-      key += "/" + req.suffix[i];
-    }
-        
-    var doc = internal.db._collection(collection).firstExample("$key", key); 
-        
-    if (doc == undefined) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
-    }
-    else {
-      var headers = {};
-      
-      if (doc["$expires"] != undefined) {
-        // format timestamp
-        headers["x-voc-expires"] = formatTimeStamp(doc["$expires"]);
-      }
-      if (doc["$extended"] != undefined) {
-        // serialize header value
-        headers["x-voc-extended"] = JSON.stringify(doc["$extended"]);
-      }
-      if (doc["$created"] != undefined) {
-        // format timestamp
-        headers["x-voc-created"] = formatTimeStamp(doc["$created"]);
-      }
-      
-      actions.resultOk(req, res, actions.HTTP_OK, doc["$value"], headers);                      
-    }
+  if (internal.db._collection(collection) === null) {
+    actions.collectionNotFound(req, res);
+    return;      
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+    
+  var key = req.suffix[1];
+    
+  for (var i = 2; i < req.suffix.length; ++i) {
+    key += "/" + req.suffix[i];
+  }
+        
+  var doc = internal.db._collection(collection).firstExample("$key", key); 
+        
+  if (doc == undefined) {
+    actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+  }
+  else {
+    var headers = {};
+      
+    if (doc["$expires"] != undefined) {
+      // format timestamp
+      headers["x-voc-expires"] = formatTimeStamp(doc["$expires"]);
+    }
+    if (doc["$extended"] != undefined) {
+      // serialize header value
+      headers["x-voc-extended"] = JSON.stringify(doc["$extended"]);
+    }
+    if (doc["$created"] != undefined) {
+      // format timestamp
+      headers["x-voc-created"] = formatTimeStamp(doc["$created"]);
+    }
+      
+    actions.resultOk(req, res, actions.HTTP_OK, doc["$value"], headers);                      
   }
 }
 
@@ -336,25 +316,30 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.POST) :
-        postKeyValue(req, res); 
-        break;
+    try {
+      switch (req.requestType) {
+        case (actions.POST) :
+          postKeyValue(req, res); 
+          break;
 
-      case (actions.GET) :
-        getKeyValue(req, res); 
-        break;
+        case (actions.GET) :
+          getKeyValue(req, res); 
+          break;
 
-      case (actions.PUT) :
-        putKeyValue(req, res); 
-        break;
+        case (actions.PUT) :
+          putKeyValue(req, res); 
+          break;
 
-      case (actions.DELETE) :
-        deleteKeyValue(req, res); 
-        break;
+        case (actions.DELETE) :
+          deleteKeyValue(req, res); 
+          break;
 
-      default:
-        actions.resultUnsupported(req, res);
+        default:
+          actions.resultUnsupported(req, res);
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -386,40 +371,35 @@ function searchKeyValue(req, res) {
     return;
   }
 
-  try {
-    var collection = req.suffix[0];
+  var collection = req.suffix[0];
     
-    if (internal.db._collection(collection) === null) {
-      actions.collectionNotFound(req, res);
-      return;      
+  if (internal.db._collection(collection) === null) {
+    actions.collectionNotFound(req, res);
+    return;      
+  }
+    
+  var prefix = req.suffix[1];
+    
+  for (var i = 2; i < req.suffix.length; ++i) {
+    prefix += "/" + req.suffix[i];
+  }
+    
+  //
+  // TODO: build a query which selects the keys
+  //
+    
+  var cursor = internal.db._collection(collection).all();
+    
+  result = [];
+    
+  while (cursor.hasNext() ) {
+    var doc = cursor.next();
+    if (doc["$key"] != undefined && doc["$key"].indexOf(prefix) === 0) {
+      result.push(doc["$key"]);
     }
-    
-    var prefix = req.suffix[1];
-    
-    for (var i = 2; i < req.suffix.length; ++i) {
-      prefix += "/" + req.suffix[i];
-    }
-    
-    //
-    // TODO: build a query which selects the keys
-    //
-    
-    var cursor = internal.db._collection(collection).all();
-    
-    result = [];
-    
-    while (cursor.hasNext() ) {
-      var doc = cursor.next();
-      if (doc["$key"] != undefined && doc["$key"].indexOf(prefix) === 0) {
-        result.push(doc["$key"]);
-      }
-    }
+  }
 
-    actions.resultOk(req, res, actions.HTTP_OK, result);
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
+  actions.resultOk(req, res, actions.HTTP_OK, result);
 }
 
 // -----------------------------------------------------------------------------
@@ -435,13 +415,18 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.GET) :
-        searchKeyValue(req, res); 
-        break;
+    try {
+      switch (req.requestType) {
+        case (actions.GET) :
+          searchKeyValue(req, res); 
+          break;
         
-      default:
-        actions.resultUnsupported(req, res);
+        default:
+          actions.resultUnsupported(req, res);
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });

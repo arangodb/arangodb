@@ -163,21 +163,26 @@
     context : BLUEPRINT_CONTEXT,
 
     callback : function (req, res) {
-      switch (req.requestType) {
-        case (actions.POST) :
-          postGraph(req, res); 
-          break;
+      try {
+        switch (req.requestType) {
+          case (actions.POST) :
+            postGraph(req, res); 
+            break;
 
-        case (actions.GET) :
-          getGraph(req, res); 
-          break;
+          case (actions.GET) :
+            getGraph(req, res); 
+            break;
 
-        case (actions.DELETE) :
-          deleteGraph(req, res); 
-          break;
+          case (actions.DELETE) :
+            deleteGraph(req, res); 
+            break;
 
-        default:
-          actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -381,21 +386,26 @@
     context : BLUEPRINT_CONTEXT,
 
     callback : function (req, res) {
-      switch (req.requestType) {
-        case (actions.POST) :
-          postVertex(req, res); 
-          break;
+      try {
+        switch (req.requestType) {
+          case (actions.POST) :
+            postVertex(req, res); 
+            break;
 
-        case (actions.GET) :
-          getVertex(req, res); 
-          break;
+          case (actions.GET) :
+            getVertex(req, res); 
+            break;
 
-        case (actions.PUT) :
-          putVertex(req, res); 
-          break;
+          case (actions.PUT) :
+            putVertex(req, res); 
+            break;
 
-        default:
-          actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -457,13 +467,18 @@
     context : BLUEPRINT_CONTEXT,
 
     callback : function (req, res) {
-      switch (req.requestType) {
-        case (actions.GET) :
-          getVertices(req, res); 
-          break;
+      try {
+        switch (req.requestType) {
+          case (actions.GET) :
+            getVertices(req, res); 
+            break;
 
-        default:
-          actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -672,25 +687,30 @@
     context : BLUEPRINT_CONTEXT,
 
     callback : function (req, res) {
-      switch (req.requestType) {
-        case (actions.POST) :
-          postEdge(req, res); 
-          break;
+      try {
+        switch (req.requestType) {
+          case (actions.POST) :
+            postEdge(req, res); 
+            break;
 
-        case (actions.GET) :
-          getEdge(req, res); 
-          break;
+          case (actions.GET) :
+            getEdge(req, res); 
+            break;
 
-        case (actions.DELETE) :
-          deleteEdge(req, res); 
-          break;
+          case (actions.DELETE) :
+            deleteEdge(req, res); 
+            break;
 
-        case (actions.PUT) :
-          putEdge(req, res); 
-          break;
-
-        default:
-          actions.resultUnsupported(req, res);
+          case (actions.PUT) :
+            putEdge(req, res); 
+            break;
+ 
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -786,13 +806,18 @@
     context : BLUEPRINT_CONTEXT,
 
     callback : function (req, res) {
-      switch (req.requestType) {
-        case (actions.GET) :
-          getEdges(req, res); 
-          break;
+      try {
+        switch (req.requestType) {
+          case (actions.GET) :
+            getEdges(req, res); 
+            break;
 
-        default:
-          actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });

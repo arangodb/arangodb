@@ -730,20 +730,25 @@
     context : "api",
 
     callback : function (req, res) {
-      if (req.requestType === actions.GET) {
-        GET_api_collection(req, res);
+      try {
+        if (req.requestType === actions.GET) {
+          GET_api_collection(req, res);
+        }
+        else if (req.requestType === actions.DELETE) {
+          DELETE_api_collection(req, res);
+        }
+        else if (req.requestType === actions.POST) {
+          POST_api_collection(req, res);
+        }
+        else if (req.requestType === actions.PUT) {
+          PUT_api_collection(req, res);
+        }
+        else {
+          actions.resultUnsupported(req, res);
+        }
       }
-      else if (req.requestType === actions.DELETE) {
-        DELETE_api_collection(req, res);
-      }
-      else if (req.requestType === actions.POST) {
-        POST_api_collection(req, res);
-      }
-      else if (req.requestType === actions.PUT) {
-        PUT_api_collection(req, res);
-      }
-      else {
-        actions.resultUnsupported(req, res);
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });

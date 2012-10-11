@@ -98,7 +98,7 @@ ssize_t getline (char** lineptr, size_t* n, FILE* stream) {
 
   // allocate the line the first time
   if (*lineptr == NULL) {
-    *lineptr = malloc(line_size);
+    *lineptr = TRI_SystemAllocate(line_size, false);
 
     if (*lineptr == NULL) {
       return -1;
