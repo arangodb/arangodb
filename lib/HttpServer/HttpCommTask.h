@@ -275,6 +275,10 @@ namespace triagens {
 
             this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
 
+            if (this->_readBuffer->length() > 2) {
+              LOGGER_WARNING << "read buffer is not empty. probably got a wrong Content-Length header?";
+            }
+
             this->_requestPending = true;
 
             // .............................................................................
