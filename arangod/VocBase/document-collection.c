@@ -1892,7 +1892,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   collection = TRI_OpenCollection(vocbase, &sim->base.base, path);
 
   if (collection == NULL) {
-    LOG_ERROR("cannot open simple collection");
+    LOG_ERROR("cannot open document collection from path '%s'", path);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, sim);
     return NULL;
