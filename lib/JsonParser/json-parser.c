@@ -2426,7 +2426,7 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
 
   if (error != NULL) {
     if (yyextra._message != NULL) {
-      *error = TRI_DuplicateString(yyextra._message);
+      *error = TRI_DuplicateStringZ(zone, yyextra._message);
     }
     else {
       *error = NULL;
@@ -2489,7 +2489,7 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
 
   if (error != NULL) {
     if (yyextra._message != NULL) {
-      *error = TRI_DuplicateString(yyextra._message);
+      *error = TRI_DuplicateStringZ(zone, yyextra._message);
     }
     else {
       *error = NULL;
