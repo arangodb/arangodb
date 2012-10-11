@@ -7,6 +7,8 @@ js-*.h
 .libev-build-64
 .v8-build-64
 .icu-build-64
+.mruby-build-64
+.setup-mr-directories
 .setup-js-directories
 
 Makefile
