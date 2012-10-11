@@ -3097,6 +3097,11 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   // create a new index
   idx = TRI_CreateCapConstraint(&sim->base, size);
+  if (idx == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   if (iid) {
     idx->_iid = iid;
