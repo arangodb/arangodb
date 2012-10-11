@@ -9,6 +9,8 @@
 ################################################################################
 
 BUILT_SOURCES += @PROTOBUF_LIBS@
+CLEANUP += @srcdir@/.protobuf-build-@TRI_BITS@
+
 PROTOBUFDIR = @abs_top_srcdir@/3rdParty/protobuf-2.4.1/BUILD
 
 @PROTOBUF_LIBS@: @srcdir@/.protobuf-build-@TRI_BITS@
