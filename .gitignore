@@ -6,7 +6,9 @@ js-*.h
 
 .libev-build-64
 .v8-build-64
+.icu-build-64
 .setup-js-directories
+
 Makefile
 Makefile.in
 aclocal.m4
@@ -16,10 +18,14 @@ config.log
 config.status
 
 Documentation/arango.template
+UnitTests/HttpInterface/logs/
+UnitTests/basics_suite
+UnitTests/geo_suite
 arangod/Ahuacatl/ahuacatl-grammar.c
 arangod/Ahuacatl/ahuacatl-grammar.h
 arangod/Ahuacatl/ahuacatl-grammar.output
 arangod/Ahuacatl/ahuacatl-tokens.c
+bin/
 config/config.guess
 config/config.h
 config/config.sub
@@ -29,7 +35,10 @@ configure
 etc/arangodb/arangod.conf
 etc/arangodb/arangoirb.conf
 etc/arangodb/arangosh.conf
+js/common/bootstrap/errors.js
 lib/BasicsC/local-configuration.h
 lib/BasicsC/stamp-h2
+lib/BasicsC/voc-errors.c
+lib/BasicsC/voc-errors.h
 lib/JsonParser/json-parser.c
 lib/V8/v8-json.cpp
