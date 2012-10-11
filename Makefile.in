@@ -1151,6 +1151,7 @@ WIKI = \
 	HttpImport \
 	HttpIndex \
 	HttpInterface \
+	HttpMisc \
 	HttpQueries \
 	HttpSimple \
 	HttpSystem \
