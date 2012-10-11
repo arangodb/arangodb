@@ -80,7 +80,14 @@ actions.defineHttp({
   url : "",
   prefix : true,
   context : "admin",
-  callback : Routing
+  callback : function (req, res) {
+    try {
+      Routing(req, res);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
 });
 
 actions.defineHttp({
@@ -88,8 +95,13 @@ actions.defineHttp({
   context : "admin",
   prefix : false,
   callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
-    actions.resultOk(req, res, actions.HTTP_OK);
+    try {
+      internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+      actions.resultOk(req, res, actions.HTTP_OK);
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
   }
 });
 
@@ -235,7 +247,7 @@ actions.defineHttp({
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-        actions.resultError(req, res, err);
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -301,20 +313,25 @@ actions.defineHttp({
     context : "admin",
     prefix : false,
     callback : function (req, res) {
-      if (req.requestType === actions.GET) {
-        GET_admin_session(req, res);
+      try {
+        if (req.requestType === actions.GET) {
+          GET_admin_session(req, res);
+        }
+        else if (req.requestType === actions.DELETE) {
+          DELETE_admin_session(req, res);
+        }
+        else if (req.requestType === actions.POST) {
+          POST_admin_session(req, res);
+        }
+        else if (req.requestType === actions.PUT) {
+          PUT_admin_session(req, res);
+        }
+        else {
+          actions.resultUnsupported(req, res);
+        }
       }
-      else if (req.requestType === actions.DELETE) {
-        DELETE_admin_session(req, res);
-      }
-      else if (req.requestType === actions.POST) {
-        POST_admin_session(req, res);
-      }
-      else if (req.requestType === actions.PUT) {
-        PUT_admin_session(req, res);
-      }
-      else {
-        actions.resultUnsupported(req, res);
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });

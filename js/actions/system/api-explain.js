@@ -130,21 +130,15 @@ function POST_api_explain (req, res) {
     return;
   }
 
-  try {
-    var result = AHUACATL_EXPLAIN(json.query, json.bindVars);
+  var result = AHUACATL_EXPLAIN(json.query, json.bindVars);
 
-    if (result instanceof ArangoError) {
-      actions.resultBad(req, res, result.errorNum, result.errorMessage);
-      return;
-    }
-
-    result = { "plan" : result };
-
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+  if (result instanceof ArangoError) {
+    actions.resultBad(req, res, result.errorNum, result.errorMessage);
+    return;
   }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
+
+  result = { "plan" : result };
+  actions.resultOk(req, res, actions.HTTP_OK, result);
 }
 
 // -----------------------------------------------------------------------------
@@ -160,13 +154,18 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.POST) : 
-        POST_api_explain(req, res); 
-        break;
+    try {
+      switch (req.requestType) {
+        case (actions.POST) : 
+          POST_api_explain(req, res); 
+          break;
 
-      default:
-        actions.resultUnsupported(req, res);
+        default:
+          actions.resultUnsupported(req, res);
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });

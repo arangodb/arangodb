@@ -74,28 +74,28 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
+    try {
+      var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
+      if (body === undefined) {
+        return;
+      }
 
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var limit = body.limit;
-      var skip = body.skip;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        try {
+        var limit = body.limit;
+        var skip = body.skip;
+
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else {
           var result = collection.all();
 
           if (skip !== null && skip !== undefined) {
@@ -108,10 +108,10 @@ actions.defineHttp({
 
           actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -170,39 +170,39 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
+    try {
+      var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var limit = body.limit;
-      var skip = body.skip;
-      var latitude = body.latitude;
-      var longitude = body.longitude;
-      var distance = body.distance;
-      var name = body.collection;
-      var geo = body.geo;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+      if (body === undefined) {
+        return;
       }
-      else if (latitude === null || latitude === undefined) {
-        actions.badParameter(req, res, "latitude");
-      }
-      else if (longitude === null || longitude === undefined) {
-        actions.badParameter(req, res, "longitude");
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        try {
+        var limit = body.limit;
+        var skip = body.skip;
+        var latitude = body.latitude;
+        var longitude = body.longitude;
+        var distance = body.distance;
+        var name = body.collection;
+        var geo = body.geo;
+
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (latitude === null || latitude === undefined) {
+          actions.badParameter(req, res, "latitude");
+        }
+        else if (longitude === null || longitude === undefined) {
+          actions.badParameter(req, res, "longitude");
+        }
+        else {
           var result;
 
           if (geo === null || geo === undefined) {
@@ -226,10 +226,10 @@ actions.defineHttp({
 
           actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -287,39 +287,39 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
+    try {
+      var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var limit = body.limit;
-      var skip = body.skip;
-      var latitude = body.latitude;
-      var longitude = body.longitude;
-      var distance = body.distance;
-      var radius = body.radius;
-      var geo = body.geo;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+      if (body === undefined) {
+        return;
       }
-      else if (latitude === null || latitude === undefined) {
-        actions.badParameter(req, res, "latitude");
-      }
-      else if (longitude === null || longitude === undefined) {
-        actions.badParameter(req, res, "longitude");
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        try {
+        var limit = body.limit;
+        var skip = body.skip;
+        var latitude = body.latitude;
+        var longitude = body.longitude;
+        var distance = body.distance;
+        var radius = body.radius;
+        var geo = body.geo;
+
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (latitude === null || latitude === undefined) {
+          actions.badParameter(req, res, "latitude");
+        }
+        else if (longitude === null || longitude === undefined) {
+          actions.badParameter(req, res, "longitude");
+        }
+        else {
           var result;
 
           if (geo === null || geo === undefined) {
@@ -343,10 +343,10 @@ actions.defineHttp({
           
           actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -393,33 +393,33 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
+    try {
+      var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var limit = body.limit;
-      var skip = body.skip;
-      var name = body.collection;
-      var example = body.example;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+      if (body === undefined) {
+        return;
       }
-      else if (typeof example !== "object") {
-        actions.badParameter(req, res, "example");
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        try {
+        var limit = body.limit;
+        var skip = body.skip;
+        var name = body.collection;
+        var example = body.example;
+
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (typeof example !== "object") {
+          actions.badParameter(req, res, "example");
+        }
+        else {
           var result = collection.byExample(example);
 
           if (skip !== null && skip !== undefined) {
@@ -432,10 +432,10 @@ actions.defineHttp({
 
           actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -475,38 +475,43 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
-
-    if (body === undefined) {
-      return;
-    }
-
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var example = body.example;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+    try {
+      var body = actions.getJsonBody(req, res);
+  
+      if (body === undefined) {
+        return;
       }
-      else if (typeof example !== "object") {
-        actions.badParameter(req, res, "example");
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        var result = collection.byExample(example).limit(1);
+        var example = body.example;
 
-        if (result.hasNext()) {
-          actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (typeof example !== "object") {
+          actions.badParameter(req, res, "example");
         }
         else {
-          actions.resultNotFound(req, res, "no match");
+          var result = collection.byExample(example).limit(1);
+ 
+          if (result.hasNext()) {
+            actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
+          }
+          else {
+            actions.resultNotFound(req, res, "no match");
+          }
         }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -520,42 +525,42 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
+    try {
+      var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var limit = body.limit;
-      var skip = body.skip;
-      var name = body.collection;
-      var example = body.example;
-      var index = body.index;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+      if (body === undefined) {
+        return;
       }
-      else if (typeof example !== "object") {
-        actions.badParameter(req, res, "example");
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        try {
+        var limit = body.limit;
+        var skip = body.skip;
+        var name = body.collection;
+        var example = body.example;
+        var index = body.index;
+
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (typeof example !== "object") {
+          actions.badParameter(req, res, "example");
+        }
+        else {
           var result = collection.BY_EXAMPLE_HASH(index, example, skip, limit);
 
           actions.resultOk(req, res, actions.HTTP_OK, result);
         }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
@@ -600,33 +605,33 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    var body = actions.getJsonBody(req, res);
+    try {
+      var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
+      if (body === undefined) {
+        return;
+      }
 
-    if (req.requestType != actions.PUT) {
-      actions.resultUnsupported(req, res);
-    }
-    else {
-      var limit = body.limit;
-      var skip = body.skip;
-      var name = body.collection;
-      var attribute = body.attribute;
-      var left = body.left;
-      var right = body.right;
-      var closed = body.closed;
-
-      var name = body.collection;
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
-
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
       }
       else {
-        try {
+        var limit = body.limit;
+        var skip = body.skip;
+        var name = body.collection;
+        var attribute = body.attribute;
+        var left = body.left;
+        var right = body.right;
+        var closed = body.closed;
+
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else {
           var result;
 
           if (closed) {
@@ -646,10 +651,10 @@ actions.defineHttp({
 
           actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
         }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
       }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });
