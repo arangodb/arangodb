@@ -299,11 +299,15 @@ ProgramOptions::~ProgramOptions () {
   }
 
   for (map<string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();  i != _valuesVector.end();  ++i) {
-    TRI_FreeVectorString(TRI_CORE_MEM_ZONE, i->second);
+    if ((*i).second != 0) {
+      TRI_FreeVectorString(TRI_CORE_MEM_ZONE, (*i).second);
+    }
   }
 
   for (map<string, bool*>::iterator i = _valuesBool.begin();  i != _valuesBool.end();  ++i) {
-    TRI_Free(TRI_CORE_MEM_ZONE, i->second);
+    if ((*i).second != 0) {
+      TRI_Free(TRI_CORE_MEM_ZONE, (*i).second);
+    }
   }
 }
 

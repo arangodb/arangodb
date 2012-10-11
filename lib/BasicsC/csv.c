@@ -203,7 +203,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
         parser->_nMemmove++;
       }
 
-      // rellay not enough room
+      // really not enough room
       else {
         l2 = parser->_stop - parser->_start;
         l3 = parser->_end - parser->_begin + length;
@@ -363,7 +363,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           if (ptr < parser->_stop) {
 
             // found separator
-            if (strstr(ptr, parser->_separator) == ptr) {
+            if (ptr + parser->_separatorLength < parser->_stop && memcmp(ptr, parser->_separator, parser->_separatorLength) == 0) {
               *qtr = '\0';
 
               parser->add(parser, parser->_start, parser->_row, parser->_column, false);
@@ -417,7 +417,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
             }
 
             // found separator
-            if (strstr(ptr, parser->_separator) == ptr) {
+            if (ptr + parser->_separatorLength < parser->_stop && memcmp(ptr, parser->_separator, parser->_separatorLength) == 0) {
               *qtr = '\0';
 
               parser->add(parser, parser->_start, parser->_row, parser->_column, true);
