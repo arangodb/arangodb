@@ -140,44 +140,41 @@ actions.defineHttp({
   });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system time
+/// @fn JSF_GET_admin_time
+/// @brief returns the system time
+///
+/// @RESTHEADER{GET /_admin/time,returns the system time}
+///
+/// @REST{GET /_admin/time}
+///
+/// The call returns an object with the attribute @LIT{time}. This contains the
+/// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
-
-function GET_time (req, res) {
-  actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
-}
-
-actions.defineHttp({
-  url : "_api/time",
-  context : "api",
-  prefix : false,
-  callback : GET_time
-});
 
 actions.defineHttp({
   url : "_admin/time",
   context : "admin",
   prefix : false,
-  callback : GET_time
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns V8 version
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_v8_version (req, res) {
-  actions.resultOk(req, res, actions.HTTP_OK, { version : "V8" });
-}
-
-actions.defineHttp({
-  url : "_admin/v8-version",
-  context : "admin",
-  prefix : false,
-  callback : GET_v8_version
-});
-
-////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_echo
 /// @brief returns the request
+///
+/// @RESTHEADER{GET /_admin/echo,returns the current request}
+///
+/// @REST{GET /_admin/echo}
+///
+/// The call returns an object with the following attributes:
+///
+/// - @LIT{headers}: a list of HTTP headers received
+///
+/// - @LIT{requestType}: the HTTP request method (e.g. GET)
+///
+/// - @LIT{parameters}: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -234,139 +231,6 @@ actions.defineHttp({
       try {
         result = {};
         result.system = SYS_PROCESS_STAT();
-
-        actions.resultOk(req, res, actions.HTTP_OK, result);
-      }
-      catch (err) {
-        actions.resultError(req, res, err);
-      }
-    }
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_config_description
-/// @brief returns configuration description
-///
-/// @RESTHEADER{GET /_admin/config/description,reads the configuration desciption}
-///
-/// @REST{GET /_admin/config/desciption}
-///
-/// The call returns an object describing the configuration.
-////////////////////////////////////////////////////////////////////////////////
-
-  actions.defineHttp({
-    url : "_admin/config/description",
-    context : "admin",
-
-    callback : function (req, res) {
-      try {
-        result = {
-          database : {
-            name : "Database",
-            type : "section",
-
-            path : {
-              name : "Path",
-              type : "string",
-              readonly : true
-            },
-
-            access : {
-              name : "Combined Access",
-              type : "string",
-              readonly : true
-            }
-          },
-
-          logging : {
-            name : "Logging",
-            type : "section",
-
-            level : {
-              name : "Log Level",
-              type : "pull-down",
-              values : [ "fatal", "error", "warning", "info", "debug", "trace" ]
-            },
-
-            syslog : {
-              name : "Use Syslog",
-              type : "boolean"
-            },
-
-            bufferSize : {
-              name : "Log Buffer Size",
-              type : "integer"
-            },
-
-            output : {
-              name : "Output",
-              type : "section",
-
-              file : {
-                name : "Log File",
-                type : "string",
-                readonly : true
-              }
-            }
-          }
-        };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result);
-      }
-      catch (err) {
-        actions.resultError(req, res, err);
-      }
-    }
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_config_configuration
-/// @brief returns configuration
-///
-/// @RESTHEADER{GET /_admin/config/configuration,reads the configuration}
-///
-/// @REST{GET /_admin/config/configuration}
-///
-/// The call returns an object containing configuration.
-////////////////////////////////////////////////////////////////////////////////
-
-  actions.defineHttp({
-    url : "_admin/config/configuration",
-    context : "admin",
-
-    callback : function (req, res) {
-      try {
-        result = {
-          database : {
-            path : {
-              value : "/tmp/emil/vocbase"
-            },
-
-            access : {
-              value : "localhost:8529"
-            }
-          },
-
-          logging : {
-            level : {
-              value : "info"
-            },
-
-            syslog : {
-              value : true
-            },
-
-            bufferSize : {
-              value : 100
-            },
-
-            output : {
-              file : {
-                value : "/var/log/message/arango.log"
-              }
-            }
-          }
-        };
 
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }

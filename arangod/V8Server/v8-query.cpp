@@ -35,6 +35,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
+#include "VocBase/edge-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS

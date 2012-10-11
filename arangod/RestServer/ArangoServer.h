@@ -43,9 +43,7 @@ namespace triagens {
     class ApplicationEndpointServer;
     class ApplicationScheduler;
     class HttpServer;
-#ifdef TRI_OPENSSL_VERSION
     class HttpsServer;
-#endif
   }
 
   namespace admin {

@@ -410,7 +410,7 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
 
   if (deescape) {
     size_t outLength;
-    copy = TRI_UnescapeUtf8String(value, length, &outLength);
+    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, length, &outLength);
   }
   else {
     copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, value);

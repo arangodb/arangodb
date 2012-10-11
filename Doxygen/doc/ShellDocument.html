@@ -24,7 +24,9 @@
 <li>
 <a class="el" href="ShellDocument.html#ShellDocumentCreate">collection.save</a> </li>
 <li>
-<a class="el" href="ShellDocument.html#ShellDocumentUpdate">collection.replace</a> </li>
+<a class="el" href="ShellDocument.html#ShellDocumentReplace">collection.replace</a> </li>
+<li>
+<a class="el" href="ShellDocument.html#ShellDocumentUpdate">collection.update</a> </li>
 <li>
 <a class="el" href="ShellDocument.html#ShellDocumentDelete">collection.remove</a> </li>
 </ul>
@@ -34,7 +36,9 @@
 <li>
 <a class="el" href="ShellDocument.html#ShellDocumentDbRead">db._document</a> </li>
 <li>
-<a class="el" href="ShellDocument.html#ShellDocumentDbUpdate">db._replace</a> </li>
+<a class="el" href="ShellDocument.html#ShellDocumentDbReplace">db._replace</a> </li>
+<li>
+<a class="el" href="ShellDocument.html#ShellDocumentDbUpdate">db._update</a> </li>
 <li>
 <a class="el" href="ShellDocument.html#ShellDocumentDbDelete">db._remove</a> </li>
 </ul>
@@ -109,7 +113,7 @@ JavaScript exception in file '(arango)' at 1,12:
 !db.example.document("12345");
 !           ^
 </pre></div>  <p><a class="anchor" id="ShellDocumentCreate"></a> <p>This function makes the distinction between document and edge collections and dispatches the request to the collection's specialised save function </p>
-<p><a class="anchor" id="ShellDocumentUpdate"></a> <hr/>
+<p><a class="anchor" id="ShellDocumentReplace"></a> <hr/>
 <code><b><em>collection</em>.replace(<em>document</em>, <em>data</em>)</b></code><hr/>
  Replaces an existing <em>document</em>. The <em>document</em> must be a document in the current collection. This document is then replaced with the <em>data</em> given as second argument.</p>
 <p>The method returns a document with the attributes <code>_id</code>, <code>_rev</code> and <code>_oldRev</code>. The attribute <code>_id</code> contains the document handle of the updated document, the attribute <code>_rev</code> contains the document revision of the updated document, the attribute <code>_oldRev</code> contains the revision of the old (now replaced) document.</p>
@@ -117,6 +121,9 @@ JavaScript exception in file '(arango)' at 1,12:
 <hr/>
 <code><b><em>collection</em>.replace(<em>document</em>, <em>data</em>, true)</b></code><hr/>
  As before, but in case of a conflict, the conflict is ignored and the old document is overwritten.</p>
+<hr/>
+<code><b><em>collection</em>.replace(<em>document</em>, <em>data</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document replacement operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <hr/>
 <code><b><em>collection</em>.replace(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
@@ -136,12 +143,78 @@ arango&gt; a4 = db.example.replace(a1, { a : 4 }, true);
 </pre></div> <p>Use a document handle:</p>
 <div class="fragment"><pre class="fragment">arango&gt; a5 = db.example.replace("1432124/3903044", { a : 5 });
 { "_id" : "1432124/3903044", "_rev" : 4099652, "_oldRev" : 4034116 }
+</pre></div>  <p><a class="anchor" id="ShellDocumentUpdate"></a> <hr/>
+<code><b><em>collection</em>.update(<em>document</em>, <em>data</em>, <em>overwrite</em>, <em>keepNull</em>, <em>waitForSync</em>)</b></code><hr/>
+ Updates an existing <em>document</em>. The <em>document</em> must be a document in the current collection. This document is then patched with the <em>data</em> given as second argument. The optional <em>overwrite</em> parameter can be used to control the behavior in case of version conflicts (see below). The optional <em>keepNull</em> parameter can be used to modify the behavior when handling <code>null</code> values. Normally, <code>null</code> values are stored in the database. By setting the <em>keepNull</em> parameter to <code>false</code>, this behavior can be changed so that all attributes in <em>data</em> with <code>null</code> values will be removed from the target document.</p>
+<p>The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document update operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
+<p>The method returns a document with the attributes <code>_id</code>, <code>_rev</code> and <code>_oldRev</code>. The attribute <code>_id</code> contains the document handle of the updated document, the attribute <code>_rev</code> contains the document revision of the updated document, the attribute <code>_oldRev</code> contains the revision of the old (now replaced) document.</p>
+<p>If there is a conflict, i. e. if the revision of the <code>document</code> does not match the revision in the collection, then an error is thrown.</p>
+<hr/>
+<code><b><em>collection</em>.update(<em>document</em>, <em>data</em>, true)</b></code><hr/>
+ As before, but in case of a conflict, the conflict is ignored and the old document is overwritten.</p>
+<hr/>
+<code><b><em>collection</em>.update(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
+ As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
+<p><b>Examples</b><br/>
+</p>
+<p>Create and update a document:</p>
+<div class="fragment"><pre class="fragment">arango&gt; a1 = db.example.save({"a" : 1});
+{ error : false, _id : "17170323/18612115", _rev : 18612115 }
+arango&gt; a2 = db.example.update(a1, {"b" : 2, "c" : 3});
+{ error : false, _id : "17170323/18612115", _rev : 18874259 }
+arango&gt; a3 = db.example.update(a1, {"d" : 4});
+JavaScript exception in file 'client/client.js' at 1876,7: [ArangoError 1200: precondition failed]
+!      throw new ArangoError(requestResult);
+!      ^
+arango&gt; a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
+{ error : false, _id : "17170323/18612115", _rev : 19267475 }
+arango&gt; db.example.document(a4);
+{ a : 1, b : 2, c : 3, e : 5, f : 6, _id : "17170323/18612115", _rev : 19267475 }
+
+arango&gt; a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
+{ error : false, _id : "17170323/18612115", _rev : 19333011 }
+arango&gt; db.example.document(a5);
+{ a : 1, b : 2, c : 9, e : 42, f : 6, _id : "17170323/18612115", _rev : 19333011 }
+</pre></div> <p>Use a document handle:</p>
+<div class="fragment"><pre class="fragment">arango&gt; a6 = db.example.update("17170323/18612115", { "x" : 1, "y" : 2 });
+{ error : false, _id : "17170323/18612115", _rev : 19595155 }
+</pre></div> <p>Use the keepNull parameter to remove attributes with null values:</p>
+<div class="fragment"><pre class="fragment">arango&gt; db.example.save({"a" : 1});
+{ error : false, _id : "17170323/19988371", _rev : 19988371 }
+arango&gt; db.example.update("17170323/19988371", { "b" : null, "c" : null, "d" : 3 });
+{ error : false, _id : "17170323/19988371", _rev : 20119443 }
+arango&gt; db.example.document("17170323/19988371");
+{ b : null, c : null, a : 1, d : 3, _id : "17170323/19988371", _rev : 20119443 }
+
+arango&gt; db.example.update("17170323/19988371", { "a" : null }, false, false);
+{ error : false, _id : "17170323/19988371", _rev : 20250515 }
+arango&gt; db.example.document("17170323/19988371");
+{ b : null, c : null, d : 3, _id : "17170323/19988371", _rev : 20250515 }
+arango&gt; db.example.update("17170323/19988371", { "b" : null, "c": null, "d": null }, false, false);
+{ error : false, _id : "17170323/19988371", _rev : 20381587 }
+arango&gt; db.example.document("17170323/19988371");
+{ _id : "17170323/19988371", _rev : 20381587 }
+</pre></div> <p>Patching array values:</p>
+<div class="fragment"><pre class="fragment">arango&gt; db.example.save({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
+{ error : false, _id : "17170323/20774803", _rev : 20774803 }
+arango&gt; db.example.update("17170323/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
+{ error : false, _id : "17170323/20774803", _rev : 21168019 }
+arango&gt; db.example.document("17170323/20774803");
+{ a : { one : 1, two : 2, three : 3, four : 4 }, b : { b1 : 1 }, _id : "17170323/20774803", _rev : 21168019 }
+
+arango&gt; db.example.update("17170323/20774803", {"a" : { "one" : null }, "b" : null }, false, false);
+{ error : false, _id : "17170323/20774803", _rev : 21364627 }
+arango&gt; db.example.document("17170323/20774803");
+{ a : { two : 2, three : 3, four : 4 }, _id : "17170323/20774803", _rev : 21364627 }
 </pre></div>  <p><a class="anchor" id="ShellDocumentDelete"></a> <hr/>
 <code><b><em>collection</em>.remove(<em>document</em>)</b></code><hr/>
  Deletes a document. If there is revision mismatch, then an error is thrown.</p>
 <hr/>
 <code><b><em>collection</em>.remove(<em>document</em>, true)</b></code><hr/>
  Deletes a document. If there is revision mismatch, then mismatch is ignored and document is deleted. The function returns <code>true</code> if the document existed and was deleted. It returns <code>false</code>, if the document was already deleted.</p>
+<hr/>
+<code><b><em>collection</em>.remove(<em>document</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document deletion operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <hr/>
 <code><b><em>collection</em>.remove(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
@@ -187,7 +260,7 @@ Database Methods</h3>
 <p>Returns the document:</p>
 <div class="fragment"><pre class="fragment">arango&gt; db._document("1432124/3053939");
 { "_id" : "1432124/3053939", "_rev" : 3053939, "Hallo" : "World" }
-</pre></div> <p><a class="anchor" id="ShellDocumentDbUpdate"></a> <hr/>
+</pre></div> <p><a class="anchor" id="ShellDocumentDbReplace"></a> <hr/>
 <code><b><em>db</em>._replace(<em>document</em>, <em>data</em>)</b></code><hr/>
  The method returns a document with the attributes <code>_id</code>, <code>_rev</code> and <code>_oldRev</code>. The attribute <code>_id</code> contains the document handle of the updated document, the attribute <code>_rev</code> contains the document revision of the updated document, the attribute <code>_oldRev</code> contains the revision of the old (now replaced) document.</p>
 <p>If there is a conflict, i. e. if the revision of the <code>document</code> does not match the revision in the collection, then an error is thrown.</p>
@@ -195,11 +268,14 @@ Database Methods</h3>
 <code><b><em>db</em>._replace(<em>document</em>, <em>data</em>, true)</b></code><hr/>
  As before, but in case of a conflict, the conflict is ignored and the old document is overwritten.</p>
 <hr/>
+<code><b><em>db</em>._replace(<em>document</em>, <em>data</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document replacement operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
+<hr/>
 <code><b><em>db</em>._replace(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
 <p><b>Examples</b><br/>
 </p>
-<p>Create and update a document:</p>
+<p>Create and replace a document:</p>
 <div class="fragment"><pre class="fragment">arango&gt; a1 = db.example.save({ a : 1 });
 { "_id" : "116308/1717678", "_rev" : 1717678 }
 arango&gt; a2 = db._replace(a1, { a : 2 });
@@ -210,12 +286,40 @@ JavaScript exception in file '(arango)' at 1,9: [ArangoError 1200: conflict: can
 !        ^
 arango&gt; a4 = db.example.replace(a1, { a : 4 }, true);
 { "_id" : "116308/1717678", "_rev" : 1848750, "_oldRev" : 1783214 }
+</pre></div>  <p><a class="anchor" id="ShellDocumentDbUpdate"></a> <hr/>
+<code><b><em>db</em>._update(<em>document</em>, <em>data</em>, <em>overwrite</em>, <em>keepNull</em>, <em>waitForSync</em>)</b></code><hr/>
+ Updates an existing <em>document</em>. The <em>document</em> must be a document in the current collection. This document is then patched with the <em>data</em> given as second argument. The optional <em>overwrite</em> parameter can be used to control the behavior in case of version conflicts (see below). The optional <em>keepNull</em> parameter can be used to modify the behavior when handling <code>null</code> values. Normally, <code>null</code> values are stored in the database. By setting the <em>keepNull</em> parameter to <code>false</code>, this behavior can be changed so that all attributes in <em>data</em> with <code>null</code> values will be removed from the target document.</p>
+<p>The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document update operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
+<p>The method returns a document with the attributes <code>_id</code>, <code>_rev</code> and <code>_oldRev</code>. The attribute <code>_id</code> contains the document handle of the updated document, the attribute <code>_rev</code> contains the document revision of the updated document, the attribute <code>_oldRev</code> contains the revision of the old (now replaced) document.</p>
+<p>If there is a conflict, i. e. if the revision of the <code>document</code> does not match the revision in the collection, then an error is thrown.</p>
+<hr/>
+<code><b><em>db</em>._update(<em>document</em>, <em>data</em>, true)</b></code><hr/>
+ As before, but in case of a conflict, the conflict is ignored and the old document is overwritten.</p>
+<hr/>
+<code><b><em>db</em>._update(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
+ As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
+<p><b>Examples</b><br/>
+</p>
+<p>Create and update a document:</p>
+<div class="fragment"><pre class="fragment">arango&gt; a1 = db.example.save({ a : 1 });
+{ error : false, _id : "17170323/19660691", _rev : 19660691 }
+arango&gt; a2 = db._update(a1, { b : 2 });
+{ error : false, _id : "17170323/19660691", _rev : 19791763 }
+arango&gt; a3 = db._update(a1, { c : 3 });
+JavaScript exception in file 'client/client.js' at 2364,13: [ArangoError 1200: precondition failed]
+!      throw new ArangoError(requestResult);
+!            ^
+arango&gt; a4 = db.example.update(a1, { c : 3 }, true);
+{ error : false, _id : "17170323/19660691", _rev : 19857299 }
 </pre></div>  <p><a class="anchor" id="ShellDocumentDbDelete"></a> <hr/>
 <code><b><em>db</em>._remove(<em>document</em>)</b></code><hr/>
  Deletes a document. If there is revision mismatch, then an error is thrown.</p>
 <hr/>
 <code><b><em>db</em>._remove(<em>document</em>, true)</b></code><hr/>
  Deletes a document. If there is revision mismatch, then mismatch is ignored and document is deleted. The function returns <code>true</code> if the document existed and was deleted. It returns <code>false</code>, if the document was already deleted.</p>
+<hr/>
+<code><b><em>db</em>._remove(<em>document</em>, true, <em>waitForSync</em>)</b></code><hr/>
+ The optional <em>waitForSync</em> parameter can be used to force synchronisation of the document deletion operation to disk even in case that the <code>waitForSync</code> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <code>true</code>. If the <em>waitForSync</em> parameter is not specified or set to <code>false</code>, then the collection's default <code>waitForSync</code> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <code>waitForSync</code> value of <code>true</code>.</p>
 <hr/>
 <code><b><em>db</em>._remove(<em>document-handle</em>, <em>data</em>)</b></code><hr/>
  As before. Instead of document a <em>document-handle</em> can be passed as first argument.</p>
