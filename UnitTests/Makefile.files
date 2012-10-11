@@ -24,7 +24,7 @@ PROTO = http
 
 .PHONY: unittests unittests-brief unittests-verbose
 
-unittests: unittests-verbose unittests-brief
+unittests: all unittests-verbose unittests-brief
 
 unittests-brief: \
 	unittests-make \
@@ -34,6 +34,7 @@ unittests-brief: \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
+	unittests-arangob \
 	unittests-import 
 
 unittests-verbose:
@@ -134,7 +135,7 @@ unittests-make:
 
 .PHONY: unittests-boost
 
-if ENABLE_BOOST_TEST
+if ENABLE_MAINTAINER_MODE
 
 unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 	@echo
@@ -155,11 +156,14 @@ UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_basics_suite_SOURCES = \
 	UnitTests/Runner.cpp \
+	UnitTests/Philadelphia/csv-test.cpp \
 	UnitTests/Philadelphia/json-test.cpp \
 	UnitTests/Philadelphia/json-utilities-test.cpp \
 	UnitTests/Philadelphia/hashes-test.cpp \
+	UnitTests/Philadelphia/mersenne-test.cpp \
 	UnitTests/Philadelphia/associative-pointer-test.cpp \
 	UnitTests/Philadelphia/string-buffer-test.cpp \
+	UnitTests/Philadelphia/string-utf8-normalize-test.cpp \
 	UnitTests/Philadelphia/string-utf8-test.cpp \
 	UnitTests/Philadelphia/string-test.cpp \
 	UnitTests/Philadelphia/vector-pointer-test.cpp \
@@ -186,7 +190,7 @@ unittests-boost:
 	@echo "================================================================================"
 	@echo
 
-	@echo "enable unit-testing with 'configure --with-boost-test'"
+	@echo "to enable unit-testing, configure with --enable-maintainer-mode"
 
 	@echo
 endif
@@ -200,13 +204,17 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-compactor.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
+               @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
                @top_srcdir@/js/common/tests/shell-cap-constraint.js \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js
 
-SHELL_SERVER = $(SHELL_COMMON)
+SHELL_SERVER = $(SHELL_COMMON) \
+               @top_srcdir@/js/common/tests/shell-graph.js \
+               @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
+               @top_srcdir@/js/common/tests/shell-graph-measurement.js
 
 .PHONY: unittests-shell-server
 
@@ -235,6 +243,7 @@ unittests-shell-server:
 
 SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-ref.js \
 			@top_srcdir@/js/server/tests/ahuacatl-escaping.js \
 			@top_srcdir@/js/server/tests/ahuacatl-functions.js \
 			@top_srcdir@/js/server/tests/ahuacatl-variables.js \
@@ -327,35 +336,6 @@ unittests-shell-client:
 	@echo
 
 ################################################################################
-## IMPORT TESTS
-################################################################################
-
-.PHONY: unittests-import
-
-unittests-import:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
-
-	@echo
-	@echo "================================================================================"
-	@echo "<< IMPORT TESTS                                                             >>"
-	@echo "================================================================================"
-	@echo
-	
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
-	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
-	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-teardown.js || test "x$(FORCE)" == "x1"
-
-	kill `cat $(PIDFILE)`
-
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
-
-	@rm -rf "$(VOCDIR)"
-	@echo
-
-################################################################################
 ## HTTP SERVER TESTS
 ################################################################################
 
@@ -406,6 +386,35 @@ unittests-ssl-server:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
+################################################################################
+## IMPORT TESTS
+################################################################################
+
+.PHONY: unittests-import
+
+unittests-import:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< IMPORT TESTS                                                             >>"
+	@echo "================================================================================"
+	@echo
+	
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
+	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
+	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
+	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv --eol "\r\n" || test "x$(FORCE)" == "x1"; done
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-teardown.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 ################################################################################
 ## BITARRAY INDEXES TESTS
@@ -432,3 +441,39 @@ unittests-bitarray-index:
 
 	@ rm -rf "$(VOCDIR)"
 	@echo
+
+################################################################################
+## ARANGOB TESTS
+################################################################################
+
+.PHONY: unittests-arangob
+
+if ENABLE_ARANGOB
+
+unittests-arangob:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< ARANGOB TESTS                                                              >>"
+	@echo "================================================================================"
+	@echo
+	
+	$(VALGRIND) @builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 1000 --batch-size 16 --concurrency 2 --test version || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 0 --concurrency 1 --test version || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 10 --concurrency 2 --test document --complexity 1 || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+else
+
+unittests-arangob:
+	@echo
+
+endif

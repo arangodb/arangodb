@@ -1,2750 +1,2634 @@
-static string JS_client_client = 
-  "/*jslint indent: 2,\n"
-  "         nomen: true,\n"
-  "         maxlen: 100,\n"
-  "         sloppy: true,\n"
-  "         vars: true,\n"
-  "         white: true,\n"
-  "         plusplus: true */\n"
-  "/*global require, arango, db, edges, ModuleCache, Module */\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief ArangoShell client API\n"
-  "///\n"
-  "/// @file\n"
-  "///\n"
-  "/// DISCLAIMER\n"
-  "///\n"
-  "/// Copyright 2012 triagens GmbH, Cologne, Germany\n"
-  "///\n"
-  "/// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
-  "/// you may not use this file except in compliance with the License.\n"
-  "/// You may obtain a copy of the License at\n"
-  "///\n"
-  "///     http://www.apache.org/licenses/LICENSE-2.0\n"
-  "///\n"
-  "/// Unless required by applicable law or agreed to in writing, software\n"
-  "/// distributed under the License is distributed on an \"AS IS\" BASIS,\n"
-  "/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"
-  "/// See the License for the specific language governing permissions and\n"
-  "/// limitations under the License.\n"
-  "///\n"
-  "/// Copyright holder is triAGENS GmbH, Cologne, Germany\n"
-  "///\n"
-  "/// @author Achim Brandt\n"
-  "/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                       ArangoError\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                      constructors and destructors\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief constructor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function ArangoError (error) {\n"
-  "  if (error !== undefined) {\n"
-  "    this.error = error.error;\n"
-  "    this.code = error.code;\n"
-  "    this.errorNum = error.errorNum;\n"
-  "    this.errorMessage = error.errorMessage;\n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief prints an error\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoError.prototype._PRINT = function() {\n"
-  "    internal.output(this.toString());\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief toString function\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoError.prototype.toString = function() {\n"
-  "    var result = \"\";\n"
-  "\n"
-  "    if (internal.COLOR_OUTPUT) {\n"
-  "      result = internal.COLOR_BRIGHT + \"Error: \" + internal.COLOR_OUTPUT_RESET;\n"
-  "    }\n"
-  "    else  {\n"
-  "      result = \"Error: \";\n"
-  "    }\n"
-  "\n"
-  "    result += \"[\" + this.code + \":\" + this.errorNum + \"] \" + this.errorMessage;\n"
-  "\n"
-  "    return result;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief prints an error\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoError.prototype.toString = function() {\n"
-  "    var errorNum = this.errorNum;\n"
-  "    var errorMessage = this.errorMessage;\n"
-  "\n"
-  "    return \"[ArangoError \" + errorNum + \": \" + errorMessage + \"]\";\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 Module \"arangosh\"\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup V8ModuleArangosh\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "ModuleCache[\"/arangosh\"] = new Module(\"/arangosh\");\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = ModuleCache[\"/arangosh\"].exports;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private variables\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief help texts\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.HELP = \"\";\n"
-  "  client.helpQueries = \"\";\n"
-  "  client.helpArangoDatabase = \"\";\n"
-  "  client.helpArangoCollection = \"\";\n"
-  "  client.helpArangoQueryCursor = \"\";\n"
-  "  client.helpArangoStatement = \"\";\n"
-  "  client.helpExtended = \"\";\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a formatted type string for object\n"
-  "/// \n"
-  "/// If the object has an id, it will be included in the string.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.getIdString = function (object, typeName) {\n"
-  "    var result = \"[object \" + typeName;\n"
-  "  \n"
-  "    if (object._id) {\n"
-  "      result += \":\" + object._id;\n"
-  "    }\n"
-  "    else if (object.data && object.data._id) {\n"
-  "      result += \":\" + object.data._id;\n"
-  "    }\n"
-  "\n"
-  "    result += \"]\";\n"
-  "\n"
-  "    return result;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief handles error results\n"
-  "/// \n"
-  "/// throws an exception in case of an an error\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.checkRequestResult = function (requestResult) {\n"
-  "    if (requestResult === undefined) {\n"
-  "      requestResult = {\n"
-  "        \"error\" : true,\n"
-  "        \"code\"  : 0,\n"
-  "        \"errorNum\" : 0,\n"
-  "        \"errorMessage\" : \"Unknown error. Request result is empty\"\n"
-  "      };\n"
-  "    }\n"
-  "  \n"
-  "    if (requestResult.error !== undefined && requestResult.error) {    \n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief create a formatted headline text \n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.createHelpHeadline = function (text) {\n"
-  "    var i;\n"
-  "    var p = \"\";\n"
-  "    var x = parseInt(Math.abs(78 - text.length) / 2);\n"
-  "\n"
-  "    for (i = 0; i < x; ++i) {\n"
-  "      p += \"-\";\n"
-  "    }\n"
-  "  \n"
-  "    return \"\\n\" + p + \" \" + text + \" \" + p + \"\\n\";\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                  public functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief turn off pretty printing\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function print_plain (data) {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "  var p = internal.PRETTY_PRINT;\n"
-  "  internal.PRETTY_PRINT = false;\n"
-  "\n"
-  "  var c = internal.COLOR_OUTPUT;\n"
-  "  internal.COLOR_OUTPUT = false;\n"
-  "  \n"
-  "  try {\n"
-  "    internal.print(data);\n"
-  "\n"
-  "    internal.PRETTY_PRINT = p;\n"
-  "    internal.COLOR_OUTPUT = c;\n"
-  "  }\n"
-  "  catch (e) {\n"
-  "    internal.PRETTY_PRINT = p;\n"
-  "    internal.COLOR_OUTPUT = c;\n"
-  "\n"
-  "    throw e.message;    \n"
-  "  }  \n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief start pretty printing\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function start_pretty_print () {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "  if (! internal.PRETTY_PRINT) {\n"
-  "    internal.print(\"using pretty printing\");\n"
-  "    internal.PRETTY_PRINT = true;\n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief stop pretty printing\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function stop_pretty_print () {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "  if (internal.PRETTY_PRINT) {\n"
-  "    internal.PRETTY_PRINT = false;\n"
-  "    internal.print(\"stop pretty printing\");\n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief start paging\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function start_pager () {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "  internal.start_pager();\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief stop paging\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function stop_pager () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  \n"
-  "  internal.stop_pager();\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief start pretty printing with optional color\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function start_color_print (color) {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "  if (typeof(color) === \"string\") {\n"
-  "    internal.COLOR_OUTPUT_DEFAULT = color;\n"
-  "  }\n"
-  "  else {\n"
-  "    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;\n"
-  "  }\n"
-  "\n"
-  "  internal.COLOR_OUTPUT = true;\n"
-  "\n"
-  "  internal.print(\"start \"\n"
-  "                 + internal.COLOR_OUTPUT_DEFAULT\n"
-  "                 + \"color\" \n"
-  "                 + internal.COLOR_OUTPUT_RESET\n"
-  "                 + \" printing\");\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief stop pretty printing\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function stop_color_print () {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "  internal.print(\"stop color printing\");\n"
-  "  internal.COLOR_OUTPUT = false;\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief print the overall help\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function help () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = require(\"arangosh\");\n"
-  "\n"
-  "  internal.print(client.HELP);\n"
-  "  internal.print(client.helpQueries);\n"
-  "  internal.print(client.helpArangoDatabase);\n"
-  "  internal.print(client.helpArangoCollection);\n"
-  "  internal.print(client.helpArangoStatement);\n"
-  "  internal.print(client.helpArangoQueryCursor);\n"
-  "  internal.print(client.helpExtended);\n"
-  "}\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 Module \"internal\"\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief be quiet\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  internal.ARANGO_QUIET = ARANGO_QUIET;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief log function\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  internal.log = function(level, msg) {\n"
-  "    internal.output(level, \": \", msg, \"\\n\");\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 ArangoQueryCursor\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                      constructors and destructors\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief constructor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function ArangoQueryCursor (database, data) {\n"
-  "  this._database = database;\n"
-  "  this.data = data;\n"
-  "  this._hasNext = false;\n"
-  "  this._hasMore = false;\n"
-  "  this._pos = 0;\n"
-  "  this._count = 0;\n"
-  "  this._total = 0;\n"
-  "  \n"
-  "  if (data.result !== undefined) {\n"
-  "    this._count = data.result.length;\n"
-  "    \n"
-  "    if (this._pos < this._count) {\n"
-  "      this._hasNext = true;\n"
-  "    }\n"
-  "    \n"
-  "    if (data.hasMore !== undefined && data.hasMore) {\n"
-  "      this._hasMore = true;\n"
-  "    }    \n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = require(\"arangosh\");\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief help for ArangoQueryCursor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.helpArangoQueryCursor = client.createHelpHeadline(\"ArangoQueryCursor help\") +\n"
-  "  'ArangoQueryCursor constructor:                                      ' + \"\\n\" +\n"
-  "  ' > cu1 = qi1.execute();                                             ' + \"\\n\" +\n"
-  "  'Functions:                                                          ' + \"\\n\" +\n"
-  "  '  hasNext();                            returns true if there       ' + \"\\n\" +\n"
-  "  '                                        are more results            ' + \"\\n\" +\n"
-  "  '  next();                               returns the next document   ' + \"\\n\" +\n"
-  "  '  elements();                           returns all documents       ' + \"\\n\" +\n"
-  "  '  _help();                              this help                   ' + \"\\n\" +\n"
-  "  'Attributes:                                                         ' + \"\\n\" +\n"
-  "  '  _database                             database object             ' + \"\\n\" +\n"
-  "  'Example:                                                            ' + \"\\n\" +\n"
-  "  ' > st = db._createStatement({ \"query\" : \"for c in coll return c\" });' + \"\\n\" +\n"
-  "  ' > c = st.execute();                                                ' + \"\\n\" +\n"
-  "  ' > documents = c.elements();                                        ' + \"\\n\" +\n"
-  "  ' > c = st.execute();                                                ' + \"\\n\" +\n"
-  "  ' > while (c.hasNext()) { print( c.next() ); }                       ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief print the help for the cursor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype._help = function () {\n"
-  "    internal.print(client.helpArangoQueryCursor);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a string representation of the cursor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype.toString = function () {  \n"
-  "    return client.getIdString(this, \"ArangoQueryCursor\");\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                  public functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return whether there are more results available in the cursor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype.hasNext = function () {\n"
-  "    return this._hasNext;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return the next result document from the cursor\n"
-  "///\n"
-  "/// If no more results are available locally but more results are available on\n"
-  "/// the server, this function will make a roundtrip to the server\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype.next = function () {\n"
-  "    if (!this._hasNext) {\n"
-  "      throw \"No more results\";\n"
-  "    }\n"
-  "\n"
-  "    var result = this.data.result[this._pos];\n"
-  "    this._pos++;\n"
-  "\n"
-  "    // reached last result\n"
-  "    if (this._pos === this._count) {\n"
-  "      this._hasNext = false;\n"
-  "      this._pos = 0;\n"
-  "\n"
-  "      if (this._hasMore && this.data.id) {\n"
-  "        this._hasMore = false;\n"
-  "\n"
-  "        // load more results      \n"
-  "        var requestResult = this._database._connection.PUT(\n"
-  "          \"/_api/cursor/\"+ encodeURIComponent(this.data.id),\n"
-  "          \"\");\n"
-  "\n"
-  "        client.checkRequestResult(requestResult);\n"
-  "\n"
-  "        this.data = requestResult;\n"
-  "        this._count = requestResult.result.length;\n"
-  "\n"
-  "        if (this._pos < this._count) {\n"
-  "          this._hasNext = true;\n"
-  "        }\n"
-  "\n"
-  "        if (requestResult.hasMore !== undefined && requestResult.hasMore) {\n"
-  "          this._hasMore = true;\n"
-  "        }                \n"
-  "      }    \n"
-  "    }\n"
-  "\n"
-  "    return result;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return all remaining result documents from the cursor\n"
-  "///\n"
-  "/// If no more results are available locally but more results are available on\n"
-  "/// the server, this function will make one or multiple roundtrips to the \n"
-  "/// server. Calling this function will also fully exhaust the cursor.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype.elements = function () {  \n"
-  "    var result = [];\n"
-  "\n"
-  "    while (this.hasNext()) { \n"
-  "      result.push( this.next() ); \n"
-  "    }\n"
-  "\n"
-  "    return result;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief explicitly dispose the cursor\n"
-  "///\n"
-  "/// Calling this function will mark the cursor as deleted on the server. It will\n"
-  "/// therefore make a roundtrip to the server. Using a cursor after it has been\n"
-  "/// disposed is considered a user error\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype.dispose = function () {\n"
-  "    if (!this.data.id) {\n"
-  "      // client side only cursor\n"
-  "      return;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._database._connection.DELETE(\n"
-  "      \"/_api/cursor/\"+ encodeURIComponent(this.data.id),\n"
-  "      \"\");\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    this.data.id = undefined;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return the total number of documents in the cursor\n"
-  "///\n"
-  "/// The number will remain the same regardless how much result documents have\n"
-  "/// already been fetched from the cursor.\n"
-  "///\n"
-  "/// This function will return the number only if the cursor was constructed \n"
-  "/// with the \"doCount\" attribute. Otherwise it will return undefined.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoQueryCursor.prototype.count = function () {\n"
-  "    if (!this.data.id) {\n"
-  "      throw \"cursor has been disposed\";\n"
-  "    }\n"
-  "\n"
-  "    return this.data.count;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                   ArangoStatement\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                      constructors and destructors\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief constructor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function ArangoStatement (database, data) {\n"
-  "  this._database = database;\n"
-  "  this._doCount = false;\n"
-  "  this._batchSize = null;\n"
-  "  this._bindVars = {};\n"
-  "  \n"
-  "  if (!(data instanceof Object)) {\n"
-  "    throw \"ArangoStatement needs initial data\";\n"
-  "  }\n"
-  "    \n"
-  "  if (data.query === undefined || data.query === \"\") {\n"
-  "    throw \"ArangoStatement needs a valid query attribute\";\n"
-  "  }\n"
-  "  this.setQuery(data.query);\n"
-  "\n"
-  "  if (data.count !== undefined) {\n"
-  "    this.setCount(data.count);\n"
-  "  }\n"
-  "  if (data.batchSize !== undefined) {\n"
-  "    this.setBatchSize(data.batchSize);\n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = require(\"arangosh\");\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief help for ArangoStatement\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.helpArangoStatement = client.createHelpHeadline(\"ArangoStatement help\") +\n"
-  "  'ArangoStatement constructor:                                        ' + \"\\n\" +\n"
-  "  ' > st = new ArangoStatement(db, { \"query\" : \"for ...\" });           ' + \"\\n\" +\n"
-  "  ' > st = db._createStatement({ \"query\" : \"for ...\" });               ' + \"\\n\" +\n"
-  "  'Functions:                                                          ' + \"\\n\" +\n"
-  "  '  bind(<key>, <value>);          bind single variable               ' + \"\\n\" +\n"
-  "  '  bind(<values>);                bind multiple variables            ' + \"\\n\" +\n"
-  "  '  setBatchSize(<max>);           set max. number of results         ' + \"\\n\" +\n"
-  "  '                                 to be transferred per roundtrip    ' + \"\\n\" +\n"
-  "  '  setCount(<value>);             set count flag (return number of   ' + \"\\n\" +\n"
-  "  '                                 results in \"count\" attribute)      ' + \"\\n\" +\n"
-  "  '  getBatchSize();                return max. number of results      ' + \"\\n\" +\n"
-  "  '                                 to be transferred per roundtrip    ' + \"\\n\" +\n"
-  "  '  getCount();                    return count flag (return number of' + \"\\n\" +\n"
-  "  '                                 results in \"count\" attribute)      ' + \"\\n\" +\n"
-  "  '  getQuery();                    return query string                ' + \"\\n\" +\n"
-  "  '  execute();                     execute query and return cursor    ' + \"\\n\" +\n"
-  "  '  _help();                       this help                          ' + \"\\n\" +\n"
-  "  'Attributes:                                                         ' + \"\\n\" +\n"
-  "  '  _database                      database object                    ' + \"\\n\" +\n"
-  "  'Example:                                                            ' + \"\\n\" +\n"
-  "  ' > st = db._createStatement({ \"query\" : \"for c in coll filter       ' + \"\\n\" +\n"
-  "  '                              c.x == @a && c.y == @b return c\" });  ' + \"\\n\" +\n"
-  "  ' > st.bind(\"a\", \"hello\");                                           ' + \"\\n\" +\n"
-  "  ' > st.bind(\"b\", \"world\");                                           ' + \"\\n\" +\n"
-  "  ' > c = st.execute();                                                ' + \"\\n\" +\n"
-  "  ' > print(c.elements());                                             ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief print the help for ArangoStatement\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype._help = function () {\n"
-  "    internal.print(client.helpArangoStatement);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a string representation of the statement\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.toString = function () {  \n"
-  "    return client.getIdString(this, \"ArangoStatement\");\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                  public functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief bind a parameter to the statement\n"
-  "///\n"
-  "/// This function can be called multiple times, once for each bind parameter.\n"
-  "/// All bind parameters will be transferred to the server in one go when \n"
-  "/// execute() is called.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.bind = function (key, value) {\n"
-  "    if (key instanceof Object) {\n"
-  "      if (value !== undefined) {\n"
-  "        throw \"invalid bind parameter declaration\";\n"
-  "      }\n"
-  "\n"
-  "      this._bindVars = key;\n"
-  "    }\n"
-  "    else if (typeof(key) === \"string\") {\n"
-  "      if (this._bindVars[key] !== undefined) {\n"
-  "        throw \"redeclaration of bind parameter\";\n"
-  "      }\n"
-  "\n"
-  "      this._bindVars[key] = value;\n"
-  "    }\n"
-  "    else if (typeof(key) === \"number\") {\n"
-  "      var strKey = String(parseInt(key));\n"
-  "\n"
-  "      if (strKey !== String(key)) {\n"
-  "        throw \"invalid bind parameter declaration\";\n"
-  "      }\n"
-  "\n"
-  "      if (this._bindVars[strKey] !== undefined) {\n"
-  "        throw \"redeclaration of bind parameter\";\n"
-  "      }\n"
-  "\n"
-  "      this._bindVars[strKey] = value;\n"
-  "    }\n"
-  "    else {\n"
-  "      throw \"invalid bind parameter declaration\";\n"
-  "    }\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return the bind variables already set\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.getBindVariables = function () {\n"
-  "    return this._bindVars;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief get the count flag for the statement\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.getCount = function () {\n"
-  "    return this._doCount;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief get the maximum number of results documents the cursor will return\n"
-  "/// in a single server roundtrip.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.getBatchSize = function () {\n"
-  "    return this._batchSize;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief get query string\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.getQuery = function () {\n"
-  "    return this._query;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief set the count flag for the statement\n"
-  "///\n"
-  "/// Setting the count flag will make the statement's result cursor return the\n"
-  "/// total number of result documents. The count flag is not set by default.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.setCount = function (bool) {\n"
-  "    this._doCount = bool ? true : false;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief set the maximum number of results documents the cursor will return\n"
-  "/// in a single server roundtrip.\n"
-  "/// The higher this number is, the less server roundtrips will be made when\n"
-  "/// iterating over the result documents of a cursor.\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.setBatchSize = function (value) {\n"
-  "    if (parseInt(value) > 0) {\n"
-  "      this._batchSize = parseInt(value);\n"
-  "    }\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief set the query string\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.setQuery = function (query) {\n"
-  "    this._query = query;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief parse a query and return the results\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.parse = function () {\n"
-  "    var body = {\n"
-  "      \"query\" : this._query,\n"
-  "    };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/query\",\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return true;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief execute the query\n"
-  "///\n"
-  "/// Invoking execute() will transfer the query and all bind parameters to the\n"
-  "/// server. It will return a cursor with the query results in case of success.\n"
-  "/// In case of an error, the error will be printed\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoStatement.prototype.execute = function () {\n"
-  "    var body = {\n"
-  "      \"query\" : this._query,\n"
-  "      \"count\" : this._doCount,\n"
-  "      \"bindVars\" : this._bindVars\n"
-  "    };\n"
-  "\n"
-  "    if (this._batchSize) {\n"
-  "      body[\"batchSize\"] = this._batchSize;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/cursor\",\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return new ArangoQueryCursor(this._database, requestResult);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                  ArangoCollection\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                      constructors and destructors\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief constructor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function ArangoCollection (database, data) {\n"
-  "  this._database = database;\n"
-  "\n"
-  "  if (typeof data === \"string\") {\n"
-  "    this._id = null;\n"
-  "    this._name = data;\n"
-  "    this._status = null;\n"
-  "    this._type = null;\n"
-  "  }\n"
-  "  else if (data !== undefined) {\n"
-  "    this._id = data.id;\n"
-  "    this._name = data.name;\n"
-  "    this._status = data.status;\n"
-  "    this._type = data.type;\n"
-  "  }\n"
-  "  else {\n"
-  "    this._id = null;\n"
-  "    this._name = null;\n"
-  "    this._status = null;\n"
-  "    this._type = null;\n"
-  "  }\n"
-  "}\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = require(\"arangosh\");\n"
-  "\n"
-  "  internal.ArangoCollection = ArangoCollection;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                         constants\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief collection is corrupted\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.STATUS_CORRUPTED = 0;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief collection is new born\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.STATUS_NEW_BORN = 1;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief collection is unloaded\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.STATUS_UNLOADED = 2;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief collection is loaded\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.STATUS_LOADED = 3;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief collection is unloading\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.STATUS_UNLOADING = 4;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief collection is deleted\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.STATUS_DELETED = 5;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief document collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "  \n"
-  "  ArangoCollection.TYPE_DOCUMENT = 2;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief edge collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.TYPE_EDGE = 3;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief attachment collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.TYPE_ATTACHMENT = 4;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief help for ArangoCollection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.helpArangoCollection = client.createHelpHeadline(\"ArangoCollection help\") +\n"
-  "  'ArangoCollection constructor:                                       ' + \"\\n\" +\n"
-  "  ' > col = db.mycoll;                                                 ' + \"\\n\" +\n"
-  "  ' > col = db._create(\"mycoll\");                                      ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Administration Functions:                                           ' + \"\\n\" +\n"
-  "  '  name()                          collection name                   ' + \"\\n\" +\n"
-  "  '  status()                        status of the collection          ' + \"\\n\" +\n"
-  "  '  type()                          type of the collection            ' + \"\\n\" +\n"
-  "  '  truncate()                      delete all documents              ' + \"\\n\" +\n"
-  "  '  properties()                    show collection properties        ' + \"\\n\" +\n"
-  "  '  drop()                          delete a collection               ' + \"\\n\" +\n"
-  "  '  load()                          load a collection into memeory    ' + \"\\n\" +\n"
-  "  '  unload()                        unload a collection from memory   ' + \"\\n\" +\n"
-  "  '  rename(new-name)                renames a collection              ' + \"\\n\" +\n"
-  "  '  refresh()                       refreshes the status and name     ' + \"\\n\" +\n"
-  "  '  _help();                        this help                         ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Document Functions:                                                 ' + \"\\n\" +\n"
-  "  '  count()                         number of documents               ' + \"\\n\" +\n"
-  "  '  save(<data>)                    create document and return handle ' + \"\\n\" +\n"
-  "  '  document(<id>)                  get document by handle            ' + \"\\n\" +\n"
-  "  '  replace(<id>, <data>,           overwrite document                ' + \"\\n\" +\n"
-  "  '          <overwrite>)                                              ' + \"\\n\" +\n"
-  "  '  update(<id>, <data>,            partially update document         ' + \"\\n\" +\n"
-  "  '         <overwrite>, <keepNull>)                                   ' + \"\\n\" +\n"
-  "  '  delete(<id>)                    delete document                   ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Attributes:                                                         ' + \"\\n\" +\n"
-  "  '  _database                       database object                   ' + \"\\n\" +\n"
-  "  '  _id                             collection identifier             ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a string representation of the collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.toString = function () {  \n"
-  "    return client.getIdString(this, \"ArangoCollection\");\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief prints the collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype._PRINT = function () {  \n"
-  "    var status = type = \"unknown\";\n"
-  "\n"
-  "    switch (this.status()) {\n"
-  "      case ArangoCollection.STATUS_NEW_BORN: status = \"new born\"; break;\n"
-  "      case ArangoCollection.STATUS_UNLOADED: status = \"unloaded\"; break;\n"
-  "      case ArangoCollection.STATUS_UNLOADING: status = \"unloading\"; break;\n"
-  "      case ArangoCollection.STATUS_LOADED: status = \"loaded\"; break;\n"
-  "      case ArangoCollection.STATUS_CORRUPTED: status = \"corrupted\"; break;\n"
-  "      case ArangoCollection.STATUS_DELETED: status = \"deleted\"; break;\n"
-  "    }\n"
-  "\n"
-  "    switch (this.type()) {\n"
-  "      case ArangoCollection.TYPE_DOCUMENT: type = \"document\"; break;\n"
-  "      case ArangoCollection.TYPE_EDGE: type = \"edge\"; break;\n"
-  "      case ArangoCollection.TYPE_ATTACHMENT: type = \"attachment\"; break;\n"
-  "    }\n"
-  "\n"
-  "    internal.output(\"[ArangoCollection \",\n"
-  "                    this._id, \n"
-  "                    \", \\\"\", \n"
-  "                    this.name(), \n"
-  "                    \"\\\" (type \",\n"
-  "                    type, \", status \",\n"
-  "                    status,\n"
-  "                    \")]\");\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief print the help for ArangoCollection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype._help = function () {  \n"
-  "    internal.print(client.helpArangoCollection);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                  public functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the name of a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.name = function () {\n"
-  "    if (this._name === null) {\n"
-  "      this.refresh();\n"
-  "    }\n"
-  "\n"
-  "    return this._name;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the status of a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.status = function () {\n"
-  "    var result;\n"
-  "\n"
-  "    if (this._status === null) {\n"
-  "      this.refresh();\n"
-  "    }\n"
-  "\n"
-  "    // save original status\n"
-  "    result = this._status;\n"
-  "\n"
-  "    if (this._status == ArangoCollection.STATUS_UNLOADING) {\n"
-  "      // if collection is currently unloading, we must not cache this info\n"
-  "      this._status = null;\n"
-  "    }\n"
-  "\n"
-  "    // return the correct result\n"
-  "    return result;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the type of a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.type = function () {\n"
-  "    var result;\n"
-  "\n"
-  "    if (this._type === null) {\n"
-  "      this.refresh();\n"
-  "    }\n"
-  "\n"
-  "    return this._type;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief gets or sets the properties of a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.properties = function (properties) {\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (properties === undefined) {\n"
-  "      requestResult = this._database._connection.GET(\n"
-  "        \"/_api/collection/\" + encodeURIComponent(this._id) + \"/properties\");\n"
-  "\n"
-  "      client.checkRequestResult(requestResult);\n"
-  "    }\n"
-  "    else {\n"
-  "      var body = {};\n"
-  "\n"
-  "      if (properties.hasOwnProperty(\"waitForSync\")) {\n"
-  "        body.waitForSync = properties.waitForSync;\n"
-  "      }\n"
-  "\n"
-  "      requestResult = this._database._connection.PUT(\n"
-  "        \"/_api/collection/\" + encodeURIComponent(this._id) + \"/properties\",\n"
-  "        JSON.stringify(body));\n"
-  "\n"
-  "      client.checkRequestResult(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    return { \n"
-  "      waitForSync : requestResult.waitForSync,\n"
-  "      journalSize : requestResult.journalSize\n"
-  "    };\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief gets the figures of a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.figures = function () {\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/figures\");\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult.figures;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief drops a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.drop = function () {\n"
-  "    var requestResult = this._database._connection.DELETE(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    this._status = ArangoCollection.STATUS_DELETED;\n"
-  "\n"
-  "    var database = this._database;\n"
-  "    var name;\n"
-  "\n"
-  "    for (name in database) {\n"
-  "      if (database.hasOwnProperty(name)) {\n"
-  "        var collection = database[name];\n"
-  "\n"
-  "        if (collection instanceof ArangoCollection) {\n"
-  "          if (collection._id === this._id) {\n"
-  "            delete database[name];\n"
-  "          }\n"
-  "        }\n"
-  "      }\n"
-  "    }\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns all documents\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.toArray = function () {\n"
-  "    return this.all().toArray();\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns all indexes\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.getIndexes = function () {\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult.indexes;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns one index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.index = function (id) {\n"
-  "    if (id.hasOwnProperty(\"id\")) {\n"
-  "      id = id.id;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult;\n"
-  "    var s = id.split(\"/\");\n"
-  "\n"
-  "    if (s.length !== 2) {\n"
-  "      requestResult = {\n"
-  "        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,\n"
-  "        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message\n"
-  "      };\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "    else if (parseInt(s[0]) !== this._id) {\n"
-  "      requestResult = {\n"
-  "        errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,\n"
-  "        errorMessage: \n"
-  "          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message\n"
-  "      };\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    requestResult = this._database._connection.GET(\"/_api/index/\" + id);\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief deletes one index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.dropIndex = function (id) {\n"
-  "    if (id.hasOwnProperty(\"id\")) {\n"
-  "      id = id.id;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult;\n"
-  "    var s = id.split(\"/\");\n"
-  "\n"
-  "    if (s.length !== 2) {\n"
-  "      requestResult = {\n"
-  "        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,\n"
-  "        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message\n"
-  "      };\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "    else if (parseInt(s[0]) !== this._id) {\n"
-  "      requestResult = {\n"
-  "        errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,\n"
-  "        errorMessage:\n"
-  "          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message\n"
-  "      };\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    requestResult = this._database._connection.DELETE(\"/_api/index/\" + id);\n"
-  "\n"
-  "    if (requestResult !== null\n"
-  "        && requestResult.error === true \n"
-  "        && requestResult.errorNum\n"
-  "             === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {\n"
-  "      return false;\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return true;\n"
-  "  };\n"
-  "\n"
-  "  \n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds a bitarray index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureBitarray = function () {\n"
-  "    var i;\n"
-  "    var body;\n"
-  "    var fields = [];\n"
-  "\n"
-  "    for (i = 0;  i < arguments.length;  ++i) {\n"
-  "      fields.push(arguments[i]);\n"
-  "    }\n"
-  "\n"
-  "    body = { type : \"bitarray\", unique : false, fields : fields };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "  \n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds a cap constraint\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureCapConstraint = function (size) {\n"
-  "    var body;\n"
-  "\n"
-  "    body = { type : \"cap\", size : size };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds a unique skip-list index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureUniqueSkiplist = function () {\n"
-  "    var i;\n"
-  "    var body;\n"
-  "    var fields = [];\n"
-  "\n"
-  "    for (i = 0;  i < arguments.length;  ++i) {\n"
-  "      fields.push(arguments[i]);\n"
-  "    }\n"
-  "\n"
-  "    body = { type : \"skiplist\", unique : true, fields : fields };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds a skip-list index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureSkiplist = function () {\n"
-  "    var i;\n"
-  "    var body;\n"
-  "    var fields = [];\n"
-  "\n"
-  "    for (i = 0;  i < arguments.length;  ++i) {\n"
-  "      fields.push(arguments[i]);\n"
-  "    }\n"
-  "\n"
-  "    body = { type : \"skiplist\", unique : false, fields : fields };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds a unique constraint\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureUniqueConstraint = function () {\n"
-  "    var i;\n"
-  "    var body;\n"
-  "    var fields = [];\n"
-  "\n"
-  "    for (i = 0;  i < arguments.length;  ++i) {\n"
-  "      fields.push(arguments[i]);\n"
-  "    }\n"
-  "\n"
-  "    body = { type : \"hash\", unique : true, fields : fields };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds a hash index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureHashIndex = function () {\n"
-  "    var i;\n"
-  "    var body;\n"
-  "    var fields = [];\n"
-  "\n"
-  "    for (i = 0;  i < arguments.length;  ++i) {\n"
-  "      fields.push(arguments[i]);\n"
-  "    }\n"
-  "\n"
-  "    body = { type : \"hash\", unique : false, fields : fields };\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds an geo index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {\n"
-  "    var body;\n"
-  "\n"
-  "    if (typeof lat !== \"string\") {\n"
-  "      throw \"usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])\";\n"
-  "    }\n"
-  "\n"
-  "    if (typeof lon === \"boolean\") {\n"
-  "      body = { \n"
-  "        type : \"geo\", \n"
-  "        fields : [ lat ], \n"
-  "        geoJson : lon, \n"
-  "        constraint : false\n"
-  "      };\n"
-  "    }\n"
-  "    else if (lon === undefined) {\n"
-  "      body = {\n"
-  "        type : \"geo\", \n"
-  "        fields : [ lat ],\n"
-  "        geoJson : false, \n"
-  "        constraint : false \n"
-  "      };\n"
-  "    }\n"
-  "    else {\n"
-  "      body = {\n"
-  "        type : \"geo\",\n"
-  "        fields : [ lat, lon ],\n"
-  "        constraint : false\n"
-  "      };\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id), \n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief adds an geo constraint\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {\n"
-  "    var body;\n"
-  "\n"
-  "    // only two parameter\n"
-  "    if (ignoreNull === undefined) {\n"
-  "      ignoreNull = lon;\n"
-  "\n"
-  "      if (typeof ignoreNull !== \"boolean\") {\n"
-  "        throw \"usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>)\"\n"
-  "            + \" or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)\";\n"
-  "      }\n"
-  "\n"
-  "      body = {\n"
-  "        type : \"geo\",\n"
-  "        fields : [ lat ],\n"
-  "        geoJson : false, \n"
-  "        constraint : true,\n"
-  "        ignoreNull : ignoreNull \n"
-  "      };\n"
-  "    }\n"
-  "\n"
-  "    // three parameter\n"
-  "    else {\n"
-  "      if (typeof lon === \"boolean\") {\n"
-  "        body = {\n"
-  "          type : \"geo\",\n"
-  "          fields : [ lat ],\n"
-  "          geoJson : lon,\n"
-  "          constraint : true,\n"
-  "          ignoreNull : ignoreNull\n"
-  "        };\n"
-  "      }\n"
-  "      else {\n"
-  "        body = {\n"
-  "          type : \"geo\",\n"
-  "          fields : [ lat, lon ],\n"
-  "          constraint : true,\n"
-  "          ignoreNull : ignoreNull\n"
-  "        };\n"
-  "      }\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._database._connection.POST(\n"
-  "      \"/_api/index?collection=\" + encodeURIComponent(this._id),\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief queries by example\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {\n"
-  "    var key;\n"
-  "    var body;\n"
-  "\n"
-  "    limit = limit || null;\n"
-  "    skip = skip || null;\n"
-  "\n"
-  "    if (index.hasOwnProperty(\"id\")) {\n"
-  "      index = index.id;\n"
-  "    }\n"
-  "\n"
-  "    body = {\n"
-  "      collection : this._id,\n"
-  "      index : index,\n"
-  "      skip : skip,\n"
-  "      limit : limit,\n"
-  "      example : {} \n"
-  "    };\n"
-  "\n"
-  "    for (key in example) {\n"
-  "      if (example.hasOwnProperty(key)) {\n"
-  "        body.example[key] = example[key];\n"
-  "      }\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._database._connection.PUT(\n"
-  "      \"/_api/simple/BY-EXAMPLE-HASH\",\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief truncates a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.truncate = function () {\n"
-  "    var requestResult = this._database._connection.PUT(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/truncate\", \"\");\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    this._status = null;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief loads a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.load = function () {\n"
-  "    var requestResult = this._database._connection.PUT(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/load\",\n"
-  "      \"\");\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    this._status = null;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief unloads a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.unload = function () {\n"
-  "    var requestResult = this._database._connection.PUT(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/unload\",\n"
-  "      \"\");\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    this._status = null;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief renames a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.rename = function (name) {\n"
-  "    var body = { name : name };\n"
-  "    var requestResult = this._database._connection.PUT(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/rename\",\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    delete this._database[this._name];\n"
-  "    this._database[name] = this;\n"
-  "\n"
-  "    this._status = null;\n"
-  "    this._name = null;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief refreshes a collection status and name\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.refresh = function () {\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    this._name = requestResult['name'];\n"
-  "    this._status = requestResult['status'];\n"
-  "    this._type = requestResult['type'];\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                document functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the number of documents\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.count = function () {\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/count\");\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult[\"count\"];\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a single document from the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.document = function (id) {\n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._database._connection.GET(\"/_api/document/\" + id);\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._database._connection.GET(\n"
-  "        \"/_api/document/\" + id,\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null\n"
-  "        && requestResult.error === true \n"
-  "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "      else if (parseInt(s[0]) !== this._id) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief save a document in the collection, return its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.save = function () {\n"
-  "    var requestResult;\n"
-  "    var type = this.type();\n"
-  "    \n"
-  "    if (type == undefined) {\n"
-  "      type = ArangoCollection.TYPE_DOCUMENT;\n"
-  "    }\n"
-  "\n"
-  "    if (type == ArangoCollection.TYPE_DOCUMENT) { \n"
-  "      var data = arguments[0];\n"
-  "\n"
-  "      requestResult = this._database._connection.POST(\n"
-  "        \"/_api/document?collection=\" + encodeURIComponent(this._id),\n"
-  "        JSON.stringify(data));\n"
-  "    }\n"
-  "    else if (type == ArangoCollection.TYPE_EDGE) {\n"
-  "      var from = arguments[0];\n"
-  "      var to = arguments[1];\n"
-  "      var data = arguments[2];\n"
-  "\n"
-  "      if (from.hasOwnProperty(\"_id\")) {\n"
-  "        from = from._id;\n"
-  "      }\n"
-  "\n"
-  "      if (to.hasOwnProperty(\"_id\")) {\n"
-  "        to = to._id;\n"
-  "      }\n"
-  "\n"
-  "      var url = \"/_api/edge?collection=\" + encodeURIComponent(this._id)\n"
-  "              + \"&from=\" + encodeURIComponent(from)\n"
-  "              + \"&to=\" + encodeURIComponent(to);\n"
-  "\n"
-  "      requestResult = this._database._connection.POST(\n"
-  "        url,\n"
-  "        JSON.stringify(data));\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief delete a document in the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.remove = function (id, overwrite) {\n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    var policy = \"\";\n"
-  "\n"
-  "    if (overwrite) {\n"
-  "      policy = \"?policy=last\";\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._database._connection.DELETE(\n"
-  "        \"/_api/document/\" + id + policy);\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._database._connection.DELETE(\n"
-  "        \"/_api/document/\" + id + policy, {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null && requestResult.error === true) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "      else if (parseInt(s[0]) !== this._id) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;\n"
-  "      }\n"
-  "\n"
-  "      if (overwrite) {\n"
-  "        if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {\n"
-  "          return false;\n"
-  "        }\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return true;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief replace a document in the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.replace = function (id, data, overwrite) { \n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    var policy = \"\";\n"
-  "\n"
-  "    if (overwrite) {\n"
-  "      policy = \"?policy=last\";\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._database._connection.PUT(\n"
-  "        \"/_api/document/\" + id + policy, \n"
-  "        JSON.stringify(data));\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._database._connection.PUT(\n"
-  "        \"/_api/document/\" + id + policy, JSON.stringify(data),\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null && requestResult.error === true) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "      else if (parseInt(s[0]) !== this._id) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief update a document in the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.update = function (id, data, overwrite, keepNull) { \n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    // set default value for keepNull\n"
-  "    var keepNullValue = ((typeof keepNull == \"undefined\") ? true : keepNull);\n"
-  "    var params = \"?keepNull=\" + (keepNullValue ? \"true\" : \"false\");\n"
-  "\n"
-  "    if (overwrite) {\n"
-  "      params += \"&policy=last\";\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._database._connection.PATCH(\n"
-  "        \"/_api/document/\" + id + params, \n"
-  "        JSON.stringify(data));\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._database._connection.PATCH(\n"
-  "        \"/_api/document/\" + id + params, JSON.stringify(data),\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null && requestResult.error === true) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "      else if (parseInt(s[0]) !== this._id) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the edges starting or ending in a vertex\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.edges = function (vertex) {\n"
-  "    // if vertex is a list, iterator and concat\n"
-  "    if (vertex instanceof Array) {\n"
-  "      var edges = [];\n"
-  "      var i;\n"
-  "\n"
-  "      for (i = 0;  i < vertex.length;  ++i) {\n"
-  "        var e = this.edges(vertex[i]);\n"
-  "\n"
-  "        edges.push.apply(edges, e);\n"
-  "      }\n"
-  "\n"
-  "      return edges;\n"
-  "    }\n"
-  "\n"
-  "    if (vertex.hasOwnProperty(\"_id\")) {\n"
-  "      vertex = vertex._id;\n"
-  "    }\n"
-  "\n"
-  "    // get the edges\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/edges/\" + encodeURIComponent(this._id) + \"?vertex=\" + encodeURIComponent(vertex));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult['edges'];\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the edges ending in a vertex\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.inEdges = function (vertex) {\n"
-  "    // if vertex is a list, iterator and concat\n"
-  "    if (vertex instanceof Array) {\n"
-  "      var edges = [];\n"
-  "      var i;\n"
-  "\n"
-  "      for (i = 0;  i < vertex.length;  ++i) {\n"
-  "        var e = this.inEdges(vertex[i]);\n"
-  "\n"
-  "        edges.push.apply(edges, e);\n"
-  "      }\n"
-  "\n"
-  "      return edges;\n"
-  "    }\n"
-  "\n"
-  "    if (vertex.hasOwnProperty(\"_id\")) {\n"
-  "      vertex = vertex._id;\n"
-  "    }\n"
-  "\n"
-  "    // get the edges\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/edges/\" + encodeURIComponent(this._id)\n"
-  "      + \"?direction=in&vertex=\" + encodeURIComponent(vertex));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult['edges'];\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns the edges starting in a vertex\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoCollection.prototype.outEdges = function (vertex) {\n"
-  "    // if vertex is a list, iterator and concat\n"
-  "    if (vertex instanceof Array) {\n"
-  "      var edges = [];\n"
-  "      var i;\n"
-  "\n"
-  "      for (i = 0;  i < vertex.length;  ++i) {\n"
-  "        var e = this.outEdges(vertex[i]);\n"
-  "\n"
-  "        edges.push.apply(edges, e);\n"
-  "      }\n"
-  "\n"
-  "      return edges;\n"
-  "    }\n"
-  "\n"
-  "    if (vertex.hasOwnProperty(\"_id\")) {\n"
-  "      vertex = vertex._id;\n"
-  "    }\n"
-  "\n"
-  "    // get the edges\n"
-  "    var requestResult = this._database._connection.GET(\n"
-  "      \"/_api/edges/\" + encodeURIComponent(this._id)\n"
-  "      + \"?direction=out&vertex=\" + encodeURIComponent(vertex));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult['edges'];\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                    ArangoDatabase\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                      constructors and destructors\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief constructor\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "function ArangoDatabase (connection) {\n"
-  "  this._connection = connection;\n"
-  "  this._collectionConstructor = ArangoCollection;\n"
-  "}\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = require(\"arangosh\");\n"
-  "  \n"
-  "  internal.ArangoDatabase = ArangoDatabase;\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                 private functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief help for ArangoDatabase\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.helpArangoDatabase = client.createHelpHeadline(\"ArangoDatabase help\") +\n"
-  "  'ArangoDatabase constructor:                                         ' + \"\\n\" +\n"
-  "  ' > db = new ArangoDatabase(connection);                             ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Administration Functions:                                           ' + \"\\n\" +\n"
-  "  '  _help();                         this help                        ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Collection Functions:                                               ' + \"\\n\" +\n"
-  "  '  _collections()                   list all collections             ' + \"\\n\" +\n"
-  "  '  _collection(<identifier>)        get collection by identifier/name' + \"\\n\" +\n"
-  "  '  _create(<name>, <props>)         creates a new collection         ' + \"\\n\" +\n"
-  "  '  _truncate(<name>)                delete all documents             ' + \"\\n\" +\n"
-  "  '  _drop(<name>)                    delete a collection              ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Document Functions:                                                 ' + \"\\n\" +\n"
-  "  '  _document(<id>)                  get document by handle           ' + \"\\n\" +\n"
-  "  '  _replace(<id>, <data>,           overwrite document               ' + \"\\n\" +\n"
-  "  '           <overwrite>)                                             ' + \"\\n\" +\n"
-  "  '  _update(<id>, <data>,            update document                  ' + \"\\n\" +\n"
-  "  '          <overwrite>, <keepNull>)                                  ' + \"\\n\" +\n"
-  "  '  _remove(<id>)                    delete document                  ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Query Functions:                                                    ' + \"\\n\" +\n"
-  "  '  _createStatement(<data>);        create and return select query   ' + \"\\n\" +\n"
-  "  '                                                                    ' + \"\\n\" +\n"
-  "  'Attributes:                                                         ' + \"\\n\" +\n"
-  "  '  <collection names>               collection with the given name   ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief print the help for ArangoDatabase\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._help = function () {  \n"
-  "    internal.print(client.helpArangoDatabase);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a string representation of the database object\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype.toString = function () {  \n"
-  "    return \"[object ArangoDatabase]\";\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                              collection functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return all collections from the database\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._collections = function () {\n"
-  "    var requestResult = this._connection.GET(\"/_api/collection\");\n"
-  "  \n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    if (requestResult[\"collections\"] !== undefined) {\n"
-  "      var collections = requestResult[\"collections\"];\n"
-  "      var result = [];\n"
-  "      var i;\n"
-  "    \n"
-  "      // add all collentions to object\n"
-  "      for (i = 0;  i < collections.length;  ++i) {\n"
-  "        var collection = new this._collectionConstructor(this, collections[i]);\n"
-  "\n"
-  "        this[collection._name] = collection;\n"
-  "        result.push(collection);\n"
-  "      }\n"
-  "      \n"
-  "      return result;\n"
-  "    }\n"
-  "  \n"
-  "    return undefined;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a single collection, identified by its id or name\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._collection = function (id) {\n"
-  "    var requestResult = this._connection.GET(\n"
-  "      \"/_api/collection/\" + encodeURIComponent(id));\n"
-  "  \n"
-  "    // return null in case of not found\n"
-  "    if (requestResult !== null\n"
-  "        && requestResult.error === true \n"
-  "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {\n"
-  "      return null;\n"
-  "    }\n"
-  "\n"
-  "    // check all other errors and throw them\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    var name = requestResult[\"name\"];\n"
-  "\n"
-  "    if (name !== undefined) {\n"
-  "      this[name] = new this._collectionConstructor(this, requestResult);\n"
-  "      return this[name];\n"
-  "    }\n"
-  "  \n"
-  "    return undefined;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief creates a new collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._create = function (name, properties, type) {\n"
-  "    var body = {\n"
-  "      \"name\" : name,\n"
-  "      \"type\" : ArangoCollection.TYPE_DOCUMENT\n"
-  "    };\n"
-  "\n"
-  "    if (properties !== undefined) {\n"
-  "      if (properties.hasOwnProperty(\"waitForSync\")) {\n"
-  "        body.waitForSync = properties.waitForSync;\n"
-  "      }\n"
-  "\n"
-  "      if (properties.hasOwnProperty(\"journalSize\")) {\n"
-  "        body.journalSize = properties.journalSize;\n"
-  "      }\n"
-  "\n"
-  "      if (properties.hasOwnProperty(\"isSystem\")) {\n"
-  "        body.isSystem = properties.isSystem;\n"
-  "      }\n"
-  "    }\n"
-  "\n"
-  "    if (type != undefined && type == ArangoCollection.TYPE_EDGE) {\n"
-  "      body.type = type;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._connection.POST(\n"
-  "      \"/_api/collection\",\n"
-  "      JSON.stringify(body));\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    var nname = requestResult[\"name\"];\n"
-  "\n"
-  "    if (nname !== undefined) {\n"
-  "      this[nname] = new this._collectionConstructor(this, requestResult);\n"
-  "      return this[nname];\n"
-  "    }\n"
-  "  \n"
-  "    return undefined;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief creates a new document collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._createDocumentCollection = function (name, properties) {\n"
-  "    return this._create(name, properties, ArangoCollection.TYPE_DOCUMENT);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief creates a new edges collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._createEdgeCollection = function (name, properties) {\n"
-  "    return this._create(name, properties, ArangoCollection.TYPE_EDGE);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief truncates a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._truncate = function (id) {\n"
-  "    var name;\n"
-  "\n"
-  "    for (name in this) {\n"
-  "      if (this.hasOwnProperty(name)) {\n"
-  "        var collection = this[name];\n"
-  "\n"
-  "        if (collection instanceof this._collectionConstructor) {\n"
-  "          if (collection._id === id || collection._name === id) {\n"
-  "            return collection.truncate();\n"
-  "          }\n"
-  "        }\n"
-  "      }\n"
-  "    }\n"
-  "\n"
-  "    return undefined;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief drops a collection\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._drop = function (id) {\n"
-  "    var name;\n"
-  "\n"
-  "    for (name in this) {\n"
-  "      if (this.hasOwnProperty(name)) {\n"
-  "        var collection = this[name];\n"
-  "\n"
-  "        if (collection instanceof this._collectionConstructor) {\n"
-  "          if (collection._id === id || collection._name === id) {\n"
-  "            return collection.drop();\n"
-  "          }\n"
-  "        }\n"
-  "      }\n"
-  "    }\n"
-  "\n"
-  "    return undefined;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief returns one index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._index = function (id) {\n"
-  "    if (id.hasOwnProperty(\"id\")) {\n"
-  "      id = id.id;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._connection.GET(\"/_api/index/\" + id);\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief deletes one index\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._dropIndex = function (id) {\n"
-  "    if (id.hasOwnProperty(\"id\")) {\n"
-  "      id = id.id;\n"
-  "    }\n"
-  "\n"
-  "    var requestResult = this._connection.DELETE(\"/_api/index/\" + id);\n"
-  "\n"
-  "    if (requestResult !== null\n"
-  "        && requestResult.error === true \n"
-  "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {\n"
-  "      return false;\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return true;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                document functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief return a single document from the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._document = function (id) {\n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._connection.GET(\"/_api/document/\" + id);\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._connection.GET(\n"
-  "        \"/_api/document/\" + id,\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null\n"
-  "        && requestResult.error === true \n"
-  "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief delete a document in the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._remove = function (id, overwrite) {\n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    var policy = \"\";\n"
-  "\n"
-  "    if (overwrite) {\n"
-  "      policy = \"?policy=last\";\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._connection.DELETE(\"/_api/document/\" + id + policy);\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._connection.DELETE(\n"
-  "        \"/_api/document/\" + id + policy,\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null && requestResult.error === true) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "\n"
-  "      if (overwrite) {\n"
-  "        if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {\n"
-  "          return false;\n"
-  "        }\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return true;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief replace a document in the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._replace = function (id, data, overwrite) { \n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "\n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    var policy = \"\";\n"
-  "\n"
-  "    if (overwrite) {\n"
-  "      policy = \"?policy=last\";\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._connection.PUT(\n"
-  "        \"/_api/document/\" + id + policy,\n"
-  "        JSON.stringify(data));\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._connection.PUT(\n"
-  "        \"/_api/document/\" + id + policy,\n"
-  "        JSON.stringify(data),\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null && requestResult.error === true) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief update a document in the collection, identified by its id\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull) { \n"
-  "    var rev = null;\n"
-  "    var requestResult;\n"
-  "    \n"
-  "    if (id.hasOwnProperty(\"_id\")) {\n"
-  "      if (id.hasOwnProperty(\"_rev\")) {\n"
-  "        rev = id._rev;\n"
-  "      }\n"
-  "\n"
-  "      id = id._id;\n"
-  "    }\n"
-  "\n"
-  "    // set default value for keepNull\n"
-  "    var keepNullValue = ((typeof keepNull == \"undefined\") ? true : keepNull);\n"
-  "    var params = \"?keepNull=\" + (keepNullValue ? \"true\" : \"false\");\n"
-  "\n"
-  "    if (overwrite) {\n"
-  "      params += \"&policy=last\";\n"
-  "    }\n"
-  "\n"
-  "    if (rev === null) {\n"
-  "      requestResult = this._connection.PATCH(\n"
-  "        \"/_api/document/\" + id + params,\n"
-  "        JSON.stringify(data));\n"
-  "    }\n"
-  "    else {\n"
-  "      requestResult = this._connection.PATCH(\n"
-  "        \"/_api/document/\" + id + params,\n"
-  "        JSON.stringify(data),\n"
-  "        {'if-match' : '\"' + rev + '\"' });\n"
-  "    }\n"
-  "\n"
-  "    if (requestResult !== null && requestResult.error === true) {\n"
-  "      var s = id.split(\"/\");\n"
-  "\n"
-  "      if (s.length !== 2) {\n"
-  "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;\n"
-  "      }\n"
-  "\n"
-  "      throw new ArangoError(requestResult);\n"
-  "    }\n"
-  "\n"
-  "    client.checkRequestResult(requestResult);\n"
-  "\n"
-  "    return requestResult;\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                   query functions\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief factory method to create a new statement\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  ArangoDatabase.prototype._createStatement = function (data) {  \n"
-  "    return new ArangoStatement(this, data);\n"
-  "  };\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                      initialisers\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @addtogroup ArangoShell\n"
-  "/// @{\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "(function () {\n"
-  "  var internal = require(\"internal\");\n"
-  "  var client = require(\"arangosh\");\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief general help\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.HELP = client.createHelpHeadline(\"Help\") +\n"
-  "  'Predefined objects:                                                 ' + \"\\n\" +\n"
-  "  '  arango:                                ArangoConnection           ' + \"\\n\" +\n"
-  "  '  db:                                    ArangoDatabase             ' + \"\\n\" +\n"
-  "  'Example:                                                            ' + \"\\n\" +\n"
-  "  ' > db._collections();                    list all collections       ' + \"\\n\" +\n"
-  "  ' > db.<coll_name>.all().toArray();       list all documents         ' + \"\\n\" +\n"
-  "  ' > id = db.<coll_name>.save({ ... });    save a document            ' + \"\\n\" +\n"
-  "  ' > db.<coll_name>.remove(<_id>);         delete a document          ' + \"\\n\" +\n"
-  "  ' > db.<coll_name>.document(<_id>);       get a document             ' + \"\\n\" +\n"
-  "  ' > db.<coll_name>.replace(<_id>, {...}); overwrite a document       ' + \"\\n\" +\n"
-  "  ' > db.<coll_name>.update(<_id>, {...});  partially update a document' + \"\\n\" +\n"
-  "  ' > help                                  show help pages            ' + \"\\n\" +\n"
-  "  ' > exit                                                             ' + \"\\n\" +\n"
-  "  'Note: collection names may be cached in arangosh. To refresh them, issue: ' + \"\\n\" +\n"
-  "  ' > db._collections();                                               ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief query help\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.helpQueries = client.createHelpHeadline(\"Select query help\") +\n"
-  "  'Create a select query:                                              ' + \"\\n\" +\n"
-  "  ' > st = new ArangoStatement(db, { \"query\" : \"for...\" });            ' + \"\\n\" +\n"
-  "  ' > st = db._createStatement({ \"query\" : \"for...\" });                ' + \"\\n\" +\n"
-  "  'Set query options:                                                  ' + \"\\n\" +\n"
-  "  ' > st.setBatchSize(<value>);     set the max. number of results     ' + \"\\n\" +\n"
-  "  '                                 to be transferred per roundtrip    ' + \"\\n\" +\n"
-  "  ' > st.setCount(<value>);         set count flag (return number of   ' + \"\\n\" +\n"
-  "  '                                 results in \"count\" attribute)      ' + \"\\n\" +\n"
-  "  'Get query options:                                                  ' + \"\\n\" +\n"
-  "  ' > st.setBatchSize();            return the max. number of results  ' + \"\\n\" +\n"
-  "  '                                 to be transferred per roundtrip    ' + \"\\n\" +\n"
-  "  ' > st.getCount();                return count flag (return number of' + \"\\n\" +\n"
-  "  '                                 results in \"count\" attribute)      ' + \"\\n\" +\n"
-  "  ' > st.getQuery();                return query string                ' + \"\\n\" +\n"
-  "  '                                 results in \"count\" attribute)      ' + \"\\n\" +\n"
-  "  'Bind parameters to a query:                                         ' + \"\\n\" +\n"
-  "  ' > st.bind(<key>, <value>);      bind single variable               ' + \"\\n\" +\n"
-  "  ' > st.bind(<values>);            bind multiple variables            ' + \"\\n\" +\n"
-  "  'Execute query:                                                      ' + \"\\n\" +\n"
-  "  ' > c = st.execute();             returns a cursor                   ' + \"\\n\" +\n"
-  "  'Get all results in an array:                                        ' + \"\\n\" +\n"
-  "  ' > e = c.elements();                                                ' + \"\\n\" +\n"
-  "  'Or loop over the result set:                                        ' + \"\\n\" +\n"
-  "  ' > while (c.hasNext()) { print( c.next() ); }                       ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief extended help\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  client.helpExtended = client.createHelpHeadline(\"More help\") +\n"
-  "  'Pager:                                                              ' + \"\\n\" +\n"
-  "  ' > stop_pager()                        stop the pager output        ' + \"\\n\" +\n"
-  "  ' > start_pager()                       start the pager              ' + \"\\n\" +\n"
-  "  'Pretty printing:                                                    ' + \"\\n\" +\n"
-  "  ' > stop_pretty_print()                 stop pretty printing         ' + \"\\n\" +\n"
-  "  ' > start_pretty_print()                start pretty printing        ' + \"\\n\" +\n"
-  "  'Color output:                                                       ' + \"\\n\" +\n"
-  "  ' > stop_color_print()                  stop color printing          ' + \"\\n\" +\n"
-  "  ' > start_color_print()                 start color printing         ' + \"\\n\" +\n"
-  "  ' > start_color_print(COLOR_BLUE)       set color                    ' + \"\\n\" +\n"
-  "  'Print function:                                                     ' + \"\\n\" +\n"
-  "  ' > print(x)                            std. print function          ' + \"\\n\" +\n"
-  "  ' > print_plain(x)                      print without pretty printing' + \"\\n\" +\n"
-  "  '                                       and without colors           ';\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @brief create the global db object and load the collections\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "  try {\n"
-  "    if (typeof arango !== 'undefined') {\n"
-  "\n"
-  "      // default databases\n"
-  "      db = internal.db = new ArangoDatabase(arango);\n"
-  "      edges = internal.edges = db;\n"
-  "\n"
-  "      // load collection data\n"
-  "      internal.db._collections();\n"
-  "\n"
-  "      // load simple queries\n"
-  "      require(\"simple-query\");\n"
-  "\n"
-  "      if (! internal.ARANGO_QUIET) {\n"
-  "        internal.print(client.HELP);\n"
-  "      }\n"
-  "    }\n"
-  "  }\n"
-  "  catch (err) {\n"
-  "    internal.print(String(err));\n"
-  "  }\n"
-  "\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "/// @}\n"
-  "////////////////////////////////////////////////////////////////////////////////\n"
-  "\n"
-  "}());\n"
-  "\n"
-  "// -----------------------------------------------------------------------------\n"
-  "// --SECTION--                                                       END-OF-FILE\n"
-  "// -----------------------------------------------------------------------------\n"
-  "\n"
-  "// Local Variables:\n"
-  "// mode: outline-minor\n"
-  "// outline-regexp: \"^\\\\(/// @brief\\\\|/// @addtogroup\\\\|// --SECTION--\\\\|/// @}\\\\|/\\\\*jslint\\\\)\"\n"
-  "// End:\n"
-;
+const char* JS_client_client[] = {
+ "/*jslint indent: 2,",
+ "         nomen: true,",
+ "         maxlen: 100,",
+ "         sloppy: true,",
+ "         vars: true,",
+ "         white: true,",
+ "         plusplus: true */",
+ "/*global require, arango, db, edges, ModuleCache, Module */",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief ArangoShell client API",
+ "///",
+ "/// @file",
+ "///",
+ "/// DISCLAIMER",
+ "///",
+ "/// Copyright 2012 triagens GmbH, Cologne, Germany",
+ "///",
+ "/// Licensed under the Apache License, Version 2.0 (the \"License\");",
+ "/// you may not use this file except in compliance with the License.",
+ "/// You may obtain a copy of the License at",
+ "///",
+ "///     http://www.apache.org/licenses/LICENSE-2.0",
+ "///",
+ "/// Unless required by applicable law or agreed to in writing, software",
+ "/// distributed under the License is distributed on an \"AS IS\" BASIS,",
+ "/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.",
+ "/// See the License for the specific language governing permissions and",
+ "/// limitations under the License.",
+ "///",
+ "/// Copyright holder is triAGENS GmbH, Cologne, Germany",
+ "///",
+ "/// @author Achim Brandt",
+ "/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                       ArangoError",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                      constructors and destructors",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief constructor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function ArangoError (error) {",
+ "  if (error !== undefined) {",
+ "    this.error = error.error;",
+ "    this.code = error.code;",
+ "    this.errorNum = error.errorNum;",
+ "    this.errorMessage = error.errorMessage;",
+ "  }",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief prints an error",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoError.prototype._PRINT = function() {",
+ "    internal.output(this.toString());",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief toString function",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoError.prototype.toString = function() {",
+ "    var result = \"\";",
+ "",
+ "    if (internal.COLOR_OUTPUT) {",
+ "      result = internal.COLOR_BRIGHT + \"Error: \" + internal.COLOR_OUTPUT_RESET;",
+ "    }",
+ "    else  {",
+ "      result = \"Error: \";",
+ "    }",
+ "",
+ "    result += \"[\" + this.code + \":\" + this.errorNum + \"] \" + this.errorMessage;",
+ "",
+ "    return result;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief prints an error",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoError.prototype.toString = function() {",
+ "    var errorNum = this.errorNum;",
+ "    var errorMessage = this.errorMessage;",
+ "",
+ "    return \"[ArangoError \" + errorNum + \": \" + errorMessage + \"]\";",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 Module \"arangosh\"",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup V8ModuleArangosh",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "ModuleCache[\"/arangosh\"] = new Module(\"/arangosh\");",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "  var client = ModuleCache[\"/arangosh\"].exports;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private variables",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief help texts",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.HELP = \"\";",
+ "  client.helpQueries = \"\";",
+ "  client.helpArangoDatabase = \"\";",
+ "  client.helpArangoCollection = \"\";",
+ "  client.helpArangoQueryCursor = \"\";",
+ "  client.helpArangoStatement = \"\";",
+ "  client.helpExtended = \"\";",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a formatted type string for object",
+ "/// ",
+ "/// If the object has an id, it will be included in the string.",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.getIdString = function (object, typeName) {",
+ "    var result = \"[object \" + typeName;",
+ "  ",
+ "    if (object._id) {",
+ "      result += \":\" + object._id;",
+ "    }",
+ "    else if (object.data && object.data._id) {",
+ "      result += \":\" + object.data._id;",
+ "    }",
+ "",
+ "    result += \"]\";",
+ "",
+ "    return result;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief handles error results",
+ "/// ",
+ "/// throws an exception in case of an an error",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.checkRequestResult = function (requestResult) {",
+ "    if (requestResult === undefined) {",
+ "      requestResult = {",
+ "        \"error\" : true,",
+ "        \"code\"  : 0,",
+ "        \"errorNum\" : 0,",
+ "        \"errorMessage\" : \"Unknown error. Request result is empty\"",
+ "      };",
+ "    }",
+ "  ",
+ "    if (requestResult.error !== undefined && requestResult.error) {    ",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief create a formatted headline text ",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.createHelpHeadline = function (text) {",
+ "    var i;",
+ "    var p = \"\";",
+ "    var x = parseInt(Math.abs(78 - text.length) / 2);",
+ "",
+ "    for (i = 0; i < x; ++i) {",
+ "      p += \"-\";",
+ "    }",
+ "  ",
+ "    return \"\\n\" + p + \" \" + text + \" \" + p + \"\\n\";",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                  public functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief turn off pretty printing",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function print_plain (data) {",
+ "  var internal = require(\"internal\");",
+ "",
+ "  var p = internal.PRETTY_PRINT;",
+ "  internal.PRETTY_PRINT = false;",
+ "",
+ "  var c = internal.COLOR_OUTPUT;",
+ "  internal.COLOR_OUTPUT = false;",
+ "  ",
+ "  try {",
+ "    internal.print(data);",
+ "",
+ "    internal.PRETTY_PRINT = p;",
+ "    internal.COLOR_OUTPUT = c;",
+ "  }",
+ "  catch (e) {",
+ "    internal.PRETTY_PRINT = p;",
+ "    internal.COLOR_OUTPUT = c;",
+ "",
+ "    throw e.message;    ",
+ "  }  ",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief start pretty printing",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function start_pretty_print () {",
+ "  var internal = require(\"internal\");",
+ "",
+ "  if (! internal.PRETTY_PRINT) {",
+ "    internal.print(\"using pretty printing\");",
+ "    internal.PRETTY_PRINT = true;",
+ "  }",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief stop pretty printing",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function stop_pretty_print () {",
+ "  var internal = require(\"internal\");",
+ "",
+ "  if (internal.PRETTY_PRINT) {",
+ "    internal.PRETTY_PRINT = false;",
+ "    internal.print(\"stop pretty printing\");",
+ "  }",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief start paging",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function start_pager () {",
+ "  var internal = require(\"internal\");",
+ "",
+ "  internal.start_pager();",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief stop paging",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function stop_pager () {",
+ "  var internal = require(\"internal\");",
+ "  ",
+ "  internal.stop_pager();",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief start pretty printing with optional color",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function start_color_print (color) {",
+ "  var internal = require(\"internal\");",
+ "",
+ "  if (typeof(color) === \"string\") {",
+ "    internal.COLOR_OUTPUT_DEFAULT = color;",
+ "  }",
+ "  else {",
+ "    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;",
+ "  }",
+ "",
+ "  internal.COLOR_OUTPUT = true;",
+ "",
+ "  internal.print(\"start \"",
+ "                 + internal.COLOR_OUTPUT_DEFAULT",
+ "                 + \"color\" ",
+ "                 + internal.COLOR_OUTPUT_RESET",
+ "                 + \" printing\");",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief stop pretty printing",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function stop_color_print () {",
+ "  var internal = require(\"internal\");",
+ "",
+ "  internal.print(\"stop color printing\");",
+ "  internal.COLOR_OUTPUT = false;",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief print the overall help",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function help () {",
+ "  var internal = require(\"internal\");",
+ "  var client = require(\"arangosh\");",
+ "",
+ "  internal.print(client.HELP);",
+ "  internal.print(client.helpQueries);",
+ "  internal.print(client.helpArangoDatabase);",
+ "  internal.print(client.helpArangoCollection);",
+ "  internal.print(client.helpArangoStatement);",
+ "  internal.print(client.helpArangoQueryCursor);",
+ "  internal.print(client.helpExtended);",
+ "}",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 Module \"internal\"",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief be quiet",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  internal.ARANGO_QUIET = ARANGO_QUIET;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief log function",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  internal.log = function (level, msg) {",
+ "    internal.output(level, \": \", msg, \"\\n\");",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief rebuilds the routing cache",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  internal.reloadRouting = function () {",
+ "    if (typeof arango !== 'undefined') {",
+ "      arango.POST(\"/_admin/reloadRouting\", \"\");",
+ "    }",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 ArangoQueryCursor",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                      constructors and destructors",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief constructor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function ArangoQueryCursor (database, data) {",
+ "  this._database = database;",
+ "  this.data = data;",
+ "  this._hasNext = false;",
+ "  this._hasMore = false;",
+ "  this._pos = 0;",
+ "  this._count = 0;",
+ "  this._total = 0;",
+ "  ",
+ "  if (data.result !== undefined) {",
+ "    this._count = data.result.length;",
+ "    ",
+ "    if (this._pos < this._count) {",
+ "      this._hasNext = true;",
+ "    }",
+ "    ",
+ "    if (data.hasMore !== undefined && data.hasMore) {",
+ "      this._hasMore = true;",
+ "    }    ",
+ "  }",
+ "}",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "  var client = require(\"arangosh\");",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief help for ArangoQueryCursor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.helpArangoQueryCursor = client.createHelpHeadline(\"ArangoQueryCursor help\") +",
+ "  'ArangoQueryCursor constructor:                                      ' + \"\\n\" +",
+ "  ' > cu1 = qi1.execute();                                             ' + \"\\n\" +",
+ "  'Functions:                                                          ' + \"\\n\" +",
+ "  '  hasNext();                            returns true if there       ' + \"\\n\" +",
+ "  '                                        are more results            ' + \"\\n\" +",
+ "  '  next();                               returns the next document   ' + \"\\n\" +",
+ "  '  elements();                           returns all documents       ' + \"\\n\" +",
+ "  '  _help();                              this help                   ' + \"\\n\" +",
+ "  'Attributes:                                                         ' + \"\\n\" +",
+ "  '  _database                             database object             ' + \"\\n\" +",
+ "  'Example:                                                            ' + \"\\n\" +",
+ "  ' > st = db._createStatement({ \"query\" : \"for c in coll return c\" });' + \"\\n\" +",
+ "  ' > c = st.execute();                                                ' + \"\\n\" +",
+ "  ' > documents = c.elements();                                        ' + \"\\n\" +",
+ "  ' > c = st.execute();                                                ' + \"\\n\" +",
+ "  ' > while (c.hasNext()) { print( c.next() ); }                       ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief print the help for the cursor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype._help = function () {",
+ "    internal.print(client.helpArangoQueryCursor);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a string representation of the cursor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype.toString = function () {  ",
+ "    return client.getIdString(this, \"ArangoQueryCursor\");",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                  public functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return whether there are more results available in the cursor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype.hasNext = function () {",
+ "    return this._hasNext;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return the next result document from the cursor",
+ "///",
+ "/// If no more results are available locally but more results are available on",
+ "/// the server, this function will make a roundtrip to the server",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype.next = function () {",
+ "    if (!this._hasNext) {",
+ "      throw \"No more results\";",
+ "    }",
+ "",
+ "    var result = this.data.result[this._pos];",
+ "    this._pos++;",
+ "",
+ "    // reached last result",
+ "    if (this._pos === this._count) {",
+ "      this._hasNext = false;",
+ "      this._pos = 0;",
+ "",
+ "      if (this._hasMore && this.data.id) {",
+ "        this._hasMore = false;",
+ "",
+ "        // load more results      ",
+ "        var requestResult = this._database._connection.PUT(",
+ "          \"/_api/cursor/\"+ encodeURIComponent(this.data.id),",
+ "          \"\");",
+ "",
+ "        client.checkRequestResult(requestResult);",
+ "",
+ "        this.data = requestResult;",
+ "        this._count = requestResult.result.length;",
+ "",
+ "        if (this._pos < this._count) {",
+ "          this._hasNext = true;",
+ "        }",
+ "",
+ "        if (requestResult.hasMore !== undefined && requestResult.hasMore) {",
+ "          this._hasMore = true;",
+ "        }                ",
+ "      }    ",
+ "    }",
+ "",
+ "    return result;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return all remaining result documents from the cursor",
+ "///",
+ "/// If no more results are available locally but more results are available on",
+ "/// the server, this function will make one or multiple roundtrips to the ",
+ "/// server. Calling this function will also fully exhaust the cursor.",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype.elements = function () {  ",
+ "    var result = [];",
+ "",
+ "    while (this.hasNext()) { ",
+ "      result.push( this.next() ); ",
+ "    }",
+ "",
+ "    return result;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief explicitly dispose the cursor",
+ "///",
+ "/// Calling this function will mark the cursor as deleted on the server. It will",
+ "/// therefore make a roundtrip to the server. Using a cursor after it has been",
+ "/// disposed is considered a user error",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype.dispose = function () {",
+ "    if (!this.data.id) {",
+ "      // client side only cursor",
+ "      return;",
+ "    }",
+ "",
+ "    var requestResult = this._database._connection.DELETE(",
+ "      \"/_api/cursor/\"+ encodeURIComponent(this.data.id),",
+ "      \"\");",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    this.data.id = undefined;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return the total number of documents in the cursor",
+ "///",
+ "/// The number will remain the same regardless how much result documents have",
+ "/// already been fetched from the cursor.",
+ "///",
+ "/// This function will return the number only if the cursor was constructed ",
+ "/// with the \"doCount\" attribute. Otherwise it will return undefined.",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoQueryCursor.prototype.count = function () {",
+ "    if (!this.data.id) {",
+ "      throw \"cursor has been disposed\";",
+ "    }",
+ "",
+ "    return this.data.count;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                   ArangoStatement",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "  var client = require(\"arangosh\");",
+ "",
+ "  var SB = require(\"statement-basics\");",
+ "  internal.ArangoStatement = SB.ArangoStatement;",
+ "  ArangoStatement = SB.ArangoStatement;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief parse a query and return the results",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  SB.ArangoStatement.prototype.parse = function () {",
+ "    var body = {",
+ "      \"query\" : this._query,",
+ "    };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/query\",",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    var result = { \"bindVars\" : requestResult.bindVars, \"collections\" : requestResult.collections };",
+ "    return result;",
+ "  }",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief explain a query and return the results",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  SB.ArangoStatement.prototype.explain = function () {",
+ "    var body = {",
+ "      \"query\" : this._query,",
+ "    };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/explain\",",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult.plan;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief execute the query",
+ "///",
+ "/// Invoking execute() will transfer the query and all bind parameters to the",
+ "/// server. It will return a cursor with the query results in case of success.",
+ "/// In case of an error, the error will be printed",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  SB.ArangoStatement.prototype.execute = function () {",
+ "    var body = {",
+ "      \"query\" : this._query,",
+ "      \"count\" : this._doCount,",
+ "      \"bindVars\" : this._bindVars",
+ "    };",
+ "",
+ "    if (this._batchSize) {",
+ "      body[\"batchSize\"] = this._batchSize;",
+ "    }",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/cursor\",",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return new ArangoQueryCursor(this._database, requestResult);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief help for ArangoStatement",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.helpArangoStatement = client.createHelpHeadline(\"ArangoStatement help\") +",
+ "  'ArangoStatement constructor:                                        ' + \"\\n\" +",
+ "  ' > st = new ArangoStatement(db, { \"query\" : \"for ...\" });           ' + \"\\n\" +",
+ "  ' > st = db._createStatement({ \"query\" : \"for ...\" });               ' + \"\\n\" +",
+ "  'Functions:                                                          ' + \"\\n\" +",
+ "  '  bind(<key>, <value>);          bind single variable               ' + \"\\n\" +",
+ "  '  bind(<values>);                bind multiple variables            ' + \"\\n\" +",
+ "  '  setBatchSize(<max>);           set max. number of results         ' + \"\\n\" +",
+ "  '                                 to be transferred per roundtrip    ' + \"\\n\" +",
+ "  '  setCount(<value>);             set count flag (return number of   ' + \"\\n\" +",
+ "  '                                 results in \"count\" attribute)      ' + \"\\n\" +",
+ "  '  getBatchSize();                return max. number of results      ' + \"\\n\" +",
+ "  '                                 to be transferred per roundtrip    ' + \"\\n\" +",
+ "  '  getCount();                    return count flag (return number of' + \"\\n\" +",
+ "  '                                 results in \"count\" attribute)      ' + \"\\n\" +",
+ "  '  getQuery();                    return query string                ' + \"\\n\" +",
+ "  '  execute();                     execute query and return cursor    ' + \"\\n\" +",
+ "  '  _help();                       this help                          ' + \"\\n\" +",
+ "  'Attributes:                                                         ' + \"\\n\" +",
+ "  '  _database                      database object                    ' + \"\\n\" +",
+ "  'Example:                                                            ' + \"\\n\" +",
+ "  ' > st = db._createStatement({ \"query\" : \"for c in coll filter       ' + \"\\n\" +",
+ "  '                              c.x == @a && c.y == @b return c\" });  ' + \"\\n\" +",
+ "  ' > st.bind(\"a\", \"hello\");                                           ' + \"\\n\" +",
+ "  ' > st.bind(\"b\", \"world\");                                           ' + \"\\n\" +",
+ "  ' > c = st.execute();                                                ' + \"\\n\" +",
+ "  ' > print(c.elements());                                             ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief print the help for ArangoStatement",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  SB.ArangoStatement.prototype._help = function () {",
+ "    internal.print(client.helpArangoStatement);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a string representation of the statement",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  SB.ArangoStatement.prototype.toString = function () {  ",
+ "    return client.getIdString(this, \"ArangoStatement\");",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                  ArangoCollection",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                      constructors and destructors",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief constructor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function ArangoCollection (database, data) {",
+ "  this._database = database;",
+ "",
+ "  if (typeof data === \"string\") {",
+ "    this._id = null;",
+ "    this._name = data;",
+ "    this._status = null;",
+ "    this._type = null;",
+ "  }",
+ "  else if (data !== undefined) {",
+ "    this._id = data.id;",
+ "    this._name = data.name;",
+ "    this._status = data.status;",
+ "    this._type = data.type;",
+ "  }",
+ "  else {",
+ "    this._id = null;",
+ "    this._name = null;",
+ "    this._status = null;",
+ "    this._type = null;",
+ "  }",
+ "}",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "  var client = require(\"arangosh\");",
+ "",
+ "  internal.ArangoCollection = ArangoCollection;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                         constants",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief collection is corrupted",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.STATUS_CORRUPTED = 0;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief collection is new born",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.STATUS_NEW_BORN = 1;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief collection is unloaded",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.STATUS_UNLOADED = 2;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief collection is loaded",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.STATUS_LOADED = 3;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief collection is unloading",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.STATUS_UNLOADING = 4;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief collection is deleted",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.STATUS_DELETED = 5;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief document collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "  ",
+ "  ArangoCollection.TYPE_DOCUMENT = 2;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief edge collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.TYPE_EDGE = 3;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief attachment collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.TYPE_ATTACHMENT = 4;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief help for ArangoCollection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.helpArangoCollection = client.createHelpHeadline(\"ArangoCollection help\") +",
+ "  'ArangoCollection constructor:                                       ' + \"\\n\" +",
+ "  ' > col = db.mycoll;                                                 ' + \"\\n\" +",
+ "  ' > col = db._create(\"mycoll\");                                      ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Administration Functions:                                           ' + \"\\n\" +",
+ "  '  name()                          collection name                   ' + \"\\n\" +",
+ "  '  status()                        status of the collection          ' + \"\\n\" +",
+ "  '  type()                          type of the collection            ' + \"\\n\" +",
+ "  '  truncate()                      delete all documents              ' + \"\\n\" +",
+ "  '  properties()                    show collection properties        ' + \"\\n\" +",
+ "  '  drop()                          delete a collection               ' + \"\\n\" +",
+ "  '  load()                          load a collection into memeory    ' + \"\\n\" +",
+ "  '  unload()                        unload a collection from memory   ' + \"\\n\" +",
+ "  '  rename(new-name)                renames a collection              ' + \"\\n\" +",
+ "  '  refresh()                       refreshes the status and name     ' + \"\\n\" +",
+ "  '  _help();                        this help                         ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Document Functions:                                                 ' + \"\\n\" +",
+ "  '  count()                         number of documents               ' + \"\\n\" +",
+ "  '  save(<data>)                    create document and return handle ' + \"\\n\" +",
+ "  '  document(<id>)                  get document by handle            ' + \"\\n\" +",
+ "  '  replace(<id>, <data>,           overwrite document                ' + \"\\n\" +",
+ "  '          <overwrite>)                                              ' + \"\\n\" +",
+ "  '  update(<id>, <data>,            partially update document         ' + \"\\n\" +",
+ "  '         <overwrite>, <keepNull>)                                   ' + \"\\n\" +",
+ "  '  delete(<id>)                    delete document                   ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Attributes:                                                         ' + \"\\n\" +",
+ "  '  _database                       database object                   ' + \"\\n\" +",
+ "  '  _id                             collection identifier             ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a string representation of the collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.toString = function () {  ",
+ "    return client.getIdString(this, \"ArangoCollection\");",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief prints the collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype._PRINT = function () {  ",
+ "    var status = type = \"unknown\";",
+ "",
+ "    switch (this.status()) {",
+ "      case ArangoCollection.STATUS_NEW_BORN: status = \"new born\"; break;",
+ "      case ArangoCollection.STATUS_UNLOADED: status = \"unloaded\"; break;",
+ "      case ArangoCollection.STATUS_UNLOADING: status = \"unloading\"; break;",
+ "      case ArangoCollection.STATUS_LOADED: status = \"loaded\"; break;",
+ "      case ArangoCollection.STATUS_CORRUPTED: status = \"corrupted\"; break;",
+ "      case ArangoCollection.STATUS_DELETED: status = \"deleted\"; break;",
+ "    }",
+ "",
+ "    switch (this.type()) {",
+ "      case ArangoCollection.TYPE_DOCUMENT: type = \"document\"; break;",
+ "      case ArangoCollection.TYPE_EDGE: type = \"edge\"; break;",
+ "      case ArangoCollection.TYPE_ATTACHMENT: type = \"attachment\"; break;",
+ "    }",
+ "",
+ "    internal.output(\"[ArangoCollection \",",
+ "                    this._id, ",
+ "                    \", \\\"\", ",
+ "                    this.name(), ",
+ "                    \"\\\" (type \",",
+ "                    type, \", status \",",
+ "                    status,",
+ "                    \")]\");",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief print the help for ArangoCollection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype._help = function () {  ",
+ "    internal.print(client.helpArangoCollection);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                  public functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the name of a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.name = function () {",
+ "    if (this._name === null) {",
+ "      this.refresh();",
+ "    }",
+ "",
+ "    return this._name;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the status of a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.status = function () {",
+ "    var result;",
+ "",
+ "    if (this._status === null) {",
+ "      this.refresh();",
+ "    }",
+ "",
+ "    // save original status",
+ "    result = this._status;",
+ "",
+ "    if (this._status == ArangoCollection.STATUS_UNLOADING) {",
+ "      // if collection is currently unloading, we must not cache this info",
+ "      this._status = null;",
+ "    }",
+ "",
+ "    // return the correct result",
+ "    return result;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the type of a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.type = function () {",
+ "    var result;",
+ "",
+ "    if (this._type === null) {",
+ "      this.refresh();",
+ "    }",
+ "",
+ "    return this._type;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief gets or sets the properties of a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.properties = function (properties) {",
+ "    var requestResult;",
+ "",
+ "    if (properties === undefined) {",
+ "      requestResult = this._database._connection.GET(",
+ "        \"/_api/collection/\" + encodeURIComponent(this._id) + \"/properties\");",
+ "",
+ "      client.checkRequestResult(requestResult);",
+ "    }",
+ "    else {",
+ "      var body = {};",
+ "",
+ "      if (properties.hasOwnProperty(\"waitForSync\")) {",
+ "        body.waitForSync = properties.waitForSync;",
+ "      }",
+ "",
+ "      requestResult = this._database._connection.PUT(",
+ "        \"/_api/collection/\" + encodeURIComponent(this._id) + \"/properties\",",
+ "        JSON.stringify(body));",
+ "",
+ "      client.checkRequestResult(requestResult);",
+ "    }",
+ "",
+ "    return { ",
+ "      waitForSync : requestResult.waitForSync,",
+ "      journalSize : requestResult.journalSize",
+ "    };",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief gets the figures of a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.figures = function () {",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/figures\");",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult.figures;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief drops a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.drop = function () {",
+ "    var requestResult = this._database._connection.DELETE(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    this._status = ArangoCollection.STATUS_DELETED;",
+ "",
+ "    var database = this._database;",
+ "    var name;",
+ "",
+ "    for (name in database) {",
+ "      if (database.hasOwnProperty(name)) {",
+ "        var collection = database[name];",
+ "",
+ "        if (collection instanceof ArangoCollection) {",
+ "          if (collection._id === this._id) {",
+ "            delete database[name];",
+ "          }",
+ "        }",
+ "      }",
+ "    }",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns all documents",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.toArray = function () {",
+ "    return this.all().toArray();",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns all indexes",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.getIndexes = function () {",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult.indexes;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns one index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.index = function (id) {",
+ "    if (id.hasOwnProperty(\"id\")) {",
+ "      id = id.id;",
+ "    }",
+ "",
+ "    var requestResult;",
+ "    var s = id.split(\"/\");",
+ "",
+ "    if (s.length !== 2) {",
+ "      requestResult = {",
+ "        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,",
+ "        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message",
+ "      };",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "    else if (parseInt(s[0]) !== this._id) {",
+ "      requestResult = {",
+ "        errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,",
+ "        errorMessage: ",
+ "          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message",
+ "      };",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    requestResult = this._database._connection.GET(\"/_api/index/\" + id);",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief deletes one index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.dropIndex = function (id) {",
+ "    if (id.hasOwnProperty(\"id\")) {",
+ "      id = id.id;",
+ "    }",
+ "",
+ "    var requestResult;",
+ "    var s = id.split(\"/\");",
+ "",
+ "    if (s.length !== 2) {",
+ "      requestResult = {",
+ "        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,",
+ "        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message",
+ "      };",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "    else if (parseInt(s[0]) !== this._id) {",
+ "      requestResult = {",
+ "        errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,",
+ "        errorMessage:",
+ "          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message",
+ "      };",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    requestResult = this._database._connection.DELETE(\"/_api/index/\" + id);",
+ "",
+ "    if (requestResult !== null",
+ "        && requestResult.error === true ",
+ "        && requestResult.errorNum",
+ "             === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {",
+ "      return false;",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return true;",
+ "  };",
+ "",
+ "  ",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds a bitarray index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureBitarray = function () {",
+ "    var i;",
+ "    var body;",
+ "    var fields = [];",
+ "",
+ "    for (i = 0;  i < arguments.length;  ++i) {",
+ "      fields.push(arguments[i]);",
+ "    }",
+ "",
+ "    body = { type : \"bitarray\", unique : false, fields : fields };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "  ",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds a cap constraint",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureCapConstraint = function (size) {",
+ "    var body;",
+ "",
+ "    body = { type : \"cap\", size : size };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds a unique skip-list index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureUniqueSkiplist = function () {",
+ "    var i;",
+ "    var body;",
+ "    var fields = [];",
+ "",
+ "    for (i = 0;  i < arguments.length;  ++i) {",
+ "      fields.push(arguments[i]);",
+ "    }",
+ "",
+ "    body = { type : \"skiplist\", unique : true, fields : fields };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds a skip-list index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureSkiplist = function () {",
+ "    var i;",
+ "    var body;",
+ "    var fields = [];",
+ "",
+ "    for (i = 0;  i < arguments.length;  ++i) {",
+ "      fields.push(arguments[i]);",
+ "    }",
+ "",
+ "    body = { type : \"skiplist\", unique : false, fields : fields };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds a unique constraint",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureUniqueConstraint = function () {",
+ "    var i;",
+ "    var body;",
+ "    var fields = [];",
+ "",
+ "    for (i = 0;  i < arguments.length;  ++i) {",
+ "      fields.push(arguments[i]);",
+ "    }",
+ "",
+ "    body = { type : \"hash\", unique : true, fields : fields };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds a hash index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureHashIndex = function () {",
+ "    var i;",
+ "    var body;",
+ "    var fields = [];",
+ "",
+ "    for (i = 0;  i < arguments.length;  ++i) {",
+ "      fields.push(arguments[i]);",
+ "    }",
+ "",
+ "    body = { type : \"hash\", unique : false, fields : fields };",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds an geo index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {",
+ "    var body;",
+ "",
+ "    if (typeof lat !== \"string\") {",
+ "      throw \"usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])\";",
+ "    }",
+ "",
+ "    if (typeof lon === \"boolean\") {",
+ "      body = { ",
+ "        type : \"geo\", ",
+ "        fields : [ lat ], ",
+ "        geoJson : lon, ",
+ "        constraint : false",
+ "      };",
+ "    }",
+ "    else if (lon === undefined) {",
+ "      body = {",
+ "        type : \"geo\", ",
+ "        fields : [ lat ],",
+ "        geoJson : false, ",
+ "        constraint : false ",
+ "      };",
+ "    }",
+ "    else {",
+ "      body = {",
+ "        type : \"geo\",",
+ "        fields : [ lat, lon ],",
+ "        constraint : false",
+ "      };",
+ "    }",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id), ",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief adds an geo constraint",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {",
+ "    var body;",
+ "",
+ "    // only two parameter",
+ "    if (ignoreNull === undefined) {",
+ "      ignoreNull = lon;",
+ "",
+ "      if (typeof ignoreNull !== \"boolean\") {",
+ "        throw \"usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>)\"",
+ "            + \" or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)\";",
+ "      }",
+ "",
+ "      body = {",
+ "        type : \"geo\",",
+ "        fields : [ lat ],",
+ "        geoJson : false, ",
+ "        constraint : true,",
+ "        ignoreNull : ignoreNull ",
+ "      };",
+ "    }",
+ "",
+ "    // three parameter",
+ "    else {",
+ "      if (typeof lon === \"boolean\") {",
+ "        body = {",
+ "          type : \"geo\",",
+ "          fields : [ lat ],",
+ "          geoJson : lon,",
+ "          constraint : true,",
+ "          ignoreNull : ignoreNull",
+ "        };",
+ "      }",
+ "      else {",
+ "        body = {",
+ "          type : \"geo\",",
+ "          fields : [ lat, lon ],",
+ "          constraint : true,",
+ "          ignoreNull : ignoreNull",
+ "        };",
+ "      }",
+ "    }",
+ "",
+ "    var requestResult = this._database._connection.POST(",
+ "      \"/_api/index?collection=\" + encodeURIComponent(this._id),",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief queries by example",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.BY_EXAMPLE_HASH = function (index, example, skip, limit) {",
+ "    var key;",
+ "    var body;",
+ "",
+ "    limit = limit || null;",
+ "    skip = skip || null;",
+ "",
+ "    if (index.hasOwnProperty(\"id\")) {",
+ "      index = index.id;",
+ "    }",
+ "",
+ "    body = {",
+ "      collection : this._id,",
+ "      index : index,",
+ "      skip : skip,",
+ "      limit : limit,",
+ "      example : {} ",
+ "    };",
+ "",
+ "    for (key in example) {",
+ "      if (example.hasOwnProperty(key)) {",
+ "        body.example[key] = example[key];",
+ "      }",
+ "    }",
+ "",
+ "    var requestResult = this._database._connection.PUT(",
+ "      \"/_api/simple/BY-EXAMPLE-HASH\",",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief truncates a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.truncate = function () {",
+ "    var requestResult = this._database._connection.PUT(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/truncate\", \"\");",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    this._status = null;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief loads a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.load = function () {",
+ "    var requestResult = this._database._connection.PUT(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/load\",",
+ "      \"\");",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    this._status = null;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief unloads a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.unload = function () {",
+ "    var requestResult = this._database._connection.PUT(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/unload\",",
+ "      \"\");",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    this._status = null;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief renames a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.rename = function (name) {",
+ "    var body = { name : name };",
+ "    var requestResult = this._database._connection.PUT(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/rename\",",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    delete this._database[this._name];",
+ "    this._database[name] = this;",
+ "",
+ "    this._status = null;",
+ "    this._name = null;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief refreshes a collection status and name",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.refresh = function () {",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    this._name = requestResult['name'];",
+ "    this._status = requestResult['status'];",
+ "    this._type = requestResult['type'];",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                document functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the number of documents",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.count = function () {",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/collection/\" + encodeURIComponent(this._id) + \"/count\");",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult[\"count\"];",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a single document from the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.document = function (id) {",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._database._connection.GET(\"/_api/document/\" + id);",
+ "    }",
+ "    else {",
+ "      requestResult = this._database._connection.GET(",
+ "        \"/_api/document/\" + id,",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null",
+ "        && requestResult.error === true ",
+ "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "      else if (parseInt(s[0]) !== this._id) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief save a document in the collection, return its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.save = function () {",
+ "    var requestResult;",
+ "    var type = this.type();",
+ "    ",
+ "    if (type == undefined) {",
+ "      type = ArangoCollection.TYPE_DOCUMENT;",
+ "    }",
+ "",
+ "    if (type == ArangoCollection.TYPE_DOCUMENT) { ",
+ "      var data = arguments[0];",
+ "",
+ "      requestResult = this._database._connection.POST(",
+ "        \"/_api/document?collection=\" + encodeURIComponent(this._id),",
+ "        JSON.stringify(data));",
+ "    }",
+ "    else if (type == ArangoCollection.TYPE_EDGE) {",
+ "      var from = arguments[0];",
+ "      var to = arguments[1];",
+ "      var data = arguments[2];",
+ "",
+ "      if (from.hasOwnProperty(\"_id\")) {",
+ "        from = from._id;",
+ "      }",
+ "",
+ "      if (to.hasOwnProperty(\"_id\")) {",
+ "        to = to._id;",
+ "      }",
+ "",
+ "      var url = \"/_api/edge?collection=\" + encodeURIComponent(this._id)",
+ "              + \"&from=\" + encodeURIComponent(from)",
+ "              + \"&to=\" + encodeURIComponent(to);",
+ "",
+ "      requestResult = this._database._connection.POST(",
+ "        url,",
+ "        JSON.stringify(data));",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief delete a document in the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.remove = function (id, overwrite) {",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    var policy = \"\";",
+ "",
+ "    if (overwrite) {",
+ "      policy = \"?policy=last\";",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._database._connection.DELETE(",
+ "        \"/_api/document/\" + id + policy);",
+ "    }",
+ "    else {",
+ "      requestResult = this._database._connection.DELETE(",
+ "        \"/_api/document/\" + id + policy, {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null && requestResult.error === true) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "      else if (parseInt(s[0]) !== this._id) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;",
+ "      }",
+ "",
+ "      if (overwrite) {",
+ "        if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {",
+ "          return false;",
+ "        }",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return true;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief replace a document in the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.replace = function (id, data, overwrite) { ",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    var policy = \"\";",
+ "",
+ "    if (overwrite) {",
+ "      policy = \"?policy=last\";",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._database._connection.PUT(",
+ "        \"/_api/document/\" + id + policy, ",
+ "        JSON.stringify(data));",
+ "    }",
+ "    else {",
+ "      requestResult = this._database._connection.PUT(",
+ "        \"/_api/document/\" + id + policy, JSON.stringify(data),",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null && requestResult.error === true) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "      else if (parseInt(s[0]) !== this._id) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief update a document in the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.update = function (id, data, overwrite, keepNull) { ",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    // set default value for keepNull",
+ "    var keepNullValue = ((typeof keepNull == \"undefined\") ? true : keepNull);",
+ "    var params = \"?keepNull=\" + (keepNullValue ? \"true\" : \"false\");",
+ "",
+ "    if (overwrite) {",
+ "      params += \"&policy=last\";",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._database._connection.PATCH(",
+ "        \"/_api/document/\" + id + params, ",
+ "        JSON.stringify(data));",
+ "    }",
+ "    else {",
+ "      requestResult = this._database._connection.PATCH(",
+ "        \"/_api/document/\" + id + params, JSON.stringify(data),",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null && requestResult.error === true) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "      else if (parseInt(s[0]) !== this._id) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the edges starting or ending in a vertex",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.edges = function (vertex) {",
+ "    // if vertex is a list, iterator and concat",
+ "    if (vertex instanceof Array) {",
+ "      var edges = [];",
+ "      var i;",
+ "",
+ "      for (i = 0;  i < vertex.length;  ++i) {",
+ "        var e = this.edges(vertex[i]);",
+ "",
+ "        edges.push.apply(edges, e);",
+ "      }",
+ "",
+ "      return edges;",
+ "    }",
+ "",
+ "    if (vertex.hasOwnProperty(\"_id\")) {",
+ "      vertex = vertex._id;",
+ "    }",
+ "",
+ "    // get the edges",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/edges/\" + encodeURIComponent(this._id) + \"?vertex=\" + encodeURIComponent(vertex));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult['edges'];",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the edges ending in a vertex",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.inEdges = function (vertex) {",
+ "    // if vertex is a list, iterator and concat",
+ "    if (vertex instanceof Array) {",
+ "      var edges = [];",
+ "      var i;",
+ "",
+ "      for (i = 0;  i < vertex.length;  ++i) {",
+ "        var e = this.inEdges(vertex[i]);",
+ "",
+ "        edges.push.apply(edges, e);",
+ "      }",
+ "",
+ "      return edges;",
+ "    }",
+ "",
+ "    if (vertex.hasOwnProperty(\"_id\")) {",
+ "      vertex = vertex._id;",
+ "    }",
+ "",
+ "    // get the edges",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/edges/\" + encodeURIComponent(this._id)",
+ "      + \"?direction=in&vertex=\" + encodeURIComponent(vertex));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult['edges'];",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns the edges starting in a vertex",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoCollection.prototype.outEdges = function (vertex) {",
+ "    // if vertex is a list, iterator and concat",
+ "    if (vertex instanceof Array) {",
+ "      var edges = [];",
+ "      var i;",
+ "",
+ "      for (i = 0;  i < vertex.length;  ++i) {",
+ "        var e = this.outEdges(vertex[i]);",
+ "",
+ "        edges.push.apply(edges, e);",
+ "      }",
+ "",
+ "      return edges;",
+ "    }",
+ "",
+ "    if (vertex.hasOwnProperty(\"_id\")) {",
+ "      vertex = vertex._id;",
+ "    }",
+ "",
+ "    // get the edges",
+ "    var requestResult = this._database._connection.GET(",
+ "      \"/_api/edges/\" + encodeURIComponent(this._id)",
+ "      + \"?direction=out&vertex=\" + encodeURIComponent(vertex));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult['edges'];",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                    ArangoDatabase",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                      constructors and destructors",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief constructor",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "function ArangoDatabase (connection) {",
+ "  this._connection = connection;",
+ "  this._collectionConstructor = ArangoCollection;",
+ "}",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "  var client = require(\"arangosh\");",
+ "  ",
+ "  internal.ArangoDatabase = ArangoDatabase;",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                 private functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief help for ArangoDatabase",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.helpArangoDatabase = client.createHelpHeadline(\"ArangoDatabase help\") +",
+ "  'ArangoDatabase constructor:                                         ' + \"\\n\" +",
+ "  ' > db = new ArangoDatabase(connection);                             ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Administration Functions:                                           ' + \"\\n\" +",
+ "  '  _help();                         this help                        ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Collection Functions:                                               ' + \"\\n\" +",
+ "  '  _collections()                   list all collections             ' + \"\\n\" +",
+ "  '  _collection(<identifier>)        get collection by identifier/name' + \"\\n\" +",
+ "  '  _create(<name>, <props>)         creates a new collection         ' + \"\\n\" +",
+ "  '  _truncate(<name>)                delete all documents             ' + \"\\n\" +",
+ "  '  _drop(<name>)                    delete a collection              ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Document Functions:                                                 ' + \"\\n\" +",
+ "  '  _document(<id>)                  get document by handle           ' + \"\\n\" +",
+ "  '  _replace(<id>, <data>,           overwrite document               ' + \"\\n\" +",
+ "  '           <overwrite>)                                             ' + \"\\n\" +",
+ "  '  _update(<id>, <data>,            update document                  ' + \"\\n\" +",
+ "  '          <overwrite>, <keepNull>)                                  ' + \"\\n\" +",
+ "  '  _remove(<id>)                    delete document                  ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Query Functions:                                                    ' + \"\\n\" +",
+ "  '  _createStatement(<data>);        create and return select query   ' + \"\\n\" +",
+ "  '                                                                    ' + \"\\n\" +",
+ "  'Attributes:                                                         ' + \"\\n\" +",
+ "  '  <collection names>               collection with the given name   ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief print the help for ArangoDatabase",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._help = function () {  ",
+ "    internal.print(client.helpArangoDatabase);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a string representation of the database object",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype.toString = function () {  ",
+ "    return \"[object ArangoDatabase]\";",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                              collection functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return all collections from the database",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._collections = function () {",
+ "    var requestResult = this._connection.GET(\"/_api/collection\");",
+ "  ",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    if (requestResult[\"collections\"] !== undefined) {",
+ "      var collections = requestResult[\"collections\"];",
+ "      var result = [];",
+ "      var i;",
+ "    ",
+ "      // add all collentions to object",
+ "      for (i = 0;  i < collections.length;  ++i) {",
+ "        var collection = new this._collectionConstructor(this, collections[i]);",
+ "",
+ "        this[collection._name] = collection;",
+ "        result.push(collection);",
+ "      }",
+ "      ",
+ "      return result;",
+ "    }",
+ "  ",
+ "    return undefined;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a single collection, identified by its id or name",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._collection = function (id) {",
+ "    var requestResult = this._connection.GET(",
+ "      \"/_api/collection/\" + encodeURIComponent(id));",
+ "  ",
+ "    // return null in case of not found",
+ "    if (requestResult !== null",
+ "        && requestResult.error === true ",
+ "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {",
+ "      return null;",
+ "    }",
+ "",
+ "    // check all other errors and throw them",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    var name = requestResult[\"name\"];",
+ "",
+ "    if (name !== undefined) {",
+ "      this[name] = new this._collectionConstructor(this, requestResult);",
+ "      return this[name];",
+ "    }",
+ "  ",
+ "    return undefined;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief creates a new collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._create = function (name, properties, type) {",
+ "    var body = {",
+ "      \"name\" : name,",
+ "      \"type\" : ArangoCollection.TYPE_DOCUMENT",
+ "    };",
+ "",
+ "    if (properties !== undefined) {",
+ "      if (properties.hasOwnProperty(\"waitForSync\")) {",
+ "        body.waitForSync = properties.waitForSync;",
+ "      }",
+ "",
+ "      if (properties.hasOwnProperty(\"journalSize\")) {",
+ "        body.journalSize = properties.journalSize;",
+ "      }",
+ "",
+ "      if (properties.hasOwnProperty(\"isSystem\")) {",
+ "        body.isSystem = properties.isSystem;",
+ "      }",
+ "    }",
+ "",
+ "    if (type != undefined && type == ArangoCollection.TYPE_EDGE) {",
+ "      body.type = type;",
+ "    }",
+ "",
+ "    var requestResult = this._connection.POST(",
+ "      \"/_api/collection\",",
+ "      JSON.stringify(body));",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    var nname = requestResult[\"name\"];",
+ "",
+ "    if (nname !== undefined) {",
+ "      this[nname] = new this._collectionConstructor(this, requestResult);",
+ "      return this[nname];",
+ "    }",
+ "  ",
+ "    return undefined;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief creates a new document collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._createDocumentCollection = function (name, properties) {",
+ "    return this._create(name, properties, ArangoCollection.TYPE_DOCUMENT);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief creates a new edges collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._createEdgeCollection = function (name, properties) {",
+ "    return this._create(name, properties, ArangoCollection.TYPE_EDGE);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief truncates a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._truncate = function (id) {",
+ "    var name;",
+ "",
+ "    for (name in this) {",
+ "      if (this.hasOwnProperty(name)) {",
+ "        var collection = this[name];",
+ "",
+ "        if (collection instanceof this._collectionConstructor) {",
+ "          if (collection._id === id || collection._name === id) {",
+ "            return collection.truncate();",
+ "          }",
+ "        }",
+ "      }",
+ "    }",
+ "",
+ "    return undefined;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief drops a collection",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._drop = function (id) {",
+ "    var name;",
+ "",
+ "    for (name in this) {",
+ "      if (this.hasOwnProperty(name)) {",
+ "        var collection = this[name];",
+ "",
+ "        if (collection instanceof this._collectionConstructor) {",
+ "          if (collection._id === id || collection._name === id) {",
+ "            return collection.drop();",
+ "          }",
+ "        }",
+ "      }",
+ "    }",
+ "",
+ "    return undefined;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief returns one index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._index = function (id) {",
+ "    if (id.hasOwnProperty(\"id\")) {",
+ "      id = id.id;",
+ "    }",
+ "",
+ "    var requestResult = this._connection.GET(\"/_api/index/\" + id);",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief deletes one index",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._dropIndex = function (id) {",
+ "    if (id.hasOwnProperty(\"id\")) {",
+ "      id = id.id;",
+ "    }",
+ "",
+ "    var requestResult = this._connection.DELETE(\"/_api/index/\" + id);",
+ "",
+ "    if (requestResult !== null",
+ "        && requestResult.error === true ",
+ "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {",
+ "      return false;",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return true;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                document functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief return a single document from the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._document = function (id) {",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._connection.GET(\"/_api/document/\" + id);",
+ "    }",
+ "    else {",
+ "      requestResult = this._connection.GET(",
+ "        \"/_api/document/\" + id,",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null",
+ "        && requestResult.error === true ",
+ "        && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief delete a document in the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._remove = function (id, overwrite) {",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    var policy = \"\";",
+ "",
+ "    if (overwrite) {",
+ "      policy = \"?policy=last\";",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._connection.DELETE(\"/_api/document/\" + id + policy);",
+ "    }",
+ "    else {",
+ "      requestResult = this._connection.DELETE(",
+ "        \"/_api/document/\" + id + policy,",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null && requestResult.error === true) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "",
+ "      if (overwrite) {",
+ "        if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {",
+ "          return false;",
+ "        }",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return true;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief replace a document in the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._replace = function (id, data, overwrite) { ",
+ "    var rev = null;",
+ "    var requestResult;",
+ "",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    var policy = \"\";",
+ "",
+ "    if (overwrite) {",
+ "      policy = \"?policy=last\";",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._connection.PUT(",
+ "        \"/_api/document/\" + id + policy,",
+ "        JSON.stringify(data));",
+ "    }",
+ "    else {",
+ "      requestResult = this._connection.PUT(",
+ "        \"/_api/document/\" + id + policy,",
+ "        JSON.stringify(data),",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null && requestResult.error === true) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief update a document in the collection, identified by its id",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull) { ",
+ "    var rev = null;",
+ "    var requestResult;",
+ "    ",
+ "    if (id.hasOwnProperty(\"_id\")) {",
+ "      if (id.hasOwnProperty(\"_rev\")) {",
+ "        rev = id._rev;",
+ "      }",
+ "",
+ "      id = id._id;",
+ "    }",
+ "",
+ "    // set default value for keepNull",
+ "    var keepNullValue = ((typeof keepNull == \"undefined\") ? true : keepNull);",
+ "    var params = \"?keepNull=\" + (keepNullValue ? \"true\" : \"false\");",
+ "",
+ "    if (overwrite) {",
+ "      params += \"&policy=last\";",
+ "    }",
+ "",
+ "    if (rev === null) {",
+ "      requestResult = this._connection.PATCH(",
+ "        \"/_api/document/\" + id + params,",
+ "        JSON.stringify(data));",
+ "    }",
+ "    else {",
+ "      requestResult = this._connection.PATCH(",
+ "        \"/_api/document/\" + id + params,",
+ "        JSON.stringify(data),",
+ "        {'if-match' : '\"' + rev + '\"' });",
+ "    }",
+ "",
+ "    if (requestResult !== null && requestResult.error === true) {",
+ "      var s = id.split(\"/\");",
+ "",
+ "      if (s.length !== 2) {",
+ "        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;",
+ "      }",
+ "",
+ "      throw new ArangoError(requestResult);",
+ "    }",
+ "",
+ "    client.checkRequestResult(requestResult);",
+ "",
+ "    return requestResult;",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                   query functions",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief factory method to create a new statement",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  ArangoDatabase.prototype._createStatement = function (data) {  ",
+ "    return new ArangoStatement(this, data);",
+ "  };",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                      initialisers",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @addtogroup ArangoShell",
+ "/// @{",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "(function () {",
+ "  var internal = require(\"internal\");",
+ "  var client = require(\"arangosh\");",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief general help",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.HELP = client.createHelpHeadline(\"Help\") +",
+ "  'Predefined objects:                                                 ' + \"\\n\" +",
+ "  '  arango:                                ArangoConnection           ' + \"\\n\" +",
+ "  '  db:                                    ArangoDatabase             ' + \"\\n\" +",
+ "  'Example:                                                            ' + \"\\n\" +",
+ "  ' > db._collections();                    list all collections       ' + \"\\n\" +",
+ "  ' > db.<coll_name>.all().toArray();       list all documents         ' + \"\\n\" +",
+ "  ' > id = db.<coll_name>.save({ ... });    save a document            ' + \"\\n\" +",
+ "  ' > db.<coll_name>.remove(<_id>);         delete a document          ' + \"\\n\" +",
+ "  ' > db.<coll_name>.document(<_id>);       get a document             ' + \"\\n\" +",
+ "  ' > db.<coll_name>.replace(<_id>, {...}); overwrite a document       ' + \"\\n\" +",
+ "  ' > db.<coll_name>.update(<_id>, {...});  partially update a document' + \"\\n\" +",
+ "  ' > help                                  show help pages            ' + \"\\n\" +",
+ "  ' > exit                                                             ' + \"\\n\" +",
+ "  'Note: collection names may be cached in arangosh. To refresh them, issue: ' + \"\\n\" +",
+ "  ' > db._collections();                                               ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief query help",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.helpQueries = client.createHelpHeadline(\"Select query help\") +",
+ "  'Create a select query:                                              ' + \"\\n\" +",
+ "  ' > st = new ArangoStatement(db, { \"query\" : \"for...\" });            ' + \"\\n\" +",
+ "  ' > st = db._createStatement({ \"query\" : \"for...\" });                ' + \"\\n\" +",
+ "  'Set query options:                                                  ' + \"\\n\" +",
+ "  ' > st.setBatchSize(<value>);     set the max. number of results     ' + \"\\n\" +",
+ "  '                                 to be transferred per roundtrip    ' + \"\\n\" +",
+ "  ' > st.setCount(<value>);         set count flag (return number of   ' + \"\\n\" +",
+ "  '                                 results in \"count\" attribute)      ' + \"\\n\" +",
+ "  'Get query options:                                                  ' + \"\\n\" +",
+ "  ' > st.setBatchSize();            return the max. number of results  ' + \"\\n\" +",
+ "  '                                 to be transferred per roundtrip    ' + \"\\n\" +",
+ "  ' > st.getCount();                return count flag (return number of' + \"\\n\" +",
+ "  '                                 results in \"count\" attribute)      ' + \"\\n\" +",
+ "  ' > st.getQuery();                return query string                ' + \"\\n\" +",
+ "  '                                 results in \"count\" attribute)      ' + \"\\n\" +",
+ "  'Bind parameters to a query:                                         ' + \"\\n\" +",
+ "  ' > st.bind(<key>, <value>);      bind single variable               ' + \"\\n\" +",
+ "  ' > st.bind(<values>);            bind multiple variables            ' + \"\\n\" +",
+ "  'Execute query:                                                      ' + \"\\n\" +",
+ "  ' > c = st.execute();             returns a cursor                   ' + \"\\n\" +",
+ "  'Get all results in an array:                                        ' + \"\\n\" +",
+ "  ' > e = c.elements();                                                ' + \"\\n\" +",
+ "  'Or loop over the result set:                                        ' + \"\\n\" +",
+ "  ' > while (c.hasNext()) { print( c.next() ); }                       ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief extended help",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  client.helpExtended = client.createHelpHeadline(\"More help\") +",
+ "  'Pager:                                                              ' + \"\\n\" +",
+ "  ' > stop_pager()                        stop the pager output        ' + \"\\n\" +",
+ "  ' > start_pager()                       start the pager              ' + \"\\n\" +",
+ "  'Pretty printing:                                                    ' + \"\\n\" +",
+ "  ' > stop_pretty_print()                 stop pretty printing         ' + \"\\n\" +",
+ "  ' > start_pretty_print()                start pretty printing        ' + \"\\n\" +",
+ "  'Color output:                                                       ' + \"\\n\" +",
+ "  ' > stop_color_print()                  stop color printing          ' + \"\\n\" +",
+ "  ' > start_color_print()                 start color printing         ' + \"\\n\" +",
+ "  ' > start_color_print(COLOR_BLUE)       set color                    ' + \"\\n\" +",
+ "  'Print function:                                                     ' + \"\\n\" +",
+ "  ' > print(x)                            std. print function          ' + \"\\n\" +",
+ "  ' > print_plain(x)                      print without pretty printing' + \"\\n\" +",
+ "  '                                       and without colors           ';",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @brief create the global db object and load the collections",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "  try {",
+ "    if (typeof arango !== 'undefined') {",
+ "",
+ "      // default databases",
+ "      db = internal.db = new ArangoDatabase(arango);",
+ "      edges = internal.edges = db;",
+ "",
+ "      // load collection data",
+ "      internal.db._collections();",
+ "",
+ "      // load simple queries",
+ "      require(\"simple-query\");",
+ "",
+ "      if (! internal.ARANGO_QUIET) {",
+ "        internal.print(client.HELP);",
+ "      }",
+ "    }",
+ "  }",
+ "  catch (err) {",
+ "    internal.print(String(err));",
+ "  }",
+ "",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "/// @}",
+ "////////////////////////////////////////////////////////////////////////////////",
+ "",
+ "}());",
+ "",
+ "// -----------------------------------------------------------------------------",
+ "// --SECTION--                                                       END-OF-FILE",
+ "// -----------------------------------------------------------------------------",
+ "",
+ "// Local Variables:",
+ "// mode: outline-minor",
+ "// outline-regexp: \"^\\\\(/// @brief\\\\|/// @addtogroup\\\\|// --SECTION--\\\\|/// @}\\\\|/\\\\*jslint\\\\)\"",
+ "// End:",
+ "//__end__"
+};

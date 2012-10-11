@@ -67,6 +67,17 @@ namespace triagens {
   namespace v8client {
 
     class ImportHelper {
+    public:
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief type of delimited import
+      ////////////////////////////////////////////////////////////////////////////////
+
+      enum DelimitedImportType {
+        CSV = 0,
+        TSV
+      };
+
     private:
       ImportHelper (ImportHelper const&);
       ImportHelper& operator= (ImportHelper const&);
@@ -74,9 +85,6 @@ namespace triagens {
     public:
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief constructor
-      ///
-      /// @param SimpleHttpClient* client   connection to arango server
-      ///
       ////////////////////////////////////////////////////////////////////////////////
 
       ImportHelper (httpclient::SimpleHttpClient* client, size_t maxUploadSize);
@@ -88,16 +96,13 @@ namespace triagens {
       ~ImportHelper ();
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief imports a csv file
-      ///
-      /// @param string collectionName                name of the collection
-      /// @param string fileName                      name of the csv file
-      ///
-      /// @return bool                                return true, if data was imported
+      /// @brief imports a delimited file
       ////////////////////////////////////////////////////////////////////////////////
 
-      bool importCsv (const string& collectionName, const string& fileName);
-
+      bool importDelimited (const string& collectionName, 
+                            const string& fileName, 
+                            const DelimitedImportType typeImport);
+      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief imports a  file with JSON objects
       ///
@@ -112,21 +117,27 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief sets the quote character
       ///
-      /// @param char quote                the quote character
+      /// this is a string because the quote might also be empty if not used
       ////////////////////////////////////////////////////////////////////////////////
 
-      void setQuote (char quote) {
+      void setQuote (string quote) {
         _quote = quote;
       }
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets the separator character
-      ///
-      /// @param char quote                the separator character
+      /// @brief sets the separator
       ////////////////////////////////////////////////////////////////////////////////
 
-      void setSeparator (char separator) {
+      void setSeparator (string separator) {
         _separator = separator;
+      }
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief sets the eol character(s)
+      ////////////////////////////////////////////////////////////////////////////////
+
+      void setEol (string eol) {
+        _eol = eol;
       }
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -207,8 +218,10 @@ namespace triagens {
       httpclient::SimpleHttpClient* _client;
       size_t _maxUploadSize;
       
-      char _quote;
-      char _separator;
+      string _separator;
+      string _quote;
+      string _eol;
+
       bool _createCollection; 
       bool _useIds; 
       

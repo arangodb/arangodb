@@ -10,8 +10,8 @@ echo
 hudson_base="$HOME"
 rusr=root
 rgrp=root
-susr=arango
-sgrp=arango
+susr=arangodb
+sgrp=arangodb
 package_type=""
 product_name="arangodb"
 project_name="arangodb"
@@ -37,7 +37,7 @@ exec_prefix=${prefix}
 sbindir=${exec_prefix}/sbin
 initdir=/etc/init.d
 bindir=${exec_prefix}/bin
-data_dir=/var
+data_dir=/var/lib
 static_dir=${prefix}/share
 vers_dir=arangodb-${arangodb_version}
 docdir=${prefix}/share/doc/${vers_dir}
@@ -58,7 +58,7 @@ case $TRI_OS_LONG in
   Linux-openSUSE*)
     echo "Using configuration for openSuSE"
     package_type="rpm"
-    START_SCRIPT="rc.arangodb.OpenSuSE"
+    START_SCRIPT="rc.arangod.OpenSuSE"
     runlevels="035"
     docdir=${prefix}/share/doc/packages/${vers_dir}
 
@@ -69,7 +69,7 @@ case $TRI_OS_LONG in
   Linux-Debian*)
     echo "Using configuration for Debian"
     package_type="deb"
-    START_SCRIPT="rc.arangodb.Debian"
+    START_SCRIPT="rc.arangod.Debian"
     runlevels="035"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
@@ -81,7 +81,7 @@ case $TRI_OS_LONG in
   Linux-CentOS-*)
     echo "Using configuration for Centos"
     package_type="rpm"
-    START_SCRIPT="rc.arangodb.Centos"
+    START_SCRIPT="rc.arangod.Centos"
     runlevels="0235"
 
     # exports for the epm configuration file
@@ -91,7 +91,7 @@ case $TRI_OS_LONG in
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
     package_type="deb"
-    START_SCRIPT="rc.arangodb.Ubuntu"
+    START_SCRIPT="rc.arangod.Ubuntu"
     runlevels="02345"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
@@ -103,7 +103,7 @@ case $TRI_OS_LONG in
   Linux-LinuxMint-*)
     echo "Using configuration for LinuxMint"
     package_type="deb"
-    START_SCRIPT="rc.arangodb.Ubuntu"
+    START_SCRIPT="rc.arangod.Ubuntu"
     runlevels="02345"
 
     if [ ${TRI_MACH} == "x86_64" ] ; then
@@ -168,7 +168,7 @@ echo
 echo "########################################################"
 echo "Call mkepmlist to create a sublist"
 
-  for dir in js/actions/system js/server js/server/modules js/client js/client/modules js/common/modules js/common/bootstrap; do
+  for dir in js/actions/system js/server js/server/modules js/server/modules/org/arangodb js/client js/client/modules js/common/modules js/common/bootstrap; do
       echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
       mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
@@ -278,8 +278,8 @@ unmount_install_package=
 case $TRI_OS_LONG in
 
   Linux-openSUSE*)
-    start_server="sudo /etc/init.d/arangod start"
-    stop_server="sudo /etc/init.d/arangod stop"
+    start_server="sudo /etc/init.d/arangodb start"
+    stop_server="sudo /etc/init.d/arangodb stop"
 
     install_package="sudo rpm -i ${sfolder_name}/${package_name}"
     remove_package="sudo rpm -e $product_name"
@@ -287,32 +287,32 @@ case $TRI_OS_LONG in
     ;;
 
   Linux-Debian*)
-    start_server="sudo /etc/init.d/arangod start"
-    stop_server="sudo /etc/init.d/arangod stop"
+    start_server="sudo /etc/init.d/arangodb start"
+    stop_server="sudo /etc/init.d/arangodb stop"
 
     install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
     ;;
 
   Linux-CentOS-*)
-    start_server="sudo /etc/init.d/arangod start"
-    stop_server="sudo /etc/init.d/arangod stop"
+    start_server="sudo /etc/init.d/arangodb start"
+    stop_server="sudo /etc/init.d/arangodb stop"
 
     install_package="sudo rpm -i ${sfolder_name}/${package_name}"
     remove_package="sudo rpm -e $product_name"
     ;;
 
   Linux-Ubuntu-*)
-    start_server="sudo /etc/init.d/arangod start"
-    stop_server="sudo /etc/init.d/arangod stop"
+    start_server="sudo /etc/init.d/arangodb start"
+    stop_server="sudo /etc/init.d/arangodb stop"
 
     install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"
     ;;
 
   Linux-LinuxMint-*)
-    start_server="sudo /etc/init.d/arangod start"
-    stop_server="sudo /etc/init.d/arangod stop"
+    start_server="sudo /etc/init.d/arangodb start"
+    stop_server="sudo /etc/init.d/arangodb stop"
 
     install_package="sudo dpkg -i ${sfolder_name}/${package_name}"
     remove_package="sudo dpkg --purge $product_name"

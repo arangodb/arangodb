@@ -1,0 +1,664 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/fil.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/fil.xml
+ */
+fil{
+    Currencies{
+        AED{
+            "AED",
+            "United Arab Emirates Dirham",
+        }
+        AFN{
+            "AFN",
+            "Afghan Afghani",
+        }
+        ALL{
+            "ALL",
+            "Albanian Lek",
+        }
+        AMD{
+            "AMD",
+            "Armenian Dram",
+        }
+        ANG{
+            "ANG",
+            "Netherlands Antillean Guilder",
+        }
+        AOA{
+            "AOA",
+            "Angolan Kwanza",
+        }
+        ARS{
+            "ARS",
+            "Argentine Peso",
+        }
+        AUD{
+            "AU$",
+            "Australian Dollar",
+        }
+        AWG{
+            "AWG",
+            "Aruban Florin",
+        }
+        AZN{
+            "AZN",
+            "Azerbaijani Manat",
+        }
+        BAM{
+            "BAM",
+            "Bosnia-Herzegovina Convertible Mark",
+        }
+        BBD{
+            "BBD",
+            "Barbadian Dollar",
+        }
+        BDT{
+            "BDT",
+            "Bangladeshi Taka",
+        }
+        BGN{
+            "BGN",
+            "Bulgarian Lev",
+        }
+        BHD{
+            "BHD",
+            "Bahraini Dinar",
+        }
+        BIF{
+            "BIF",
+            "Burundian Franc",
+        }
+        BMD{
+            "BMD",
+            "Bermudan Dollar",
+        }
+        BND{
+            "BND",
+            "Brunei Dollar",
+        }
+        BOB{
+            "BOB",
+            "Bolivian Boliviano",
+        }
+        BRL{
+            "R$",
+            "Brazilian Real",
+        }
+        BSD{
+            "BSD",
+            "Bahamian Dollar",
+        }
+        BTN{
+            "BTN",
+            "Bhutanese Ngultrum",
+        }
+        BWP{
+            "BWP",
+            "Botswanan Pula",
+        }
+        BYR{
+            "BYR",
+            "Belarusian Ruble",
+        }
+        BZD{
+            "BZD",
+            "Belize Dollar",
+        }
+        CAD{
+            "CA$",
+            "Canadian Dollar",
+        }
+        CDF{
+            "CDF",
+            "Congolese Franc",
+        }
+        CHF{
+            "CHF",
+            "Swiss Francs",
+        }
+        CLP{
+            "CLP",
+            "Chilean Peso",
+        }
+        CNY{
+            "CN¥",
+            "Yuan Renminbi",
+        }
+        COP{
+            "COP",
+            "Colombian Peso",
+        }
+        CRC{
+            "CRC",
+            "Costa Rican Colón",
+        }
+        CUC{
+            "CUC",
+            "Cuban Convertible Peso",
+        }
+        CUP{
+            "CUP",
+            "Cuban Peso",
+        }
+        CVE{
+            "CVE",
+            "Cape Verdean Escudo",
+        }
+        CZK{
+            "CZK",
+            "Czech Koruna",
+        }
+        DEM{
+            "DEM",
+            "Deutsche Marks",
+        }
+        DJF{
+            "DJF",
+            "Djiboutian Franc",
+        }
+        DKK{
+            "DKK",
+            "Denmark Kroner",
+        }
+        DOP{
+            "DOP",
+            "Dominican Peso",
+        }
+        DZD{
+            "DZD",
+            "Algerian Dinar",
+        }
+        EEK{
+            "EEK",
+            "Estonian Kroon",
+        }
+        EGP{
+            "EGP",
+            "Egyptian Pound",
+        }
+        ERN{
+            "ERN",
+            "Eritrean Nakfa",
+        }
+        ETB{
+            "ETB",
+            "Ethiopian Birr",
+        }
+        EUR{
+            "€",
+            "Euros",
+        }
+        FJD{
+            "FJD",
+            "Fijian Dollar",
+        }
+        FKP{
+            "FKP",
+            "Falkland Islands Pound",
+        }
+        FRF{
+            "FRF",
+            "French Franc",
+        }
+        GBP{
+            "£",
+            "British Pounds Sterling",
+        }
+        GEL{
+            "GEL",
+            "Georgian Lari",
+        }
+        GHS{
+            "GHS",
+            "Ghanaian Cedi",
+        }
+        GIP{
+            "GIP",
+            "Gibraltar Pound",
+        }
+        GMD{
+            "GMD",
+            "Gambian Dalasi",
+        }
+        GNF{
+            "GNF",
+            "Guinean Franc",
+        }
+        GTQ{
+            "GTQ",
+            "Guatemalan Quetzal",
+        }
+        GYD{
+            "GYD",
+            "Guyanaese Dollar",
+        }
+        HKD{
+            "HK$",
+            "Hong Kong Dollars",
+        }
+        HNL{
+            "HNL",
+            "Honduran Lempira",
+        }
+        HRK{
+            "HRK",
+            "Croatian Kuna",
+        }
+        HTG{
+            "HTG",
+            "Haitian Gourde",
+        }
+        HUF{
+            "HUF",
+            "Hungarian Forint",
+        }
+        IDR{
+            "IDR",
+            "Indonesian Rupiah",
+        }
+        ILS{
+            "₪",
+            "Israeli Shekel",
+        }
+        INR{
+            "₹",
+            "Indian Rupee",
+        }
+        IQD{
+            "IQD",
+            "Iraqi Dinar",
+        }
+        IRR{
+            "IRR",
+            "Iranian Rial",
+        }
+        ISK{
+            "ISK",
+            "Icelandic Króna",
+        }
+        JMD{
+            "JMD",
+            "Jamaican Dollar",
+        }
+        JOD{
+            "JOD",
+            "Jordanian Dinar",
+        }
+        JPY{
+            "JP¥",
+            "Japanese Yen",
+        }
+        KES{
+            "KES",
+            "Kenyan Shilling",
+        }
+        KGS{
+            "KGS",
+            "Kyrgystani Som",
+        }
+        KHR{
+            "KHR",
+            "Cambodian Riel",
+        }
+        KMF{
+            "KMF",
+            "Comorian Franc",
+        }
+        KPW{
+            "KPW",
+            "North Korean Won",
+        }
+        KRW{
+            "₩",
+            "South Korean Won",
+        }
+        KWD{
+            "KWD",
+            "Kuwaiti Dinar",
+        }
+        KYD{
+            "KYD",
+            "Cayman Islands Dollar",
+        }
+        KZT{
+            "KZT",
+            "Kazakhstani Tenge",
+        }
+        LAK{
+            "LAK",
+            "Laotian Kip",
+        }
+        LBP{
+            "LBP",
+            "Lebanese Pound",
+        }
+        LKR{
+            "LKR",
+            "Sri Lankan Rupee",
+        }
+        LRD{
+            "LRD",
+            "Liberian Dollar",
+        }
+        LSL{
+            "LSL",
+            "Lesotho Loti",
+        }
+        LTL{
+            "LTL",
+            "Lithuanian Litas",
+        }
+        LVL{
+            "LVL",
+            "Latvian Lats",
+        }
+        LYD{
+            "LYD",
+            "Libyan Dinar",
+        }
+        MAD{
+            "MAD",
+            "Moroccan Dirham",
+        }
+        MDL{
+            "MDL",
+            "Moldovan Leu",
+        }
+        MGA{
+            "MGA",
+            "Malagasy Ariary",
+        }
+        MKD{
+            "MKD",
+            "Macedonian Denar",
+        }
+        MMK{
+            "MMK",
+            "Myanma Kyat",
+        }
+        MNT{
+            "MNT",
+            "Mongolian Tugrik",
+        }
+        MOP{
+            "MOP",
+            "Macanese Pataca",
+        }
+        MRO{
+            "MRO",
+            "Mauritanian Ouguiya",
+        }
+        MUR{
+            "MUR",
+            "Mauritian Rupee",
+        }
+        MVR{
+            "MVR",
+            "Maldivian Rufiyaa",
+        }
+        MWK{
+            "MWK",
+            "Malawian Kwacha",
+        }
+        MXN{
+            "MX$",
+            "Mexico Peso",
+        }
+        MYR{
+            "MYR",
+            "Malaysian Ringgit",
+        }
+        NAD{
+            "NAD",
+            "Namibian Dollar",
+        }
+        NGN{
+            "NGN",
+            "Nigerian Naira",
+        }
+        NIO{
+            "NIO",
+            "Nicaraguan Córdoba",
+        }
+        NOK{
+            "NOK",
+            "Norwegian Kroner",
+        }
+        NPR{
+            "NPR",
+            "Nepalese Rupee",
+        }
+        NZD{
+            "NZ$",
+            "New Zealand Dollars",
+        }
+        OMR{
+            "OMR",
+            "Omani Rial",
+        }
+        PAB{
+            "PAB",
+            "Panamanian Balboa",
+        }
+        PEN{
+            "PEN",
+            "Peruvian Nuevo Sol",
+        }
+        PGK{
+            "PGK",
+            "Papua New Guinean Kina",
+        }
+        PHP{
+            "₱",
+            "Philippine Peso",
+        }
+        PKR{
+            "PKR",
+            "Pakistan Rupee",
+        }
+        PLN{
+            "PLN",
+            "Polish NewZloty",
+        }
+        PYG{
+            "PYG",
+            "Paraguayan Guarani",
+        }
+        QAR{
+            "QAR",
+            "Qatari Rial",
+        }
+        RON{
+            "RON",
+            "Romanian Leu",
+        }
+        RSD{
+            "RSD",
+            "Serbian Dinar",
+        }
+        RUB{
+            "RUB",
+            "Russian Ruble",
+        }
+        RWF{
+            "RWF",
+            "Rwandan Franc",
+        }
+        SAR{
+            "SAR",
+            "Saudi Riyal",
+        }
+        SBD{
+            "SBD",
+            "Solomon Islands Dollar",
+        }
+        SCR{
+            "SCR",
+            "Seychellois Rupee",
+        }
+        SDG{
+            "SDG",
+            "Sudanese Pound",
+        }
+        SEK{
+            "SEK",
+            "Sweden Kronor",
+        }
+        SGD{
+            "SGD",
+            "Singapore Dollars",
+        }
+        SHP{
+            "SHP",
+            "Saint Helena Pound",
+        }
+        SIT{
+            "SIT",
+            "Slovenian Tolar",
+        }
+        SKK{
+            "SKK",
+            "Slovak Koruna",
+        }
+        SLL{
+            "SLL",
+            "Sierra Leonean Leone",
+        }
+        SOS{
+            "SOS",
+            "Somali Shilling",
+        }
+        SRD{
+            "SRD",
+            "Surinamese Dollar",
+        }
+        STD{
+            "STD",
+            "São Tomé and Príncipe Dobra",
+        }
+        SYP{
+            "SYP",
+            "Syrian Pound",
+        }
+        SZL{
+            "SZL",
+            "Swazi Lilangeni",
+        }
+        THB{
+            "฿",
+            "Thai Baht",
+        }
+        TJS{
+            "TJS",
+            "Tajikistani Somoni",
+        }
+        TMT{
+            "TMT",
+            "Turkmenistani Manat",
+        }
+        TND{
+            "TND",
+            "Tunisian Dinar",
+        }
+        TOP{
+            "TOP",
+            "Tongan Paʻanga",
+        }
+        TRY{
+            "TRY",
+            "Turkish Lira",
+        }
+        TTD{
+            "TTD",
+            "Trinidad and Tobago Dollar",
+        }
+        TWD{
+            "NT$",
+            "New Taiwan Dollar",
+        }
+        TZS{
+            "TZS",
+            "Tanzanian Shilling",
+        }
+        UAH{
+            "UAH",
+            "Ukrainian Hryvnia",
+        }
+        UGX{
+            "UGX",
+            "Ugandan Shilling",
+        }
+        USD{
+            "US$",
+            "US Dollar",
+        }
+        UYU{
+            "UYU",
+            "Uruguayan Peso",
+        }
+        UZS{
+            "UZS",
+            "Uzbekistan Som",
+        }
+        VEB{
+            "VEB",
+            "Venezuela Bolivar",
+        }
+        VEF{
+            "VEF",
+            "Venezuelan Bolívar",
+        }
+        VND{
+            "₫",
+            "Vietnamese Dong",
+        }
+        VUV{
+            "VUV",
+            "Vanuatu Vatu",
+        }
+        WST{
+            "WST",
+            "Samoan Tala",
+        }
+        XAF{
+            "FCFA",
+            "CFA Franc BEAC",
+        }
+        XCD{
+            "EC$",
+            "East Caribbean Dollar",
+        }
+        XOF{
+            "CFA",
+            "CFA Franc BCEAO",
+        }
+        XPF{
+            "CFPF",
+            "CFP Franc",
+        }
+        YER{
+            "YER",
+            "Yemeni Rial",
+        }
+        ZAR{
+            "ZAR",
+            "South African Rand",
+        }
+        ZMK{
+            "ZMK",
+            "Zambian Kwacha",
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.65.46"}
+}

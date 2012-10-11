@@ -396,8 +396,18 @@ function help () {
 /// @brief log function
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.log = function(level, msg) {
+  internal.log = function (level, msg) {
     internal.output(level, ": ", msg, "\n");
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.reloadRouting = function () {
+    if (typeof arango !== 'undefined') {
+      arango.POST("/_admin/reloadRouting", "");
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -636,45 +646,83 @@ function ArangoQueryCursor (database, data) {
 // --SECTION--                                                   ArangoStatement
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoShell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-function ArangoStatement (database, data) {
-  this._database = database;
-  this._doCount = false;
-  this._batchSize = null;
-  this._bindVars = {};
-  
-  if (!(data instanceof Object)) {
-    throw "ArangoStatement needs initial data";
-  }
-    
-  if (data.query === undefined || data.query === "") {
-    throw "ArangoStatement needs a valid query attribute";
-  }
-  this.setQuery(data.query);
-
-  if (data.count !== undefined) {
-    this.setCount(data.count);
-  }
-  if (data.batchSize !== undefined) {
-    this.setBatchSize(data.batchSize);
-  }
-}
-
 (function () {
   var internal = require("internal");
   var client = require("arangosh");
+
+  var SB = require("statement-basics");
+  internal.ArangoStatement = SB.ArangoStatement;
+  ArangoStatement = SB.ArangoStatement;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a query and return the results
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.parse = function () {
+    var body = {
+      "query" : this._query,
+    };
+
+    var requestResult = this._database._connection.POST(
+      "/_api/query",
+      JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    var result = { "bindVars" : requestResult.bindVars, "collections" : requestResult.collections };
+    return result;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explain a query and return the results
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.explain = function () {
+    var body = {
+      "query" : this._query,
+    };
+
+    var requestResult = this._database._connection.POST(
+      "/_api/explain",
+      JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult.plan;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the query
+///
+/// Invoking execute() will transfer the query and all bind parameters to the
+/// server. It will return a cursor with the query results in case of success.
+/// In case of an error, the error will be printed
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.execute = function () {
+    var body = {
+      "query" : this._query,
+      "count" : this._doCount,
+      "bindVars" : this._bindVars
+    };
+
+    if (this._batchSize) {
+      body["batchSize"] = this._batchSize;
+    }
+
+    var requestResult = this._database._connection.POST(
+      "/_api/cursor",
+      JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    return new ArangoQueryCursor(this._database, requestResult);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -725,7 +773,7 @@ function ArangoStatement (database, data) {
 /// @brief print the help for ArangoStatement
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoStatement.prototype._help = function () {
+  SB.ArangoStatement.prototype._help = function () {
     internal.print(client.helpArangoStatement);
   };
 
@@ -733,173 +781,8 @@ function ArangoStatement (database, data) {
 /// @brief return a string representation of the statement
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoStatement.prototype.toString = function () {  
+  SB.ArangoStatement.prototype.toString = function () {  
     return client.getIdString(this, "ArangoStatement");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bind a parameter to the statement
-///
-/// This function can be called multiple times, once for each bind parameter.
-/// All bind parameters will be transferred to the server in one go when 
-/// execute() is called.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.bind = function (key, value) {
-    if (key instanceof Object) {
-      if (value !== undefined) {
-        throw "invalid bind parameter declaration";
-      }
-
-      this._bindVars = key;
-    }
-    else if (typeof(key) === "string") {
-      if (this._bindVars[key] !== undefined) {
-        throw "redeclaration of bind parameter";
-      }
-
-      this._bindVars[key] = value;
-    }
-    else if (typeof(key) === "number") {
-      var strKey = String(parseInt(key));
-
-      if (strKey !== String(key)) {
-        throw "invalid bind parameter declaration";
-      }
-
-      if (this._bindVars[strKey] !== undefined) {
-        throw "redeclaration of bind parameter";
-      }
-
-      this._bindVars[strKey] = value;
-    }
-    else {
-      throw "invalid bind parameter declaration";
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the bind variables already set
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getBindVariables = function () {
-    return this._bindVars;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the count flag for the statement
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getCount = function () {
-    return this._doCount;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the maximum number of results documents the cursor will return
-/// in a single server roundtrip.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getBatchSize = function () {
-    return this._batchSize;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get query string
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.getQuery = function () {
-    return this._query;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the count flag for the statement
-///
-/// Setting the count flag will make the statement's result cursor return the
-/// total number of result documents. The count flag is not set by default.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.setCount = function (bool) {
-    this._doCount = bool ? true : false;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the maximum number of results documents the cursor will return
-/// in a single server roundtrip.
-/// The higher this number is, the less server roundtrips will be made when
-/// iterating over the result documents of a cursor.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.setBatchSize = function (value) {
-    if (parseInt(value) > 0) {
-      this._batchSize = parseInt(value);
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the query string
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.setQuery = function (query) {
-    this._query = query;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a query and return the results
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.parse = function () {
-    var body = {
-      "query" : this._query,
-    };
-
-    var requestResult = this._database._connection.POST(
-      "/_api/query",
-      JSON.stringify(body));
-
-    client.checkRequestResult(requestResult);
-
-    return true;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the query
-///
-/// Invoking execute() will transfer the query and all bind parameters to the
-/// server. It will return a cursor with the query results in case of success.
-/// In case of an error, the error will be printed
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStatement.prototype.execute = function () {
-    var body = {
-      "query" : this._query,
-      "count" : this._doCount,
-      "bindVars" : this._bindVars
-    };
-
-    if (this._batchSize) {
-      body["batchSize"] = this._batchSize;
-    }
-
-    var requestResult = this._database._connection.POST(
-      "/_api/cursor",
-      JSON.stringify(body));
-
-    client.checkRequestResult(requestResult);
-
-    return new ArangoQueryCursor(this._database, requestResult);
   };
 
 ////////////////////////////////////////////////////////////////////////////////

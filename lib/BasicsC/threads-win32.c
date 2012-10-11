@@ -28,6 +28,7 @@
 #include "threads.h"
 
 #include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            THREAD
@@ -49,6 +50,7 @@
 typedef struct thread_data_s {
   void (*starter) (void*);
   void* _data;
+  char* _name;
 }
 thread_data_t;
 
@@ -142,14 +144,15 @@ TRI_tid_t TRI_CurrentThreadId () {
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t* thread, void (*start)(void*), void* data) {
+bool TRI_StartThread (TRI_thread_t* thread,  const char* name, void (*starter)(void*), void* data) {
   DWORD threadId;
   thread_data_t* d;
 
   d = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
 
-  d->starter = start;
+  d->starter = starter;
   d->_data = data;
+  d->_name = TRI_DuplicateString(name);
 
   *thread = CreateThread(0, // default security attributes
                          0, // use default stack size

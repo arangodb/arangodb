@@ -46,8 +46,8 @@ using namespace triagens::basics;
 /// @brief constructs a date
 ////////////////////////////////////////////////////////////////////////////////
 
-VariantDate::VariantDate (date_t value)
-  : VariantObjectTemplate<date_t, VariantObject::VARIANT_DATE, VariantDate>(value) {
+VariantDate::VariantDate (triagens::date_t value)
+  : VariantObjectTemplate<triagens::date_t, VariantObject::VARIANT_DATE, VariantDate>(value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,891 @@
+# Copyright (C) 2011-2012, International Business Machines
+# Corporation and others. All Rights Reserved.
+#
+# file name: dependencies.txt
+#
+# created on: 2011may26
+# created by: Markus W. Scherer
+
+# Standard library symbols used by ICU --------------------------------------- #
+
+system_symbols:
+  deps
+    # C
+    PIC system_debug malloc_functions c_strings c_string_formatting
+    floating_point trigonometry
+    stdlib_qsort
+    pthread system_locale
+    stdio_input stdio_output file_io readlink_function dir_io mmap_functions dlfcn
+    # C++
+    cplusplus iostream
+
+group: PIC
+    # Position-Independent Code (-fPIC) requires a Global Offset Table.
+    _GLOBAL_OFFSET_TABLE_
+
+group: system_debug
+    __assert_fail __stack_chk_fail
+
+group: malloc_functions
+    free malloc realloc
+
+group: c_strings
+    isspace
+    __ctype_b_loc  # for <ctype.h>
+    # We must not use tolower and toupper because they are system-locale-sensitive (Turkish i).
+    strlen strchr strrchr strstr strcmp strncmp strcpy strncpy strcat strncat
+    memcmp memcpy memmove memset
+    # Additional symbols in an optimized build.
+    __strcpy_chk __strncpy_chk __strcat_chk __strncat_chk
+    __rawmemchr __memcpy_chk __memmove_chk
+
+group: c_string_formatting
+    atoi atol strtod strtol strtoul
+    sprintf
+    # Additional symbols in an optimized build.
+    __sprintf_chk
+
+group: floating_point
+    floor ceil modf fmod log pow sqrt
+
+group: trigonometry
+    acos asin atan atan2 cos sin tan
+    # Additional symbols in an optimized build.
+    sincos
+
+group: stdlib_qsort
+    qsort
+
+group: pthread
+    pthread_mutex_init pthread_mutex_destroy pthread_mutex_lock pthread_mutex_unlock
+
+group: system_locale
+    getenv
+    nl_langinfo setlocale
+    gettimeofday localtime_r tzname tzset __timezone
+
+group: stdio_input
+    fopen fclose fgets fread fseek ftell rewind feof fileno
+    # Additional symbols in an optimized build.
+    __fgets_chk __fread_chk
+
+group: stdio_output
+    fflush fwrite
+    stdout
+
+group: file_io
+    open close stat
+    # Additional symbols in an optimized build.
+    __xstat
+
+group: readlink_function
+    readlink  # putil.cpp uprv_tzname() calls this in a hack to get the time zone name
+
+group: dir_io
+    opendir closedir readdir  # for a hack to get the time zone name
+
+group: mmap_functions  # for memory-mapped data loading
+    mmap munmap
+
+group: dlfcn
+    dlopen dlclose dlsym  # called by putil.o only for icuplug.o
+
+group: cplusplus
+    __dynamic_cast
+    # The compiler generates references to the global operator delete
+    # even when no code actually uses it.
+    # ICU must not _use_ the global operator delete.
+    "operator delete(void*)"
+    # ICU also must not use the global operator new.
+    # "operator new[](unsigned long)"
+    # _Unwind_Resume is related to exceptions:
+    # "A call to this routine is inserted as the end of a landing pad that performs cleanup,
+    # but does not resume normal execution. It causes unwinding to proceed further."
+    # (Linux Standard Base Specification 1.3)
+    # Even though ICU does not actually use (nor handle) exceptions.
+    _Unwind_Resume
+
+group: iostream
+    "std::basic_ios<char, std::char_traits<char> >::clear(std::_Ios_Iostate)"
+    "std::basic_ios<char, std::char_traits<char> >::eof() const"
+    "std::basic_ios<char, std::char_traits<char> >::fail() const"
+    "std::basic_ostream<char, std::char_traits<char> >& std::operator<< <std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*)"
+    std::istream::get()
+    std::istream::putback(char)
+    # Additional symbols in an optimized build.
+    "std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long)"
+
+# ICU common library --------------------------------------------------------- #
+
+library: stubdata
+    stubdata.o  # Exports icudt48_dat.
+
+library: common
+    # All files in the common library are listed in its dependencies.
+  deps
+    # Libraries and groups that the common library depends on.
+    date_interval
+    breakiterator
+    uts46 filterednormalizer2 normalizer2 canonical_iterator
+    normlzr unormcmp unorm_it unorm
+    idna2003 stringprep
+    stringenumeration
+    unistr_core unistr_props unistr_case unistr_case_locale unistr_titlecase_brkiter unistr_cnv
+    uniset_core uniset_props uniset_closure usetiter uset uset_props
+    uiter
+    ucasemap ucasemap_titlecase_brkiter script_runs
+    uprops ubidi_props ucase uscript
+    ubidi ushape
+    resourcebundle service_registration resbund_cnv ures_cnv icudataver ucat
+    loclikely
+    conversion converter_selector ucnv_set ucnvdisp
+    messagepattern
+    icu_utility icu_utility_with_props
+    ustr_wcs
+    ucharstriebuilder ucharstrieiterator
+    bytestriebuilder bytestrieiterator
+    hashtable uhash uvector uvector32 uvector64 ulist
+    propsvec utrie2 utrie2_builder
+    sort
+    uinit utypes errorcode
+    icuplug
+    platform
+
+group: date_interval  # class DateInterval
+    dtintrv.o
+  deps
+    platform
+
+group: breakiterator
+    # We could try to split off a breakiterator_builder group,
+    # but we still need uniset_props for code like in the ThaiBreakEngine constructor
+    # which does
+    #   fThaiWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Thai:]&[:LineBreak=SA:]]"), status)
+    brkiter.o brkeng.o ubrk.o
+    rbbi.o rbbinode.o rbbiscan.o rbbisetb.o rbbistbl.o rbbitblb.o
+    rbbidata.o rbbirb.o
+    triedict.o dictbe.o
+  deps
+    resourcebundle service_registration
+    schriter utext uniset_core uniset_props
+    uhash ustack utrie
+    uvector32  # for triedict.o
+
+group: unormcmp  # unorm_compare()
+    unormcmp.o
+  deps
+    filterednormalizer2
+    uniset_props  # for uniset_getUnicode32Instance()
+    ucase
+
+group: unorm_it  # UNormIterator
+    unorm_it.o
+  deps
+    unorm uiter
+
+group: unorm  # old normalization C API
+    unorm.o
+  deps
+    filterednormalizer2
+    uniset_props  # for uniset_getUnicode32Instance()
+    uiter
+
+group: normlzr  # old Normalizer C++ class
+    normlzr.o
+  deps
+    filterednormalizer2
+    uniset_props  # for uniset_getUnicode32Instance()
+    schriter
+
+group: uts46
+    uts46.o
+  deps
+    normalizer2 punycode
+    uchar  # for u_charType() (via U_GET_GC_MASK(c))
+    ubidi_props  # for u_charDirection() & ubidi_getJoiningType()
+    unistr_core
+    stringpiece bytestream
+
+group: filterednormalizer2
+    filterednormalizer2.o
+  deps
+    normalizer2
+
+group: idna2003
+    uidna.o
+  deps
+    stringprep punycode
+
+group: stringprep
+    usprep.o
+  deps
+    unorm  # could change to use filterednormalizer2 directly for Unicode 3.2 normalization
+    normalizer2
+    ubidi_props
+
+group: canonical_iterator
+    caniter.o
+  deps
+    normalizer2 usetiter
+
+group: normalizer2
+    normalizer2.o
+    normalizer2impl.o
+  deps
+    uniset_core
+    unistr_core
+    utrie2_builder  # for building CanonIterData & FCD
+    uvector  # for building CanonIterData
+    uhash  # for the instance cache
+    udata
+
+group: punycode
+    punycode.o
+  deps
+    platform
+
+group: uset_props
+    uset_props.o
+  deps
+    uniset_closure uniset_props uniset_core
+
+group: uset
+    uset.o
+  deps
+    uniset_core
+
+group: uniset_closure
+    uniset_closure.o
+  deps
+    uniset_core unistr_case_locale unistr_titlecase_brkiter
+
+group: uniset_props
+    uniset_props.o ruleiter.o
+  deps
+    uniset_core uprops unistr_case
+    parsepos
+    resourcebundle
+    propname unames
+
+group: parsepos
+    parsepos.o
+  deps
+    platform
+
+group: usetiter  # UnicodeSetIterator
+    usetiter.o
+  deps
+    uniset_core
+
+group: uniset_core
+    unifilt.o unifunct.o
+    uniset.o bmpset.o unisetspan.o
+  deps
+    patternprops
+    unistr_core icu_utility
+    uvector
+
+group: icu_utility_with_props
+    util_props.o
+  deps
+    icu_utility uchar ucase
+
+group: icu_utility
+    util.o
+  deps
+    unistr_core patternprops
+
+group: utext
+    utext.o
+  deps
+    unistr_core ucase
+
+group: stringenumeration
+    ustrenum.o uenum.o
+  deps
+    unistr_core
+
+group: schriter
+    schriter.o
+    # The UCharCharacterIterator implements virtual void getText(UnicodeString& result)
+    # so it depends on UnicodeString, therefore it makes little sense to split
+    # schriter and uchriter into separate groups.
+    uchriter.o
+  deps
+    chariter unistr_core
+
+group: chariter
+    chariter.o
+  deps
+    platform
+
+group: uiter
+    uiter.o
+  deps
+    platform
+
+group: unistr_cnv
+    unistr_cnv.o
+  deps
+    conversion unistr_core
+
+group: unistr_core
+    unistr.o
+  deps
+    ustrtrns appendable
+
+group: uscript
+    uscript.o  # uscript_getCode() accepts a locale ID and loads its script code data
+  deps
+    propname resourcebundle
+
+group: uprops
+    uprops.o
+  deps
+    normalizer2
+    uchar
+    ubidi_props
+    unistr_case ustring_case  # only for case folding
+    ucase
+
+group: propname
+    propname.o
+  deps
+    bytestrie
+
+group: unames
+    unames.o
+  deps
+    uchar udata
+
+group: script_runs
+    usc_impl.o
+  deps
+    uchar
+
+group: uchar
+    uchar.o
+  deps
+    utrie2
+
+group: messagepattern  # for MessageFormat and tools
+    messagepattern.o
+  deps
+    patternprops unistr_core
+
+group: patternprops
+    patternprops.o
+  deps
+    PIC
+
+group: ushape
+    ushape.o
+  deps
+    ubidi_props
+
+group: ubidi
+    ubidi.o ubidiln.o ubidiwrt.o
+  deps
+    ubidi_props
+    uchar  # for doWriteReverse() which uses IS_COMBINING(u_charType(c))
+
+group: ubidi_props
+    ubidi_props.o
+  deps
+    utrie2
+
+group: unistr_props
+    unistr_props.o
+  deps
+    unistr_core uchar
+
+group: unistr_case_locale
+    unistr_case_locale.o
+  deps
+    unistr_case ustring_case_locale
+
+group: unistr_case
+    unistr_case.o
+  deps
+    unistr_core
+    ustring_case
+
+group: unistr_titlecase_brkiter
+    unistr_titlecase_brkiter.o
+  deps
+    ustr_titlecase_brkiter
+
+group: ustr_titlecase_brkiter
+    ustr_titlecase_brkiter.o
+  deps
+    breakiterator
+    ustring_case_locale ucase
+
+group: ucasemap_titlecase_brkiter
+    ucasemap_titlecase_brkiter.o
+  deps
+    ucasemap breakiterator utext
+
+group: ucasemap
+    ucasemap.o
+  deps
+    ustring_case
+    resourcebundle  # uloc_getName() etc.
+
+group: ustring_case_locale
+    ustrcase_locale.o
+  deps
+    ustring_case
+    resourcebundle  # for uloc_getDefault()
+
+group: ustring_case
+    ustrcase.o
+  deps
+    ucase
+
+group: ucase
+    ucase.o
+  deps
+    unistr_core utrie2
+
+group: uinit
+    uinit.o
+  deps
+    ucnv_io icuplug
+
+group: converter_selector
+    ucnvsel.o
+  deps
+    conversion propsvec utrie2_builder uset ucnv_set
+
+group: ucnvdisp  # ucnv_getDisplayName()
+    ucnvdisp.o
+  deps
+    conversion resourcebundle
+
+group: ucnv_set  # ucnv_getUnicodeSet
+    ucnv_set.o
+  deps
+    uset
+
+group: conversion
+    ustr_cnv.o
+    ucnv.o ucnv_cnv.o ucnv_bld.o ucnv_cb.o ucnv_err.o
+    ucnv_ct.o
+    ucnvmbcs.o ucnv_ext.o
+    ucnvhz.o ucnvisci.o ucnv_lmb.o ucnv2022.o
+    ucnvlat1.o ucnv_u7.o ucnv_u8.o ucnv_u16.o ucnv_u32.o
+    ucnvbocu.o ucnvscsu.o
+  deps
+    ucnv_io
+
+group: ucnv_io
+    ucnv_io.o
+  deps
+    sort stringenumeration udata
+
+group: service_registration
+    serv.o servnotf.o servlkf.o servlk.o servls.o servrbf.o servslkf.o
+    locutil.o
+  deps
+    locale_display_names resourcebundle
+    hashtable uvector
+
+group: ucat  # message-catalog-like API
+    ucat.o
+  deps
+    resourcebundle
+
+group: locale_display_names
+    locdispnames.o
+  deps
+    locresdata
+
+group: icudataver  # u_getDataVersion()
+    icudataver.o
+  deps
+    resourcebundle
+
+group: loclikely
+    loclikely.o
+  deps
+    resourcebundle
+
+group: locresdata
+    # This was intended to collect locale functions that load resource bundle data.
+    # See the resourcebundle group about what else loads data.
+    locresdata.o
+  deps
+    resourcebundle
+
+group: resbund_cnv  # paths are Unicode strings
+    resbund_cnv.o
+  deps
+    conversion resourcebundle ures_cnv
+
+group: ures_cnv  # ures_openU, path is a Unicode string
+    ures_cnv.o
+  deps
+    conversion resourcebundle
+
+group: resourcebundle
+    resbund.o uresbund.o uresdata.o
+    locavailable.o
+    # uloc_tag.c converts between old ICU/LDML/CLDR locale IDs and newer BCP 47 IDs.
+    # It uses data from resource bundles for some of the mappings.
+    # We might want to generate .c files for that data, to #include rather than load,
+    # to minimize dependencies from this code.
+    # Then we could separate this higher-level locale ID code from the resource bundle code.
+    uloc.o uloc_tag.o
+    # Even basic locid.cpp via Locale constructors and Locale::getDefault()
+    # depend on canonicalization and data loading.
+    # We can probably only disentangle basic locale ID handling from resource bundle code
+    # by hardcoding all of the locale ID data.
+    locid.o locmap.o wintz.o
+    # Do we need class LocaleBased? http://bugs.icu-project.org/trac/ticket/8608
+    locbased.o
+  deps
+    udata ucol_swp
+    sort stringenumeration uhash
+
+group: udata
+    udata.o ucmndata.o udatamem.o
+    umapfile.o
+  deps
+    uhash charstr stringpiece platform stubdata
+    file_io mmap_functions
+
+group: ucharstriebuilder
+    ucharstriebuilder.o
+  deps
+    ucharstrie stringtriebuilder sort
+    unistr_core
+
+group: ucharstrieiterator
+    ucharstrieiterator.o
+  deps
+    ucharstrie unistr_core uvector32
+
+group: ucharstrie
+    ucharstrie.o
+  deps
+    platform
+
+group: bytestriebuilder
+    bytestriebuilder.o
+  deps
+    bytestrie stringtriebuilder sort
+    charstr stringpiece
+
+group: bytestrieiterator
+    bytestrieiterator.o
+  deps
+    bytestrie charstr uvector32
+
+group: bytestrie
+    bytestrie.o
+  deps
+    platform
+
+group: stringtriebuilder
+    stringtriebuilder.o
+  deps
+    uhash
+
+group: propsvec
+    propsvec.o
+  deps
+    sort utrie2_builder
+
+group: utrie2_builder
+    utrie2_builder.o
+  deps
+    platform
+    utrie2
+    utrie  # for utrie2_fromUTrie()
+    ucol_swp  # for utrie_swap()
+
+group: utrie2
+    utrie2.o
+  deps
+    platform
+
+group: utrie  # Callers should use utrie2 instead.
+    utrie.o
+  deps
+    platform
+
+group: hashtable  # Maps UnicodeString to value.
+    uhash_us.o
+  deps
+    unistr_core
+    uhash
+
+group: uhash
+    uhash.o
+  deps
+    platform
+
+group: ustack
+    ustack.o
+  deps
+    uvector
+
+group: uvector
+    uvector.o
+  deps
+    platform
+    sort  # for UVector::sort()
+
+group: uvector32
+    uvectr32.o
+  deps
+    platform
+
+group: uvector64
+    uvectr64.o
+  deps
+    platform
+
+group: ulist
+    ulist.o
+  deps
+    platform
+
+group: sort
+    uarrsort.o
+  deps
+    platform
+
+group: ustr_wcs
+    ustr_wcs.o
+  deps
+    ustrtrns  # on platforms where wchar_t is UTF-32
+    # platform -- on other platforms
+
+group: ustrtrns
+    ustrtrns.o
+  deps
+    platform
+
+group: charstr
+    charstr.o
+  deps
+    unistr_core  # for CharString::appendInvariantChars(const UnicodeString &s, UErrorCode &errorCode)
+    platform
+
+group: stringpiece
+    stringpiece.o
+  deps
+    PIC c_strings
+
+group: bytestream
+    bytestream.o
+  deps
+    platform
+
+group: appendable
+    appendable.o
+  deps
+    platform
+
+group: icuplug
+    icuplug.o
+  deps
+    platform
+
+group: ucol_swp
+    ucol_swp.o
+  deps
+    platform
+
+group: errorcode  # ErrorCode base class
+    errorcode.o
+  deps
+    utypes
+    platform
+
+group: utypes  # u_errorName()
+    utypes.o
+
+group: platform
+    # Files in the "platform" group.
+    cmemory.o uobject.o
+    cstring.o cwchar.o uinvchar.o
+    ustring.o  # Other platform files really just need u_strlen
+    ustrfmt.o  # uprv_itou
+    utf_impl.o
+    putil.o
+    ucln_cmn.o  # for putil.o which calls ucln_common_registerCleanup
+    udataswp.o  # for uinvchar.o; TODO: move uinvchar.o swapper functions to udataswp.o?
+    umath.o
+    mutex.o umutex.o
+    utrace.o
+  deps
+    # The "platform" group has no ICU dependencies.
+    PIC system_debug malloc_functions c_strings c_string_formatting
+    floating_point pthread system_locale
+    stdio_input readlink_function dir_io
+    dlfcn  # Move related code into icuplug.c?
+    cplusplus
+
+# ICU i18n library ----------------------------------------------------------- #
+
+library: i18n
+  deps
+    localedata charset_detector spoof_detection
+    alphabetic_index collation formatting formattable_cnv regex regex_cnv translit
+    universal_time_scale
+    uclean_i18n
+
+group: localedata
+    ulocdata.o
+  deps
+    uniset_props resourcebundle
+    uset_props  # TODO: change to using C++ UnicodeSet, remove this dependency
+
+group: charset_detector
+    csdetect.o csmatch.o csr2022.o csrecog.o csrmbcs.o csrsbcs.o csrucode.o csrutf8.o inputext.o ucsdet.o
+  deps
+    conversion
+    uclean_i18n
+
+group: spoof_detection
+    uspoof.o uspoof_build.o uspoof_conf.o uspoof_impl.o uspoof_wsconf.o
+  deps
+    uniset_props regex unorm uscript
+
+group: alphabetic_index
+    alphaindex.o
+  deps
+    collation localedata
+    uclean_i18n
+
+group: collation
+    bocsu.o coleitr.o coll.o colldata.o sortkey.o tblcoll.o ucol.o
+    ucol_bld.o ucol_cnt.o ucol_elm.o ucol_res.o ucol_sit.o ucol_tok.o ucol_wgt.o ucoleitr.o
+    bms.o bmsearch.o search.o stsearch.o usearch.o
+  deps
+    common  # TODO: Could be narrower.
+    uclean_i18n
+
+group: formatting
+    # TODO: Try to subdivide this ball of wax.
+    # locale_display_names2
+    locdspnm.o
+    # currency
+    ucurr.o
+    # currencyformat
+    curramt.o currfmt.o currpinf.o currunit.o
+    # decimalformat
+    dcfmtsym.o decfmtst.o decimfmt.o
+    numfmt.o numsys.o unum.o winnmfmt.o
+    # rbnf
+    nfrs.o nfrule.o nfsubs.o rbnf.o
+    # measureformat
+    measfmt.o
+    # dateformat
+    astro.o buddhcal.o calendar.o cecal.o chnsecal.o coptccal.o ethpccal.o
+    gregocal.o gregoimp.o hebrwcal.o indiancal.o islamcal.o japancal.o persncal.o taiwncal.o
+    ucal.o
+    basictz.o olsontz.o rbtz.o simpletz.o timezone.o tzrule.o tztrans.o
+    vtzone.o vzone.o wintzimpl.o zonemeta.o zrule.o ztrans.o
+    tzfmt.o tzgnames.o tznames.o tznames_impl.o
+    datefmt.o dtfmtsym.o dtitvfmt.o dtitvinf.o dtptngen.o dtrule.o reldtfmt.o
+    smpdtfmt.o smpdtfst.o udateintervalformat.o udatpg.o windtfmt.o
+    udat.o
+    tmunit.o tmutamt.o tmutfmt.o
+    # messageformat
+    choicfmt.o msgfmt.o plurfmt.o selfmt.o umsg.o
+  deps
+    digitlist formattable format
+    pluralrules
+    collation  # for rbnf
+    common
+    floating_point  # sqrt() for astro.o
+    trigonometry  # for astro.o
+    stdlib_qsort  # for ucurr.o (which does not use ICU's uarrsort.o)
+    uclean_i18n
+
+group: digitlist
+    digitlst.o decContext.o decNumber.o
+  deps
+    charstr stringpiece unistr_core
+
+group: formattable
+    fmtable.o
+    measure.o
+  deps
+    unistr_core digitlist stringpiece charstr
+
+group: formattable_cnv
+    fmtable_cnv.o
+  deps
+    formattable unistr_cnv conversion
+
+group: format
+    format.o fphdlimp.o fpositer.o
+  deps
+    resourcebundle parsepos unistr_core uvector32
+
+group: pluralrules
+    plurrule.o upluralrules.o
+  deps
+    patternprops resourcebundle uvector
+    unistr_case_locale
+
+group: regex_cnv
+    uregexc.o
+  deps
+    regex unistr_cnv
+
+group: regex
+    regexcmp.o regexst.o regextxt.o regeximp.o rematch.o repattrn.o uregex.o
+  deps
+    uniset_closure utext uvector32 uvector64 ustack
+    breakiterator
+    unistr_core
+    uinit  # TODO: Really needed?
+    uclean_i18n
+
+group: translit
+    anytrans.o brktrans.o casetrn.o cpdtrans.o name2uni.o uni2name.o nortrans.o remtrans.o titletrn.o tolowtrn.o toupptrn.o
+    esctrn.o unesctrn.o nultrans.o
+    funcrepl.o quant.o rbt.o rbt_data.o rbt_pars.o rbt_rule.o rbt_set.o strmatch.o strrepl.o translit.o transreg.o tridpars.o utrans.o
+  deps
+    common
+    formatting  # for Transliterator::getDisplayName()
+    uclean_i18n
+
+group: universal_time_scale
+    utmscale.o
+
+group: uclean_i18n
+    ucln_in.o
+  deps
+    platform
+
+# ICU io library ------------------------------------------------------------- #
+
+library: io
+  deps
+    ustdio ustream uclean_io
+
+group: ustdio
+    locbund.o sprintf.o sscanf.o ufile.o ufmt_cmn.o uprintf.o uprntf_p.o uscanf.o uscanf_p.o ustdio.o
+  deps
+    formatting conversion translit
+    uclean_io
+    stdio_output
+
+group: ustream
+    ustream.o
+  deps
+    unistr_cnv
+    uchar  # for u_isWhitespace()
+    iostream
+
+group: uclean_io
+    ucln_io.o
+  deps
+    platform

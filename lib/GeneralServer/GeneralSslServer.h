@@ -235,7 +235,7 @@ namespace triagens {
 /// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
           
-        virtual Endpoint::Encryption getEncryption () const {
+        virtual Endpoint::EncryptionType getEncryption () const {
           return Endpoint::ENCRYPTION_SSL;
         }
 
@@ -282,7 +282,7 @@ namespace triagens {
 
           if (sbio == 0) {
             LOGGER_WARNING << "cannot build new SSL BIO: " << triagens::basics::lastSSLError();
-            ::close(socket);
+            TRI_CLOSE(socket);
             return;
           }
 
@@ -294,7 +294,7 @@ namespace triagens {
           if (ssl == 0) {
             BIO_free_all(sbio);
             LOGGER_WARNING << "cannot build new SSL connection: " << triagens::basics::lastSSLError();
-            ::close(socket);
+            TRI_CLOSE(socket);
             return;
           }
 

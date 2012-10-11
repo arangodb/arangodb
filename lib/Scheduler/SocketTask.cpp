@@ -80,7 +80,8 @@ SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
 
 SocketTask::~SocketTask () {
   if (commSocket != -1) {
-    close(commSocket);
+    TRI_CLOSE(commSocket);
+    //close(commSocket);
   }
 
   if (_writeBuffer != 0) {
@@ -125,7 +126,7 @@ SocketTask::~SocketTask () {
 bool SocketTask::fillReadBuffer (bool& closed) {
   closed = false;
 
-  int nr = read(commSocket, tmpReadBuffer, READ_BLOCK_SIZE);
+  int nr = TRI_READ(commSocket, tmpReadBuffer, READ_BLOCK_SIZE);
 
   if (nr > 0) {
     _readBuffer->appendText(tmpReadBuffer, nr);
@@ -173,12 +174,14 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
   {
     MUTEX_LOCKER(writeBufferLock);
 
+    // size_t is unsigned, should never get < 0
+    assert(_writeBuffer->length() >= writeLength);
     size_t len = _writeBuffer->length() - writeLength;
 
     int nr = 0;
 
     if (0 < len) {
-      nr = write(commSocket, _writeBuffer->begin() + writeLength, (int) len);
+      nr = TRI_WRITE(commSocket, _writeBuffer->begin() + writeLength, (int) len);
 
       if (nr < 0) {
         if (errno == EINTR) {

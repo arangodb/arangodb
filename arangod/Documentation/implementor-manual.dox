@@ -41,6 +41,7 @@
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
+///  <li>@ref HttpBatch</li>
 ///  <li>@ref HttpImport</li>
 ///  <li>@ref ArangoErrors</li>
 ///  <li>@ref IndexSkiplist</li>
@@ -68,6 +69,9 @@
 ///  </li>
 ///  <li>Interface for bulk imports
 ///   @copydetails HttpImportTOC
+///  </li>
+///  <li>Interface for batch operations
+///   @copydetails HttpBatchTOC
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ul>

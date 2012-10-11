@@ -1,0 +1,553 @@
+LIBRARY readline5.dll
+EXPORTS
+BC DATA
+CtrlEventHandler
+DllGetVersion
+PC DATA
+UP DATA
+_rl_abort_internal
+_rl_add_macro_char
+_rl_adjust_point
+_rl_allow_pathname_alphabetic_chars DATA
+_rl_any_typein
+_rl_backspace
+_rl_bell_preference DATA
+_rl_char_search_internal
+_rl_clean_up_for_exit
+_rl_clear_screen
+_rl_clear_to_eol
+_rl_comment_begin DATA
+_rl_compare_chars
+_rl_complete_mark_directories DATA
+_rl_complete_mark_symlink_dirs DATA
+_rl_complete_show_all DATA
+_rl_complete_show_unmodified DATA
+_rl_completion_case_fold DATA
+_rl_control_keypad
+_rl_convert_meta_chars_to_ascii DATA
+_rl_current_display_line
+_rl_digit_p
+_rl_digit_value
+_rl_disable_tty_signals
+_rl_dispatch
+_rl_dispatch_subseq
+_rl_doing_an_undo DATA
+_rl_enable_keypad DATA
+_rl_enable_meta DATA
+_rl_enable_meta_key
+_rl_enable_paren_matching
+_rl_eof_char DATA
+_rl_erase_at_end_of_line
+_rl_erase_entire_line
+_rl_find_completion_word
+_rl_find_next_mbchar
+_rl_find_prev_mbchar
+_rl_fix_last_undo_of_type
+_rl_fix_point
+_rl_free_history_entry
+_rl_free_match_list
+_rl_free_saved_history_line
+_rl_get_char_len
+_rl_get_screen_size
+_rl_get_user_registry_string
+_rl_history_preserve_point DATA
+_rl_history_saved_point DATA
+_rl_horizontal_scroll_mode DATA
+_rl_in_stream DATA
+_rl_init_argument
+_rl_init_eightbit
+_rl_init_line_state
+_rl_init_terminal_io
+_rl_input_available
+_rl_input_queued
+_rl_insert_char
+_rl_insert_typein
+_rl_is_mbchar_matched
+_rl_isearch_terminators DATA
+_rl_keymap DATA
+_rl_kill_kbd_macro
+_rl_last_c_pos DATA
+_rl_last_command_was_kill DATA
+_rl_last_v_pos DATA
+_rl_lowercase_p
+_rl_make_prompt_for_search
+_rl_mark_modified_lines DATA
+_rl_match_hidden_files DATA
+_rl_meta_flag DATA
+_rl_move_cursor_relative
+_rl_move_vert
+_rl_next_macro_key
+_rl_out_stream DATA
+_rl_output_character_function
+_rl_output_meta_chars DATA
+_rl_output_some_chars
+_rl_overwrite_char
+_rl_overwrite_rubout
+_rl_page_completions DATA
+_rl_parsing_conditionalized_out DATA
+_rl_pop_executing_macro
+_rl_possible_control_prefixes DATA
+_rl_possible_meta_prefixes DATA
+_rl_print_completions_horizontally DATA
+_rl_pure_alphabetic
+_rl_push_executing_macro
+_rl_pushed_input_available
+_rl_qsort_string_compare
+_rl_read_mbchar
+_rl_read_mbstring
+_rl_redisplay_after_sigwinch
+_rl_replace_text
+_rl_restore_tty_signals
+_rl_rubout_char
+_rl_saved_line_for_history DATA
+_rl_savestring
+_rl_screenchars DATA
+_rl_screenheight DATA
+_rl_screenwidth DATA
+_rl_set_cursor
+_rl_set_insert_mode
+_rl_set_mark_at_pos
+_rl_set_screen_size
+_rl_set_the_line
+_rl_start_using_history
+_rl_strindex
+_rl_strip_prompt
+_rl_suppress_redisplay DATA
+_rl_term_DC DATA
+_rl_term_IC DATA
+_rl_term_autowrap DATA
+_rl_term_backspace DATA
+_rl_term_clreol DATA
+_rl_term_clrpag DATA
+_rl_term_cr DATA
+_rl_term_dc DATA
+_rl_term_ei DATA
+_rl_term_goto DATA
+_rl_term_ic DATA
+_rl_term_im DATA
+_rl_term_ip DATA
+_rl_term_pc DATA
+_rl_term_up DATA
+_rl_terminal_can_insert DATA
+_rl_to_lower
+_rl_to_upper
+_rl_undo_group_level DATA
+_rl_unget_char
+_rl_update_final
+_rl_uppercase_p
+_rl_vi_done_inserting
+_rl_vi_initialize_line
+_rl_vi_last_command DATA
+_rl_vi_reset_last
+_rl_vi_set_last
+_rl_vi_textmod_command
+_rl_vis_botlin DATA
+_rl_with_macro_input
+add_history
+add_history_time
+alphabetic
+append_history
+clear_history
+completion_matches
+crlf
+current_history
+ding
+emacs_ctlx_keymap DATA
+emacs_meta_keymap DATA
+emacs_standard_keymap DATA
+filename_completion_function
+free_history_entry
+free_undo_list
+funmap DATA
+funmap_program_specific_entry_start DATA
+get_history_event
+hStdin DATA
+hStdout DATA
+haveConsole DATA
+history_arg_extract
+history_base DATA
+history_comment_char DATA
+history_expand
+history_expansion_char DATA
+history_get
+history_get_history_state
+history_get_time
+history_inhibit_expansion_function DATA
+history_is_stifled
+history_length DATA
+history_list
+history_max_entries DATA
+history_no_expand_chars DATA
+history_offset DATA
+history_quotes_inhibit_expansion DATA
+history_search
+history_search_delimiter_chars DATA
+history_search_pos
+history_search_prefix
+history_set_history_state
+history_set_pos
+history_subst_char DATA
+history_tokenize
+history_total_bytes
+history_truncate_file
+history_word_delimiters DATA
+history_write_timestamps DATA
+max_input_history DATA
+maybe_replace_line
+maybe_save_line
+maybe_unsave_line
+next_history
+previous_history
+read_history
+read_history_range
+readline
+readline_echoing_p DATA
+readline_internal_char
+readline_internal_setup
+readline_internal_teardown
+readline_top_level DATA
+remove_history
+replace_history_entry
+rlScreenEnd DATA
+rlScreenMax DATA
+rlScreenOrigin DATA
+rlScreenStart DATA
+rl_abort
+rl_add_defun
+rl_add_funmap_entry
+rl_add_undo
+rl_alphabetic
+rl_already_prompted DATA
+rl_arg_sign DATA
+rl_arrow_keys
+rl_attempted_completion_function DATA
+rl_attempted_completion_over DATA
+rl_backward
+rl_backward_byte
+rl_backward_char
+rl_backward_char_search
+rl_backward_kill_line
+rl_backward_kill_word
+rl_backward_word
+rl_basic_quote_characters DATA
+rl_basic_word_break_characters DATA
+rl_beg_of_line
+rl_begin_undo_group
+rl_beginning_of_history
+rl_bind_key
+rl_bind_key_if_unbound
+rl_bind_key_if_unbound_in_map
+rl_bind_key_in_map
+rl_bind_keyseq
+rl_bind_keyseq_if_unbound
+rl_bind_keyseq_if_unbound_in_map
+rl_bind_keyseq_in_map
+rl_binding_keymap DATA
+rl_blink_matching_paren DATA
+rl_byte_oriented DATA
+rl_call_last_kbd_macro
+rl_callback_handler_install
+rl_callback_handler_remove
+rl_callback_read_char
+rl_capitalize_word
+rl_catch_signals DATA
+rl_catch_sigwinch DATA
+rl_char_is_quoted_p DATA
+rl_char_search
+rl_character_len
+rl_cleanup_after_signal
+rl_clear_message
+rl_clear_pending_input
+rl_clear_screen
+rl_clear_signals
+rl_complete
+rl_complete_internal
+rl_complete_with_tilde_expansion DATA
+rl_completer_quote_characters DATA
+rl_completer_word_break_characters DATA
+rl_completion_append_character DATA
+rl_completion_display_matches_hook DATA
+rl_completion_entry_function DATA
+rl_completion_found_quote DATA
+rl_completion_mark_symlink_dirs DATA
+rl_completion_matches
+rl_completion_mode
+rl_completion_query_items DATA
+rl_completion_quote_character DATA
+rl_completion_suppress_append DATA
+rl_completion_suppress_quote DATA
+rl_completion_type DATA
+rl_completion_word_break_hook DATA
+rl_copy_backward_word
+rl_copy_forward_word
+rl_copy_keymap
+rl_copy_region_to_kill
+rl_copy_text
+rl_crlf
+rl_delete
+rl_delete_horizontal_space
+rl_delete_or_show_completions
+rl_delete_text
+rl_deprep_term_function DATA
+rl_deprep_terminal
+rl_digit_argument
+rl_ding
+rl_directory_completion_hook DATA
+rl_directory_rewrite_hook DATA
+rl_discard_argument
+rl_discard_keymap
+rl_dispatching DATA
+rl_display_fixed DATA
+rl_display_match_list
+rl_display_prompt DATA
+rl_do_lowercase_version
+rl_do_undo
+rl_done DATA
+rl_downcase_word
+rl_dump_functions
+rl_dump_macros
+rl_dump_variables
+rl_editing_mode DATA
+rl_emacs_editing_mode
+rl_end DATA
+rl_end_kbd_macro
+rl_end_of_history
+rl_end_of_line
+rl_end_undo_group
+rl_erase_empty_line DATA
+rl_event_hook DATA
+rl_exchange_point_and_mark
+rl_execute_next
+rl_executing_keymap DATA
+rl_executing_macro DATA
+rl_expand_prompt
+rl_explicit_arg DATA
+rl_extend_line_buffer
+rl_filename_completion_desired DATA
+rl_filename_completion_function
+rl_filename_dequoting_function DATA
+rl_filename_quote_characters DATA
+rl_filename_quoting_desired DATA
+rl_filename_quoting_function DATA
+rl_forced_update_display
+rl_forward
+rl_forward_byte
+rl_forward_char
+rl_forward_search_history
+rl_forward_word
+rl_free_line_state
+rl_free_undo_list
+rl_function_dumper
+rl_function_of_keyseq
+rl_funmap_names
+rl_generic_bind
+rl_get_keymap
+rl_get_keymap_by_name
+rl_get_keymap_name
+rl_get_keymap_name_from_edit_mode
+rl_get_next_history
+rl_get_previous_history
+rl_get_screen_size
+rl_getc
+rl_getc_function DATA
+rl_gnu_readline_p DATA
+rl_history_search_backward
+rl_history_search_forward
+rl_ignore_completion_duplicates DATA
+rl_ignore_some_completions_function DATA
+rl_inhibit_completion DATA
+rl_initialize
+rl_initialize_funmap
+rl_insert
+rl_insert_close
+rl_insert_comment
+rl_insert_completions
+rl_insert_mode DATA
+rl_insert_text
+rl_instream DATA
+rl_invoking_keyseqs
+rl_invoking_keyseqs_in_map
+rl_key_sequence_length DATA
+rl_kill_full_line
+rl_kill_line
+rl_kill_region
+rl_kill_text
+rl_kill_word
+rl_last_func DATA
+rl_library_version DATA
+rl_line_buffer DATA
+rl_line_buffer_len DATA
+rl_linefunc DATA
+rl_list_funmap_names
+rl_macro_bind
+rl_macro_dumper
+rl_make_bare_keymap
+rl_make_keymap
+rl_mark DATA
+rl_maybe_replace_line
+rl_maybe_save_line
+rl_maybe_unsave_line
+rl_menu_complete
+rl_message
+rl_modifying
+rl_named_function
+rl_newline
+rl_noninc_forward_search
+rl_noninc_forward_search_again
+rl_noninc_reverse_search
+rl_noninc_reverse_search_again
+rl_num_chars_to_read DATA
+rl_numeric_arg DATA
+rl_on_new_line
+rl_on_new_line_with_prompt
+rl_outstream DATA
+rl_overwrite_mode
+rl_parse_and_bind
+rl_paste_from_clipboard
+rl_pending_input DATA
+rl_point DATA
+rl_possible_completions
+rl_pre_input_hook DATA
+rl_prep_term_function DATA
+rl_prep_terminal
+rl_prompt DATA
+rl_push_macro_input
+rl_quoted_insert
+rl_re_read_init_file
+rl_read_init_file
+rl_read_key
+rl_readline_name DATA
+rl_readline_state DATA
+rl_readline_version DATA
+rl_redisplay
+rl_redisplay_function DATA
+rl_refresh_line
+rl_replace_from_history
+rl_replace_line
+rl_reset_after_signal
+rl_reset_line_state
+rl_reset_terminal
+rl_resize_terminal
+rl_restart_output
+rl_restore_prompt
+rl_restore_state
+rl_reverse_search_history
+rl_revert_line
+rl_rubout
+rl_rubout_or_delete
+rl_save_prompt
+rl_save_state
+rl_set_key
+rl_set_keyboard_input_timeout
+rl_set_keymap
+rl_set_keymap_from_edit_mode
+rl_set_mark
+rl_set_paren_blink_timeout
+rl_set_prompt
+rl_set_retained_kills
+rl_set_screen_size
+rl_set_signals
+rl_show_char
+rl_special_prefixes DATA
+rl_start_kbd_macro
+rl_startup_hook DATA
+rl_stop_output
+rl_stuff_char
+rl_tab_insert
+rl_terminal_name DATA
+rl_tilde_expand
+rl_translate_keyseq
+rl_transpose_chars
+rl_transpose_words
+rl_tty_set_default_bindings
+rl_tty_status
+rl_unbind_command_in_map
+rl_unbind_function_in_map
+rl_unbind_key
+rl_unbind_key_in_map
+rl_undo_command
+rl_undo_list DATA
+rl_universal_argument
+rl_unix_filename_rubout
+rl_unix_line_discard
+rl_unix_word_rubout
+rl_untranslate_keyseq
+rl_upcase_word
+rl_username_completion_function
+rl_variable_bind
+rl_variable_dumper
+rl_vi_append_eol
+rl_vi_append_mode
+rl_vi_arg_digit
+rl_vi_bWord
+rl_vi_back_to_indent
+rl_vi_bracktype
+rl_vi_bword
+rl_vi_change_case
+rl_vi_change_char
+rl_vi_change_to
+rl_vi_char_search
+rl_vi_check
+rl_vi_column
+rl_vi_complete
+rl_vi_delete
+rl_vi_delete_to
+rl_vi_domove
+rl_vi_eWord
+rl_vi_editing_mode
+rl_vi_end_word
+rl_vi_eof_maybe
+rl_vi_eword
+rl_vi_fWord
+rl_vi_fetch_history
+rl_vi_first_print
+rl_vi_fword
+rl_vi_goto_mark
+rl_vi_insert_beg
+rl_vi_insertion_mode
+rl_vi_match
+rl_vi_movement_mode
+rl_vi_next_word
+rl_vi_overstrike
+rl_vi_overstrike_delete
+rl_vi_prev_word
+rl_vi_put
+rl_vi_redo
+rl_vi_replace
+rl_vi_search
+rl_vi_search_again
+rl_vi_set_mark
+rl_vi_start_inserting
+rl_vi_subst
+rl_vi_tilde_expand
+rl_vi_undo
+rl_vi_yank_arg
+rl_vi_yank_to
+rl_visible_prompt_length DATA
+rl_visible_stats DATA
+rl_yank
+rl_yank_last_arg
+rl_yank_nth_arg
+rl_yank_pop
+rltty_set_default_bindings
+sh_get_env_value
+sh_get_home_dir
+sh_set_lines_and_columns
+sh_single_quote
+stifle_history
+tilde_additional_prefixes DATA
+tilde_additional_suffixes DATA
+tilde_expand
+tilde_expand_word
+tilde_expansion_failure_hook DATA
+tilde_expansion_preexpansion_hook DATA
+unstifle_history
+username_completion_function
+using_history
+vi_insertion_keymap DATA
+vi_movement_keymap DATA
+where_history
+write_history
+xfree
+xmalloc
+xrealloc

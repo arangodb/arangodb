@@ -1,0 +1,70 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/es_419.xml
+// *
+// ***************************************************************************
+es_419{
+    Keys{
+        numbers{"Números"}
+    }
+    Scripts%stand-alone{
+        Hans{"Han simplificado"}
+        Hant{"Han tradicional"}
+    }
+    Types{
+        calendar{
+            coptic{"Calendario cóptico"}
+            ethiopic{"Calendario etíope"}
+            ethiopic-amete-alem{"Calendario etíope Amete Alem"}
+            persian{"Calendario persa"}
+        }
+        collation{
+            dictionary{"Orden de clasificación del diccionario"}
+            ducet{"Orden de clasificación de Unicode predeterminado"}
+            reformed{"Orden de clasificación reformado"}
+            search{"Búsqueda generalizada"}
+            unihan{"Orden de clasificación de trazos radicales"}
+        }
+        numbers{
+            arab{"Dígitos arábigo-índicos"}
+            arabext{"Dígitos árabe-hindú extendidos"}
+            armn{"Números armenios"}
+            armnlow{"Números armenios en minúscula"}
+            beng{"Dígitos en bengalí"}
+            deva{"Dígitos en devanagari"}
+            ethi{"Números etíopes"}
+            fullwide{"Dígitos en formato completo"}
+            geor{"Números georgianos"}
+            grek{"Números griegos"}
+            greklow{"Números griegos en minúscula"}
+            gujr{"Dígitos en guyaratí"}
+            guru{"Dígitos en gurumuji"}
+            hanidec{"Numerales decimales chinos"}
+            hans{"Números simplificados chinos"}
+            hansfin{"Números financieros simplificados chinos"}
+            hant{"Números chinos tradicionales"}
+            hantfin{"Números financieros chinos tradicionales"}
+            hebr{"Números hebreos"}
+            jpan{"Números en japonés"}
+            jpanfin{"Números financieros japoneses"}
+            khmr{"Dígitos en jemer"}
+            knda{"Dígitos en canarés"}
+            laoo{"Dígitos de Lao"}
+            latn{"Dígitos occidentales"}
+            mlym{"Dígitos malabares"}
+            mong{"Dígitos en mongol"}
+            mymr{"Dígitos en birmano"}
+            orya{"Dígitos en oriya"}
+            roman{"Números romanos"}
+            romanlow{"Números romanos en minúscula"}
+            taml{"Números en Tamil"}
+            telu{"Dígitos en telugu"}
+            thai{"Dígitos en tailandés"}
+            tibt{"Dígitos tibetanos"}
+        }
+    }
+    Version{"2.0.65.46"}
+}

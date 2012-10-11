@@ -52,7 +52,7 @@ extern "C" {
 struct TRI_collection_s;
 struct TRI_doc_mptr_s;
 struct TRI_shaped_json_s;
-struct TRI_sim_collection_s;
+struct TRI_document_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -647,7 +647,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s*,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
                                       TRI_vector_pointer_t*,
-                                      bool);
+                                      bool,
+                                      int*,
+                                      char**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

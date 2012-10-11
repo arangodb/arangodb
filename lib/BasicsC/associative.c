@@ -73,7 +73,7 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
 
 static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   char * oldTable;
-  uint64_t oldAlloc;
+  uint32_t oldAlloc;
   uint64_t j;
 
   oldTable = array->_table;
@@ -555,7 +555,7 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 
 static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   void** oldTable;
-  uint64_t oldAlloc;
+  uint32_t oldAlloc;
   uint64_t j;
 
   oldTable = array->_table;
@@ -1004,7 +1004,7 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 
 static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   void** oldTable;
-  uint64_t oldAlloc;
+  uint32_t oldAlloc;
   uint64_t j;
 
   oldTable = array->_table;

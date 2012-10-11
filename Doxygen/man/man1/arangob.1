@@ -1,0 +1,66 @@
+.TH arangob 1 "So 30. Sep 01:36:14 CEST 2012" "" "ArangoDB"
+.SH NAME
+arangob - the ArangoDB benchmark and test tool
+.SH SYNOPSIS
+arangob [options]
+.SH DESCRIPTION
+The arangob binary can be used to issue test requests to the 
+ArangoDB database. It can be used for benchmarks or server function
+testing. It supports parallel querying and batch requests.
+arangob currently only supports a few common test cases out of the box.
+More test cases might be added later.
+.SH OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+.IP "--configuration <string>"
+read configuration from file <string> 
+.IP "--batch-size <int32>"
+number of operations to send per batch (use 0 to disable batching)
+.IP "--collection <string>"
+name of collection to use in test (only relevant for tests that invoke collections)
+.IP "--concurrency <int32>"
+number of parallel threads that will issue requests (default is 1 thread)
+.IP "--requests <int32>"
+total number of requests to perform
+.IP "--test-case <string>"
+name of test case to perform (possible values: "version" and "document")
+.IP "--complexity <int32>"
+complexity value for test case (meaning depends on test case)
+.IP "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port 
+.IP "--server.username <string>"
+username to use when connecting (default "root") 
+.IP "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt 
+.SH EXAMPLES
+.EX
+shell> arangob 
+starts arangob with the default user and server endpoint 
+.EE
+
+.EX
+shell> arangob --server.username fuchsia 
+starts arangob with a specific user. Password prompt will follow 
+.EE
+
+.EX
+shell> arangob --server.username fuchsia --server.password "abcd@34"
+starts arangob with a specific user and password given on command line 
+.EE
+
+.EX
+shell> arangob --server.endpoint tcp://192.168.173.13:8529
+starts arangob connecting to a specific server 
+.EE
+
+.EX
+shell> arangob --server.endpoint ssl://192.168.173.13:8530
+starts arangob connecting to a specific server using an SSL connection 
+.EE
+
+
+.SH AUTHOR
+	    Copyright 2012, triAGENS GmbH, Cologne, Germany

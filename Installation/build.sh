@@ -68,7 +68,7 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-flex --enable-bison --enable-all-in-one --enable-mruby --disable-all-in-one-icu --enable-icu "
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -96,13 +96,13 @@ case $TRI_OS_LONG in
 
   Linux-Debian*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
     LDD_INFO="yes"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
-    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
     LDD_INFO="yes"
     ;;
 
@@ -124,7 +124,7 @@ case $TRI_OS_LONG in
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$OPTIONS --enable-all-in-one --disable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
     RESULTS="$RESULTS arangoirb"
     ;;
 

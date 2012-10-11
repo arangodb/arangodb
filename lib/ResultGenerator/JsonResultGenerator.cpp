@@ -67,7 +67,7 @@ namespace triagens {
         vector<VariantObject*> const& values = array->getValues();
 
         // generate array header
-        output.appendText("{");
+        output.appendChar('{');
         char const * sep = "";
 
         // generate attributes
@@ -78,14 +78,14 @@ namespace triagens {
           output.appendText(sep);
 
           generator->generateAtom(output, *ai);
-          output.appendText(":");
+          output.appendChar(':');
           generator->generateVariant(output, *vi);
 
           sep = ",";
         }
 
         // generate array trailer
-        output.appendText("}");
+        output.appendChar('}');
       }
 
 
@@ -154,17 +154,17 @@ namespace triagens {
         ds[1] = matrix2->getDimension(1);
 
         // generate array header
-        output.appendText("{");
+        output.appendChar('{');
 
         // generate dimensions
         generator->generateAtom(output, "dimensions");
-        output.appendText(":[");
+        output.appendText(":[", 2);
 
         char const * sep1 = "";
 
         for (size_t n = 0;  n < 2;  ++n) {
           output.appendText(sep1);
-          output.appendText("[");
+          output.appendChar('[');
 
           char const * sep2 = "";
 
@@ -174,22 +174,22 @@ namespace triagens {
             sep2 = ", ";
           }
 
-          output.appendText("]");
+          output.appendChar(']');
 
           sep1 = ", ";
         }
 
-        output.appendText("], ");
+        output.appendText("], ", 3);
 
         // generate matrix
         generator->generateAtom(output, "matrix");
-        output.appendText(":[");
+        output.appendText(":[", 2);
 
         sep1 = "";
 
         for (size_t x = 0;  x < ds[0].size();  ++x) {
           output.appendText(sep1);
-          output.appendText("[");
+          output.appendChar('[');
 
           char const * sep2 = "";
 
@@ -205,21 +205,21 @@ namespace triagens {
             sep2 = ",";
           }
 
-          output.appendText("]");
+          output.appendChar(']');
 
           sep1 = ", ";
         }
 
-        output.appendText("]");
+        output.appendChar(']');
 
         // generate array trailer
-        output.appendText("}");
+        output.appendChar('}');
       }
 
 
 
       void generateVariantNull (ResultGenerator const*, StringBuffer& output, VariantObject*) {
-        output.appendText("null");
+        output.appendText("null", 4);
       }
 
 
@@ -250,7 +250,7 @@ namespace triagens {
 
       void generateVariantVector (ResultGenerator const* generator, StringBuffer& output, VariantObject* object) {
         VariantVector* vec = dynamic_cast<VariantVector*>(object);
-        output.appendText("[");
+        output.appendChar('[');
 
         vector<VariantObject*> const& values = vec->getValues();
         string sep = "";
@@ -261,7 +261,7 @@ namespace triagens {
           sep = ", ";
         }
 
-        output.appendText("]");
+        output.appendChar(']');
       }
     }
 
@@ -294,21 +294,21 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     void JsonResultGenerator::generateAtom (StringBuffer& output, string const& value) const {
-      output.appendText("\"");
+      output.appendChar('\"');
       output.appendText(StringUtils::escapeUnicode(value));
-      output.appendText("\"");
+      output.appendChar('\"');
     }
 
 
 
     void JsonResultGenerator::generateAtom (StringBuffer& output, char const* value) const {
       if (value == 0) {
-        output.appendText("null");
+        output.appendText("null", 4);
       }
       else {
-        output.appendText("\"");
+        output.appendChar('\"');
         output.appendText(StringUtils::escapeUnicode(value));
-        output.appendText("\"");
+        output.appendChar('\"');
       }
     }
 
@@ -317,16 +317,16 @@ namespace triagens {
     void JsonResultGenerator::generateAtom (StringBuffer& output, char const* value, size_t length, bool quote) const {
       if (value == 0) {
         if (quote) {
-          output.appendText("null");
+          output.appendText("null", 4);
         }
       }
       else {
         string v(value, length);
 
         if (quote) {
-          output.appendText("\"");
+          output.appendChar('\"');
           output.appendText(StringUtils::escapeUnicode(v));
-          output.appendText("\"");
+          output.appendChar('\"');
         }
         else {
           output.appendText(v);
@@ -337,11 +337,81 @@ namespace triagens {
 
 
     void JsonResultGenerator::generateAtom (StringBuffer& output, bool value) const {
-      output.appendText(value ? "true" : "false");
+      if (value) {
+        output.appendText("true", 4);
+      }
+      else {
+        output.appendText("false", 5);
+      }
     }
 
 
+#ifdef _WIN32
+    void JsonResultGenerator::generateAtom (StringBuffer& output, double value) const {
 
+      if (value == 0.0) {
+        output.appendText("0.0", 3);
+        return;
+      }
+
+      int intType = _fpclass(value);
+
+      switch (intType) {
+        case _FPCLASS_PN:
+        case _FPCLASS_NN:
+        case _FPCLASS_NZ:
+        case _FPCLASS_PZ: {
+          output.appendDecimal(value);
+          break;
+        }
+        case _FPCLASS_NINF: {
+          generateAtom(output, "-INF");
+          break;
+        }
+        case _FPCLASS_PINF: {
+          generateAtom(output, "INF");
+          break;
+        }
+        default: {
+          generateAtom(output, "NAN");
+          break;
+        }
+      }
+    }
+
+    void JsonResultGenerator::generateAtom (StringBuffer& output, float value) const {
+
+      if (value == 0.0) {
+        output.appendText("0.0", 3);
+        return;
+      }
+
+      int intType = _fpclass(value);
+
+      switch (intType) {
+        case _FPCLASS_PN:
+        case _FPCLASS_NN:
+        case _FPCLASS_NZ:
+        case _FPCLASS_PZ: {
+          output.appendDecimal(value);
+          break;
+        }
+        case _FPCLASS_NINF: {
+          generateAtom(output, "-INF");
+          break;
+        }
+        case _FPCLASS_PINF: {
+          generateAtom(output, "INF");
+          break;
+        }
+        default: {
+          generateAtom(output, "NAN");
+          break;
+        }
+      }
+    }
+
+#else
     void JsonResultGenerator::generateAtom (StringBuffer& output, double value) const {
       if (value == 0.0) {
         output.appendText("0.0", 3);
@@ -387,7 +457,7 @@ namespace triagens {
         }
       }
     }
-
+#endif
 
 
     void JsonResultGenerator::generateAtom (StringBuffer& output, int16_t value) const {

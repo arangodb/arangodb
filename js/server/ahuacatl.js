@@ -671,6 +671,10 @@ function AHUACATL_RELATIONAL_EQUAL (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) == 0;
+  }
+
   return (lhs === rhs);
 }
 
@@ -711,6 +715,10 @@ function AHUACATL_RELATIONAL_UNEQUAL (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) != 0;
   }
 
   return (lhs !== rhs);
@@ -754,6 +762,10 @@ function AHUACATL_RELATIONAL_GREATER_REC (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) > 0;
   }
 
   if (lhs === rhs) {
@@ -819,6 +831,10 @@ function AHUACATL_RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) >= 0;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -882,6 +898,10 @@ function AHUACATL_RELATIONAL_LESS_REC (lhs, rhs) {
     rhs = null;
   }
 
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) < 0;
+  }
+
   if (lhs === rhs) {
     return null;
   }
@@ -943,6 +963,10 @@ function AHUACATL_RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+  
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs) <= 0;
   }
   
   if (lhs === rhs) {
@@ -1009,6 +1033,10 @@ function AHUACATL_RELATIONAL_CMP (lhs, rhs) {
   }
   if (AHUACATL_TYPEWEIGHT(rhs) === AHUACATL_TYPEWEIGHT_NULL) {
     rhs = null;
+  }
+
+  if (leftWeight === AHUACATL_TYPEWEIGHT_STRING) {
+    return COMPARE_STRING(lhs, rhs);
   }
 
   if (lhs < rhs) {
@@ -2060,8 +2088,13 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 
       var clonedEdges = AHUACATL_CLONE(edges);
       var clonedVertices = AHUACATL_CLONE(vertices);
-      clonedEdges.push(subEdge);
-      clonedVertices.push(internal.db._document_nl(targetId));
+      try {
+        clonedVertices.push(internal.db._document_nl(targetId));
+        clonedEdges.push(subEdge);
+      }
+      catch (e) {
+        // avoid "document not found error" in case referenced vertices were deleted
+      }
       
       var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
       for (k = 0; k < connected.length; ++k) {

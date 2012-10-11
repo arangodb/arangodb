@@ -22,8 +22,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/js/common || mkdir Doxygen/js/common
 	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
-	@test -d Doxygen/js/server || mkdir Doxygen/js/server
-	@test -d Doxygen/js/server/modules || mkdir Doxygen/js/server/modules
+	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir Doxygen/js/client
 	@test -d Doxygen/latex || mkdir Doxygen/latex
 	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
@@ -143,6 +142,14 @@ dist_man_MANS += \
         Doxygen/man/man8/arango-password.8 \
         Doxygen/man/man8/arango-upgrade.8 
 
+
+if ENABLE_ARANGOB        
+
+dist_man_MANS += \
+	Doxygen/man/man1/arangob.1 
+
+endif
+
 ################################################################################
 ### @brief cleanup
 ################################################################################
@@ -150,7 +157,8 @@ dist_man_MANS += \
 CLEANUP += \
 	$(DOXYGEN) \
 	$(addsuffix .md,$(addprefix Doxygen/xml/,$(WIKI))) \
-	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI)))
+	$(addsuffix .md,$(addprefix Doxygen/wiki/,$(WIKI))) \
+	Doxygen/.setup-directories 
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

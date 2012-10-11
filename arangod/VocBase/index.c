@@ -36,7 +36,7 @@
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -193,19 +193,19 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_t iid) {
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* doc;
   TRI_index_t* idx;
   size_t i;
 
-  if (! TRI_IS_SIMPLE_COLLECTION(collection->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->base._type)) {
     TRI_set_errno(TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE);
     return NULL;
   }
 
-  sim = (TRI_sim_collection_t*) collection;
+  doc = (TRI_document_collection_t*) collection;
 
-  for (i = 0;  i < sim->_indexes._length;  ++i) {
-    idx = sim->_indexes._buffer[i];
+  for (i = 0;  i < doc->_secondaryIndexes._length;  ++i) {
+    idx = doc->_secondaryIndexes._buffer[i];
 
     if (idx->_iid == iid) {
       return idx;
@@ -2063,7 +2063,8 @@ static int PriorityQueueIndexHelper (const TRI_priorityqueue_index_t* pqIndex,
       // ..........................................................................
 
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
-      acc = TRI_ShapeAccessor(pqIndex->base._collection->_shaper, shapedJson._sid, shape);
+      
+      acc = TRI_FindAccessorVocShaper(pqIndex->base._collection->_shaper, shapedJson._sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqElement->fields);
@@ -3783,7 +3784,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape 
       // ..........................................................................
       
-      acc = TRI_ShapeAccessor(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
       if (acc == NULL || acc->_shape == NULL) {
         return TRI_WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
@@ -4338,7 +4339,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       TRI_vector_pointer_t* values,
-                                      bool supportUndef) {
+                                      bool supportUndef, int* errorNum, char** errorStr) {
   TRI_bitarray_index_t* baIndex;
   size_t i,j,k;
   int result;
@@ -4357,6 +4358,8 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
       TRI_shape_pid_t* rightShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,i));
       if (*leftShape == *rightShape) {
         LOG_WARNING("bitarray index creation failed -- duplicate keys in index");
+        *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
+        *errorStr = TRI_DuplicateString("bitarray index creation failed -- duplicate keys in index");
         return NULL;
       }
     }
@@ -4371,16 +4374,22 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
 
   for (k = 0;  k < paths->_length;  ++k) {
     TRI_json_t* valueList = (TRI_json_t*)(TRI_AtVectorPointer(values,k));
+    
     if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {    
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
+      *errorNum = TRI_ERROR_ILLEGAL_OPTION;
+      *errorStr = TRI_DuplicateString("bitarray index creation failed -- list of values for index undefined");
       return NULL;
     } 
+    
     for (j = 0; j < valueList->_value._objects._length; ++j) {
       TRI_json_t* leftValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), j));            
       for (i = j + 1; i < valueList->_value._objects._length; ++i) {
         TRI_json_t* rightValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));            
         if (TRI_EqualJsonJson(leftValue, rightValue)) {
-          LOG_WARNING("bitarray index creation failed -- duplicate values in value list for an attribute");
+          LOG_WARNING("bitarray index creation failed -- duplicate values in value list for an attribute");          
+          *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES;
+          *errorStr = TRI_DuplicateString("bitarray index creation failed -- duplicate values in value list for an attribute");
           return NULL;
         }
       }

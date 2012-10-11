@@ -203,38 +203,6 @@ extern "C" {
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1700: @CODE{expecting \<prefix\>/user/\<username\>}
-///   TODO
-/// - 1701: @CODE{cannot create user}
-///   TODO
-/// - 1702: @CODE{role not found}
-///   TODO
-/// - 1703: @CODE{no permission to create user with that role}
-///   TODO
-/// - 1704: @CODE{user not found}
-///   TODO
-/// - 1705: @CODE{cannot manage password for user}
-///   TODO
-/// - 1706: @CODE{expecting POST \<prefix\>/session}
-///   TODO
-/// - 1707: @CODE{expecting GET \<prefix\>/session/\<sid\>}
-///   TODO
-/// - 1708: @CODE{expecting PUT \<prefix\>/session/\<sid\>/\<method\>}
-///   TODO
-/// - 1709: @CODE{expecting DELETE \<prefix\>/session/\<sid\>}
-///   TODO
-/// - 1710: @CODE{unknown session}
-///   TODO
-/// - 1711: @CODE{session has not bound to user}
-///   TODO
-/// - 1712: @CODE{cannot login with session}
-///   TODO
-/// - 1713: @CODE{expecting GET \<prefix\>/users}
-///   TODO
-/// - 1714: @CODE{expecting /directory/sessionvoc/\<token\>}
-///   TODO
-/// - 1715: @CODE{directory server is not configured}
-///   TODO
 /// - 1800: @CODE{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @CODE{key already exists}
@@ -328,6 +296,12 @@ extern "C" {
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   fails due to the fact that one or more values for an index attribute is
 ///   not supported within that index.
+/// - 3415: @CODE{bitarray index creation failure - one or more index attributes are duplicated.}
+///   Will be raised when an attempt to create an index with two or more index
+///   attributes repeated.
+/// - 3417: @CODE{bitarray index creation failure - one or more index attribute values are duplicated.}
+///   Will be raised when an attempt to create an index with two or more index
+///   attribute values repeated.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1197,166 +1171,6 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1700: ERROR_SESSION_USERHANDLER_URL_INVALID
-///
-/// expecting \<prefix\>/user/\<username\>
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERHANDLER_URL_INVALID                         (1700)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1701: ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER
-///
-/// cannot create user
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER                  (1701)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1702: ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND
-///
-/// role not found
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND                      (1702)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1703: ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION
-///
-/// no permission to create user with that role
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION                (1703)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1704: ERROR_SESSION_USERHANDLER_USER_NOT_FOUND
-///
-/// user not found
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERHANDLER_USER_NOT_FOUND                      (1704)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1705: ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW
-///
-/// cannot manage password for user
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW                    (1705)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1706: ERROR_SESSION_SESSIONHANDLER_URL_INVALID1
-///
-/// expecting POST \<prefix\>/session
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID1                     (1706)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1707: ERROR_SESSION_SESSIONHANDLER_URL_INVALID2
-///
-/// expecting GET \<prefix\>/session/\<sid\>
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID2                     (1707)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1708: ERROR_SESSION_SESSIONHANDLER_URL_INVALID3
-///
-/// expecting PUT \<prefix\>/session/\<sid\>/\<method\>
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID3                     (1708)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1709: ERROR_SESSION_SESSIONHANDLER_URL_INVALID4
-///
-/// expecting DELETE \<prefix\>/session/\<sid\>
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_URL_INVALID4                     (1709)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1710: ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN
-///
-/// unknown session
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN                  (1710)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1711: ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND
-///
-/// session has not bound to user
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND                (1711)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1712: ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN
-///
-/// cannot login with session
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN                     (1712)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1713: ERROR_SESSION_USERSHANDLER_INVALID_URL
-///
-/// expecting GET \<prefix\>/users
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_USERSHANDLER_INVALID_URL                        (1713)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1714: ERROR_SESSION_DIRECTORYSERVER_INVALID_URL
-///
-/// expecting /directory/sessionvoc/\<token\>
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_DIRECTORYSERVER_INVALID_URL                     (1714)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1715: ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED
-///
-/// directory server is not configured
-///
-/// TODO
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED                  (1715)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
 ///
 /// invalid key declaration
@@ -1720,6 +1534,30 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE     (3413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3415: ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES
+///
+/// bitarray index creation failure - one or more index attributes are
+/// duplicated.
+///
+/// Will be raised when an attempt to create an index with two or more index
+/// attributes repeated.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES (3415)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3417: ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES
+///
+/// bitarray index creation failure - one or more index attribute values are
+/// duplicated.
+///
+/// Will be raised when an attempt to create an index with two or more index
+/// attribute values repeated.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES (3417)
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{00364934-E6C8-44F2-957C-0E71383504D0}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ArangodBinary</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>arangod</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl-0.9.8k-lib\include;..\..\3rdParty\boost_1_48_0\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>Z:\local2\arango\dev\VisualStudio\Arango V8 Library;Z:\local2\arango\dev\VisualStudio\ArangoDB;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\arangod\Actions\ActionDispatcherThread.cpp" />
+    <ClCompile Include="..\..\arangod\Actions\actions.cpp" />
+    <ClCompile Include="..\..\arangod\Actions\RestActionHandler.cpp" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-access-optimiser.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-ast-node.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-bind-parameter.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-codegen.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-collections.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-context.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-conversions.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-error.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-explain.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-functions.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-grammar.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-index.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-node.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-optimiser.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-parser-functions.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-parser.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-result.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-scope.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-statement-dump.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-statement-walker.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-statementlist.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-tokens.c" />
+    <ClCompile Include="..\..\arangod\Ahuacatl\ahuacatl-variable.c" />
+    <ClCompile Include="..\..\arangod\BitIndexes\bitarray.c" />
+    <ClCompile Include="..\..\arangod\BitIndexes\bitarrayIndex.c" />
+    <ClCompile Include="..\..\arangod\GeoIndex\GeoIndex.c" />
+    <ClCompile Include="..\..\arangod\HashIndex\hasharray.c" />
+    <ClCompile Include="..\..\arangod\HashIndex\hashindex.c" />
+    <ClCompile Include="..\..\arangod\IndexIterators\index-iterator.c" />
+    <ClCompile Include="..\..\arangod\IndexOperators\index-operator.c" />
+    <ClCompile Include="..\..\arangod\PriorityQueue\pqueueindex.c" />
+    <ClCompile Include="..\..\arangod\PriorityQueue\priorityqueue.c" />
+    <ClCompile Include="..\..\arangod\RestHandler\ConnectionStatisticsHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RequestStatisticsHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RestBatchHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RestDocumentHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RestEdgeHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RestImportHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestHandler\StatisticsBaseHandler.cpp" />
+    <ClCompile Include="..\..\arangod\RestServer\arango.cpp" />
+    <ClCompile Include="..\..\arangod\RestServer\ArangoServer.cpp" />
+    <ClCompile Include="..\..\arangod\SkipLists\skiplist.c" />
+    <ClCompile Include="..\..\arangod\SkipLists\skiplistIndex.c" />
+    <ClCompile Include="..\..\arangod\V8Server\ApplicationV8.cpp" />
+    <ClCompile Include="..\..\arangod\V8Server\v8-actions.cpp" />
+    <ClCompile Include="..\..\arangod\V8Server\v8-objects.cpp" />
+    <ClCompile Include="..\..\arangod\V8Server\v8-query.cpp" />
+    <ClCompile Include="..\..\arangod\V8Server\v8-vocbase.cpp" />
+    <ClCompile Include="..\..\arangod\VocBase\auth.c" />
+    <ClCompile Include="..\..\arangod\VocBase\barrier.c" />
+    <ClCompile Include="..\..\arangod\VocBase\cleanup.c" />
+    <ClCompile Include="..\..\arangod\VocBase\collection.c" />
+    <ClCompile Include="..\..\arangod\VocBase\compactor.c" />
+    <ClCompile Include="..\..\arangod\VocBase\datafile.c" />
+    <ClCompile Include="..\..\arangod\VocBase\document-collection.c" />
+    <ClCompile Include="..\..\arangod\VocBase\general-cursor.c" />
+    <ClCompile Include="..\..\arangod\VocBase\headers.c" />
+    <ClCompile Include="..\..\arangod\VocBase\index.c" />
+    <ClCompile Include="..\..\arangod\VocBase\primary-collection.c" />
+    <ClCompile Include="..\..\arangod\VocBase\shadow-data.c" />
+    <ClCompile Include="..\..\arangod\VocBase\shape-collection.c" />
+    <ClCompile Include="..\..\arangod\VocBase\synchroniser.c" />
+    <ClCompile Include="..\..\arangod\VocBase\voc-shaper.c" />
+    <ClCompile Include="..\..\arangod\VocBase\vocbase.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\arangod\Actions\ActionDispatcherThread.h" />
+    <ClInclude Include="..\..\arangod\Actions\actions.h" />
+    <ClInclude Include="..\..\arangod\Actions\RestActionHandler.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-access-optimiser.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-ast-node.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-bind-parameter.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-codegen.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-collections.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-context.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-conversions.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-error.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-explain.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-functions.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-grammar.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-index.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-node.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-optimiser.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-parser-functions.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-parser.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-result.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-scope.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-statement-dump.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-statement-walker.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-statementlist.h" />
+    <ClInclude Include="..\..\arangod\Ahuacatl\ahuacatl-variable.h" />
+    <ClInclude Include="..\..\arangod\BitIndexes\bitarray.h" />
+    <ClInclude Include="..\..\arangod\BitIndexes\bitarrayIndex.h" />
+    <ClInclude Include="..\..\arangod\BitIndexes\masterblocktable.h" />
+    <ClInclude Include="..\..\arangod\GeoIndex\GeoIndex.h" />
+    <ClInclude Include="..\..\arangod\HashIndex\compare.h" />
+    <ClInclude Include="..\..\arangod\HashIndex\hasharray.h" />
+    <ClInclude Include="..\..\arangod\HashIndex\hashindex.h" />
+    <ClInclude Include="..\..\arangod\IndexIterators\index-iterator.h" />
+    <ClInclude Include="..\..\arangod\IndexOperators\index-operator.h" />
+    <ClInclude Include="..\..\arangod\PriorityQueue\pqueueindex.h" />
+    <ClInclude Include="..\..\arangod\PriorityQueue\priorityqueue.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\ConnectionStatisticsHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RequestStatisticsHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RestBatchHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RestDocumentHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RestEdgeHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RestImportHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\RestVocbaseBaseHandler.h" />
+    <ClInclude Include="..\..\arangod\RestHandler\StatisticsBaseHandler.h" />
+    <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h" />
+    <ClInclude Include="..\..\arangod\SkipLists\compare.h" />
+    <ClInclude Include="..\..\arangod\SkipLists\skiplist.h" />
+    <ClInclude Include="..\..\arangod\SkipLists\skiplistIndex.h" />
+    <ClInclude Include="..\..\arangod\V8Server\ApplicationV8.h" />
+    <ClInclude Include="..\..\arangod\V8Server\v8-actions.h" />
+    <ClInclude Include="..\..\arangod\V8Server\v8-objects.h" />
+    <ClInclude Include="..\..\arangod\V8Server\v8-query.h" />
+    <ClInclude Include="..\..\arangod\V8Server\v8-vocbase.h" />
+    <ClInclude Include="..\..\arangod\VocBase\auth.h" />
+    <ClInclude Include="..\..\arangod\VocBase\barrier.h" />
+    <ClInclude Include="..\..\arangod\VocBase\cleanup.h" />
+    <ClInclude Include="..\..\arangod\VocBase\collection.h" />
+    <ClInclude Include="..\..\arangod\VocBase\compactor.h" />
+    <ClInclude Include="..\..\arangod\VocBase\datafile.h" />
+    <ClInclude Include="..\..\arangod\VocBase\durham.h" />
+    <ClInclude Include="..\..\arangod\VocBase\general-cursor.h" />
+    <ClInclude Include="..\..\arangod\VocBase\headers.h" />
+    <ClInclude Include="..\..\arangod\VocBase\index.h" />
+    <ClInclude Include="..\..\arangod\VocBase\primary-collection.h" />
+    <ClInclude Include="..\..\arangod\VocBase\shadow-data.h" />
+    <ClInclude Include="..\..\arangod\VocBase\shape-collection.h" />
+    <ClInclude Include="..\..\arangod\VocBase\synchroniser.h" />
+    <ClInclude Include="..\..\arangod\VocBase\voc-shaper.h" />
+    <ClInclude Include="..\..\arangod\VocBase\vocbase.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

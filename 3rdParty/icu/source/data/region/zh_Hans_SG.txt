@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/zh_Hans_SG.xml
+// *
+// ***************************************************************************
+zh_Hans_SG{
+    Countries{
+        CP{"克利柏顿岛"}
+        GP{"瓜德罗普"}
+        LA{"老挝"}
+        ME{"黑山"}
+        SC{"塞舌尔"}
+    }
+    Version{"2.0.64.65"}
+}

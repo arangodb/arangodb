@@ -101,7 +101,7 @@ namespace triagens {
 /// @brief return the protocol to be used 
 ////////////////////////////////////////////////////////////////////////////////
 
-        Endpoint::Protocol getProtocol () const {
+        Endpoint::ProtocolType getProtocol () const {
           return Endpoint::PROTOCOL_HTTP;
         }
 

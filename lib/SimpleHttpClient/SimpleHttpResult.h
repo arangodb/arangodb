@@ -58,6 +58,7 @@ namespace triagens {
       SimpleHttpResult& operator= (SimpleHttpResult const&);
       
     public:
+
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief result types
       ////////////////////////////////////////////////////////////////////////////////
@@ -69,6 +70,10 @@ namespace triagens {
         READ_ERROR,
         UNKNOWN
       };
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief http response codes
+      ////////////////////////////////////////////////////////////////////////////////
 
       enum http_status_codes {
         HTTP_STATUS_OK = 200,
@@ -122,7 +127,7 @@ namespace triagens {
       /// @brief returns the http return code
       ////////////////////////////////////////////////////////////////////////////////
 
-      int getHttpReturnCode () {
+      int getHttpReturnCode () const {
         return _returnCode;
       }
 
@@ -138,7 +143,7 @@ namespace triagens {
       /// @brief returns the http return message
       ////////////////////////////////////////////////////////////////////////////////
 
-      string getHttpReturnMessage () {
+      string getHttpReturnMessage () const {
         return _returnMessage;
       }
 
@@ -154,7 +159,7 @@ namespace triagens {
       /// @brief returns the content length
       ////////////////////////////////////////////////////////////////////////////////
 
-      size_t getContentLength () {
+      size_t getContentLength () const {
         return _contentLength;
       }
 
@@ -188,7 +193,6 @@ namespace triagens {
         return _requestResultType == COMPLETE;
       }
 
-
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief returns true if "transfer-encoding: chunked"
       ////////////////////////////////////////////////////////////////////////////////
@@ -196,7 +200,6 @@ namespace triagens {
       bool isChunked () const {
         return _chunked;
       }
-
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief sets the request result type

@@ -27,8 +27,6 @@
 
 #include "RestBaseHandler.h"
 
-#include <boost/scoped_ptr.hpp>
-
 #include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
@@ -61,33 +59,6 @@ using namespace triagens::admin;
 
 RestBaseHandler::RestBaseHandler (HttpRequest* request)
   : HttpHandler(request) {
-  bool found;
-
-  if (request->requestType() == HttpRequest::HTTP_REQUEST_GET) {
-    char const* method = request->value("__METHOD__", found);
-
-    if (found) {
-      if (TRI_CaseEqualString(method, "put")) {
-        LOGGER_TRACE << "forcing method 'put'";
-        request->setRequestType(HttpRequest::HTTP_REQUEST_PUT);
-      }
-      else if (TRI_CaseEqualString(method, "post")) {
-        LOGGER_TRACE << "forcing method 'post'";
-        request->setRequestType(HttpRequest::HTTP_REQUEST_POST);
-      }
-      else if (TRI_CaseEqualString(method, "delete")) {
-        LOGGER_TRACE << "forcing method 'delete'";
-        request->setRequestType(HttpRequest::HTTP_REQUEST_DELETE);
-      }
-    }
-
-    char const* body = request->value("__BODY__", found);
-
-    if (found) {
-      LOGGER_TRACE << "forcing body";
-      request->setBody(body, strlen(body));
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,10 +75,6 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::handleError (TriagensError const& error) {
-  if (_response != 0) {
-    delete _response;
-  }
-
   generateError(HttpResponse::SERVER_ERROR, 
                 TRI_ERROR_INTERNAL,
                 DIAGNOSTIC_INFORMATION(error));
@@ -131,13 +98,12 @@ void RestBaseHandler::handleError (TriagensError const& error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (TRI_json_t* json) {
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
 
   int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    delete _response;
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -149,7 +115,7 @@ void RestBaseHandler::generateResult (TRI_json_t* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (VariantObject* result) {
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
 
   string contentType;
   bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
@@ -158,7 +124,6 @@ void RestBaseHandler::generateResult (VariantObject* result) {
     _response->setContentType(contentType);
   }
   else {
-    delete _response;
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -187,7 +152,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
-  _response = new HttpResponse(code);
+  _response = createResponse(code);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));

@@ -25,6 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "win-utils.h"
+#endif
+
 #include "logging.h"
 
 #ifdef TRI_ENABLE_SYSLOG
@@ -818,8 +822,9 @@ void TRI_SetLogLevelLogging (char const* level) {
   else {
     IsError = 1;
     IsWarning = 1;
+    IsInfo = 1;
 
-    LOG_ERROR("strange log level '%s'", level);
+    LOG_ERROR("strange log level '%s'. using log level 'info'", level);
   }
 }
 

@@ -29,7 +29,14 @@
 #ifndef TRIAGENS_SCHEDULER_LISTEN_TASK_H
 #define TRIAGENS_SCHEDULER_LISTEN_TASK_H 1
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netdb.h>
+#endif
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 
 #include "Scheduler/Task.h"
 

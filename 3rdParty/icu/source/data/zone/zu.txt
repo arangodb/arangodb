@@ -1,0 +1,211 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/zu.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/zu.xml
+ */
+zu{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "meta:Alaska"{
+            ld{"esase-Alaska Daylight Time"}
+            lg{"esase-Alaska Time"}
+            ls{"esase-Alaska Standard Time"}
+        }
+        "meta:Amazon"{
+            ld{"esase-Amazon Daylight Time"}
+            lg{"esase-Amazon Time"}
+            ls{"esase-Amazon Standard Time"}
+        }
+        "meta:America_Central"{
+            ld{"esase-Central Daylight Time"}
+            lg{"esase-Central Time"}
+            ls{"esase-Central Standard Time"}
+        }
+        "meta:America_Eastern"{
+            ld{"esase-Eastern Daylight Time"}
+            lg{"esase-Eastern Time"}
+            ls{"esase-Eastern Standard Time"}
+        }
+        "meta:America_Mountain"{
+            ld{"esase-Mountain Daylight Time"}
+            lg{"esase-Mountain Time"}
+            ls{"esase-Mountain Standard Time"}
+        }
+        "meta:America_Pacific"{
+            ld{"esase-Pacific Daylight Time"}
+            lg{"esase-Pacific Time"}
+            ls{"esase-Pacific Standard Time"}
+        }
+        "meta:Anadyr"{
+            ld{"esase-Anadyr Summer Time"}
+            lg{"esase-Anadyr Time"}
+            ls{"esase-Anadyr Standard Time"}
+        }
+        "meta:Argentina"{
+            ld{"esase-Argentina Summer Time"}
+            lg{"esase-Argentina Time"}
+            ls{"esase-Argentina Standard Time"}
+        }
+        "meta:Argentina_Western"{
+            ld{"esase-Western Argentina Summer Time"}
+            lg{"esase-Western Argentina Time"}
+            ls{"esase-Western Argentina Standard Time"}
+        }
+        "meta:Atlantic"{
+            ld{"esase-Atlantic Daylight Time"}
+            lg{"esase-Atlantic Time"}
+            ls{"esase-Atlantic Standard Time"}
+        }
+        "meta:Australia_Central"{
+            ld{"esase-Austrilian Central Daylight Time"}
+            lg{"esase-Central Australia Time"}
+            ls{"esase-Austrilian Central Standard Time"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"esase-Austrilian Central Western Daylight Time"}
+            lg{"esase-Austrilian Central Western Time"}
+            ls{"esase-Austrilian Central Western Standard Time"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"esase-Australian Eastern Daylight Time"}
+            lg{"esase-Austrilian Eastern Time"}
+            ls{"esase-Australian Eastern Standard Time"}
+        }
+        "meta:Australia_Western"{
+            ld{"esase-Austrilian Western Daylight Time"}
+            lg{"esase-Western Australia Time"}
+            ls{"esase-Austrilian Western Standard Time"}
+        }
+        "meta:Brasilia"{
+            ld{"esase-Brasilia Summer Time"}
+            lg{"esase-Brasilia Time"}
+            ls{"esase-Brasilia Standard Time"}
+        }
+        "meta:Choibalsan"{
+            ld{"esase-Choibalsan Summer Time"}
+            lg{"esase-Choibalsan Time"}
+            ls{"esase-Choibalsan Standard Time"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"esase-Hawaii Aleutian Daylight Time"}
+            lg{"esase-Hawaii Aleutian Time"}
+            ls{"esase-Hawaii Aleutian Standard Time"}
+        }
+        "meta:Hovd"{
+            ld{"esase-Hovd Summer Time"}
+            lg{"esase-Hovd Time"}
+            ls{"esase-Hovd Standard Time"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"esase-Indonesia Central Time"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"esase-Indonesia Eastern Time"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"esase-Indonesia Western Time"}
+        }
+        "meta:Irkutsk"{
+            ld{"esase-Irkutsk Summer Time"}
+            lg{"esase-Irkutsk Time"}
+            ls{"esase-Irkutsk Standard Time"}
+        }
+        "meta:Kamchatka"{
+            ld{"esase-Petropavlovsk-Kamchatski Summer Time"}
+            lg{"esase-Petropavlovsk-Kamchatski Time"}
+            ls{"esase-Petropavlovsk-Kamchatski Standard Time"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"esase-East Kazakhstan Time"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"esase-West Kazakhstan Time"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"esase-Krasnoyarsk Summer Time"}
+            lg{"esase-Krasnoyarsk Time"}
+            ls{"esase-Krasnoyarsk Standard Time"}
+        }
+        "meta:Lord_Howe"{
+            ld{"esase-Lord Howe Daylight Time"}
+            lg{"esase-Lord Howe Time"}
+            ls{"esase-Lord Howe Standard Time"}
+        }
+        "meta:Macquarie"{
+            ls{"esase-Macquarie Time"}
+        }
+        "meta:Magadan"{
+            ld{"esase-Magadan Summer Time"}
+            lg{"esase-Magadan Time"}
+            ls{"esase-Magadan Standard Time"}
+        }
+        "meta:Mongolia"{
+            ld{"esase-Ulan Bator Summer Time"}
+            lg{"esase-Ulan Bator Time"}
+            ls{"esase-Ulan Bator Standard Time"}
+        }
+        "meta:Moscow"{
+            ld{"esase-Moscow Summer Time"}
+            lg{"esase-Moscow Time"}
+            ls{"esase-Moscow Standard Time"}
+        }
+        "meta:Newfoundland"{
+            ld{"esase-Newfoundland Daylight Time"}
+            lg{"esase-Newfoundland Time"}
+            ls{"esase-Newfoundland Standard Time"}
+        }
+        "meta:Noronha"{
+            ld{"esase-Fernando de Noronha Summer Time"}
+            lg{"esase-Fernando de Noronha Time"}
+            ls{"esase-Fernando de Noronha Standard Time"}
+        }
+        "meta:Novosibirsk"{
+            ld{"esase-Novosibirsk Summer Time"}
+            lg{"esase-Novosibirsk Time"}
+            ls{"esase-Novosibirsk Standard Time"}
+        }
+        "meta:Omsk"{
+            ld{"esase-Omsk Summer Time"}
+            lg{"esase-Omsk Time"}
+            ls{"esase-Omsk Standard Time"}
+        }
+        "meta:Sakhalin"{
+            ld{"esase-Sakhalin Summer Time"}
+            lg{"esase-Sakhalin Time"}
+            ls{"esase-Sakhalin Standard Time"}
+        }
+        "meta:Samara"{
+            ld{"esase-Samara Summer Time"}
+            lg{"esase-Samara Time"}
+            ls{"esase-Samara Standard Time"}
+        }
+        "meta:Vladivostok"{
+            ld{"esase-Vladivostok Summer Time"}
+            lg{"esase-Vladivostok Time"}
+            ls{"esase-Vladivostok Standard Time"}
+        }
+        "meta:Volgograd"{
+            ld{"esase-Volgograd Summer Time"}
+            lg{"esase-Volgograd Time"}
+            ls{"esase-Volgograd Standard Time"}
+        }
+        "meta:Yakutsk"{
+            ld{"esase-Yakutsk Summer Time"}
+            lg{"esase-Yakutsk Time"}
+            ls{"esase-Yakutsk Standard Time"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"esase-Yekaterinburg Summer Time"}
+            lg{"esase-Yekaterinburg Time"}
+            ls{"esase-Yekaterinburg Standard Time"}
+        }
+        fallbackRegionFormat{"Isikhathi sase-{1} ({0})"}
+        regionFormat{"Isiskhathi sase-{0}"}
+    }
+}

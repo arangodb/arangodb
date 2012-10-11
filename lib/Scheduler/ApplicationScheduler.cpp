@@ -25,6 +25,10 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "ApplicationScheduler.h"
 
 #include "Basics/Exceptions.h"
@@ -49,10 +53,45 @@ using namespace triagens::rest;
 
 namespace {
 
+
+#ifdef _WIN32
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward declared handler for crtl c for windows
+////////////////////////////////////////////////////////////////////////////////
+
+#include <windows.h>
+#include <stdio.h>
+
+  bool static CtrlHandler(DWORD eventType); 
+  static SignalTask* localSignalTask;
+
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles control-c
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+  class ControlCTask : public SignalTask {
 
+    public:
+
+      ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
+        localSignalTask = this;
+        int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true); 
+      }
+
+    public:
+      bool handleSignal () {
+        return true;
+      }
+
+    public:
+      ApplicationServer* _server;
+      uint32_t _seen;
+  };
+#else
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
@@ -86,11 +125,28 @@ namespace {
       ApplicationServer* _server;
       uint32_t _seen;
   };
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles hangup
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+  class HangupTask : public SignalTask {
+    public:
+      HangupTask ()
+        : Task("Hangup"), SignalTask() {
+      }
+
+    public:
+      bool handleSignal () {
+        LOGGER_INFO << "hangup received, about to reopen logfile";
+        TRI_ReopenLogging();
+        LOGGER_INFO << "hangup received, reopened logfile";
+        return true;
+      }
+  };
+#else
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
@@ -106,6 +162,7 @@ namespace {
         return true;
       }
   };
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces a scheduler status report
@@ -126,7 +183,52 @@ namespace {
     public:
       Scheduler* _scheduler;
   };
-}
+
+#ifdef _WIN32
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handler for crtl c for windows
+////////////////////////////////////////////////////////////////////////////////
+
+  bool CtrlHandler(DWORD eventType) {
+    ControlCTask* ccTask = (ControlCTask*)(localSignalTask);
+
+    switch (eventType) {
+      case CTRL_C_EVENT: 
+      case CTRL_CLOSE_EVENT: 
+      case CTRL_LOGOFF_EVENT: 
+      case CTRL_SHUTDOWN_EVENT: {
+        string msg = ccTask->_server->getName() + " [shutting down]";
+
+        TRI_SetProcessTitle(msg.c_str());
+
+        if (ccTask->_seen == 0) {
+          LOGGER_INFO << "control-c received, beginning shut down sequence";
+          ccTask->_server->beginShutdown();
+        }
+        else {
+          LOGGER_INFO << "control-c received, terminating";
+          exit(EXIT_FAILURE);
+        }
+
+        ++ccTask->_seen;
+
+        return true;
+      }
+
+      default: {
+        return false;
+      }
+
+    }
+
+    return false;
+  }
+
+#endif
+
+}  // end of anonymous (unamed) namespace
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -277,7 +379,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::parsePhase1 (basics::ProgramOptions& options) {
+bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& options) {
 
   // show io backends
   if (options.has("show-io-backends")) {
@@ -292,7 +394,7 @@ bool ApplicationScheduler::parsePhase1 (basics::ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::parsePhase2 (basics::ProgramOptions& options) {
+bool ApplicationScheduler::parsePhase2 (triagens::basics::ProgramOptions& options) {
 
   // check if want to reuse the address
   if (options.has("server.reuse-address")) {
@@ -381,7 +483,7 @@ void ApplicationScheduler::stop () {
 
     for (size_t count = 0;  count < MAX_TRIES && _scheduler->isRunning();  ++count) {
       LOGGER_TRACE << "waiting for scheduler to stop";
-      sleep(1);
+      usleep(1000000);
     }
 
     _scheduler->shutdown();
@@ -532,6 +634,8 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
 #endif
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -1,0 +1,80 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/pt_PT.xml
+// *
+// ***************************************************************************
+pt_PT{
+    Countries{
+        009{"Oceânia"}
+        015{"Norte de África"}
+        035{"Sudeste Asiático"}
+        154{"Europa do Norte"}
+        AC{"Ascensão"}
+        AE{"Emiratos Árabes Unidos"}
+        AI{"Anguila"}
+        AM{"Arménia"}
+        AQ{"Antárctica"}
+        AX{"Ilhas Åland"}
+        BF{"Burkina-Faso"}
+        BH{"Bahrein"}
+        BJ{"Benim"}
+        BW{"Botswana"}
+        BY{"Bielorrússia"}
+        CC{"Ilhas Cocos"}
+        CG{"Congo-Brazzaville"}
+        CM{"Camarões"}
+        CX{"Ilha do Natal"}
+        CZ{"República Checa"}
+        EE{"Estónia"}
+        EG{"Egipto"}
+        EH{"Sara Ocidental"}
+        FK{"Ilhas Falkland"}
+        FM{"Estados Federados da Micronésia"}
+        FO{"Ilhas Faroé"}
+        GL{"Gronelândia"}
+        GW{"Guiné-Bissau"}
+        HK{"Região Administrativa Especial de Hong Kong"}
+        IR{"Irão"}
+        KE{"Quénia"}
+        KG{"Quirguizistão"}
+        KN{"Saint Kitts e Nevis"}
+        KY{"Ilhas Caimão"}
+        KZ{"Cazaquistão"}
+        LA{"Laos, República Popular Democrática do"}
+        LV{"Letónia"}
+        MC{"Mónaco"}
+        MD{"Moldávia, República da"}
+        MG{"Madagáscar"}
+        MK{"Macedónia"}
+        MM{"Mianmar"}
+        MO{"Região Administrativa Especial de Macau"}
+        MP{"Ilhas Mariana do Norte"}
+        MS{"Monserrate"}
+        MU{"Maurícias"}
+        NC{"Nova Caledónia"}
+        NL{"Países Baixos"}
+        PG{"Papuásia-Nova Guiné"}
+        PL{"Polónia"}
+        PS{"Território Palestiniano"}
+        QA{"Qatar"}
+        QO{"Oceânia Insular"}
+        RO{"Roménia"}
+        SC{"Seicheles"}
+        SG{"Singapura"}
+        SI{"Eslovénia"}
+        SM{"São Marino"}
+        TC{"Ilhas Turcas e Caicos"}
+        TJ{"Tajiquistão"}
+        TM{"Turquemenistão"}
+        TT{"Trindade e Tobago"}
+        UZ{"Usbequistão"}
+        VI{"Ilhas Virgens E.U.A."}
+        VN{"Vietname"}
+        YE{"Iémen"}
+        ZW{"Zimbabwe"}
+    }
+    Version{"2.0.65.46"}
+}

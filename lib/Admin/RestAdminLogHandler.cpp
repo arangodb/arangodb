@@ -36,6 +36,7 @@
 #include "Variant/VariantUInt64.h"
 #include "Variant/VariantVector.h"
 
+using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;

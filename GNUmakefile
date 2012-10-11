@@ -18,5 +18,8 @@ setup:
 	@echo auto system configured, proceed with configure
 
 setup-git: setup
-	@echo adding changes to GIT
+	@echo adding generated files to GIT
 	git add Makefile.in aclocal.m4 config/compile config/config.guess config/config.sub config/depcomp config/install-sh config/missing
+
+love: 
+	@echo ArangoDB loves you

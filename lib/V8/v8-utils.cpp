@@ -25,6 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "v8-utils.h"
 
 #include <fstream>
@@ -39,8 +43,13 @@
 #include "BasicsC/process-utils.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/utf8-helper.h"
 #include "Rest/SslInterface.h"
 #include "V8/v8-conv.h"
+
+#ifdef TRI_HAVE_ICU
+#include "unicode/normalizer2.h"
+#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -102,10 +111,10 @@ wd_key_pair_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak dictionary callback
+/// @brief weak dictionary entry weak callback
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakDictionaryEntryCallback (v8::Persistent<v8::Value> object, void* parameter) {
   typedef Dictionary< v8::Persistent<v8::Value>* > WD;
 
   WD* dictionary;
@@ -114,7 +123,7 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
   dictionary = (WD*) ((wd_key_pair_t*) parameter)->_dictionary;
   key = ((wd_key_pair_t*) parameter)->_key;
 
-  LOG_TRACE("weak-callback for dictionary called");
+  LOG_TRACE("weak-callback for dictionary entry called");
 
   // dispose and clear the persistent handle
   WD::KeyValue const* kv = dictionary->lookup(key);
@@ -129,11 +138,47 @@ static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* para
   }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, key);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
+  delete (wd_key_pair_t*) parameter;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief invocation callback
+/// @brief weak dictionary weak callback
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakDictionaryCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  typedef Dictionary< v8::Persistent<v8::Value>* > WD;
+
+  WD* dictionary;
+
+  LOG_TRACE("weak-callback for dictionary called");
+
+  dictionary = (WD*) parameter;
+  if (dictionary == 0) {
+    return;
+  }
+
+  // iterate over dictionary entries and delete them
+  WD::KeyValue const* begin;
+  WD::KeyValue const* end;
+  WD::KeyValue const* ptr;
+
+  dictionary->range(begin, end);
+
+  for (ptr = begin;  ptr < end;  ++ptr) {
+    if (ptr->_key != 0) {
+      ptr->_value->Dispose();
+      ptr->_value->Clear();
+
+      delete ptr->_value;
+    }
+  }
+
+  // delete the dictionary itself
+  delete dictionary;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak dictionary invocation callback
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments const& args) {
@@ -147,10 +192,12 @@ static v8::Handle<v8::Value> WeakDictionaryInvocationCallback (v8::Arguments con
   }
 
   WD* dictionary = new WD(MIN_SIZE);
-  v8::Handle<v8::Value> external = v8::Persistent<v8::Value>::New(v8::External::New(dictionary));
+  v8::Persistent<v8::Value> external = v8::Persistent<v8::Value>::New(v8::External::New(dictionary));
 
   self->SetInternalField(SLOT_CLASS, external);
   self->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_WEAK_DIRECTORY_TYPE));
+  
+  external.MakeWeak(dictionary, WeakDictionaryCallback);
 
   return self;
 }
@@ -324,7 +371,7 @@ static v8::Handle<v8::Value> MapSetWeakDictionary (v8::Local<v8::String> name,
   p->_dictionary = dictionary;
   p->_key = ckey;
 
-  persistent->MakeWeak(p, WeakDictionaryCallback);
+  persistent->MakeWeak(p, WeakDictionaryEntryCallback);
 
   return scope.Close(value);
 }
@@ -505,7 +552,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
       if (TRI_IsTraceLogging(__FILE__)) {
-        v8::String::Utf8Value keyName(key);
+        TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != 0) {
           LOG_TRACE("copying key '%s' from sandbox to context", *keyName);
@@ -554,7 +601,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
       if (TRI_IsTraceLogging(__FILE__)) {
-        v8::String::Utf8Value keyName(key);
+        TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
         if (*keyName != 0) {
           LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
@@ -635,7 +682,7 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: load(<filename>)")));
   }
 
-  v8::String::Utf8Value name(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
@@ -677,13 +724,13 @@ static v8::Handle<v8::Value> JS_Log (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: log(<level>, <message>)")));
   }
 
-  v8::String::Utf8Value level(argv[0]);
+  TRI_Utf8ValueNFC level(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*level == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<level> must be a string")));
   }
 
-  v8::String::Utf8Value message(argv[1]);
+  TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*message == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<message> must be a string")));
@@ -741,7 +788,7 @@ static v8::Handle<v8::Value> JS_LogLevel (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (1 <= argv.Length()) {
-    v8::String::Utf8Value str(argv[0]);
+    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
     TRI_SetLogLevelLogging(*str);
   }
@@ -798,6 +845,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 
     // convert it into a string
     v8::String::Utf8Value utf8(val);
+    // TRI_Utf8ValueNFC utf8(TRI_UNKNOWN_MEM_ZONE, val);
 
     if (*utf8 == 0) {
       continue;
@@ -808,7 +856,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = write(1, ptr, len);
+      ssize_t n = TRI_WRITE(1, ptr, len);
 
       if (n < 0) {
         return v8::Undefined();
@@ -886,7 +934,7 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: read(<filename>)")));
   }
 
-  v8::String::Utf8Value name(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
@@ -920,13 +968,13 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: save(<filename>, <content>)")));
   }
 
-  v8::String::Utf8Value name(argv[0]);
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be a string")));
   }
   
-  v8::String::Utf8Value content(argv[1]);
+  TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
   if (*content == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<content> must be a string")));
@@ -990,7 +1038,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
     return scope.Close(v8::String::New(""));
   }
 
-  v8::String::Utf8Value format(argv[0]);
+  TRI_Utf8ValueNFC format(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*format == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<format> must be a string")));
@@ -1046,7 +1094,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
             return scope.Close(v8::ThrowException(v8::String::New("not enough arguments")));
           }
 
-          v8::String::Utf8Value text(argv[p]);
+          TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[p]);
 
           if (*text == 0) {
             string msg = StringUtils::itoa(p) + ".th argument must be a string";
@@ -1072,7 +1120,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
   }
 
   for (size_t i = p;  i < len;  ++i) {
-    v8::String::Utf8Value text(argv[i]);
+    TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[i]);
 
     if (*text == 0) {
       string msg = StringUtils::itoa(i) + ".th argument must be a string";
@@ -1227,7 +1275,7 @@ void TRI_AugmentObject (v8::Handle<v8::Value> value, TRI_json_t const* json) {
 string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
-  v8::String::Utf8Value exception(tryCatch->Exception());
+  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
   const char* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
   string result;
@@ -1242,7 +1290,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
     }
   }
   else {
-    v8::String::Utf8Value filename(message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, message->GetScriptResourceName());
     const char* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
@@ -1268,7 +1316,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
       }
     }
 
-    v8::String::Utf8Value sourceline(message->GetSourceLine());
+    TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
       string l = *sourceline;
@@ -1287,7 +1335,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
       result += "!" + l + "\n";
     }
 
-    v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
+    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
       result += "stacktrace: " + string(*stacktrace) + "\n";
@@ -1304,7 +1352,7 @@ string TRI_StringifyV8Exception (v8::TryCatch* tryCatch) {
 void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope;
 
-  v8::String::Utf8Value exception(tryCatch->Exception());
+  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());  
   const char* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
 
@@ -1318,9 +1366,12 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
     }
   }
   else {
-    v8::String::Utf8Value filename(message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, message->GetScriptResourceName());
     const char* filenameString = *filename;
+#ifdef TRI_ENABLE_LOGGER 
+    // if ifdef is not used, the compiler will complain about linenum being unused
     int linenum = message->GetLineNumber();
+#endif
     int start = message->GetStartColumn() + 1;
     int end = message->GetEndColumn();
 
@@ -1341,7 +1392,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
       }
     }
 
-    v8::String::Utf8Value sourceline(message->GetSourceLine());
+    TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
       string l = *sourceline;
@@ -1360,7 +1411,7 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
       LOG_ERROR("!%s", l.c_str());
     }
 
-    v8::String::Utf8Value stacktrace(tryCatch->StackTrace());
+    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
       LOG_ERROR("stacktrace: %s", *stacktrace);
@@ -1600,6 +1651,64 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   }
 
   context->Global()->Set(v8::String::New("MODULES_PATH"), modulesPaths);
+}
+
+#ifdef TRI_HAVE_ICU
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
+  _str(0), _length(0), _memoryZone(memoryZone) {
+
+   v8::String::Value str(obj);
+   size_t str_len = str.length();
+
+   _str = TR_normalize_utf16_to_NFC(_memoryZone, *str, str_len, &_length);     
+}
+
+TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
+  if (_str) {
+    TRI_Free(_memoryZone, _str);
+  }
+}
+#else
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
+  _str(0), _length(0), _memoryZone(memoryZone), _utf8Value(obj) {  
+  _str = *_utf8Value;
+  _length = _utf8Value.length();
+}
+
+TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
+}
+#endif
+
+v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
+  v8::HandleScope scope;
+  
+  v8::String::Value str(obj);
+  size_t str_len = str.length();
+  if (str_len > 0) {
+#ifdef TRI_HAVE_ICU  
+    UErrorCode erroCode = U_ZERO_ERROR;
+    const Normalizer2* normalizer = Normalizer2::getInstance(NULL, "nfc", UNORM2_COMPOSE ,erroCode);
+    
+    if (U_FAILURE(erroCode)) {
+      //LOGGER_ERROR << "error in Normalizer2::getNFCInstance(erroCode): " << u_errorName(erroCode);
+      return scope.Close(v8::String::New(*str, str_len)); 
+    }
+    
+    UnicodeString result = normalizer->normalize(UnicodeString(*str, str_len), erroCode);
+
+    if (U_FAILURE(erroCode)) {
+      //LOGGER_ERROR << "error in normalizer->normalize(UnicodeString(*str, str_len), erroCode): " << u_errorName(erroCode);
+      return scope.Close(v8::String::New(*str, str_len)); 
+    }
+    
+    return scope.Close(v8::String::New(result.getBuffer(), result.length())); 
+#else
+    return scope.Close(v8::String::New(*str, str_len)); 
+#endif
+  }
+  else {
+    return scope.Close(v8::String::New("")); 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

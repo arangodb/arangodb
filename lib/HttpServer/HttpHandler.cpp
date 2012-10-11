@@ -30,7 +30,6 @@
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
-#include "BinaryServer/BinaryServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "GeneralServer/GeneralServerJob.h"
@@ -87,7 +86,7 @@ HttpHandler::~HttpHandler () {
 /// @brief returns the response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* HttpHandler::getResponse () {
+HttpResponse* HttpHandler::getResponse () const {
   return _response;
 }
 
@@ -120,15 +119,46 @@ Job* HttpHandler::createJob (AsyncJobServer* server) {
   if (httpsServer != 0) {
     return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this);
   }
-  
-  BinaryServer* binaryServer = dynamic_cast<BinaryServer*>(server);
-  if (binaryServer != 0) {
-    return new GeneralServerJob<BinaryServer, HttpHandlerFactory::GeneralHandler>(binaryServer, this);
-  }
   // stj: end of hack
 
   LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure the handler has only one response, otherwise we'd have a leak
+////////////////////////////////////////////////////////////////////////////////
+        
+void HttpHandler::removePreviousResponse () {
+  if (_response != 0) {
+    delete _response;
+    _response = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new HTTP response
+////////////////////////////////////////////////////////////////////////////////
+
+HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) {
+  // avoid having multiple responses. this would be a memleak
+  removePreviousResponse();
+
+  // otherwise, we return a "standard" (standalone) Http response
+  return new HttpResponse(code);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

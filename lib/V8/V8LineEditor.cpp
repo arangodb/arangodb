@@ -31,6 +31,7 @@
 #include <readline/history.h>
 
 #include "BasicsC/strings.h"
+#include "V8/v8-utils.h"
 
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
@@ -156,7 +157,7 @@ static char* CompletionGenerator (char const* text, int state) {
       for (size_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
 
-        v8::String::Utf8Value str(v);
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
         char const* s = *str;
 
         if (s != 0 && *s) {

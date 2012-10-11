@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/es_PE.xml
+// *
+// ***************************************************************************
+es_PE{
+    Currencies{
+        PEN{
+            "S/.",
+            "nuevo sol peruano",
+        }
+    }
+    Version{"2.0.58.84"}
+}

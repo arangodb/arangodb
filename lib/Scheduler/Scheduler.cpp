@@ -26,6 +26,10 @@
 /// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "Scheduler.h"
 
 #include "Basics/MutexLocker.h"
@@ -371,6 +375,10 @@ void Scheduler::reportStatus () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::initialiseSignalHandlers () {
+
+#ifdef _WIN32
+  // Windows does not support POSIX signal handling
+#else
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
@@ -383,6 +391,8 @@ void Scheduler::initialiseSignalHandlers () {
   if (res < 0) {
     LOGGER_ERROR << "cannot initialise signal handlers for pipe";
   }
+#endif
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -923,8 +923,8 @@ namespace triagens {
         void checkTime () {
           time_t now = time(0);
 
-          size_t p1 = now / P;
-          size_t p2 = _start[_current] / P;
+          uint64_t p1 = now / P;
+          uint64_t p2 = _start[_current] / P;
 
           if (p1 == p2) {
             return;
@@ -932,7 +932,7 @@ namespace triagens {
 
           S save = _buffer[_current];
 
-          for (size_t p = max(p2, p1 - N) + 1;  p <= p1;  ++p) {
+          for (uint64_t p = max(p2, p1 - N) + 1;  p <= p1;  ++p) {
             _current = p % N;
 
             _buffer[_current] = save;

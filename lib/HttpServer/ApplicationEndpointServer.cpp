@@ -36,7 +36,6 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
-#include "BinaryServer/BinaryServer.h"
 #include "Logger/Logger.h"
 #include "Rest/OperationMode.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -96,6 +95,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _endpoints(),
     _disableAuthentication(false),
     _keepAliveTimeout(300.0),
+    _backlogSize(10),
     _httpsKeyfile(),
     _cafile(),
     _sslProtocol(HttpsServer::TLS_V1),
@@ -111,7 +111,14 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationEndpointServer::~ApplicationEndpointServer () {
-  for_each(_servers.begin(), _servers.end(), DeleteObject());
+
+  // ..........................................................................
+  // Where ever possible we should EXPLICITLY write down the type used in 
+  // a templated class/method etc. This makes it a lot easier to debug the 
+  // code. Granted however, that explicitly writing down the type for an
+  // overloaded class operator is a little unwieldy.
+  // ..........................................................................
+  for_each(_servers.begin(), _servers.end(), triagens::basics::DeleteObjectAny());
   _servers.clear();
 
   if (_handlerFactory != 0) {
@@ -161,18 +168,6 @@ bool ApplicationEndpointServer::buildServers () {
     _servers.push_back(server);
   }
   
-  if (_endpointList.count(Endpoint::PROTOCOL_BINARY, Endpoint::ENCRYPTION_NONE) > 0) {
-    // binary endpoints 
-    server = new BinaryServer(_applicationScheduler->scheduler(), 
-                              _applicationDispatcher->dispatcher(), 
-                              _keepAliveTimeout,
-                              _handlerFactory); 
- 
-    server->setEndpointList(&_endpointList);
-    _servers.push_back(server);
-  }
-
-
   // ssl endpoints
   if (_endpointList.count(Endpoint::PROTOCOL_HTTP, Endpoint::ENCRYPTION_SSL) > 0) {
     // check the ssl context
@@ -228,6 +223,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
+    ("server.backlog-size", &_backlogSize, "listen backlog size")
   ;
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-ssl"]
@@ -252,6 +248,13 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     return false;
   }
 
+  if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
+    LOGGER_FATAL << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN;
+    cerr << "invalid value for --server.backlog-size. maximum allowed value is " << SOMAXCONN << "\n";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+
   if (_httpPort != "") {
     // issue #175: add hidden option --server.http-port for downwards-compatibility
     string httpEndpoint("tcp://" + _httpPort);
@@ -269,7 +272,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   
   // add & validate endpoints
   for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
-    Endpoint* endpoint = Endpoint::serverFactory(*i);
+    Endpoint* endpoint = Endpoint::serverFactory(*i, _backlogSize);
   
     if (endpoint == 0) {
       LOGGER_FATAL << "invalid endpoint '" << *i << "'";
@@ -387,6 +390,7 @@ void ApplicationEndpointServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::createSslContext () {
+  LOGGER_INFO << "using " << OPENSSL_VERSION_TEXT;
 
   // check keyfile
   if (_httpsKeyfile.empty()) {

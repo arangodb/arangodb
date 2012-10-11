@@ -32,7 +32,7 @@
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -109,7 +109,10 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   _timing << *task;
+#ifdef TRI_ENABLE_LOGGER
+  // if ifdef is not used, the compiler will complain
   LOGGER_REQUEST_IN_START_I(_timing);
+#endif
 
   // execute one of the CRUD methods
   bool res = false;
@@ -169,6 +172,7 @@ bool RestImportHandler::createByArray () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
+  const bool forceSync = false;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -199,7 +203,7 @@ bool RestImportHandler::createByArray () {
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_SIMPLE_DOCUMENT, create);
+  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
   
   int res = ca.use();
   if (TRI_ERROR_NO_ERROR != res) {
@@ -240,7 +244,7 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false, forceSync);
       if (mptr._did != 0) {
         ++numCreated;
       }
@@ -284,6 +288,7 @@ bool RestImportHandler::createByList () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
+  const bool forceSync = false;
   
   vector<string> const& suffix = _request->suffix();
 
@@ -371,7 +376,7 @@ bool RestImportHandler::createByList () {
   }        
       
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_SIMPLE_DOCUMENT, create);
+  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
   
   int res = ca.use();
   if (TRI_ERROR_NO_ERROR != res) {
@@ -423,7 +428,7 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false, forceSync);
       if (mptr._did != 0) {
         ++numCreated;
       }
@@ -458,8 +463,7 @@ bool RestImportHandler::createByList () {
 
 
 void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError, size_t numEmpty) {
-  _response = new HttpResponse(HttpResponse::CREATED);
-
+  _response = createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   _response->body()

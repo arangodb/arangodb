@@ -1,5 +1,5 @@
 /*
-** data.h - Data class
+** mruby/data.h - Data class
 **
 ** See Copyright Notice in mruby.h
 */
@@ -17,8 +17,8 @@ struct mrb_data_type {
 };
 
 struct RData {
-  MRUBY_OBJECT_HEADER;
-  struct kh_iv *iv;
+  MRB_OBJECT_HEADER;
+  struct iv_tbl *iv;
   struct mrb_data_type *type;
   void *data;
 };

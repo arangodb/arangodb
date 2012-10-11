@@ -1,0 +1,242 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/ewo.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/ewo.xml
+ */
+ewo{
+    Countries{
+        AD{"Andór"}
+        AE{"Bemirá yá Arábǝ uní"}
+        AF{"Afǝganisǝtán"}
+        AG{"Antígwa ai Barǝbúda"}
+        AI{"Angíyǝ"}
+        AL{"Alǝbánia"}
+        AM{"Arǝménia"}
+        AN{"Anǝtíyǝ Nɛdǝlánia"}
+        AO{"Angolá"}
+        AR{"Arǝhenǝtína"}
+        AS{"Bǝsamóa yá Amǝ́rǝka"}
+        AT{"Osǝtǝlía"}
+        AU{"Osǝtǝlalí"}
+        AW{"Arúba"}
+        AZ{"Azɛrǝbaidzáŋ"}
+        BA{"Bosǝní ai ɛrǝzegovín"}
+        BB{"Barǝbád"}
+        BD{"Bangaladɛ́s"}
+        BE{"Bɛlǝhíg"}
+        BF{"Bulǝkiná Fasó"}
+        BG{"Bulǝgarí"}
+        BH{"Bahǝrɛ́n"}
+        BI{"Burundí"}
+        BJ{"Bǝníŋ"}
+        BM{"Bɛrǝmúd"}
+        BN{"Buluné"}
+        BO{"Bolívia"}
+        BR{"Bǝlazíl"}
+        BS{"Bahámas"}
+        BT{"Butáŋ"}
+        BW{"Botswaná"}
+        BY{"Bǝlarús"}
+        BZ{"Bǝlís"}
+        CA{"kanadá"}
+        CD{"ǹnam Kongó Demokǝlatíg"}
+        CF{"ǹnam Zǎŋ Afiriká"}
+        CG{"Kongó"}
+        CH{"Suís"}
+        CI{"Kód Divɔ́r"}
+        CK{"Minlán Mí kúg"}
+        CL{"Tsilí"}
+        CM{"Kamǝrún"}
+        CN{"Tsáina"}
+        CO{"Kolɔmbí"}
+        CR{"Kosta Ríka"}
+        CS{"Sɛrǝbí-ai-Mɔntenégǝlo"}
+        CU{"Kubá"}
+        CV{"Minlán Mí Káb Vɛr"}
+        CY{"Sipǝlús"}
+        CZ{"Ǹnam Tsɛ́g"}
+        DE{"Ndzáman"}
+        DJ{"Dzibutí"}
+        DK{"Danǝmárǝg"}
+        DM{"Dómǝnika"}
+        DO{"République dominicaine"}
+        DZ{"Alǝyéria"}
+        EC{"Ekwatór"}
+        EE{"Esetoní"}
+        EG{"Ehíbǝtɛn"}
+        ER{"Elitǝlé"}
+        ES{"Kpǝnyá"}
+        ET{"Etiopí"}
+        FI{"Finǝlán"}
+        FJ{"Fidzí"}
+        FK{"Minlán Mi Fólǝkǝlan"}
+        FM{"Mikoronésia"}
+        FR{"Fulɛnsí"}
+        GA{"Gabóŋ"}
+        GB{"Ǹnam Engǝlis"}
+        GD{"Gǝlǝnádǝ"}
+        GE{"Horǝ́yia"}
+        GF{"Guyán yá Fulɛnsí"}
+        GH{"Ganá"}
+        GI{"Yilǝbalatár"}
+        GL{"Goelán"}
+        GM{"Gambí"}
+        GN{"Giné"}
+        GP{"Guadǝlúb"}
+        GQ{"Giné Ekwató"}
+        GR{"Gǝlɛ́s"}
+        GT{"Guatemalá"}
+        GU{"Guám"}
+        GW{"Giné Bisaó"}
+        GY{"Guyán"}
+        HN{"Ondurás"}
+        HR{"Kǝlowásia"}
+        HT{"Aití"}
+        HU{"Ongirí"}
+        ID{"ɛndonésia"}
+        IE{"Irǝlándǝ"}
+        IL{"Isǝraɛ́l"}
+        IN{"ɛ́ndǝ"}
+        IO{"ǹnam ɛngǝlís yá Máŋ mǝ́ ɛ́ndǝ"}
+        IQ{"Irág"}
+        IR{"Irán"}
+        IS{"Isǝlándǝ"}
+        IT{"Itáliɛn"}
+        JM{"Hamaíka"}
+        JO{"Horǝdaní"}
+        JP{"Hapɔ́n"}
+        KE{"Keniá"}
+        KG{"Kirigisǝtán"}
+        KH{"kambodía"}
+        KI{"Kiribatí"}
+        KM{"Komɔ́r"}
+        KN{"Ǹfúfúb-Kilisǝtóv-ai-Nevis"}
+        KP{"Koré yá Nór"}
+        KR{"Koré yá Súd"}
+        KW{"Kowɛ́d"}
+        KY{"Minlán Mí Kalimáŋ"}
+        KZ{"Kazakǝtáŋ"}
+        LA{"Laós"}
+        LB{"Libáŋ"}
+        LC{"Ǹfúfúb-Lúsia"}
+        LI{"Lísǝ́sǝ́táin"}
+        LK{"Sǝri Laŋká"}
+        LR{"Libéria"}
+        LS{"Lǝsotó"}
+        LT{"Lituaní"}
+        LU{"Lukǝzambúd"}
+        LV{"Lǝtoní"}
+        LY{"Libí"}
+        MA{"Marɔ́g"}
+        MC{"Mɔnakó"}
+        MD{"Molǝdaví"}
+        MG{"Madagasǝkárǝ"}
+        MH{"Minlán Mí Maresál"}
+        MK{"Masedónia"}
+        ML{"Malí"}
+        MM{"Mianǝmár"}
+        MN{"Mɔngɔ́lia"}
+        MP{"Minlán Mi Marián yá Nór"}
+        MQ{"Marǝtiníg"}
+        MR{"Moritaní"}
+        MS{"Mɔ́ntserád"}
+        MT{"Málǝtǝ"}
+        MU{"Morís"}
+        MV{"Malǝdívǝ"}
+        MW{"Malawí"}
+        MX{"Mɛkǝsíg"}
+        MY{"Malɛ́zia"}
+        MZ{"Mozambíg"}
+        NA{"Namibí"}
+        NC{"Ǹkpámɛn Kaledónia"}
+        NE{"Nihɛ́r"}
+        NF{"Minlán Nɔrǝfɔ́lǝkǝ"}
+        NG{"Nihéria"}
+        NI{"Nikarágua"}
+        NL{"Pɛíbá"}
+        NO{"Nɔrǝvɛ́s"}
+        NP{"Nepál"}
+        NR{"Naurú"}
+        NU{"Niué"}
+        NZ{"Ǹkpámɛn Zeláŋ"}
+        OM{"Omán"}
+        PA{"Panamá"}
+        PE{"Perú"}
+        PF{"Polinesí yá Fulɛnsí"}
+        PG{"Papwazi yá Ǹkpámɛ́n Giné"}
+        PH{"Filipín"}
+        PK{"Pakisǝtán"}
+        PL{"fólis"}
+        PM{"Ǹfúfúb-Píɛr-ai-Mikǝlɔ́ŋ"}
+        PN{"Pítǝ́kɛ́rɛnǝ"}
+        PR{"Pwɛrǝto Ríko"}
+        PS{"Ǹnam Palɛsǝtín"}
+        PT{"fɔrǝtugɛ́s"}
+        PW{"Palau"}
+        PY{"Paragué"}
+        QA{"Katár"}
+        RE{"Reuniɔ́ŋ"}
+        RO{"Rumaní"}
+        RU{"Rúsian"}
+        RW{"Ruwandá"}
+        SA{"Arabí Saudí"}
+        SB{"Minlán Mí Solomɔ́n"}
+        SC{"Sɛsɛ́l"}
+        SD{"Sudáŋ"}
+        SE{"Suwɛ́d"}
+        SG{"Singapúr"}
+        SH{"Ǹfúfúb-Ɛlɛ́na"}
+        SI{"Sǝlovénia"}
+        SK{"Sǝlovakí"}
+        SL{"Sierá-leónǝ"}
+        SM{"Ǹfúfúb Maríno"}
+        SN{"Senegál"}
+        SO{"Somália"}
+        SR{"Surinám"}
+        ST{"Saó Tomé ai Pǝlinǝsípe"}
+        SV{"Salǝvadór"}
+        SY{"Sirí"}
+        SZ{"Swazilándǝ"}
+        TC{"Minlán Mí túrǝ́g-ai-Kaíg"}
+        TD{"Tsád"}
+        TG{"Togó"}
+        TH{"Tailán"}
+        TJ{"Tadzikisǝtáŋ"}
+        TK{"Tokeló"}
+        TL{"Timôr"}
+        TM{"Turǝkǝmǝnisǝtáŋ"}
+        TN{"Tunisí"}
+        TO{"Tɔngá"}
+        TR{"Turǝkí"}
+        TT{"Tǝlinité-ai-Tobágo"}
+        TV{"Tuvalú"}
+        TW{"Taiwán"}
+        TZ{"Taŋǝzaní"}
+        UA{"Ukǝrɛ́n"}
+        UG{"Ugandá"}
+        US{"Ǹnam Amɛrǝkǝ"}
+        UY{"Urugué"}
+        UZ{"Uzubekisǝtán"}
+        VA{"Ǹnam Vatikán"}
+        VC{"Ǹfúfúb-Vɛngǝsáŋ-ai-Bǝ Gǝlǝnadín"}
+        VE{"Venezuéla"}
+        VG{"ńnam Minlán ɛ́ngǝlís"}
+        VI{"Minlán Mi Amɛrǝkǝ"}
+        VN{"Viɛdǝnám"}
+        VU{"Vanuátu"}
+        WF{"Walís-ai-Futúna"}
+        WS{"Samoá"}
+        YE{"Yemɛ́n"}
+        YT{"Mayɔ́d"}
+        ZA{"Afiríka yá Súd"}
+        ZM{"Zambí"}
+        ZW{"Zimbabwé"}
+    }
+    Version{"2.0.65.46"}
+}

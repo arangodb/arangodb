@@ -45,9 +45,12 @@
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
+// this is one reason why macros should never be used.
+// trying to return a pointer as a boolean
 #define ABORT_OOM                                                                \
   TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);                \
   return NULL;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut macro to create a new node or fail in case of OOM
@@ -87,7 +90,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNode (TRI_aql_context_t* const context,
+inline static void InitNode (TRI_aql_context_t* const context,
                              TRI_aql_node_t* const node, 
                              const TRI_aql_node_type_e type) {
   node->_type = type;

@@ -42,11 +42,14 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/json.h"
+#include "BasicsC/strings.h"
+#include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace std;
 
 namespace triagens {
@@ -61,8 +64,9 @@ namespace triagens {
       _maxUploadSize(maxUploadSize),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
-      _quote = '"';
-      _separator = ',';
+      _quote = "\"";
+      _separator = ",";
+      _eol = "\\n";
       _createCollection = false;
       _useIds = false;
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_ICASE | REG_EXTENDED);
@@ -78,8 +82,14 @@ namespace triagens {
     ////////////////////////////////////////////////////////////////////////////////
     /// public functions
     ////////////////////////////////////////////////////////////////////////////////
-
-    bool ImportHelper::importCsv (const string& collectionName, const string& fileName) {
+      
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief imports a delmiited file
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    bool ImportHelper::importDelimited (const string& collectionName, 
+                                        const string& fileName,
+                                        const DelimitedImportType typeImport) {
       _collectionName = collectionName;
       _firstLine = "";
       _numberLines = 0;
@@ -104,6 +114,20 @@ namespace triagens {
         _errorMessage = TRI_LAST_ERROR_STR;
         return false;
       }
+     
+      size_t separatorLength;
+      char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
+      if (separator == NULL) {
+        _errorMessage = "out of memory";
+        return false;
+      }
+      
+      size_t eolLength;
+      char* eol = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _eol.c_str(), _eol.size(), &eolLength);
+      if (eol == NULL) {
+        _errorMessage = "out of memory";
+        return false;
+      }
 
       TRI_csv_parser_t parser;
 
@@ -113,8 +137,17 @@ namespace triagens {
                         ProcessCsvAdd,
                         ProcessCsvEnd);
 
-      parser._separator = _separator;
-      parser._quote = _quote;
+      TRI_SetSeparatorCsvParser(&parser, separator, separatorLength); 
+      TRI_SetEolCsvParser(&parser, eol, eolLength); 
+
+      // in csv, we'll use the quote char if set
+      // in tsv, we do not use the quote char
+      if (typeImport == ImportHelper::CSV && _quote.size() > 0) {
+        TRI_SetQuoteCsvParser(&parser, _quote[0], true);
+      }
+      else {
+        TRI_SetQuoteCsvParser(&parser, '\0', false);
+      }
       parser._dataAdd = this;
 
       char buffer[10240];
@@ -122,9 +155,11 @@ namespace triagens {
       while (!_hasError) {
         v8::HandleScope scope;
 
-        ssize_t n = read(fd, buffer, sizeof (buffer));
+        ssize_t n = read(fd, buffer, sizeof(buffer));
 
         if (n < 0) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, eol);
           TRI_DestroyCsvParser(&parser);
           _errorMessage = TRI_LAST_ERROR_STR;
           return false;
@@ -141,6 +176,8 @@ namespace triagens {
       }
 
       TRI_DestroyCsvParser(&parser);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, eol);
 
       if (fileName != "-") {
         close(fd);
@@ -379,7 +416,7 @@ namespace triagens {
       }
 
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?" + getCollectionUrlPart(), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
+      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?" + getCollectionUrlPart(), _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
 
       handleResult(result);
 
@@ -392,7 +429,7 @@ namespace triagens {
       }
       
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(SimpleHttpClient::POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
+      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
 
       handleResult(result);
     }

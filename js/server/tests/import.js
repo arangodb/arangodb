@@ -145,6 +145,28 @@ function importTestSuite () {
     
     testCsvImport2 : function () {
       assertEqual(errors.ERROR_QUERY_COLLECTION_NOT_FOUND.code, getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test tsv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTsvImport1 : function () {
+      var expected = [ { "ab": "g", "cd": "h", "ef": "i" }, { "ab" : "j", "cd" : "k", "ef" : "l" } ];
+      var actual = getQueryResults("FOR i IN UnitTestsImportTsv1 SORT i.ab RETURN i");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test tsv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTsvImport2 : function () {
+      var expected = [ { "  fox" : "dog", "brown  " : " the lazy", "the quick": " jumped over" }, { "  fox" : " end", "brown  " : "\"\"\"", "the quick" : "\"'.,;" } ];
+      var actual = getQueryResults("FOR i IN UnitTestsImportTsv2 SORT i.`  fox` DESC RETURN i");
+
+      assertEqual(expected, actual);
     }
 
   }

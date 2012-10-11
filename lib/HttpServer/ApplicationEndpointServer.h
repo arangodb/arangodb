@@ -325,6 +325,17 @@ namespace triagens {
         double _keepAliveTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief listen backlog size
+///
+/// @CMDOPT{--server.backlog-size}
+///
+/// Allows to specify the size of the backlog for the listen system call
+/// The default value is 10. The maximum value is platform-dependent.
+////////////////////////////////////////////////////////////////////////////////
+        
+        int _backlogSize;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief keyfile containing server certificate
 ///
 /// @CMDOPT{--server.keyfile @CA{filename}}

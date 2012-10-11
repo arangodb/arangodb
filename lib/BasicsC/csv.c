@@ -49,9 +49,9 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
 
   parser->_state = TRI_CSV_PARSER_BOL;
 
-  parser->_quote = '"';
-  parser->_separator = ';';
-  parser->_eol = '\n';
+  TRI_SetQuoteCsvParser(parser, '"', true);
+  TRI_SetEolCsvParser(parser, "\n", 1);
+  TRI_SetSeparatorCsvParser(parser, ";", 1);
 
   length = 1024;
 
@@ -107,6 +107,43 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser) {
 /// @addtogroup CSV
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the separator
+///
+/// note that the separator string must be valid until the parser is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser, 
+                                char* separator, 
+                                size_t separatorLength) {
+  parser->_separator = separator;
+  parser->_separatorLength = separatorLength;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the eol character(s)
+///
+/// note that the eol string must be valid until the parser is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetEolCsvParser (TRI_csv_parser_t* parser, 
+                          char* eol,
+                          size_t eolLength) {
+  parser->_eol = eol;
+  parser->_eolLength = eolLength;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the quote character
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser, 
+                            char quote,
+                            bool useQuote) {
+  parser->_quote = quote;
+  parser->_useQuote = useQuote;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a CSV line
@@ -220,7 +257,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
             return TRI_ERROR_CORRUPTED_CSV;
           }
 
-          if (*ptr == parser->_quote) {
+          if (parser->_useQuote && *ptr == parser->_quote) {
             if (ptr + 1 == parser->_stop) {
               parser->_written = qtr;
               parser->_current = ptr;
@@ -242,23 +279,44 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           break;
 
         case TRI_CSV_PARSER_CORRUPTED:
-          while (ptr < parser->_stop && *ptr != parser->_separator && *ptr != parser->_eol) {
+          while (ptr < parser->_stop) {
+            size_t checkLength;
+           
+            // check for separator
+            checkLength = parser->_separatorLength;
+            if (parser->_stop - ptr >= checkLength) { 
+              // must have at least as much chars as length of separator
+              if (0 == memcmp(ptr, parser->_separator, checkLength)) {
+                // found separator
+                break;
+              }
+            }
+
+            // check for eol
+            checkLength = parser->_eolLength;
+            if (parser->_stop - ptr >= checkLength) { 
+              // must have at least as much chars as length of eol
+              if (0 == memcmp(ptr, parser->_eol, checkLength)) {
+                // found eol
+                break;
+              }
+            }
+
             ptr++;
           }
 
           // found separator or eol
           if (ptr < parser->_stop) {
-
-            // found separator
-            if (*ptr == parser->_separator) {
-              ptr++;
+            // found separator?
+            if (strstr(ptr, parser->_separator) == ptr)  {
+              ptr += parser->_separatorLength;
 
               parser->_state = TRI_CSV_PARSER_BOF;
             }
 
             // found eol
             else {
-              ptr++;
+              ptr += parser->_eolLength;
 
               parser->_row++;
               parser->_state = TRI_CSV_PARSER_BOL;
@@ -275,7 +333,29 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           break;
 
         case TRI_CSV_PARSER_WITHIN_FIELD:
-          while (ptr < parser->_stop && *ptr != parser->_separator && *ptr != parser->_eol) {
+          while (ptr < parser->_stop) {
+            size_t checkLength;
+           
+            // check for separator
+            checkLength = parser->_separatorLength;
+            if (parser->_stop - ptr >= checkLength) { 
+              // must have at least as much chars as length of separator
+              if (0 == memcmp(ptr, parser->_separator, checkLength)) {
+                // found separator
+                break;
+              }
+            }
+
+            // check for eol
+            checkLength = parser->_eolLength;
+            if (parser->_stop - ptr >= checkLength) { 
+              // must have at least as much chars as length of eol
+              if (0 == memcmp(ptr, parser->_eol, checkLength)) {
+                // found eol
+                break;
+              }
+            }
+
             *qtr++ = *ptr++;
           }
 
@@ -283,12 +363,12 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           if (ptr < parser->_stop) {
 
             // found separator
-            if (*ptr == parser->_separator) {
+            if (strstr(ptr, parser->_separator) == ptr) {
               *qtr = '\0';
 
               parser->add(parser, parser->_start, parser->_row, parser->_column, false);
 
-              ptr++;
+              ptr += parser->_separatorLength;
               parser->_column++;
               parser->_state = TRI_CSV_PARSER_BOF;
             }
@@ -299,7 +379,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
               parser->end(parser, parser->_start, parser->_row, parser->_column, false);
 
-              ptr++;
+              ptr += parser->_eolLength;
               parser->_row++;
               parser->_state = TRI_CSV_PARSER_BOL;
             }
@@ -315,6 +395,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           break;
 
         case TRI_CSV_PARSER_WITHIN_QUOTED_FIELD:
+          assert(parser->_useQuote);
           while (ptr < parser->_stop && *ptr != parser->_quote) {
             *qtr++ = *ptr++;
           }
@@ -336,23 +417,23 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
             }
 
             // found separator
-            if (*ptr == parser->_separator) {
+            if (strstr(ptr, parser->_separator) == ptr) {
               *qtr = '\0';
 
               parser->add(parser, parser->_start, parser->_row, parser->_column, true);
 
-              ptr++;
+              ptr += parser->_separatorLength;
               parser->_column++;
               parser->_state = TRI_CSV_PARSER_BOF;
             }
 
             // found eol
-            else if (*ptr == parser->_eol) {
+            else if (strstr(ptr, parser->_eol) == ptr) {
               *qtr = '\0';
 
               parser->end(parser, parser->_start, parser->_row, parser->_column, true);
 
-              ptr++;
+              ptr += parser->_eolLength;
               parser->_row++;
               parser->_state = TRI_CSV_PARSER_BOL;
             }

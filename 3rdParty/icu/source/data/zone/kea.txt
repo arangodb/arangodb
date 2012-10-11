@@ -1,0 +1,75 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/kea.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/kea.xml
+ */
+kea{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Etc:Unknown"{
+            ec{"Sidadi Diskonxedu"}
+        }
+        "meta:Africa_Central"{
+            ls{"Ora di Afrika Sentral"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Ora di Afrika Oriental"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Ora di Sul di Afrika"}
+        }
+        "meta:Africa_Western"{
+            ld{"Ora di Verão di Afrika Osidental"}
+            lg{"Ora di Afrika Osidental"}
+            ls{"Ora Padrãu di Afrika Osidental"}
+        }
+        "meta:Atlantic"{
+            ld{"Ora di Verãu di Atlantiku"}
+            lg{"Ora di Atlantiku"}
+            ls{"Ora Padrãu di Atlantiku"}
+        }
+        "meta:Australia_Central"{
+            ld{"Ora di Verãu di Australia Sentral"}
+            lg{"Ora di Australia Sentral"}
+            ls{"Ora Padrãu di Australia Sentral"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Ora di Verãu di Australia Sentru-Osidental"}
+            lg{"Ora di Autralia Sentru-Osidental"}
+            ls{"Ora Padrãu di Australia Sentru-Osidental"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Ora di Verãu di Australia Oriental"}
+            lg{"Ora di Australia Oriental"}
+            ls{"Ora Padrãu di Australia Oriental"}
+        }
+        "meta:Australia_Western"{
+            ld{"Ora di Verãu di Australia Osidental"}
+            lg{"Ora di Australia Osidental"}
+            ls{"Ora Padrãu di Australia Osidental"}
+        }
+        "meta:Europe_Central"{
+            ld{"Ora di Verãu di Europa Sentral"}
+            lg{"Ora di Europa Sentral"}
+            ls{"Ora Padrãu di Europa Sentral"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Ora di Verãu di Europa Oriental"}
+            lg{"Ora di Europa Oriental"}
+            ls{"Ora Padrãu di Europa Oriental"}
+        }
+        "meta:Europe_Western"{
+            ld{"Ora di Verãu di Europa Osidental"}
+            lg{"Ora di Europa Osidental"}
+            ls{"Ora Padrãu di Europa Osidental"}
+        }
+        fallbackRegionFormat{"Ora di {1} ({0})"}
+        regionFormat{"Ora di {0}"}
+    }
+}

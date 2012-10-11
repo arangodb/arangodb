@@ -25,10 +25,16 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "ApplicationServer.h"
 
+#ifdef TRI_HAVE_POSIX_PWD_GRP
 #include <pwd.h>
 #include <grp.h>
+#endif
 
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Basics/FileUtils.h"
@@ -142,7 +148,7 @@ ApplicationServer::ApplicationServer (string const& name, string const& title, s
 
 ApplicationServer::~ApplicationServer () {
   Random::shutdown();
-  for_each(_features.begin(), _features.end(), DeleteObject());
+  for_each(_features.begin(), _features.end(), DeleteObjectAny());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +231,7 @@ void ApplicationServer::setupLogging () {
   }
 
   TRI_SetLineNumberLogging(_logLineNumber);
+
   TRI_SetLogLevelLogging(_logLevel);
   TRI_SetLogSeverityLogging(_logSeverity);
   TRI_SetPrefixLogging(_logPrefix);
@@ -242,7 +249,9 @@ void ApplicationServer::setupLogging () {
 
     }
   }
+#ifdef TRI_ENABLE_SYSLOG
   TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,10 +383,6 @@ bool ApplicationServer::parse (int argc,
   // parse phase 2
   // .............................................................................
 
-  if (! _options.has("random.no-seed")) {
-    Random::seed();
-  }
-
   try {
     switch (_randomGenerator) {
       case 1: Random::selectVersion(Random::RAND_MERSENNE);  break;
@@ -459,9 +464,11 @@ void ApplicationServer::prepare2 () {
 void ApplicationServer::start () {
   LOGGER_DEBUG << "ApplicationServer version " << TRIAGENS_VERSION;
 
+#ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
+#endif
 
   raisePrivileges();
 
@@ -783,14 +790,22 @@ bool ApplicationServer::checkParent () {
   }
 #endif
 
+// unfortunately even though windows has <signal.h>, there is no
+// kill method defined. Notice that the kill below is not to terminate
+// the process. 
+#ifdef TRI_HAVE_SIGNAL_H
   if (_watchParent != 0) {
+#ifdef TRI_HAVE_POSIX
     int res = kill(_watchParent, 0);
-
+#else
+    int res = -1;
+#endif
     if (res != 0) {
       LOGGER_INFO << "parent " << _watchParent << " has died";
       return false;
     }
   }
+#endif
 
   return true;
 }
