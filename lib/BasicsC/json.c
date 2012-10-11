@@ -64,7 +64,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       break;
 
     case TRI_JSON_NULL:
-      res = TRI_AppendStringStringBuffer(buffer, "null");
+      res = TRI_AppendString2StringBuffer(buffer, "null", 4); // strlen("null")
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -74,10 +74,10 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
     case TRI_JSON_BOOLEAN:
       if (object->_value._boolean) {
-        res = TRI_AppendStringStringBuffer(buffer, "true");
+        res = TRI_AppendString2StringBuffer(buffer, "true", 4); // strlen("true")
       }
       else {
-        res = TRI_AppendStringStringBuffer(buffer, "false");
+        res = TRI_AppendString2StringBuffer(buffer, "false", 5); // strlen("false")
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -96,7 +96,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       break;
 
     case TRI_JSON_STRING:
-      res = TRI_AppendStringStringBuffer(buffer, "\"");
+      res = TRI_AppendCharStringBuffer(buffer, '\"');
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -120,7 +120,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
       TRI_Free(zone, ptr);
 
-      res = TRI_AppendStringStringBuffer(buffer, "\"");
+      res = TRI_AppendCharStringBuffer(buffer, '\"');
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -130,7 +130,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
     case TRI_JSON_ARRAY:
       if (braces) {
-        res = TRI_AppendStringStringBuffer(buffer, "{");
+        res = TRI_AppendCharStringBuffer(buffer, '{');
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -141,7 +141,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
       for (i = 0;  i < n;  i += 2) {
         if (0 < i) {
-          res = TRI_AppendStringStringBuffer(buffer, ",");
+          res = TRI_AppendCharStringBuffer(buffer, ',');
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
@@ -168,7 +168,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       if (braces) {
-        res = TRI_AppendStringStringBuffer(buffer, "}");
+        res = TRI_AppendCharStringBuffer(buffer, '}');
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -179,7 +179,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
     case TRI_JSON_LIST:
       if (braces) {
-        res = TRI_AppendStringStringBuffer(buffer, "[");
+        res = TRI_AppendCharStringBuffer(buffer, '[');
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -190,7 +190,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
 
       for (i = 0;  i < n;  ++i) {
         if (0 < i) {
-          res = TRI_AppendStringStringBuffer(buffer, ",");
+          res = TRI_AppendCharStringBuffer(buffer, ',');
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
@@ -205,7 +205,7 @@ static int StringifyJson (TRI_memory_zone_t* zone,
       }
 
       if (braces) {
-        res = TRI_AppendStringStringBuffer(buffer, "]");
+        res = TRI_AppendCharStringBuffer(buffer, ']');
 
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
@@ -774,7 +774,7 @@ int TRI_StringifyJson (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringifies a json object skiping the outer braces
+/// @brief stringifies a json object skipping the outer braces
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_Stringify2Json (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
@@ -1065,7 +1065,8 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
     default: {
       assert(false);
     }  
-  }        
+  }
+  return false; // stops the vc++ compiler from complaining
 }
 
 

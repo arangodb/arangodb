@@ -39,6 +39,7 @@
 #include "Rest/HttpResponse.h"
 
 using namespace std;
+using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;

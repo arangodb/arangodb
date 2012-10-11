@@ -60,7 +60,7 @@ extern "C" {
 ///     identifier, see @ref TRI_index_t.
 ///
 /// The structure @ref TRI_collection_t is abstract. Currently, there are
-/// two concrete sub-classes @ref TRI_sim_collection_t and
+/// two concrete sub-classes @ref TRI_document_collection_t and
 /// @ref TRI_shape_collection_t.
 ///
 /// @section ShapeCollection Shape Collection
@@ -71,9 +71,9 @@ extern "C" {
 ///
 /// @copydetails TRI_primary_collection_t
 ///
-/// @section SimCollection Simple Document Collection
+/// @section DocumentCollection Simple Document Collection
 ///
-/// @copydetails TRI_sim_collection_t
+/// @copydetails TRI_document_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -111,11 +111,11 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the collection is a simple collection
+/// @brief return whether the collection is a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_IS_SIMPLE_COLLECTION(type) \
-  ((type) == TRI_COL_TYPE_SIMPLE_DOCUMENT || (type) == TRI_COL_TYPE_SIMPLE_EDGE)
+#define TRI_IS_DOCUMENT_COLLECTION(type) \
+  ((type) == TRI_COL_TYPE_DOCUMENT || (type) == TRI_COL_TYPE_EDGE)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -167,8 +167,8 @@ typedef uint32_t TRI_col_version_t;
 
 typedef enum {
   TRI_COL_TYPE_SHAPE = 1,
-  TRI_COL_TYPE_SIMPLE_DOCUMENT = 2,
-  TRI_COL_TYPE_SIMPLE_EDGE = 3
+  TRI_COL_TYPE_DOCUMENT = 2,
+  TRI_COL_TYPE_EDGE = 3
 }
 TRI_col_type_e;
 

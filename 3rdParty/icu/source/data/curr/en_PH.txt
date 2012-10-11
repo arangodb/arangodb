@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/en_PH.xml
+// *
+// ***************************************************************************
+en_PH{
+    Currencies{
+        PHP{
+            "₱",
+            "Peso",
+        }
+        USD{
+            "US$",
+            "US Dollar",
+        }
+    }
+    Version{"2.0.57.17"}
+}

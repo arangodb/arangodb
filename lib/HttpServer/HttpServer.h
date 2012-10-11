@@ -102,7 +102,7 @@ namespace triagens {
 /// @brief return encryption to be used
 ////////////////////////////////////////////////////////////////////////////////
           
-        virtual Endpoint::Encryption getEncryption () const {
+        virtual Endpoint::EncryptionType getEncryption () const {
           return Endpoint::ENCRYPTION_NONE;
         }
 

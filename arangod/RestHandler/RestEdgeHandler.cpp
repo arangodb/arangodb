@@ -31,7 +31,7 @@
 #include "BasicsC/conversions.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -108,11 +108,14 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
   // edge
-  TRI_sim_edge_t edge;
+  TRI_document_edge_t edge;
 
   // extract the from
-  bool found;
   char const* from = _request->value("from", found);
 
   if (! found || *from == '\0') {
@@ -198,7 +201,7 @@ bool RestEdgeHandler::createDocument () {
   
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_EDGE, json, &edge, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_EDGE, json, &edge, reuseId, false, forceSync);
 
   trx.end();
 

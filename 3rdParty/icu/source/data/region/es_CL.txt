@@ -1,0 +1,15 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/es_CL.xml
+// *
+// ***************************************************************************
+es_CL{
+    Countries{
+        005{"Sudamérica"}
+        EH{"Sahara Occidental"}
+    }
+    Version{"2.0.65.46"}
+}

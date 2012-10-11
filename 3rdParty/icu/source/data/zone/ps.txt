@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/ps.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/ps.xml
+ */
+ps{
+    Version{"2.0.67.8"}
+    zoneStrings{
+        "Asia:Kabul"{
+            ec{"کابل"}
+        }
+        fallbackRegionFormat{"د {1} ({0}) په وخت"}
+        regionFormat{"د {0} په وخت"}
+    }
+}

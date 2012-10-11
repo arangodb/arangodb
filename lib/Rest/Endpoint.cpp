@@ -27,11 +27,7 @@
 
 #include "Endpoint.h"
 
-#include <netinet/in.h>
-#include <sys/file.h>
-
 #include "BasicsC/socket-utils.h"
-
 #include "Basics/StringUtils.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
@@ -77,18 +73,20 @@ const std::string EndpointIp::_defaultHost = "127.0.0.1";
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
       
-Endpoint::Endpoint (const Endpoint::Type type, 
+Endpoint::Endpoint (const Endpoint::EndpointType type, 
                     const Endpoint::DomainType domainType, 
-                    const Endpoint::Protocol protocol,
-                    const Endpoint::Encryption encryption,
-                    const string& specification) :
+                    const Endpoint::ProtocolType protocol,
+                    const Endpoint::EncryptionType encryption,
+                    const std::string& specification,
+                    int listenBacklog) :
   _connected(false),
   _socket(0),
   _type(type),
   _domainType(domainType),
   _protocol(protocol),
   _encryption(encryption),
-  _specification(specification) {
+  _specification(specification),
+  _listenBacklog(listenBacklog) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,26 +113,32 @@ Endpoint::~Endpoint () {
 /// @brief create a client endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::clientFactory (const string& specification) {
-  return Endpoint::factory(ENDPOINT_CLIENT, specification);
+Endpoint* Endpoint::clientFactory (const std::string& specification) {
+  return Endpoint::factory(ENDPOINT_CLIENT, specification, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory (const string& specification) {
-  return Endpoint::factory(ENDPOINT_SERVER, specification);
+Endpoint* Endpoint::serverFactory (const std::string& specification, int listenBacklog) {
+  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::factory (const Endpoint::Type type, 
-                             const string& specification) {
+Endpoint* Endpoint::factory (const Endpoint::EndpointType type, 
+                             const std::string& specification,
+                             int listenBacklog) {
   if (specification.size() < 7) {
     return 0;
+  }
+
+  if (listenBacklog > 0 && type == ENDPOINT_CLIENT) {
+    // backlog is only allowed for server endpoints
+    assert(false);
   }
 
   string copy = specification;
@@ -144,17 +148,13 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
   }
 
   // default protocol is HTTP
-  Endpoint::Protocol protocol = PROTOCOL_HTTP;
+  Endpoint::ProtocolType protocol = PROTOCOL_HTTP;
 
   // read protocol from string
   size_t found = copy.find('@');
   if (found != string::npos) {
     string protoString = StringUtils::tolower(copy.substr(0, found));
-    if (protoString == "binary") {
-      protocol = PROTOCOL_BINARY;
-      copy = copy.substr(strlen("binary@"));
-    }
-    else if (protoString == "http") {
+    if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
     }
     else {
@@ -163,16 +163,28 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
     }
   }
   
-  Encryption encryption = ENCRYPTION_NONE;
+  EncryptionType encryption = ENCRYPTION_NONE;
   string domainType = StringUtils::tolower(copy.substr(0, 7));
-  if (StringUtils::isPrefix(domainType, "unix://")) {
-    // unix socket
-    return new EndpointUnix(type, protocol, specification, copy.substr(strlen("unix://")));
-  }
-  else if (StringUtils::isPrefix(domainType, "ssl://")) {
+
+
+  if (StringUtils::isPrefix(domainType, "ssl://")) {
     // ssl 
     encryption = ENCRYPTION_SSL;
   }
+
+#if TRI_HAVE_LINUX_SOCKETS  
+  else if (StringUtils::isPrefix(domainType, "unix://")) {
+    // unix socket
+    return new EndpointUnix(type, protocol, specification, listenBacklog, copy.substr(strlen("unix://")));
+  }
+#else
+    // no unix socket for windows
+  else if (StringUtils::isPrefix(domainType, "unix://")) {
+    // unix socket
+    return 0;
+  }
+#endif
+
   else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
     return 0;
@@ -188,14 +200,14 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(0, found + 1), port);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, encryption, specification, copy.substr(0, found + 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -209,11 +221,11 @@ Endpoint* Endpoint::factory (const Endpoint::Type type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, protocol, encryption, specification, copy.substr(0, found), port);
+    return new EndpointIpV4(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found), port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, protocol, encryption, specification, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, protocol, encryption, specification, listenBacklog, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,8 +253,9 @@ void Endpoint::setTimeout (socket_t s, double timeout) {
   tv.tv_sec = (uint64_t) timeout;
   tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
 
-  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-  setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+  // conversion to (const char*) ensures windows does not complain
+  setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)); 
+  setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)(&tv), sizeof(tv));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,11 +310,12 @@ bool Endpoint::setSocketFlags (socket_t _socket) {
 /// @brief creates a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointUnix::EndpointUnix (const Endpoint::Type type, 
-                            const Endpoint::Protocol protocol,
-                            string const& specification, 
-                            string const& path) :
-    Endpoint(type, ENDPOINT_UNIX, protocol, ENCRYPTION_NONE, specification),
+EndpointUnix::EndpointUnix (const Endpoint::EndpointType type, 
+                            const Endpoint::ProtocolType protocol,
+                            const std::string& specification, 
+                            int listenBacklog,
+                            const std::string& path) :
+    Endpoint(type, DOMAIN_UNIX, protocol, ENCRYPTION_NONE, specification, listenBacklog),
     _path(path) {
 }
 
@@ -387,7 +401,8 @@ socket_t EndpointUnix::connect (double connectTimeout, double requestTimeout) {
     }
     
     // listen for new connection, executed for server endpoints only
-    result = listen(listenSocket, 10);
+    LOGGER_TRACE << "using backlog size " << _listenBacklog;
+    result = listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
       close(listenSocket);
@@ -477,16 +492,17 @@ bool EndpointUnix::initIncoming (socket_t incoming) {
 /// @brief creates an IP socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIp::EndpointIp (const Endpoint::Type type, 
+EndpointIp::EndpointIp (const Endpoint::EndpointType type, 
                         const Endpoint::DomainType domainType, 
-                        const Endpoint::Protocol protocol,
-                        const Endpoint::Encryption encryption,
-                        string const& specification, 
-                        string const& host, 
+                        const Endpoint::ProtocolType protocol,
+                        const Endpoint::EncryptionType encryption,
+                        const std::string& specification, 
+                        int listenBacklog,
+                        const std::string& host, 
                         const uint16_t port) :
-    Endpoint(type, domainType, protocol, encryption, specification), _host(host), _port(port) {
+    Endpoint(type, domainType, protocol, encryption, specification, listenBacklog), _host(host), _port(port) {
   
-  assert(domainType == ENDPOINT_IPV4 || domainType == ENDPOINT_IPV6);
+  assert(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,7 +548,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
   if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 
-    close(listenSocket);
+    TRI_CLOSE(listenSocket);
 
     return 0;
   }
@@ -543,14 +559,17 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     int result = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
     if (result != 0) {
       // error 
-      close(listenSocket);
+      TRI_CLOSE(listenSocket);
 
       return 0;
     }
+
     // listen for new connection, executed for server endpoints only
-    result = listen(listenSocket, 10);
+    LOGGER_TRACE << "using backlog size " << _listenBacklog;
+    result = listen(listenSocket, _listenBacklog);
+
     if (result < 0) {
-      close(listenSocket);
+      TRI_CLOSE(listenSocket);
 
       LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
 
@@ -564,14 +583,14 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     setTimeout(listenSocket, connectTimeout);
 
     if (::connect(listenSocket, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen) != 0) {
-      close(listenSocket);
+      TRI_CLOSE(listenSocket);
 
       return 0;
     }
   }
     
   if (!setSocketFlags(listenSocket)) {
-    close(listenSocket);
+    TRI_CLOSE(listenSocket);
 
     return 0;
   }
@@ -659,7 +678,7 @@ void EndpointIp::disconnect () {
     assert(_socket);
 
     _connected = false;
-    close(_socket);
+    TRI_CLOSE(_socket);
 
     _socket = 0;
   }
@@ -704,13 +723,14 @@ bool EndpointIp::initIncoming (socket_t incoming) {
 /// @brief creates an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV4::EndpointIpV4 (const Endpoint::Type type,
-                            const Endpoint::Protocol protocol,
-                            const Endpoint::Encryption encryption,
-                            string const& specification, 
-                            string const& host, 
+EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
+                            const Endpoint::ProtocolType protocol,
+                            const Endpoint::EncryptionType encryption,
+                            const std::string& specification, 
+                            int listenBacklog,
+                            const std::string& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV4, protocol, encryption, specification, host, port) {
+    EndpointIp(type, DOMAIN_IPV4, protocol, encryption, specification, listenBacklog, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -741,13 +761,14 @@ EndpointIpV4::~EndpointIpV4 () {
 /// @brief creates an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV6::EndpointIpV6 (const Endpoint::Type type,
-                            const Endpoint::Protocol protocol, 
-                            const Endpoint::Encryption encryption,
-                            string const& specification, 
-                            string const& host, 
+EndpointIpV6::EndpointIpV6 (const Endpoint::EndpointType type,
+                            const Endpoint::ProtocolType protocol, 
+                            const Endpoint::EncryptionType encryption,
+                            const std::string& specification,
+                            int listenBacklog, 
+                            const std::string& host, 
                             const uint16_t port) :
-    EndpointIp(type, ENDPOINT_IPV6, protocol, encryption, specification, host, port) {
+    EndpointIp(type, DOMAIN_IPV6, protocol, encryption, specification, listenBacklog, host, port) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

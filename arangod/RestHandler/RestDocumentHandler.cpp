@@ -34,7 +34,7 @@
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
 
@@ -122,7 +122,10 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   }
 
   _timing << *task;
+#ifdef TRI_ENABLE_LOGGER
+  // if ifdef is not used, the compiler will complain
   LOGGER_REQUEST_IN_START_I(_timing);
+#endif
 
   // execute one of the CRUD methods
   bool res = false;
@@ -237,8 +240,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  // extract the cid
   bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
+  // extract the cid
   char const* collection = _request->value("collection", found);
 
   if (! found || *collection == '\0') {
@@ -268,6 +274,7 @@ bool RestDocumentHandler::createDocument () {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), create);
 
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -282,7 +289,7 @@ bool RestDocumentHandler::createDocument () {
 
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false, forceSync);
 
   trx.end();
 
@@ -412,6 +419,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
   
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -503,6 +511,7 @@ bool RestDocumentHandler::readAllDocuments () {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
   
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -517,11 +526,11 @@ bool RestDocumentHandler::readAllDocuments () {
 
   ReadTransaction trx(&ca);
 
-  const TRI_sim_collection_t* sim = (TRI_sim_collection_t*) trx.primary();
+  const TRI_primary_collection_t* primary = trx.primary();
 
-  if (0 < sim->_primaryIndex._nrUsed) {
-    void** ptr = sim->_primaryIndex._table;
-    void** end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+  if (0 < primary->_primaryIndex._nrUsed) {
+    void** ptr = primary->_primaryIndex._table;
+    void** end = ptr + primary->_primaryIndex._nrAlloc;
 
     for (;  ptr < end;  ++ptr) {
       if (*ptr) {
@@ -564,7 +573,7 @@ bool RestDocumentHandler::readAllDocuments () {
   TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
-  _response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
 
   _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
@@ -722,6 +731,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
   // split the document reference
   string collection = suffix[0];
   string didStr = suffix[1];
@@ -747,6 +760,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
 
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -768,7 +782,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   if (isPatch) {
     // patching an existing document
     bool nullMeansRemove;
-    bool found;
 
     char const* valueStr = _request->value("keepNull", found);
     if (!found || StringUtils::boolean(valueStr)) {
@@ -791,7 +804,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_FreeJson(shaper->_memoryZone, old);
 
       if (patchedJson != 0) {
-        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false);
+        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false, forceSync);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
@@ -799,7 +812,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   else {
     // replacing an existing document
-    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false);
+    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false, forceSync);
   }
 
   trx.end();
@@ -906,6 +919,10 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+  bool forceSync = found ? StringUtils::boolean(forceStr) : false;
+
   // split the document reference
   string collection = suffix[0];
   string didStr = suffix[1];
@@ -930,6 +947,7 @@ bool RestDocumentHandler::deleteDocument () {
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
 
   int res = ca.use();
+
   if (TRI_ERROR_NO_ERROR != res) {
     generateCollectionError(collection, res);
     return false;
@@ -945,7 +963,7 @@ bool RestDocumentHandler::deleteDocument () {
   WriteTransaction trx(&ca);
 
   // unlocking is performed in destroy()
-  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false);
+  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false, forceSync);
 
   trx.end();
 

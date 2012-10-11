@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [1.0.0], [info@triagens.de], [arangodb], [http://www.arangodb.org])
+AC_INIT([triAGENS ArangoDB], [1.1.0], [info@triagens.de], [arangodb], [http://www.arangodb.org])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -15,42 +15,9 @@ dnl ----------------------------------------------------------------------------
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
-dnl ----------------------------------------------------------------------------
-dnl ERRORS
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(errors-dependency,
-  AS_HELP_STRING([--enable-errors-dependency], [generate dependencies for error files]),
-  [tr_ERRORS_DEPENDENCY="${enableval:-yes}"],
-  [tr_ERRORS_DEPENDENCY=no]
-)
-
-AM_CONDITIONAL(ENABLE_ERRORS_DEPENDENCY, test "x$tr_ERRORS_DEPENDENCY" = xyes)
-
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================
-
-dnl ----------------------------------------------------------------------------
-dnl BOOST TEST
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_WITH([boost-test],
-  AS_HELP_STRING([--with-boost-test], [use boost unit test framework]),
-  [tr_BOOST_TEST=yes],
-  [tr_BOOST_TEST=no])
-
-AM_CONDITIONAL(ENABLE_BOOST_TEST, test "x$tr_BOOST_TEST" = xyes)
-
-dnl ----------------------------------------------------------------------------
-dnl BOOST
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-boost,
-  AS_HELP_STRING([--enable-all-in-one-boost], [use supplied BOOST from 3rdParty directory]),
-  [tr_ALL_IN_ONE_BOOST="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_BOOST=yes]
-)
 
 dnl ----------------------------------------------------------------------------
 dnl LIBEV
@@ -65,18 +32,6 @@ AC_ARG_ENABLE(all-in-one-libev,
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_LIBEV, test "x$tr_ALL_IN_ONE_LIBEV" = xyes)
 
 dnl ----------------------------------------------------------------------------
-dnl PROTOBUF
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-protobuf,
-  AS_HELP_STRING([--enable-all-in-one-protobuf], [use supplied PROTOBUF from 3rdParty directory]),
-  [tr_ALL_IN_ONE_PROTOBUF="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_PROTOBUF=yes]
-)
-
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE_PROTOBUF, test "x$tr_ALL_IN_ONE_PROTOBUF" = xyes)
-
-dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 
@@ -87,6 +42,18 @@ AC_ARG_ENABLE(all-in-one-v8,
 )
 
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_V8, test "x$tr_ALL_IN_ONE_V8" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl ICU
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one-icu,
+  AS_HELP_STRING([--enable-all-in-one-icu], [use supplied ICU from 3rdParty directory (default: no)]),
+  [tr_ALL_IN_ONE_ICU="${enableval:-yes}"],
+  [tr_ALL_IN_ONE_ICU=no]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ICU, test "x$tr_ALL_IN_ONE_ICU" = xyes)
 
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
@@ -110,6 +77,19 @@ else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
 
+
+dnl ----------------------------------------------------------------------------
+dnl ARANGOB
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE([arangob],
+  AS_HELP_STRING([--enable-arangob], [install arangob benchmark tool (default: yes)]),
+  [tr_ARANGOB="${enableval:-yes}"],
+  [tr_ARANGOB=yes])
+
+AM_CONDITIONAL(ENABLE_ARANGOB, test "x$tr_ARANGOB" = xyes)
+
+
 dnl ============================================================================
 dnl --SECTION--                                                    CONFIGURATION
 dnl ============================================================================
@@ -124,8 +104,7 @@ m4_include([m4/configure.largefile])
 m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])
 m4_include([m4/configure.coverage])
-m4_include([m4/configure.flex])
-m4_include([m4/configure.bison])
+m4_include([m4/configure.maintainer])
 
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
@@ -150,16 +129,6 @@ dnl ----------------------------------------------------------------------------
 m4_include([m4/external.openssl])
 
 dnl ----------------------------------------------------------------------------
-dnl BOOST
-dnl ----------------------------------------------------------------------------
-
-if test "x$tr_ALL_IN_ONE_BOOST" = xyes;  then
-  m4_include([m4/all-in-one.boost])
-else
-  m4_include([m4/external.boost])
-fi
-
-dnl ----------------------------------------------------------------------------
 dnl LIBEV
 dnl ----------------------------------------------------------------------------
 
@@ -176,16 +145,6 @@ dnl ----------------------------------------------------------------------------
 m4_include([m4/all-in-one.mruby])
 
 dnl ----------------------------------------------------------------------------
-dnl PROTOBUF
-dnl ----------------------------------------------------------------------------
-
-if test "x$tr_ALL_IN_ONE_PROTOBUF" = xyes;  then
-  m4_include([m4/all-in-one.protobuf])
-else
-  m4_include([m4/external.protobuf])
-fi
-
-dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 
@@ -196,10 +155,14 @@ else
 fi
 
 dnl ----------------------------------------------------------------------------
-dnl ZEROMQ
+dnl ICU
 dnl ----------------------------------------------------------------------------
 
-m4_include([m4/all-in-one.zeromq])
+if test "x$tr_ALL_IN_ONE_ICU" = xyes;  then
+  m4_include([m4/all-in-one.icu])
+else
+  m4_include([m4/external.icu])
+fi
 
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES

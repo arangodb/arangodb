@@ -1,0 +1,1512 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/lt.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/lt.xml
+ */
+lt{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abidžanas"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"Addis Abeba"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "Africa:Brazzaville"{
+            ec{"Brazavilis"}
+        }
+        "Africa:Cairo"{
+            ec{"Kairas"}
+        }
+        "Africa:Casablanca"{
+            ec{"Kasablanka"}
+        }
+        "Africa:Ceuta"{
+            ec{"Seuta"}
+        }
+        "Africa:Conakry"{
+            ec{"Konakris"}
+        }
+        "Africa:Dakar"{
+            ec{"Dakaras"}
+        }
+        "Africa:Djibouti"{
+            ec{"Džibutis"}
+        }
+        "Africa:Freetown"{
+            ec{"Frytaunas"}
+        }
+        "Africa:Gaborone"{
+            ec{"Gaboronas"}
+        }
+        "Africa:Johannesburg"{
+            ec{"Johanesburgas"}
+        }
+        "Africa:Khartoum"{
+            ec{"Chartumas"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kinšasa"}
+        }
+        "Africa:Libreville"{
+            ec{"Librevilis"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"Lubumbašis"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mogadišas"}
+        }
+        "Africa:Monrovia"{
+            ec{"Monrovija"}
+        }
+        "Africa:Nairobi"{
+            ec{"Nairobis"}
+        }
+        "Africa:Ndjamena"{
+            ec{"Ndžamena"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Porto Novas"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"San Tomė"}
+        }
+        "Africa:Tripoli"{
+            ec{"Tripolis"}
+        }
+        "Africa:Tunis"{
+            ec{"Tunisas"}
+        }
+        "America:Adak"{
+            ec{"Adakas"}
+        }
+        "America:Anchorage"{
+            ec{"Ankoridžas"}
+        }
+        "America:Argentina:La_Rioja"{
+            ec{"La Riocha"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"Rio Galjegosas"}
+        }
+        "America:Argentina:San_Juan"{
+            ec{"San Chuanas"}
+        }
+        "America:Argentina:San_Luis"{
+            ec{"Sent Luisas"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"Tukumanas"}
+        }
+        "America:Argentina:Ushuaia"{
+            ec{"Ušuaja"}
+        }
+        "America:Asuncion"{
+            ec{"Asunsjonas"}
+        }
+        "America:Barbados"{
+            ec{"Barbadosas"}
+        }
+        "America:Belem"{
+            ec{"Belemas"}
+        }
+        "America:Belize"{
+            ec{"Belizas"}
+        }
+        "America:Boa_Vista"{
+            ec{"Boa Višta"}
+        }
+        "America:Boise"{
+            ec{"Boisė"}
+        }
+        "America:Buenos_Aires"{
+            ec{"Buenos Airės"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"Kembridžo įlanka"}
+        }
+        "America:Cancun"{
+            ec{"Kankunas"}
+        }
+        "America:Caracas"{
+            ec{"Karakasas"}
+        }
+        "America:Catamarca"{
+            ec{"Katamarka"}
+        }
+        "America:Cayenne"{
+            ec{"Kajenas"}
+        }
+        "America:Cayman"{
+            ec{"Kaimanas"}
+        }
+        "America:Chicago"{
+            ec{"Čikaga"}
+        }
+        "America:Chihuahua"{
+            ec{"Čihuahua"}
+        }
+        "America:Cordoba"{
+            ec{"Kordoba"}
+        }
+        "America:Costa_Rica"{
+            ec{"Kosta Rika"}
+        }
+        "America:Cuiaba"{
+            ec{"Kujaba"}
+        }
+        "America:Danmarkshavn"{
+            ec{"Danmarkshavn’as"}
+        }
+        "America:Dawson"{
+            ec{"Dosonas"}
+        }
+        "America:Dawson_Creek"{
+            ec{"Dosono įlanka"}
+        }
+        "America:Denver"{
+            ec{"Denveris"}
+        }
+        "America:Detroit"{
+            ec{"Detroitas"}
+        }
+        "America:Dominica"{
+            ec{"Dominika"}
+        }
+        "America:Edmonton"{
+            ec{"Edmontonas"}
+        }
+        "America:El_Salvador"{
+            ec{"Salvadoras"}
+        }
+        "America:Godthab"{
+            ec{"Godthabas"}
+        }
+        "America:Grand_Turk"{
+            ec{"Grand Terkas"}
+        }
+        "America:Guadeloupe"{
+            ec{"Gvadalupė"}
+        }
+        "America:Guatemala"{
+            ec{"Gvatemala"}
+        }
+        "America:Guyana"{
+            ec{"Gajana"}
+        }
+        "America:Halifax"{
+            ec{"Halifaksas"}
+        }
+        "America:Hermosillo"{
+            ec{"Hermosiljas"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Noksas, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Peterburgas"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell miestas, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincenas, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Vinamakas, Indiana"}
+        }
+        "America:Iqaluit"{
+            ec{"Ikaluitas"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaika"}
+        }
+        "America:Jujuy"{
+            ec{"Chuchujus"}
+        }
+        "America:Juneau"{
+            ec{"Džūnas"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticelas, Kentukis"}
+        }
+        "America:La_Paz"{
+            ec{"La Pasas"}
+        }
+        "America:Los_Angeles"{
+            ec{"Los Andželas"}
+        }
+        "America:Louisville"{
+            ec{"Luizvilis"}
+        }
+        "America:Managua"{
+            ec{"Managva"}
+        }
+        "America:Manaus"{
+            ec{"Manausas"}
+        }
+        "America:Martinique"{
+            ec{"Martinika"}
+        }
+        "America:Mazatlan"{
+            ec{"Mazatlanas"}
+        }
+        "America:Mendoza"{
+            ec{"Mendosa"}
+        }
+        "America:Mexico_City"{
+            ec{"Meksikas"}
+        }
+        "America:Moncton"{
+            ec{"Monktonas"}
+        }
+        "America:Monterrey"{
+            ec{"Monterėjus"}
+        }
+        "America:Montevideo"{
+            ec{"Montevidėjas"}
+        }
+        "America:Montreal"{
+            ec{"Monrealis"}
+        }
+        "America:Montserrat"{
+            ec{"Montseratas"}
+        }
+        "America:New_York"{
+            ec{"Niujorkas"}
+        }
+        "America:Nipigon"{
+            ec{"Nipigonas"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Jungtinės Valstijos (Centras, Šiaurės Dakota)"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"Naujasis Salemas, Šiaurės Dakota"}
+        }
+        "America:Pangnirtung"{
+            ec{"Pangnirtungas"}
+        }
+        "America:Phoenix"{
+            ec{"Fyniksas"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port of Speinas"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Puerto Rikas"}
+        }
+        "America:Recife"{
+            ec{"Resifė"}
+        }
+        "America:Regina"{
+            ec{"Redžina"}
+        }
+        "America:Rio_Branco"{
+            ec{"Rio Brankas"}
+        }
+        "America:Santarem"{
+            ec{"Santarenas"}
+        }
+        "America:Santiago"{
+            ec{"Santjagas"}
+        }
+        "America:Santo_Domingo"{
+            ec{"Santo Domingas"}
+        }
+        "America:Sao_Paulo"{
+            ec{"San Paulas"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitsas"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"Sant Vincentė"}
+        }
+        "America:Thule"{
+            ec{"Tūla"}
+        }
+        "America:Thunder_Bay"{
+            ec{"Tander Bėjus"}
+        }
+        "America:Tijuana"{
+            ec{"Tichuana"}
+        }
+        "America:Toronto"{
+            ec{"Torontas"}
+        }
+        "America:Vancouver"{
+            ec{"Vankuveris"}
+        }
+        "America:Whitehorse"{
+            ec{"Vaithorsas"}
+        }
+        "America:Winnipeg"{
+            ec{"Vinipegas"}
+        }
+        "America:Yakutat"{
+            ec{"Jakutat"}
+        }
+        "America:Yellowknife"{
+            ec{"Jelounaifas"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont D'Urville"}
+        }
+        "Antarctica:Palmer"{
+            ec{"Palmeris"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"Pietų ašigalis"}
+        }
+        "Antarctica:Syowa"{
+            ec{"Syova"}
+        }
+        "Antarctica:Vostok"{
+            ec{"Vostokas"}
+        }
+        "Asia:Aden"{
+            ec{"Adenas"}
+        }
+        "Asia:Almaty"{
+            ec{"Alma Ata"}
+        }
+        "Asia:Amman"{
+            ec{"Amanas"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadyrė"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aktau"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aktiubinskas"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Ašchabadas"}
+        }
+        "Asia:Baghdad"{
+            ec{"Bagdadas"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahreinas"}
+        }
+        "Asia:Bangkok"{
+            ec{"Bankokas"}
+        }
+        "Asia:Beirut"{
+            ec{"Beirutas"}
+        }
+        "Asia:Bishkek"{
+            ec{"Biškekas"}
+        }
+        "Asia:Brunei"{
+            ec{"Brunėjus"}
+        }
+        "Asia:Choibalsan"{
+            ec{"Čoibalsanas"}
+        }
+        "Asia:Chongqing"{
+            ec{"Čongčingas"}
+        }
+        "Asia:Colombo"{
+            ec{"Kolombo"}
+        }
+        "Asia:Damascus"{
+            ec{"Damaskas"}
+        }
+        "Asia:Dhaka"{
+            ec{"Daka"}
+        }
+        "Asia:Dili"{
+            ec{"Dilis"}
+        }
+        "Asia:Dubai"{
+            ec{"Dubajus"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Dušanbė"}
+        }
+        "Asia:Gaza"{
+            ec{"Gazos ruožas"}
+        }
+        "Asia:Harbin"{
+            ec{"Harbinas"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"Honkongas"}
+        }
+        "Asia:Irkutsk"{
+            ec{"Irkutskas"}
+        }
+        "Asia:Jakarta"{
+            ec{"Džakarta"}
+        }
+        "Asia:Jayapura"{
+            ec{"Džajapura"}
+        }
+        "Asia:Kabul"{
+            ec{"Kabulas"}
+        }
+        "Asia:Kamchatka"{
+            ec{"Kamčiatka"}
+        }
+        "Asia:Kashgar"{
+            ec{"Kashi"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"Krasnojarskas"}
+        }
+        "Asia:Kuching"{
+            ec{"Kučingas"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuveitas"}
+        }
+        "Asia:Macau"{
+            ec{"Makao"}
+        }
+        "Asia:Magadan"{
+            ec{"Magadanas"}
+        }
+        "Asia:Makassar"{
+            ec{"Makasaras"}
+        }
+        "Asia:Muscat"{
+            ec{"Maskatas"}
+        }
+        "Asia:Nicosia"{
+            ec{"Nikosija"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"Novosibirskas"}
+        }
+        "Asia:Omsk"{
+            ec{"Omskas"}
+        }
+        "Asia:Oral"{
+            ec{"Uralskas"}
+        }
+        "Asia:Pontianak"{
+            ec{"Pontianakas"}
+        }
+        "Asia:Qatar"{
+            ec{"Kataras"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Kzyl-Orda"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangūnas"}
+        }
+        "Asia:Riyadh"{
+            ec{"Rijadas"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sachalinas"}
+        }
+        "Asia:Samarkand"{
+            ec{"Samarkandas"}
+        }
+        "Asia:Seoul"{
+            ec{"Seulas"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapūras"}
+        }
+        "Asia:Tashkent"{
+            ec{"Taškentas"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tbilisis"}
+        }
+        "Asia:Tehran"{
+            ec{"Teheranas"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulan-Batoras"}
+        }
+        "Asia:Urumqi"{
+            ec{"Urumči"}
+        }
+        "Asia:Vientiane"{
+            ec{"Vientianas"}
+        }
+        "Asia:Vladivostok"{
+            ec{"Vladivostokas"}
+        }
+        "Asia:Yakutsk"{
+            ec{"Jakutskas"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"Jekaterinburgas"}
+        }
+        "Asia:Yerevan"{
+            ec{"Jerevanas"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azorai"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermudų salos"}
+        }
+        "Atlantic:Canary"{
+            ec{"Kanarų salos"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Farerai"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"Reikjavikas"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"Šv. Helena"}
+        }
+        "Atlantic:Stanley"{
+            ec{"Stenlis"}
+        }
+        "Australia:Adelaide"{
+            ec{"Adelaidė"}
+        }
+        "Australia:Brisbane"{
+            ec{"Brisbanas"}
+        }
+        "Australia:Darwin"{
+            ec{"Darvinas"}
+        }
+        "Australia:Hobart"{
+            ec{"Hobartas"}
+        }
+        "Australia:Lord_Howe"{
+            ec{"Lordo Hau sala"}
+        }
+        "Australia:Melbourne"{
+            ec{"Melburnas"}
+        }
+        "Australia:Perth"{
+            ec{"Pertas"}
+        }
+        "Australia:Sydney"{
+            ec{"Sidnėjus"}
+        }
+        "Etc:Unknown"{
+            ec{"Nežinoma"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Amsterdamas"}
+        }
+        "Europe:Andorra"{
+            ec{"Andora"}
+        }
+        "Europe:Athens"{
+            ec{"Atėnai"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlynas"}
+        }
+        "Europe:Brussels"{
+            ec{"Briuselis"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukareštas"}
+        }
+        "Europe:Budapest"{
+            ec{"Budapeštas"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhaga"}
+        }
+        "Europe:Dublin"{
+            ec{"Dublinas"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Gibraltaras"}
+        }
+        "Europe:Helsinki"{
+            ec{"Helsinkis"}
+        }
+        "Europe:Istanbul"{
+            ec{"Stambulas"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Kaliningradas"}
+        }
+        "Europe:Kiev"{
+            ec{"Kijevas"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisabona"}
+        }
+        "Europe:London"{
+            ec{"Londonas"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Liuksemburgas"}
+        }
+        "Europe:Madrid"{
+            ec{"Madridas"}
+        }
+        "Europe:Minsk"{
+            ec{"Minskas"}
+        }
+        "Europe:Monaco"{
+            ec{"Monakas"}
+        }
+        "Europe:Moscow"{
+            ec{"Maskva"}
+        }
+        "Europe:Oslo"{
+            ec{"Oslas"}
+        }
+        "Europe:Paris"{
+            ec{"Paryžius"}
+        }
+        "Europe:Riga"{
+            ec{"Ryga"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:Simferopol"{
+            ec{"Simferopolis"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofija"}
+        }
+        "Europe:Stockholm"{
+            ec{"Stokholmas"}
+        }
+        "Europe:Tallinn"{
+            ec{"Talinas"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirana"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"Užhorodas"}
+        }
+        "Europe:Vaduz"{
+            ec{"Vaducas"}
+        }
+        "Europe:Vienna"{
+            ec{"Viena"}
+        }
+        "Europe:Vilnius"{
+            ec{"Vilnius"}
+        }
+        "Europe:Volgograd"{
+            ec{"Volgogradas"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varšuva"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporožė"}
+        }
+        "Europe:Zurich"{
+            ec{"Ciurichas"}
+        }
+        "Indian:Antananarivo"{
+            ec{"Antananarivas"}
+        }
+        "Indian:Christmas"{
+            ec{"Kalėdų Sala"}
+        }
+        "Indian:Comoro"{
+            ec{"Komoras"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldyvai"}
+        }
+        "Indian:Mauritius"{
+            ec{"Mauricijus"}
+        }
+        "Indian:Mayotte"{
+            ec{"Majotas"}
+        }
+        "Indian:Reunion"{
+            ec{"Reunionas"}
+        }
+        "Pacific:Apia"{
+            ec{"Apija"}
+        }
+        "Pacific:Easter"{
+            ec{"Velykų sala"}
+        }
+        "Pacific:Efate"{
+            ec{"Efatas"}
+        }
+        "Pacific:Enderbury"{
+            ec{"Enderburis"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fidžis"}
+        }
+        "Pacific:Galapagos"{
+            ec{"Galapagai"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"Gvadalkanalas"}
+        }
+        "Pacific:Guam"{
+            ec{"Guamas"}
+        }
+        "Pacific:Johnston"{
+            ec{"Džonstonas"}
+        }
+        "Pacific:Kosrae"{
+            ec{"Kosraė"}
+        }
+        "Pacific:Marquesas"{
+            ec{"Markizo salos"}
+        }
+        "Pacific:Midway"{
+            ec{"Jungtinių Valstijų mažosios aplinkinės salos (Midway)"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Norfolkas"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Pitkerno Salos"}
+        }
+        "Pacific:Ponape"{
+            ec{"Ponapė"}
+        }
+        "Pacific:Saipan"{
+            ec{"Saipanas"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Taitis"}
+        }
+        "Pacific:Tarawa"{
+            ec{"Tarava"}
+        }
+        "Pacific:Truk"{
+            ec{"Trukas"}
+        }
+        "Pacific:Wake"{
+            ec{"Jungtinių Valstijų mažosios aplinkinės salos (Klivateris)"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afganistano laikas"}
+        }
+        "meta:Africa_Central"{
+            ls{"Centrinės Afrikos laikas"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Rytų Afrikos laikas"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Pietų Afrikos laikas"}
+        }
+        "meta:Africa_Western"{
+            ld{"Vakarų Afrikos vasaros laikas"}
+            lg{"Vakarų Afrikos laikas"}
+            ls{"Vakarų Afrikos žiemos laikas"}
+        }
+        "meta:Aktyubinsk"{
+            ld{"Achtubinsko vasaros laikas"}
+            lg{"Achtubinsko laikas"}
+            ls{"Achtubinsko žiemos laikas"}
+        }
+        "meta:Alaska"{
+            ld{"Aliaskos vasaros laikas"}
+            lg{"Aliaskos laikas"}
+            ls{"Aliaskos žiemos laikas"}
+        }
+        "meta:Alaska_Hawaii"{
+            ld{"Aliaskos-Havajų vasaros laikas"}
+            lg{"Aliaskos-Havajų laikas"}
+            ls{"Aliaskos-Havajų žiemos laikas"}
+        }
+        "meta:Almaty"{
+            ld{"Almaty vasaros laikas"}
+            lg{"Almaty laikas"}
+            ls{"Almaty žiemos laikas"}
+        }
+        "meta:Amazon"{
+            ld{"Amazonės vasaros laikas"}
+            lg{"Amazonės laikas"}
+            ls{"Amazonės žiemos laikas"}
+        }
+        "meta:America_Central"{
+            ld{"Centro vasaros laikas"}
+            lg{"Centro laikas"}
+            ls{"Centro žiemos laikas"}
+        }
+        "meta:America_Eastern"{
+            ld{"Rytų vasaros laikas"}
+            lg{"Rytų laikas"}
+            ls{"Rytų žiemos laikas"}
+        }
+        "meta:America_Mountain"{
+            ld{"Kalnų vasaros laikas"}
+            lg{"Kalnų laikas"}
+            ls{"Kalnų žiemos laikas"}
+        }
+        "meta:America_Pacific"{
+            ld{"Ramiojo vandenyno vasaros laikas"}
+            lg{"Ramiojo vandenyno laikas"}
+            ls{"Ramiojo vandenyno žiemos laikas"}
+        }
+        "meta:Anadyr"{
+            ld{"Anadyrės vasaros laikas"}
+            lg{"Anadyro laikas"}
+            ls{"Anadyrės žiemos laikas"}
+        }
+        "meta:Aqtau"{
+            ld{"Aqtau vasaros laikas"}
+            lg{"Aqtau laikas"}
+            ls{"Aqtau žiemos laikas"}
+        }
+        "meta:Aqtobe"{
+            ld{"Aqtobe vasaros laikas"}
+            lg{"Aqtobe laikas"}
+            ls{"Aqtobe žiemos laikas"}
+        }
+        "meta:Argentina"{
+            ld{"Argentinos vasaros laikas"}
+            lg{"Argentinos laikas"}
+            ls{"Argentinos žiemos laikas"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Vakarų Argentinos vasaros laikas"}
+            lg{"Vakarų Argentinos laikas"}
+            ls{"Vakarų Argentinos žiemos laikas"}
+        }
+        "meta:Armenia"{
+            ld{"Armėnijos vasaros laikas"}
+            lg{"Armėnijos laikas"}
+            ls{"Armėnijos žiemos laikas"}
+        }
+        "meta:Ashkhabad"{
+            ld{"Ašchabado vasaros laikas"}
+            lg{"Ašchabado laikas"}
+            ls{"Ašchabado žiemos laikas"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlanto vasaros laikas"}
+            lg{"Atlanto laikas"}
+            ls{"Atlanto žiemos laikas"}
+        }
+        "meta:Australia_Central"{
+            ld{"Centrinės Australijos vasaros laikas"}
+            lg{"Centrinės Australijos laikas"}
+            ls{"Centrinės Australijos žiemos laikas"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Centrinės vakarų Australijos vasaros laikas"}
+            lg{"Centrinės vakarų Australijos laikas"}
+            ls{"Centrinės vakarų Australijos žiemos laikas"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Rytų Australijos vasaros laikas"}
+            lg{"Rytų Australijos laikas"}
+            ls{"Centrinės rytų Australijos žiemos laikas"}
+        }
+        "meta:Australia_Western"{
+            ld{"Vakarų Australijos vasaros laikas"}
+            lg{"Vakarų Australijos laikas"}
+            ls{"Vakarų Australijos žiemos laikas"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Azerbaidžano vasaros laikas"}
+            lg{"Azerbaidžano laikas"}
+            ls{"Azerbaidžano žiemos laikas"}
+        }
+        "meta:Azores"{
+            ld{"Azorų salų vasaros laikas"}
+            lg{"Azorų salų laikas"}
+            ls{"Azorų salų žiemos laikas"}
+        }
+        "meta:Baku"{
+            ld{"Baku vasaros laikas"}
+            lg{"Baku laikas"}
+            ls{"Baku žiemos laikas"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bangladešo vasaros laikas"}
+            lg{"Bangladešo laikas"}
+            ls{"Bangladešo žiemos laikas"}
+        }
+        "meta:Bering"{
+            ld{"Beringo vasaros laikas"}
+            lg{"Beringo laikas"}
+            ls{"Beringo žiemos laikas"}
+        }
+        "meta:Bhutan"{
+            ls{"Butano laikas"}
+        }
+        "meta:Bolivia"{
+            ls{"Bolivijos laikas"}
+        }
+        "meta:Borneo"{
+            ld{"Borneo vasaros laikas"}
+            lg{"Borneo laikas"}
+            ls{"Borneo žiemos laikas"}
+        }
+        "meta:Brasilia"{
+            ld{"Brazilijos vasaros laikas"}
+            lg{"Brazilijos laikas"}
+            ls{"Brazilijos žiemos laikas"}
+        }
+        "meta:Brunei"{
+            ls{"Brunėjaus Darussalam laikas"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Verde iškyšulio vasaros laikas"}
+            lg{"Verde iškyšulio laikas"}
+            ls{"Verde iškyšulio žiemos laikas"}
+        }
+        "meta:Chamorro"{
+            ls{"Chamorro laikas"}
+        }
+        "meta:Changbai"{
+            ls{"Changbai laikas"}
+        }
+        "meta:Chatham"{
+            ld{"Chatham vasaros laikas"}
+            lg{"Chatham laikas"}
+            ls{"Chatham žiemos laikas"}
+        }
+        "meta:Chile"{
+            ld{"Čilės vasaros laikas"}
+            lg{"Čilės laikas"}
+            ls{"Čilės žiemos laikas"}
+        }
+        "meta:China"{
+            ld{"Kinijos vasaros laikas"}
+            lg{"Kinijos laikas"}
+            ls{"Kinijos žiemos laikas"}
+        }
+        "meta:Choibalsan"{
+            ld{"Choibalsan vasaros laikas"}
+            lg{"Čoibalsano laikas"}
+            ls{"Choibalsan žiemos laikas"}
+        }
+        "meta:Christmas"{
+            ls{"Kalėdų salos laikas"}
+        }
+        "meta:Cocos"{
+            ls{"Kokosų salų laikas"}
+        }
+        "meta:Colombia"{
+            ld{"Kolumbijos vasaros laikas"}
+            lg{"Kolumbijos laikas"}
+            ls{"Kolumbijos žiemos laikas"}
+        }
+        "meta:Cook"{
+            ld{"Kuko salų pusės vasaros laikas"}
+            lg{"Kuko salų pusės laikas"}
+            ls{"Kuko salų pusės žiemos laikas"}
+        }
+        "meta:Cuba"{
+            ld{"Kubos vasaros laikas"}
+            lg{"Kubos laikas"}
+            ls{"Kubos žiemos laikas"}
+        }
+        "meta:Dacca"{
+            ls{"Dakos laikas"}
+        }
+        "meta:Dushanbe"{
+            ld{"Dušanbės vasaros laikas"}
+            lg{"Dušanbės laikas"}
+            ls{"Dušanbės žiemos laikas"}
+        }
+        "meta:Dutch_Guiana"{
+            ls{"Olandų Gajanos laikas"}
+        }
+        "meta:East_Timor"{
+            ls{"Rytų Timoro laikas"}
+        }
+        "meta:Easter"{
+            ld{"Velykų salos vasaros laikas"}
+            lg{"Velykų salos laikas"}
+            ls{"Velykų salos žiemos laikas"}
+        }
+        "meta:Ecuador"{
+            ls{"Ekvadoro laikas"}
+        }
+        "meta:Europe_Central"{
+            ld{"Vidurio Europos vasaros laikas"}
+            lg{"Vidurio Europos laikas"}
+            ls{"Vidurio Europos žiemos laikas"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Rytų Europos vasaros laikas"}
+            lg{"Rytų Europos laikas"}
+            ls{"Rytų Europos žiemos laikas"}
+        }
+        "meta:Europe_Western"{
+            ld{"Vakarų Europos vasaros laikas"}
+            lg{"Vakarų Europos laikas"}
+            ls{"Vakarų Europos žiemos laikas"}
+        }
+        "meta:Falkland"{
+            ld{"Folklandų salų vasaros laikas"}
+            lg{"Folklandų salų laikas"}
+            ls{"Folklandų salų žiemos laikas"}
+        }
+        "meta:Fiji"{
+            ld{"Fidžio vasaros laikas"}
+            lg{"Fidžio laikas"}
+            ls{"Fidžio žiemos laikas"}
+        }
+        "meta:French_Guiana"{
+            ls{"Prancūzų Gajanos laikas"}
+        }
+        "meta:French_Southern"{
+            ls{"Pietų Prancūzijos ir Antarktinis Laikas"}
+        }
+        "meta:Frunze"{
+            ld{"Frunzės vasaros laikas"}
+            lg{"Frunzės laikas"}
+            ls{"Frunzės žiemos laikas"}
+        }
+        "meta:Galapagos"{
+            ls{"Galapagos laikas"}
+        }
+        "meta:Gambier"{
+            ls{"Gambier laikas"}
+        }
+        "meta:Georgia"{
+            ld{"Gruzijos vasaros laikas"}
+            lg{"Gruzijos laikas"}
+            ls{"Gruzijos žiemos laikas"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilberto salų laikas"}
+        }
+        "meta:Greenland_Central"{
+            ld{"Grenlandijos centro vasaros laikas"}
+            lg{"Grenlandijos centro laikas"}
+            ls{"Grenlandijos centro žiemos laikas"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Grenlandijos rytų vasaros laikas"}
+            lg{"Grenlandijos rytų laikas"}
+            ls{"Grenlandijos rytų žiemos laikas"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Grenlandijos vakarų vasaros laikas"}
+            lg{"Grenlandijos vakarų laikas"}
+            ls{"Grenlandijos vakarų žiemos laikas"}
+        }
+        "meta:Guam"{
+            ls{"Guamo laikas"}
+        }
+        "meta:Gulf"{
+            ls{"Gulf laikas"}
+        }
+        "meta:Guyana"{
+            ls{"Gajanos laikas"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Havajų–Aleutų vasaros laikas"}
+            lg{"Havajų–Aleutų laikas"}
+            ls{"Havajų–Aleutų žiemos laikas"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Honkongo vasaros laikas"}
+            lg{"Honkongo laikas"}
+            ls{"Honkongo žiemos laikas"}
+        }
+        "meta:Hovd"{
+            ld{"Hovd vasaros laikas"}
+            lg{"Hovd laikas"}
+            ls{"Hovd žiemos laikas"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Indijos vandenyno laikas"}
+        }
+        "meta:Indochina"{
+            ls{"Indokinijos laikas"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Centrinės Indokinijos laikas"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Rytų Indonezijos laikas"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Vakarų Indonezijos laikas"}
+        }
+        "meta:Iran"{
+            ld{"Irano vasaros laikas"}
+            lg{"Irano laikas"}
+            ls{"Irano žiemos laikas"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutsko vasaros laikas"}
+            lg{"Irkutsko laikas"}
+            ls{"Irkutsko žiemos laikas"}
+        }
+        "meta:Israel"{
+            ld{"Izraelio vasaros laikas"}
+            lg{"Izraelio laikas"}
+            ls{"Izraelio žiemos laikas"}
+        }
+        "meta:Japan"{
+            ld{"Japonijos vasaros laikas"}
+            lg{"Japonijos laikas"}
+            ls{"Japonijos žiemos laikas"}
+        }
+        "meta:Kamchatka"{
+            ld{"Kamčiatkos Petropavlovsko vasaros laikas"}
+            lg{"Kamčiatkos Petropavlovsko laikas"}
+            ls{"Kamčiatkos Petropavlovsko žiemos laikas"}
+        }
+        "meta:Karachi"{
+            ls{"Karačio laikas"}
+        }
+        "meta:Kashgar"{
+            ls{"Kašgaro laikas"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Rytų Kazachstano laikas"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Vakarų Kazachstano laikas"}
+        }
+        "meta:Kizilorda"{
+            ld{"Kizilorda vasaros laikas"}
+            lg{"Kizilorda laikas"}
+            ls{"Kizilorda žiemos laikas"}
+        }
+        "meta:Korea"{
+            ld{"Korėjiečių vasaros laikas"}
+            lg{"Korėjiečių laikas"}
+            ls{"Korėjiečių žiemos laikas"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosrae laikas"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnojarsko vasaros laikas"}
+            lg{"Krasnojarsko laikas"}
+            ls{"Krasnojarsko žiemos laikas"}
+        }
+        "meta:Kuybyshev"{
+            ld{"Kuibyševo vasaros laikas"}
+            lg{"Kuibyševo laikas"}
+            ls{"Kuibyševo žiemos laikas"}
+        }
+        "meta:Kwajalein"{
+            ls{"Kwajalein laikas"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Kyrgystan laikas"}
+        }
+        "meta:Lanka"{
+            ls{"Lanka laikas"}
+        }
+        "meta:Line_Islands"{
+            ls{"Linijos salų laikas"}
+        }
+        "meta:Long_Shu"{
+            ls{"Long-Shu laikas"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Howe vasaros laikas"}
+            lg{"Lord Howe laikas"}
+            ls{"Lord Howe žiemos laikas"}
+        }
+        "meta:Macau"{
+            ld{"Macau vasaros laikas"}
+            lg{"Macau laikas"}
+            ls{"Macau žiemos laikas"}
+        }
+        "meta:Macquarie"{
+            ls{"Makvario laikas"}
+        }
+        "meta:Magadan"{
+            ld{"Magadano vasaros laikas"}
+            lg{"Magadano laikas"}
+            ls{"Magadano žiemos laikas"}
+        }
+        "meta:Malaya"{
+            ls{"Malajos laikas"}
+        }
+        "meta:Malaysia"{
+            ls{"Malaizijos laikas"}
+        }
+        "meta:Maldives"{
+            ls{"Maldyvų laikas"}
+        }
+        "meta:Marquesas"{
+            ls{"Marquesas laikas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Maršalo salų laikas"}
+        }
+        "meta:Mauritius"{
+            ld{"Mauricijaus vasaros laikas"}
+            lg{"Mauricijaus laikas"}
+            ls{"Mauricijaus žiemos laikas"}
+        }
+        "meta:Mongolia"{
+            ld{"Ulan Batoro vasaros laikas"}
+            lg{"Ulan Batoro laikas"}
+            ls{"Ulan Batoro žiemos laikas"}
+        }
+        "meta:Moscow"{
+            ld{"Maskvos vasaros laikas"}
+            lg{"Maskvos laikas"}
+            ls{"Maskvos žiemos laikas"}
+        }
+        "meta:Myanmar"{
+            ls{"Myanmar laikas"}
+        }
+        "meta:Nauru"{
+            ls{"Nauru laikas"}
+        }
+        "meta:Nepal"{
+            ls{"Nepalo laikas"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Naujosios Kaledonijos vasaros laikas"}
+            lg{"Naujosios Kaledonijos laikas"}
+            ls{"Naujosios Kaledonijos žiemos laikas"}
+        }
+        "meta:New_Zealand"{
+            ld{"Naujosios Zelandijos vasaros laikas"}
+            lg{"Naujosios Zelandijos laikas"}
+            ls{"Naujosios Zelandijos žiemos laikas"}
+        }
+        "meta:Newfoundland"{
+            ld{"Niufaundlendo vasaros laikas"}
+            lg{"Niufaundlendo laikas"}
+            ls{"Niufaundlendo žiemos laikas"}
+        }
+        "meta:Niue"{
+            ls{"Niujės laikas"}
+        }
+        "meta:Norfolk"{
+            ls{"Norfolko salų laikas"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronjos vasaros laikas"}
+            lg{"Fernando de Noronjos laikas"}
+            ls{"Fernando de Noronjos žiemos laikas"}
+        }
+        "meta:North_Mariana"{
+            ls{"Šiaurės Marianos salų laikas"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirsko vasaros laikas"}
+            lg{"Novosibirsko laikas"}
+            ls{"Novosibirsko žiemos laikas"}
+        }
+        "meta:Omsk"{
+            ld{"Omsko vasaros laikas"}
+            lg{"Omsko laikas"}
+            ls{"Omsko žiemos laikas"}
+        }
+        "meta:Pakistan"{
+            ld{"Pakistano vasaros laikas"}
+            lg{"Pakistano laikas"}
+            ls{"Pakistano žiemos laikas"}
+        }
+        "meta:Palau"{
+            ls{"Palau laikas"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papua Naujosios Gvinėjos laikas"}
+        }
+        "meta:Paraguay"{
+            ld{"Paragvajaus vasaros laikas"}
+            lg{"Paragvajaus laikas"}
+            ls{"Paragvajaus žiemos laikas"}
+        }
+        "meta:Peru"{
+            ld{"Peru vasaros laikas"}
+            lg{"Peru laikas"}
+            ls{"Peru žiemos laikas"}
+        }
+        "meta:Philippines"{
+            ld{"Filipinų vasaros laikas"}
+            lg{"Filipinų laikas"}
+            ls{"Filipinų žiemos laikas"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Finikso salų laikas"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitcairn laikas"}
+        }
+        "meta:Ponape"{
+            ls{"Ponapės laikas"}
+        }
+        "meta:Qyzylorda"{
+            ld{"Qyzylorda vasaros laikas"}
+            lg{"Qyzylorda laikas"}
+            ls{"Qyzylorda žiemos laikas"}
+        }
+        "meta:Reunion"{
+            ls{"Reunion laikas"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sachalino vasaros laikas"}
+            lg{"Sachalino laikas"}
+            ls{"Sachalino žiemos laikas"}
+        }
+        "meta:Samara"{
+            ld{"Samaros vasaros laikas"}
+            lg{"Samaros laikas"}
+            ls{"Samaros žiemos laikas"}
+        }
+        "meta:Samarkand"{
+            ld{"Samarkando vasaros laikas"}
+            lg{"Samarkando laikas"}
+            ls{"Samarkando žiemos laikas"}
+        }
+        "meta:Samoa"{
+            ls{"Samoa žiemos laikas"}
+        }
+        "meta:Seychelles"{
+            ls{"Seišelių salų laikas"}
+        }
+        "meta:Shevchenko"{
+            ld{"Ševčenkos vasaros laikas"}
+            lg{"Ševčenkos laikas"}
+            ls{"Ševčenkos žiemos laikas"}
+        }
+        "meta:Singapore"{
+            ls{"Singapūro žiemos laikas"}
+        }
+        "meta:Solomon"{
+            ls{"Saliamono salų laikas"}
+        }
+        "meta:South_Georgia"{
+            ls{"Pietų Džordžijos laikas"}
+        }
+        "meta:Sverdlovsk"{
+            ld{"Sverdlovsko vasaros laikas"}
+            lg{"Sverdlovsko laikas"}
+            ls{"Sverdlovsko žiemos laikas"}
+        }
+        "meta:Tahiti"{
+            ls{"Taičio laikas"}
+        }
+        "meta:Taipei"{
+            ld{"Taipėjaus vasaros laikas"}
+            lg{"Taipėjaus laikas"}
+            ls{"Taipėjaus žiemos laikas"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tadžikijos laikas"}
+        }
+        "meta:Tashkent"{
+            ld{"Taškento vasaros laikas"}
+            lg{"Taškento laikas"}
+            ls{"Taškento žiemos laikas"}
+        }
+        "meta:Tbilisi"{
+            ld{"Tbilisio vasaros laikas"}
+            lg{"Tbilisio laikas"}
+            ls{"Tbilisio žiemos laikas"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokelau laikas"}
+        }
+        "meta:Tonga"{
+            ld{"Tongos vasaros laikas"}
+            lg{"Tongos laikas"}
+            ls{"Tongos žiemos laikas"}
+        }
+        "meta:Truk"{
+            ls{"Truk laikas"}
+        }
+        "meta:Turkey"{
+            ld{"Turkijos vasaros laikas"}
+            lg{"Turkijos laikas"}
+            ls{"Turkijos žiemos laikas"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Turkmenistano vasaros laikas"}
+            lg{"Turkmenistano laikas"}
+            ls{"Turkmenistano žiemos laikas"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvalu laikas"}
+        }
+        "meta:Uralsk"{
+            ld{"Ural'sk vasaros laikas"}
+            lg{"Ural'sk laikas"}
+            ls{"Ural'sk žiemos laikas"}
+        }
+        "meta:Uruguay"{
+            ld{"Urugvajaus vasaros laikas"}
+            lg{"Urugvajaus laikas"}
+            ls{"Urugvajaus žiemos laikas"}
+        }
+        "meta:Urumqi"{
+            ls{"Urumqi laikas"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Uzbekistano vasaros laikas"}
+            lg{"Uzbekistano laikas"}
+            ls{"Uzbekistano žiemos laikas"}
+        }
+        "meta:Vanuatu"{
+            ld{"Vanuatu vasaros laikas"}
+            lg{"Vanuatu laikas"}
+            ls{"Vanuatu žiemos laikas"}
+        }
+        "meta:Venezuela"{
+            ls{"Venesuelos laikas"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostoko vasaros laikas"}
+            lg{"Vladivostoko laikas"}
+            ls{"Vladivostoko žiemos laikas"}
+        }
+        "meta:Volgograd"{
+            ld{"Volgogrado vasaros laikas"}
+            lg{"Volgogrado laikas"}
+            ls{"Volgogrado žiemos laikas"}
+        }
+        "meta:Wake"{
+            ls{"Veiko salos Laikas"}
+        }
+        "meta:Wallis"{
+            ls{"Wallis ir Futuna laikas"}
+        }
+        "meta:Yakutsk"{
+            ld{"Jakutsko vasaros laikas"}
+            lg{"Jakutsko laikas"}
+            ls{"Jakutsko žiemos laikas"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Jekaterinburgo vasaros laikas"}
+            lg{"Jekaterinburgo laikas"}
+            ls{"Jekaterinburgo žiemos laikas"}
+        }
+        "meta:Yerevan"{
+            ld{"Jerevano vasaros laikas"}
+            lg{"Jerevano laikas"}
+            ls{"Jerevano žiemos laikas"}
+        }
+        fallbackRegionFormat{"{1} laikas ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;−HH:mm"}
+        regionFormat{"{0} laikas"}
+    }
+}

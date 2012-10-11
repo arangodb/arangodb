@@ -1,6 +1,41 @@
 not released yet
 ----------------
 
+* issue #224: add optional Content-Id for batch requests
+
+* issue #221: more documentation on AQL explain functionality. Also added
+  ArangoStatement.explain() client method
+
+* added db._createStatement() method on server as well (was previously available
+  on the client only)
+
+* issue #219: continue in case of "document not found" error in PATHS() function
+
+* changed AQL optimiser to use indexes in more cases. Previously, indexes might
+  not have been used when in a reference expression the inner collection was 
+  specified last. Example: FOR u1 IN users FOR u2 IN users FILTER u1._id == u2._id
+  Previously, this only checked whether an index could be used for u2._id (not
+  possible). It was not checked whether an index on u1._id could be used (possible).
+  Now, for expressions that have references/attribute names on both sides of the
+  above as above, indexes are checked for both sides.
+  
+* issue #204: extend the CSV import by TSV and by user configurable 
+  seperator character(s)
+
+* issue #180: added support for batch operations
+
+* added startup option --server.backlog-size
+  this allows setting the value of the backlog for the listen() system call.
+  the default value is 10, the maximum value is platform-dependent
+
+* introduced new configure option "--enable-maintainer-mode" for
+  ArangoDB maintainers. this option replaces the previous compile switches
+  --with-boost-test, --enable-bison, --enable-flex and --enable-errors-dependency
+  the individual configure options have been removed. --enable-maintainer-mode
+  turns them all on.
+
+* removed potentially unused configure option --enable-memfail
+
 * fixed issue #197: HTML web interface calls /_admin/user-manager/session
 
 * fixed issue #195: VERSION file in database directory
@@ -73,7 +108,20 @@ not released yet
 v1.0.1 (2012-XX-XX)
 -------------------
 
+* updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
+
+* fix for issue #190: install doesn't create log directory
+
+* fix for issue #194: potential race condition between creating and dropping collections
+
+* fix for issue #193: REST API HEAD request returns a message body on 404
+
+* fix for issue #188: intermittent issues with 1.0.0 
+
 * fix for issue #163: server cannot create collection because of abandoned files
+  
+* fix for issue #150: call V8 garbage collection on server periodically 
+
 
 v1.0.0 (2012-08-17)
 -------------------

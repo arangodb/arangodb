@@ -1,0 +1,307 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/ee.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/ee.xml
+ */
+ee{
+    Keys{
+        calendar{"kalenda"}
+        collation{"tutuɖo"}
+        currency{"gaɖuɖu"}
+        numbers{"nɔmbawo"}
+    }
+    Languages{
+        ab{"abkhaziagbe"}
+        af{"afrikaangbe"}
+        ak{"blugbe"}
+        am{"amhariagbe"}
+        ar{"arabiagbe"}
+        as{"assamegbe"}
+        asa{"asagbe"}
+        ay{"aymargbe"}
+        az{"azerbaijangbe"}
+        be{"belarusiagbe"}
+        bem{"bembagbe"}
+        bez{"benagbe"}
+        bg{"bulgariagbe"}
+        bm{"bambaragbe"}
+        bn{"bengalgbe"}
+        bo{"tibetagbe"}
+        br{"bretongbe"}
+        brx{"bodogbe"}
+        bs{"bosniagbe"}
+        ca{"katalagbe"}
+        cs{"tsɛkgbe"}
+        cy{"walesgbe"}
+        da{"denmarkgbe"}
+        de{"germaniagbe"}
+        de_AT{"austriatɔwo ƒe germaniagbe"}
+        de_CH{"swizerlanɖ germaniagbe kɔkɔtɔ"}
+        dv{"divehgbe"}
+        dz{"dzongkhagbe"}
+        ebu{"embugbe"}
+        ee{"eʋegbe"}
+        efi{"efigbe"}
+        el{"grisigbe"}
+        en{"yevugbe"}
+        en_AU{"australiatɔwo ƒe yevugbe"}
+        en_CA{"kanadatɔwo ƒe yevugbe"}
+        en_GB{"britaintɔwo ƒe yevugbe"}
+        en_US{"u.s.dukɔmetɔwo ƒe yevugbe"}
+        eo{"esperantogbe"}
+        es{"spaniagbe"}
+        es_419{"latin amerikatɔwo ƒe spaniagbe"}
+        es_ES{"iberiatɔwo ƒe spaniagbe"}
+        et{"estoniagbe"}
+        eu{"basqugbe"}
+        fa{"persiagbe"}
+        fi{"finlanɖgbe"}
+        fil{"filipingbe"}
+        fj{"fidzigbe"}
+        fr{"fransegbe"}
+        fr_CA{"kanadatɔwo ƒe fransegbe"}
+        fr_CH{"swizerlanɖtɔwo ƒe fransegbe"}
+        ga{"irelanɖgbe"}
+        gl{"galatagbe"}
+        gn{"guarangbe"}
+        gsw{"swizerlanɖtɔwo ƒe germaniagbe"}
+        gu{"gujarati"}
+        ha{"hausagbe"}
+        haw{"hawaigbe"}
+        he{"hebrigbe"}
+        hi{"hindigbe"}
+        hr{"kroatiagbe"}
+        ht{"haitigbe"}
+        hu{"hungarigbe"}
+        hy{"armeniagbe"}
+        id{"indonesiagbe"}
+        ig{"igbogbe"}
+        is{"icelanɖgbe"}
+        it{"italiagbe"}
+        ja{"dzapangbe"}
+        jv{"dzavangbe"}
+        ka{"gɔgiagbe"}
+        kea{"cape verdegbe"}
+        kk{"kazakhstangbe"}
+        km{"khmergbe"}
+        kn{"kannadagbe"}
+        ko{"koreagbe"}
+        ks{"kashmirgbe"}
+        ku{"kurdiagbe"}
+        ky{"kirghistangbe"}
+        la{"latin"}
+        lah{"lahndagbe"}
+        lb{"laksembɔggbe"}
+        ln{"lingala"}
+        lo{"laogbe"}
+        lt{"lithuaniagbe"}
+        luy{"luyiagbe"}
+        lv{"latviagbe"}
+        mg{"malagasegbe"}
+        mi{"maorgbe"}
+        mk{"makedoniagbe"}
+        ml{"malayagbe"}
+        mn{"mongoliagbe"}
+        mr{"marathiagbe"}
+        ms{"malaygbe"}
+        mt{"maltagbe"}
+        mul{"gbegbɔgblɔ sɔgbɔwo"}
+        my{"burmagbe"}
+        nb{"nɔweigbe bokmål"}
+        nd{"dziehe ndebelegbe"}
+        ne{"nepalgbe"}
+        nl{"hɔlandgbe"}
+        nl_BE{"flemiagbe"}
+        nn{"nɔweigbe ninɔsk"}
+        no{"nɔweigbe"}
+        nso{"dziehe sothogbe"}
+        ny{"nyanjagbe"}
+        or{"oriyagbe"}
+        os{"ossetiagbe"}
+        pa{"pundzabgbe"}
+        pl{"polandgbe"}
+        ps{"pashtogbe"}
+        pt{"pɔtugalgbe"}
+        pt_BR{"braziltɔwo ƒe portugalgbe"}
+        pt_PT{"iberiatɔwo ƒe portugalgbe"}
+        qu{"kwetsuagbe"}
+        rm{"romanshgbe"}
+        rn{"rundigbe"}
+        ro{"romaniagbe"}
+        rof{"rombogbe"}
+        ru{"rɔtsiagbe"}
+        rw{"ruwandagbe"}
+        rwk{"rwagbe"}
+        sa{"sanskrigbe"}
+        sah{"sakagbe"}
+        sd{"sindhgbe"}
+        se{"dziehe samigbe"}
+        sg{"sangogbe"}
+        sh{"serbo-croatiagbe"}
+        si{"sinhalgbe"}
+        sk{"slovakiagbe"}
+        sl{"sloveniagbe"}
+        sm{"samoagbe"}
+        sn{"shonagbe"}
+        so{"somaliagbe"}
+        sq{"albaniagbe"}
+        sr{"serbiagbe"}
+        ss{"swatgbe"}
+        st{"anyiehe sothogbe"}
+        su{"sudangbe"}
+        sv{"swedengbe"}
+        sw{"swahili"}
+        swb{"komorogbe"}
+        ta{"tamilgbe"}
+        te{"telegugbe"}
+        tet{"tetumgbe"}
+        tg{"tadzikistangbe"}
+        th{"tailandgbe"}
+        ti{"tigrinyagbe"}
+        tk{"tɛkmengbe"}
+        tl{"tagalogbe"}
+        tn{"tswanagbe"}
+        to{"tongagbe"}
+        tpi{"tok pisigbe"}
+        tr{"tɛkigbe"}
+        ts{"tsongagbe"}
+        ty{"tahitigbe"}
+        ug{"uighurgbe"}
+        uk{"ukraingbe"}
+        und{"gbegbɔgblɔ manya"}
+        ur{"urdugbe"}
+        uz{"uzbekistangbe"}
+        ve{"vendagbe"}
+        vi{"vietnamgbe"}
+        wae{"walsegbe"}
+        wo{"wolofgbe"}
+        xh{"xhosagbe"}
+        yo{"yorubagbe"}
+        yue{"cantongbe"}
+        zh{"kinagbe"}
+        zh_Hans{"tsainagbe"}
+        zh_Hant{"blema tsainagbe"}
+        zu{"zulugbe"}
+        zxx{"gbegbɔgblɔ manɔmee"}
+    }
+    Scripts{
+        Arab{"arabiagbeŋɔŋlɔ"}
+        Armn{"armeniagbeŋɔŋlɔ"}
+        Beng{"bengaligbeŋɔŋlɔ"}
+        Bopo{"bopomfogbeŋɔŋlɔ"}
+        Brai{"braillegbeŋɔŋlɔ"}
+        Cyrl{"syrilliagbeŋɔŋlɔ"}
+        Deva{"devanagarigbeŋɔŋlɔ"}
+        Ethi{"ethiopiagbeŋɔŋlɔ"}
+        Geor{"gɔgiagbeŋɔŋlɔ"}
+        Grek{"grisigbeŋɔŋlɔ"}
+        Gujr{"gudzaratigbeŋɔŋlɔ"}
+        Guru{"gurmukhigbeŋɔŋlɔ"}
+        Hang{"hangulgbeŋɔŋlɔ"}
+        Hani{"hangbeŋɔŋlɔ"}
+        Hans{"tsainagbeŋɔŋlɔ"}
+        Hant{"blema tsainagbeŋɔŋlɔ"}
+        Hebr{"hebrigbeŋɔŋlɔ"}
+        Hira{"hiraganagbeŋɔŋlɔ"}
+        Jpan{"dzapangbeŋɔŋlɔ"}
+        Kana{"katakanagbeŋɔŋlɔ"}
+        Khmr{"khmergbeŋɔŋlɔ"}
+        Knda{"kannadagbeŋɔŋlɔ"}
+        Kore{"koreagbeŋɔŋlɔ"}
+        Laoo{"laogbeŋɔŋlɔ"}
+        Latn{"latingbeŋɔŋlɔ"}
+        Mlym{"malayagbeŋɔŋlɔ"}
+        Mong{"mongoliagbeŋɔŋlɔ"}
+        Mymr{"myanmargbeŋɔŋlɔ"}
+        Orya{"oriyagbeŋɔŋlɔ"}
+        Sinh{"sinhalagbeŋɔŋlɔ"}
+        Taml{"tamilgbeŋɔŋlɔ"}
+        Telu{"telegugbeŋɔŋlɔ"}
+        Thaa{"thaanagbeŋɔŋlɔ"}
+        Thai{"taigbeŋɔŋlɔ"}
+        Tibt{"tibetgbeŋɔŋlɔ"}
+        Zsym{"ŋɔŋlɔdzesiwo"}
+        Zxxx{"gbemaŋlɔ"}
+        Zyyy{"gbeŋɔŋlɔ bɔbɔ"}
+        Zzzz{"gbeŋɔŋlɔ manya"}
+    }
+    Types{
+        calendar{
+            buddhist{"buddha subɔlawo ƒe kalenda"}
+            chinese{"chinatɔwo ƒe kalenda"}
+            coptic{"coptia kalenda"}
+            ethiopic{"ethiopiatɔwo ƒe kalenda"}
+            ethiopic-amete-alem{"ethiopia amate alemtɔwo ƒe kalenda"}
+            gregorian{"gregoria kalenda"}
+            hebrew{"hebritɔwo ƒe kalenda"}
+            indian{"india dukɔ ƒe kalenda"}
+            islamic{"islam subɔlawo ƒe kalenda"}
+            islamic-civil{"islam subɔlawo ƒe sivil kalenda"}
+            japanese{"japantɔwo ƒe kalenda"}
+            persian{"persiatɔwo ƒe kalenda"}
+            roc{"china repɔbliktɔwo ƒe kalenda tso 1912"}
+        }
+        collation{
+            big5han{"blema chinatɔwo ƒe ɖoɖomɔ nu"}
+            dictionary{"nuɖoɖo ɖe nyagɔmeɖegbalẽ ƒe ɖoɖomɔ nu"}
+            ducet{"nuɖoɖo ɖe unicode ƒe ɖoɖo nu"}
+            gb2312han{"chinagbe yeye ƒe ɖoɖomɔ nu"}
+            phonebook{"fonegbalẽ me ɖoɖomɔ nu"}
+            pinyin{"pinyin ɖoɖomɔ nu"}
+            reformed{"nugbugbɔtoɖo ƒe ɖoɖomɔ nu"}
+            search{"nudidi hena zazã gbadza"}
+            stroke{"stroke ɖoɖomɔ nu"}
+            traditional{"blema ɖoɖomɔ nu"}
+            unihan{"ɖoɖomɔnutɔxɛ manɔŋu stroke ƒe ɖoɖo nu"}
+        }
+        numbers{
+            arab{"india ƒe arabia digitwo"}
+            arabext{"india ƒe arabia digitwo dzi yiyi"}
+            armn{"armeniatɔwo ƒe numeralwo"}
+            armnlow{"armeniatɔwo ƒe numeral suetɔwo"}
+            beng{"bengalitɔwo ƒe digitwo"}
+            deva{"devanagari digitwo"}
+            ethi{"ethiopia numeralwo"}
+            fullwide{"digit kekeme blibotɔwo"}
+            geor{"georgiatɔwo ƒe numeralwo"}
+            grek{"greecetɔwo ƒe nemeralwo"}
+            greklow{"greecetɔwo ƒe numeral suetɔwo"}
+            gujr{"gujarati digitwo"}
+            guru{"gurmukhi digitwo"}
+            hanidec{"chinatɔwo ƒe nɔmba madeblibowo"}
+            hans{"chinatɔwo ƒe numeralwo"}
+            hansfin{"chinatɔwo ƒe gadzikpɔ numeralwo"}
+            hant{"blema chinatɔwo ƒe numeralwo"}
+            hantfin{"blema chinatɔwo ƒe gadzikpɔ numeralwo"}
+            hebr{"hebritɔwo ƒe numeralwo"}
+            jpan{"japantɔwo ƒe numeralwo"}
+            jpanfin{"japantɔwo ƒe gadzikpɔnumeralwo"}
+            khmr{"khmertɔwo ƒe nɔmbawo"}
+            knda{"kannadatɔwo ƒe digitwo"}
+            laoo{"laotɔwo ƒe digitwo"}
+            latn{"nɔmbawo le latingbe ƒe ɖoɖo nu"}
+            mlym{"malaya digitwo"}
+            mong{"mongolia digitwo"}
+            mymr{"myanmar digitwo"}
+            orya{"oriya digitwo"}
+            roman{"romatɔwo ƒe numeralwo"}
+            romanlow{"romatɔwo ƒe numeral suetɔwo"}
+            taml{"tamil numeralwo"}
+            telu{"telegu digitwo"}
+            thai{"thai digitwo"}
+            tibt{"tibet digitwo"}
+        }
+    }
+    Version{"2.0.65.46"}
+    codePatterns{
+        language{"gbegbɔgblɔ {0}"}
+        script{"gbeŋɔŋlɔ {0}"}
+        territory{"memama {0}"}
+    }
+}

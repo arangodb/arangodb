@@ -28,16 +28,12 @@
 
 #include "Random.h"
 
-#include <boost/scoped_array.hpp>
-#include <boost/scoped_ptr.hpp>
-
-#include <boost/random.hpp>
-
+#include "BasicsC/mersenne.h"
 #include "BasicsC/socket-utils.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -59,12 +55,6 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   Mutex RandomLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pseudo random generator (mersenne twister)
-////////////////////////////////////////////////////////////////////////////////
-
-  boost::mt19937 mersenneDevice;
 }
 
 // -----------------------------------------------------------------------------
@@ -76,6 +66,24 @@ namespace RandomHelper {
     public:
       virtual ~RandomDevice () {}
       virtual uint32_t random () = 0;
+
+      static unsigned long getSeed () {
+        unsigned long seed = (unsigned long) time(0);
+
+#ifdef TRI_HAVE_GETTIMEOFDAY
+        struct timeval tv;
+        int result = gettimeofday(&tv, 0);
+
+        seed ^= static_cast<unsigned long>(tv.tv_sec);
+        seed ^= static_cast<unsigned long>(tv.tv_usec);
+        seed ^= static_cast<unsigned long>(result);
+#endif
+
+        seed ^= static_cast<unsigned long>(Thread::currentProcessId());
+
+        return seed;
+      };
+
   };
 
 
@@ -145,9 +153,7 @@ namespace RandomHelper {
   class RandomDeviceCombined : public RandomDevice {
     public:
       RandomDeviceCombined (string path)
-        : interval(0, UINT32_MAX),
-          randomGenerator(mersenneDevice, interval),
-          fd(0),
+        : fd(0),
           pos(0),
           rseed(0) {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
@@ -209,23 +215,11 @@ namespace RandomHelper {
         }
 
         if (0 < n) {
-          unsigned long seed = (unsigned long) time(0);
-
-#ifdef TRI_HAVE_GETTIMEOFDAY
-          struct timeval tv;
-          int result = gettimeofday(&tv, 0);
-
-          seed ^= static_cast<unsigned long>(tv.tv_sec);
-          seed ^= static_cast<unsigned long>(tv.tv_usec);
-          seed ^= static_cast<unsigned long>(result);
-#endif
-
-          seed ^= static_cast<unsigned long>(Thread::currentProcessId());
-
-          mersenneDevice.seed(rseed ^ (uint32_t) seed);
+          unsigned long seed = RandomDevice::getSeed();
+          TRI_SeedMersenneTwister((uint32_t) (rseed ^ (uint32_t) seed));
 
           while (0 < n) {
-            *ptr++ = randomGenerator();
+            *ptr++ = TRI_Int32MersenneTwister();
             --n;
           }
         }
@@ -234,9 +228,6 @@ namespace RandomHelper {
       }
 
     private:
-      boost::uniform_int<uint32_t> interval;
-      boost::variate_generator< boost::mt19937&, boost::uniform_int<uint32_t> > randomGenerator;
-
       int fd;
       uint32_t buffer[N];
       size_t pos;
@@ -336,7 +327,7 @@ namespace RandomHelper {
 
         while (r >= g) {
           if (++count >= MAX_COUNT) {
-            LOGGER_ERROR << "cannot generator small random number after " << count << " tries";
+            LOGGER_ERROR << "cannot generate small random number after " << count << " tries";
             r %= g;
             continue;
           }
@@ -377,9 +368,12 @@ namespace triagens {
       // MERSENNE
       struct UniformIntegerMersenne : public UniformIntegerImpl {
         int32_t random (int32_t left, int32_t right) {
-          boost::uniform_int<int32_t> interval(left, right);
-          boost::variate_generator< boost::mt19937&, boost::uniform_int<int32_t> > randomGenerator(mersenneDevice, interval);
-          return randomGenerator();
+          const int32_t range = right - left + 1;
+          int32_t result = (int32_t) TRI_Int32MersenneTwister();
+
+          result = (int32_t) abs(result % range) + left;
+
+          return result;
         }
       };
 
@@ -444,66 +438,28 @@ namespace triagens {
 
 
       string UniformCharacter::random () {
-        boost::scoped_array<char> buffer(new char[length + 1]);
-
-        char* ptr = buffer.get();
-        char* end = ptr + length;
-
-        for (;  ptr < end;  ++ptr) {
-          size_t r = generator.random();
-
-          *ptr = characters[r];
-        }
-
-        *ptr = '\0';
-
-        return string(buffer.get());
+        return random(length);
       }
 
 
 
       string UniformCharacter::random (size_t length) {
-        boost::scoped_array<char> buffer(new char[length + 1]);
+        string buffer;
+        buffer.reserve(length);
 
-        char* ptr = buffer.get();
-        char* end = ptr + length;
-
-        for (;  ptr < end;  ++ptr) {
+        for (size_t i = 0; i < length; ++i) {
           size_t r = generator.random();
 
-          *ptr = characters[r];
+          buffer.push_back(characters[r]);
         }
 
-        *ptr = '\0';
-
-        return string(buffer.get());
+        return buffer;
       }
 
 // -----------------------------------------------------------------------------
       // public methods
 // -----------------------------------------------------------------------------
-
-      void seed () {
-        MUTEX_LOCKER(RandomLock);
-
-        unsigned long seed = (unsigned long) time(0);
-
-#ifdef TRI_HAVE_GETTIMEOFDAY
-        struct timeval tv;
-        int result = gettimeofday(&tv, 0);
-
-        seed ^= static_cast<unsigned long>(tv.tv_sec);
-        seed ^= static_cast<unsigned long>(tv.tv_usec);
-        seed ^= static_cast<unsigned long>(result);
-#endif
-
-        seed ^= static_cast<unsigned long>(Thread::currentProcessId());
-
-        mersenneDevice.seed((uint32_t) seed);
-      }
-
-
-
+      
       random_e selectVersion (random_e newVersion) {
         MUTEX_LOCKER(RandomLock);
 

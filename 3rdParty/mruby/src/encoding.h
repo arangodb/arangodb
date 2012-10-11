@@ -15,11 +15,6 @@ extern "C" {
 #include "oniguruma.h"
 #include "mruby/data.h"
 
-int mrb_tolower(int c);
-int mrb_toupper(int c);
-#define TOUPPER(c) mrb_toupper((unsigned char)(c))
-#define TOLOWER(c) mrb_tolower((unsigned char)(c))
-
 #define FL_USHIFT    12
 
 #define FL_USER0     (((int)1)<<(FL_USHIFT+0))

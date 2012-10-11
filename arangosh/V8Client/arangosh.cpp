@@ -38,6 +38,7 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "BasicsC/csv.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
@@ -251,28 +252,26 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   v8::Handle<v8::String> separatorKey = v8::String::New("separator");
   v8::Handle<v8::String> quoteKey = v8::String::New("quote");
 
-  char separator = ',';
-  char quote = '"';
+  string separator = ",";
+  string quote = "\"";
 
   if (3 <= argv.Length()) {
     v8::Handle<v8::Object> options = argv[2]->ToObject();
-    bool error;
-
     // separator
     if (options->Has(separatorKey)) {
-      separator = TRI_ObjectToCharacter(options->Get(separatorKey), error);
+      separator = TRI_ObjectToString(options->Get(separatorKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be a character")));
+      if (separator.length() < 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
       }
     }
 
     // quote
     if (options->Has(quoteKey)) {
-      quote = TRI_ObjectToCharacter(options->Get(quoteKey), error);
+      quote = TRI_ObjectToString(options->Get(quoteKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be a character")));
+      if (quote.length() > 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
       }
     }
   }
@@ -280,12 +279,12 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
   
   ih.setQuote(quote);
-  ih.setSeparator(separator);
+  ih.setSeparator(separator.c_str());
 
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
  
-  if (ih.importCsv(collectionName, fileName)) {
+  if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
     result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
@@ -345,6 +344,44 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: NORMALIZE_STRING(<string>)")));
+  }
+
+  return scope.Close(TRI_normalize_V8_Obj(argv[0]));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: COMPARE_STRING(<left string>, <right string>)")));
+  }
+
+  v8::String::Value left(argv[0]);
+  v8::String::Value right(argv[1]);
+  
+  int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
+  
+  return scope.Close(v8::Integer::New(result));
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -511,7 +548,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("usage: get(<url>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   // check header fields
   map<string, string> headerFields;
@@ -542,7 +579,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
     return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<url>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   // check header fields
   map<string, string> headerFields;
@@ -572,7 +609,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: post(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -603,7 +640,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("usage: put(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -634,7 +671,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& ar
     return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -1103,6 +1140,22 @@ int main (int argc, char* argv[]) {
                          v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
                          v8::ReadOnly);
  
+  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
+                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("COMPARE_STRING"),
+                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
+                         v8::ReadOnly);
+  
+  context->Global()->Set(v8::String::New("HAS_ICU"),
+#ifdef TRI_ICU_VERSION
+                         v8::Boolean::New(true),
+#else
+                         v8::Boolean::New(false),
+#endif
+                         v8::ReadOnly);
+  
   // .............................................................................
   // banner
   // .............................................................................  
@@ -1137,9 +1190,13 @@ int main (int argc, char* argv[]) {
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    cout << "Using READLINE " << TRI_READLINE_VERSION << endl;
+    cout << "Using READLINE " << TRI_READLINE_VERSION << "." << endl;
 #endif
 
+#ifdef TRI_ICU_VERSION
+    cout << "Using ICU " << TRI_ICU_VERSION << " - International Components for Unicode." << endl;
+#endif
+    
     cout << endl;
 
     BaseClient.printWelcomeInfo();

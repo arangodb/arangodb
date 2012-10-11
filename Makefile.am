@@ -20,7 +20,7 @@ dist_man_MANS =
 ### @brief files to cleanup
 ################################################################################
 
-CLEANUP =
+CLEANUP = .setup-js-directories .setup-mr-directories
 
 ################################################################################
 ### @brief flex files
@@ -45,12 +45,6 @@ BISON_FILES =
 ################################################################################
 
 BISONXX_FILES = 
-
-################################################################################
-### @brief protocol buffers files
-################################################################################
-
-PROTOBUF_FILES =
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                             PATHS
@@ -89,21 +83,12 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = \
 	-I@top_srcdir@/lib \
 	-I@top_builddir@/lib \
-	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
 	@READLINE_CPPFLAGS@ \
-	@PROTOBUF_CPPFLAGS@ \
+	@ICU_CPPFLAGS@ \
 	@V8_CPPFLAGS@
-
-
-if ENABLE_ZEROMQ
-
-AM_CPPFLAGS += \
-	@ZEROMQ_CPPFLAGS@
-
-endif
 
 
 if ENABLE_RELATIVE
@@ -124,31 +109,22 @@ endif
 ################################################################################
 
 AM_LDFLAGS = \
-	@BOOST_LDFLAGS@ \
 	@LIBEV_LDFLAGS@ \
 	@MATH_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
 	@READLINE_LDFLAGS@ \
-	@PROTOBUF_LDFLAGS@ \
+	@ICU_LDFLAGS@ \
 	@V8_LDFLAGS@
-
-if ENABLE_ZEROMQ
-
-AM_LDFLAGS += \
-	@ZEROMQ_LDFLAGS@
-
-endif
 
 ################################################################################
 ### @brief libraries
 ################################################################################
 
 LIBS = \
-	@BOOST_LIBS@ \
 	@LIBEV_LIBS@ \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
-	@PROTOBUF_LIBS@ \
+	@ICU_LIBS@ \
 	@READLINE_LIBS@
 
 ################################################################################
@@ -191,6 +167,10 @@ sbin_PROGRAMS = \
 bin_PROGRAMS = \
 	bin/arangosh \
 	bin/arangoimp
+
+if ENABLE_ARANGOB	
+bin_PROGRAMS += bin/arangob
+endif
 
 ################################################################################
 ### @brief uninstalled programs
@@ -240,6 +220,19 @@ nobase_pkgdata_DATA += \
 
 endif
 
+################################################################################
+### @brief /var data
+################################################################################
+
+#if ENABLE_RELATIVE
+#else
+
+install-data-local:
+	test -d $(DESTDIR)$(TRI_DATABASEDIR) || mkdir -p $(DESTDIR)$(TRI_DATABASEDIR)
+	test -d $(DESTDIR)$(TRI_LOGDIR) || mkdir -p $(DESTDIR)$(TRI_LOGDIR)
+
+#endif
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           TARGETS
 ## -----------------------------------------------------------------------------
@@ -284,7 +277,7 @@ include UnitTests/Makefile.files
 
 .PHONY: errorfiles
 
-if ENABLE_ERRORS_DEPENDENCY
+if ENABLE_MAINTAINER_MODE
 
 errorfiles: lib/BasicsC/errors.dat
 	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
@@ -301,7 +294,7 @@ endif
 ################################################################################
 
 clean-local:
-	if test "$(CLEANUP)" != "" ];  then rm -f $(CLEANUP); fi
+	rm -f $(CLEANUP); 
 
 ################################################################################
 ### @brief generated files
@@ -368,7 +361,7 @@ endif
 ### @brief generate all flex files
 ################################################################################
 
-if ENABLE_FLEX
+if ENABLE_MAINTAINER_MODE
 include lib/Makefile.flex
 endif
 
@@ -376,15 +369,9 @@ endif
 ### @brief generate all bison files
 ################################################################################
 
-if ENABLE_BISON
+if ENABLE_MAINTAINER_MODE
 include lib/Makefile.bison
 endif
-
-################################################################################
-### @brief generate all protocol buffers
-################################################################################
-
-include lib/Makefile.protobuf
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                EXTERNAL LIBRARIES
@@ -396,14 +383,6 @@ include lib/Makefile.protobuf
 
 if ENABLE_ALL_IN_ONE_LIBEV
 include 3rdParty/Makefile.all-in-one-libev
-endif
-
-################################################################################
-### @brief protcol buffers
-################################################################################
-
-if ENABLE_ALL_IN_ONE_PROTOBUF
-include 3rdParty/Makefile.all-in-one-protobuf
 endif
 
 ################################################################################
@@ -423,11 +402,11 @@ include 3rdParty/Makefile.all-in-one-mruby
 endif
 
 ################################################################################
-### @brief zeromq
+### @brief ICU
 ################################################################################
 
-if ENABLE_ZEROMQ
-include 3rdParty/Makefile.all-in-one-zeromq
+if ENABLE_ALL_IN_ONE_ICU
+include 3rdParty/Makefile.all-in-one-icu
 endif
 
 ## -----------------------------------------------------------------------------

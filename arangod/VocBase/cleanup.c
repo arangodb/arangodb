@@ -31,7 +31,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "VocBase/barrier.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/shadow-data.h"
 
 // -----------------------------------------------------------------------------
@@ -47,7 +47,7 @@
 /// @brief compactify interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const CLEANUP_INTERVAL = 1 * 1000 * 1000;
+static int const CLEANUP_INTERVAL = (1 * 1000 * 1000);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -66,7 +66,7 @@ static int const CLEANUP_INTERVAL = 1 * 1000 * 1000;
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupSimCollection (TRI_sim_collection_t* sim) {
+static void CleanupDocumentCollection (TRI_document_collection_t* sim) {
   // loop until done
   while (true) {
     TRI_barrier_list_t* container;
@@ -224,8 +224,8 @@ void TRI_CleanupVocBase (void* data) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // now release the lock and maybe unload the collection or some datafiles
-      if (TRI_IS_SIMPLE_COLLECTION(type)) {
-        CleanupSimCollection((TRI_sim_collection_t*) primary);
+      if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+        CleanupDocumentCollection((TRI_document_collection_t*) primary);
       }
     }
 

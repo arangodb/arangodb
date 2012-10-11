@@ -26,6 +26,10 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "DispatcherQueue.h"
 
 #include "Basics/ConditionLocker.h"

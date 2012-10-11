@@ -25,6 +25,10 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "ApplicationDispatcher.h"
 
 #include "Dispatcher/Dispatcher.h"
@@ -247,7 +251,7 @@ void ApplicationDispatcher::stop () {
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
       LOGGER_TRACE << "waiting for dispatcher to stop";
-      sleep(1);
+      TRI_SLEEP(1);
     }
 
     _dispatcher->shutdown();

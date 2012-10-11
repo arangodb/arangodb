@@ -197,7 +197,8 @@ statement_block_statement:
     }
   | limit_statement {
     }
-    
+  ;
+
 for_statement:
     T_FOR variable_name T_IN expression {
       TRI_aql_node_t* node;

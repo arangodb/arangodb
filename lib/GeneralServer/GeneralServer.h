@@ -31,12 +31,27 @@
 
 #include "Basics/Common.h"
 
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <netdb.h>
 
-#include <netinet/in.h>
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/un.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <sys/file.h>
+#endif 
+
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+
+
+
+
 
 #include "Basics/AssociativeArray.h"
 #include "Basics/Exceptions.h"

@@ -1,0 +1,115 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/si.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/si.xml
+ */
+si{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Asia:Amman"{
+            ec{"අම්මාන්"}
+        }
+        "Asia:Baghdad"{
+            ec{"බැග්ඩෑඩ්"}
+        }
+        "Asia:Bahrain"{
+            ec{"බහරේන්"}
+        }
+        "Asia:Bangkok"{
+            ec{"බැංකොක්"}
+        }
+        "Asia:Brunei"{
+            ec{"බෲනායි"}
+        }
+        "Asia:Calcutta"{
+            ec{"කල්කටා"}
+        }
+        "Asia:Colombo"{
+            ec{"කොළඹ"}
+        }
+        "Asia:Dhaka"{
+            ec{"ධකා"}
+        }
+        "Asia:Dubai"{
+            ec{"ඩුබායි"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"හොංකොං"}
+        }
+        "Asia:Jakarta"{
+            ec{"ජකර්තා"}
+        }
+        "Asia:Kabul"{
+            ec{"කාබුල්"}
+        }
+        "Asia:Karachi"{
+            ec{"කරච්චිචි"}
+        }
+        "Asia:Katmandu"{
+            ec{"කත්මන්දු"}
+        }
+        "Asia:Kuwait"{
+            ec{"කුවේට්"}
+        }
+        "Asia:Manila"{
+            ec{"මැනිලා"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"ශා. හෙලේනා"}
+        }
+        "Australia:Brisbane"{
+            ec{"බ්‍රිස්බේන්"}
+        }
+        "Australia:Darwin"{
+            ec{"ඩාවින්"}
+        }
+        "Australia:Hobart"{
+            ec{"හෝබාර්ට්"}
+        }
+        "Australia:Melbourne"{
+            ec{"මෙල්බෝර්න්"}
+        }
+        "Australia:Perth"{
+            ec{"පර්ත්"}
+        }
+        "Australia:Sydney"{
+            ec{"සිඩ්නි"}
+        }
+        "Etc:Unknown"{
+            ec{"හඳුනා නොගත් නගරය"}
+        }
+        "Europe:Belgrade"{
+            ec{"බෙල්ග්‍රේඩ්ඩ්"}
+        }
+        "Europe:Berlin"{
+            ec{"බර්ලින්"}
+        }
+        "Europe:Istanbul"{
+            ec{"ඉස්තාන්බුල්"}
+        }
+        "Europe:Moscow"{
+            ec{"මොස්කව්"}
+        }
+        "Europe:Oslo"{
+            ec{"ඔස්ලෝ"}
+        }
+        "Europe:Paris"{
+            ec{"පැරිස්ස්"}
+        }
+        "Europe:Rome"{
+            ec{"රෝමය"}
+        }
+        "Indian:Maldives"{
+            ec{"මාල දිවයින"}
+        }
+        "meta:Lanka"{
+            ls{"ශ්‍රී ලංකා වේලාව"}
+        }
+    }
+}

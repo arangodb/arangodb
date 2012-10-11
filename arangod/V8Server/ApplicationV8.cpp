@@ -38,6 +38,7 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 
+using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace std;
@@ -105,7 +106,48 @@ namespace {
       ReadWriteLock _lock;
       double _lastGcStamp;
   };
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a global method
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
+  _globalMethods.push_back(method);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes all global methods
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::V8Context::handleGlobalContextMethods () {
+  v8::HandleScope scope;
+
+  for (vector<string>::iterator i = _globalMethods.begin();  i != _globalMethods.end();  ++i) {
+    string const& func = *i;
+
+    LOGGER_DEBUG << "executing global context methods '" << func << "' for context " << _id;
+
+    TRI_ExecuteJavaScriptString(_context,
+                                v8::String::New(func.c_str()),
+                                v8::String::New("global context method"),
+                                false);
+  }
+
+  _globalMethods.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +187,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _contextCondition(),
     _freeContexts(),
     _dirtyContexts(),
+    _busyContexts(),
     _stopping(0) {
 }
 
@@ -200,10 +243,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 
   V8Context* context = _freeContexts.back();
   _freeContexts.pop_back();
+  _busyContexts.insert(context);
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
+
+  context->handleGlobalContextMethods();
 
   return context;
 }
@@ -215,33 +261,63 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   assert(gc != 0);
+
   double lastGc = gc->getLastGcStamp();
-        
+
+  CONDITION_LOCKER(guard, _contextCondition);
+
+  context->handleGlobalContextMethods();
+
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
   
   ++context->_dirt;
 
-  {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    if (context->_lastGcStamp + _gcFrequency < lastGc) {
-      LOGGER_TRACE << "V8 context has reached GC timeout threshold and will be scheduled for GC";
-      _dirtyContexts.push_back(context);
-    }
-    else if (context->_dirt >= _gcInterval) {
-      LOGGER_TRACE << "V8 context has reached maximum number of requests and will be scheduled for GC";
-      _dirtyContexts.push_back(context);
-    }
-    else {
-      _freeContexts.push_back(context);
-    }
-
-    guard.broadcast();
+  if (context->_lastGcStamp + _gcFrequency < lastGc) {
+    LOGGER_TRACE << "V8 context has reached GC timeout threshold and will be scheduled for GC";
+    _dirtyContexts.push_back(context);
+    _busyContexts.erase(context);
   }
+  else if (context->_dirt >= _gcInterval) {
+    LOGGER_TRACE << "V8 context has reached maximum number of requests and will be scheduled for GC";
+    _dirtyContexts.push_back(context);
+    _busyContexts.erase(context);
+  }
+  else {
+    _freeContexts.push_back(context);
+    _busyContexts.erase(context);
+  }
+  
+  guard.broadcast();
 
   LOGGER_TRACE << "returned dirty V8 context";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a global context functions to be executed asap
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::addGlobalContextMethod (string const& method) {
+  CONDITION_LOCKER(guard, _contextCondition);
+  
+  for (vector<V8Context*>::iterator i = _freeContexts.begin();  i != _freeContexts.end();  ++i) {
+    V8Context* context = *i;
+
+    context->addGlobalContextMethod(method);
+  }
+
+  for (vector<V8Context*>::iterator i = _dirtyContexts.begin();  i != _dirtyContexts.end();  ++i) {
+    V8Context* context = *i;
+
+    context->addGlobalContextMethod(method);
+  }
+
+  for (set<V8Context*>::iterator i = _busyContexts.begin();  i != _busyContexts.end();  ++i) {
+    V8Context* context = *i;
+
+    context->addGlobalContextMethod(method);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -322,6 +398,7 @@ void ApplicationV8::collectGarbage () {
 
       if (_dirtyContexts.empty()) {
         uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
+
         // we'll wait for a signal or a timeout
         gotSignal = guard.wait(waitTime);
 
@@ -347,7 +424,7 @@ void ApplicationV8::collectGarbage () {
         useReducedWait =  (context != 0);
       }
     }
-
+   
     // update last gc time   
     double lastGc = TRI_microtime();
     gc->updateGcStamp(lastGc);
@@ -424,8 +501,8 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
   
+  // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
-    // use a minimum of 1 second for GC
     _gcFrequency = 1;
   }
 
@@ -508,6 +585,7 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
+
   // stop GC
   _gcThread->shutdown();
 
@@ -552,6 +630,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   V8Context* context = _contexts[i] = new V8Context();
 
   // enter a new isolate
+  context->_id = i;
   context->_isolate = v8::Isolate::New();
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
@@ -618,6 +697,8 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
 
   context->_lastGcStamp = TRI_microtime();
   
+  context->_lastGcStamp = TRI_microtime();
+
   LOGGER_TRACE << "initialised V8 context #" << i;
 
   _freeContexts.push_back(context);

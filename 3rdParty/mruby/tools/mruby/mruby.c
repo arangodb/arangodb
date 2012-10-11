@@ -7,10 +7,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef ENABLE_STDIO
+static void
+p(mrb_state *mrb, mrb_value obj)
+{
+  obj = mrb_funcall(mrb, obj, "inspect", 0);
+  fwrite(RSTRING_PTR(obj), RSTRING_LEN(obj), 1, stdout);
+  putc('\n', stdout);
+}
+#else
+#define p(mrb,obj) mrb_p(mrb,obj)
+#endif
+
 void mrb_show_version(mrb_state *);
 void mrb_show_copyright(mrb_state *);
-void parser_dump(mrb_state*, struct mrb_ast_node*, int);
-void codedump_all(mrb_state*, int);
 
 struct _args {
   FILE *rfp;
@@ -47,16 +57,22 @@ static int
 parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
 {
   char **origargv = argv;
+  static const struct _args args_zero = { 0 };
 
-  memset(args, 0, sizeof(*args));
+  *args = args_zero;
 
   for (argc--,argv++; argc > 0; argc--,argv++) {
+    char *item;
     if (argv[0][0] != '-') break;
 
-    if (strlen(*argv) <= 1)
-      return -1;
+    if (strlen(*argv) <= 1) {
+      argc--; argv++;
+      args->rfp = stdin;
+      break;
+    }
 
-    switch ((*argv)[1]) {
+    item = argv[0] + 1;
+    switch (*item++) {
     case 'b':
       args->mrbfile = 1;
       break;
@@ -64,19 +80,24 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       args->check_syntax = 1;
       break;
     case 'e':
-      if (argc > 1) {
+      if (item[0]) {
+        goto append_cmdline;
+      }
+      else if (argc > 1) {
         argc--; argv++;
+        item = argv[0];
+append_cmdline:
         if (!args->cmdline) {
           char *buf;
 
-          buf = mrb_malloc(mrb, strlen(argv[0])+1);
-          strcpy(buf, argv[0]);
+          buf = (char *)mrb_malloc(mrb, strlen(item)+1);
+          strcpy(buf, item);
           args->cmdline = buf;
         }
         else {
-          args->cmdline = mrb_realloc(mrb, args->cmdline, strlen(args->cmdline)+strlen(argv[0])+2);
+          args->cmdline = (char *)mrb_realloc(mrb, args->cmdline, strlen(args->cmdline)+strlen(item)+2);
           strcat(args->cmdline, "\n");
-          strcat(args->cmdline, argv[0]);
+          strcat(args->cmdline, item);
         }
       }
       else {
@@ -103,9 +124,10 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       }
       else return -3;
       return 0;
+    default:
+      return -4;
     }
   }
-
 
   if (args->rfp == NULL && args->cmdline == NULL) {
     if (*argv == NULL) args->rfp = stdin;
@@ -114,7 +136,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
       return 0;
     }
   }
-  args->argv = mrb_realloc(mrb, args->argv, sizeof(char*) * (argc + 1));
+  args->argv = (char **)mrb_realloc(mrb, args->argv, sizeof(char*) * (argc + 1));
   memcpy(args->argv, argv, (argc+1) * sizeof(char*));
   args->argc = argc;
 
@@ -140,7 +162,12 @@ main(int argc, char **argv)
   int n = -1;
   int i;
   struct _args args;
-  struct mrb_parser_state *p;
+  mrb_value ARGV;
+
+  if (mrb == NULL) {
+    fprintf(stderr, "Invalid mrb_state, exiting mruby");
+    return EXIT_FAILURE;
+  }
 
   n = parse_args(mrb, argc, argv, &args);
   if (n < 0 || (args.cmdline == NULL && args.rfp == NULL)) {
@@ -149,51 +176,50 @@ main(int argc, char **argv)
     return n;
   }
 
+  ARGV = mrb_ary_new(mrb);
+  for (i = 0; i < args.argc; i++) {
+    mrb_ary_push(mrb, ARGV, mrb_str_new(mrb, args.argv[i], strlen(args.argv[i])));
+  }
+  mrb_define_global_const(mrb, "ARGV", ARGV);
+
   if (args.mrbfile) {
     n = mrb_load_irep(mrb, args.rfp);
+    if (n >= 0) {
+      if (!args.check_syntax) {
+	mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
+	if (mrb->exc) {
+	  p(mrb, mrb_obj_value(mrb->exc));
+	}
+      }
+    }
   }
   else {
+    mrbc_context *c = mrbc_context_new(mrb);
+    mrb_value v;
+
+    if (args.verbose)
+      c->dump_result = 1;
+    if (args.check_syntax)
+      c->no_exec = 1;
+
     if (args.cmdline) {
-      p = mrb_parse_string(mrb, (char*)args.cmdline);
+      mrbc_filename(mrb, c, "-e");
+      v = mrb_load_string_cxt(mrb, (char*)args.cmdline, c);
     }
     else {
-      p = mrb_parser_new(mrb);
-      if (p) {
-	mrb_parser_filename(p, argv[1]);
-	p->f = args.rfp;
-	mrb_parser_parse(p);
+      mrbc_filename(mrb, c, args.argv[0]);
+      v = mrb_load_file_cxt(mrb, args.rfp, c);
+    }
+    mrbc_context_free(mrb, c);
+    if (mrb->exc) {
+      if (!mrb_undef_p(v)) {
+	p(mrb, mrb_obj_value(mrb->exc));
       }
     }
-    if (!p || !p->tree || p->nerr) {
-      cleanup(mrb, &args);
-      return -1;
-    }
-
-    if (args.verbose)
-      parser_dump(mrb, p->tree, 0);
-
-    n = mrb_generate_code(mrb, p->tree);
-    mrb_pool_close(p->pool);
-  }
-
-  if (n >= 0) {
-    mrb_value ARGV = mrb_ary_new(mrb);
-    for (i = 0; i < args.argc; i++) {
-      mrb_ary_push(mrb, ARGV, mrb_str_new(mrb, args.argv[i], strlen(args.argv[i])));
-    }
-    mrb_define_global_const(mrb, "ARGV", ARGV);
-
-    if (args.verbose)
-      codedump_all(mrb, n);
-
-    if (!args.check_syntax) {
-      mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
-      if (mrb->exc) {
-        mrb_p(mrb, mrb_obj_value(mrb->exc));
-      }
+    else if (args.check_syntax) {
+      printf("Syntax OK\n");
     }
   }
-
   cleanup(mrb, &args);
 
   return n > 0 ? 0 : 1;

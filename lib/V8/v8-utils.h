@@ -150,6 +150,38 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, std::string const
 
 void TRI_InitV8Utils (v8::Handle<v8::Context>, std::string const&);
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Converts an object to a UTF-8-encoded and normalized character array.
+////////////////////////////////////////////////////////////////////////////////
+
+class TRI_Utf8ValueNFC {
+  public:
+    TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj);
+    ~TRI_Utf8ValueNFC();
+    char* operator*() { return _str; }
+    const char* operator*() const { return _str; }
+    size_t length() const { return _length; }
+  private:
+    char* _str;
+    size_t _length;
+    TRI_memory_zone_t* _memoryZone;
+
+#ifndef TRI_HAVE_ICU
+    v8::String::Utf8Value _utf8Value;
+#endif
+    
+    // Disallow copying and assigning.
+    TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&);
+    void operator=(const TRI_Utf8ValueNFC&);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a v8 object 
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj);        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

@@ -83,16 +83,22 @@ V8ClientConnection* ClientConnection = 0;
 static uint64_t MaxUploadSize = 500000;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief quote character
+/// @brief quote character(s)
 ////////////////////////////////////////////////////////////////////////////////
 
-static string QuoteChar = "\"";
+static string Quote = "\"";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief separator character
+/// @brief eol character(s)
 ////////////////////////////////////////////////////////////////////////////////
 
-static string SeparatorChar = ",";
+static string Eol = "\\n";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief separator
+////////////////////////////////////////////////////////////////////////////////
+
+static string Separator = ",";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file-name
@@ -150,9 +156,10 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
     ("use-ids", &UseIds, "re-use _id and _rev values found in document data")
     ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
-    ("type", &TypeImport, "type of file (\"csv\" or \"json\")")
-    ("quote", &QuoteChar, "quote character")
-    ("separator", &SeparatorChar, "separator character")
+    ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
+    ("quote", &Quote, "quote character(s)")
+    ("eol", &Eol, "end of line character(s)")
+    ("separator", &Separator, "separator")
   ;
 
   BaseClient.setupGeneral(description);
@@ -236,8 +243,13 @@ int main (int argc, char* argv[]) {
   cout << "reusing ids:      " << (UseIds ? "yes" : "no") << endl;
   cout << "file:             " << FileName << endl;
   cout << "type:             " << TypeImport << endl;
-  cout << "quote:            " << QuoteChar << endl;
-  cout << "separator:        " << SeparatorChar << endl;
+  cout << "eol:              " << Eol << endl;
+
+  if (TypeImport != "tsv") {
+    cout << "quote:            " << Quote << endl;
+    cout << "separator:        " << Separator << endl;
+  }
+
   cout << "connect timeout:  " << BaseClient.connectTimeout() << endl;
   cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
   cout << "----------------------------------------" << endl;
@@ -255,20 +267,29 @@ int main (int argc, char* argv[]) {
   }
 
   // quote
-  if (QuoteChar.length() == 1) {
-    ih.setQuote(QuoteChar[0]);      
+  if (Quote.length() <= 1) {
+    ih.setQuote(Quote);
   }
   else {
     cerr << "Wrong length of quote character." << endl;
     return EXIT_FAILURE;
   }
-
-  // separator
-  if (SeparatorChar.length() == 1) {
-    ih.setSeparator(SeparatorChar[0]);      
+  
+  // eol
+  if (Eol.length() > 0) {
+    ih.setEol(Eol);
   }
   else {
-    cerr << "Wrong length of separator character." << endl;
+    cerr << "Wrong length of eol character." << endl;
+    return EXIT_FAILURE;
+  }
+
+  // separator
+  if (Separator.length() > 0) {
+    ih.setSeparator(Separator);      
+  }
+  else {
+    cerr << "Separator must be at least one character." << endl;
     return EXIT_FAILURE;
   }
 
@@ -294,9 +315,16 @@ int main (int argc, char* argv[]) {
 
   if (TypeImport == "csv") {
     cout << "Starting CSV import..." << endl;
-    ok = ih.importCsv(CollectionName, FileName);
+    ok = ih.importDelimited(CollectionName, FileName, ImportHelper::CSV);
   }
-
+  
+  else if (TypeImport == "tsv") {
+    cout << "Starting TSV import..." << endl;
+    ih.setQuote("");
+    ih.setSeparator("\\t");
+    ok = ih.importDelimited(CollectionName, FileName, ImportHelper::TSV);
+  }
+  
   else if (TypeImport == "json") {
     cout << "Starting JSON import..." << endl;
     ok = ih.importJson(CollectionName, FileName);

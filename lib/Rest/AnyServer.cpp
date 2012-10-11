@@ -28,7 +28,9 @@
 
 #include "AnyServer.h"
 
+#ifdef TRI_HAVE_SYS_WAIT_H         
 #include <sys/wait.h>
+#endif
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -56,9 +58,13 @@ using namespace triagens::rest;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#ifdef TRI_HAVE_FORK
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a pid file
 ////////////////////////////////////////////////////////////////////////////////
+
 
 static void CheckPidFile (string const& pidFile) {
 
@@ -76,7 +82,7 @@ static void CheckPidFile (string const& pidFile) {
 
       // file can be opened
       if (f) {
-        int oldPid;
+        TRI_pid_t oldPid;
 
         f >> oldPid;
 
@@ -89,7 +95,6 @@ static void CheckPidFile (string const& pidFile) {
         LOGGER_DEBUG << "found old pid: " << oldPid;
 
         int r = kill(oldPid, 0);
-
         if (r == 0) {
           LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
           TRI_FlushLogging();
@@ -152,7 +157,7 @@ static void WritePidFile (string const& pidFile, int pid) {
 static int forkProcess (string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
 
   // fork off the parent process
-  pid_t pid = fork();
+  TRI_pid_t pid = fork();
 
   if (pid < 0) {
     LOGGER_FATAL << "cannot fork";
@@ -176,7 +181,7 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
   umask(0);
 
   // create a new SID for the child process
-  pid_t sid = setsid();
+  TRI_pid_t sid = setsid();
 
   if (sid < 0) {
     cerr << "cannot create sid\n";
@@ -210,6 +215,121 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
 
   return 0;
 }
+#else
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a pid file
+////////////////////////////////////////////////////////////////////////////////
+
+
+static void CheckPidFile (string const& pidFile) {
+
+  // check if the pid-file exists
+  if (! pidFile.empty()) {
+    if (FileUtils::isDirectory(pidFile)) {
+      LOGGER_FATAL << "pid-file '" << pidFile << "' is a directory";
+      TRI_FlushLogging();
+      exit(EXIT_FAILURE);
+    }
+    else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
+      LOGGER_INFO << "pid-file '" << pidFile << "' already exists, verifying pid";
+
+      ifstream f(pidFile.c_str());
+
+      // file can be opened
+      if (f) {
+        TRI_pid_t oldPid;
+
+        f >> oldPid;
+
+        if (oldPid == 0) {
+          LOGGER_FATAL << "pid-file '" << pidFile << "' is unreadable";
+          TRI_FlushLogging();
+          exit(EXIT_FAILURE);
+        }
+
+        LOGGER_DEBUG << "found old pid: " << oldPid;
+
+        int r = 0;
+        // for windows  use TerminateProcess
+        //int r = kill(oldPid, 0);
+        if (r == 0) {
+          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
+          TRI_FlushLogging();
+          exit(EXIT_FAILURE);
+        }
+        else if (errno == EPERM) {
+          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and process with pid " << oldPid << " is still running";
+          TRI_FlushLogging();
+          exit(EXIT_FAILURE);
+        }
+        else if (errno == ESRCH) {
+          LOGGER_ERROR << "pid-file '" << pidFile << "' exists, but no process with pid " << oldPid << " exists";
+
+          if (! FileUtils::remove(pidFile)) {
+            LOGGER_FATAL << "pid-file '" << pidFile << "' exists, no process with pid " << oldPid << " exists, but pid-file cannot be removed";
+            TRI_FlushLogging();
+            exit(EXIT_FAILURE);
+          }
+
+          LOGGER_INFO << "removed stale pid-file '" << pidFile << "'";
+        }
+        else {
+          LOGGER_FATAL << "pid-file '" << pidFile << "' exists and kill " << oldPid << " failed";
+          TRI_FlushLogging();
+          exit(EXIT_FAILURE);
+        }
+      }
+
+      // failed to open file
+      else {
+        LOGGER_FATAL << "pid-file '" << pidFile << "' exists, but cannot be opened";
+        TRI_FlushLogging();
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    LOGGER_DEBUG << "using pid-file '" << pidFile << "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a pid file
+////////////////////////////////////////////////////////////////////////////////
+
+static void WritePidFile (string const& pidFile, int pid) {
+  ofstream out(pidFile.c_str(), ios::trunc);
+
+  if (! out) {
+    cerr << "cannot write pid-file \"" << pidFile << "\"\n";
+    exit(EXIT_FAILURE);
+  }
+
+  out << pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forks a new process
+////////////////////////////////////////////////////////////////////////////////
+
+// ..............................................................................
+// TODO: use windows API CreateProcess & CreateThread to minic fork()
+// ..............................................................................
+
+static int forkProcess (string const& workingDirectory, string& current, ApplicationServer* applicationServer) {
+
+  // fork off the parent process
+  TRI_pid_t pid = -1; // fork();
+
+  if (pid < 0) {
+    LOGGER_FATAL << "cannot fork";
+    exit(EXIT_FAILURE);
+  }
+
+  return 0;
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -330,6 +450,8 @@ void AnyServer::prepareServer () {
 /// @brief starts a supervisor
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_FORK
+
 int AnyServer::startupSupervisor () {
   static time_t MIN_TIME_ALIVE_IN_SEC = 30;
 
@@ -355,7 +477,7 @@ int AnyServer::startupSupervisor () {
     while (! done) {
       
       // fork of the server
-      pid_t pid = fork();
+      TRI_pid_t pid = fork();
       
       if (pid < 0) {
         exit(EXIT_FAILURE);
@@ -524,6 +646,18 @@ int AnyServer::startupDaemon () {
   
   return result;
 }
+
+#else
+
+int AnyServer::startupSupervisor () {
+  return 0;
+}
+
+int AnyServer::startupDaemon () {
+  return 0;   
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

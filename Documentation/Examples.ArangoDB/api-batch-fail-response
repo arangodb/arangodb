@@ -1,0 +1,24 @@
+HTTP/1.1 200 OK
+x-arango-errors: 1
+content-type: multipart/form-data; boundary=XXXsubpartXXX
+content-length: 711
+
+--XXXsubpartXXX
+Content-Type: application/x-arango-batchpart
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+content-length: 111
+
+{"error":true,"code":404,"errorNum":1203,"errorMessage":"collection \/_api\/collection\/nonexisting not found"}
+--XXXsubpartXXX
+Content-Type: application/x-arango-batchpart
+
+HTTP/1.1 202 Accepted
+location: /_api/document/101059/9841979
+content-type: application/json; charset=utf-8
+etag: "9841979"
+content-length: 53
+
+{"error":false,"_id":"101059/9841979","_rev":9841979}
+--XXXsubpartXXX--

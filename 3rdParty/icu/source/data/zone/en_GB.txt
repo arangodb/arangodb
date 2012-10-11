@@ -1,0 +1,31 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/en_GB.xml
+// *
+// ***************************************************************************
+en_GB{
+    Version{"2.0.65.46"}
+    zoneStrings{
+        "Europe:London"{
+            sd{"BST"}
+        }
+        "meta:Europe_Central"{
+            sd{"CEST"}
+            sg{"CET"}
+            ss{"CET"}
+        }
+        "meta:Europe_Eastern"{
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            sd{"WEST"}
+            sg{"WET"}
+            ss{"WET"}
+        }
+    }
+}

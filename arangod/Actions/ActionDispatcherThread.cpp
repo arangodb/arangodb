@@ -47,7 +47,7 @@ using namespace triagens::arango;
 /// @brief constructs a new dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ActionDispatcherThread::ActionDispatcherThread (rest::DispatcherQueue* queue)
+ActionDispatcherThread::ActionDispatcherThread (triagens::rest::DispatcherQueue* queue)
   : DispatcherThread(queue) {
 }
 

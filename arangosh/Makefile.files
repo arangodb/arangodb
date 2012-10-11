@@ -47,6 +47,28 @@ bin_arangoimp_SOURCES = \
 	arangosh/V8Client/arangoimp.cpp
 
 ################################################################################
+### @brief program "arangob"
+################################################################################
+if ENABLE_ARANGOB
+
+bin_arangob_CPPFLAGS = \
+	-I@top_srcdir@/arangosh \
+	$(AM_CPPFLAGS) 
+
+bin_arangob_LDADD = \
+	lib/libarango_v8.a \
+	lib/libarango_client.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@
+
+bin_arangob_SOURCES = \
+	arangosh/ArangoShell/ArangoClient.cpp \
+	arangosh/Benchmark/arangob.cpp
+
+endif
+
+################################################################################
 ## --SECTION--                                                       END-OF-FILE
 ################################################################################
 

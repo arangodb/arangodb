@@ -3,6 +3,7 @@ test -d logs || mkdir logs
 
 rspec --format d \
 	api-http-spec.rb \
+	api-batch-spec.rb \
 	api-collection-spec.rb \
 	rest-create-document-spec.rb \
 	rest-read-document-spec.rb \
@@ -11,8 +12,10 @@ rspec --format d \
 	rest-edge-spec.rb \
 	api-import-spec.rb \
 	api-index-spec.rb \
+	api-index-bitarray-spec.rb \
 	api-index-hash-spec.rb \
 	api-index-skiplist-spec.rb \
-        api-explain-spec.rb \
-        api-cursor-spec.rb \
-        api-simple-spec.rb
+	api-explain-spec.rb \
+	api-cursor-spec.rb \
+	api-statistics-spec.rb \
+	api-simple-spec.rb 

@@ -30,7 +30,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
 
@@ -230,7 +230,6 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection;
   TRI_primary_collection_t* primary;
-  TRI_sim_collection_t* sim;
   void** beg;
   void** end;
   void** ptr;
@@ -253,13 +252,11 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     return;
   }
 
-  if (! TRI_IS_SIMPLE_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
     TRI_ReleaseCollectionVocBase(vocbase, collection);
     LOG_FATAL("collection '_users' has an unknown collection type");
     return;
   }
-
-  sim = (TRI_sim_collection_t*) primary;
 
   // .............................................................................
   // inside a read transaction
@@ -267,8 +264,8 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   collection->_collection->beginRead(collection->_collection);
   
-  beg = sim->_primaryIndex._table;
-  end = sim->_primaryIndex._table + sim->_primaryIndex._nrAlloc;
+  beg = primary->_primaryIndex._table;
+  end = beg + primary->_primaryIndex._nrAlloc;
   ptr = beg;
 
   for (;  ptr < end;  ++ptr) {

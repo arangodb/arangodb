@@ -4,20 +4,10 @@ dnl ----------------------------------------------------------------------------
 dnl information
 dnl ----------------------------------------------------------------------------
 
-if test "x$EDITION_INFO" != "x";  then
-  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-
-  echo $EDITION_INFO | tr "|" "\n" | while read a; do
-    if test "x$a" != "x";  then
-      AC_MSG_NOTICE([$[]a])
-    fi
-  done
-fi
-
 if test "x$BASIC_INFO" != "x";  then
   AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-  echo $BASIC_INFO | tr "|" "\n" | while read a; do
+  echo $BASIC_INFO | tr "|" "\n" | sort | while read a; do
     if test "x$a" != "x";  then
       AC_MSG_NOTICE([$[]a])
     fi
@@ -37,7 +27,7 @@ fi
 if test "x$TOOL_INFO" != "x";  then
   AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-  echo $TOOL_INFO | tr "|" "\n" | while read a; do
+  echo $TOOL_INFO | tr "|" "\n" | sort | while read a; do
     if test "x$a" != "x";  then
       AC_MSG_NOTICE([$[]a])
     fi
