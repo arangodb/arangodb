@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ssl helper functions
+/// @brief over the wire protocol
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,40 +25,39 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_SSL_HELPER_H
-#define TRIAGENS_BASICS_SSL_HELPER_H 1
-
-#include "Basics/Common.h"
-
-#include <openssl/err.h>
-
-namespace triagens {
-  namespace basics {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Utilities
-/// @{
+/// @page HttpMiscTOC
+///
+/// <ul>
+///  <li>@ref HttpMisc
+///   <ul>
+///    <li>@ref HttpMiscVersion "GET /_admin/version"</li>
+///    <li>@ref HttpMiscTime "GET /_admin/time"</li>
+///    <li>@ref HttpMiscEcho "GET /_admin/echo"</li>
+///   </ul>
+///  </li>
+/// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get last SSL error
+/// @page HttpMisc HTTP Interface for Miscellaneous functions
+///
+/// This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
+///
+/// @EMBEDTOC{HttpMiscTOC}
+///
+/// @anchor HttpMiscVersion
+/// @copydetails triagens::admin::RestVersionHandler::execute
+///
+/// @anchor HttpMiscTime
+/// @copydetails JSF_GET_admin_time
+///
+/// @anchor HttpMiscEcho
+/// @copydetails JSF_GET_admin_echo
 ////////////////////////////////////////////////////////////////////////////////
-
-    string lastSSLError ();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
+// mode: c++
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:

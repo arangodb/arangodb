@@ -58,7 +58,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-locking collection index %p", a); \
   TRI_ReadLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +65,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-unlocking collection index %p", a); \
   TRI_ReadUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +72,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-locking collection index %p", a); \
   TRI_WriteLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +79,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-unlocking collection index %p", a); \
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,16 +208,6 @@ TRI_doc_collection_info_t;
 /// Ends a write transaction. Should only be called after a successful
 /// @LIT{beginWrite}.
 ///
-/// @FUN{void createHeader (TRI_primary_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t*, void const* @FA{data})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Creates a new header.
-///
-/// @FUN{void updateHeader (TRI_primary_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t const* {current}, TRI_doc_mptr_t* @FA{update})}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Updates an existing header.
-///
 /// @FUN{TRI_doc_mptr_t const create (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool @FA{release})}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
@@ -306,7 +292,7 @@ typedef struct TRI_primary_collection_s {
   TRI_collection_t base;
   
   // .............................................................................
-  // this lock protects the _primaryIndex plus the _secondaryIndexes, _edgesIndex,
+  // this lock protects the _primaryIndex plus the _allIndexes, _edgesIndex,
   // and _headers attributes in derived types
   // .............................................................................
 

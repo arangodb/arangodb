@@ -87,14 +87,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
 
-/*
-#include "js/common/bootstrap/js-modules.h"
-#include "js/common/bootstrap/js-print.h"
-#include "js/common/bootstrap/js-errors.h"
-#include "js/server/js-ahuacatl.h"
-#include "js/server/js-server.h"
-*/
-
 #ifdef TRI_ENABLE_MRUBY
 #include "mr/common/bootstrap/mr-error.h"
 #include "mr/server/mr-server.h"
@@ -416,7 +408,7 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
   }
 #endif  
-  
+ 
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................

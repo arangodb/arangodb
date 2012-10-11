@@ -50,7 +50,7 @@ TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
     return NULL;
   }
 
-  variable->_name = TRI_DuplicateString(name);
+  variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
   if (variable->_name == NULL) {
     TRI_FreeVariableAql(variable);

@@ -19,10 +19,6 @@
 <a class="el" href="HttpSystem.html#HttpSystemConnectionStatistics">GET /_admin/connection-statistics</a> </li>
 <li>
 <a class="el" href="HttpSystem.html#HttpSystemRequestStatistics">GET /_admin/request-statistics</a> </li>
-<li>
-<a class="el" href="HttpSystem.html#HttpSystemConfigDescription">GET /_admin/config/description</a> </li>
-<li>
-<a class="el" href="HttpSystem.html#HttpSystemConfigConfiguration">GET /_admin/config/configuration</a> </li>
 </ul>
 </li>
 </ul>
@@ -96,7 +92,7 @@
 <p><a class="anchor" id="HttpSystemConnectionStatistics"></a> <hr/>
 <em>GET /_admin/connection-statistics</em> (reads the connection statistics)<hr/>
 <br/>
- <code><b>GET /_admin/connection-statistics?granalurity=<em>granularity</em>&amp;figures=<em>figures</em>&amp;length=<em>length</em></b></code></p>
+ <code><b>GET /_admin/connection-statistics?granularity=<em>granularity</em>&amp;figures=<em>figures</em>&amp;length=<em>length</em></b></code></p>
 <p>The call returns statistics about the current and past requests. The following parameter control which information is returned.</p>
 <ul>
 <li><em>granularity</em>: use <code>minutes</code> for a granularity of minutes, <code>hours</code> for hours, and <code>days</code> for days. The default is <code>minutes</code>.</li>
@@ -176,7 +172,7 @@
 </pre></div> <p><a class="anchor" id="HttpSystemRequestStatistics"></a> <hr/>
 <em>GET /_admin/request-statistics</em> (reads the request statistics)<hr/>
 <br/>
- <code><b>GET /_admin/request-statistics?granalurity=<em>granularity</em>&amp;figures=<em>figures</em>&amp;length=<em>length</em></b></code></p>
+ <code><b>GET /_admin/request-statistics?granularity=<em>granularity</em>&amp;figures=<em>figures</em>&amp;length=<em>length</em></b></code></p>
 <p>The call returns statistics about the current and past requests. The following parameter control which information is returned.</p>
 <ul>
 <li><em>granularity</em>: use <code>minutes</code> for a granularity of minutes, <code>hours</code> for hours, and <code>days</code> for days. The default is <code>minutes</code>.</li>
@@ -333,15 +329,5 @@ HTTP/1.1 200 OK
     "distribution" : [38611, 0, 0, 0, 0, 0]
   }
 }
-</pre></div> <p><a class="anchor" id="HttpSystemConfigDescription"></a> <hr/>
-<em>GET /_admin/config/description</em> (reads the configuration desciption)<hr/>
-<br/>
- <code><b>GET /_admin/config/desciption</b></code></p>
-<p>The call returns an object describing the configuration. </p>
-<p><a class="anchor" id="HttpSystemConfigConfiguration"></a> <hr/>
-<em>GET /_admin/config/configuration</em> (reads the configuration)<hr/>
-<br/>
- <code><b>GET /_admin/config/configuration</b></code></p>
-<p>The call returns an object containing configuration. </p>
- </div></div>
+</pre></div>  </div></div>
 </div></body></html>

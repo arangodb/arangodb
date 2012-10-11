@@ -41,10 +41,10 @@
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
+///  <li>@ref HttpMisc</li>
 ///  <li>@ref HttpBatch</li>
 ///  <li>@ref HttpImport</li>
 ///  <li>@ref ArangoErrors</li>
-///  <li>@ref IndexSkiplist</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
 /// @else
@@ -66,6 +66,7 @@
 ///   @copydetails HttpCollectionTOC
 ///   @copydetails HttpIndexTOC
 ///   @copydetails HttpSystemTOC
+///   @copydetails HttpMiscTOC
 ///  </li>
 ///  <li>Interface for bulk imports
 ///   @copydetails HttpImportTOC
@@ -79,7 +80,6 @@
 ///   </ul>
 ///  </li>
 ///  <li>Under Construction
-///   @copydetails IndexSkiplistHttpTOC
 ///   <ul>
 ///    <li>@ref Key-Value
 ///     <ul>

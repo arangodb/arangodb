@@ -102,10 +102,10 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
 TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
-  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
+/*  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
          file,
          line);
-
+*/
   return &TriUnknownMemZone;
 }
 #endif
@@ -204,7 +204,6 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   }
 
   p = realloc(p, (size_t) n + sizeof(intptr_t));
-  p = p + sizeof(intptr_t);
 #else
   p = realloc(p, (size_t) n);
 #endif
@@ -232,6 +231,10 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     return TRI_Reallocate(zone, m, n);
 #endif
   }
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  p += sizeof(intptr_t);
+#endif
 
   return p;
 }
@@ -261,6 +264,27 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
   }
 #endif
 
+  free(p);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free memory allocated by some low-level functions
+///
+/// this can be used to free memory that was not allocated by TRI_Allocate, but
+/// by malloc et al
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+void TRI_SystemFreeZ (void* p, char const* file, int line) {
+#else
+void TRI_SystemFree (void* p) {
+#endif
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  if (p == NULL) {
+    printf("MEMORY ZONE: freeing nil ptr\n");
+  }
+#endif
   free(p);
 }
 

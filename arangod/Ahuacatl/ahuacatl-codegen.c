@@ -384,10 +384,11 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
   }
 
   variable->_register = registerIndex;
-  variable->_name = TRI_DuplicateString(name);
+  variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
   if (variable->_name == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
+
     return NULL;
   }
 
@@ -801,8 +802,9 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
     n = peek->_variables._nrAlloc;
     for (j = 0; j < n; ++j) {
       TRI_aql_codegen_variable_t* variable = (TRI_aql_codegen_variable_t*) peek->_variables._table[j];
+      char* copy;
 
-      if (!variable) {
+      if (! variable) {
         continue;
       }
 
@@ -812,8 +814,14 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, " = ");
       ScopeOutputRegister(generator, variable->_register);
       ScopeOutput(generator, ";\n");
-  
-      TRI_PushBackVectorString(&variableNames, TRI_DuplicateString(variable->_name));
+
+      copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, variable->_name);
+      if (copy == NULL) {
+        generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+      }
+      else {
+        TRI_PushBackVectorString(&variableNames, copy);
+      }
     }
 
     // break if we reached the top level for loop

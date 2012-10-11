@@ -295,7 +295,7 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
   else if (0 < len) {
     memmove(self->_buffer, self->_buffer + len, off - len);
     self->_current -= len;
-    memset(self->_current, 0, self->_len - off); 
+    memset(self->_current, 0, self->_len - (self->_current - self->_buffer));
   }
 }
 

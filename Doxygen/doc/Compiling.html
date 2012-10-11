@@ -55,7 +55,7 @@
 <hr/>
  <h2><a class="anchor" id="CompilingAmazonMicroInstance"></a>
 Amazon Micro Instance</h2>
-<p>@sohgoh has reported that it is very easy to install ArangoDB on a Amazon Micro Instance:</p>
+<p>@sohgoh has reported that it is very easy to install ArangoDB on an Amazon Micro Instance:</p>
 <div class="fragment"><pre class="fragment"> &gt; sudo yum install readline-devel
  &gt; ./configure
  &gt; make
@@ -73,6 +73,7 @@ Basic System Requirements</h3>
 <p>In addition you will need the following library:</p>
 <ul>
 <li>the GNU readline library</li>
+<li>the OpenSSL library</li>
 </ul>
 <p>Under Mac OS X you also need to install:</p>
 <ul>
@@ -143,15 +144,17 @@ Basic System Requirements</h3>
 <li>libev in version 3 or 4</li>
 <li>Google's V8 engine</li>
 <li>the GNU readline library</li>
+<li>the OpenSSL library</li>
 <li>the Boost test framework</li>
 </ul>
 <p>To compile Google V8 yourself, you will also need Python 2 and SCons.</p>
 <p>Some distributions, for example Centos 5, provide only very out-dated versions of FLEX, BISON, and the V8 engine. In that case you need to compile newer versions of the programs and/or libraries.</p>
 <p>Install or download the prerequisites</p>
 <ul>
-<li>Google's V8 engine (see code.google.com/p/v8)</li>
-<li>SCons for compiling V8 (see www.scons.org)</li>
-<li>libev (see software.schmorp.de/pkg/libev.html)</li>
+<li>Google's V8 engine (see <a href="http://code.google.com/p/v8">http://code.google.com/p/v8</a>)</li>
+<li>SCons for compiling V8 (see <a href="http://www.scons.org">http://www.scons.org</a>)</li>
+<li>libev (see <a href="http://software.schmorp.de/pkg/libev.html">http://software.schmorp.de/pkg/libev.html</a>)</li>
+<li>OpenSSL (<a href="http://openssl.org/">http://openssl.org/</a>)</li>
 </ul>
 <p>if neccessary. Most linux systems already supply RPM or DEP for these packages. Please note that you have to install the development packages.</p>
 <h3><a class="anchor" id="DownloadSourceDevel"></a>
