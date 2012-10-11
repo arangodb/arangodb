@@ -8,7 +8,7 @@
 ### @brief /sbin programs
 ################################################################################
 
-sbin_PROGRAMS += \
+bin_SCRIPTS += \
         bin/arango-password \
 	bin/arango-dfdb \
         bin/arango-upgrade 
@@ -16,9 +16,6 @@ sbin_PROGRAMS += \
 ################################################################################
 ### @brief arango password
 ################################################################################
-
-# exclude arango skripts from sources list
-bin_arango_password_SOURCES =
 
 bin/arango-password: utils/arango-password.in
 	sed \
@@ -34,9 +31,6 @@ CLEANUP += bin/arango-password
 ### @brief arango upgrade
 ################################################################################
 
-# exclude arango skripts from sources list
-bin_arango_upgrade_SOURCES =
-
 bin/arango-upgrade: utils/arango-upgrade.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
@@ -50,9 +44,6 @@ CLEANUP += bin/arango-upgrade
 ################################################################################
 ### @brief arango datafile debugger
 ################################################################################
-
-# exclude arango skrips from sources list
-bin_arango_dfdb_SOURCES =
 
 bin/arango-dfdb: utils/arango-dfdb.in
 	sed \
