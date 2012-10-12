@@ -28,6 +28,7 @@
 #include "ArangoClient.h"
 
 #include "BasicsC/logging.h"
+#include "BasicsC/messages.h"
 #include "BasicsC/terminal-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
@@ -530,7 +531,7 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-    cout << endl << "Bye Bye! Auf Wiedersehen! Na shledanou! До свидания! さようなら" << endl;
+    cout << endl << TRI_BYE_MESSAGE << endl;
   }
 }
 
