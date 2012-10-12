@@ -51,6 +51,7 @@
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
+#include "BasicsC/messages.h"
 #include "BasicsC/strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
@@ -797,12 +798,12 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           char* input = console->prompt("arangod> ");
 
           if (input == 0) {
-            printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+            printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
             break;
           }
 
           if (*input == '\0') {
-            TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
             continue;
           }
 
@@ -969,7 +970,7 @@ int ArangoServer::executeRubyConsole () {
     char* input = console->prompt("arangod> ");
 
     if (input == 0) {
-      printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+      printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
       break;
     }
 

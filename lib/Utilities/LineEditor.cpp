@@ -210,7 +210,7 @@ char* LineEditor::prompt (char const* prompt) {
     }
   }
 
-  char* line = TRI_DuplicateString(_current.c_str());
+  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
   _current.clear();
 
   return line;
