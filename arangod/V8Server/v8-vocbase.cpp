@@ -198,6 +198,22 @@ class AhuacatlContextGuard {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection type the object is responsible for
+/// - "db" will return TRI_COL_TYPE_DOCUMENT
+/// - "edges" will return TRI_COL_TYPE_EDGE
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
+  v8::Handle<v8::Value> type = obj->Get(v8::String::New("_type"));
+
+  if (type->IsNumber()) {
+    return (TRI_col_type_e) TRI_ObjectToInt64(type);
+  }
+
+  return TRI_COL_TYPE_DOCUMENT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4477,8 +4493,18 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return v8::Handle<v8::Value>();
   }
 
+  // get the collection type (document/edge)
+  const TRI_col_type_e collectionType = GetVocBaseCollectionType(info.Holder());
+
   // look up the value if it exists
-  TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str(), true);
+  TRI_vocbase_col_t const* collection;
+ 
+  if (collectionType == TRI_COL_TYPE_EDGE) {
+    collection = TRI_FindEdgeCollectionByNameVocBase(vocbase, key.c_str(), true);
+  }
+  else {
+    collection = TRI_FindDocumentCollectionByNameVocBase(vocbase, key.c_str(), true);
+  }
 
   // if the key is not present return an empty handle as signal
   if (collection == 0) {
@@ -4588,13 +4614,19 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
     return scope.Close(result);
   }
 
+  // get the collection type (document/edge)
+  //const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
+
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   uint32_t n = (uint32_t) colls._length;
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
+    // only include collections of the right type, currently disabled
+    // if (collectionType == collection->_type) {
     result->Set(i, v8::String::New(collection->_name));
+    // }
   }
 
   TRI_DestroyVectorPointer(&colls);
@@ -4603,13 +4635,18 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new document collection
+/// @brief creates a new document or edge collection
 ///
 /// @FUN{db._create(@FA{collection-name})}
 ///
-/// Creates a new document collection named @FA{collection-name}. If the 
+/// Creates a new collection named @FA{collection-name}. If the 
 /// collection name already exists, then an error is thrown. The default value 
 /// for @LIT{waitForSync} is @LIT{false}.
+///
+/// The type of the collection is automatically determined by the object that
+/// @FA(_create) is invoked with:
+/// - if invoked on @LIT{db}, a document collection will be created
+/// - if invoked on @LIT{edges}, an edge collection will be created
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
 ///
@@ -4641,7 +4678,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
-  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
+  // get the collection type (document/edge)
+  const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
+
+  return CreateVocBase(argv, collectionType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4652,7 +4692,8 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 /// @FUN{db._createDocumentCollection(@FA{collection-name}, @FA{properties})}
 ///
 /// Creates a new document collection named @FA{collection-name}. 
-/// This is an alias for @ref JS_CreateVocBase.
+/// This is an alias for @ref JS_CreateVocBase, with the difference that the 
+/// collection type is not automatically detected.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocBase (v8::Arguments const& argv) {
@@ -5430,7 +5471,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database, 
+                                        TRI_col_type_e type) {
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
@@ -5441,6 +5483,10 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
 
   result->Set(v8::String::New("_path"),
               v8::String::New(database->_path),
+              v8::ReadOnly);
+  
+  result->Set(v8::String::New("_type"),
+              v8::Integer::New((int) type),
               v8::ReadOnly);
 
   return scope.Close(result);
@@ -5860,12 +5906,12 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
 
   context->Global()->Set(v8::String::New("db"),
-                         TRI_WrapVocBase(vocbase),
+                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),
                          v8::ReadOnly);
 
   // DEPRECATED: only here for compatibility
   context->Global()->Set(v8::String::New("edges"),
-                         TRI_WrapVocBase(vocbase),
+                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_EDGE),
                          v8::ReadOnly);
 
   return v8g;
