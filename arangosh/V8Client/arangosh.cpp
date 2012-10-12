@@ -847,7 +847,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     BaseClient.startPager();
 
     TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
