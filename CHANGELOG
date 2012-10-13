@@ -13,10 +13,16 @@ v1.1.beta1 (2012-XX-XX)
     use db._createEdgeCollection(). And there's also db._createDocumentCollection(). 
     db._create() is also still there and will create a document collection.
 
-* having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
-  removed the --enable-ssl configure option
+* issue #235: GUI Shell throws Error:ReferenceError: db is not defined
 
-* added AQL function TO_LIST
+* issue #229: methods marked as "under construction" 
+
+* issue #228: remove unfinished APIs (/_admin/config/*) 
+
+* having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
+  Also removed the --enable-ssl configure option because ssl is always required.
+
+* added AQL functions TO_LIST, NOT_LIST
 
 * issue #224: add optional Content-Id for batch requests
 
@@ -101,19 +107,31 @@ v1.1.beta1 (2012-XX-XX)
   It will also perform any necessary data updates.
 
 * issue #153: edge collection should be a flag for a collection
-  collections now have a type: the type can be queried in Javascript using the 
-  <collection>.type() method. When new collections are created using 
-  db._create(), they will be document collections by default. To explicitly
-  create a document collection, use db._createDocumentCollection(). To
-  create an edge collection, use db._createEdgeCollection(). The previous
-  functionality to create edge collections via edges._create() has been removed.
-  The distinction between document and edge collections is now done at runtime
-  using a collection's type value, and not by addressing collections via two 
-  different base objects (db.* and edges.*).
+  collections now have a type so that the distinction between document and edge 
+  collections can now be done at runtime using a collection's type value.
+  A collection's type can be queried in Javascript using the <collection>.type() method. 
+  
+  When new collections are created using db._create(), they will be document 
+  collections by default. When edge._create() is called, an edge collection will be created.
+  To explicitly create a collection of a specific/different type, use the methods 
+  _createDocumentCollection() or _createEdgeCollection(), which are available for
+  both the db and the edges object.
   The Javascript objects ArangoEdges and ArangoEdgesCollection have been removed
   completely.
-  All internal and test code has been adjusted for this, however, client code
-  that uses edges.* must be adjusted to use db.* instead.
+  All internal and test code has been adjusted for this, and client code
+  that uses edges.* should also still work because edges is still there and creates
+  edge collections when _create() is called.
+  
+  INCOMPATIBLE CHANGE: Client code might still need to be changed in the following aspect:
+  Previously, collections did not have a type so documents and edges could be inserted
+  in the same collection. This is now disallowed. Edges can only be inserted into
+  edge collections now. As there were no collection types in 1.0, the upgrade script
+  arango-upgrade must be run when migrating to 1.1. This script will check every 
+  collection and determine its type as follows:
+  - if among the first 50 documents in the collection there are documents with
+    attributes "_from" and "_to", the collection is typed as an edge collection
+  - if among the first 50 documents in the collection there are no documents with
+    attributes "_from" and "_to", the collection is made as a document collection
 
 * issue #150: call V8 garbage collection on server periodically
 

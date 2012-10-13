@@ -19,6 +19,10 @@ build.h
 config.log
 config.status
 
+Doxygen/*.doxy
+Doxygen/html/
+Doxygen/latex/
+Doxygen/js/
 Documentation/arango.template
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite

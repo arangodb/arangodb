@@ -195,37 +195,38 @@ TAB_SIZE               = 8
 # will result in a user-defined paragraph with heading "Side Effects:".
 # You can put \n's in the value part of an alias to insert newlines.
 
-ALIASES                = "FUN{1}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1</b></tt><hr>@endif" \
-                         "FUN{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2</b></tt><hr>@endif" \
-                         "FUN{3}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3</b></tt><hr>@endif" \
-                         "FUN{4}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4</b></tt><hr>@endif" \
-                         "FUN{5}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5</b></tt><hr>@endif" \
-                         "FUN{6}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5, \6</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5, \6</b></tt><hr>@endif" \
-                         "FUN{7}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5, \6, \7</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5, \6, \7</b></tt><hr>@endif" \
-                         "FA{1}=<em>\1</em>" \
-                         "FN{1}=<tt>\1</tt>" \
-                         "VAR{1}=<tt>\1</tt>" \
-                         "LIT{1}=<tt>\1</tt>" \
-                         "CODE{1}=<tt>\1</tt>" \
-                         "CODE{2}=<tt>\1, \2</tt>" \
-                         "CODE{3}=<tt>\1, \2, \3</tt>" \
-                         "CMDOPT{1}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1</b></tt><hr>@endif" \
-                         "CA{1}=<em>\1</em>" \
-                         "CO{1}=<tt>\1</tt>" \
-                         "REST{1}=<tt><b>\1</b></tt>" \
-                         "GE{1}=<b>\1</b>" \
-                         "EXAMPLES=<b>Examples</b><br>" \
-                         "EXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly" \
-                         "TINYEXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly" \
-                         "VERSION=@PACKAGE_VERSION@" \
-                         "EMBEDTOC{1}=@ifnot LATEX<hr>@copydoc \1<hr>@endif" \
-                         "RESTHEADER{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif" \
-                         "LATEXBREAK=@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly" \
-                         "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href= \1>\2</a>@endif" \
-                         "EXTRES{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href= \1>\2</a>@endif" \
-                         "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif" \
-                         "SPC=&nbsp;" \
-                         "CLEARPAGE=@if LATEX @latexonly\clearpage@endlatexonly@endif"
+ALIASES                = \
+  "FUN{1}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1</b></tt><hr>@endif" \
+  "FUN{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2</b></tt><hr>@endif" \
+  "FUN{3}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3</b></tt><hr>@endif" \
+  "FUN{4}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4</b></tt><hr>@endif" \
+  "FUN{5}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5</b></tt><hr>@endif" \
+  "FUN{6}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5, \6</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5, \6</b></tt><hr>@endif" \
+  "FUN{7}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1, \2, \3, \4, \5, \6, \7</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1, \2, \3, \4, \5, \6, \7</b></tt><hr>@endif" \
+  "FA{1}=<em>\1</em>" \
+  "FN{1}=<tt>\1</tt>" \
+  "VAR{1}=<tt>\1</tt>" \
+  "LIT{1}=<tt>\1</tt>" \
+  "CODE{1}=<tt>\1</tt>" \
+  "CODE{2}=<tt>\1, \2</tt>" \
+  "CODE{3}=<tt>\1, \2, \3</tt>" \
+  "CMDOPT{1}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{\parbox{\textwidth}{@endlatexonly<tt>\1</tt>@latexonly}}\vskip 0.7em@endlatexonly@else<hr><tt><b>\1</b></tt><hr>@endif" \
+  "CA{1}=<em>\1</em>" \
+  "CO{1}=<tt>\1</tt>" \
+  "REST{1}=<tt><b>\1</b></tt>" \
+  "GE{1}=<b>\1</b>" \
+  "EXAMPLES=<b>Examples</b><br>" \
+  "EXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly" \
+  "TINYEXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly" \
+  "VERSION=@PACKAGE_VERSION@" \
+  "EMBEDTOC{1}=@if LATEX@else<hr>@copydoc \1<hr>@endif" \
+  "RESTHEADER{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif" \
+  "LATEXBREAK=@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly" \
+  "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href= \1>\2</a>@endif" \
+  "EXTRES{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href= \1>\2</a>@endif" \
+  "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif" \
+  "SPC=&nbsp;" \
+  "CLEARPAGE=@if LATEX @latexonly\clearpage@endlatexonly@endif"
 
 # This tag can be used to specify a number of word-keyword mappings (TCL only).
 # A mapping has the form "name=value". For example adding
