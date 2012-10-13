@@ -10,6 +10,7 @@
 
 BUILT_SOURCES += @ICU_LIBS@
 ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
+CLEANUP += @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
 
 @ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
 

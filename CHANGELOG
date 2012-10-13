@@ -1,5 +1,17 @@
-not released yet
-----------------
+v1.1.beta1 (2012-XX-XX)
+-----------------------
+
+* WARNING:
+  - the user has changed from "arango" to "arangodb", the start script has changed from
+    "arangod" to "arangodb", the database directory has changed from "/var/arangodb" to
+    "/var/lib/arangodb" to be compliant with various Linux policies
+
+  - In 1.1, we have introduced types for collections: regular documents go into document
+    collections, and edges go into edge collections. The prefixing (db.xxx vs. edges.xxx) 
+    is gone in 1.1. edges.xxx can still be used to access collections, however, it will 
+    not determine the collection type anymore. To create an edge collection 1.1, you can
+    use db._createEdgeCollection(). And there's also db._createDocumentCollection(). 
+    db._create() is also still there and will create a document collection.
 
 * issue #235: GUI Shell throws Error:ReferenceError: db is not defined
 
@@ -130,8 +142,13 @@ not released yet
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
-v1.0.1 (2012-XX-XX)
+
+v1.0.1 (2012-09-30)
 -------------------
+
+* added AQL function TO_LIST
+
+* draft for issue #165: front-end application howto
 
 * updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
 

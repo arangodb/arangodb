@@ -32,6 +32,11 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoGraph
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 var internal = require("internal"),
   db = internal.db,
   ArangoCollection = internal.ArangoCollection,
@@ -39,6 +44,7 @@ var internal = require("internal"),
   findOrCreateEdgeCollectionByName;
 
   require("monkeypatches");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +88,6 @@ findOrCreateEdgeCollectionByName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Edge
@@ -1506,7 +1511,7 @@ Graph.prototype.removeEdge = function (edge) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Empty the internal cache for Predecessors
 ///
-/// @FUN{@FA{graph}.emptyCachedPredecessors()
+/// @FUN{@FA{graph}.emptyCachedPredecessors()}
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.emptyCachedPredecessors = function () {
@@ -1516,7 +1521,7 @@ Graph.prototype.emptyCachedPredecessors = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get Predecessors for a pair from the internal cache
 ///
-/// @FUN{@FA{graph}.getCachedPredecessors(@FA{target}), @FA{source}})
+/// @FUN{@FA{graph}.getCachedPredecessors(@FA{target}), @FA{source})}
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getCachedPredecessors = function (target, source) {
@@ -1532,7 +1537,7 @@ Graph.prototype.getCachedPredecessors = function (target, source) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Set Predecessors for a pair in the internal cache
 ///
-/// @FUN{@FA{graph}.setCachedPredecessors(@FA{target}), @FA{source}, @FA{value}})
+/// @FUN{@FA{graph}.setCachedPredecessors(@FA{target}), @FA{source}, @FA{value})}
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.setCachedPredecessors = function (target, source, value) {
@@ -1548,7 +1553,6 @@ Graph.prototype.setCachedPredecessors = function (target, source, value) {
 /// @brief number of vertices
 ///
 /// @FUN{@FA{graph}.order()}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.order = function () {
@@ -1777,6 +1781,10 @@ exports.Vertex = Vertex;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

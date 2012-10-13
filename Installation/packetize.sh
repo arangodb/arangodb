@@ -168,9 +168,9 @@ echo
 echo "########################################################"
 echo "Call mkepmlist to create a sublist"
 
-  for dir in js/actions/system js/server js/server/modules js/server/modules/org/arangodb js/client js/client/modules js/common/modules js/common/bootstrap; do
-      echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
-      mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
+  for dir in `find js -type d`; do
+    echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
+    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
 
   for dir in . css css/images media media/icons media/images js js/modules; do

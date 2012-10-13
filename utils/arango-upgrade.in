@@ -7,16 +7,22 @@ DATABASE="@DATABASEDIR@"
 MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules"
 SCRIPT="@PKGDATADIR@/js/server/arango-upgrade.js"
 
-if [ "$#" -lt 1 ];  then
-  echo "usage: $0 [--database <path>]"
-  exit 1
-fi
+while [ "$#" -gt 1 ];  do
+  case "$1" in
+    --database|--database.directory)
+      DATABASE="$2"
+      shift
+      ;;
 
-if [ "$1" == "--database" ] || [ "$1" == "--database.directory" ] ;  then
+    --relative)
+      ARANGOD="./bin/arangod"
+      MODULESPATH="./js/server/modules;./js/common/modules"
+      SCRIPT="./js/server/arango-upgrade.js"
+      ;;
+  esac
+
   shift
-  DATABASE="$1"
-  shift
-fi
+done
 
 if test ! -d "$DATABASE";  then
   echo "$0: database directory '$DATABASE' does not exist"

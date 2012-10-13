@@ -460,7 +460,7 @@ ModuleCache["/internal"] = new Module("/internal");
     mc = internal.db._collection("_modules");
 
     if (mc === null) {
-      throw "you need to upgrade your database using 'arango-upgrade'";
+      mc = internal.db._create("_modules", { isSystem: true });
     }
 
     path = module.normalise(path);
