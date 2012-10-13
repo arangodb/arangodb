@@ -1700,11 +1700,11 @@ function ArangoCollection (database, data) {
       var to = arguments[1];
       var data = arguments[2];
 
-      if (from.hasOwnProperty("_id")) {
+      if (typeof from == 'object' && from.hasOwnProperty("_id")) {
         from = from._id;
       }
 
-      if (to.hasOwnProperty("_id")) {
+      if (typeof to == 'object' && to.hasOwnProperty("_id")) {
         to = to._id;
       }
 
@@ -2005,6 +2005,19 @@ function ArangoCollection (database, data) {
 function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
+  this._friend = null;
+
+  // private function to store a collection in both "db" and "edges" at the 
+  // same time
+  this.registerCollection = function (name, obj) {
+    // store the collection in our own list
+    this[name] = obj;
+
+    if (this._friend) {
+      // store the collection in our friend's list
+      this._friend[name] = obj;
+    }
+  }
 }
 
 (function () {
@@ -2103,9 +2116,12 @@ function ArangoDatabase (connection) {
     
       // add all collentions to object
       for (i = 0;  i < collections.length;  ++i) {
+        // only include collections of the "correct" type
+        // if (collections[i]["type"] != this._type) {
+        //   continue;
+        // }
         var collection = new this._collectionConstructor(this, collections[i]);
-
-        this[collection._name] = collection;
+        this.registerCollection(collection._name, collection);
         result.push(collection);
       }
       
@@ -2136,7 +2152,7 @@ function ArangoDatabase (connection) {
     var name = requestResult["name"];
 
     if (name !== undefined) {
-      this[name] = new this._collectionConstructor(this, requestResult);
+      this.registerCollection(name, new this._collectionConstructor(this, requestResult));
       return this[name];
     }
   
@@ -2148,9 +2164,11 @@ function ArangoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoDatabase.prototype._create = function (name, properties, type) {
+    // document collection is the default type
+    // but if the containing object has the _type attribute (it should!), then use it
     var body = {
       "name" : name,
-      "type" : ArangoCollection.TYPE_DOCUMENT
+      "type" : this._type || ArangoCollection.TYPE_DOCUMENT
     };
 
     if (properties !== undefined) {
@@ -2167,7 +2185,7 @@ function ArangoDatabase (connection) {
       }
     }
 
-    if (type != undefined && type == ArangoCollection.TYPE_EDGE) {
+    if (type != undefined) {
       body.type = type;
     }
 
@@ -2180,7 +2198,7 @@ function ArangoDatabase (connection) {
     var nname = requestResult["name"];
 
     if (nname !== undefined) {
-      this[nname] = new this._collectionConstructor(this, requestResult);
+      this.registerCollection(nname, new this._collectionConstructor(this, requestResult));
       return this[nname];
     }
   
@@ -2609,13 +2627,22 @@ function ArangoDatabase (connection) {
 
   try {
     if (typeof arango !== 'undefined') {
-
-      // default databases
+      // default database object
       db = internal.db = new ArangoDatabase(arango);
-      edges = internal.edges = db;
+      db._type = ArangoCollection.TYPE_DOCUMENT;
 
-      // load collection data
+      // create edges object as a copy of db
+      edges = internal.edges = new ArangoDatabase(arango);
+      edges._type = ArangoCollection.TYPE_EDGE;
+     
+      // make the two objects friends 
+      edges._friend = db;
+      db._friend = edges;
+
+
+      // prepopulate collection data arrays
       internal.db._collections();
+      internal.edges._collections();
 
       // load simple queries
       require("simple-query");
