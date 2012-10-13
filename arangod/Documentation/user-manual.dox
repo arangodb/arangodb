@@ -384,10 +384,34 @@
 ///   <ul>
 ///    <li>@ref UserManualActionsIntro</li>
 ///    <li>@ref UserManualActionsHelloWorld</li>
+///    <li>@ref UserManualActionsMatches
+///     <ul>
+///      <li>@ref UserManualActionsMatchesExact</li>
+///      <li>@ref UserManualActionsMatchesPrefix</li>
+///      <li>@ref UserManualActionsMatchesParameterized</li>
+///      <li>@ref UserManualActionsMatchesConstraint</li>
+///      <li>@ref UserManualActionsMatchesOptional</li>
+///      <li>@ref UserManualActionsMatchesMethod</li>
+///      <li>@ref UserManualActionsMatching</li>
+///     </ul>
+///    </li>
 ///    <li>@ref UserManualActionsHelloJson</li>
-///    <li>@ref UserManualActionsEcho</li>
-///    <li>@ref UserManualActionsDYO</li>
-///    <li>@ref UserManualActionsAdvanced</li>
+///    <li>@ref UserManualActionsContent
+///     <ul>
+///      <li>@ref UserManualActionsContentStatic</li>
+///      <li>@ref UserManualActionsContentAction</li>
+///      <li>@ref UserManualActionsContentController</li>
+///      <li>@ref UserManualActionsContentPrefix</li>
+///     </ul>
+///    </li>
+///    <li>@ref UserManualActionsReqRes</li>
+///    <li>@ref UserManualActionsAdvanced
+///     <ul>
+///      <li>@ref UserManualActionsAdvancedRedirects</li>
+///      <li>@ref UserManualActionsAdvancedBundles</li>
+///      <li>@ref UserManualActionsAdvancedMiddleware</li>
+///     </ul>
+///    </li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -488,8 +512,8 @@
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/hello/world", 
-/// ........>   callback: { 
+/// ........>   url: { match: "/hello/world" },
+/// ........>   content: { 
 /// ........>     contentType: "text/html", 
 /// ........>     body: "<html><body>Hello World</body></html>" }});
 /// @endcode
@@ -498,12 +522,185 @@
 /// or call the internal reload function.
 ///
 /// @code
-/// arangosh> require("internal").reloadRouting()
+/// arangosh> require("org/arangodb/routing").reload()
 /// @endcode
 ///
 /// Now use the browser and access
 ///
 /// @LIT{http://localhost:8529/hello/world}
+///
+/// You should see the @LIT{Hello World} in our browser.
+///
+/// @section UserManualActionsMatches Matching an URL
+/////////////////////////////////////////////////////
+///
+/// There are a lot of options for the @LIT{url} attribute. If you define
+/// different routing for the same path, then the following simple rule is
+/// applied in order to determine which match wins: If there are two matches,
+/// then the more specific wins. I. e, if there is a wildcard match and an exact
+/// match, the exact match is prefered. If there is a short and a long match,
+/// the longer match wins.
+///
+/// @subsection UserManualActionsMatchesExact Exact Match
+///
+/// If the definition is
+///
+/// @code
+/// { url: { match: "/hello/world" } }
+/// @endcode
+///
+/// then the match must be exact. Only the request for @LIT{/hello/world} will
+/// match, everything else, e. g. @LIT{/hello/world/my} or @LIT{/hello/world2},
+/// will not match.
+///
+/// The following definition is a short-cut for an exact match.
+///
+/// @code
+/// { url: "/hello/world" }
+/// @endcode
+///
+/// @subsection UserManualActionsMatchesPrefix Prefix Match
+///
+/// If the definition is
+///
+/// @code
+/// { url: { match: "/hello/world/*" } }
+/// @endcode
+///
+/// then the match can be a prefix match. The requests for @LIT{/hello/world},
+/// @LIT{/hello/world/my}, and @LIT{/hello/world/how/are/you} will all
+/// match. However @LIT{/hello/world2} does not match. Prefix matches within an
+/// URL part, i. e. @LIT{/hello/world*}, are not allowed. The wildcard must
+/// occur at the end, i. e. 
+///
+/// @code 
+/// /hello/*/world 
+/// @endcode 
+///
+/// is also disallowed.
+///
+/// If you define two routes
+///
+/// @code
+/// { url: { match: "/hello/world/*" } }
+/// { url: { match: "/hello/world/emil" } }
+/// @endcode
+/// 
+/// then the second route will be used for @LIT{/hello/world/emil} because it is
+/// more specific.
+/// 
+/// @subsection UserManualActionsMatchesParameterized Parameterized Match
+///
+/// A parameterized match is similar to a prefix match, but the parameters are
+/// also allowed inside the URL path.
+///
+/// If the definition is
+///
+/// @code
+/// { url: { match: "/hello/:name/world" } }
+/// @endcode
+/// 
+/// then the URL must have three parts, the first part being @LIT{hello} and the
+/// third part @LIT{world}. For example, @LIT{/hello/emil/world} will match,
+/// while @LIT{/hello/emil/meyer/world} will not.
+///
+/// @subsection UserManualActionsMatchesConstraint Constraint Match
+///
+/// A constraint match is similar to a parameterized match, but the parameters
+/// carries a constraint.
+///
+/// If the definition is
+///
+/// @code
+/// { url: { match: "/hello/:name/world", constraint: { name: "/[a-z]+/" } }
+/// @endcode
+/// 
+/// then the URL must have three parts, the first part being @LIT{hello} and the
+/// third part @LIT{world}. The second part must be all lowercase.
+///
+/// It is possible to use more then one constraint for the same URL part.
+///
+/// @code
+/// { url: { match: "/hello/:name|:id/world",
+///          constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }
+/// @endcode
+/// 
+/// @subsection UserManualActionsMatchesOptional Optional Match
+///
+/// An optional match is similar to a parameterized match, but the last
+/// parameter is optional.
+///
+/// If the definition is
+///
+/// @code
+/// { url: { match: "/hello/:name?", constraint: { name: "/[a-z]+/" } }
+/// @endcode
+///
+/// then the URL @LIT{/hello} and @LIT{/hello/emil} will match.
+///
+/// If the definitions are
+/// 
+/// @code
+/// { url: { match: "/hello/world" } }
+/// { url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } }
+/// { url: { match: "/hello/*" } }
+/// @endcode
+///
+/// then the URL @LIT{/hello/world} will be matched by the first route, because it
+/// is the most specific. The URL @LIT{/hello/you} will be matched by the second
+/// route, because it is more specific than the prefix match.
+///
+/// @subsection UserManualActionsMatchesMethod Method Restriction
+///
+/// You can restrict the match to specific methods.
+///
+/// If the definition is
+///
+/// @code
+/// { url: { match: "/hello/world", methods: [ "post", "put" ] }
+/// @endcode
+///
+/// then only @LIT{POST} and @LIT{PUT} requests will match.
+///
+/// @subsection UserManualActionsMatching More on Matching
+///
+/// Remember that the more specific match wins. 
+///
+/// - A match without parameter or wildcard is more specific than a match with
+///   parameters or wildcard.
+/// - A match with parameter is more specific than a match with a wildcard.
+/// - If there is more than one parameter, specificity is applied from left to
+///   right.
+///
+/// Consider the following definitions
+/// 
+/// @code
+/// (1) { url: { match: "/hello/world" } }
+/// (2) { url: { match: "/hello/:name", constraint: { name: "/[a-z]+/" } }
+/// (3) { url: { match: "/:something/world" }
+/// (4) { url: { match: "/hello/*" } }
+/// @endcode
+///
+/// Then
+///
+/// - @LIT{/hello/world} is match by (1)
+/// - @LIT{/hello/emil} is match by (2)
+/// - @LIT{/your/world} is match by (3)
+/// - @LIT{/hello/you} is match by (4)
+///
+/// You can write the following document into the @LIT{_routing} collection
+/// to test the above examples.
+///
+/// @code
+/// {
+///   routes: [
+///     { url: { match: "/hello/world" }, content: "route 1" },
+///     { url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
+///     { url: { match: "/:something/world" }, content: "route 3" },
+///     { url: { match: "/hello/*" }, content: "route 4" },
+///   ]
+/// }
+/// @endcode
 ///
 /// @section UserManualActionsHelloJson A Hello World Example for JSON
 //////////////////////////////////////////////////////////////////////
@@ -512,8 +709,8 @@
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/hello/json", 
-/// ........>   callback: { 
+/// ........>   url: "/hello/json", 
+/// ........>   content: { 
 /// ........>     contentType: "application/json", 
 /// ........>     body: "{ \"hello\" : \"world\" }" }});
 /// arangosh> require("internal").reloadRouting()
@@ -534,18 +731,165 @@
 /// { "hello" : "world" }
 /// @endcode
 ///
-/// @section UserManualActionsEcho A Dynamic Example
-////////////////////////////////////////////////////
+/// @section UserManualActionsContent Delivering Content
+////////////////////////////////////////////////////////
 ///
-/// The above examples deliver static content, which is fine for an example.
-/// But the real power of actions lies in dynamic actions which use JavaScript
-/// to construct the result.
+/// There are a lot of different ways on how to deliver content. We have already
+/// seen the simplest one, where static content is delivered. The fun, however,
+/// starts when delivering dynamic content.
+///
+/// @subsection UserManualActionsContentStatic Static Content
+///
+/// You can specify a body and a content-type.
+///
+/// @code
+/// { content: {
+///     contentType: "text/html",
+///     body: "<html><body>Hallo World</body></html>"
+///   }
+/// }
+/// @endcode
+///
+/// If the content type is @LIT{text/plain} then you can use the short-cut
+///
+/// @code
+/// { content: "Hallo World" }
+/// @endcode
+///
+/// @subsection UserManualActionsContentAction A Simple Action
+///
+/// The simplest dynamic action is:
+///
+/// @code
+/// { action: { controller: "org/arangodb/actions", do: "echoRequest" } }
+/// @endcode
+///
+/// It is not possible to store functions directly in the routing table, but you
+/// can call functions defined in modules. In the above example the function can
+/// be accessed from JavaScript as:
+///
+/// @LIT{require("org/arangodb/actions").echoRequest}
+///
+/// The function @LIT{echoRequest} is pre-defined. It takes the request objects
+/// and echos it in the response.
+///
+/// The signature of such a function must be
+///
+/// @code
+/// function (req, res, options, next)
+/// @endcode
+///
+/// For example
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   url: "/hello/echo",
+/// ........>   action: "org/arangodb/actions/echoRequest" });
+/// @endcode
+///
+/// Reload the routing and check
+///
+/// @LIT{http://127.0.0.1:8529/hello/echo}
+///
+/// You should see something like
+///
+/// @code
+/// {
+///     "request": {
+///         "path": "/hello/echo",
+///         "headers": {
+///             "accept-encoding": "gzip, deflate",
+///             "accept-language": "de-de,de;q=0.8,en-us;q=0.5,en;q=0.3",
+///             "connection": "keep-alive",
+///             "content-length": "0",
+///             "host": "localhost:8529",
+///             "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0"
+///         },
+///         "requestType": "GET",
+///         "parameters": { }
+///     },
+///     "options": { }
+/// }
+/// @endcode
+///
+/// The request might contain @LIT{path}, @LIT{prefix}, @LIT{suffix}, and
+/// @LIT{urlParameters} attributes.  @LIT{path} is the complete path as supplied
+/// by the user and always available.  If a prefix was matched, then this prefix
+/// is stored in the attribute @LIT{prefix} and the remaining URL parts are
+/// stored as an array in @LIT{suffix}.  If one or more parameters were matched,
+/// then the parameter values are stored in @LIT{urlParameters}.
+///
+/// For example, if the url description is
+///
+/// @code
+/// { url: { match: "/hello/:name/:action" } }
+/// @endcode
+///
+/// and you request the path @LIT{/hello/emil/jump}, then the request object
+/// will contain the following attribute
+///
+/// @code
+/// urlParameters: { name: "emil", action: "jump" } }
+/// @endcode
+///
+/// @subsection UserManualActionsContentController Action Controller
+///
+/// As an alternative to the simple action, you can use controllers. A
+/// controller is a module, defines the function @LIT{get}, @LIT{put},
+/// @LIT{post}, @LIT{delete}, @LIT{head}, @LIT{patch}. If a request of
+/// the corresponding type is matched, the function will be called.
+///
+/// For example
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   url: "/hello/echo",
+/// ........>   action: { controller: "org/arangodb/actions/echoController" } });
+/// @endcode
+/// 
+/// @subsection UserManualActionsContentPrefix Prefix Action Controller
+///
+/// The controller is selected when the definition is read. There is a
+/// more flexible, but slower and maybe insecure variant, the prefix
+/// controller.
+///
+/// Assume that the url is a prefix match
+///
+/// @code
+/// { url: { match: /hello/*" } }
+/// @endcode
+///
+/// You can use
+///
+/// @code
+/// { action: { prefixController: "org/arangodb/actions" } }
+/// @endcode
+///
+/// to define a prefix controller. If the URL @LIT{/hello/echoController} is
+/// given, then the module @LIT{org/arangodb/actions/echoController} is used.
+///
+/// If you use an prefix controller, you should make certain that no unwanted
+/// actions are available under the prefix.
+///
+/// The definition
+/// 
+/// @code
+/// { action: "org/arangodb/actions" }
+/// @endcode
+///
+/// is a short-cut for a prefix controller definition.
+///
+/// @section UserManualActionsReqRes Requests and Responses
+///////////////////////////////////////////////////////////
+///
+/// The controller must define handler functions which take a request object and
+/// fill the response object.
 /// 
 /// A very simple example is the function @LIT{echoRequest} defined in
 /// the module @LIT{org/arangodb/actions}.
 ///
 /// @code
-/// function (req, res, next, options) {
+/// function (req, res, options, next) {
 ///   var result;
 /// 
 ///   result = { request: req, options: options };
@@ -556,21 +900,12 @@
 /// }
 /// @endcode
 ///
-/// That functions accepts a request and returns this request as JSON object.
-///
-/// It is not possible to store functions directly in the routing table, but you
-/// can call functions defined in modules. In the above example the function can
-/// be accessed from JavaScript as:
-///
-/// @LIT{require("org/arangodb/actions").echoRequest}
-///
-/// You can use it in the routing collection by specifying the name 
-/// @LIT{"org/arangodb/actions/echoRequest"}.
+/// Install it as
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/hello/echo",
-/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// ........>   url: "/echo",
+/// ........>   action: "org/arangodb/actions/echoRequest" });
 /// @endcode
 ///
 /// Reload the routing and check
@@ -603,30 +938,30 @@
 /// }
 /// @endcode
 ///
-/// Please note that
+/// Note that
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/hello/echo",
-/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// ........>   url: "/echo",
+/// ........>   action: "org/arangodb/actions/echoRequest" });
 /// @endcode
 ///
 /// is a short-cut for
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/hello/echo-long",
-/// ........>   callback: {
-/// ........>     for: "org/arangodb/actions",
-/// ........>     do: "echoRequest" }});
+/// ........>   url: "/echo",
+/// ........>   action: { do: "org/arangodb/actions/echoRequest" } });
 /// @endcode
 ///
-/// The verbose form allows you to pass options to the called function:
+/// The latter form allows you to pass options to the called function:
 ///
 /// @code
-/// arangosh> a = db._routing.firstExample({path: "/hello/echo-long"});
-/// arangosh> a.callback.options = { option: "my option1" };
-/// arangosh> db._replace(a, a);
+/// arangosh> db._routing.save({ 
+/// ........>   url: "/echo",
+/// ........>   action: {
+/// ........>     do: "org/arangodb/actions/echoRequest",
+/// ........>     options: { "Hallo": "World" } } });
 /// @endcode
 ///
 /// You should now see the options in the result.
@@ -643,98 +978,68 @@
 /// }
 /// @endcode
 ///
-/// @section UserManualActionsDYO Define Your Own Callback
-//////////////////////////////////////////////////////////
-///
-/// You can define your own callbacks by adding a new module to ArangoDB. In
-/// order to avoid name clashes modules should be named
-///
-/// @LIT{tld/domain/modulename}
-///
-/// where @LIT{domain.tld} is your domain name. For development you can store
-/// your code in files in the filesystem, see @ref MODULES_PATH and
-/// @ref MODULES.
-///
-/// However, when you are finished with the development, you can rollout the
-/// module code by storing it inside the @LIT{_modules} collection.
-///
-/// Create a file @LIT{hello-world.js} with the following content:
-///
-/// @code
-/// var actions = require("org/arangodb/actions");
-/// 
-/// exports.helloWorld = function (req, res) {
-///   res.contentType = "text/html";
-///   res.responseCode = actions.HTTP_OK;
-///   res.body = "<html><body>Hello World!</body></html>";
-/// };
-/// @endcode
-///
-/// Load this file as new module @LIT{de/celler/hello-world} into the database
-///
-/// @code
-/// arangosh> require("internal").defineModule("de/celler/hello-world", "hello-world.js");
-/// @endcode
-///
-/// Define a corresponding routing
-///
-/// @code
-/// arangosh> db._routing.save({ 
-/// ........>   path: "/my/echo",
-/// ........>   callback: "de/celler/hello-world/helloWorld" });
-/// arangosh> require("internal").reloadRouting()
-/// @endcode
-///
-/// and check it
-///
-/// @LIT{http://localhost:8529/my/echo}
-///
 /// @section UserManualActionsAdvanced Advanced Usages
 //////////////////////////////////////////////////////
 ///
 /// For detailed information see the reference manual.
 ///
-/// @subsection UserManualActionsAdvancedPrefix Using Prefixes
-//////////////////////////////////////////////////////////////
+/// @subsection UserManualActionsAdvancedRedirects Redirects
 ///
-/// All the above definitions require an exact match. If you set the
-/// @LIT{prefix} attribute to @LIT{true}, additional paths are ignored and the
-/// URL also results in a match.
+/// Use the following for a permanent redirect:
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/hello",
-/// ........>   prefix: true,
-/// ........>   callback: "org/arangodb/actions/echoRequest" });
+/// ........>   url: "/",
+/// ........>   action: {
+/// ........>     do: "org/arangodb/actions/redirectRequest", 
+/// ........>     options: { 
+/// ........>       permanently: true,
+/// ........>       destination: "http://somewhere.else/" } } });
 /// @endcode
 ///
-/// Now try
+/// @subsection UserManualActionsAdvancedBundles Routing Bundles
 ///
-/// @LIT{http://localhost:8529/hello/this/is/ignored/but/available/in/path}
-///
-/// The complete path is available in the @LIT{path} attribute, while the
-/// matched prefix is available in the @LIT{prefix} attribute.
+/// Instead of adding all routes for package separately, you can
+/// specify a bundle.
 ///
 /// @code
 /// {
-///     "request": {
-///         "prefix": "/hello",
-///         "path": "/hello/this/is/ignored/but/available/in/path",
-///         ...
-///     },
-///     "options": { }
+///   routes: [ 
+///     { url: "/url1", content: "..." },
+///     { url: "/url2", content: "..." },
+///     { url: "/url3", content: "..." },
+///     ... 
+///   ]
 /// }
 /// @endcode
 ///
+/// The advantage is, that you can put all your routes into one document
+/// and use a common prefix.
+///
+/// @code
+/// {
+///   urlPrefix: "/test",
+///
+///   routes: [ 
+///     { url: "/url1", content: "..." },
+///     { url: "/url2", content: "..." },
+///     { url: "/url3", content: "..." },
+///     ... 
+///   ]
+/// }
+/// @endcode
+///
+/// will define the URL @LIT{/test/url1}, @LIT{/test/url2}, and
+/// @LIT{/test/url3}.
+///
 /// @subsection UserManualActionsAdvancedMiddleware Writing Middleware
-//////////////////////////////////////////////////////////////////////
 ///
 /// Assume, you want to log every request. In this case you can easily define
 /// an action for the whole url-space @LIT{/}. This action simply logs
 /// the requests, calls the next in line, and logs the response.
 ///
 /// @code
-/// exports.logRequest = function (req, res, next, options) {
+/// exports.logRequest = function (req, res, options, next) {
 ///   console.log("received request: %s", JSON.stringify(req));
 ///   next();
 ///   console.log("produced response: %s", JSON.stringify(res));
@@ -747,23 +1052,10 @@
 ///
 /// @code
 /// arangosh> db._routing.save({ 
-/// ........>   path: "/",
-/// ........>   topdown: true,
-/// ........>   prefix: true,
-/// ........>   callback: "org/arangodb/actions/logRequest" });
-/// @endcode
-///
-/// @subsection UserManualActionsAdvancedeRedirect Redirects
-////////////////////////////////////////////////////////////
-///
-/// Use the following for a permanent redirect:
-///
-/// @code
-/// arangosh> db._routing.save({ 
-/// ........>   path: "/",
-/// ........>   topdown: true,
-/// ........>   prefix: true,
-/// ........>   callback: { redirect: "http://somewhere.else.org/hallo" });
+/// ........>   middleware: [
+/// ........>     { url: { match: "/*" }, action: "org/arangodb/actions/logRequest" }
+/// ........>   ]
+/// ........> });
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -774,5 +1066,5 @@
 // Local Variables:
 // mode: c++
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @section\\|/// @subsection\\|/// @\\}\\)"
 // End:

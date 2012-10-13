@@ -43,7 +43,7 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 ### @brief cleanup
 ################################################################################
 
-CLEANUP += $(JAVASCRIPT_HEADER) .setup-js-directories
+CLEANUP += $(JAVASCRIPT_HEADER)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

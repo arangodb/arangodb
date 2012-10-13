@@ -1,21 +1,18 @@
 # -*- mode: Makefile; -*-
 
-MANUAL_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals"
-IMAGES_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images"
+MANUAL_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals
+IMAGES_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images
 
-OUTPUT_FOLDER="Doxygen/manuals/$(PACKAGE_VERSION)"
+OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
 
 ################################################################################
 ## publish
 ################################################################################
 
-.PHONY: publish publish-prepare publish-wiki publish-html publish-pdf
+.PHONY: publish publish-wiki publish-html publish-pdf
 
-publish: publish-prepare publish-wiki publish-html publish-pdf
+publish: publish-wiki publish-html publish-pdf
 	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
-
-publish-prepare:
-	@test -d $(OUTPUT_FOLDER) || mkdir -p $(OUTPUT_FOLDER)
 
 publish-wiki:
 	(cd Doxygen/wiki && git checkout --force -- . && git clean -f -d -x && git pull)
