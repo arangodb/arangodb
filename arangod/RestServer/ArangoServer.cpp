@@ -798,7 +798,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           char* input = console->prompt("arangod> ");
 
           if (input == 0) {
-            printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
+            printf("<ctrl-D>\n%s\n", TRI_BYE_MESSAGE);
             break;
           }
 

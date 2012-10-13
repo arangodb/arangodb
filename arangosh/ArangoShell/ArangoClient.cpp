@@ -531,7 +531,7 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-    cout << endl << TRI_BYE_MESSAGE << endl;
+    cout << "<ctrl-D>\n" << TRI_BYE_MESSAGE << endl;
   }
 }
 
