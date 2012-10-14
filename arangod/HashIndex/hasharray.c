@@ -132,9 +132,6 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyHashArray (TRI_hasharray_t* array) {
-  char* p;
-  char* e;
-
   if (array == NULL) {
     return;
   }  
@@ -144,12 +141,19 @@ void TRI_DestroyHashArray (TRI_hasharray_t* array) {
   // Go through each item in the array and remove any internal allocated memory
   // ...........................................................................
   
-  p = array->_table;
-  e = p + array->_elementSize * array->_nrAlloc;
-  for (;  p < e;  p += array->_elementSize) {
-    IndexStaticDestroyElement(array, p);
+  // array->_table might be NULL if array initialisation fails
+  if (array->_table != NULL) {
+    char* p;
+    char* e;
+
+    p = array->_table;
+    e = p + array->_elementSize * array->_nrAlloc;
+    for (;  p < e;  p += array->_elementSize) {
+      IndexStaticDestroyElement(array, p);
+    }
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
   }
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
 }
 
 
@@ -1084,7 +1088,6 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t* array, void* key) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                forward declared private functions
 // -----------------------------------------------------------------------------
@@ -1093,7 +1096,6 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t* array, void* key) {
 /// @addtogroup HashArray
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
@@ -1109,7 +1111,6 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
 
   hash = IndexStaticHashElement(array, element);
 
-  
   // ...........................................................................
   // search the table
   // ...........................................................................
@@ -1121,7 +1122,6 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
     array->_nrProbesR++;
   }
 
-
   // ...........................................................................
   // add a new element to the associative array
   // memcpy ok here since are simply moving array items internally
@@ -1130,7 +1130,6 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
   memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
   array->_nrUsed++;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the array
@@ -1145,14 +1144,18 @@ static bool ResizeHashArray (TRI_hasharray_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
-  array->_nrResizes++;
 
   array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_nrAlloc * array->_elementSize, true);
   if (array->_table == NULL) {
+    // allocation has failed. must restore original values
     array->_table = oldTable;
+    array->_nrAlloc = oldAlloc;
+
     return false;
-  }  
+  }
+
+  array->_nrUsed = 0;
+  array->_nrResizes++;
 
   for (j = 0; j < array->_nrAlloc; j++) {
     IndexStaticClearElement(array, array->_table + j * array->_elementSize);
@@ -1182,14 +1185,18 @@ static bool ResizeHashArrayMulti (TRI_hasharray_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
-  array->_nrResizes++;
 
   array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_nrAlloc * array->_elementSize, true);
   if (array->_table == NULL) {
+    // allocation has failed, must restore original values
     array->_table = oldTable;
+    array->_nrAlloc = oldAlloc;
+
     return false;
   }
+  
+  array->_nrUsed = 0;
+  array->_nrResizes++;
   
   for (j = 0; j < array->_nrAlloc; j++) {
     IndexStaticClearElement(array, array->_table + j * array->_elementSize);
@@ -1205,16 +1212,9 @@ static bool ResizeHashArrayMulti (TRI_hasharray_t* array) {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
 
 // Local Variables:
 // mode: outline-minor
