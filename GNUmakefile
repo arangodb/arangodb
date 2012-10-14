@@ -28,6 +28,8 @@ setup:
 MAINTAINER = \
 	README \
 	arangod/Ahuacatl/ahuacatl-tokens.c \
+	arangod/Ahuacatl/ahuacatl-grammar.c \
+	arangod/Ahuacatl/ahuacatl-grammar.h \
 	lib/JsonParser/json-parser.c \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-json.h \
