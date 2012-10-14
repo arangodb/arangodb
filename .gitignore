@@ -11,6 +11,7 @@ js-*.h
 .setup-mr-directories
 .setup-js-directories
 
+README
 Makefile
 Makefile.in
 aclocal.m4
