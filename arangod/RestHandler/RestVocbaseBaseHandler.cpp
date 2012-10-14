@@ -546,7 +546,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
 
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
     }
 
     return 0;
