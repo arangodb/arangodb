@@ -482,7 +482,7 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
 
   if (errmsg != 0) {
     // must free this error message, otherwise we'll have a memleak
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
   }
   return json;
 }
