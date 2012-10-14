@@ -19,6 +19,7 @@ autom4te.cache
 build.h
 config.log
 config.status
+TAGS
 
 Doxygen/*.doxy
 Doxygen/html/
