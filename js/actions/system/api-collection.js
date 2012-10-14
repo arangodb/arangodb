@@ -113,6 +113,11 @@
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
 ///
+/// - @LIT{type} (optional, default is @LIT{2}): the type of the collection to
+///   create. The following values for @FA{type} are valid:
+///   - @LIT{2}: document collections
+///   - @LIT{3}: edge collection
+///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-create-collection
