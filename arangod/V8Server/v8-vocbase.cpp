@@ -4644,7 +4644,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 /// for @LIT{waitForSync} is @LIT{false}.
 ///
 /// The type of the collection is automatically determined by the object that
-/// @FA(_create) is invoked with:
+/// @FA{_create} is invoked with:
 /// - if invoked on @LIT{db}, a document collection will be created
 /// - if invoked on @LIT{edges}, an edge collection will be created
 ///
