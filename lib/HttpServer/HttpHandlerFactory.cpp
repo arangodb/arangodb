@@ -128,9 +128,10 @@ void HttpHandlerFactory::setRequireAuthentication (bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
-  static size_t m = (size_t) -1;
-
-  return make_pair(m, m);
+  // size restrictions:
+  // - header: 1 MB
+  // - body: 512 MB
+  return make_pair(1 * 1024 * 1024, 512 * 1024 * 1024);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

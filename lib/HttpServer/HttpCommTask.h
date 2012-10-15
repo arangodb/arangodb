@@ -154,9 +154,12 @@ namespace triagens {
             size_t headerLength = ptr - this->_readBuffer->c_str();
 
             if (headerLength > this->_maximalHeaderSize) {
-              LOGGER_WARNING << "maximal header size is " << this->_maximalHeaderSize << ", request header size is "
-                << headerLength;
-              return false;
+              LOGGER_WARNING << "maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength;
+              // header is too large
+              HttpResponse response(HttpResponse::HEADER_TOO_LARGE);
+              this->handleResponse(&response);
+
+              return true;
             }
 
             if (ptr < end) {
@@ -170,6 +173,10 @@ namespace triagens {
 
               if (this->_request == 0) {
                 LOGGER_ERROR << "cannot generate request";
+                // internal server error
+                HttpResponse response(HttpResponse::SERVER_ERROR);
+                this->handleResponse(&response);
+
                 return false;
               }
 
@@ -208,6 +215,14 @@ namespace triagens {
 
                   if (this->_bodyLength > 0) {
                     this->_readRequestBody = true;
+              
+                    if (this->_bodyLength > this->_maximalBodySize) {
+                      LOGGER_WARNING << "maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength;
+                      // request entity too large
+                      HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+                      this->handleResponse(&response);
+                      return true;
+                    }
                   }
                   else {
                     handleRequest = true;
@@ -216,7 +231,10 @@ namespace triagens {
 
                 default:
                   LOGGER_WARNING << "got corrupted HTTP request '" << string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)) << "'";
-                  return false;
+                  // bad request
+                  HttpResponse response(HttpResponse::BAD);
+                  this->handleResponse(&response);
+                  return true;
               }
 
               // check for a 100-continue
@@ -251,7 +269,11 @@ namespace triagens {
           if (this->_readRequestBody) {
             if (this->_bodyLength > this->_maximalBodySize) {
               LOGGER_WARNING << "maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength;
-              return false;
+              // request entity too large
+              HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+              this->handleResponse(&response);
+
+              return true;
             }
 
             if (this->_readBuffer->length() - this->_bodyPosition < this->_bodyLength) {
@@ -275,8 +297,26 @@ namespace triagens {
 
             this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
 
-            if (this->_readBuffer->length() > 2) {
-              LOGGER_WARNING << "read buffer is not empty. probably got a wrong Content-Length header?";
+            if (this->_readBuffer->length() > 0) {
+              // we removed the front of the read buffer, but it still contains data. 
+              // this means that the content-length header of the request must have been wrong 
+              // (value in content-length header smaller than actual body size)
+
+              // check if there is invalid stuff left in the readbuffer
+              // whitespace is allowed
+              const char* p = this->_readBuffer->begin();
+              const char* e = this->_readBuffer->end();
+              while (p < e) {
+                const char c = *(p++);
+                if (c != '\n' && c != '\r' && c != ' ' && c != '\t' && c != '\0') {
+                  LOGGER_WARNING << "read buffer is not empty. probably got a wrong Content-Length header?";
+              
+                  HttpResponse response(HttpResponse::BAD);
+                  this->handleResponse(&response);
+
+                  return true;
+                }
+              }
             }
 
             this->_requestPending = true;
