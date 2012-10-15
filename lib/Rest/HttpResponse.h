@@ -97,8 +97,11 @@ namespace triagens {
           NOT_FOUND            = 404,
           METHOD_NOT_ALLOWED   = 405,
           CONFLICT             = 409,
+          LENGTH_REQUIRED      = 411,
           PRECONDITION_FAILED  = 412,
+          ENTITY_TOO_LARGE     = 413,
           UNPROCESSABLE_ENTITY = 422,
+          HEADER_TOO_LARGE     = 431,
 
           SERVER_ERROR         = 500,
           NOT_IMPLEMENTED      = 501,
