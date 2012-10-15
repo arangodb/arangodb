@@ -93,7 +93,6 @@ static void IndexStaticClearElement(TRI_hasharray_t* array, void* element) {
     hElement->numFields  = 0;
     hElement->fields     = 0;
     hElement->data       = 0;
-    hElement->collection = 0;
   }  
 }
 
@@ -116,7 +115,6 @@ static bool IndexStaticCopyElementElement (TRI_hasharray_t* array, void* left, v
     
   leftElement->numFields  = rightElement->numFields;
   leftElement->data       = rightElement->data;
-  leftElement->collection = rightElement->collection;
   leftElement->fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * leftElement->numFields, false);
   
   if (leftElement->fields == NULL) {
