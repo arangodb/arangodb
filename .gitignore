@@ -1,4 +1,5 @@
 js-*.h
+mr-*.h
 .deps
 .dirstamp
 *.o
@@ -14,6 +15,13 @@ js-*.h
 .mruby-build-32
 .setup-mr-directories
 .setup-js-directories
+3rdParty/libev/ARCH.x64/
+3rdParty/libev/ARCH.IA32/
+
+Doxygen/doc/
+Doxygen/manuals/
+Doxygen/wiki/
+Doxygen/xml/
 
 README
 Makefile
@@ -21,8 +29,18 @@ Makefile.in
 aclocal.m4
 autom4te.cache
 build.h
+config/*
 config.log
 config.status
+config/compile
+config/config.guess
+config/config.h
+config/config.sub
+config/install-sh
+config/depcomp
+config/missing
+config/stamp-h1
+configure
 TAGS
 
 Doxygen/*.doxy
@@ -38,12 +56,6 @@ arangod/Ahuacatl/ahuacatl-grammar.h
 arangod/Ahuacatl/ahuacatl-grammar.output
 arangod/Ahuacatl/ahuacatl-tokens.c
 bin/
-config/config.guess
-config/config.h
-config/config.sub
-config/depcomp
-config/stamp-h1
-configure
 etc/arangodb/arangod.conf
 etc/arangodb/arangoirb.conf
 etc/arangodb/arangosh.conf
