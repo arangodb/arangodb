@@ -16,7 +16,7 @@ mr-*.h
 .setup-mr-directories
 .setup-js-directories
 3rdParty/libev/ARCH.x64/
-3rdParty/libev/ARCH.IA32/
+3rdParty/libev/ARCH.ia32/
 
 Doxygen/doc/
 Doxygen/manuals/
