@@ -14,6 +14,13 @@ js-*.h
 .mruby-build-32
 .setup-mr-directories
 .setup-js-directories
+3rdParty/libev/ARCH.x64/
+3rdParty/libev/ARCH.IA32/
+
+Doxygen/doc/
+Doxygen/manuals/
+Doxygen/wiki/
+Doxygen/xml/
 
 README
 Makefile
@@ -23,6 +30,9 @@ autom4te.cache
 build.h
 config.log
 config.status
+config/compile
+config/install-sh
+config/missing
 TAGS
 
 Doxygen/*.doxy
