@@ -8,7 +8,7 @@
 ### @brief ICU
 ################################################################################
 
-BUILT_SOURCES += @ICU_LIBS@
+BUILT_SOURCES += @ICU_BUILT@
 ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 CLEANUP += @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
 
