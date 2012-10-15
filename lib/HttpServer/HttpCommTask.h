@@ -277,6 +277,7 @@ namespace triagens {
             }
 
             if (this->_readBuffer->length() - this->_bodyPosition < this->_bodyLength) {
+              // still more data to be read
               return true;
             }
 

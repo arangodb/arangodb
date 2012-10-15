@@ -136,7 +136,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   else if (nr == 0) {
     closed = true;
 
-    LOGGER_TRACE << "read return 0 with " << errno << " (" << strerror(errno) << ")";
+    LOGGER_TRACE << "read returned 0";
 
     return false;
   }
