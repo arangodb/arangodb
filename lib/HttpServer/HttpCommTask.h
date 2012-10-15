@@ -278,6 +278,15 @@ namespace triagens {
 
             if (this->_readBuffer->length() - this->_bodyPosition < this->_bodyLength) {
               // still more data to be read
+
+              SocketTask* socketTask = dynamic_cast<SocketTask*>(this);
+              if (socketTask) {
+                // set read request time-out
+                LOGGER_TRACE << "waiting for rest of body to be received. request timeout set to 60 s";
+                socketTask->setKeepAliveTimeout(60.0);
+              }
+
+              // let client send more
               return true;
             }
 
