@@ -74,9 +74,6 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
                         bool (*isEmptyElement) (TRI_hasharray_t*, void*),
                         bool (*isEqualKeyElement) (TRI_hasharray_t*, void*, void*),
                         bool (*isEqualElementElement) (TRI_hasharray_t*, void*, void*)) {
-  char* p;
-  char* e;
-
 
   // ...........................................................................
   // Assign the callback functions
@@ -89,6 +86,7 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
 
   
   array->_elementSize = elementSize;
+  array->_table = NULL;
   array->_nrAlloc = 10;
 
   
@@ -98,6 +96,8 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
   
   array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_elementSize * array->_nrAlloc, true);
   if (array->_table == NULL) {
+    array->_nrAlloc = 0;
+
     return false;
   }  
 
@@ -106,12 +106,6 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
   // Go through and 'zero' (clear) each item in the hash array
   // ...........................................................................
   
-  p = array->_table;
-  e = p + array->_elementSize * array->_nrAlloc;  
-  for (;  p < e;  p += array->_elementSize) {
-    IndexStaticClearElement(array, p);
-  }
-
   array->_nrUsed = 0;
   array->_nrFinds = 0;
   array->_nrAdds = 0;
@@ -1145,19 +1139,18 @@ static bool ResizeHashArray (TRI_hasharray_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
-  array->_nrResizes++;
 
   array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_nrAlloc * array->_elementSize, true);
   if (array->_table == NULL) {
     array->_table = oldTable;
+    array->_nrAlloc = oldAlloc;
+
     return false;
   }  
-
-  for (j = 0; j < array->_nrAlloc; j++) {
-    IndexStaticClearElement(array, array->_table + j * array->_elementSize);
-  }
   
+  array->_nrUsed = 0;
+  array->_nrResizes++;
+
   for (j = 0; j < oldAlloc; j++) {
     if (! IndexStaticIsEmptyElement(array, oldTable + j * array->_elementSize)) {
       AddNewElement(array, oldTable + j * array->_elementSize);
@@ -1182,19 +1175,18 @@ static bool ResizeHashArrayMulti (TRI_hasharray_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
-  array->_nrResizes++;
 
   array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_nrAlloc * array->_elementSize, true);
   if (array->_table == NULL) {
     array->_table = oldTable;
+    array->_nrAlloc = oldAlloc;
+
     return false;
   }
   
-  for (j = 0; j < array->_nrAlloc; j++) {
-    IndexStaticClearElement(array, array->_table + j * array->_elementSize);
-  }
-
+  array->_nrUsed = 0;
+  array->_nrResizes++;
+  
   for (j = 0; j < oldAlloc; j++) {
     if (! IndexStaticIsEmptyElement(array, oldTable + j * array->_elementSize)) {
       AddNewElement(array, oldTable + j * array->_elementSize);
