@@ -60,8 +60,8 @@ typedef struct {
 typedef struct {
   size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects the blob of data within will be hashed
-  void*  data;               // master document pointer
-  void* collection;              
+  void* data;                // master document pointer
+  void* collection;          // currently not used     
 } HashIndexElement;
 
 typedef struct {
