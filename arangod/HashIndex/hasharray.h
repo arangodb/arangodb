@@ -60,10 +60,9 @@ typedef struct TRI_hasharray_s {
   bool (*isEqualElementElement) (struct TRI_hasharray_s*, void*, void*);
 
 
-  uint32_t _elementSize;
-
-  uint32_t _nrAlloc; // the size of the table
-  uint32_t _nrUsed; // the number of used entries
+  uint64_t _elementSize;
+  uint64_t _nrAlloc; // the size of the table
+  uint64_t _nrUsed; // the number of used entries
 
   char* _table; // the table itself
 
