@@ -511,15 +511,6 @@ void TRI_FreeResultHashIndex (const TRI_index_t* const,
                               TRI_hash_index_elements_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given a JSON list
-///
-/// @warning who ever calls this function is responsible for destroying
-/// TRI_hash_index_elements_t* results
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t*, TRI_json_t*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ///
 /// @warning who ever calls this function is responsible for destroying
