@@ -1476,8 +1476,7 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // These will be used for hashing.
   // .............................................................................
     
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
          
   res = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
 
@@ -1553,8 +1552,7 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // Allocate some memory for the HashIndexElement structure
   // .............................................................................
 
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
 
   // .............................................................................
   // Fill the json field list from the document
@@ -1648,8 +1646,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
   // Allocate some memory for the HashIndexElement structure
   // .............................................................................
 
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
   
   // .............................................................................
   // Update for unique hash index
@@ -1817,10 +1814,10 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
   }
 
   if (unique) {
-    hashIndex->_hashIndex = HashIndex_new();
+    hashIndex->_hashIndex = HashIndex_new(hashIndex->_paths._length);
   }
   else {
-    hashIndex->_hashIndex = MultiHashIndex_new();
+    hashIndex->_hashIndex = MultiHashIndex_new(hashIndex->_paths._length);
   }  
   
   if (hashIndex->_hashIndex == NULL) { // oops out of memory?
@@ -1907,56 +1904,6 @@ void TRI_FreeResultHashIndex (const TRI_index_t* const idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given a JSON list
-///
-/// @warning who ever calls this function is responsible for destroying
-/// TRI_hash_index_elements_t* results
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t* idx, TRI_json_t* values) {
-  TRI_hash_index_t* hashIndex;
-  TRI_hash_index_elements_t* result;
-  HashIndexElement element;
-  TRI_shaper_t* shaper;
-  size_t j;
-  
-  element.numFields = values->_value._objects._length;
-  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
-
-  if (element.fields == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_WARNING("out-of-memory in LookupJsonHashIndex");
-    return NULL; 
-  }  
-    
-  hashIndex = (TRI_hash_index_t*) idx;
-  shaper = hashIndex->base._collection->_shaper;
-    
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_json_t* jsonObject = (TRI_json_t*) (TRI_AtVector(&(values->_value._objects), j));
-    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
-
-    element.fields[j] = *shapedObject;
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject);
-  }
-  
-  if (hashIndex->base._unique) {
-    result = HashIndex_find(hashIndex->_hashIndex, &element);
-  }
-  else {
-    result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
-  }
-
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_DestroyShapedJson(shaper, element.fields + j);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-  
-  return result;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1968,8 +1915,7 @@ TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_
   
   hashIndex = (TRI_hash_index_t*) idx;
 
-  element.numFields = hashIndex->_paths._length;
-  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
+  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
 
   if (element.fields == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1977,7 +1923,7 @@ TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_
     return NULL; 
   }  
 
-  for (j = 0; j < element.numFields; ++j) {
+  for (j = 0; j < hashIndex->_paths._length; ++j) {
     element.fields[j] = *values[j];
   }
     
