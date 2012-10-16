@@ -75,8 +75,15 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
   vector->_growthFactor    = GROW_FACTOR;
 }
 
-int TRI_InitVector2 (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t elementSize,
-                      size_t initialCapacity, double growthFactor) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a vector, with user-definable settings
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitVector2 (TRI_vector_t* vector, 
+                     TRI_memory_zone_t* zone, 
+                     size_t elementSize,
+                     size_t initialCapacity, 
+                     double growthFactor) {
   vector->_memoryZone      = zone;
   vector->_elementSize     = elementSize;
   vector->_buffer          = NULL;
