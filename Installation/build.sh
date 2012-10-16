@@ -82,33 +82,26 @@ case $TRI_OS_LONG in
 
   Linux-Debian-6*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --enable-mruby"
     LDD_INFO="yes"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
-    OPTIONS="$OPTIONS --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --enable-mruby"
     LDD_INFO="yes"
-    ;;
-
-  Linux-Ubuntu-11.10*)
-    echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-mruby"
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
