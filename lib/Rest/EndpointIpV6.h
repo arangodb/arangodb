@@ -65,9 +65,9 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV6 (const Type,
-                      const Protocol, 
-                      const Encryption,
+        EndpointIpV6 (const Endpoint::Type,
+                      const Endpoint::Protocol, 
+                      const Endpoint::Encryption,
                       const std::string&, 
                       const std::string&, 
                       const uint16_t);
