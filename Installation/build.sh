@@ -67,22 +67,15 @@ case $TRI_OS_LONG in
     ;;
 
   Linux-openSUSE-12*)
-    echo "Using configuration for openSuSE 12"
-    OPTIONS="$OPTIONS --enable-flex --enable-bison --enable-all-in-one --enable-mruby --disable-all-in-one-icu --enable-icu "
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-openSUSE-11.4*)
-    echo "Using configuration for openSuSE 11.4"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    echo "Using configuration for openSuSE 12.X"
+    OPTIONS="$OPTIONS --enable-flex --enable-bison --enable-mruby "
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-11*)
-    echo "Using configuration for openSuSE 11"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    echo "Using configuration for openSuSE 11.X"
+    OPTIONS="$OPTIONS --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -134,6 +127,17 @@ case $TRI_OS_LONG in
     ;;
 
 esac
+
+if [ ! -f configure ] ; then
+echo "########################################################"
+echo "create configure script:"
+echo "   make setup"
+echo "########################################################"
+echo
+
+make setup || exit 1
+fi
+
 
 echo
 echo "########################################################"
