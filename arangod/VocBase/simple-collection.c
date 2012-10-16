@@ -4713,17 +4713,18 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
     }
 
     if (result._data.length != example->_data.length) {
-      LOG_TRACE("expecting length %lu, got length %lu for path %lu",
-                (unsigned long) result._data.length,
-                (unsigned long) example->_data.length,
-                (unsigned long) pids[i]);
+      // suppress excessive log spam
+      // LOG_TRACE("expecting length %lu, got length %lu for path %lu",
+      //           (unsigned long) result._data.length,
+      //           (unsigned long) example->_data.length,
+      //           (unsigned long) pids[i]);
 
       return false;
     }
 
     if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
-      LOG_TRACE("data mismatch at path %lu",
-                (unsigned long) pids[i]);
+      // suppress excessive log spam
+      // LOG_TRACE("data mismatch at path %lu", (unsigned long) pids[i]);
       return false;
     }
   }
