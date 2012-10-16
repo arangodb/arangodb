@@ -400,6 +400,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // do it here once off.
   // ..........................................................................  
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
+  // TODO: memory allocation might fail
   
   // ..........................................................................  
   // Assign the element size
