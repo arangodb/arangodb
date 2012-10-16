@@ -35,6 +35,7 @@ WIKI = \
 	ArangoErrors \
 	CommandLine \
 	Compiling \
+	Communication \
 	DbaManual \
 	DbaManualBasics \
 	DbaManualAuthentication \
