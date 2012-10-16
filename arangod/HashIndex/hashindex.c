@@ -100,19 +100,15 @@ void HashIndex_freeResult(TRI_hash_index_elements_t* const list) {
   FreeResults(list);
 }
 
-
-
 // -----------------------------------------------------------------------------
 // constructors public functions
 // -----------------------------------------------------------------------------
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a new hash array used for storage of elements in the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-
-HashIndex* HashIndex_new() {
+HashIndex* HashIndex_new(size_t numFields) {
   HashIndex* hashIndex;
 
   hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
@@ -124,17 +120,18 @@ HashIndex* HashIndex_new() {
   hashIndex->hashArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hasharray_t), false);
   if (hashIndex->hashArray == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
+
     return NULL;
   }    
     
-  if (! TRI_InitHashArray(hashIndex->hashArray, sizeof(HashIndexElement), NULL, NULL, NULL, NULL, NULL, NULL) ) {
+  if (! TRI_InitHashArray(hashIndex->hashArray, numFields, sizeof(HashIndexElement), NULL, NULL, NULL, NULL, NULL, NULL) ) {
     HashIndex_free(hashIndex);
+
     return NULL;    
   }
   
   return hashIndex;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Assigns a static function call to a function pointer used by Query Engine
@@ -322,7 +319,7 @@ void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const list) {
 /// @brief Creates a new multi (non-unique) hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndex* MultiHashIndex_new() {
+HashIndex* MultiHashIndex_new(size_t numFields) {
   HashIndex* hashIndex;
 
   hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
@@ -334,11 +331,13 @@ HashIndex* MultiHashIndex_new() {
   hashIndex->hashArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hasharray_t), false);
   if (hashIndex->hashArray == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
+
     return NULL;
   }    
     
-  if (! TRI_InitHashArray(hashIndex->hashArray, sizeof(HashIndexElement), NULL, NULL, NULL, NULL, NULL, NULL) ) {
+  if (! TRI_InitHashArray(hashIndex->hashArray, numFields, sizeof(HashIndexElement), NULL, NULL, NULL, NULL, NULL, NULL) ) {
     HashIndex_free(hashIndex);
+
     return NULL;    
   }
 
