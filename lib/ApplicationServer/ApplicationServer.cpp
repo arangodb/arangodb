@@ -106,7 +106,7 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -176,7 +176,7 @@ void ApplicationServer::addFeature (ApplicationFeature* feature) {
 /// @brief sets the name of the system config file with a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (string const& name, string const& path) {
+void ApplicationServer::setSystemConfigFile (std::string const& name, std::string const& path) {
   _systemConfigFile = name;
   _systemConfigPath = path;
 }
@@ -185,7 +185,7 @@ void ApplicationServer::setSystemConfigFile (string const& name, string const& p
 /// @brief sets the name of the system config file without a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (string const& name) {
+void ApplicationServer::setSystemConfigFile (std::string const& name) {
   return setSystemConfigFile(name, "");
 }
 
@@ -193,7 +193,7 @@ void ApplicationServer::setSystemConfigFile (string const& name) {
 /// @brief sets the name of the user config file
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setUserConfigFile (string const& name) {
+void ApplicationServer::setUserConfigFile (std::string const& name) {
   _userConfigFile = name;
 }
 
@@ -286,7 +286,7 @@ bool ApplicationServer::parse (int argc, char* argv[]) {
 
 bool ApplicationServer::parse (int argc,
                                char* argv[],
-                               map<string, ProgramOptionsDescription> opts) {
+                               std::map<std::string, ProgramOptionsDescription> opts) {
 
   // .............................................................................
   // setup the options

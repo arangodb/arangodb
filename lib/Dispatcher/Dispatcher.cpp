@@ -119,7 +119,7 @@ bool Dispatcher::isRunning () {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (const std::string& name, size_t nrThreads) {
+void Dispatcher::addQueue (std::string const& name, size_t nrThreads) {
   _queues[name] = new DispatcherQueue(this, name, defaultDispatcherThread, nrThreads);
 }
 
@@ -127,7 +127,7 @@ void Dispatcher::addQueue (const std::string& name, size_t nrThreads) {
 /// @brief adds a queue which given dispatcher thread type
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (const std::string& name, newDispatcherThread_fptr func, size_t nrThreads) {
+void Dispatcher::addQueue (std::string const& name, newDispatcherThread_fptr func, size_t nrThreads) {
   _queues[name] = new DispatcherQueue(this, name, func, nrThreads);
 }
 
