@@ -235,7 +235,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   }
 
   TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
-  TRI_AppendUInt64StringBuffer(buffer, _contentLength);
+  TRI_AppendInt64StringBuffer(buffer, _contentLength);
   TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
 
   if (_body != 0 && 0 < _bodySize) {
@@ -247,7 +247,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpRequest::contentLength () const {
+int64_t HttpRequest::contentLength () const {
   return _contentLength;
 }
 
@@ -385,9 +385,14 @@ size_t HttpRequest::bodySize () const {
 
 int HttpRequest::setBody (char const* newBody, size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
-  _contentLength = _bodySize = length;
+  if (_body == 0) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   _freeables.push_back(_body);
+
+  _contentLength = (int64_t) length;
+  _bodySize = length;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -398,7 +403,8 @@ int HttpRequest::setBody (char const* newBody, size_t length) {
 
 void HttpRequest::setHeader (char const* key, size_t keyLength, char const* value) {
   if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
-    _contentLength = TRI_UInt64String(value);
+
+    _contentLength = TRI_Int64String(value);
   }
   else {
     _headers.insert(key, keyLength, value);

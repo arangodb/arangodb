@@ -250,9 +250,13 @@ Handler::status_e RestBatchHandler::execute() {
 
     _response->body().appendText("\r\n\r\n", 4);
 
-    // append the response header
+    // remove some headers we don't need
+    partResponse->setHeader("connection", 10, "");
+    partResponse->setHeader("server", 6, "");
+
+    // append the part response header
     partResponse->writeHeader(&_response->body());
-    // append the response body
+    // append the part response body
     _response->body().appendText(partResponse->body());
     _response->body().appendText("\r\n", 2);
 
