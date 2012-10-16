@@ -34,6 +34,7 @@ DOXYGEN = \
 WIKI = \
 	ArangoErrors \
 	CommandLine \
+	Communication \
 	Compiling \
 	DbaManual \
 	DbaManualBasics \
