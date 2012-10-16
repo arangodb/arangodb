@@ -125,7 +125,7 @@
 ///
 /// @GE{Edge}: Edges in ArangoDB are special documents. In addition to the
 /// internal attributes @LIT{_id} and @LIT{_rev}, they have two attributes
-/// @LIT{_form} and @LIT{_to}, which contain document handles namely the
+/// @LIT{_from} and @LIT{_to}, which contain document handles namely the
 /// start-point and the end-point of the edge.
 ///
 /// @page GlossaryEdgeCollection

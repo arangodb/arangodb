@@ -244,12 +244,12 @@ static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* conne
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RunShell (mrb_state* mrb) {
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+  MRLineEditor* console(mrb, ".arango-mrb");
 
-  console->open(false /*! NoAutoComplete*/);
+  console.open(false /*! NoAutoComplete*/);
 
   while (true) {
-    char* input = console->prompt("arangoirb> ");
+    char* input = console.prompt("arangoirb> ");
 
     if (input == 0) {
       break;
@@ -260,7 +260,7 @@ static void RunShell (mrb_state* mrb) {
       continue;
     }
 
-    console->addHistory(input);
+    console.addHistory(input);
 
     struct mrb_parser_state* p = mrb_parse_nstring(mrb, input, strlen(input), NULL);
     TRI_FreeString(TRI_CORE_MEM_ZONE, input);
@@ -291,7 +291,7 @@ static void RunShell (mrb_state* mrb) {
     }
   }
 
-  console->close();
+  console.close();
 
   cout << endl;
 
