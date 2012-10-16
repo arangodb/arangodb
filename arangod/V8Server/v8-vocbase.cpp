@@ -334,13 +334,13 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   int res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    *err = TRI_CreateErrorObject(res, "cannot use/load collection");
+    *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
     return 0;
   }
 
   if (col->_collection == 0) {
     TRI_set_errno(TRI_ERROR_INTERNAL);
-    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection");
+    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection", true);
     return 0;
   }
 
@@ -530,7 +530,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (idx == 0) {
     if (create) {
       TRI_ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created")));
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created", true)));
     }
     else {
       TRI_ReleaseCollection(collection);
@@ -728,9 +728,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (mptr._did == 0) {
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot replace document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot replace document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -835,9 +833,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
   if (mptr._did == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot save document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -975,9 +971,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
   if (mptr._did == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot save document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -1096,9 +1090,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (mptr._did == 0) {
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot update document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot update document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -1180,7 +1172,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
       return scope.Close(v8::False());
     }
     else {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document")));
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
     }
   }
 
@@ -1275,7 +1267,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, cid);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
   }
 
   return scope.Close(TRI_WrapCollection(collection));
@@ -1442,13 +1434,12 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   if (idx == 0) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-        TRI_CreateErrorObject(TRI_errno(),
-                              "index could not be created")));
+        TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
-  if (!json) {
+  if (! json) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -1478,7 +1469,7 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
     return TRI_CreateErrorObject(TRI_GetErrorCodeAql(error), str);
   }
 
-  return TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+  return TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1547,7 +1538,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   TRI_json_t* json = TRI_JsonObject(result);
 
   if (!json) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -1557,7 +1548,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   if (!cursorResult) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -1567,7 +1558,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -1795,8 +1786,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
 
   if (cursor == 0) {
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "cannot create cursor")));
+                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot create cursor")));
   }
 
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
@@ -1861,8 +1851,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1897,8 +1886,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND))); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1969,9 +1957,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     }
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2001,9 +1987,7 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     return scope.Close(v8::True());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2072,9 +2056,7 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
     }
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2109,9 +2091,7 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
     return scope.Close(v8::Number::New(max));
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2146,9 +2126,7 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
     return scope.Close(hasCount ? v8::True() : v8::False());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2186,9 +2164,7 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
     return scope.Close(hasNext ? v8::True() : v8::False());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2255,9 +2231,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageIdShadowData(vocbase->_cursors, id);
 
   if (cursor == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                               "disposed or unknown cursor")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
   }
 
   return scope.Close(WrapGeneralCursor(cursor));
@@ -2367,7 +2341,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2425,7 +2399,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2496,7 +2470,7 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2576,8 +2550,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
-                                                                "collection must be unloaded")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED))); 
   }
 
   TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
@@ -2681,8 +2654,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
-                                                                "collection must be unloaded")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
   }
 
   TRI_col_file_structure_t structure = TRI_FileStructureCollectionDirectory(collection->_path);
@@ -2825,7 +2797,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot drop collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot drop collection", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -2978,7 +2950,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   if (idx == 0) {
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "index could not be created")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
@@ -3604,7 +3576,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   if (info == NULL) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -4001,7 +3973,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot rename collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot rename collection", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -4228,7 +4200,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "setAttribute failed")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "setAttribute failed", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -4341,8 +4313,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
-                                                                "collection must be unloaded")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
   }
 
   int res = TRI_TruncateDatafile(path.c_str(), size);
@@ -4350,7 +4321,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate datafile")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate datafile", true)));
   }
   
   return scope.Close(v8::Undefined());
@@ -4407,7 +4378,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot unload collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot unload collection", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -4432,7 +4403,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info", true)));
   }
 
   return scope.Close(v8::Number::New((int) info._version));
@@ -5347,7 +5318,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
       int res = TRI_UseCollectionVocBase(vocbase, vc);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection"));;
+        return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection", true));
       }
     }
 
@@ -5426,7 +5397,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
     int res = TRI_UseCollectionVocBase(vocbase, vc);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      *err = TRI_CreateErrorObject(res, "cannot use/load collection");
+      *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
       return 0;
     }
 

@@ -394,6 +394,31 @@ static v8::Handle<v8::Value> MapSetWeakDictionary (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a Javascript error object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& message) {
+  TRI_v8_global_t* v8g;
+  v8::HandleScope scope;
+
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str());
+
+  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
+  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
+
+  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
+  errorObject->Set(v8::String::New("errorMessage"), errorMessage);
+
+  if (! proto.IsEmpty()) {
+    errorObject->SetPrototype(proto);
+  }
+
+  return errorObject;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads/execute a file into/in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -821,7 +846,7 @@ static v8::Handle<v8::Value> JS_Move (v8::Arguments const& argv) {
   int res = TRI_RenameFile(source.c_str(), destination.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot move file")));
+    return scope.Close(v8::ThrowException(CreateErrorObject(res, "cannot move file")));
   }
 
   return scope.Close(v8::Undefined());;
@@ -1498,35 +1523,32 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object
+/// @brief creates an error in a javascript object, based on error number only
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber) {
+  return CreateErrorObject(errorNumber, TRI_errno_string(errorNumber));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error in a javascript object, using supplied text
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message) {
-  TRI_v8_global_t* v8g;
-  v8::HandleScope scope;
+  return CreateErrorObject(errorNumber, message);
+}
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an error in a javascript object
+////////////////////////////////////////////////////////////////////////////////
 
-  string msg;
-  if (message.size()) {
-    msg = message;
+v8::Handle<v8::Object> TRI_CreateErrorObject (int errorNumber, string const& message, bool autoPrepend) {
+  if (autoPrepend) {
+    return CreateErrorObject(errorNumber, message + ": " + string(TRI_errno_string(errorNumber)));
   }
   else {
-    msg = TRI_errno_string(errorNumber) + string(": ") + message;
+    return CreateErrorObject(errorNumber, message);
   }
-  v8::Handle<v8::String> errorMessage = v8::String::New(msg.c_str());
-
-  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject();
-  v8::Handle<v8::Value> proto = v8g->ErrorTempl->NewInstance();
-
-  errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
-  errorObject->Set(v8::String::New("errorMessage"), errorMessage);
-
-  if (! proto.IsEmpty()) {
-    errorObject->SetPrototype(proto);
-  }
-
-  return errorObject;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
