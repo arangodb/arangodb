@@ -67,6 +67,7 @@ static bool ResizeHashArrayMulti (TRI_hasharray_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InitHashArray (TRI_hasharray_t* array,
+                        size_t numFields,
                         size_t elementSize,
                         uint64_t (*hashKey) (TRI_hasharray_t*, void*),
                         uint64_t (*hashElement) (TRI_hasharray_t*, void*),
@@ -78,16 +79,20 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
   // ...........................................................................
   // Assign the callback functions
   // ...........................................................................
+
+  assert(numFields > 0);
   
   array->clearElement          = clearElement;
   array->isEmptyElement        = isEmptyElement;
   array->isEqualKeyElement     = isEqualKeyElement;
   array->isEqualElementElement = isEqualElementElement;
 
-  
+  array->_numFields = numFields;
   array->_elementSize = elementSize;
   array->_table = NULL;
-  array->_nrAlloc = 10;
+
+  // set initial allocation size to 256 elements
+  array->_nrAlloc = 256;
 
   
   // ...........................................................................
