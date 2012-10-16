@@ -1,0 +1,92 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explanation for ArangoDB's HTTP handling
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page Communication HTTP Handling in ArangoDB
+///
+/// ArangoDB will always respond to client requests with HTTP 1.1. Clients should
+/// therefore support HTTP version 1.1.
+/// 
+/// ArangoDB supports HTTP keep-alive. If the client does not send a @LIT{Connection}
+/// header in its request, ArangoDB will assume the client wants to keep alive the
+/// connection. If clients do not wish to use the keep-alive feature, they should
+/// explicitly indicate that by sending a @LIT{Connection: Close} HTTP header in 
+/// the request.
+///
+/// Client authentication is done by using the @LIT{Authorization} HTTP header. 
+/// ArangoDB supports Basic authentication.
+///
+/// Authentication is optional if the server has been started with the option
+/// @LIT{--server.disable-authentication}. 
+///
+/// The following should be noted about how ArangoDB handles client errors in its
+/// HTTP layer:
+///
+/// - ArangoDB will reject client requests with a negative value in the @LIT{Content-Length}
+///   request header with @LIT{HTTP 411} (Length Required).
+///
+/// - if the client sends a @LIT{Content-Length} header with a value bigger than 0
+///   for an HTTP GET, HEAD, or DELETE request, ArangoDB will process the request,
+///   but will write a warning to its log file. 
+///
+/// - when the client sends a @LIT{Content-Length} header that has a value that
+///   is lower than the actual size of the body sent, ArangoDB will respond with 
+///   @LIT{HTTP 400} (Bad Request).
+///
+/// - if clients send a @LIT{Content-Length} value bigger than the actual size of the
+///   body of the request, ArangoDB will wait for about 90 seconds for the client to
+///   complete its request. If the client does not send the remaining body data within
+///   this time, ArangoDB will close the connection.
+///
+/// - when clients send a body or a @LIT{Content-Length} value bigger than the maximum
+///   allowed value (512 MB), ArangoDB will respond with @LIT{HTTP 413} (Request Entity
+///   Too Large).
+///
+/// - if the overall length of the HTTP headers a client sends for one request exceeds
+///   the maximum allowed size (1 MB), the server will fail with @LIT{HTTP 431}
+///   (Request Header Fields Too Large).
+///
+/// - if clients request a HTTP method that is not supported by the server, ArangoDB
+///   will return with @LIT{HTTP 405} (Method Not Allowed). Generally supported methods 
+///   are:
+///   - GET
+///   - POST
+///   - PUT
+///   - DELETE
+///   - HEAD
+///   - PATCH
+///   
+///   Please note that not all server actions allow using all of these HTTP methods. 
+///   You should look up up the supported methods for each method you intend to use 
+///   in the manual.
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: c++
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// End:
