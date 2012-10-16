@@ -809,15 +809,15 @@ static void RunShell (v8::Handle<v8::Context> context) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor* console = new V8LineEditor(context, ".arangosh");
+  V8LineEditor console(context, ".arangosh");
 
-  console->open(BaseClient.autoComplete());
+  console.open(BaseClient.autoComplete());
 
   while (true) {
     while (! v8::V8::IdleNotification()) {
     }
 
-    char* input = console->prompt("arangosh> ");
+    char* input = console.prompt("arangosh> ");
 
     if (input == 0) {
       break;
@@ -839,7 +839,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
       input = TRI_DuplicateString("help()");
     }
     
-    console->addHistory(input);
+    console.addHistory(input);
     
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
@@ -856,9 +856,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     BaseClient.stopPager();
   }
 
-  console->close();
-
-  delete console;
+  console.close();
 
   cout << endl;
 

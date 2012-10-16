@@ -53,7 +53,8 @@ using namespace std;
 
 LineEditor::LineEditor (std::string const& history)
   : _current(),
-    _historyFilename(history) {
+    _historyFilename(history),
+    _state(STATE_NONE) {
   rl_initialize();
 }
 
@@ -62,6 +63,7 @@ LineEditor::LineEditor (std::string const& history)
 ////////////////////////////////////////////////////////////////////////////////
 
 LineEditor::~LineEditor () {
+  close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +87,8 @@ bool LineEditor::open (bool) {
   using_history();
   stifle_history(MAX_HISTORY_ENTRIES);
 
+  _state = STATE_OPENED;
+
   return read_history(historyPath().c_str()) == 0;
 }
 
@@ -93,6 +97,13 @@ bool LineEditor::open (bool) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LineEditor::close () {
+  if (_state != STATE_OPENED) {
+    // avoid duplicate saving of history
+    return true;
+  }
+
+  _state = STATE_CLOSED;
+
   return (write_history(historyPath().c_str()) == 0);
 }
 
