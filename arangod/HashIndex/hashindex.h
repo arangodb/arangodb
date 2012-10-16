@@ -60,10 +60,8 @@ typedef struct {
 
 
 typedef struct {
-  size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects the blob of data within will be hashed
   void* data;                // master document pointer
-  void* collection;          // currently not used     
 } HashIndexElement;
 
 typedef struct {
@@ -91,7 +89,7 @@ int HashIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 void HashIndex_destroy (HashIndex*);
 
-HashIndex* HashIndex_new (void);
+HashIndex* HashIndex_new (size_t);
 
 void HashIndex_free (HashIndex*);
 
@@ -128,7 +126,7 @@ void MultiHashIndex_free (HashIndex*);
 
 void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const);
 
-HashIndex* MultiHashIndex_new (void);
+HashIndex* MultiHashIndex_new (size_t);
 
 int MultiHashIndex_add (HashIndex*, HashIndexElement*);
 
