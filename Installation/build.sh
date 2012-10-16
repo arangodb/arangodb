@@ -54,14 +54,14 @@ case $TRI_OS_LONG in
 
   Linux-ArchLinux*)
     echo "Using configuration for Arch Linux"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-LinuxMint-13*)
     echo "Using configuration for LinuxMint 13"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -82,33 +82,26 @@ case $TRI_OS_LONG in
 
   Linux-Debian-6*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --enable-mruby"
     LDD_INFO="yes"
     ;;
 
   Linux-CentOS-*)
     echo "Using configuration for Centos"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --enable-mruby"
     LDD_INFO="yes"
-    ;;
-
-  Linux-Ubuntu-11.10*)
-    echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -117,7 +110,7 @@ case $TRI_OS_LONG in
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-mruby"
     RESULTS="$RESULTS arangoirb"
     ;;
 
