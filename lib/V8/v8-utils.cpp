@@ -1231,15 +1231,19 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: wait(<seconds>)")));
   }
-
+  
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
   while(! v8::V8::IdleNotification()) {
   }
 
+  size_t i = 0;
   while (TRI_microtime() < until) {
-    while(! v8::V8::IdleNotification()) {
+    if (++i % 1000 == 0) {
+      // garbage collection only every x iterations, otherwise we'll use too much CPU
+      while(! v8::V8::IdleNotification()) {
+      }
     }
 
     usleep(100);
