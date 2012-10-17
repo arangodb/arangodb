@@ -248,7 +248,8 @@ CLEANUP += \
 	Doxygen/doc \
 	Doxygen/latex \
 	Doxygen/wiki \
-	Doxygen/xml
+	Doxygen/xml \
+	Doxygen/.setup-directories
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
