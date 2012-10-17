@@ -111,6 +111,8 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate memory for the hash table
+///
+/// the hash table memory will be aligned on a cache line boundary
 ////////////////////////////////////////////////////////////////////////////////
   
 static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
@@ -123,7 +125,7 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
     return false;
   }
 
-  // position array directly on a cache line boundary
+  // check if memory was aligned on a cache line boundary
   offset = ((uint64_t) data) % CACHE_LINE_SIZE;
 
   if (offset == 0) {
@@ -131,7 +133,7 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
     table = data;
   }
   else {
-    // move to start of a cache line
+    // move to start of a cache line boundary
     table = data + (CACHE_LINE_SIZE - offset);
   }
   assert(((uint64_t) table) % CACHE_LINE_SIZE == 0);
