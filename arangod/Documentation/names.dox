@@ -41,9 +41,9 @@
 ///   the underscore (@LIT{_}), or the dash (@LIT{-}) symbol. This also means that
 ///   any non-ASCII collection names are not allowed.
 ///
-/// - Regular collection names must start with either a letter or a number, and not
-///   with the underscore or the dash symbol. Collection names starting with
-///   either an underscore or a dash are considered to be system collections that
+/// - Regular collection names must start with a letter, and not a number, the 
+///   underscore or the dash symbol. Collection names starting with either a number,
+///   an underscore or a dash are considered to be system collections that
 ///   are for ArangoDB's internal use only. System collection names should not be
 ///   used by end users for their own collections.
 ///
