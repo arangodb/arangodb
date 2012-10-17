@@ -322,7 +322,7 @@ static bool IndexStaticIsEqualShapedJsonShapedJson (const TRI_shaped_json_t* lef
     return false;
   }
 
-  return ( memcmp(left->_data.data, right->_data.data, left->_data.length) == 0);   
+  return (memcmp(left->_data.data, right->_data.data, left->_data.length) == 0);   
 }  // end of function isEqualShapedJsonShapedJson
 
 
