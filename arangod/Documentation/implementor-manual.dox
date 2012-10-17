@@ -44,6 +44,8 @@
 ///  <li>@ref HttpMisc</li>
 ///  <li>@ref HttpBatch</li>
 ///  <li>@ref HttpImport</li>
+///  <li>@ref Communication</li>
+///  <li>@ref NamingConventions</li>
 ///  <li>@ref ArangoErrors</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
@@ -76,6 +78,8 @@
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
+///    <li>@ref Communication</li>
+///    <li>@ref NamingConventions</li>
 ///    <li>@ref ArangoErrors</li>
 ///   </ul>
 ///  </li>

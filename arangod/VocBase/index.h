@@ -476,7 +476,8 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t*,
 TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s*,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
-                                  bool unique);
+                                  bool unique,
+                                  size_t initialDocumentCount);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

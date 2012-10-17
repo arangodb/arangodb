@@ -522,7 +522,7 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_document_collection_t* sim,
   else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_edge_marker_t edgeUpdate;
 
-    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
+    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_edge_marker_t));
     marker = &edgeUpdate.base;
     markerLength = sizeof(TRI_doc_edge_marker_t);
     data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
@@ -3695,8 +3695,13 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
     return idx;
   }
 
-  // create the hash index
-  idx = TRI_CreateHashIndex(&collection->base, &fields, &paths, unique);
+  // create the hash index. we'll provide it with the current number of documents
+  // in the collection so the index can do a sensible memory preallocation
+  idx = TRI_CreateHashIndex(&collection->base, 
+                            &fields, 
+                            &paths, 
+                            unique, 
+                            collection->base._primaryIndex._nrUsed);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);

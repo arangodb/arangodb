@@ -195,19 +195,19 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
   
   if (copy[0] == '[') {
     // ipv6
-    found = copy.find("]:", 1);
-    if (found != string::npos && found + 2 < copy.size()) {
+    found = copy.find("]:", 1);    
+    if (found != string::npos && found > 2 && found + 2 < copy.size()) {
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), port);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(1, found - 1), port);
     }
 
     found = copy.find("]", 1);
-    if (found != string::npos && found + 1 == copy.size()) {
+    if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(1, found - 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -501,7 +501,7 @@ EndpointIp::EndpointIp (const Endpoint::EndpointType type,
                         const std::string& host, 
                         const uint16_t port) :
     Endpoint(type, domainType, protocol, encryption, specification, listenBacklog), _host(host), _port(port) {
-  
+
   assert(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }
 
