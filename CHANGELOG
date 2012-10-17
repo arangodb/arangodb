@@ -36,6 +36,8 @@ v1.1.beta1 (2012-XX-XX)
 
 * issue #246: added clear() function in arangosh
 
+* issue #245: Documentation: Central place for naming rules/limits inside ArangoDB
+
 * reduced size of hash index elements by 50 %, allowing more index elements to fit in 
   memory
 
