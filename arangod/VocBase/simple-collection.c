@@ -517,7 +517,7 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_sim_collection_t* sim,
     dataLength = originalMarker->_size - sizeof(TRI_doc_document_marker_t);
   }
   else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
-    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
+    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_edge_marker_t));
     marker = &edgeUpdate.base;
     markerLength = sizeof(TRI_doc_edge_marker_t);
     data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
