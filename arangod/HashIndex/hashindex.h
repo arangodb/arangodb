@@ -89,7 +89,7 @@ int HashIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 
 void HashIndex_destroy (HashIndex*);
 
-HashIndex* HashIndex_new (size_t);
+HashIndex* HashIndex_new (size_t, size_t);
 
 void HashIndex_free (HashIndex*);
 
@@ -126,7 +126,7 @@ void MultiHashIndex_free (HashIndex*);
 
 void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const);
 
-HashIndex* MultiHashIndex_new (size_t);
+HashIndex* MultiHashIndex_new (size_t, size_t);
 
 int MultiHashIndex_add (HashIndex*, HashIndexElement*);
 

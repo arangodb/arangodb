@@ -1759,7 +1759,8 @@ static int UpdateHashIndex (TRI_index_t* idx,
 TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
-                                  bool unique) {
+                                  bool unique,
+                                  size_t initialDocumentCount) {
   TRI_hash_index_t* hashIndex;
   int result;
   size_t j;
@@ -1814,10 +1815,12 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
   }
 
   if (unique) {
-    hashIndex->_hashIndex = HashIndex_new(hashIndex->_paths._length);
+    // create a unique index preallocated for the current number of documents
+    hashIndex->_hashIndex = HashIndex_new(hashIndex->_paths._length, initialDocumentCount);
   }
   else {
-    hashIndex->_hashIndex = MultiHashIndex_new(hashIndex->_paths._length);
+    // create a non-unique index preallocated for the current number of documents
+    hashIndex->_hashIndex = MultiHashIndex_new(hashIndex->_paths._length, initialDocumentCount);
   }  
   
   if (hashIndex->_hashIndex == NULL) { // oops out of memory?

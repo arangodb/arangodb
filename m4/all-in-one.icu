@@ -13,7 +13,7 @@ dnl --- ICU_LIBS was: " -lpthread -ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib
 ICU_CPPFLAGS="-D_REENTRANT -I${icu_build_dir}/include"
 ICU_LDFLAGS=""
 ICU_LIBS=" -ldl -lm  ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm  "
-ICU_BUILT="${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a "
+ICU_BUILT="${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a"
 
 TRI_ICU_VERSION="49.1.2"
 
