@@ -8,10 +8,32 @@ v1.1.beta1 (2012-XX-XX)
 
   - In 1.1, we have introduced types for collections: regular documents go into document
     collections, and edges go into edge collections. The prefixing (db.xxx vs. edges.xxx) 
-    is gone in 1.1. edges.xxx can still be used to access collections, however, it will 
-    not determine the collection type anymore. To create an edge collection 1.1, you can
-    use db._createEdgeCollection(). And there's also db._createDocumentCollection(). 
-    db._create() is also still there and will create a document collection.
+    works slightly different in 1.1: edges.xxx can still be used to access collections, 
+    however, it will not determine the type of existing collections anymore. To create an 
+    edge collection 1.1, you can use db._createEdgeCollection() or edges._create(). 
+    And there's of course also db._createDocumentCollection(). 
+    db._create() is also still there and will create a document collection by default, 
+    whereas edges._create() will create an edge collection.
+
+* the server now handles requests with invalid Content-Length header values as follows:
+  - if Content-Length is negative, the server will respond instantly with HTTP 411
+    (length required)
+
+  - if Content-Length is positive but shorter than the supplied body, the server will
+    respond with HTTP 400 (bad request)
+
+  - if Content-Length is positive but longer than the supplied body, the server will
+    wait for the client to send the missing bytes. The server allows 90 seconds for this
+    and will close the connection if the client does not send the remaining data
+
+  - if Content-Length is bigger than the maximum allowed size (512 MB), the server will 
+    fail with HTTP 413 (request entitiy too large).
+
+  - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
+    the server will fail with HTTP 431 (request header fields too large)
+
+* reduced size of hash index elements by 50 %, allowing more index elements to fit in 
+  memory
 
 * issue #235: GUI Shell throws Error:ReferenceError: db is not defined
 
