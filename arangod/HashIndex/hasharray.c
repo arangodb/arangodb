@@ -128,7 +128,7 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
 
   if (offset == 0) {
     // we're already on a cache line boundary
-    table = array->_data;
+    table = data;
   }
   else {
     // move to start of a cache line
