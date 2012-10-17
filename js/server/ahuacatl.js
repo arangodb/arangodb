@@ -131,11 +131,7 @@ function AHUACATL_NORMALIZE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_CLONE (obj) {
-  if (obj == null) {
-    return obj;
-  }
-
-  if (typeof(obj) != "object") {
+  if (obj == null || typeof(obj) != "object") {
     return obj;
   }
 
@@ -2222,7 +2218,7 @@ function AHUACATL_MERGE () {
     }
 
     for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
+      if (! element.hasOwnProperty(k)) {
         continue;
       }
 
@@ -2233,6 +2229,43 @@ function AHUACATL_MERGE () {
   return result; 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE_RECURSIVE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
+    }
+
+    recurse = function (old, element) {
+      var r = AHUACATL_CLONE(old);
+
+      for (var k in element) {
+        if (! element.hasOwnProperty(k)) {
+          continue;
+        }
+
+        if (r.hasOwnProperty(k) && AHUACATL_TYPEWEIGHT(element[k]) === AHUACATL_TYPEWEIGHT_DOCUMENT) {
+          r[k] = recurse(r[k], element[k]);
+        }
+        else {
+          r[k] = element[k];
+        }
+      }
+      return r;
+    }
+
+    result = recurse(result, element);
+  }
+
+  return result; 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief passthru the argument

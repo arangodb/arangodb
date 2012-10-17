@@ -2619,13 +2619,20 @@ function ArangoDatabase (connection) {
   'Print function:                                                     ' + "\n" +
   ' > print(x)                            std. print function          ' + "\n" +
   ' > print_plain(x)                      print without pretty printing' + "\n" +
-  '                                       and without colors           ';
+  '                                       and without colors           ' + "\n" +
+  ' > clear()                             clear screen                 ' ;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the global db object and load the collections
 ////////////////////////////////////////////////////////////////////////////////
 
   try {
+    clear = function () {
+      for (var i = 0; i < 100; ++i) {
+        print('\n');
+      }
+    };
+
     if (typeof arango !== 'undefined') {
       // default database object
       db = internal.db = new ArangoDatabase(arango);

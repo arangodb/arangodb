@@ -107,7 +107,7 @@ extern "C" {
 ///   Will be raised when the collection parameter is missing.
 /// - 1205: @CODE{illegal document handle}
 ///   Will be raised when a document handle is corrupt.
-/// - 1206: @CODE{maixaml size of journal too small}
+/// - 1206: @CODE{maixmal size of journal too small}
 ///   Will be raised when the maximal size of the journal is too small.
 /// - 1207: @CODE{duplicate name}
 ///   Will be raised when a name duplicate is detected.
@@ -761,7 +761,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
 ///
-/// maixaml size of journal too small
+/// maixmal size of journal too small
 ///
 /// Will be raised when the maximal size of the journal is too small.
 ////////////////////////////////////////////////////////////////////////////////

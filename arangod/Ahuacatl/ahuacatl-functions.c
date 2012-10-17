@@ -397,6 +397,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // document functions
   REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s"); 
   REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
+  REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+");
 
   // geo functions
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s");

@@ -3944,7 +3944,11 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// @FUN{@FA{collection}.rename(@FA{new-name})}
 ///
 /// Renames a collection using the @FA{new-name}. The @FA{new-name} must not
-/// already be used for a different collection. If it is an error is thrown.
+/// already be used for a different collection. @FA{new-name} must also be a
+/// valid collection name. For more information on valid collection names please refer
+/// to @ref NamingConventions.
+///
+/// If renaming fails for any reason, an error is thrown.
 ///
 /// @EXAMPLES
 ///
@@ -4610,9 +4614,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 ///
 /// @FUN{db._create(@FA{collection-name})}
 ///
-/// Creates a new collection named @FA{collection-name}. If the 
-/// collection name already exists, then an error is thrown. The default value 
-/// for @LIT{waitForSync} is @LIT{false}.
+/// Creates a new collection named @FA{collection-name}. 
+/// If the collection name already exists or if the name format is invalid, an 
+/// error is thrown. For more information on valid collection names please refer
+/// to @ref NamingConventions.
 ///
 /// The type of the collection is automatically determined by the object that
 /// @FA{_create} is invoked with:
