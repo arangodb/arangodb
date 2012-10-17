@@ -20,6 +20,7 @@ mr-*.h
 
 Doxygen/doc/
 Doxygen/manuals/
+Doxygen/website/
 Doxygen/wiki/
 Doxygen/xml/
 
