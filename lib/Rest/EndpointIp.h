@@ -61,10 +61,10 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIp (const Type, 
-                    const DomainType, 
-                    const Protocol,
-                    const Encryption,
+        EndpointIp (const Endpoint::Type, 
+                    const Endpoint::DomainType, 
+                    const Endpoint::Protocol,
+                    const Endpoint::Encryption,
                     const std::string&, 
                     const std::string&, 
                     const uint16_t);

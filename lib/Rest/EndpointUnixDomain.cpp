@@ -699,8 +699,8 @@ bool EndpointIp::initIncoming (socket_t incoming) {
 EndpointIpV4::EndpointIpV4 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol,
                             const Endpoint::Encryption encryption,
-                            string const& specification, 
-                            string const& host, 
+                            const std::string& specification, 
+                            const std::string& host, 
                             const uint16_t port) :
     EndpointIp(type, ENDPOINT_IPV4, protocol, encryption, specification, host, port) {
 }
@@ -736,8 +736,8 @@ EndpointIpV4::~EndpointIpV4 () {
 EndpointIpV6::EndpointIpV6 (const Endpoint::Type type,
                             const Endpoint::Protocol protocol, 
                             const Endpoint::Encryption encryption,
-                            string const& specification, 
-                            string const& host, 
+                            const std::string& specification, 
+                            const std::string& host, 
                             const uint16_t port) :
     EndpointIp(type, ENDPOINT_IPV6, protocol, encryption, specification, host, port) {
 }
