@@ -63,9 +63,15 @@ typedef struct TRI_hasharray_s {
   uint64_t _elementSize;
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed; // the number of used entries
+  
+  // _table might or might not be the same pointer as _data
+  // if you want to handle the hash table memory, always use the _data pointer!
+  // if you want to work with the hash table elements, always use the _table pointer!
 
-  char* _table; // the table itself
+  char* _data; // pointer to memory acquired for the hash table
+  char* _table; // the table itself, aligned to a cache line boundary 
 
+#ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds; // statistics: number of lookup calls
   uint64_t _nrAdds; // statistics: number of insert calls
   uint64_t _nrRems; // statistics: number of remove calls
@@ -75,6 +81,7 @@ typedef struct TRI_hasharray_s {
   uint64_t _nrProbesA; // statistics: number of misses while inserting
   uint64_t _nrProbesD; // statistics: number of misses while removing
   uint64_t _nrProbesR; // statistics: number of misses while adding
+#endif
 }
 TRI_hasharray_t;
 
@@ -101,6 +108,7 @@ TRI_hasharray_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InitHashArray (TRI_hasharray_t*,
+                        size_t initialDocumentCount,
                         size_t numFields,
                         size_t elementSize,
                         uint64_t (*hashKey) (TRI_hasharray_t*, void*),
@@ -187,42 +195,9 @@ bool TRI_RemoveKeyHashArray (TRI_hasharray_t*, void* key);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                  MULTI HASH ARRAY
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           MULTI HASH ARRAY
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -272,15 +247,6 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t*, void* key);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
 
 #ifdef __cplusplus
 }

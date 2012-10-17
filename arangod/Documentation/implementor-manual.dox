@@ -45,6 +45,7 @@
 ///  <li>@ref HttpBatch</li>
 ///  <li>@ref HttpImport</li>
 ///  <li>@ref ArangoErrors</li>
+///  <li>@ref Communication</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
 /// @else
@@ -76,6 +77,7 @@
 ///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
+///    <li>@ref Communication</li>
 ///    <li>@ref ArangoErrors</li>
 ///   </ul>
 ///  </li>
