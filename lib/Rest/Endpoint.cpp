@@ -204,10 +204,10 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     }
 
     found = copy.find("]", 1);
-    if (found != string::npos && found + 1 == copy.size()) {
+    if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(0, found + 1), EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, protocol, encryption, specification, listenBacklog, copy.substr(1, found - 1), EndpointIp::_defaultPort);
     }
 
     // invalid address specification
