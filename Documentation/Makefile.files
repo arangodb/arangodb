@@ -248,7 +248,6 @@ CLEANUP += \
 	$(DOXYGEN) \
 	Doxygen/doc \
 	Doxygen/latex \
-	Doxygen/wiki \
 	Doxygen/xml
 
 ## -----------------------------------------------------------------------------
