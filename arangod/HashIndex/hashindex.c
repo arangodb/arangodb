@@ -71,13 +71,7 @@ static HashIndex* CreateHashIndex (size_t numFields, size_t initialDocumentCount
   if (! TRI_InitHashArray(hashIndex->hashArray, 
                           initialDocumentCount,
                           numFields, 
-                          sizeof(HashIndexElement), 
-                          NULL, 
-                          NULL, 
-                          NULL, 
-                          NULL, 
-                          NULL, 
-                          NULL)) {
+                          sizeof(HashIndexElement))) { 
     HashIndex_free(hashIndex);
 
     return NULL;    
