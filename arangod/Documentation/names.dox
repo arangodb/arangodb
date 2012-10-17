@@ -65,7 +65,7 @@
 ///   so end users should not use attribute names starting with an underscore
 ///   for their own attributes.
 ///
-/// - Attribute names should not start with the at-mark (@LIT{@}). The at-mark
+/// - Attribute names should not start with the at-mark (@LIT{\@}). The at-mark
 ///   at the start of attribute names is reserved in ArangoDB for future use cases.
 ///
 /// - Theoretically, attribute names can include punctuation and special characters
