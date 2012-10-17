@@ -109,12 +109,12 @@ static bool IndexStaticCopyElementElement (TRI_hasharray_t* array, void* left, v
     return false;
   }
     
-  leftElement->data       = rightElement->data;
   leftElement->fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * array->_numFields, false);
-  
   if (leftElement->fields == NULL) {
     return false;
   }
+  
+  leftElement->data       = rightElement->data;
 
   memcpy(leftElement->fields, rightElement->fields, sizeof(TRI_shaped_json_t) * array->_numFields);
   
@@ -297,15 +297,24 @@ static bool IndexStaticIsEqualKeyElementMulti (TRI_hasharray_t* array, void* lef
 
 
 static bool IndexStaticIsEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right) {
-  if (left == NULL && right == NULL) {
-    return true;
+  // if (left == NULL && right == NULL) {
+  //   return true;
+  // }
+
+  // if (left == NULL && right != NULL) {
+  //   return false;
+  // }
+
+  // if (left != NULL && right == NULL) {
+  //   return false;
+  // }
+ 
+  // simplified the above checks to 
+  if (left == NULL) {
+    return (right == NULL);
   }
 
-  if (left == NULL && right != NULL) {
-    return false;
-  }
-
-  if (left != NULL && right == NULL) {
+  if (right == NULL) {
     return false;
   }
 
@@ -313,7 +322,7 @@ static bool IndexStaticIsEqualShapedJsonShapedJson (const TRI_shaped_json_t* lef
     return false;
   }
 
-  return ( memcmp(left->_data.data,right->_data.data, left->_data.length) == 0);   
+  return ( memcmp(left->_data.data, right->_data.data, left->_data.length) == 0);   
 }  // end of function isEqualShapedJsonShapedJson
 
 
