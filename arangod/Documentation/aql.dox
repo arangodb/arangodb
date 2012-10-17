@@ -322,10 +322,8 @@
 /// happens to have the same name as a keyword, the name must be enclosed in
 /// backticks.
 ///
-/// Allowed characters in collection names are the letters @LIT{a} to @LIT{z} 
-/// (both in lower and upper case) and the numbers @LIT{0} to @LIT{9} and the
-/// the underscore (@LIT{_}) symbol. A collection name must start with either
-/// a letter or a number, but not with an underscore.
+/// Please refer to the @ref NamingConventions about collection name naming
+/// conventions. 
 ///
 /// @subsubsection AqlAttributeNames Attribute names
 /// 
@@ -334,6 +332,9 @@
 /// collections with ambiguous attribute names might be used in a query.
 /// To avoid any ambiguity, it is not allowed to refer to an unqualified 
 /// attribute name.
+///
+/// Please refer to the @ref NamingConventions for more information about the
+/// attribute naming conventions.
 /// 
 /// @EXAMPLE{aqlattributenamesvalid,active user with active friends}
 ///
