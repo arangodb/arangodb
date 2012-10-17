@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoint, IPv6-based
+/// @brief connection endpoint, ipv4-based
 ///
 /// @file
 ///
@@ -25,20 +25,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_ENDPOINT_IPV6_H
-#define TRIAGENS_FYN_REST_ENDPOINT_IPV6_H 1
+#include "EndpointIpV4.h"
 
-#include "Rest/EndpointIp.h"
+#include "Rest/Endpoint.h"
 
-
-namespace triagens {
-  namespace rest {
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointIpV6
+// --SECTION--                                                      EndpointIpV4
 // -----------------------------------------------------------------------------
-
-    class EndpointIpV6 : public EndpointIp {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -49,67 +45,30 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an endpoint
+/// @brief creates an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV6 (const EndpointType,
-                      const ProtocolType, 
-                      const EncryptionType,
-                      const std::string&, 
-                      int,
-                      const std::string&, 
-                      const uint16_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an endpoint
-////////////////////////////////////////////////////////////////////////////////
-      
-        ~EndpointIpV6 ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-    
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get endpoint domain
-////////////////////////////////////////////////////////////////////////////////
-        
-        int getDomain () const {
-          return AF_INET6;
-        }
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get host string for HTTP requests
-////////////////////////////////////////////////////////////////////////////////
-
-        string getHostString  () const {
-          return '[' + getHost() + "]:" + triagens::basics::StringUtils::itoa(getPort());
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-    };
-
-  }
+EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
+                            const Endpoint::ProtocolType protocol,
+                            const Endpoint::EncryptionType encryption,
+                            const std::string& specification, 
+                            int listenBacklog,
+                            const std::string& host, 
+                            const uint16_t port) :
+    EndpointIp(type, DOMAIN_IPV4, protocol, encryption, specification, listenBacklog, host, port) {
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an IPv4 socket endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+EndpointIpV4::~EndpointIpV4 () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

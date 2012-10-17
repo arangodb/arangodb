@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoints
+/// @brief connection endpoint, IPv4-based
 ///
 /// @file
 ///
@@ -26,23 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_FYN_REST_ENDPOINT_IPV4_H
-#define TRIAGENS_FYN_REST_ENDPOINT_IPV4_H 1
+#define TRIAGENS_FYN_REST_ENDPOINT_IPV4 H 1
 
-#include <Basics/Common.h>
-#include <Basics/StringUtils.h>
+#include "Rest/EndpointIp.h"
 
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          Endpoint
-// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint specification
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      EndpointIpV4
@@ -65,10 +55,11 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV4 (const Type, 
-                      const Protocol,
-                      const Encryption,
+        EndpointIpV4 (const EndpointType, 
+                      const ProtocolType,
+                      const EncryptionType,
                       const std::string&, 
+                      int,
                       const std::string&, 
                       const uint16_t);
 
@@ -106,19 +97,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string getHostString  () const {
-          return _host + ':' + triagens::basics::StringUtils::itoa(_port);
+          return getHost() + ':' + triagens::basics::StringUtils::itoa(getPort());
         }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
     };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointIpV6
-// -----------------------------------------------------------------------------
-
 
   }
 }
