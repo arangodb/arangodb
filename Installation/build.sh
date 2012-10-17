@@ -120,6 +120,10 @@ case $TRI_OS_LONG in
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
     OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     RESULTS="$RESULTS arangoirb"
+    if [ "${TRI_MACH}" == "x86_64" ]; then
+       X=$(uname -r)
+       OPTIONS="$OPTIONS --build x86_64-apple-darwin${X}"
+    fi
     ;;
 
   *)
