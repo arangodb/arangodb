@@ -75,6 +75,7 @@ WIKI = \
 	JSModuleInternal \
 	JSModules \
 	Key-Value \
+	NamingConventions \
 	RefManual \
 	RestDocument \
 	RestEdge \

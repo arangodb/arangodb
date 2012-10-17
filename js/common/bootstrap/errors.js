@@ -58,7 +58,7 @@
     "ERROR_ARANGO_COLLECTION_NOT_FOUND" : { "code" : 1203, "message" : "collection not found" }, 
     "ERROR_ARANGO_COLLECTION_PARAMETER_MISSING" : { "code" : 1204, "message" : "parameter 'collection' not found" }, 
     "ERROR_ARANGO_DOCUMENT_HANDLE_BAD" : { "code" : 1205, "message" : "illegal document handle" }, 
-    "ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL" : { "code" : 1206, "message" : "maixaml size of journal too small" }, 
+    "ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL" : { "code" : 1206, "message" : "maixmal size of journal too small" }, 
     "ERROR_ARANGO_DUPLICATE_NAME"  : { "code" : 1207, "message" : "duplicate name" }, 
     "ERROR_ARANGO_ILLEGAL_NAME"    : { "code" : 1208, "message" : "illegal name" }, 
     "ERROR_ARANGO_NO_INDEX"        : { "code" : 1209, "message" : "no suitable index known" }, 
