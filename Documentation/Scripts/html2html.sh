@@ -36,7 +36,8 @@ else
   FOOTER='</body></html>'
 fi
 
-echo -n > $OUTPUT.tmp
+rm -f $OUTPUT.tmp
+touch $OUTPUT.tmp
 
 if test -n "$HEADER";  then
   echo $HEADER >> $OUTPUT.tmp
