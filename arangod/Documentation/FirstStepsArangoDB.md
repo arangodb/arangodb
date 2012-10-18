@@ -1,6 +1,8 @@
 First Steps with ArangoDB {#FirstStepsArangoDB}
 ===============================================
 
+(@ref UserManualBasics "prev" | @ref UserManual "home" | @ref UserManualArangosh "next")
+
 @EMBEDTOC{FirstStepsArangoDBTOC}
 
 What is ArangoDB? {#FirstStepsArangoDBIntro}
@@ -17,17 +19,48 @@ Ruby, Python, PHP, JavaScript, and Perl. In the following sections we
 will use the JavaScript shell to communicate with the database and
 demonstrate some of ArangoDB's features using JavaScript.
 
+Key features include:
+
+- *Schema-free schemata* let you combine the space efficiency of MySQL with
+  the performance power of NoSQL
+- Use ArangoDB as an *application server* and fuse your application and
+  database together for maximal throughput
+- *JavaScript for all:* no language zoo, you can use one language from your
+  browser to your back-end
+- *Flexible data modeling:* model your data as combination of key-value pairs,
+  documents or graphs - perfect for social relations
+- *Free index choice:* use the correct index for your problem, be it a skip
+  list or a n-gram search
+- *Configurable durability:* let the application decide if it needs more
+  durability or more performance
+- *No-nonsense storage:* ArangoDB uses all of the power of modern storage
+  hardware, like SSD and large caches
+- It is open source (*Apache Licence 2.0*)
+
+For more in-depth information
+
+- read more on the 
+  @EXTREF{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}
+
+- @EXTREF_S{http://vimeo.com/36411892,watch the video} - Martin Schoenert, 
+  architect of ArangoDB, gives an introduction of what the ArangoDB project 
+  is about
+- or give it a @EXTRES{http://www.arangodb.org/try,try}
+
 Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
 ===============================================================
 
 First of all download and install the corresponding RPM or Debian
 package or use homebrew on the MacOS X. See the
 @EXTREF_S{InstallManual.html, installation manual} for more details.
+In case you just want to experiment with ArangoDB you can use the
+@EXTREF_S{http://www.arangodb.org/try,on-line} demo without installing
+ArangoDB locally.
 
 For Linux:
 
 - visit the official ArangoDB download page at 
-  @EXTREF{www.arangodb.org/download,http://www.arangodb.org/download}
+  @EXTREF{http://www.arangodb.org/download,http://www.arangodb.org/download}
   and download the correct package for you Linux distribution
 
 - install the package using you favorite package manager
@@ -46,7 +79,7 @@ After these steps there should be a running instance of `arangod` -
 the ArangoDB database server.
 
     > ps auxw | fgrep arangod
-    arangodb        14536   0,1  0,6  5307264  23464 s002  S     1:21pm   0:00.18 /usr/local/sbin/arangod
+    arangodb 14536 0.1 0.6 5307264 23464 s002 S 1:21pm 0:00.18 /usr/local/sbin/arangod
 
 If there is no such process, check the log file
 `/var/log/arangodb/arangod.log` for errors.
@@ -124,8 +157,8 @@ this. If you do not specify a password, arangosh will prompt for one.
 
     > ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
 
-Querying {#FirstStepsArangoDBQuerying}
---------------------------------------
+Querying For Documents {#FirstStepsArangoDBQuerying}
+----------------------------------------------------
 
 All documents are stored in collections. All collections are stored in a
 database. The database object is accessible there the variable `db` from
@@ -195,7 +228,7 @@ Now extract all elements.
        }
     ]
 
-The last document is was a mistake, so let's delete it
+The last document was a mistake, so let's delete it
 
     arangosh> db.example.remove("4538791/5980583")
     true
@@ -256,4 +289,6 @@ Search for all persons over 30.
        }
     ]
 
-Note that `_query` is a short-cut for `_createStatement` and `execute`.
+You can learn all about the query language @ref AQL "here". Note that
+`_query` is a short-cut for `_createStatement` and `execute`. We will
+come back to these functions when we talk about cursors.

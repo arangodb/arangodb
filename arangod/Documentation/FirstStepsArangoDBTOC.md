@@ -5,3 +5,5 @@ TOC {#FirstStepsArangoDBTOC}
   - @ref FirstStepsArangoDBIntro
   - @ref FirstStepsArangoDBServerStart
   - @ref FirstStepsArangoDBFirstSteps
+    - @ref FirstStepsArangoDBConnecting
+    - @ref FirstStepsArangoDBQuerying
