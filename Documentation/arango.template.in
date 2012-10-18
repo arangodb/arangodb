@@ -222,6 +222,7 @@ ALIASES                = \
   "EMBEDTOC{1}=@if LATEX@else<hr>@copydoc \1\n<hr>@endif" \
   "RESTHEADER{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif" \
   "LATEXBREAK=@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly" \
+  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
   "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href= \1>\2</a>@endif" \
   "EXTRES{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href= \1>\2</a>@endif" \
   "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif" \
@@ -764,10 +765,7 @@ EXCLUDE_SYMBOLS        =
 # directories that contain example code fragments that are included (see
 # the \include command).
 
-EXAMPLE_PATH           = @srcdir@/Documentation/Examples.Ahuacatl \
-                         @srcdir@/Documentation/Examples.ArangoDB \
-                         @srcdir@/Documentation/Examples.Durham \
-                         @srcdir@/Documentation/Examples.Fyn
+EXAMPLE_PATH           = @srcdir@/Documentation/Examples
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
