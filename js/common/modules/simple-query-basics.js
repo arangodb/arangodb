@@ -148,6 +148,7 @@ GeneralArrayCursor.prototype._PRINT = function () {
 /// @brief returns all elements of the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
+GeneralArrayCursor.prototype.toArray = 
 GeneralArrayCursor.prototype.elements = function () {
   return this._documents;
 }
