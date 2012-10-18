@@ -800,6 +800,7 @@ int TRI_SaveParameterInfoCollection (char const* path, TRI_col_info_t* info) {
 ///
 /// You must hold the @ref TRI_WRITE_LOCK_STATUS_VOCBASE_COL when calling this
 /// function.
+/// Note: the parameter pointer might be 0 when a collection gets unloaded!!!!
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase, 
@@ -841,7 +842,7 @@ int TRI_UpdateParameterInfoCollection (TRI_vocbase_t* vocbase,
 
       if (shapeCollection != NULL) {
         // adjust wait for sync value of underlying shape collection
-        shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+        shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || info._waitForSync);
       }
     }
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
