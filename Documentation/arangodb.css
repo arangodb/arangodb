@@ -68,8 +68,8 @@ h2 {
     color: #404040;
     font-family: Helvetica,Times New Roman;
     font-size: 26px;
-    margin-bottom: 10px;
-    padding: 14px 0 34px;
+    margin-bottom: 14px;
+    padding: 14px 0  by 4px;
 }
 
 a:link, a:visited {
@@ -93,15 +93,11 @@ hr {
 }
 
 code {
-	font-family: Monaco, Consolas, "Andale Mono", "DejaVu Sans Mono", monospace;
-    background-color: #FBFCFD !important;
-    border: 1px solid #C4CFE5 !important;
+    font-family: Monaco, Consolas, "Andale Mono", "DejaVu Sans Mono", monospace;
     font-family: monospace,fixed;
     font-size: 105%;
     line-height: 175%;
-    margin: 4px 8px 4px 2px;
     overflow: auto;
-    padding: 2px 6px;
     word-wrap: break-word;
 }
 
@@ -121,7 +117,7 @@ pre, pre.fragment {
     font-family: monospace,fixed;
     font-size: 105%;
     line-height: 125%;
-    margin: 4px 8px 4px 2px;
+    margin: 4px 8px 24px 2px;
     overflow: auto;
     padding: 4px 6px;
     word-wrap: break-word;
