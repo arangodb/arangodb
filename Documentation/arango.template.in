@@ -222,8 +222,9 @@ ALIASES                = \
   "EMBEDTOC{1}=@if LATEX@else<hr>@copydoc \1\n<hr>@endif" \
   "RESTHEADER{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif" \
   "LATEXBREAK=@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly" \
-  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
   "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href= \1>\2</a>@endif" \
+  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
+  "S_EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else <a href=\1>\2</a>@endif" \
   "EXTRES{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href= \1>\2</a>@endif" \
   "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif" \
   "SPC=&nbsp;" \
