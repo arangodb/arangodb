@@ -222,7 +222,7 @@
 /// @copydetails triagens::rest::ApplicationServer::_options
 ////////////////////////////////////////////////////////////
 ///
-/// @CMDOPT{--log @CA{level}}
+/// @CMDOPT{\-\-log @CA{level}}
 /////////////////////////////
 ///
 /// Allows the user to choose the level of information which is logged by the
@@ -237,7 +237,7 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 //////////////////////////////////////////////////////////
 ///
-/// @CMDOPT{--daemon}
+/// @CMDOPT{\-\-daemon}
 /////////////////////
 ///
 /// Runs the server as a daemon (as a background process).
@@ -282,7 +282,7 @@
 /// @subsection UserManualShellStartStopOptions Command-Line Options
 ////////////////////////////////////////////////////////////////////
 ///
-/// Use @LIT{--help} to get a list of command-line options:
+/// Use @LIT{\-\-help} to get a list of command-line options:
 ///
 /// @TINYEXAMPLE{arangosh-options,shell options}
 ///

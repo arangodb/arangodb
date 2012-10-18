@@ -37,11 +37,11 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-./configure --enable-all-in-one --disable-flex --disable-bison --disable-mruby
-make built-sources
-make doxygen
-make latex
-make wiki
+./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu --enable-maintainer-mode --disable-mruby || exit 1
+make built-sources || exit 1
+make doxygen || exit 1
+make latex || exit 1
+make wiki || exit 1
 
 if [ "$TAG" == "1" ];  then
   git commit -m "release version $VERSION" -a
