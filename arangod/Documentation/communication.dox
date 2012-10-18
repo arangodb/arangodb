@@ -41,7 +41,7 @@
 /// ArangoDB supports Basic authentication.
 ///
 /// Authentication is optional if the server has been started with the option
-/// @LIT{--server.disable-authentication}. 
+/// @LIT{\-\-server.disable-authentication}. 
 ///
 /// The following should be noted about how ArangoDB handles client errors in its
 /// HTTP layer:

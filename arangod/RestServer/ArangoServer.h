@@ -256,7 +256,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
-/// @CMDOPT{--server.threads @CA{number}}
+/// @CMDOPT{\-\-server.threads @CA{number}}
 ///
 /// Specifies the @CA{number} of threads that are spawned to handle action
 /// requests using Rest, JavaScript, or Ruby.
@@ -267,7 +267,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
 ///
-/// @CMDOPT{--database.directory @CA{directory}}
+/// @CMDOPT{\-\-database.directory @CA{directory}}
 ///
 /// The directory containing the collections and data-files. Defaults
 /// to @CODE{/var/lib/arango}.
@@ -287,7 +287,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on drop
 ///
-/// @CMDOPT{--database.remove-on-drop @CA{flag}}
+/// @CMDOPT{\-\-database.remove-on-drop @CA{flag}}
 ///
 /// If @LIT{true} and you drop a collection, then they directory and all
 /// associated datafiles will be removed from disk. If @LIT{false}, then they
@@ -304,7 +304,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on compaction
 ///
-/// @CMDOPT{--database.remove-on-compaction @CA{flag}}
+/// @CMDOPT{\-\-database.remove-on-compaction @CA{flag}}
 ///
 /// Normally the garbage collection will removed compacted datafile. For debug
 /// purposes you can use this option to keep the old datafiles. You should
@@ -318,7 +318,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default journal size
 ///
-/// @CMDOPT{--database.maximal-journal-size @CA{size}}
+/// @CMDOPT{\-\-database.maximal-journal-size @CA{size}}
 ///
 /// Maximal size of journal in bytes. Can be overwritten when creating a new
 /// collection. Note that this also limits the maximal size of a single
@@ -332,7 +332,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default wait for sync behavior
 ///
-/// @CMDOPT{--database.wait-for-sync @CA{boolean}}
+/// @CMDOPT{\-\-database.wait-for-sync @CA{boolean}}
 ///
 /// Default wait-for-sync value. Can be overwritten when creating a new
 /// collection.
@@ -345,7 +345,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief force sync shapes
 ///
-/// @CMDOPT{--database.force-sync-shapes @CA{boolean}}
+/// @CMDOPT{\-\-database.force-sync-shapes @CA{boolean}}
 ///
 /// Force syncing of shape data to disk when writing shape information. 
 /// If turned off, syncing will still happen for shapes of collections that
@@ -360,7 +360,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
-/// @CMDOPT{--javascript.unit-tests @CA{test-file}}
+/// @CMDOPT{\-\-javascript.unit-tests @CA{test-file}}
 ///
 /// Runs one or more unit tests.
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,7 +370,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief files to jslint
 ///
-/// @CMDOPT{--jslint @CA{test-file}}
+/// @CMDOPT{\-\-jslint @CA{test-file}}
 ///
 /// Runs jslint on one or more files.
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,7 +380,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run script file
 ///
-/// @CMDOPT{--javascript.script @CA{script-file}}
+/// @CMDOPT{\-\-javascript.script @CA{script-file}}
 ///
 /// Runs the script file.
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +390,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parameters to script file
 ///
-/// @CMDOPT{--javascript.script-parameter @CA{script-parameter}}
+/// @CMDOPT{\-\-javascript.script-parameter @CA{script-parameter}}
 ///
 /// Parameter to script.
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +400,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server default language
 ///
-/// @CMDOPT{--default-language @CA{script-parameter}}
+/// @CMDOPT{\-\-default-language @CA{script-parameter}}
 ///
 /// Parameter to script.
 ////////////////////////////////////////////////////////////////////////////////

@@ -313,7 +313,10 @@ clean-local:
 
 .PHONY: built-sources
 
-built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+built-sources: \
+	build.h \
+	@top_srcdir@/js/common/bootstrap/errors.js \
+	$(JAVASCRIPT_HEADER)
 
 ################################################################################
 ### @brief tags file
