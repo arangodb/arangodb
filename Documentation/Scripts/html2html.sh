@@ -1,11 +1,16 @@
 #!/bin/sh
 
 FULL_HTML=0
+KEEP_TITLE=0
 
 while [ "$#" -gt 0 ];  do
   case "$1" in
     --full-html)
       FULL_HTML=1
+      ;;
+
+    --keep-title)
+      KEEP_TITLE=1
       ;;
 
     --*)
@@ -37,10 +42,10 @@ else
 fi
 
 rm -f $OUTPUT.tmp
-touch $OUTPUT.tmp
+touch $OUTPUT.tmp || exit 1
 
 if test -n "$HEADER";  then
-  echo $HEADER >> $OUTPUT.tmp
+  echo $HEADER >> $OUTPUT.tmp || exit 1
 fi
 
 cat $INPUT \
@@ -48,11 +53,16 @@ cat $INPUT \
   | sed -e 's:<\(/*\)h4>:<\1h5>:g' \
   | sed -e 's:<\(/*\)h3>:<\1h4>:g' \
   | sed -e 's:<\(/*\)h2>:<\1h3>:g' \
-  | sed -e 's:<\(/*\)h1>:<\1h2>:g' \
-  | sed -e 's:<div class="title">\([^<]*\)</div>:<h1>\1</h1>:g' >> $OUTPUT.tmp
+  | sed -e 's:<\(/*\)h1>:<\1h2>:g' >> $OUTPUT.tmp || exit 1
 
-if test -n "$FOOTER";  then
-  echo $FOOTER >> $OUTPUT.tmp
+if test "x$KEEP_TITLE" == "x0";  then
+  mv $OUTPUT.tmp $OUTPUT.tmp1 || exit 1
+  sed -e 's:<div class="title">\([^<]*\)</div>:<h1>\1</h1>:g' < $OUTPUT.tmp1 >> $OUTPUT.tmp || exit 1
+  rm $OUTPUT.tmp1 || exit 1
 fi
 
-mv $OUTPUT.tmp $OUTPUT
+if test -n "$FOOTER";  then
+  echo $FOOTER >> $OUTPUT.tmp || exit 1
+fi
+
+mv $OUTPUT.tmp $OUTPUT || exit 1

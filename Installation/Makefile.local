@@ -9,9 +9,12 @@ OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
 ## publish
 ################################################################################
 
-.PHONY: publish publish-wiki publish-html publish-pdf
+.PHONY: publish publish-wiki publish-html publish-pdf publish-copy
 
 publish: publish-wiki publish-html publish-pdf
+	make publish-copy
+
+publish-copy:
 	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
 
 publish-wiki:
@@ -21,7 +24,7 @@ publish-wiki:
 
 publish-html: $(OUTPUT_FOLDER)
 	$(MAKE) doxygen
-	@for w in $(WIKI); do cp Doxygen/html/$$w.html $(OUTPUT_FOLDER); done
+	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
 	@for i in `ls Doxygen/doc/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images; done
 
 publish-pdf: $(OUTPUT_FOLDER)
