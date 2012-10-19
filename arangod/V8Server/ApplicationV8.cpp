@@ -733,6 +733,14 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
 
       return false;
     }
+
+    {
+      v8::HandleScope scope;
+      TRI_ExecuteJavaScriptString(context->_context,
+                                  v8::String::New("require(\"internal\").actionLoaded()"),
+                                  v8::String::New("action loaded"),
+                                  false);
+    }
   }
 
   // and return from the context
