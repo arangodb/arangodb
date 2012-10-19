@@ -172,6 +172,10 @@ v1.1.beta1 (2012-XX-XX)
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
+v1.0.2 (2012-XX-XX)
+-------------------
+
+* added autoload for modules
 
 v1.0.1 (2012-09-30)
 -------------------
