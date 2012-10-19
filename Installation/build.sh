@@ -105,8 +105,7 @@ case $TRI_OS_LONG in
     OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     LDD_INFO="yes"
     # bugfix for readline on CentOS 5:
-    export LIBS="-lncurses"
-    EXTRA_MAKE_OPTIONS="LDFLAGS=\"-g -pthread -lncurses\""
+    export READLINE_LDFLAGS="-lncurses"
     ;;
 
   Linux-Ubuntu-*)
@@ -161,17 +160,14 @@ echo
 
 ./configure $PREFIX $OPTIONS || exit 1
 
-# bugfix for readline on CentOS 5:
-unset LIBS
-
 echo
 echo "########################################################"
 echo "compile:"
-echo "    make -j $MAKEJ ${EXTRA_MAKE_OPTIONS}"
+echo "    make -j $MAKEJ "
 echo "########################################################"
 echo
 
-make -j $MAKEJ ${EXTRA_MAKE_OPTIONS} || exit 1
+make -j $MAKEJ || exit 1
 
 for result in $RESULTS;  do
   echo
