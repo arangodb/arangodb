@@ -11,6 +11,7 @@ OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --localstatedir=/var --sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
 USE_ICECC="no"
+EXTRA_MAKE_OPTIONS=""
 
 export CPPFLAGS=""
 export LDFLAGS=""
@@ -105,6 +106,7 @@ case $TRI_OS_LONG in
     LDD_INFO="yes"
     # bugfix for readline on CentOS 5:
     export LIBS="-lncurses"
+    EXTRA_MAKE_OPTIONS="LDFLAGS=\"-g -pthread -lncurses\""
     ;;
 
   Linux-Ubuntu-*)
@@ -165,11 +167,11 @@ unset LIBS
 echo
 echo "########################################################"
 echo "compile:"
-echo "    make -j $MAKEJ"
+echo "    make -j $MAKEJ ${EXTRA_MAKE_OPTIONS}"
 echo "########################################################"
 echo
 
-make -j $MAKEJ || exit 1
+make -j $MAKEJ ${EXTRA_MAKE_OPTIONS} || exit 1
 
 for result in $RESULTS;  do
   echo
