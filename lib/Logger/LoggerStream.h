@@ -147,7 +147,7 @@ namespace triagens {
 /// @brief catches a special stream operator
 ////////////////////////////////////////////////////////////////////////////////
 
-        LoggerStream& operator<< (ostream& (*fptr)(ostream&));
+        LoggerStream& operator<< (std::ostream& (*fptr)(std::ostream&));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief catches a log level

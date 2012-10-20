@@ -155,13 +155,13 @@ namespace triagens {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addQueue (string const& name, size_t nrThreads);
+        void addQueue (std::string const& name, size_t nrThreads);
 
 /////////////////////////////////////////////////////////////////////////
 /// @brief adds a queue which given dispatcher thread type
 /////////////////////////////////////////////////////////////////////////
 
-        void addQueue (string const& name, newDispatcherThread_fptr, size_t nrThreads);
+        void addQueue (std::string const& name, newDispatcherThread_fptr, size_t nrThreads);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new job

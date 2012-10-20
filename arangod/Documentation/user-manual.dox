@@ -96,37 +96,6 @@
 /// We recently started a new open source project - a universal nosql database
 /// called AvocadoDB which became ArangoDB in May 2012.
 ///
-/// Key features include:
-/// 
-/// <ul>
-///  <li> Schema-free schemata let you combine the space efficiency of MySQL with
-///       the performance power of NoSQL</li>
-///  <li> Use ArangoDB as an application server and fuse your application and
-///       database together for maximal throughput</li>
-///  <li> JavaScript for all: no language zoo, you can use one language from your
-///       browser to your back-end</li>
-///  <li> ArangoDB is multi-threaded - exploit the power of all your cores</li>
-///  <li> Flexible data modeling: model your data as combination of key-value pairs,
-///       documents or graphs - perfect for social relations</li>
-///  <li> Free index choice: use the correct index for your problem, be it a skip
-///       list or a n-gram search</li>
-///  <li> Configurable durability: let the application decide if it needs more
-///       durability or more performance</li>
-///  <li> No-nonsense storage: ArangoDB uses all of the power of modern storage
-///       hardware, like SSD and large caches</li>
-///  <li> It is open source (Apache Licence 2.0)</li>
-/// </ul>
-///
-/// For more in-depth information
-///
-/// <ul>
-///  <li> read more on the @EXTRES{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}</li>
-///  <li> @EXTREF{http://vimeo.com/36411892,watch the video}@SPC- Martin Schoenert, 
-///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
-///       is about.</li>
-///  <li> or give it a @EXTRES{http://www.arangodb.org/try,try}.</li>
-/// </ul>
-///
 /// The ArangoDB database groups documents into collections. Collections and
 /// documents can be accessed using queries. For simple queries involving just
 /// one collection and one search criteria, you can use a simple interface from
@@ -222,7 +191,7 @@
 /// @copydetails triagens::rest::ApplicationServer::_options
 ////////////////////////////////////////////////////////////
 ///
-/// @CMDOPT{--log @CA{level}}
+/// @CMDOPT{\-\-log @CA{level}}
 /////////////////////////////
 ///
 /// Allows the user to choose the level of information which is logged by the
@@ -237,7 +206,7 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 //////////////////////////////////////////////////////////
 ///
-/// @CMDOPT{--daemon}
+/// @CMDOPT{\-\-daemon}
 /////////////////////
 ///
 /// Runs the server as a daemon (as a background process).
@@ -282,7 +251,7 @@
 /// @subsection UserManualShellStartStopOptions Command-Line Options
 ////////////////////////////////////////////////////////////////////
 ///
-/// Use @LIT{--help} to get a list of command-line options:
+/// Use @LIT{\-\-help} to get a list of command-line options:
 ///
 /// @TINYEXAMPLE{arangosh-options,shell options}
 ///

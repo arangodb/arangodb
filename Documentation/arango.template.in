@@ -219,10 +219,12 @@ ALIASES                = \
   "EXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly" \
   "TINYEXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly" \
   "VERSION=@PACKAGE_VERSION@" \
-  "EMBEDTOC{1}=@if LATEX@else<hr>@copydoc \1<hr>@endif" \
+  "EMBEDTOC{1}=@if LATEX@else<hr>@copydoc \1\n<hr>@endif" \
   "RESTHEADER{2}=@if LATEX@latexonly \vskip 0.5em\colorbox{gray}{@endlatexonly\1 (\2)@latexonly}\vskip 1em@endlatexonly@else <hr><em>\1</em> (\2)<hr><br>@endif" \
   "LATEXBREAK=@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly" \
   "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href= \1>\2</a>@endif" \
+  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
+  "S_EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else <a href=\1>\2</a>@endif" \
   "EXTRES{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href= \1>\2</a>@endif" \
   "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif" \
   "SPC=&nbsp;" \
@@ -764,10 +766,7 @@ EXCLUDE_SYMBOLS        =
 # directories that contain example code fragments that are included (see
 # the \include command).
 
-EXAMPLE_PATH           = @srcdir@/Documentation/Examples.Ahuacatl \
-                         @srcdir@/Documentation/Examples.ArangoDB \
-                         @srcdir@/Documentation/Examples.Durham \
-                         @srcdir@/Documentation/Examples.Fyn
+EXAMPLE_PATH           = @srcdir@/Documentation/Examples
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp
@@ -936,13 +935,13 @@ HTML_FILE_EXTENSION    = .html
 # have to redo this when upgrading to a newer version of doxygen or when
 # changing the value of configuration settings such as GENERATE_TREEVIEW!
 
-HTML_HEADER            = @srcdir@/Documentation/Scripts/arangodb_header.html
+HTML_HEADER            = @srcdir@/Documentation/empty.html
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for
 # each generated HTML page. If it is left blank doxygen will generate a
 # standard footer.
 
-HTML_FOOTER            = @srcdir@/Documentation/Scripts/arangodb_footer.html
+HTML_FOOTER            = @srcdir@/Documentation/empty.html
 
 # The HTML_STYLESHEET tag can be used to specify a user-defined cascading
 # style sheet that is used by each HTML page. It can be used to
@@ -951,7 +950,7 @@ HTML_FOOTER            = @srcdir@/Documentation/Scripts/arangodb_footer.html
 # HTML_EXTRA_STYLESHEET instead of this one, as it is more robust and this
 # tag will in the future become obsolete.
 
-HTML_STYLESHEET        = @srcdir@/Documentation/Scripts/arangodb.css
+HTML_STYLESHEET        = @srcdir@/Documentation/arangodb.css
 
 # The HTML_EXTRA_STYLESHEET tag can be used to specify an additional
 # user-defined cascading style sheet that is included after the standard

@@ -534,28 +534,28 @@
 /// 
 /// The following configuration options exists:
 ///
-/// @LIT{--enable-all-in-one-libev} tells the build system to use the
+/// @LIT{\-\-enable-all-in-one-libev} tells the build system to use the
 /// bundled version of LIBEV instead of using the system version.
 ///
-/// @LIT{--disable-all-in-one-libev} tells the build system to use the
+/// @LIT{\-\-disable-all-in-one-libev} tells the build system to use the
 /// installed system version of LIBEV instead of compiling the
 /// supplied version from the 3rdParty directory in the make run.
 ///
-/// @LIT{--enable-all-in-one-v8} tells the build system to use the
+/// @LIT{\-\-enable-all-in-one-v8} tells the build system to use the
 /// bundled version of V8 instead of using the system version.
 ///
-/// @LIT{--disable-all-in-one-v8} tells the build system to use the
+/// @LIT{\-\-disable-all-in-one-v8} tells the build system to use the
 /// installed system version of V8 instead of compiling the
 /// supplied version from the 3rdParty directory in the make run.
 ///
-/// @LIT{--enable-all-in-one-icu} tells the build system to use the
+/// @LIT{\-\-enable-all-in-one-icu} tells the build system to use the
 /// bundled version of ICU instead of using the system version.
 ///
-/// @LIT{--disable-all-in-one-icu} tells the build system to use the
+/// @LIT{\-\-disable-all-in-one-icu} tells the build system to use the
 /// installed system version of ICU instead of compiling the
 /// supplied version from the 3rdParty directory in the make run.
 ///
-/// @LIT{--enable-maintainer-mode} tells the build system to use BISON and FLEX
+/// @LIT{\-\-enable-maintainer-mode} tells the build system to use BISON and FLEX
 /// to regenerate the parser and scanner files. If disabled, the supplied files 
 /// will be used so you cannot make changes to the parser and scanner files. 
 /// You need at least BISON 2.4.1 and FLEX 2.5.35.
@@ -566,7 +566,7 @@
 /// @LIT{make unittests} run. You also need to install the Boost test framework
 /// for this.
 ///
-/// @LIT{--enable-arangob} tells the build system to also build the arangob
+/// @LIT{\-\-enable-arangob} tells the build system to also build the arangob
 /// benchmark tool. The binary will be built in the bin subdirectory.
 ///
 ////////////////////////////////////////////////////////////////////////////////
