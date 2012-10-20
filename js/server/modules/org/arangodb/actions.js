@@ -8,7 +8,7 @@
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript actions modules
+/// @brief JavaScript actions module
 ///
 /// @file
 ///

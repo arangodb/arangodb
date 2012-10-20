@@ -207,7 +207,6 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
                         size_t initialDocumentCount,
                         size_t numFields,
                         size_t elementSize) {
-
   size_t initialSize;
 
   // ...........................................................................

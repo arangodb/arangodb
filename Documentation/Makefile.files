@@ -36,6 +36,7 @@ WIKI = \
 	CommandLine \
 	Communication \
 	Compiling \
+	Communication \
 	DbaManual \
 	DbaManualBasics \
 	DbaManualAuthentication \
@@ -106,21 +107,15 @@ WIKI = \
 BUILT_SOURCES += Doxygen/.setup-directories
 
 Doxygen/.setup-directories:
-	@test -d Doxygen || mkdir Doxygen
-	@test -d Doxygen/doc || mkdir Doxygen/doc
-	@test -d Doxygen/doc/images || mkdir Doxygen/doc/images
-	@test -d Doxygen/js || mkdir Doxygen/js
-	@test -d Doxygen/js/actions || mkdir Doxygen/js/actions
-	@test -d Doxygen/js/actions/system || mkdir Doxygen/js/actions/system
-	@test -d Doxygen/js/common || mkdir Doxygen/js/common
-	@test -d Doxygen/js/common/bootstrap || mkdir Doxygen/js/common/bootstrap
-	@test -d Doxygen/js/common/modules || mkdir Doxygen/js/common/modules
+	@test -d Doxygen/doc/images || mkdir -p Doxygen/doc/images
+	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
+	@test -d Doxygen/js/actions/system || mkdir -p Doxygen/js/actions/system
+	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
-	@test -d Doxygen/js/client || mkdir Doxygen/js/client
-	@test -d Doxygen/latex || mkdir Doxygen/latex
-	@test -d Doxygen/latex/images || mkdir Doxygen/latex/images
-	@test -d Doxygen/wiki || mkdir Doxygen/wiki
-	@test -d Doxygen/xml || mkdir Doxygen/xml
+	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
+	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
+	@test -d Doxygen/wiki || mkdir -p Doxygen/wiki
+	@test -d Doxygen/xml || mkdir -p Doxygen/xml
 	@touch $@
 
 Doxygen/js/actions/system/%.c: @srcdir@/js/actions/system/%.js Doxygen/.setup-directories
@@ -153,8 +148,13 @@ Doxygen/arango-html.doxy: Documentation/arango.template
 
 doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 	doxygen Doxygen/arango-html.doxy > /dev/null
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
+
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
+	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/images
+
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
+	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 
 ################################################################################
 ### @brief wiki
@@ -248,8 +248,9 @@ CLEANUP += \
 	$(DOXYGEN) \
 	Doxygen/doc \
 	Doxygen/latex \
-	Doxygen/xml \
-	Doxygen/.setup-directories
+	Doxygen/website \
+	Doxygen/wiki \
+	Doxygen/xml
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

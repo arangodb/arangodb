@@ -599,6 +599,7 @@ function ArangoQueryCursor (database, data) {
 /// server. Calling this function will also fully exhaust the cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
+  ArangoQueryCursor.prototype.toArray =
   ArangoQueryCursor.prototype.elements = function () {  
     var result = [];
 
@@ -2067,6 +2068,7 @@ function ArangoDatabase (connection) {
   '                                                                    ' + "\n" +
   'Query Functions:                                                    ' + "\n" +
   '  _createStatement(<data>);        create and return select query   ' + "\n" +
+  '  _query(<query>);                 create, execute and return query ' + "\n" +
   '                                                                    ' + "\n" +
   'Attributes:                                                         ' + "\n" +
   '  <collection names>               collection with the given name   ';
@@ -2529,6 +2531,14 @@ function ArangoDatabase (connection) {
 
   ArangoDatabase.prototype._createStatement = function (data) {  
     return new ArangoStatement(this, data);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create and execute a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._query = function (data) {  
+    return new ArangoStatement(this, { query: data }).execute();
   };
 
 ////////////////////////////////////////////////////////////////////////////////
