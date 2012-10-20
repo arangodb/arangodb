@@ -370,7 +370,7 @@ static string JS_common_bootstrap_modules =
   "\n"
   "      if (n !== null) {\n"
   "        if (n.hasOwnProperty('content')) {\n"
-  "          return { path : \"_collection/\" + path, content : n.module };\n"
+  "          return { path : \"_collection/\" + path, content : n.content };\n"
   "        }\n"
   "        else {\n"
   "	  require(\"console\").error(\"found empty content in '%s'\", JSON.stringify(n));\n"
