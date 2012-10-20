@@ -369,7 +369,7 @@ ModuleCache["/internal"] = new Module("/internal");
 
       if (n !== null) {
         if (n.hasOwnProperty('content')) {
-          return { path : "_collection/" + path, content : n.module };
+          return { path : "_collection/" + path, content : n.content };
         }
         else {
 	  require("console").error("found empty content in '%s'", JSON.stringify(n));
