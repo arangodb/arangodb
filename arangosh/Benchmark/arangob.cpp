@@ -44,7 +44,7 @@
 #include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/Initialise.h"
+#include "Rest/InitialiseRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Benchmark/BenchmarkCounter.h"
