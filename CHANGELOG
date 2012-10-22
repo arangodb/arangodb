@@ -179,15 +179,23 @@ v1.1.beta1 (2012-XX-XX)
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
-v1.0.2 (2012-XX-XX)
+v1.0.2 (2012-10-22)
 -------------------
+
+* repository CentOS-X.Y moved to CentOS-X, same for Debian
+
+* bugfix for rollback from edges
+
+* bugfix for hash indexes
+
+* bugfix for StringBuffer::erase_front
 
 * added autoload for modules
 
+* added AQL function TO_LIST
+
 v1.0.1 (2012-09-30)
 -------------------
-
-* added AQL function TO_LIST
 
 * draft for issue #165: front-end application howto
 
