@@ -200,26 +200,42 @@ function main (argv) {
     return true;
   });
   
-  // create the VERSION file
-  addTask("create VERSION file", 1, function () {
-    // save "1" into VERSION file
-    SYS_SAVE(versionFile, "1");
-    return true;
-  });
-  
   // create the _modules collection
   addTask("setup _modules collection", 1, function () {
     // create a collection named "_modules"
-    var modules = db._create("_modules", { isSystem: true });
+    if (db._modules !== undefined) {
+      var modules = db._create("_modules", { isSystem: true });
 
-    if (modules == null) {
-      console.error("creating modules collection '_modules' failed");
-      return false;
+      if (modules == null) {
+        console.error("creating modules collection '_modules' failed");
+        return false;
+      }
     }
     return true;
   });
+  
+  // create the _routing collection
+  addTask("setup _routing collection", 1, function () {
+    // create a collection named "_routing"
+    if (db._routing !== undefined) {
+      var routing = db._create("_routing", { isSystem: true });
 
-
+      if (routing == null) {
+        console.error("creating routing collection '_routing' failed");
+        return false;
+      }
+    }
+    return true;
+  });
+  
+  // create the VERSION file
+  addTask("create VERSION file", 2, function () {
+    // save "1" into VERSION file
+    SYS_SAVE(versionFile, "2");
+    return true;
+  });
+  
+  
   console.log("Upgrade script " + argv[0] + " started");
   console.log("Server VERSION is: " + currentVersion);
 
