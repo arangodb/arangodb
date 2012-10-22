@@ -28,6 +28,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Rest/Endpoint.h"
+#include "Rest/EndpointUnixDomain.h"
+#include "Rest/EndpointIp.h"
+#include "Rest/EndpointIpV4.h"
+#include "Rest/EndpointIpV6.h"
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -403,13 +407,13 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", Host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", Host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", Host, "arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Host, "[127.0.0.1]");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Host, "[::]");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Host, "[127.0.0.1]");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Host, "[::]");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", Host, "[2001:0db8:0000:0000:0000:ff00:0042:8329]");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Host, "[2001:0db8:0000:0000:0000:ff00:0042:8329]");
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[::]:8529", Host, "[::]");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[::]:8529", Host, "::");
   
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Host, "localhost");
@@ -419,13 +423,13 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", Host, "192.168.173.13");
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", Host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", Host, "www.arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Host, "[127.0.0.1]");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Host, "[::]");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Host, "[127.0.0.1]");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Host, "[::]");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", Host, "[2001:0db8:0000:0000:0000:ff00:0042:8329]");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Host, "[2001:0db8:0000:0000:0000:ff00:0042:8329]");
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", Host, "[::]");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", Host, "::");
   
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", Host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", Host, "localhost");
@@ -620,7 +624,7 @@ BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
   BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_SSL, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
-  BOOST_CHECK_EQUAL("[0001:0002:0003:0004:0005:0006:0007:0008]", e->getHost());
+  BOOST_CHECK_EQUAL("0001:0002:0003:0004:0005:0006:0007:0008", e->getHost());
   BOOST_CHECK_EQUAL(43425, e->getPort());
   BOOST_CHECK_EQUAL("[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->getHostString());
   BOOST_CHECK_EQUAL(false, e->isConnected());
@@ -641,7 +645,7 @@ BOOST_AUTO_TEST_CASE (EndpointClientTcpIpv6WithoutPort) {
   BOOST_CHECK_EQUAL(Endpoint::PROTOCOL_HTTP, e->getProtocol());
   BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
   BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
-  BOOST_CHECK_EQUAL("[::]", e->getHost());
+  BOOST_CHECK_EQUAL("::", e->getHost());
   BOOST_CHECK_EQUAL(8529, e->getPort());
   BOOST_CHECK_EQUAL("[::]:8529", e->getHostString());
   BOOST_CHECK_EQUAL(false, e->isConnected());

@@ -48,6 +48,7 @@
 #include "VocBase/datafile.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/voc-shaper.h"
 #include "Basics/Utf8Helper.h"
 
@@ -197,6 +198,22 @@ class AhuacatlContextGuard {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection type the object is responsible for
+/// - "db" will return TRI_COL_TYPE_DOCUMENT
+/// - "edges" will return TRI_COL_TYPE_EDGE
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
+  v8::Handle<v8::Value> type = obj->Get(v8::String::New("_type"));
+
+  if (type->IsNumber()) {
+    return (TRI_col_type_e) TRI_ObjectToInt64(type);
+  }
+
+  return TRI_COL_TYPE_DOCUMENT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -317,13 +334,13 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   int res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    *err = TRI_CreateErrorObject(res, "cannot use/load collection");
+    *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
     return 0;
   }
 
   if (col->_collection == 0) {
     TRI_set_errno(TRI_ERROR_INTERNAL);
-    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection");
+    *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection", true);
     return 0;
   }
 
@@ -513,7 +530,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   if (idx == 0) {
     if (create) {
       TRI_ReleaseCollection(collection);
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created")));
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created", true)));
     }
     else {
       TRI_ReleaseCollection(collection);
@@ -648,7 +665,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: replace(<document>, <data>, <overwrite>)")));
+                                               "usage: replace(<document>, <data>, <overwrite>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -689,6 +706,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
     }
   }
 
+  bool forceSync = false;
+  if (4 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[3]);
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
@@ -696,7 +718,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
   primary->beginWrite(primary);
 
   TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t mptr = primary->update(primary, shaped, did, rid, &oldRid, policy, true);
+  TRI_doc_mptr_t mptr = primary->update(primary, shaped, did, rid, &oldRid, policy, true, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -706,9 +728,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (mptr._did == 0) {
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot replace document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot replace document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -728,12 +748,26 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 /// @FUN{@FA{collection}.save(@FA{data})}
 ///
 /// Creates a new document in the @FA{collection} from the given @FA{data}. The
-/// @FA{data} must be an hash array. It must not contain attributes starting
+/// @FA{data} must be a hash array. It must not contain attributes starting
 /// with @LIT{_}.
 ///
 /// The method returns a document with the attributes @LIT{_id} and @LIT{_rev}.
 /// The attribute @LIT{_id} contains the document handle of the newly created
 /// document, the attribute @LIT{_rev} contains the document revision.
+///
+/// @FUN{@FA{collection}.save(@FA{data}, @FA{waitForSync})}
+///
+/// Creates a new document in the @FA{collection} from the given @FA{data} as
+/// above. The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// @EXAMPLES
 ///
@@ -749,22 +783,30 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (argv.Length() != 1 && argv.Length() != 3) {
+  if (argv.Length() < 1 || argv.Length() > 4) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: save(<data>)")));
+                                               "usage: save(<data>, <waitForSync>) or save(<data>, <did>, <rid>, <waitForSync>)")));
   }
 
   // set document id and revision id
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
 
-  if (argv.Length() == 3) {
+  if (3 <= argv.Length()) {
     // use existing document and revision ids
     // this functionality is used when importing documents from another server etc.
     // the functionality is not advertised
     did = TRI_ObjectToUInt64(argv[1]);
     rid = TRI_ObjectToUInt64(argv[2]);
+  }
+
+  bool forceSync = false;
+  if (4 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[3]);
+  }
+  else if (2 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[1]);
   }
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
@@ -782,7 +824,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   primary->beginWrite(primary);
 
   // the lock is freed in create
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true);
+  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -791,9 +833,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
   if (mptr._did == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot save document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -813,6 +853,19 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
 /// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
 /// must be documents or document references.
 ///
+/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// @EXAMPLES
 ///
 /// @TINYEXAMPLE{shell_create-edge,create an edge}
@@ -827,22 +880,30 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (argv.Length() != 3 && argv.Length() != 5) {
+  if (3 > argv.Length()) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: save(<from>, <to>, <data>)")));
+                                               "usage: save(<from>, <to>, <data>, <waitForSync> or save(<from>, <to>, <data>, <did>, <rid>, <waitForSync>)")));
   }
   
   // set document id and revision id
   TRI_voc_did_t did = 0;
   TRI_voc_rid_t rid = 0;
 
-  if (argv.Length() == 5) {
+  if (5 <= argv.Length()) {
     // use existing document and revision ids
     // this functionality is used when importing documents from another server etc.
     // the functionality is not advertised
     did = TRI_ObjectToUInt64(argv[3]);
     rid = TRI_ObjectToUInt64(argv[4]);
+  }
+
+  bool forceSync = false;
+  if (6 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[5]);
+  }
+  else if (4 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[3]);
   }
 
   TRI_document_edge_t edge;
@@ -901,7 +962,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   primary->beginWrite(primary);
 
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true);
+  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -910,9 +971,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
   if (mptr._did == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot save document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -937,12 +996,12 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // check the arguments
-  if (argv.Length() < 2) {
+  if (2 > argv.Length()) {
     TRI_ReleaseCollection(collection);
 
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: update(<document>, <data>, <overwrite>, <keepnull>)")));
+                                               "usage: update(<document>, <data>, <overwrite>, <keepnull>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -993,6 +1052,11 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     nullMeansRemove = false; 
   }
 
+  bool forceSync = false;
+  if (5 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[4]);
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
@@ -1013,7 +1077,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     TRI_FreeJson(primary->_shaper->_memoryZone, old);
 
     if (patchedJson != 0) {
-      mptr = primary->updateJson(primary, patchedJson, did, rid, &oldRid, policy, true);
+      mptr = primary->updateJson(primary, patchedJson, did, rid, &oldRid, policy, true, forceSync);
 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
     }
@@ -1026,9 +1090,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (mptr._did == 0) {
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_errno(),
-                                               "cannot update document")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot update document", true)));
   }
 
   string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
@@ -1055,7 +1117,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   if (argv.Length() < 1) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                                "usage: delete(<document>, <overwrite>)")));
+                                                                "usage: delete(<document>, <overwrite>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -1085,6 +1147,11 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
     }
   }
 
+  bool forceSync = false;
+  if (3 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[2]);
+  }
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
@@ -1092,7 +1159,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t oldRid;
 
-  int res = primary->destroyLock(primary, did, rid, &oldRid, policy);
+  int res = primary->destroyLock(primary, did, rid, &oldRid, policy, forceSync);
 
   // .............................................................................
   // outside a write transaction
@@ -1105,7 +1172,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
       return scope.Close(v8::False());
     }
     else {
-      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document")));
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
     }
   }
 
@@ -1200,7 +1267,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, cid);
 
   if (collection == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
   }
 
   return scope.Close(TRI_WrapCollection(collection));
@@ -1367,13 +1434,12 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
   if (idx == 0) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
-        TRI_CreateErrorObject(TRI_errno(),
-                              "index could not be created")));
+        TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
 
-  if (!json) {
+  if (! json) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -1398,11 +1464,12 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
 
   if (message) {
     std::string str(message);
-    TRI_Free(TRI_CORE_MEM_ZONE, message);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
+
     return TRI_CreateErrorObject(TRI_GetErrorCodeAql(error), str);
   }
 
-  return TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+  return TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1471,7 +1538,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   TRI_json_t* json = TRI_JsonObject(result);
 
   if (!json) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -1481,7 +1548,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   if (!cursorResult) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -1491,7 +1558,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -1719,8 +1786,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
 
   if (cursor == 0) {
     return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
-                                               "cannot create cursor")));
+                         TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot create cursor")));
   }
 
   TRI_StoreShadowData(vocbase->_cursors, (const void* const) cursor);
@@ -1785,8 +1851,7 @@ static v8::Handle<v8::Value> JS_IdGeneralCursor (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1821,8 +1886,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   }
 
   return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND))); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1893,9 +1957,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     }
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1925,9 +1987,7 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     return scope.Close(v8::True());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1996,9 +2056,7 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
     }
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2033,9 +2091,7 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
     return scope.Close(v8::Number::New(max));
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2070,9 +2126,7 @@ static v8::Handle<v8::Value> JS_HasCountGeneralCursor (v8::Arguments const& argv
     return scope.Close(hasCount ? v8::True() : v8::False());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2110,9 +2164,7 @@ static v8::Handle<v8::Value> JS_HasNextGeneralCursor (v8::Arguments const& argv)
     return scope.Close(hasNext ? v8::True() : v8::False());
   }
 
-  return scope.Close(v8::ThrowException(
-                       TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                             "disposed or unknown cursor")));
+  return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2179,9 +2231,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageIdShadowData(vocbase->_cursors, id);
 
   if (cursor == 0) {
-    return scope.Close(v8::ThrowException(
-                         TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND,
-                                               "disposed or unknown cursor")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_CURSOR_NOT_FOUND)));
   }
 
   return scope.Close(WrapGeneralCursor(cursor));
@@ -2291,7 +2341,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2349,7 +2399,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2420,7 +2470,7 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -2500,8 +2550,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
-                                                                "collection must be unloaded")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED))); 
   }
 
   TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
@@ -2605,8 +2654,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
-                                                                "collection must be unloaded")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
   }
 
   TRI_col_file_structure_t structure = TRI_FileStructureCollectionDirectory(collection->_path);
@@ -2749,7 +2797,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot drop collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot drop collection", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -2902,7 +2950,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   if (idx == 0) {
     TRI_ReleaseCollection(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "index could not be created")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
   }
 
   TRI_json_t* json = idx->json(idx, collection->_collection);
@@ -3528,7 +3576,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   if (info == NULL) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY, "out of memory");
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
   }
@@ -3848,6 +3896,19 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 /// @LIT{true} if the document existed and was deleted. It returns
 /// @LIT{false}, if the document was already deleted.
 ///
+/// @FUN{@FA{collection}.remove(@FA{document}, true, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document deletion operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// @FUN{@FA{collection}.remove(@FA{document-handle}, @FA{data})}
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
@@ -3883,7 +3944,11 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// @FUN{@FA{collection}.rename(@FA{new-name})}
 ///
 /// Renames a collection using the @FA{new-name}. The @FA{new-name} must not
-/// already be used for a different collection. If it is an error is thrown.
+/// already be used for a different collection. @FA{new-name} must also be a
+/// valid collection name. For more information on valid collection names please refer
+/// to @ref NamingConventions.
+///
+/// If renaming fails for any reason, an error is thrown.
 ///
 /// @EXAMPLES
 ///
@@ -3912,7 +3977,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, collection, name.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot rename collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot rename collection", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -3940,6 +4005,19 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// As before, but in case of a conflict, the conflict is ignored and the old
 /// document is overwritten.
+///
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document replacement operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// @FUN{@FA{collection}.replace(@FA{document-handle}, @FA{data})}
 ///
@@ -3974,7 +4052,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull})}
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})}
 ///
 /// Updates an existing @FA{document}. The @FA{document} must be a document in
 /// the current collection. This document is then patched with the
@@ -3985,6 +4063,17 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 /// database. By setting the @FA{keepNull} parameter to @LIT{false}, this behavior
 /// can be changed so that all attributes in @FA{data} with @LIT{null} values will 
 /// be removed from the target document.
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document update operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
 /// @LIT{_oldRev}.  The attribute @LIT{_id} contains the document handle of the
@@ -4115,7 +4204,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "setAttribute failed")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "setAttribute failed", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -4147,7 +4236,12 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
+  bool forceSync = false;
+  if (1 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[0]);
+  }
+
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
@@ -4184,7 +4278,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   for (size_t i = 0; i < documents._length; ++i) {
     TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
     
-    int res = primary->destroy(primary, d->_did, d->_rid, &oldRid, policy, false);
+    int res = primary->destroy(primary, d->_did, d->_rid, &oldRid, policy, false, forceSync);
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred, but we simply go on because truncate should remove all documents
     }
@@ -4223,8 +4317,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
-                                                                "collection must be unloaded")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED)));
   }
 
   int res = TRI_TruncateDatafile(path.c_str(), size);
@@ -4232,7 +4325,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate datafile")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate datafile", true)));
   }
   
   return scope.Close(v8::Undefined());
@@ -4289,7 +4382,7 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot unload collection")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot unload collection", true)));
   }
 
   return scope.Close(v8::Undefined());
@@ -4314,7 +4407,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info", true)));
   }
 
   return scope.Close(v8::Number::New((int) info._version));
@@ -4375,8 +4468,18 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
     return v8::Handle<v8::Value>();
   }
 
+  // get the collection type (document/edge)
+  const TRI_col_type_e collectionType = GetVocBaseCollectionType(info.Holder());
+
   // look up the value if it exists
-  TRI_vocbase_col_t const* collection = TRI_FindCollectionByNameVocBase(vocbase, key.c_str(), true);
+  TRI_vocbase_col_t const* collection;
+ 
+  if (collectionType == TRI_COL_TYPE_EDGE) {
+    collection = TRI_FindEdgeCollectionByNameVocBase(vocbase, key.c_str(), true);
+  }
+  else {
+    collection = TRI_FindDocumentCollectionByNameVocBase(vocbase, key.c_str(), true);
+  }
 
   // if the key is not present return an empty handle as signal
   if (collection == 0) {
@@ -4486,13 +4589,19 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
     return scope.Close(result);
   }
 
+  // get the collection type (document/edge)
+  //const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
+
   TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
 
   uint32_t n = (uint32_t) colls._length;
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_vocbase_col_t const* collection = (TRI_vocbase_col_t const*) colls._buffer[i];
 
+    // only include collections of the right type, currently disabled
+    // if (collectionType == collection->_type) {
     result->Set(i, v8::String::New(collection->_name));
+    // }
   }
 
   TRI_DestroyVectorPointer(&colls);
@@ -4501,13 +4610,19 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new document collection
+/// @brief creates a new document or edge collection
 ///
 /// @FUN{db._create(@FA{collection-name})}
 ///
-/// Creates a new document collection named @FA{collection-name}. If the 
-/// collection name already exists, then an error is thrown. The default value 
-/// for @LIT{waitForSync} is @LIT{false}.
+/// Creates a new collection named @FA{collection-name}. 
+/// If the collection name already exists or if the name format is invalid, an 
+/// error is thrown. For more information on valid collection names please refer
+/// to @ref NamingConventions.
+///
+/// The type of the collection is automatically determined by the object that
+/// @FA{_create} is invoked with:
+/// - if invoked on @LIT{db}, a document collection will be created
+/// - if invoked on @LIT{edges}, an edge collection will be created
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
 ///
@@ -4539,7 +4654,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
-  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
+  // get the collection type (document/edge)
+  const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
+
+  return CreateVocBase(argv, collectionType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4550,7 +4668,8 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 /// @FUN{db._createDocumentCollection(@FA{collection-name}, @FA{properties})}
 ///
 /// Creates a new document collection named @FA{collection-name}. 
-/// This is an alias for @ref JS_CreateVocBase.
+/// This is an alias for @ref JS_CreateVocBase, with the difference that the 
+/// collection type is not automatically detected.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocBase (v8::Arguments const& argv) {
@@ -4600,6 +4719,19 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocBase (v8::Arguments const
 /// is ignored and document is deleted. The function returns
 /// @LIT{true} if the document existed and was deleted. It returns
 /// @LIT{false}, if the document was already deleted.
+///
+/// @FUN{@FA{db}._remove(@FA{document}, true, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document deletion operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// @FUN{@FA{db}._remove(@FA{document-handle}, @FA{data})}
 ///
@@ -4705,6 +4837,19 @@ static v8::Handle<v8::Value> JS_DocumentNLVocbase (v8::Arguments const& argv) {
 /// As before, but in case of a conflict, the conflict is ignored and the old
 /// document is overwritten.
 ///
+/// @FUN{@FA{db}._replace(@FA{document}, @FA{data}, true, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document replacement operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// @FUN{@FA{db}._replace(@FA{document-handle}, @FA{data})}
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
@@ -4712,7 +4857,7 @@ static v8::Handle<v8::Value> JS_DocumentNLVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// Create and update a document:
+/// Create and replace a document:
 ///
 /// @TINYEXAMPLE{shell_replace-document-db,replacing a document}
 ////////////////////////////////////////////////////////////////////////////////
@@ -4732,10 +4877,31 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document
 ///
-/// @FUN{@FA{db}._update(@FA{document}, @FA{data})}
+/// @FUN{@FA{db}._update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})}
+///
+/// Updates an existing @FA{document}. The @FA{document} must be a document in
+/// the current collection. This document is then patched with the
+/// @FA{data} given as second argument. The optional @FA{overwrite} parameter can 
+/// be used to control the behavior in case of version conflicts (see below).
+/// The optional @FA{keepNull} parameter can be used to modify the behavior when
+/// handling @LIT{null} values. Normally, @LIT{null} values are stored in the
+/// database. By setting the @FA{keepNull} parameter to @LIT{false}, this behavior
+/// can be changed so that all attributes in @FA{data} with @LIT{null} values will 
+/// be removed from the target document.
+///
+/// The optional @FA{waitForSync} parameter can be used to force 
+/// synchronisation of the document update operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// The method returns a document with the attributes @LIT{_id}, @LIT{_rev} and
-/// @LIT{_oldRev}.  The attribute @LIT{_id} contains the document handle of the
+/// @LIT{_oldRev}. The attribute @LIT{_id} contains the document handle of the
 /// updated document, the attribute @LIT{_rev} contains the document revision of
 /// the updated document, the attribute @LIT{_oldRev} contains the revision of
 /// the old (now replaced) document.
@@ -4743,7 +4909,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 /// If there is a conflict, i. e. if the revision of the @LIT{document} does not
 /// match the revision in the collection, then an error is thrown.
 ///
-/// @FUN{@FA{db}._update(@FA{document}, @FA{data})}
+/// @FUN{@FA{db}._update(@FA{document}, @FA{data}, true)}
 ///
 /// As before, but in case of a conflict, the conflict is ignored and the old
 /// document is overwritten.
@@ -4751,7 +4917,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 /// @FUN{@FA{db}._update(@FA{document-handle}, @FA{data})}
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
-/// first argument.
+/// first argument. 
 ///
 /// @EXAMPLES
 ///
@@ -5157,7 +5323,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
       int res = TRI_UseCollectionVocBase(vocbase, vc);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection"));;
+        return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection", true));
       }
     }
 
@@ -5236,7 +5402,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
     int res = TRI_UseCollectionVocBase(vocbase, vc);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      *err = TRI_CreateErrorObject(res, "cannot use/load collection");
+      *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
       return 0;
     }
 
@@ -5281,7 +5447,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database, 
+                                        TRI_col_type_e type) {
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
@@ -5292,6 +5459,10 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database) {
 
   result->Set(v8::String::New("_path"),
               v8::String::New(database->_path),
+              v8::ReadOnly);
+  
+  result->Set(v8::String::New("_type"),
+              v8::Integer::New((int) type),
               v8::ReadOnly);
 
   return scope.Close(result);
@@ -5711,12 +5882,12 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
 
   context->Global()->Set(v8::String::New("db"),
-                         TRI_WrapVocBase(vocbase),
+                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),
                          v8::ReadOnly);
 
   // DEPRECATED: only here for compatibility
   context->Global()->Set(v8::String::New("edges"),
-                         TRI_WrapVocBase(vocbase),
+                         TRI_WrapVocBase(vocbase, TRI_COL_TYPE_EDGE),
                          v8::ReadOnly);
 
   return v8g;

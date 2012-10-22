@@ -74,6 +74,7 @@ SERVER_START :=
 SERVER_OPT := \
 	--configuration none \
 	--database.maximal-journal-size 1048576 \
+	--database.force-sync-shapes false \
 	--javascript.action-directory @top_srcdir@/js/actions/system \
 	--javascript.gc-interval 1 \
 	--javascript.modules-path @top_srcdir@/js/server/modules:@top_srcdir@/js/common/modules \
@@ -110,11 +111,11 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
+	@builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
 
 	@test "$(PROTO)" == "unix" || (rm -f "$(STARTFILE)"; while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done)
-	@(test "$(PROTO)" == "unix" && sleep 2) || true
+	@(test "$(PROTO)" == "unix" && sleep 5) || true
 	@rm -f "$(STARTFILE)"
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
@@ -231,7 +232,7 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
+	@builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
@@ -258,12 +259,12 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-subquery.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
@@ -299,7 +300,7 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
+	@test "x$(SKIP_AHUACATL)" == "x1" || @builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
 
@@ -400,7 +401,7 @@ unittests-import:
 	@echo "<< IMPORT TESTS                                                             >>"
 	@echo "================================================================================"
 	@echo
-	
+
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
@@ -436,7 +437,7 @@ unittests-bitarray-index:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	$(VALGRIND) @builddir@/bin/arango-upgrade --database.directory "$(VOCDIR)" 
+	@builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_BITARRAY) || test "x$(FORCE)" == "x1"
 
 	@ rm -rf "$(VOCDIR)"
@@ -458,7 +459,7 @@ unittests-arangob:
 	@echo "<< ARANGOB TESTS                                                              >>"
 	@echo "================================================================================"
 	@echo
-	
+
 	$(VALGRIND) @builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 1000 --batch-size 16 --concurrency 2 --test version || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 0 --concurrency 1 --test version || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --batch-size 10 --concurrency 2 --test document --complexity 1 || test "x$(FORCE)" == "x1"

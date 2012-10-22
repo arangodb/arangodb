@@ -1,3 +1,12 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
 ///
@@ -35,7 +44,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoActions
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -43,55 +52,92 @@
 /// @brief routing function
 ////////////////////////////////////////////////////////////////////////////////
 
-function Routing (req, res) {
-  var callbacks;
-  var current;
-  var i;
-  var next;
+  function Routing (req, res) {
+    var action;
+    var execute;
+    var next;
+    var path = req.suffix.join("/");
 
-  callbacks = actions.routing(req.requestType, req.suffix);
-  current = 0;
+    action = actions.firstRouting(req.requestType, req.suffix);
 
-  next = function () {
-    var callback;
+    execute = function () {
+      if (action.route === undefined) {
+	actions.resultNotImplemented(req, res, "unknown path '" + path + "'");
+	return;
+      }
 
-    if (callbacks.length <= current) {
-      actions.resultNotImplemented(req, res, 
-                                   "unknown path '" + req.suffix.join("/") + "'");
-      return;
-    }
+      if (action.route.path !== undefined) {
+	req.path = action.route.path;
+      }
+      else {
+	delete req.path;
+      }
 
-    callback = callbacks[current++];
+      if (action.prefix !== undefined) {
+	req.prefix = action.prefix;
+      }
+      else {
+	delete req.prefix;
+      }
 
-    if (callback == null) {
-      actions.resultNotImplemented(req, res,
-                                   "not implemented '" + req.suffix.join("/") + "'");
-    }
-    else {
-      req.prefix = callback.path;
-      callback.func(req, res, next, callback.options);
-    }
+      if (action.suffix !== undefined) {
+	req.suffix = action.suffix;
+      }
+      else {
+	delete req.suffix;
+      }
+
+      if (action.urlParameters !== undefined) {
+	req.urlParameters = action.urlParameters;
+      }
+      else {
+	req.urlParameters = {};
+      }
+
+      action.route.callback.controller(req, res, action.route.callback.options, next);
+    };
+
+    next = function () {
+      action = actions.nextRouting(action);
+      execute();
+    };
+
+    execute();
   }
 
-  next();
-}
+  actions.defineHttp({
+    url : "",
+    prefix : true,
+    context : "admin",
+    callback : Routing
+  });
 
-actions.defineHttp({
-  url : "",
-  prefix : true,
-  context : "admin",
-  callback : Routing
-});
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : "_admin/reloadRouting",
-  context : "admin",
-  prefix : false,
-  callback : function (req, res) {
-    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
-    actions.resultOk(req, res, actions.HTTP_OK);
-  }
-});
+  actions.defineHttp({
+    url : "_admin/routing/reload",
+    context : "admin",
+    prefix : false,
+    callback : function (req, res) {
+      internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+      actions.resultOk(req, res, actions.HTTP_OK);
+    }
+  });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns system status information for the server
+////////////////////////////////////////////////////////////////////////////////
+
+  actions.defineHttp({
+    url : "_admin/routing/routes",
+    context : "admin",
+    prefix : false,
+    callback : function (req, res) {
+      actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -102,94 +148,58 @@ actions.defineHttp({
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ActionsAdmin
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns redirection to index page
+/// @fn JSF_GET_admin_time
+/// @brief returns the system time
+///
+/// @RESTHEADER{GET /_admin/time,returns the system time}
+///
+/// @REST{GET /_admin/time}
+///
+/// The call returns an object with the attribute @LIT{time}. This contains the
+/// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
 
-  function AdminRedirect (req, res) {
-    var dest = "/_admin/html/index.html";
-
-    res.responseCode = actions.HTTP_MOVED_PERMANENTLY;
-    res.contentType = "text/html";
-
-    res.body = "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\""
-      + dest
-      + "\">"
-      + dest
-      + "</a>.</p></body></html>";
-
-    res.headers = { location : dest };
-  }
-
   actions.defineHttp({
-    url : "",
+    url : "_admin/time",
     context : "admin",
     prefix : false,
-    callback : AdminRedirect
-  });
-
-  actions.defineHttp({
-    url : "_admin",
-    context : "admin",
-    prefix : false,
-    callback : AdminRedirect
+    callback : function (req, res) {
+      actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
+    }
   });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system time
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_time (req, res) {
-  actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
-}
-
-actions.defineHttp({
-  url : "_api/time",
-  context : "api",
-  prefix : false,
-  callback : GET_time
-});
-
-actions.defineHttp({
-  url : "_admin/time",
-  context : "admin",
-  prefix : false,
-  callback : GET_time
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns V8 version
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_v8_version (req, res) {
-  actions.resultOk(req, res, actions.HTTP_OK, { version : "V8" });
-}
-
-actions.defineHttp({
-  url : "_admin/v8-version",
-  context : "admin",
-  prefix : false,
-  callback : GET_v8_version
-});
-
-////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_GET_admin_echo
 /// @brief returns the request
+///
+/// @RESTHEADER{GET /_admin/echo,returns the current request}
+///
+/// @REST{GET /_admin/echo}
+///
+/// The call returns an object with the following attributes:
+///
+/// - @LIT{headers}: a list of HTTP headers received
+///
+/// - @LIT{requestType}: the HTTP request method (e.g. GET)
+///
+/// - @LIT{parameters}: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : "_admin/echo",
-  context : "admin",
-  prefix : true,
-  callback : function (req, res) {
-    res.responseCode = actions.HTTP_OK;
-    res.contentType = "application/json; charset=utf-8";
-    res.body = JSON.stringify(req);
-  }
-});
+  actions.defineHttp({
+    url : "_admin/echo",
+    context : "admin",
+    prefix : true,
+    callback : function (req, res) {
+      res.responseCode = actions.HTTP_OK;
+      res.contentType = "application/json; charset=utf-8";
+      res.body = JSON.stringify(req);
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_status
@@ -231,6 +241,8 @@ actions.defineHttp({
     context : "admin",
 
     callback : function (req, res) {
+      var result;
+
       try {
         result = {};
         result.system = SYS_PROCESS_STAT();
@@ -238,140 +250,7 @@ actions.defineHttp({
         actions.resultOk(req, res, actions.HTTP_OK, result);
       }
       catch (err) {
-        actions.resultError(req, res, err);
-      }
-    }
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_config_description
-/// @brief returns configuration description
-///
-/// @RESTHEADER{GET /_admin/config/description,reads the configuration desciption}
-///
-/// @REST{GET /_admin/config/desciption}
-///
-/// The call returns an object describing the configuration.
-////////////////////////////////////////////////////////////////////////////////
-
-  actions.defineHttp({
-    url : "_admin/config/description",
-    context : "admin",
-
-    callback : function (req, res) {
-      try {
-        result = {
-          database : {
-            name : "Database",
-            type : "section",
-
-            path : {
-              name : "Path",
-              type : "string",
-              readonly : true
-            },
-
-            access : {
-              name : "Combined Access",
-              type : "string",
-              readonly : true
-            }
-          },
-
-          logging : {
-            name : "Logging",
-            type : "section",
-
-            level : {
-              name : "Log Level",
-              type : "pull-down",
-              values : [ "fatal", "error", "warning", "info", "debug", "trace" ]
-            },
-
-            syslog : {
-              name : "Use Syslog",
-              type : "boolean"
-            },
-
-            bufferSize : {
-              name : "Log Buffer Size",
-              type : "integer"
-            },
-
-            output : {
-              name : "Output",
-              type : "section",
-
-              file : {
-                name : "Log File",
-                type : "string",
-                readonly : true
-              }
-            }
-          }
-        };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result);
-      }
-      catch (err) {
-        actions.resultError(req, res, err);
-      }
-    }
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_GET_admin_config_configuration
-/// @brief returns configuration
-///
-/// @RESTHEADER{GET /_admin/config/configuration,reads the configuration}
-///
-/// @REST{GET /_admin/config/configuration}
-///
-/// The call returns an object containing configuration.
-////////////////////////////////////////////////////////////////////////////////
-
-  actions.defineHttp({
-    url : "_admin/config/configuration",
-    context : "admin",
-
-    callback : function (req, res) {
-      try {
-        result = {
-          database : {
-            path : {
-              value : "/tmp/emil/vocbase"
-            },
-
-            access : {
-              value : "localhost:8529"
-            }
-          },
-
-          logging : {
-            level : {
-              value : "info"
-            },
-
-            syslog : {
-              value : true
-            },
-
-            bufferSize : {
-              value : 100
-            },
-
-            output : {
-              file : {
-                value : "/var/log/message/arango.log"
-              }
-            }
-          }
-        };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result);
-      }
-      catch (err) {
-        actions.resultError(req, res, err);
+        actions.resultException(req, res, err);
       }
     }
   });
@@ -385,7 +264,7 @@ actions.defineHttp({
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ActionsAdmin
+/// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -437,20 +316,25 @@ actions.defineHttp({
     context : "admin",
     prefix : false,
     callback : function (req, res) {
-      if (req.requestType === actions.GET) {
-        GET_admin_session(req, res);
+      try {
+        if (req.requestType === actions.GET) {
+          GET_admin_session(req, res);
+        }
+        else if (req.requestType === actions.DELETE) {
+          DELETE_admin_session(req, res);
+        }
+        else if (req.requestType === actions.POST) {
+          POST_admin_session(req, res);
+        }
+        else if (req.requestType === actions.PUT) {
+          PUT_admin_session(req, res);
+        }
+        else {
+          actions.resultUnsupported(req, res);
+        }
       }
-      else if (req.requestType === actions.DELETE) {
-        DELETE_admin_session(req, res);
-      }
-      else if (req.requestType === actions.POST) {
-        POST_admin_session(req, res);
-      }
-      else if (req.requestType === actions.PUT) {
-        PUT_admin_session(req, res);
-      }
-      else {
-        actions.resultUnsupported(req, res);
+      catch (err) {
+        actions.resultException(req, res, err);
       }
     }
   });

@@ -21,7 +21,6 @@ bin_arangod_LDADD = \
 
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \
-	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
 	arangod/Ahuacatl/ahuacatl-ast-node.c \
@@ -79,6 +78,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
+	arangod/VocBase/edge-collection.c \
 	arangod/VocBase/general-cursor.c \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \

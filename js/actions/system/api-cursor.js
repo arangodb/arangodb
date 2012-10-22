@@ -133,33 +133,28 @@ function POST_api_cursor(req, res) {
     return;
   }
 
-  try {
-    var cursor;
+  var cursor;
 
-    if (json.query != undefined) {
-      cursor = AHUACATL_RUN(json.query, 
-                            json.bindVars, 
-                            (json.count != undefined ? json.count : false),
-                            json.batchSize, 
-                            (json.batchSize == undefined));  
-    }
-    else {
-      actions.resultBad(req, res, actions.ERROR_QUERY_EMPTY);
-      return;
-    }
+  if (json.query != undefined) {
+    cursor = AHUACATL_RUN(json.query, 
+                          json.bindVars, 
+                          (json.count != undefined ? json.count : false),
+                          json.batchSize, 
+                          (json.batchSize == undefined));  
+  }
+  else {
+    actions.resultBad(req, res, actions.ERROR_QUERY_EMPTY);
+    return;
+  }
    
-    // error occurred
-    if (cursor instanceof ArangoError) {
-      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
-      return;
-    }
+  // error occurred
+  if (cursor instanceof ArangoError) {
+    actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+    return;
+  }
 
-    // this might dispose or persist the cursor
-    actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
+  // this might dispose or persist the cursor
+  actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,29 +202,24 @@ function PUT_api_cursor(req, res) {
     return;
   }
 
-  try {
-    var cursorId = decodeURIComponent(req.suffix[0]); 
-    var cursor = CURSOR(cursorId);
+  var cursorId = decodeURIComponent(req.suffix[0]); 
+  var cursor = CURSOR(cursorId);
 
-    if (!(cursor instanceof ArangoCursor)) {
-      actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
-      return;
-    }
+  if (! (cursor instanceof ArangoCursor)) {
+    actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
+    return;
+  }
     
-    try { 
-      // note: this might dispose or persist the cursor
-      actions.resultCursor(req, res, cursor, actions.HTTP_OK);
-    }
-    catch (e) {
-    }
+  try { 
+    // note: this might dispose or persist the cursor
+    actions.resultCursor(req, res, cursor, actions.HTTP_OK);
+  }
+  catch (e) {
+  }
 
-    cursor.unuse();
-    cursor = null;
-    internal.wait(0.0);
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
+  cursor.unuse();
+  cursor = null;
+  internal.wait(0.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,19 +257,14 @@ function DELETE_api_cursor(req, res) {
     return;
   }
 
-  try {
-    var cursorId = decodeURIComponent(req.suffix[0]);
-    if (! DELETE_CURSOR(cursorId)) {
-      actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
-      return;
-    }
+  var cursorId = decodeURIComponent(req.suffix[0]);
+  if (! DELETE_CURSOR(cursorId)) {
+    actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
+    return;
+  }
 
-    actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
-    internal.wait(0.0);
-  }
-  catch (err) {
-    actions.resultException(req, res, err);
-  }
+  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
+  internal.wait(0.0);
 }
 
 // -----------------------------------------------------------------------------
@@ -295,21 +280,26 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.POST) : 
-        POST_api_cursor(req, res); 
-        break;
+    try {
+      switch (req.requestType) {
+        case (actions.POST) : 
+          POST_api_cursor(req, res); 
+          break;
 
-      case (actions.PUT) :  
-        PUT_api_cursor(req, res); 
-        break;
+        case (actions.PUT) :  
+          PUT_api_cursor(req, res); 
+          break;
 
-      case (actions.DELETE) :  
-        DELETE_api_cursor(req, res); 
-        break;
+        case (actions.DELETE) :  
+          DELETE_api_cursor(req, res); 
+          break;
 
-      default:
-        actions.resultUnsupported(req, res);
+        default:
+          actions.resultUnsupported(req, res);
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });

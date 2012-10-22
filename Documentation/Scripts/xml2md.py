@@ -40,10 +40,11 @@ import re, sys, xml.parsers.expat
 
 file_name = sys.argv[1]
 
+VERBOSE = False
 DEBUG = False
 
-if DEBUG:
-    print "========== %s ==========" % file_name
+if DEBUG or VERBOSE:
+    print >> sys.stderr, "========== %s ==========" % file_name
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                  global variables
@@ -374,12 +375,12 @@ def start_element(name, attrs):
     #endif
 
     if DEBUG:
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-        print "PATH: %s" % path
-        print "LIST: %d" % listlevel
-        print "TITL: %d" % titlevel
-        print "TEXT: <%s>" % text
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+        print >> sys.stderr, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+        print >> sys.stderr, "PATH: %s" % path
+        print >> sys.stderr, "LIST: %d" % listlevel
+        print >> sys.stderr, "TITL: %d" % titlevel
+        print >> sys.stderr, "TEXT: <%s>" % text
+        print >> sys.stderr, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
     text_string += text
 #enddef
@@ -420,12 +421,12 @@ def end_element(name):
     #endif
 
     if DEBUG:
-        print "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-        print "PATH: %s" % path
-        print "LIST: %d" % listlevel
-        print "TITL: %d" % titlevel
-        print "TEXT: <%s>" % text
-        print "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+        print >> sys.stderr, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+        print >> sys.stderr, "PATH: %s" % path
+        print >> sys.stderr, "LIST: %d" % listlevel
+        print >> sys.stderr, "TITL: %d" % titlevel
+        print >> sys.stderr, "TEXT: <%s>" % text
+        print >> sys.stderr, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
     text_string += text
 #enddef
@@ -456,10 +457,10 @@ def char_data(data):
     #endif
 
     if DEBUG:
-        print "--------------------------------------------------------------------------------"
-        print "PATH: %s" % path
-        print "TEXT: <%s>" % text
-        print "--------------------------------------------------------------------------------"
+        print >> sys.stderr, "--------------------------------------------------------------------------------"
+        print >> sys.stderr, "PATH: %s" % path
+        print >> sys.stderr, "TEXT: <%s>" % text
+        print >> sys.stderr, "--------------------------------------------------------------------------------"
 
     text_string += text
 #enddef

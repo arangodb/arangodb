@@ -42,6 +42,34 @@ function CollectionSuiteErrorHandling () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief bad name (too long)
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadNameTooLong : function () {
+      try {
+        // one char too long
+        internal.db._create("a1234567890123456789012345678901234567890123456789012345678901234");
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bad name (system name)
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadNameSystem : function () {
+      try {
+        // one char too long
+        internal.db._create("1234");
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief bad name (underscore)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,6 +157,20 @@ function CollectionSuite () {
   var ERRORS = require("internal").errors;
 
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief long name
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateLongName : function () {
+      var cn = "a123456789012345678901234567890123456789012345678901234567890123";
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn);
+      assertEqual(cn, c1.name());
+
+      internal.db._drop(cn);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read by name
@@ -680,6 +722,29 @@ function CollectionSuite () {
       assertEqual(null, c2);
 
       internal.db._drop(nn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rename a collection to an already existing collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testRenameExisting : function () {
+      var cn1 = "example";
+      var cn2 = "example2";
+
+      internal.db._drop(cn1);
+      internal.db._drop(cn2);
+      var c1 = internal.db._create(cn1);
+      var c2 = internal.db._create(cn2);
+
+      try {
+        c1.rename(cn2);
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
+      }
+      internal.db._drop(cn1);
+      internal.db._drop(cn2);
     }
   };
 }

@@ -1,21 +1,21 @@
 # -*- mode: Makefile; -*-
 
-MANUAL_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals"
-IMAGES_DST="www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images"
+MANUAL_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals
+IMAGES_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images
 
-OUTPUT_FOLDER="Doxygen/manuals/$(PACKAGE_VERSION)"
+OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
 
 ################################################################################
 ## publish
 ################################################################################
 
-.PHONY: publish publish-prepare publish-wiki publish-html publish-pdf
+.PHONY: publish publish-wiki publish-html publish-pdf publish-copy
 
-publish: publish-prepare publish-wiki publish-html publish-pdf
+publish: publish-wiki publish-html publish-pdf
+	make publish-copy
+
+publish-copy:
 	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
-
-publish-prepare:
-	@test -d $(OUTPUT_FOLDER) || mkdir -p $(OUTPUT_FOLDER)
 
 publish-wiki:
 	(cd Doxygen/wiki && git checkout --force -- . && git clean -f -d -x && git pull)
@@ -24,19 +24,19 @@ publish-wiki:
 
 publish-html: $(OUTPUT_FOLDER)
 	$(MAKE) doxygen
-	@for w in $(WIKI); do cp Doxygen/html/$$w.html $(OUTPUT_FOLDER); done
-	@for i in `ls Doxygen/doc/images/*.png`; do scp $$i $(OUTPUT_FOLDER)/images; done
+	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
+	@for i in `ls Doxygen/doc/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images; done
 
 publish-pdf: $(OUTPUT_FOLDER)
 	$(MAKE) latex
 	$(MAKE) latex
-	scp Doxygen/latex/dba-manual.pdf $(OUTPUT_FOLDER)
-	scp Doxygen/latex/implementor-manual.pdf $(OUTPUT_FOLDER)
-	scp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
-	scp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
-	scp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
-	scp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
-	scp arangod/Documentation/arangodb_1.0_shell_reference_card.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/dba-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/implementor-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
+	cp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
+	cp arangod/Documentation/arangodb_1.0_shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 $(OUTPUT_FOLDER):
 	mkdir -p $(OUTPUT_FOLDER)/images

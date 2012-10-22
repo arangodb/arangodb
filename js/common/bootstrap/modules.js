@@ -404,7 +404,12 @@ ModuleCache["/internal"] = new Module("/internal");
       n = mc.firstExample({ path: path });
 
       if (n !== null) {
-        return { path : "_collection/" + path, content : n.module };
+        if (n.hasOwnProperty('content')) {
+          return { path : "_collection/" + path, content : n.content };
+        }
+        else {
+	  require("console").error("found empty content in '%s'", JSON.stringify(n));
+        }
       }
     }
 
@@ -460,7 +465,7 @@ ModuleCache["/internal"] = new Module("/internal");
     mc = internal.db._collection("_modules");
 
     if (mc === null) {
-      throw "you need to upgrade your database using 'arango-upgrade'";
+      mc = internal.db._create("_modules", { isSystem: true });
     }
 
     path = module.normalise(path);

@@ -50,7 +50,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
-      SimpleClient(connection, requestTimeout, warn), _result(0) {
+      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(64 * 1024 * 1024) {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -311,8 +311,8 @@ namespace triagens {
           }
           else if (_result->getContentLength()) {
             
-            if (_result->getContentLength() > 5000000) {
-              setErrorMessage("Content-Length > 5000000 bytes found!");
+            if (_result->getContentLength() > _maxPacketSize) {
+              setErrorMessage("Content-Length > max packet size found", true);
               
               // reset connection 
               close();
@@ -379,10 +379,10 @@ namespace triagens {
           return true;
         }
 
-        if (contentLength > 5000000) {
+        if (contentLength > _maxPacketSize) {
           // failed: too many bytes
           
-          setErrorMessage("Content-Length > 5000000 bytes found!");
+          setErrorMessage("Content-Length > max packet size found!", true);
  
           // reset connection 
           close();

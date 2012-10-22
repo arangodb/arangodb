@@ -185,13 +185,13 @@ namespace triagens {
 
       string sslHMAC (char const* key, char const* message, size_t messageLen) {
         const EVP_MD * evp_md = EVP_sha256();
-        unsigned char* md = (unsigned char*) malloc(EVP_MAX_MD_SIZE + 1);
+        unsigned char* md = (unsigned char*) TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
         unsigned int md_len;
 
         HMAC(evp_md, key, strlen(key), (const unsigned char*) message, messageLen, md, &md_len);
 
         string result = StringUtils::encodeBase64(string((char*)md, md_len));
-        free(md);
+        TRI_SystemFree(md);
 
         return result;
       }

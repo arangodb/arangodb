@@ -701,7 +701,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyDatafile (TRI_datafile_t* datafile) {
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, datafile->_filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, datafile->_filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1059,7 +1059,7 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
     return false;
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, datafile->_filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, datafile->_filename);
   datafile->_filename = TRI_DuplicateString(filename);
 
   return true;

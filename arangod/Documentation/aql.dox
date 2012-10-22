@@ -322,18 +322,19 @@
 /// happens to have the same name as a keyword, the name must be enclosed in
 /// backticks.
 ///
-/// Allowed characters in collection names are the letters @LIT{a} to @LIT{z} 
-/// (both in lower and upper case) and the numbers @LIT{0} to @LIT{9} and the
-/// the underscore (@LIT{_}) symbol. A collection name must start with either
-/// a letter or a number, but not with an underscore.
+/// Please refer to the @ref NamingConventions about collection name naming
+/// conventions. 
 ///
 /// @subsubsection AqlAttributeNames Attribute names
 /// 
 /// When referring to attributes of documents from a collection, the fully
 /// qualified attribute name must be used. This is because multiple 
-/// collections with ambigious attribute names might be used in a query.
+/// collections with ambiguous attribute names might be used in a query.
 /// To avoid any ambiguity, it is not allowed to refer to an unqualified 
 /// attribute name.
+///
+/// Please refer to the @ref NamingConventions for more information about the
+/// attribute naming conventions.
 /// 
 /// @EXAMPLE{aqlattributenamesvalid,active user with active friends}
 ///
@@ -562,8 +563,8 @@
 /// Finally, the attribute value of both documents is compared using the beforementioned
 /// data type and value comparison.
 /// The comparisons are performed for all document attributes until there is an
-/// unambigious comparison result. If an unambigious comparison result is found, the
-/// comparison is finished. If there is no unambigious comparison result, the two
+/// unambiguous comparison result. If an unambiguous comparison result is found, the
+/// comparison is finished. If there is no unambiguous comparison result, the two
 /// compared documents are considered equal.
 ///
 /// @verbinclude aqlcompareexamples2
@@ -763,22 +764,28 @@
 ///
 /// - @FN{TO_BOOL(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into the appropriate boolean value as follows:
-///   - @LIT{null} is converted to false.
-///   - Numbers are converted to true if they are unequal to 0, and to false otherwise. 
-///   - Strings are converted to true if they are non-empty, and to false otherwise. 
-///   - Lists are converted to true if they are non-empty, and to false otherwise.
-///   - Documents are converted to true if they are non-empty, and to false otherwise.
+///   - @LIT{null} is converted to @LIT{false}.
+///   - Numbers are converted to @LIT{true} if they are unequal to 0, and to @LIT{false} otherwise. 
+///   - Strings are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise. 
+///   - Lists are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise.
+///   - Documents are converted to @LIT{true} if they are non-empty, and to @LIT{false} otherwise.
 /// - @FN{TO_NUMBER(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a numeric value as follows:
-///   - @LIT{null}, false, lists, and documents are converted to the value @LIT{0}.
-///   - true is converted to @LIT{1}.
+///   - @LIT{null}, @LIT{false}, lists, and documents are converted to the value @LIT{0}.
+///   - @LIT{true} is converted to @LIT{1}.
 ///   - Strings are converted to their numeric equivalent if the full string content is
 ///     is a valid number, and to @LIT{0} otherwise.
 /// - @FN{TO_STRING(@FA{value})}: takes an input @FA{value} of any type and converts it 
 ///   into a string value as follows:
 ///   - @LIT{null} is converted to the string @LIT{"null"}
-///   - false is converted to the string @LIT{"false"}, true to the string @LIT{"true"}
+///   - @LIT{false} is converted to the string @LIT{"false"}, @LIT{true} to the string @LIT{"true"}
 ///   - numbers, lists, and documents are converted to their string equivalents. 
+/// - @FN{TO_LIST(@FA{value})}: takes an input @FA{value} of any type and converts it 
+///   into a list value as follows:
+///   - @LIT{null} is converted to an empty list
+///   - Boolean values, numbers, and strings are converted to a list containing the original
+///     value as its single element
+///   - Documents are converted to a list containing their attribute values as list elements
 ///
 /// @subsubsection AqlFunctionsChecking Type check functions
 ///
@@ -856,10 +863,46 @@
 ///
 /// - @FN{MERGE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: merges the documents
 ///   in @FA{document1} to @FA{documentn} into a single document. If document attribute
-///   keys are ambigious, the merged result will contain the values of the documents 
+///   keys are ambiguous, the merged result will contain the values of the documents 
 ///   contained later in the argument list.
-/// - @FN{HAS(@FA{document}\, @FA{attributename})}: returns true if @FA{document} has an
-///   attribute named @FA{attributename}, and false otherwise.
+///
+///   For example, two documents with distinct attribute names can easily be merged into one: 
+///   @code
+///   RETURN MERGE(
+///     { "user1" : { "name" : "J" } }, 
+///     { "user2" : { "name" : "T" } }
+///   )
+///   [ { "user1" : { "name" : "J" }, 
+///       "user2" : { "name" : "T" } } ]
+///   @endcode
+///   When merging documents with identical attribute names, the attribute values of the
+///   latter documents will be used in the end result:
+///   @code
+///   return MERGE(
+///     { "users" : { "name" : "J" } }, 
+///     { "users" : { "name" : "T" } }
+///   )
+///   [ { "users" : { "name" : "T" } } ]
+///   @endcode
+///   Please note that merging will only be done for top-level attributes. If you wish to
+///   merge sub-attributes, you should consider using @LIT{MERGE_RECURSIVE} instead.
+///
+/// - @FN{MERGE_RECURSIVE(@FA{document1}\, @FA{document2}\, ... @FA{documentn})}: recursively
+///   merges the documents in @FA{document1} to @FA{documentn} into a single document. If 
+///   document attribute keys are ambiguous, the merged result will contain the values of the 
+///   documents contained later in the argument list.
+///
+///   For example, two documents with distinct attribute names can easily be merged into one: 
+///   @code
+///   RETURN MERGE_RECURSIVE(
+///     { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA" } } }, 
+///     { "user-1" : { "age" : 42, "livesIn" : { "state" : "CA" } } }
+///   )
+///   [ { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } ]
+///   @endcode
+///
+/// - @FN{HAS(@FA{document}\, @FA{attributename})}: returns @LIT{true} if @FA{document} has an
+///   attribute named @FA{attributename}, and @LIT{false} otherwise.
 ///
 /// @subsubsection AqlFunctionsGeo Geo functions
 ///
@@ -917,8 +960,10 @@
 ///
 /// AQL offers the following functions to let the user control the flow of operations:
 ///
-/// - @FN{NOT_NULL(@FA{condition}\, @FA{alternative})}: returns @FA{condition} if it is not
+/// - @FN{NOT_NULL(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is not
 ///   @LIT{null}, and @FA{alternative} otherwise. 
+/// - @FN{NOT_LIST(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is a list,
+///   and @FA{alternative} otherwise. 
 ///
 /// @subsubsection AqlFunctionsMisc Miscellaneous functions
 ///
