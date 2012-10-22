@@ -87,23 +87,33 @@ Module.prototype.require = function (path) {
   // locate file and read content
   raw = ModuleCache["/internal"].exports.readFile(path);
 
+  // test for parse errors first and fail early if a parse error detected
+  if (! SYS_PARSE(raw.content, path)) {
+    throw "Javascript parse error in file '" + path + "'";
+  }
+
   // create a new sandbox and execute
   module = ModuleCache[path] = new Module(path);
 
   content = "(function (module, exports, require, print) {"
           + raw.content 
           + "\n});";
-
+  
   f = SYS_EXECUTE(content, undefined, path);
 
   if (f === undefined) {
     throw "cannot create context function";
   }
-
-  f(module,
-    module.exports,
-    function(path) { return module.require(path); },
-    ModuleCache["/internal"].exports.print);
+ 
+  try {
+    f(module,
+      module.exports,
+      function(path) { return module.require(path); },
+      ModuleCache["/internal"].exports.print);
+  }
+  catch (err) {
+    throw "Javascript exception in file '" + path + "': " + err.stack;
+  }
 
   return module.exports;
 };
