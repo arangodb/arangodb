@@ -33,6 +33,7 @@ COVERAGE
 .deps
 .dirstamp
 Doxygen/arango.doxy
+Doxygen/arango.template
 Doxygen/html/
 Doxygen/js
 Doxygen/latex/
