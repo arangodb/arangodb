@@ -99,7 +99,7 @@
 /// [ArangoDB]
 /// name=ArangoDB Repository for CentOS
 /// failovermethod=priority
-/// baseurl=http://www.arangodb.org/repositories/CentOS-6.3
+/// baseurl=http://www.arangodb.org/repositories/CentOS-6
 /// enabled=1
 /// gpgcheck=1
 /// gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-www.arangodb.org
@@ -136,7 +136,7 @@
 ///
 /// Add the corresponding repository in file  @LIT{/etc/apt/sources.list}:
 /// @code
-/// deb http://www.arangodb.org/repositories Debian-6.0 main
+/// deb http://www.arangodb.org/repositories Debian-6 main
 /// @endcode
 /// or
 /// @code
