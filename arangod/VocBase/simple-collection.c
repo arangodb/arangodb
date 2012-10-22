@@ -4718,7 +4718,6 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
       //           (unsigned long) result._data.length,
       //           (unsigned long) example->_data.length,
       //           (unsigned long) pids[i]);
-
       return false;
     }
 
