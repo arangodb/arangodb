@@ -166,7 +166,7 @@ function lookupCallbackStatic (content) {
   }
 
   return {
-    controller: function (req, res, next, options) {
+    controller: function (req, res, options, next) {
       res.responseCode = exports.HTTP_OK;
       res.contentType = type;
       res.body = body;
@@ -188,35 +188,7 @@ function lookupCallbackAction (action) {
   var module;
 
   if (typeof action === 'string') {
-    path = action.split("/");
-    name = path.pop();
-    func = null;
-
-    try {
-      module = require(path.join("/"));
-
-      if (module.hasOwnProperty(name)) {
-        func = module[name];
-      }
-      else {
-        console.error("cannot find action named '%s' in module '%s'", name, path.join("/"));
-      }
-    }
-    catch (err) {
-      console.error("cannot find action named '%s' in module '%s': %s", 
-                    name, path.join("/"), String(err));
-      return null;
-    }
-
-    if (func === null || typeof func !== 'function') {
-      return null;
-    }
-
-    return {
-      controller: func,
-      options: {},
-      methods: exports.ALL_METHODS
-    };
+    return lookupCallbackAction({ prefixController: action });
   }
 
   if (action.hasOwnProperty('do')) {
@@ -256,33 +228,33 @@ function lookupCallbackAction (action) {
       module = require(action.controller);
 
       return {
-        controller: function (req, res, next, options) {
+        controller: function (req, res, options, next) {
           if (req.requestType === exports.GET && module.hasOwnProperty('get')) {
-            return module['get'](req, res, next, options);
+            return module['get'](req, res, options, next);
           }
 
           if (req.requestType === exports.HEAD && module.hasOwnProperty('head')) {
-            return module['head'](req, res, next, options);
+            return module['head'](req, res, options, next);
           }
 
           if (req.requestType === exports.PUT && module.hasOwnProperty('put')) {
-            return module['put'](req, res, next, options);
+            return module['put'](req, res, options, next);
           }
 
           if (req.requestType === exports.POST && module.hasOwnProperty('post')) {
-            return module['post'](req, res, next, options);
+            return module['post'](req, res, options, next);
           }
 
           if (req.requestType === exports.DELETE && module.hasOwnProperty('delete')) {
-            return module['delete'](req, res, next, options);
+            return module['delete'](req, res, options, next);
           }
 
           if (req.requestType === exports.PATCH && module.hasOwnProperty('patch')) {
-            return module['patch'](req, res, next, options);
+            return module['patch'](req, res, options, next);
           }
 
           if (module.hasOwnProperty('do')) {
-            return module['do'](req, res, next, options);
+            return module['do'](req, res, options, next);
           }
 
           next();
@@ -302,11 +274,10 @@ function lookupCallbackAction (action) {
     var prefixController = action.prefixController;
 
     return {
-      controller: function (req, res, next, options) {
+      controller: function (req, res, options, next) {
         var module;
 
         try {
-
           if (req.hasOwnProperty('suffix')) {
             module = require(prefixController + "/" + req.suffix.join("/"));
           }
@@ -321,31 +292,31 @@ function lookupCallbackAction (action) {
         }
 
         if (req.requestType === exports.GET && module.hasOwnProperty('get')) {
-          return module['get'](req, res, next, options);
+          return module['get'](req, res, options, next);
         }
 
         if (req.requestType === exports.HEAD && module.hasOwnProperty('head')) {
-          return module['head'](req, res, next, options);
+          return module['head'](req, res, options, next);
         }
 
         if (req.requestType === exports.PUT && module.hasOwnProperty('put')) {
-          return module['put'](req, res, next, options);
+          return module['put'](req, res, options, next);
         }
 
         if (req.requestType === exports.POST && module.hasOwnProperty('post')) {
-          return module['post'](req, res, next, options);
+          return module['post'](req, res, options, next);
         }
 
         if (req.requestType === exports.DELETE && module.hasOwnProperty('delete')) {
-          return module['delete'](req, res, next, options);
+          return module['delete'](req, res, options, next);
         }
 
         if (req.requestType === exports.PATCH && module.hasOwnProperty('patch')) {
-          return module['patch'](req, res, next, options);
+          return module['patch'](req, res, options, next);
         }
 
         if (module.hasOwnProperty('do')) {
-          return module['do'](req, res, next, options);
+          return module['do'](req, res, options, next);
         }
 
         next();
@@ -866,11 +837,10 @@ function reloadRouting () {
   routing = internal.db._collection("_routing");
 
   if (routing === null) {
-    routes = { hasNext: function() { return false; } };
+    routing = internal.db._create("_routing", { isSystem: true });
   }
-  else {
-    routes = routing.all();
-  }
+
+  routes = routing.all();
 
   // .............................................................................
   // defines a new route
@@ -970,8 +940,8 @@ function nextRouting (state) {
         state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
       }
       else {
-        state.prefix = undefined;
-        state.suffix = undefined;
+        delete state.prefix;
+        delete state.suffix;
       }
 
       state.urlParameters = {};
@@ -988,9 +958,9 @@ function nextRouting (state) {
     }
   }
 
-  state.route = undefined;
-  state.prefix = undefined;
-  state.suffix = undefined;
+  delete state.route;
+  delete state.prefix;
+  delete state.suffix;
   state.urlParameters = {};
 
   return state;
@@ -1016,13 +986,9 @@ function firstRouting (type, parts) {
 
   if (! RoutingCache.flat.hasOwnProperty(type)) {
     return {
-      routing: undefined,
       parts: parts,
       position: -1,
       url: url,
-      route: undefined,
-      prefix: undefined,
-      suffix: undefined,
       urlParameters: {}
     };
   }
@@ -1032,9 +998,6 @@ function firstRouting (type, parts) {
     parts: parts,
     position: -1,
     url: url,
-    route: undefined,
-    prefix: undefined,
-    suffix: undefined,
     urlParameters: {}
   });
 }
@@ -1371,7 +1334,7 @@ function resultException (req, res, err, headers) {
 /// @brief echos a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function echoRequest (req, res, next, options) {
+function echoRequest (req, res, options, next) {
   var result;
 
   result = { request : req, options : options };
@@ -1385,7 +1348,7 @@ function echoRequest (req, res, next, options) {
 /// @brief logs a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function logRequest (req, res, next, options) {
+function logRequest (req, res, options, next) {
   var log;
   var level;
   var token;
@@ -1432,7 +1395,7 @@ function logRequest (req, res, next, options) {
 /// @brief redirects a request
 ////////////////////////////////////////////////////////////////////////////////
 
-function redirectRequest (req, res, next, options) {
+function redirectRequest (req, res, options, next) {
   if (options.permanently) {
     resultPermanentRedirect(req, res, options.destination);
   }
