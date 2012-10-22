@@ -72,6 +72,7 @@ typedef struct TRI_associative_array_s {
 
   char* _table;          // the table itself
 
+#ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds;     // statistics: number of lookup calls
   uint64_t _nrAdds;      // statistics: number of insert calls
   uint64_t _nrRems;      // statistics: number of remove calls
@@ -81,6 +82,7 @@ typedef struct TRI_associative_array_s {
   uint64_t _nrProbesA;   // statistics: number of misses while inserting
   uint64_t _nrProbesD;   // statistics: number of misses while removing
   uint64_t _nrProbesR;   // statistics: number of misses while adding
+#endif
 
   TRI_memory_zone_t* _memoryZone;
 }
@@ -225,6 +227,7 @@ typedef struct TRI_associative_pointer_s {
 
   void** _table;         // the table itself
 
+#ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds;     // statistics: number of lookup calls
   uint64_t _nrAdds;      // statistics: number of insert calls
   uint64_t _nrRems;      // statistics: number of remove calls
@@ -234,6 +237,7 @@ typedef struct TRI_associative_pointer_s {
   uint64_t _nrProbesA;   // statistics: number of misses while inserting
   uint64_t _nrProbesD;   // statistics: number of misses while removing
   uint64_t _nrProbesR;   // statistics: number of misses while adding
+#endif
 
   TRI_memory_zone_t* _memoryZone;
 }
@@ -379,6 +383,7 @@ typedef struct TRI_associative_synced_s {
 
   TRI_read_write_lock_t _lock;
 
+#ifdef TRI_INTERNAL_STATS
   uint64_t _nrFinds;     // statistics: number of lookup calls
   uint64_t _nrAdds;      // statistics: number of insert calls
   uint64_t _nrRems;      // statistics: number of remove calls
@@ -388,6 +393,7 @@ typedef struct TRI_associative_synced_s {
   uint64_t _nrProbesA;   // statistics: number of misses while inserting
   uint64_t _nrProbesD;   // statistics: number of misses while removing
   uint64_t _nrProbesR;   // statistics: number of misses while adding
+#endif
 
   TRI_memory_zone_t* _memoryZone;
 }

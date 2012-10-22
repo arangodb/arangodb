@@ -62,9 +62,38 @@
     internal.defineAction = function() {
       console.error("SYS_DEFINE_ACTION not available");
     };
+
+    internal.actionLoaded = function() {
+    }
   }
   else {
     internal.defineAction = SYS_DEFINE_ACTION;
+
+    internal.actionLoaded = function() {
+      var modules;
+      var i;
+      
+      console.debug("actions loaded");
+      
+      modules = internal.db._collection("_modules");
+
+      if (modules !== null) {
+	modules = modules.byExample({ autoload: true }).toArray();
+
+	for (i = 0;  i < modules.length;  ++i) {
+	  var module = modules[i];
+
+	  console.debug("autoloading module: %s", module.path);
+
+	  try {
+	    require(module.path);
+	  }
+	  catch (err) {
+	    console.error("while loading '%s': %s", module.path, String(err));
+	  }
+	}
+      }
+    }
   }
 
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
@@ -197,6 +226,22 @@
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._createStatement = function (data) {  
+    return new ArangoStatement(this, data);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create and execute a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._query = function (data) {  
+    return new ArangoStatement(this, { query: data }).execute();
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection

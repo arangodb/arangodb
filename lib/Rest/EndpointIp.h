@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoints
+/// @brief connection endpoint, ip-based
 ///
 /// @file
 ///
@@ -28,23 +28,17 @@
 #ifndef TRIAGENS_FYN_REST_ENDPOINT_IP_H
 #define TRIAGENS_FYN_REST_ENDPOINT_IP_H 1
 
-#include <Basics/Common.h>
-#include <Basics/StringUtils.h>
-#include "EndpointBase.h"
+#include "Rest/Endpoint.h"
 
 
 namespace triagens {
   namespace rest {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint specification
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EndpointIp
 // -----------------------------------------------------------------------------
 
-    class EndpointIp : public EndpointBase {
+    class EndpointIp : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -61,11 +55,12 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIp (const Type, 
+        EndpointIp (const EndpointType, 
                     const DomainType, 
-                    const Protocol,
-                    const Encryption,
+                    const ProtocolType,
+                    const EncryptionType,
                     const std::string&, 
+                    int,
                     const std::string&, 
                     const uint16_t);
 
@@ -171,16 +166,8 @@ namespace triagens {
 /// @brief get host 
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHost () const {
+        std::string getHost () const {
           return _host;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get host strin for HTTP requests
-////////////////////////////////////////////////////////////////////////////////
-
-        string getHostString  () const {
-          return _host + ':' + triagens::basics::StringUtils::itoa(_port);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +189,7 @@ namespace triagens {
 /// @brief host name / address (IPv4 or IPv6)
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _host;
+        std::string _host;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief port number
@@ -215,7 +202,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     };
-
 
   }
 }

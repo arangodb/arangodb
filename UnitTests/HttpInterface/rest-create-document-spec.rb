@@ -130,7 +130,7 @@ describe ArangoDB do
 
 	ArangoDB.size_collection(@cid).should eq(0)
       end
-
+      
       it "creating a new document complex body" do
 	cmd = "/_api/document?collection=#{@cid}"
 	body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
@@ -299,6 +299,72 @@ describe ArangoDB do
 	doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body)
 
 	doc.code.should eq(202)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+
+	etag = doc.headers['etag']
+	etag.should be_kind_of(String)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	rev = doc.parsed_response['_rev']
+	rev.should be_kind_of(Integer)
+
+	did = doc.parsed_response['_id']
+	did.should be_kind_of(String)
+	
+	match = /([0-9]*)\/([0-9]*)/.match(did)
+
+	match[1].should eq("#{@cid}")
+
+	etag.should eq("\"#{rev}\"")
+	location.should eq("/_api/document/#{did}")
+
+	ArangoDB.delete(location)
+
+	ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "creating a new document, waitForSync URL param = false" do
+	cmd = "/_api/document?collection=#{@cid}&waitForSync=false"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = ArangoDB.log_post("#{prefix}-accept-sync-false", cmd, :body => body)
+
+	doc.code.should eq(202)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+
+	etag = doc.headers['etag']
+	etag.should be_kind_of(String)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	rev = doc.parsed_response['_rev']
+	rev.should be_kind_of(Integer)
+
+	did = doc.parsed_response['_id']
+	did.should be_kind_of(String)
+	
+	match = /([0-9]*)\/([0-9]*)/.match(did)
+
+	match[1].should eq("#{@cid}")
+
+	etag.should eq("\"#{rev}\"")
+	location.should eq("/_api/document/#{did}")
+
+	ArangoDB.delete(location)
+
+	ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "creating a new document, waitForSync URL param = true" do
+	cmd = "/_api/document?collection=#{@cid}&waitForSync=true"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = ArangoDB.log_post("#{prefix}-accept-sync-true", cmd, :body => body)
+
+	doc.code.should eq(201)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 

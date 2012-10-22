@@ -74,8 +74,11 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case NOT_FOUND:            return "404 Not Found";
     case METHOD_NOT_ALLOWED:   return "405 Method Not Supported";
     case CONFLICT:             return "409 Conflict";
+    case LENGTH_REQUIRED:      return "411 Length Required";
     case PRECONDITION_FAILED:  return "412 Precondition Failed";
+    case ENTITY_TOO_LARGE:     return "413 Request Entity Too Large";
     case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
+    case HEADER_TOO_LARGE:     return "431 Request Header Fields Too Large";
 
     case SERVER_ERROR:         return "500 Internal Error";
     case NOT_IMPLEMENTED:      return "501 Not Implemented";

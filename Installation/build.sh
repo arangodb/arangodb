@@ -11,6 +11,7 @@ OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --localstatedir=/var --sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
 USE_ICECC="no"
+EXTRA_MAKE_OPTIONS=""
 
 export CPPFLAGS=""
 export LDFLAGS=""
@@ -54,68 +55,62 @@ case $TRI_OS_LONG in
 
   Linux-ArchLinux*)
     echo "Using configuration for Arch Linux"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-LinuxMint-13*)
     echo "Using configuration for LinuxMint 13"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-12*)
-    echo "Using configuration for openSuSE 12"
-    OPTIONS="$OPTIONS --enable-flex --enable-bison --enable-all-in-one --enable-mruby --disable-all-in-one-icu --enable-icu "
-    LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
-    ;;
-
-  Linux-openSUSE-11.4*)
-    echo "Using configuration for openSuSE 11.4"
-    OPTIONS="$OPTIONS --enable-all-in-one --with-boost-test --enable-mruby"
+    echo "Using configuration for openSuSE 12.X"
+    OPTIONS="$OPTIONS --enable-flex --enable-bison --disable-mruby "
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-openSUSE-11*)
-    echo "Using configuration for openSuSE 11"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    echo "Using configuration for openSuSE 11.X"
+    OPTIONS="$OPTIONS --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian-6*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
 
   Linux-Debian*)
     echo "Using configuration for Debian"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     LDD_INFO="yes"
     ;;
 
-  Linux-CentOS-*)
+  Linux-CentOS-6*)
     echo "Using configuration for Centos"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     LDD_INFO="yes"
     ;;
 
-  Linux-Ubuntu-11.10*)
-    echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+  Linux-CentOS-5*)
+    echo "Using configuration for Centos"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     LDD_INFO="yes"
-    RESULTS="$RESULTS arangoirb"
+    # bugfix for readline on CentOS 5:
+    export READLINE_LDFLAGS="-lncurses"
     ;;
 
   Linux-Ubuntu-*)
     echo "Using configuration for Ubuntu"
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --disable-mruby"
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -124,8 +119,12 @@ case $TRI_OS_LONG in
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$OPTIONS --enable-all-in-one --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     RESULTS="$RESULTS arangoirb"
+    if [ "${TRI_MACH}" == "x86_64" ]; then
+       X=$(uname -r)
+       OPTIONS="$OPTIONS --build x86_64-apple-darwin${X}"
+    fi
     ;;
 
   *)
@@ -134,6 +133,17 @@ case $TRI_OS_LONG in
     ;;
 
 esac
+
+if [ ! -f configure ] ; then
+echo "########################################################"
+echo "create configure script:"
+echo "   make setup"
+echo "########################################################"
+echo
+
+make setup || exit 1
+fi
+
 
 echo
 echo "########################################################"
@@ -150,10 +160,13 @@ echo
 
 ./configure $PREFIX $OPTIONS || exit 1
 
+# bugfix for readline on CentOS 5:
+unset LIBS
+
 echo
 echo "########################################################"
 echo "compile:"
-echo "    make -j $MAKEJ"
+echo "    make -j $MAKEJ "
 echo "########################################################"
 echo
 

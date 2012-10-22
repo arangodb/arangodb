@@ -179,6 +179,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _useActions(true),
     _gcInterval(1000),
     _gcFrequency(10.0),
+    _v8Options(""),
     _startupLoader(),
     _actionLoader(),
     _vocbase(0),
@@ -485,12 +486,10 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
   options["JAVASCRIPT Options:help-admin"]
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
-  ;
-
-  options["JAVASCRIPT Options:help-admin"]
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
+    ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 }
 
@@ -544,6 +543,11 @@ bool ApplicationV8::prepare () {
 
       _actionLoader.setDirectory(_actionPath);
     }
+  }
+
+  if (_v8Options.size() > 0) {
+    LOGGER_INFO << "using V8 options '" << _v8Options << "'";
+    v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
   }
 
   // setup instances
@@ -687,6 +691,14 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
       delete context->_locker;
 
       return false;
+    }
+
+    {
+      v8::HandleScope scope;
+      TRI_ExecuteJavaScriptString(context->_context,
+                                  v8::String::New("require(\"internal\").actionLoaded()"),
+                                  v8::String::New("action loaded"),
+                                  false);
     }
   }
 

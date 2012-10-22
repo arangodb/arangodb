@@ -1515,7 +1515,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     res = regexec(&re1, buffer, 0, 0, 0);
 
     if (res == 0) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
       continue;
     }
@@ -1527,7 +1527,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
       section = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       continue;
@@ -1540,7 +1540,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       value = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, section, option, value);
@@ -1571,7 +1571,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     if (res == 0) {
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, section, option, "");
@@ -1602,7 +1602,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
       value = TRI_DuplicateString2(buffer + matches[3].rm_so, matches[3].rm_eo - matches[3].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, tmpSection, option, value);
@@ -1630,7 +1630,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       tmpSection = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[1].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, tmpSection, option, "");
@@ -1652,13 +1652,13 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
     fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+    TRI_SystemFree(buffer);
     buffer = NULL;
     break;
   }
 
   if (buffer != NULL) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+    TRI_SystemFree(buffer);
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, section);

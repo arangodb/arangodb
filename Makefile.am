@@ -20,7 +20,7 @@ dist_man_MANS =
 ### @brief files to cleanup
 ################################################################################
 
-CLEANUP = .setup-js-directories .setup-mr-directories
+CLEANUP =
 
 ################################################################################
 ### @brief flex files
@@ -154,13 +154,6 @@ noinst_LIBRARIES = \
 	lib/libarango_client.a
 
 ################################################################################
-### @brief /sbin programs
-################################################################################
-
-sbin_PROGRAMS = \
-	bin/arangod
-
-################################################################################
 ### @brief /bin programs
 ################################################################################
 
@@ -171,6 +164,19 @@ bin_PROGRAMS = \
 if ENABLE_ARANGOB	
 bin_PROGRAMS += bin/arangob
 endif
+
+################################################################################
+### @brief /sbin programs
+################################################################################
+
+sbin_PROGRAMS = \
+	bin/arangod
+
+################################################################################
+### @brief /sbin scripts
+################################################################################
+
+bin_SCRIPTS =
 
 ################################################################################
 ### @brief uninstalled programs
@@ -275,17 +281,21 @@ include UnitTests/Makefile.files
 ### @brief error code file
 ################################################################################
 
-.PHONY: errorfiles
-
 if ENABLE_MAINTAINER_MODE
 
-errorfiles: lib/BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.h
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat lib/BasicsC/voc-errors.c
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
-
 BUILT_SOURCES += \
-	errorfiles
+	@top_srcdir@/lib/BasicsC/voc-errors.h \
+	@top_srcdir@/lib/BasicsC/voc-errors.c \
+	@top_srcdir@/js/common/bootstrap/errors.js
+
+@top_srcdir@/lib/BasicsC/voc-errors.h: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.h
+
+@top_srcdir@/lib/BasicsC/voc-errors.c: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.c
+
+@top_srcdir@/js/common/bootstrap/errors.js: lib/BasicsC/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
 
 endif
 
@@ -294,7 +304,8 @@ endif
 ################################################################################
 
 clean-local:
-	rm -f $(CLEANUP); 
+	rm -rf $(CLEANUP)
+	rm -f $(BUILT_SOURCES)
 
 ################################################################################
 ### @brief generated files
@@ -302,7 +313,10 @@ clean-local:
 
 .PHONY: built-sources
 
-built-sources: build.h errorfiles $(JAVASCRIPT_HEADER)
+built-sources: \
+	build.h \
+	@top_srcdir@/js/common/bootstrap/errors.js \
+	$(JAVASCRIPT_HEADER)
 
 ################################################################################
 ### @brief tags file
@@ -321,13 +335,13 @@ GTAGS:
 ### @brief documentation
 ################################################################################
 
-include Documentation/Makefile.doxygen
+include Documentation/Makefile.files
 
 ################################################################################
 ### @brief javascript
 ################################################################################
 
-include js/Makefile.javascript
+include js/Makefile.files
 
 ################################################################################
 ### @brief mruby

@@ -146,7 +146,6 @@ bool OpenCollections (TRI_aql_context_t* const context) {
   n = context->_collections._length;
   for (i = 0; i < n; ++i) {
     TRI_aql_collection_t* collection = context->_collections._buffer[i];
-    char* name;
 
     assert(collection);
     assert(collection->_name);
@@ -155,11 +154,10 @@ bool OpenCollections (TRI_aql_context_t* const context) {
     assert(!collection->_readLocked);
 
     LOG_TRACE("locking collection '%s'", collection->_name);
+    collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, collection->_name);
+    if (collection->_collection == NULL) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, collection->_name);
 
-    name = collection->_name;
-    collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, name);
-    if (!collection->_collection) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
       return false;
     }
   }
@@ -341,7 +339,7 @@ void TRI_UnlockCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection);
     assert(collection->_name);
 
-    if (!collection->_collection) {
+    if (collection->_collection == NULL) {
       // collection not yet opened
       continue;
     }

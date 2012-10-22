@@ -53,14 +53,16 @@
 ///   <ul>
 ///    <li>@ref ShellDocumentRead "collection.document"</li>
 ///    <li>@ref ShellDocumentCreate "collection.save"</li>
-///    <li>@ref ShellDocumentUpdate "collection.replace"</li>
+///    <li>@ref ShellDocumentReplace "collection.replace"</li>
+///    <li>@ref ShellDocumentUpdate "collection.update"</li>
 ///    <li>@ref ShellDocumentDelete "collection.remove"</li>
 ///   </ul>
 ///  </li>
 ///  <li>@ref ShellDocumentDatabaseMethods
 ///   <ul>
 ///    <li>@ref ShellDocumentDbRead "db._document"</li>
-///    <li>@ref ShellDocumentDbUpdate "db._replace"</li>
+///    <li>@ref ShellDocumentDbReplace "db._replace"</li>
+///    <li>@ref ShellDocumentDbUpdate "db._update"</li>
 ///    <li>@ref ShellDocumentDbDelete "db._remove"</li>
 ///   </ul>
 ///  </li>
@@ -135,8 +137,12 @@
 /// @copydetails JS_SaveVocbaseCol
 ///
 /// @CLEARPAGE
-/// @anchor ShellDocumentUpdate
+/// @anchor ShellDocumentReplace
 /// @copydetails JS_ReplaceVocbaseCol
+///
+/// @CLEARPAGE
+/// @anchor ShellDocumentUpdate
+/// @copydetails JS_UpdateVocbaseCol
 ///
 /// @CLEARPAGE
 /// @anchor ShellDocumentDelete
@@ -150,8 +156,12 @@
 /// @copydetails JS_DocumentVocbase
 ///
 /// @CLEARPAGE
-/// @anchor ShellDocumentDbUpdate
+/// @anchor ShellDocumentDbReplace
 /// @copydetails JS_ReplaceVocbase
+///
+/// @CLEARPAGE
+/// @anchor ShellDocumentDbUpdate
+/// @copydetails JS_UpdateVocbase
 ///
 /// @CLEARPAGE
 /// @anchor ShellDocumentDbDelete

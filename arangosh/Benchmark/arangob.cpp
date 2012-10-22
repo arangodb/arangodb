@@ -113,7 +113,7 @@ static int BatchSize = 0;
 /// @brief complexity parameter for tests
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t Complexity = 1;
+static uint64_t Complexity = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection to use
@@ -223,7 +223,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   }
 
   ~DocumentCreationTest () {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
   
   string collectionName () {

@@ -131,11 +131,7 @@ function AHUACATL_NORMALIZE (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_CLONE (obj) {
-  if (obj == null) {
-    return obj;
-  }
-
-  if (typeof(obj) != "object") {
+  if (obj == null || typeof(obj) != "object") {
     return obj;
   }
 
@@ -252,6 +248,22 @@ function AHUACATL_TYPEWEIGHT (value) {
   }
 
   return AHUACATL_TYPEWEIGHT_NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the values of an object in the order that they are defined
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_VALUES (value) {
+  var values = [];
+  
+  for (var k in value) {
+    if (value.hasOwnProperty(k)) {
+      values.push(value[k]);
+    }
+  }
+
+  return values;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1452,6 +1464,27 @@ function AHUACATL_CAST_STRING (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cast to a list
+///
+/// the operand can have any type, always returns a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_CAST_LIST (value) {
+  switch (AHUACATL_TYPEWEIGHT(value)) {
+    case AHUACATL_TYPEWEIGHT_LIST:
+      return value;
+    case AHUACATL_TYPEWEIGHT_NULL:
+      return [ ];
+    case AHUACATL_TYPEWEIGHT_BOOL:
+    case AHUACATL_TYPEWEIGHT_NUMBER:
+    case AHUACATL_TYPEWEIGHT_STRING:
+      return [ value ];
+    case AHUACATL_TYPEWEIGHT_DOCUMENT:
+      return AHUACATL_VALUES(value);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2088,8 +2121,13 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 
       var clonedEdges = AHUACATL_CLONE(edges);
       var clonedVertices = AHUACATL_CLONE(vertices);
-      clonedEdges.push(subEdge);
-      clonedVertices.push(internal.db._document_nl(targetId));
+      try {
+        clonedVertices.push(internal.db._document_nl(targetId));
+        clonedEdges.push(subEdge);
+      }
+      catch (e) {
+        // avoid "document not found error" in case referenced vertices were deleted
+      }
       
       var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, targetId, AHUACATL_CLONE(visited), clonedEdges, clonedVertices, level + 1);
       for (k = 0; k < connected.length; ++k) {
@@ -2133,7 +2171,21 @@ function AHUACATL_NOT_NULL (value, alternative) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a document has an attribute
+/// @brief return value if it's a list, otherwise return alternative
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_NOT_LIST (value, alternative) {
+  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_LIST) {
+    return value;
+  }
+
+  return alternative;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a document has a specific attribute
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_HAS () {
@@ -2166,7 +2218,7 @@ function AHUACATL_MERGE () {
     }
 
     for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
+      if (! element.hasOwnProperty(k)) {
         continue;
       }
 
@@ -2177,6 +2229,43 @@ function AHUACATL_MERGE () {
   return result; 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge all arguments recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_MERGE_RECURSIVE () {
+  var result = { };
+
+  for (var i in arguments) {
+    var element = arguments[i];
+
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
+    }
+
+    recurse = function (old, element) {
+      var r = AHUACATL_CLONE(old);
+
+      for (var k in element) {
+        if (! element.hasOwnProperty(k)) {
+          continue;
+        }
+
+        if (r.hasOwnProperty(k) && AHUACATL_TYPEWEIGHT(element[k]) === AHUACATL_TYPEWEIGHT_DOCUMENT) {
+          r[k] = recurse(r[k], element[k]);
+        }
+        else {
+          r[k] = element[k];
+        }
+      }
+      return r;
+    }
+
+    result = recurse(result, element);
+  }
+
+  return result; 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief passthru the argument

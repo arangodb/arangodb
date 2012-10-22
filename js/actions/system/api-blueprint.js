@@ -26,164 +26,166 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+(function() {
+  var actions = require("org/arangodb/actions");
+  var graph = require("graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-var actions = require("org/arangodb/actions");
-var graph = require("graph");
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-var MY_URL = "_api/blueprint";
-var MY_CONTEXT = "api";
+////////////////////////////////////////////////////////////////////////////////
+/// @brief url prefix
+////////////////////////////////////////////////////////////////////////////////
+
+  var BLUEPRINT_URL = "_api/blueprint";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief context
+////////////////////////////////////////////////////////////////////////////////
+
+  var BLUEPRINT_CONTEXT = "api";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   graph functions
 // -----------------------------------------------------------------------------
-
-shallowCopy = function (props) {
-  var shallow,
-    key;
-
-  shallow = {};
-
-  for (key in props) {
-    if (props.hasOwnProperty(key) && key[0] !== '_' && key[0] !== '$') {
-      shallow[key] = props[key];
-    }
-  }
-
-  return shallow;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create graph
 ///
 /// @REST{POST /_api/blueprint/graph}
 /// {"name":"...","verticesName":"...","edgesName":"..."}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function postGraph(req, res) {
-  try {    
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
+  function postGraph (req, res) {
+    try {    
+      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
       
-    if (json === undefined) {
-      return;
+      if (json === undefined) {
+        return;
+      }
+      
+      var name = json['name'];
+      var vertices = json['verticesName'];
+      var edges = json['edgesName'];
+      
+      var g = new graph.Graph(name, vertices, edges);
+      
+      if (g._properties == null) {
+        throw "no properties of graph found";
+      }
+      actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
     }
-    
-    var name = json['name'];
-    var vertices = json['verticesName'];
-    var edges = json['edgesName'];
-
-    var g = new graph.Graph(name, vertices, edges);
-
-    if (g._properties == null) {
-      throw "no properties of graph found";
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, err);
     }
-    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph
 ///
 /// @REST{GET /_api/blueprint/graph/@FA{graph-identifier}}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function getGraph(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
-    return;
-  }
-
-  try {    
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
+  function getGraph (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
+      return;
     }
     
-    var g = new graph.Graph(id);
+    try {    
+      var id = req.suffix[0];
 
-    if (g._properties == null) {
-      throw "no properties of graph found";
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+      
+      var g = new graph.Graph(id);
+      
+      if (g._properties == null) {
+        throw "no properties of graph found";
+      }
+      
+      actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete graph
 ///
 /// @REST{DELETE /_api/blueprint/graph/@FA{graph-identifier}}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function deleteGraph(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
-    return;
-  }
-
-  try {    
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
+  function deleteGraph (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
+      return;
     }
     
-    var g = new graph.Graph(id);
+    try {    
+      var id = req.suffix[0];
 
-    if (g._properties == null) {
-      throw "no properties of graph found";
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+      
+      var g = new graph.Graph(id);
+      
+      if (g._properties == null) {
+        throw "no properties of graph found";
+      }
+      
+      actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : MY_URL + "/graph",
-  context : MY_CONTEXT,
+  actions.defineHttp({
+    url : BLUEPRINT_URL + "/graph",
+    context : BLUEPRINT_CONTEXT,
 
-  callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.POST) :
-        postGraph(req, res); 
-        break;
+    callback : function (req, res) {
+      try {
+        switch (req.requestType) {
+          case (actions.POST) :
+            postGraph(req, res); 
+            break;
 
-      case (actions.GET) :
-        getGraph(req, res); 
-        break;
+          case (actions.GET) :
+            getGraph(req, res); 
+            break;
 
-      case (actions.DELETE) :
-        deleteGraph(req, res); 
-        break;
+          case (actions.DELETE) :
+            deleteGraph(req, res); 
+            break;
 
-      default:
-        actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
+      }
     }
-  }
-});
-
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -195,7 +197,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                  vertex functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,76 +205,79 @@ actions.defineHttp({
 ///
 /// @REST{POST /_api/blueprint/vertex?graph=@FA{graph-identifier}}
 /// {"$id":"...","key1":"...","key2":"..."}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function postVertex(req, res) {
-  try {
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-    var g = new graph.Graph(name);
+  function postVertex (req, res) {
+    try {
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    var json = actions.getJsonBody(req, res);
-    var id = undefined;
-    
-    if (json) {
-      id = json["$id"];
-    }
+      if (name == undefined) {
+        throw "missing graph name";
+      }
 
-    var v = g.addVertex(id, json);      
+      var g = new graph.Graph(name);
 
-    if (v == undefined || v._properties == undefined) {
-      throw "could not create vertex";
+      var json = actions.getJsonBody(req, res);
+      var id = undefined;
+
+      if (json) {
+        id = json["$id"];
+      }
+
+      var v = g.addVertex(id, json);      
+
+      if (v == undefined || v._properties == undefined) {
+        throw "could not create vertex";
+      }
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties } );
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties } );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vertex
 ///
 /// @REST{GET /_api/blueprint/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function getVertex(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-    return;
-  }
-
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
-    }    
-    var g = new graph.Graph(name);
-
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
+  function getVertex (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+      return;
     }
-    
-    var v = g.getVertex(id);
 
-    if (v == undefined || v._properties == undefined) {
-      throw "no vertex found for: " + id;
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
+
+      if (name == undefined) {
+        throw "missing graph name";
+      }    
+
+      var g = new graph.Graph(name);
+
+      var id = req.suffix[0];
+
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+
+      var v = g.getVertex(id);
+
+      if (v == undefined || v._properties == undefined) {
+        throw "no vertex found for: " + id;
+      }
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
@@ -281,39 +286,41 @@ function getVertex(req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function deleteVertex(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-    return;
-  }
-
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
+  function deleteVertex (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+      return;
     }
-    var g = new graph.Graph(name);
 
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-    
-    var v = g.getVertex(id);
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    if (v == undefined || v._properties == undefined) {
-      throw "no vertex found for: " + id;
+      if (name == undefined) {
+        throw "missing graph name";
+      }
+      var g = new graph.Graph(name);
+
+      var id = req.suffix[0];
+
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+
+      var v = g.getVertex(id);
+
+      if (v == undefined || v._properties == undefined) {
+        throw "no vertex found for: " + id;
+      }
+
+      g.removeVertex(v);
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
     }
-    
-    g.removeVertex(v);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change vertex
@@ -323,77 +330,85 @@ function deleteVertex(req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function putVertex(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "vertex not found");
-    return;
-  }
-
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-    var g = new graph.Graph(name);
-
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-    
-    var v = g.getVertex(id);
-
-    if (v == undefined || v._properties == undefined) {
-      throw "no vertex found for: " + id;
-    }
-    
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
-      
-    if (json === undefined) {
+  function putVertex (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "vertex not found");
       return;
     }
 
-    var shallow = shallowCopy(json);
-    shallow.$id = v._properties.$id;
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    var id2 = g._vertices.replace(v._properties, shallow);
-    var result = g._vertices.document(id2);
+      if (name == undefined) {
+        throw "missing graph name";
+      }
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result} );
+      var g = new graph.Graph(name);
+
+      var id = req.suffix[0];
+
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+
+      var v = g.getVertex(id);
+
+      if (v == undefined || v._properties == undefined) {
+        throw "no vertex found for: " + id;
+      }
+
+      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
+
+      if (json === undefined) {
+        return;
+      }
+
+      var shallow = json.shallowCopy;
+      shallow.$id = v._properties.$id;
+
+      var id2 = g._vertices.replace(v._properties, shallow);
+      var result = g._vertices.document(id2);
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result} );
+    }
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : MY_URL + "/vertex",
-  context : MY_CONTEXT,
+  actions.defineHttp({
+    url : BLUEPRINT_URL + "/vertex",
+    context : BLUEPRINT_CONTEXT,
 
-  callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.POST) :
-        postVertex(req, res); 
-        break;
+    callback : function (req, res) {
+      try {
+        switch (req.requestType) {
+          case (actions.POST) :
+            postVertex(req, res); 
+            break;
 
-      case (actions.GET) :
-        getVertex(req, res); 
-        break;
+          case (actions.GET) :
+            getVertex(req, res); 
+            break;
 
-      case (actions.PUT) :
-        putVertex(req, res); 
-        break;
+          case (actions.PUT) :
+            putVertex(req, res); 
+            break;
 
-      default:
-        actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
+      }
     }
-  }
-});
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -405,7 +420,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                vertices functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,51 +430,58 @@ actions.defineHttp({
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function getVertices(req, res) {
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-    var g = new graph.Graph(name);
-    
-    var v = g.getVertices();
+  function getVertices (req, res) {
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    var result = {};
-    result["vertices"] = [];
-    
-    while (v.hasNext()) {
-      var e = v.next();
-      result["vertices"].push(e._properties);
+      if (name == undefined) {
+        throw "missing graph name";
+      }
+
+      var g = new graph.Graph(name);
+
+      var v = g.getVertices();
+
+      var result = {};
+      result["vertices"] = [];
+
+      while (v.hasNext()) {
+        var e = v.next();
+        result["vertices"].push(e._properties);
+      }
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : MY_URL + "/vertices",
-  context : MY_CONTEXT,
+  actions.defineHttp({
+    url : BLUEPRINT_URL + "/vertices",
+    context : BLUEPRINT_CONTEXT,
 
-  callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.GET) :
-        getVertices(req, res); 
-        break;
+    callback : function (req, res) {
+      try {
+        switch (req.requestType) {
+          case (actions.GET) :
+            getVertices(req, res); 
+            break;
 
-      default:
-        actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
+      }
     }
-  }
-});
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -471,7 +493,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                    edge functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,80 +501,83 @@ actions.defineHttp({
 ///
 /// @REST{POST /_api/blueprint/edge?graph=@FA{graph-identifier}}
 /// {"$id":"...","_from":"...","_to":"...","$label":"...","data1":{...}}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function postEdge(req, res) {
-  try {
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-    var g = new graph.Graph(name);
+  function postEdge (req, res) {
+    try {
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
-      
-    if (json === undefined) {
-      return;
-    }
-    
-    var id = json["$id"];    
-    var out = g.getVertex(json["_from"]);
-    var ine = g.getVertex(json["_to"]);
-    var label = json["$label"];    
+      if (name == undefined) {
+        throw "missing graph name";
+      }
 
-    var e = g.addEdge(id, out, ine, label, json);      
+      var g = new graph.Graph(name);
 
-    if (e == undefined || e._properties == undefined) {
-      throw "could not create edge";
+      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
+
+      if (json === undefined) {
+        return;
+      }
+
+      var id = json["$id"];    
+      var out = g.getVertex(json["_from"]);
+      var ine = g.getVertex(json["_to"]);
+      var label = json["$label"];    
+
+      var e = g.addEdge(id, out, ine, label, json);      
+
+      if (e == undefined || e._properties == undefined) {
+        throw "could not create edge";
+      }
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge
 ///
 /// @REST{GET /_api/blueprint/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-function getEdge(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
-    return;
-  }
-
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
+  function getEdge (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
+      return;
     }
-    var g = new graph.Graph(name);
 
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-        
-    var e = new graph.Edge(g, id);
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    if (e == undefined || e._properties == undefined) {
-      throw "no edge found for: " + id;
+      if (name == undefined) {
+        throw "missing graph name";
+      }
+
+      var g = new graph.Graph(name);
+
+      var id = req.suffix[0];
+
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+
+      var e = new graph.Edge(g, id);
+
+      if (e == undefined || e._properties == undefined) {
+        throw "no edge found for: " + id;
+      }
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete edge
@@ -561,39 +586,41 @@ function getEdge(req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function deleteEdge(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
-    return;
-  }
-
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
+  function deleteEdge (req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
+      return;
     }
-    var g = new graph.Graph(name);
 
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-    
-    var e = new graph.Edge(g, id);
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    if (e == undefined || e._properties == undefined) {
-      throw "no edge found for: " + id;
+      if (name == undefined) {
+        throw "missing graph name";
+      }
+
+      var g = new graph.Graph(name);
+
+      var id = req.suffix[0];
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+
+      var e = new graph.Edge(g, id);
+
+      if (e == undefined || e._properties == undefined) {
+        throw "no edge found for: " + id;
+      }
+
+      g.removeEdge(e);
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
     }
-    
-    g.removeEdge(e);
-    
-    actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update edge data
@@ -603,95 +630,103 @@ function deleteEdge(req, res) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function putEdge(req, res) {
-  if (req.suffix.length < 1) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "edge not found");
-    return;
-  }
-
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];    
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-    var g = new graph.Graph(name);
-
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-    
-    var e = new graph.Edge(g, id);
-
-    if (e == undefined || e._properties == undefined) {
-      throw "no edge found for: " + id;
-    }
-    
-    var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
-      
-    if (json === undefined) {
+  function putEdge(req, res) {
+    if (req.suffix.length < 1) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "edge not found");
       return;
     }
 
-    var shallow = shallowCopy(json);
-    shallow.$id = e._properties.$id;
-    shallow.$label = e._properties.$label;
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];    
 
-    var id2 = g._edges.replace(e._properties, shallow);
-    var result = g._edges.document(id2);
+      if (name == undefined) {
+        throw "missing graph name";
+      }
 
-    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
+      var g = new graph.Graph(name);
+
+      var id = req.suffix[0];
+
+      if (req.suffix.length > 1) {
+        id += "/" + req.suffix[1];
+      }
+
+      var e = new graph.Edge(g, id);
+
+      if (e == undefined || e._properties == undefined) {
+        throw "no edge found for: " + id;
+      }
+
+      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
+
+      if (json === undefined) {
+        return;
+      }
+
+      var shallow = json.shallowCopy;
+      shallow.$id = e._properties.$id;
+      shallow.$label = e._properties.$label;
+
+      var id2 = g._edges.replace(e._properties, shallow);
+      var result = g._edges.document(id2);
+
+      actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
+    }
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : MY_URL + "/edge",
-  context : MY_CONTEXT,
+  actions.defineHttp({
+    url : BLUEPRINT_URL + "/edge",
+    context : BLUEPRINT_CONTEXT,
 
-  callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.POST) :
-        postEdge(req, res); 
-        break;
+    callback : function (req, res) {
+      try {
+        switch (req.requestType) {
+          case (actions.POST) :
+            postEdge(req, res); 
+            break;
 
-      case (actions.GET) :
-        getEdge(req, res); 
-        break;
+          case (actions.GET) :
+            getEdge(req, res); 
+            break;
 
-      case (actions.DELETE) :
-        deleteEdge(req, res); 
-        break;
+          case (actions.DELETE) :
+            deleteEdge(req, res); 
+            break;
 
-      case (actions.PUT) :
-        putEdge(req, res); 
-        break;
-
-      default:
-        actions.resultUnsupported(req, res);
+          case (actions.PUT) :
+            putEdge(req, res); 
+            break;
+ 
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
+      }
     }
-  }
-});
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   edges functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edges
@@ -714,78 +749,88 @@ actions.defineHttp({
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-function getEdges(req, res) {
-  try {    
-    // name/id of the graph
-    var name = req.parameters['graph'];
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-    
-    var g = new graph.Graph(name);
-    
-    var result = {
-      "edges" : []
-    }
-    
-    var vertex = req.parameters['vertex'];
-    if (vertex == undefined) {
-      var e = g.getEdges();
-      
-      while (e.hasNext()) {
-        result.edges.push(e.next()._properties);
-      }    
-    }
-    else {
-      var v = g.getVertex(vertex);
+  function getEdges(req, res) {
+    try {    
+      // name/id of the graph
+      var name = req.parameters['graph'];
+      if (name == undefined) {
+        throw "missing graph name";
+      }
 
-      if (v == undefined || v._properties == undefined) {
-        throw "no vertex found for: " + vertex;
+      var g = new graph.Graph(name);
+
+      var result = {
+        "edges" : []
       }
-      
-      var type = req.parameters['type'];
-      if (type === "in") {
-        result.edges = g._edges.inEdges(v._id);
-      }
-      else if (type === "out") {
-        result.edges = g._edges.outEdges(v._id);
+
+      var vertex = req.parameters['vertex'];
+      if (vertex == undefined) {
+        var e = g.getEdges();
+
+        while (e.hasNext()) {
+          result.edges.push(e.next()._properties);
+        }    
       }
       else {
-        result.edges = g._edges.edges(v._id);
-      }      
+        var v = g.getVertex(vertex);
+
+        if (v == undefined || v._properties == undefined) {
+          throw "no vertex found for: " + vertex;
+        }
+
+        var type = req.parameters['type'];
+        if (type === "in") {
+          result.edges = g._edges.inEdges(v._id);
+        }
+        else if (type === "out") {
+          result.edges = g._edges.outEdges(v._id);
+        }
+        else {
+          result.edges = g._edges.edges(v._id);
+        }      
+      }
+
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
-    
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    catch (err) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
+    }
   }
-  catch (err) {
-    actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url : MY_URL + "/edges",
-  context : MY_CONTEXT,
+  actions.defineHttp({
+    url : BLUEPRINT_URL + "/edges",
+    context : BLUEPRINT_CONTEXT,
 
-  callback : function (req, res) {
-    switch (req.requestType) {
-      case (actions.GET) :
-        getEdges(req, res); 
-        break;
+    callback : function (req, res) {
+      try {
+        switch (req.requestType) {
+          case (actions.GET) :
+            getEdges(req, res); 
+            break;
 
-      default:
-        actions.resultUnsupported(req, res);
+          default:
+            actions.resultUnsupported(req, res);
+        }
+      }
+      catch (err) {
+        actions.resultException(req, res, err);
+      }
     }
-  }
-});
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+})();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

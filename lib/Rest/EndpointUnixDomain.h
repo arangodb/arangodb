@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoints
+/// @brief connection endpoint via Unix domain socket
 ///
 /// @file
 ///
@@ -29,27 +29,26 @@
 #define TRIAGENS_FYN_REST_ENDPOINT_UNIX_DOMAIN_H 1
 
 #include <Basics/Common.h>
-#include <Basics/StringUtils.h>
-#include "EndpointBase.h"
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/un.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <sys/file.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          Endpoint
-// -----------------------------------------------------------------------------
+#include "Rest/Endpoint.h"
 
 namespace triagens {
   namespace rest {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint specification
-////////////////////////////////////////////////////////////////////////////////
-
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointUnix
+// --SECTION--                                                EndpointUnixDomain
 // -----------------------------------------------------------------------------
 
-    class EndpointUnixDomain : public EndpointBase {
+    class EndpointUnixDomain : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -66,19 +65,11 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-        EndpointUnixDomain (const EndpointBase::EndpointType, 
-                            const EndpointBase::Protocol,
+        EndpointUnixDomain (const EndpointType, 
+                            const ProtocolType,
                             const std::string&, 
+                            int,
                             const std::string&);
-#else
-      private:
-        EndpointUnixDomain (const EndpointBase::EndpointType, 
-                            const EndpointBase::Protocol,
-                            const std::string&, 
-                            const std::string&);
-      public:            
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint
@@ -124,11 +115,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         int getDomain () const {
-#ifdef TRI_HAVE_LINUX_SOCKETS
           return AF_UNIX;
-#else
-          return -1;
-#endif          
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +171,8 @@ namespace triagens {
 
   }
 }
+
+#endif
 
 #endif
 

@@ -31,8 +31,8 @@ class ArangoMultipartBody
 ## add a part to a multipart message body
 ################################################################################
 
-  def addPart (method, url, headers, body)
-    part = { :method => method, :url => url, :headers => headers, :body => body }
+  def addPart (method, url, headers, body, contentId = "")
+    part = { :method => method, :url => url, :headers => headers, :body => body, :contentId => contentId }
     @parts.push(part)
   end
 
@@ -73,6 +73,16 @@ class ArangoMultipartBody
       position = partTotal.index("\r\n\r\n");
       break if position == nil
 
+
+      r = Regexp.new('content-id: ([^\s]+)', Regexp::IGNORECASE)
+       
+      if r.match(partTotal.slice(0, position))
+        contentId = Regexp.last_match(1)
+      else
+        contentId = ""
+      end
+
+
       # strip envelope
       partTotal = partTotal.slice(position + 4, partTotal.length)
 
@@ -103,7 +113,7 @@ class ArangoMultipartBody
         lineNumber = lineNumber + 1
       end
 
-      part = { :headers => partHeaders, :body => partBody, :status => status }
+      part = { :headers => partHeaders, :body => partBody, :status => status, :contentId => contentId }
       parts.push(part)
 
       body = body.slice(final, body.length)
@@ -126,7 +136,13 @@ class ArangoMultipartBody
       # boundary
       body += "--" + @boundary + "\r\n"
       # header
-      body += "Content-Type: application/x-arango-batchpart\r\n\r\n";
+      body += "Content-Type: application/x-arango-batchpart"
+
+      if part[:contentId] != ""
+        body += "\r\nContent-Id: " + part[:contentId]
+      end
+      
+      body += "\r\n\r\n"
 
       # inner header
       body += part[:method] + " " + part[:url] + " HTTP/1.1\r\n"

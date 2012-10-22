@@ -51,6 +51,7 @@
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
+#include "BasicsC/messages.h"
 #include "BasicsC/strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
@@ -90,14 +91,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
-
-/*
-#include "js/common/bootstrap/js-modules.h"
-#include "js/common/bootstrap/js-print.h"
-#include "js/common/bootstrap/js-errors.h"
-#include "js/server/js-ahuacatl.h"
-#include "js/server/js-server.h"
-*/
 
 #ifdef TRI_ENABLE_MRUBY
 #include "mr/common/bootstrap/mr-error.h"
@@ -420,7 +413,7 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
   }
 #endif  
-  
+ 
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................
@@ -732,7 +725,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       }
 
       // .............................................................................
-      // run console
+      // run script
       // .............................................................................
 
       case OperationMode::MODE_SCRIPT: {
@@ -799,27 +792,27 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 #ifndef _WIN32      
         context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
-        V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
+        V8LineEditor console(context->_context, ".arango");
 
-        console->open(true);
+        console.open(true);
 
         while (true) {
           while(! v8::V8::IdleNotification()) {
           }
 
-          char* input = console->prompt("arangod> ");
+          char* input = console.prompt("arangod> ");
 
           if (input == 0) {
-            printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+            printf("<ctrl-D>\n%s\n", TRI_BYE_MESSAGE);
             break;
           }
 
           if (*input == '\0') {
-            TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
             continue;
           }
 
-          console->addHistory(input);
+          console.addHistory(input);
 
           v8::HandleScope scope;
           v8::TryCatch tryCatch;
@@ -974,15 +967,15 @@ int ArangoServer::executeRubyConsole () {
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(context->_mrb, ".arango-mrb");
+  MRLineEditor console(context->_mrb, ".arango-mrb");
 
-  console->open(false);
+  console.open(false);
 
   while (true) {
-    char* input = console->prompt("arangod> ");
+    char* input = console.prompt("arangod> ");
 
     if (input == 0) {
-      printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+      printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
       break;
     }
 
@@ -991,7 +984,7 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    console->addHistory(input);
+    console.addHistory(input);
 
     struct mrb_parser_state* p = mrb_parse_string(context->_mrb, input, NULL);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
@@ -1023,8 +1016,7 @@ int ArangoServer::executeRubyConsole () {
   }
 
   // close the console
-  console->close();
-  delete console;
+  console.close();
 
   // close the database
   closeDatabase();

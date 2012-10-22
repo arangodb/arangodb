@@ -39,16 +39,13 @@
 #include <BasicsC/hashes.h>
 #include <ShapedJson/json-shaper.h>
 #include <ShapedJson/shaped-json.h>
-#include <VocBase/primary-collection.h>
 
 #define USE_STATIC_HASHARRAY_COMPARE 1
 
 #define HASHARRAY_ELEMENT_TYPE(a,b) \
   struct a {                       \
-    size_t numFields;              \
     TRI_shaped_json_t* fields;     \
     void* data;                    \
-    void* collection;              \
   } b
   
 
@@ -90,10 +87,8 @@ static void IndexStaticClearElement(TRI_hasharray_t* array, void* element) {
 
   LocalElement_t* hElement = (LocalElement_t*)(element);
   if (element != NULL) {
-    hElement->numFields  = 0;
     hElement->fields     = 0;
     hElement->data       = 0;
-    hElement->collection = 0;
   }  
 }
 
@@ -114,16 +109,14 @@ static bool IndexStaticCopyElementElement (TRI_hasharray_t* array, void* left, v
     return false;
   }
     
-  leftElement->numFields  = rightElement->numFields;
-  leftElement->data       = rightElement->data;
-  leftElement->collection = rightElement->collection;
-  leftElement->fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * leftElement->numFields, false);
-  
+  leftElement->fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * array->_numFields, false);
   if (leftElement->fields == NULL) {
     return false;
   }
+  
+  leftElement->data       = rightElement->data;
 
-  memcpy(leftElement->fields, rightElement->fields, sizeof(TRI_shaped_json_t) * leftElement->numFields);
+  memcpy(leftElement->fields, rightElement->fields, sizeof(TRI_shaped_json_t) * array->_numFields);
   
   return true;  
 }
@@ -166,7 +159,7 @@ static uint64_t IndexStaticHashElement (TRI_hasharray_t* array, void* element) {
   uint64_t hash = TRI_FnvHashBlockInitial();
   size_t j;
 
-  for (j = 0; j < hElement->numFields; j++) {
+  for (j = 0; j < array->_numFields; j++) {
     hash = IndexStaticHashShapedJson(hash, (j + hElement->fields) );
   }
   return  hash;
@@ -184,7 +177,7 @@ static uint64_t IndexStaticHashKey (TRI_hasharray_t* array, void* element) {
   uint64_t hash = TRI_FnvHashBlockInitial();
   size_t j;
 
-  for (j = 0; j < hElement->numFields; j++) {
+  for (j = 0; j < array->_numFields; j++) {
     hash = IndexStaticHashShapedJson(hash, (j + hElement->fields) );
   }
   return  hash;
@@ -230,10 +223,6 @@ static bool IndexStaticIsEqualElementElement (TRI_hasharray_t* array, void* left
     return false;
   }    
   
-  if (hLeftElement->numFields != hRightElement->numFields) {
-    return false; // should never happen
-  }
-
   return (hLeftElement->data == hRightElement->data);
 }
 
@@ -271,11 +260,7 @@ static bool IndexStaticIsEqualKeyElement (TRI_hasharray_t* array, void* leftElem
     return false;
   }    
   
-  if (hLeftElement->numFields != hRightElement->numFields) {
-    return false; // should never happen
-  }
-
-  for (j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < array->_numFields; j++) {
     if (!IndexStaticIsEqualShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields))) {
       return false;
     }
@@ -299,11 +284,7 @@ static bool IndexStaticIsEqualKeyElementMulti (TRI_hasharray_t* array, void* lef
     return false;
   }    
   
-  if (hLeftElement->numFields != hRightElement->numFields) {
-    return false; // should never happen
-  }
-
-  for (j = 0; j < hLeftElement->numFields; j++) {
+  for (j = 0; j < array->_numFields; j++) {
     TRI_shaped_json_t* left   = (j + hLeftElement->fields);
     TRI_shaped_json_t* right  = (j + hRightElement->fields);
     if (!IndexStaticIsEqualShapedJsonShapedJson(left, right)) {
@@ -316,15 +297,24 @@ static bool IndexStaticIsEqualKeyElementMulti (TRI_hasharray_t* array, void* lef
 
 
 static bool IndexStaticIsEqualShapedJsonShapedJson (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right) {
-  if (left == NULL && right == NULL) {
-    return true;
+  // if (left == NULL && right == NULL) {
+  //   return true;
+  // }
+
+  // if (left == NULL && right != NULL) {
+  //   return false;
+  // }
+
+  // if (left != NULL && right == NULL) {
+  //   return false;
+  // }
+ 
+  // simplified the above checks to 
+  if (left == NULL) {
+    return (right == NULL);
   }
 
-  if (left == NULL && right != NULL) {
-    return false;
-  }
-
-  if (left != NULL && right == NULL) {
+  if (right == NULL) {
     return false;
   }
 
@@ -332,7 +322,7 @@ static bool IndexStaticIsEqualShapedJsonShapedJson (const TRI_shaped_json_t* lef
     return false;
   }
 
-  return ( memcmp(left->_data.data,right->_data.data, left->_data.length) == 0);   
+  return (memcmp(left->_data.data, right->_data.data, left->_data.length) == 0);   
 }  // end of function isEqualShapedJsonShapedJson
 
 

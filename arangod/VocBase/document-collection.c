@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple collection with global read-write lock
+/// @brief document collection with global read-write lock
 ///
 /// @file
 ///
@@ -33,6 +33,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/voc-shaper.h"
 
@@ -62,21 +63,24 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       TRI_doc_update_policy_e policy,
                                       TRI_df_marker_t** result,
                                       bool release,
-                                      bool allowRollback);
+                                      bool allowRollback,
+                                      bool forceSync);
 
 static int DeleteDocument (TRI_document_collection_t* collection,
                            TRI_doc_deletion_marker_t* marker,
                            TRI_voc_rid_t rid,
                            TRI_voc_rid_t* oldRid,
                            TRI_doc_update_policy_e policy,
-                           bool release);
+                           bool release,
+                           bool forceSync);
 
 static int DeleteShapedJson (TRI_primary_collection_t* doc,
                              TRI_voc_did_t did,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
                              TRI_doc_update_policy_e policy,
-                             bool release);
+                             bool release,
+                             bool forceSync);
 
 static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
 static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old);
@@ -183,7 +187,8 @@ static TRI_datafile_t* SelectJournal (TRI_document_collection_t* sim,
 
 static void WaitSync (TRI_document_collection_t* sim,
                       TRI_datafile_t* journal,
-                      char const* position) {
+                      char const* position,
+                      bool forceSync) {
   TRI_collection_t* base;
 
   base = &sim->base.base;
@@ -191,7 +196,7 @@ static void WaitSync (TRI_document_collection_t* sim,
   // no condition at all. Do NOT acquire a lock, in the worst
   // case we will miss a parameter change.
 
-  if (! base->_waitForSync) {
+  if (! base->_waitForSync && ! forceSync) {
     return;
   }
 
@@ -216,7 +221,10 @@ static void WaitSync (TRI_document_collection_t* sim,
     }
 
     // we have to wait a bit longer
+    // signal the synchroniser that there is work to do
+    TRI_INC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
     TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+    TRI_DEC_SYNCHRONISER_WAITER_VOC_BASE(sim->base.base._vocbase);
   }
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
@@ -308,7 +316,8 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
                                       void const* additional,
                                       TRI_voc_did_t did,
                                       TRI_voc_rid_t rid,
-                                      bool release) {
+                                      bool release, 
+                                      bool forceSync) {
 
   TRI_datafile_t* journal;
   TRI_primary_collection_t* primary;
@@ -374,7 +383,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
   if (res == TRI_ERROR_NO_ERROR) {
 
     // fill the header
-    primary->createHeader(primary, journal, *result, markerSize, header, 0);
+    CreateHeader(primary, journal, *result, markerSize, header, 0);
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
@@ -393,7 +402,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
       LOG_DEBUG("encountered index violation during create, deleting newly created document");
 
       // rollback, ignore any additional errors
-      resRollback = DeleteShapedJson(primary, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false);
+      resRollback = DeleteShapedJson(primary, header->_did, header->_rid, 0, TRI_DOC_UPDATE_LAST_WRITE, false, false);
 
       if (resRollback != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
@@ -426,7 +435,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
           LOG_DEBUG("removing document '%lu' because of cap constraint",
                     (unsigned long) oldest->_did);
 
-          remRes = DeleteShapedJson(primary, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false);
+          remRes = DeleteShapedJson(primary, oldest->_did, 0, NULL, TRI_DOC_UPDATE_LAST_WRITE, false, false);
 
           if (remRes != TRI_ERROR_NO_ERROR) {
             LOG_WARNING("cannot cap collection: %s", TRI_last_error());
@@ -441,7 +450,7 @@ static TRI_doc_mptr_t CreateDocument (TRI_document_collection_t* sim,
       }
 
       // wait for sync
-      WaitSync(sim, journal, ((char const*) *result) + markerSize + bodySize);
+      WaitSync(sim, journal, ((char const*) *result) + markerSize + bodySize, forceSync);
 
       // and return
       return mptr;
@@ -513,7 +522,7 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_document_collection_t* sim,
   else if (originalMarker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_edge_marker_t edgeUpdate;
 
-    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_document_marker_t));
+    memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_edge_marker_t));
     marker = &edgeUpdate.base;
     markerLength = sizeof(TRI_doc_edge_marker_t);
     data = ((char*) originalMarker) + sizeof(TRI_doc_edge_marker_t);
@@ -529,12 +538,15 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_document_collection_t* sim,
 
   return UpdateDocument(sim,
                         header,
-                        marker, markerLength,
-                        data, dataLength,
+                        marker, 
+                        markerLength,
+                        data, 
+                        dataLength,
                         header->_rid,
                         NULL,
                         TRI_DOC_UPDATE_LAST_WRITE,
                         result,
+                        false,
                         false,
                         false);
 }
@@ -554,7 +566,8 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
                                       TRI_doc_update_policy_e policy,
                                       TRI_df_marker_t** result,
                                       bool release,
-                                      bool allowRollback) {
+                                      bool allowRollback,
+                                      bool forceSync) {
   TRI_doc_mptr_t mptr;
   TRI_primary_collection_t* primary;
   TRI_datafile_t* journal;
@@ -655,7 +668,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
     TRI_doc_datafile_info_t* dfi;
 
     // update the header
-    primary->updateHeader(primary, journal, *result, markerSize, header, &update);
+    UpdateHeader(primary, journal, *result, markerSize, header, &update);
 
     // update the datafile info
     dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
@@ -704,7 +717,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_document_collection_t* collection,
       }
 
       // wait for sync
-      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize);
+      WaitSync(collection, journal, ((char const*) *result) + markerSize + bodySize, forceSync);
       
       // and return
       return mptr;
@@ -739,7 +752,8 @@ static int DeleteDocument (TRI_document_collection_t* collection,
                            TRI_voc_rid_t rid,
                            TRI_voc_rid_t* oldRid,
                            TRI_doc_update_policy_e policy,
-                           bool release) {
+                           bool release,
+                           bool forceSync) {
   TRI_datafile_t* journal;
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* header;
@@ -850,7 +864,7 @@ static int DeleteDocument (TRI_document_collection_t* collection,
     }
 
     // wait for sync
-    WaitSync(collection, journal, ((char const*) result) + sizeof(TRI_doc_deletion_marker_t));
+    WaitSync(collection, journal, ((char const*) result) + sizeof(TRI_doc_deletion_marker_t), forceSync);
   }
   else {
     if (release) {
@@ -978,7 +992,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
                                         void const* data,
                                         TRI_voc_did_t did,
                                         TRI_voc_rid_t rid,
-                                        bool release) {
+                                        bool release,
+                                        bool forceSync) {
   TRI_df_marker_t* result;
   TRI_document_collection_t* collection;
 
@@ -996,13 +1011,16 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
     marker._shape = json->_sid;
 
     return CreateDocument(collection,
-                          &marker, sizeof(marker),
-                          json->_data.data, json->_data.length,
+                          &marker, 
+                          sizeof(marker),
+                          json->_data.data, 
+                          json->_data.length,
                           &result,
                           data,
                           did,
                           rid,
-                          release);
+                          release,
+                          forceSync);
   }
   else if (type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_edge_marker_t marker;
@@ -1025,12 +1043,14 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
 
     return CreateDocument(collection,
                           &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
+                          json->_data.data, 
+                          json->_data.length,
                           &result,
                           data,
                           did,
                           rid,
-                          release);
+                          release,
+                          forceSync);
   }
   else {
     LOG_FATAL("unknown marker type %lu", (unsigned long) type);
@@ -1069,7 +1089,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
                                         TRI_voc_rid_t rid,
                                         TRI_voc_rid_t* oldRid,
                                         TRI_doc_update_policy_e policy,
-                                        bool release) {
+                                        bool release,
+                                        bool forceSync) {
   TRI_df_marker_t const* original;
   TRI_df_marker_t* result;
   TRI_document_collection_t* collection;
@@ -1109,14 +1130,17 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
 
     return UpdateDocument(collection,
                           header,
-                          &marker, sizeof(marker),
-                          json->_data.data, json->_data.length,
+                          &marker, 
+                          sizeof(marker),
+                          json->_data.data, 
+                          json->_data.length,
                           rid,
                           oldRid,
                           policy,
                           &result,
                           release,
-                          true);
+                          true,
+                          forceSync);
   }
 
   // the original is an edge
@@ -1143,14 +1167,17 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
 
     return UpdateDocument(collection,
                           header,
-                          &marker.base, sizeof(marker),
-                          json->_data.data, json->_data.length,
+                          &marker.base, 
+                          sizeof(marker),
+                          json->_data.data, 
+                          json->_data.length,
                           rid,
                           oldRid,
                           policy,
                           &result,
                           release,
-                          true);
+                          true,
+                          forceSync);
   }
   
   // do not know
@@ -1174,7 +1201,8 @@ static int DeleteShapedJson (TRI_primary_collection_t* primary,
                              TRI_voc_rid_t rid,
                              TRI_voc_rid_t* oldRid,
                              TRI_doc_update_policy_e policy,
-                             bool release) {
+                             bool release,
+                             bool forceSync) {
   TRI_document_collection_t* document;
   TRI_doc_deletion_marker_t marker;
 
@@ -1188,7 +1216,7 @@ static int DeleteShapedJson (TRI_primary_collection_t* primary,
   marker._did = did;
   marker._sid = 0;
 
-  return DeleteDocument(document, &marker, rid, oldRid, policy, release);
+  return DeleteDocument(document, &marker, rid, oldRid, policy, release, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1342,7 +1370,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
-      primary->createHeader(primary, datafile, marker, markerSize, header, 0);
+      CreateHeader(primary, datafile, marker, markerSize, header, 0);
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);
@@ -1366,7 +1394,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t update;
 
       // update the header info
-      primary->updateHeader(primary, datafile, marker, markerSize, found, &update);
+      UpdateHeader(primary, datafile, marker, markerSize, found, &update);
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
@@ -1618,52 +1646,6 @@ static bool OpenIndexIterator (char const* filename, void* data) {
   }
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief hashes an edge header
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
-  TRI_edge_header_t const* h;
-  uint64_t hash[3];
-
-  h = data;
-
-  hash[0] = h->_direction;
-  hash[1] = h->_cid;
-  hash[2] = h->_did;
-
-  return TRI_FnvHashPointer(hash, sizeof(hash));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if key and element match
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualKeyEdge (TRI_multi_pointer_t* array, void const* left, void const* right) {
-  TRI_edge_header_t const* l;
-  TRI_edge_header_t const* r;
-
-  l = left;
-  r = right;
-
-  return l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, void const* right) {
-  TRI_edge_header_t const* l;
-  TRI_edge_header_t const* r;
-
-  l = left;
-  r = right;
-
-  return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a simple collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1680,29 +1662,34 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     return false;
   }
 
-  id = TRI_DuplicateString("_id");
+  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_id");
+  if (id == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, primary);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return false;
+  }
 
   TRI_InitPrimaryCollection(&collection->base, shaper);
 
   collection->_headers = TRI_CreateSimpleHeaders(sizeof(TRI_doc_mptr_t));
 
   if (collection->_headers == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, id);
     TRI_DestroyPrimaryCollection(&collection->base);
     return false;
   }
 
-  TRI_InitMultiPointer(&collection->_edgesIndex,
-                       TRI_UNKNOWN_MEM_ZONE, 
-                       HashElementEdge,
-                       HashElementEdge,
-                       IsEqualKeyEdge,
-                       IsEqualElementEdge);
+  if (collection->base.base._type == TRI_COL_TYPE_EDGE) {
+    TRI_InitEdgesDocumentCollection(collection);
+  }
 
   TRI_InitCondition(&collection->_journalsCondition);
 
-  TRI_InitVectorPointer(&collection->_secondaryIndexes, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitVectorPointer(&collection->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
+  
   TRI_PushBackVectorString(&primary->_fields, id);
 
   primary->_iid = 0;
@@ -1714,12 +1701,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   primary->update = UpdatePrimary;
   primary->json = JsonPrimary;
 
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, primary);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, primary);
 
   // setup methods
-  collection->base.createHeader = CreateHeader;
-  collection->base.updateHeader = UpdateHeader;
-
   collection->base.beginRead = BeginRead;
   collection->base.endRead = EndRead;
 
@@ -1833,27 +1817,22 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
 
   TRI_DestroyCondition(&collection->_journalsCondition);
 
-  // free all elements in the edges index
-  n = collection->_edgesIndex._nrAlloc;
-  for (i = 0; i < n; ++i) {
-    void* element = collection->_edgesIndex._table[i];
-    if (element) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-    }
+  // only required for edge collections
+  if (collection->base.base._type == TRI_COL_TYPE_EDGE) {
+    TRI_FreeEdgesDocumentCollection(collection);
   }
-  TRI_DestroyMultiPointer(&collection->_edgesIndex);
 
   TRI_FreeSimpleHeaders(collection->_headers);
 
   // free memory allocated for index field names
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
   for (i = 0 ; i < n ; ++i) {
-    TRI_index_t* idx = (TRI_index_t*) collection->_secondaryIndexes._buffer[i];
+    TRI_index_t* idx = (TRI_index_t*) collection->_allIndexes._buffer[i];
   
     TRI_FreeIndex(idx);
   }
   // free index vector
-  TRI_DestroyVectorPointer(&collection->_secondaryIndexes);
+  TRI_DestroyVectorPointer(&collection->_allIndexes);
 
   TRI_DestroyPrimaryCollection(&collection->base);
 }
@@ -1917,7 +1896,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   collection = TRI_OpenCollection(vocbase, &sim->base.base, path);
 
   if (collection == NULL) {
-    LOG_ERROR("cannot open simple collection");
+    LOG_ERROR("cannot open document collection from path '%s'", path);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, sim);
     return NULL;
@@ -1933,7 +1912,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   }
 
   shaper = TRI_OpenVocShaper(vocbase, shapes);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, shapes);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, shapes);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot open shapes collection");
@@ -2213,79 +2192,22 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
     return TRI_ERROR_NO_ERROR;
   }
 
+  // check the document type
+  marker = header->_data;
+  
   // .............................................................................
   // update edges index
   // .............................................................................
 
-  // check the document type
-  marker = header->_data;
-
-  // add edges
   if (marker->_type == TRI_DOC_MARKER_EDGE) {
-    TRI_edge_header_t* entry;
-    TRI_doc_edge_marker_t const* edge;
-
-    edge = header->_data;
-
-    // IN
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entry == NULL) {
-      // OOM
-      // TODO: do we have to release the header and remove the entry from the primaryIndex?
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    if (sim->base.base._type != TRI_COL_TYPE_EDGE) {
+      // operation is only permitted for edge collections
+      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     }
 
-    entry->_mptr = header;
-    entry->_direction = TRI_EDGE_IN;
-    entry->_cid = edge->_toCid;
-    entry->_did = edge->_toDid;
-
-    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
-
-    // OUT
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entry == NULL) {
-      // OOM
-      // TODO: do we have to release the header and remove the entry from the primaryIndex?
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    entry->_mptr = header;
-    entry->_direction = TRI_EDGE_OUT;
-    entry->_cid = edge->_fromCid;
-    entry->_did = edge->_fromDid;
-
-    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
-
-    // ANY
-    entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entry == NULL) {
-      // OOM
-      // TODO: do we have to release the header and remove the entry from the primaryIndex?
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    entry->_mptr = header;
-    entry->_direction = TRI_EDGE_ANY;
-    entry->_cid = edge->_toCid;
-    entry->_did = edge->_toDid;
-
-    TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
-
-    if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
-      entry = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-      if (entry == NULL) {
-        // OOM
-        // TODO: do we have to release the header and remove the entry from the primaryIndex?
-        return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      entry->_mptr = header;
-      entry->_direction = TRI_EDGE_ANY;
-      entry->_cid = edge->_fromCid;
-      entry->_did = edge->_fromDid;
-
-      TRI_InsertElementMultiPointer(&sim->_edgesIndex, entry, true);
+    result = TRI_InsertEdgeDocumentCollection(sim, header);
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
     }
   }
 
@@ -2293,7 +2215,7 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
   // update all the other indices
   // .............................................................................
 
-  n = sim->_secondaryIndexes._length;
+  n = sim->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
   constraint = false;
 
@@ -2301,7 +2223,7 @@ static int CreateImmediateIndexes (TRI_document_collection_t* sim,
     TRI_index_t* idx;
     int res;
 
-    idx = sim->_secondaryIndexes._buffer[i];
+    idx = sim->_allIndexes._buffer[i];
     res = idx->insert(idx, header);
 
     // in case of no-memory, return immediately
@@ -2366,7 +2288,7 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
   // update all the other indices
   // .............................................................................
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
   constraint = false;
 
@@ -2374,7 +2296,7 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
     TRI_index_t* idx;
     int res;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
     res = idx->update(idx, header, &old);
 
     // in case of no-memory, return immediately
@@ -2411,7 +2333,7 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
   TRI_doc_mptr_t* found;
   size_t n;
   size_t i;
-  bool result;
+  int result;
 
   // set the deletion flag
   change.c = header;
@@ -2429,78 +2351,35 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
+  // check the document type
+  marker = header->_data;
+  
   // .............................................................................
   // update edges index
   // .............................................................................
 
-  // check the document type
-  marker = header->_data;
-
-  // add edges
+  // delete edges
   if (marker->_type == TRI_DOC_MARKER_EDGE) {
-    TRI_edge_header_t entry;
-    TRI_edge_header_t* old;
-    TRI_doc_edge_marker_t const* edge;
-
-    edge = header->_data;
-
-    memset(&entry, 0, sizeof(entry));
-    entry._mptr = header;
-
-    // IN
-    entry._direction = TRI_EDGE_IN;
-    entry._cid = edge->_toCid;
-    entry._did = edge->_toDid;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+    if (collection->base.base._type != TRI_COL_TYPE_EDGE) {
+      // operation is only permitted for edge collections
+      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     }
 
-    // OUT
-    entry._direction = TRI_EDGE_OUT;
-    entry._cid = edge->_fromCid;
-    entry._did = edge->_fromDid;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-    }
-
-    // ANY
-    entry._direction = TRI_EDGE_ANY;
-    entry._cid = edge->_toCid;
-    entry._did = edge->_toDid;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-    }
-
-    if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
-      entry._direction = TRI_EDGE_ANY;
-      entry._cid = edge->_fromCid;
-      entry._did = edge->_fromDid;
-      old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-      if (old != NULL) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-      }
-    }
+    TRI_DeleteEdgeDocumentCollection(collection, header);
   }
 
   // .............................................................................
   // remove from all other indexes
   // .............................................................................
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
   result = TRI_ERROR_NO_ERROR;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
     int res;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
     res = idx->remove(idx, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2591,8 +2470,8 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
   // go through every index and see if we have a match 
   // ...........................................................................
   
-  for (j = 0;  j < collection->_secondaryIndexes._length;  ++j) {
-    TRI_index_t* idx = collection->_secondaryIndexes._buffer[j];
+  for (j = 0;  j < collection->_allIndexes._length;  ++j) {
+    TRI_index_t* idx = collection->_allIndexes._buffer[j];
     bool found       = true;
 
     // .........................................................................
@@ -2948,13 +2827,13 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   }
 
-  n = sim->_secondaryIndexes._length;
+  n = sim->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
     TRI_json_t* json;
 
-    idx = sim->_secondaryIndexes._buffer[i];
+    idx = sim->_allIndexes._buffer[i];
 
     json = idx->json(idx, primary);
 
@@ -2998,15 +2877,15 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* sim, TRI_idx_ii
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-  n = sim->_secondaryIndexes._length;
+  n = sim->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = sim->_secondaryIndexes._buffer[i];
+    idx = sim->_allIndexes._buffer[i];
 
     if (idx->_iid == iid) {
-      found = TRI_RemoveVectorPointer(&sim->_secondaryIndexes, i);
+      found = TRI_RemoveVectorPointer(&sim->_allIndexes, i);
 
       if (found != NULL) {
         found->removeIndex(found, primary);
@@ -3182,56 +3061,6 @@ static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       EDGES INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
-                                                        TRI_edge_direction_e direction,
-                                                        TRI_voc_cid_t cid,
-                                                        TRI_voc_did_t did) {
-  union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
-  TRI_vector_pointer_t result;
-  TRI_edge_header_t entry;
-  TRI_vector_pointer_t found;
-  size_t i;
-
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
-
-  entry._direction = direction;
-  entry._cid = cid;
-  entry._did = did;
-
-  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &edges->_edgesIndex, &entry);
-
-  for (i = 0;  i < found._length;  ++i) {
-    cnv.c = ((TRI_edge_header_t*) found._buffer[i])->_mptr;
-
-    TRI_PushBackVectorPointer(&result, cnv.v);
-  }
-
-  TRI_DestroyVectorPointer(&found);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT
 // -----------------------------------------------------------------------------
 
@@ -3272,6 +3101,11 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
 
   // create a new index
   idx = TRI_CreateCapConstraint(&sim->base, size);
+  if (idx == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   if (iid) {
     idx->_iid = iid;
@@ -3286,7 +3120,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&sim->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&sim->_allIndexes, idx);
   sim->base._capConstraint = (TRI_cap_constraint_t*) idx;
 
   if (created != NULL) {
@@ -3504,7 +3338,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&sim->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&sim->_allIndexes, idx);
 
   if (created != NULL) {
     *created = true;
@@ -3652,12 +3486,12 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* c
   size_t n;
   size_t i;
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
 
     if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -3685,12 +3519,12 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* c
   size_t n;
   size_t i;
 
-  n = collection->_secondaryIndexes._length;
+  n = collection->_allIndexes._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
-    idx = collection->_secondaryIndexes._buffer[i];
+    idx = collection->_allIndexes._buffer[i];
 
     if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -3863,8 +3697,13 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
     return idx;
   }
 
-  // create the hash index
-  idx = TRI_CreateHashIndex(&collection->base, &fields, &paths, unique);
+  // create the hash index. we'll provide it with the current number of documents
+  // in the collection so the index can do a sensible memory preallocation
+  idx = TRI_CreateHashIndex(&collection->base, 
+                            &fields, 
+                            &paths, 
+                            unique, 
+                            collection->base._primaryIndex._nrUsed);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -3884,7 +3723,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
 
   if (created != NULL) {
     *created = true;
@@ -4092,7 +3931,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
   
   if (created != NULL) {
     *created = true;
@@ -4318,7 +4157,7 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
   // store index
   // ...........................................................................
 
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
   
   // ...........................................................................
   // release memory allocated to vector
@@ -4369,8 +4208,8 @@ TRI_index_t* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document_collec
   // go through every index and see if we have a match 
   // ........................................................................... 
   
-  for (j = 0;  j < collection->_secondaryIndexes._length;  ++j) {
-    TRI_index_t* idx                    = collection->_secondaryIndexes._buffer[j];
+  for (j = 0;  j < collection->_allIndexes._length;  ++j) {
+    TRI_index_t* idx                    = collection->_allIndexes._buffer[j];
     TRI_priorityqueue_index_t* pqIndex  = (TRI_priorityqueue_index_t*) idx;
     bool found                          = true;
 
@@ -4595,7 +4434,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // store index within the collection and return
   // ...........................................................................
   
-  TRI_PushBackVectorPointer(&collection->_secondaryIndexes, idx);
+  TRI_PushBackVectorPointer(&collection->_allIndexes, idx);
   
   if (created != NULL) {
     *created = true;
@@ -4802,17 +4641,18 @@ static bool IsExampleMatch (TRI_shaper_t* shaper,
     }
 
     if (result._data.length != example->_data.length) {
-      LOG_TRACE("expecting length %lu, got length %lu for path %lu",
-                (unsigned long) result._data.length,
-                (unsigned long) example->_data.length,
-                (unsigned long) pids[i]);
+      // suppress excessive log spam
+      // LOG_TRACE("expecting length %lu, got length %lu for path %lu",
+      //           (unsigned long) result._data.length,
+      //           (unsigned long) example->_data.length,
+      //           (unsigned long) pids[i]);
 
       return false;
     }
 
     if (memcmp(result._data.data, example->_data.data, example->_data.length) != 0) {
-      LOG_TRACE("data mismatch at path %lu",
-                (unsigned long) pids[i]);
+      // suppress excessive log spam
+      // LOG_TRACE("data mismatch at path %lu", (unsigned long) pids[i]);
       return false;
     }
   }

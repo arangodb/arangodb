@@ -156,6 +156,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
   assert(vocbase);
   assert(query);
+  
+  LOG_TRACE("creating context");
 
   context = (TRI_aql_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_context_t), false);
   if (context == NULL) {
@@ -234,6 +236,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
 void TRI_FreeContextAql (TRI_aql_context_t* const context) {
   assert(context);
+
+  LOG_TRACE("freeing context");
 
   // remove barriers for all collections used
   TRI_RemoveBarrierCollectionsAql(context);
@@ -347,6 +351,7 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
   }
 
   TRI_CompactStatementListAql(context->_statements);
+  TRI_PulloutStatementListAql(context->_statements);
 
   // TRI_DumpStatementsAql(context->_statements);
 
@@ -410,7 +415,7 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
 
   if (deescape) {
     size_t outLength;
-    copy = TRI_UnescapeUtf8String(value, length, &outLength);
+    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, length, &outLength);
   }
   else {
     copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, value);

@@ -1,6 +1,86 @@
-not released yet
-----------------
+v1.1.beta1 (2012-XX-XX)
+-----------------------
 
+* WARNING:
+  - the user has changed from "arango" to "arangodb", the start script has changed from
+    "arangod" to "arangodb", the database directory has changed from "/var/arangodb" to
+    "/var/lib/arangodb" to be compliant with various Linux policies
+
+  - In 1.1, we have introduced types for collections: regular documents go into document
+    collections, and edges go into edge collections. The prefixing (db.xxx vs. edges.xxx) 
+    works slightly different in 1.1: edges.xxx can still be used to access collections, 
+    however, it will not determine the type of existing collections anymore. To create an 
+    edge collection 1.1, you can use db._createEdgeCollection() or edges._create(). 
+    And there's of course also db._createDocumentCollection(). 
+    db._create() is also still there and will create a document collection by default, 
+    whereas edges._create() will create an edge collection.
+
+* the server now handles requests with invalid Content-Length header values as follows:
+  - if Content-Length is negative, the server will respond instantly with HTTP 411
+    (length required)
+
+  - if Content-Length is positive but shorter than the supplied body, the server will
+    respond with HTTP 400 (bad request)
+
+  - if Content-Length is positive but longer than the supplied body, the server will
+    wait for the client to send the missing bytes. The server allows 90 seconds for this
+    and will close the connection if the client does not send the remaining data
+
+  - if Content-Length is bigger than the maximum allowed size (512 MB), the server will 
+    fail with HTTP 413 (request entitiy too large).
+
+  - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
+    the server will fail with HTTP 431 (request header fields too large)
+
+* issue #251: allow passing arbitrary options to V8 engine using new command line option:
+  --javascript.v8-options. Using this option, the Harmony features or other settings in
+  v8 can be enabled if the end user requires them
+
+* issue #248: allow AQL optimiser to pull out completely uncorrelated subqueries to the
+  top level, resulting in less repeated evaluation of the subquery
+
+* upgraded to Doxygen 1.8.0
+
+* issue #247: added AQL function MERGE_RECURSIVE
+
+* issue #246: added clear() function in arangosh
+
+* issue #245: Documentation: Central place for naming rules/limits inside ArangoDB
+
+* reduced size of hash index elements by 50 %, allowing more index elements to fit in 
+  memory
+
+* issue #235: GUI Shell throws Error:ReferenceError: db is not defined
+
+* issue #229: methods marked as "under construction" 
+
+* issue #228: remove unfinished APIs (/_admin/config/*) 
+
+* having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
+  Also removed the --enable-ssl configure option because ssl is always required.
+
+* added AQL functions TO_LIST, NOT_LIST
+
+* issue #224: add optional Content-Id for batch requests
+
+* issue #221: more documentation on AQL explain functionality. Also added
+  ArangoStatement.explain() client method
+
+* added db._createStatement() method on server as well (was previously available
+  on the client only)
+
+* issue #219: continue in case of "document not found" error in PATHS() function
+
+* issue #213: make waitForSync overridable on specifc actions
+
+* changed AQL optimiser to use indexes in more cases. Previously, indexes might
+  not have been used when in a reference expression the inner collection was 
+  specified last. Example: FOR u1 IN users FOR u2 IN users FILTER u1._id == u2._id
+  Previously, this only checked whether an index could be used for u2._id (not
+  possible). It was not checked whether an index on u1._id could be used (possible).
+  Now, for expressions that have references/attribute names on both sides of the
+  above as above, indexes are checked for both sides.
+  
 * issue #204: extend the CSV import by TSV and by user configurable 
   seperator character(s)
 
@@ -64,19 +144,31 @@ not released yet
   It will also perform any necessary data updates.
 
 * issue #153: edge collection should be a flag for a collection
-  collections now have a type: the type can be queried in Javascript using the 
-  <collection>.type() method. When new collections are created using 
-  db._create(), they will be document collections by default. To explicitly
-  create a document collection, use db._createDocumentCollection(). To
-  create an edge collection, use db._createEdgeCollection(). The previous
-  functionality to create edge collections via edges._create() has been removed.
-  The distinction between document and edge collections is now done at runtime
-  using a collection's type value, and not by addressing collections via two 
-  different base objects (db.* and edges.*).
+  collections now have a type so that the distinction between document and edge 
+  collections can now be done at runtime using a collection's type value.
+  A collection's type can be queried in Javascript using the <collection>.type() method. 
+  
+  When new collections are created using db._create(), they will be document 
+  collections by default. When edge._create() is called, an edge collection will be created.
+  To explicitly create a collection of a specific/different type, use the methods 
+  _createDocumentCollection() or _createEdgeCollection(), which are available for
+  both the db and the edges object.
   The Javascript objects ArangoEdges and ArangoEdgesCollection have been removed
   completely.
-  All internal and test code has been adjusted for this, however, client code
-  that uses edges.* must be adjusted to use db.* instead.
+  All internal and test code has been adjusted for this, and client code
+  that uses edges.* should also still work because edges is still there and creates
+  edge collections when _create() is called.
+  
+  INCOMPATIBLE CHANGE: Client code might still need to be changed in the following aspect:
+  Previously, collections did not have a type so documents and edges could be inserted
+  in the same collection. This is now disallowed. Edges can only be inserted into
+  edge collections now. As there were no collection types in 1.0, the upgrade script
+  arango-upgrade must be run when migrating to 1.1. This script will check every 
+  collection and determine its type as follows:
+  - if among the first 50 documents in the collection there are documents with
+    attributes "_from" and "_to", the collection is typed as an edge collection
+  - if among the first 50 documents in the collection there are no documents with
+    attributes "_from" and "_to", the collection is made as a document collection
 
 * issue #150: call V8 garbage collection on server periodically
 
@@ -87,8 +179,25 @@ not released yet
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
-v1.0.1 (2012-XX-XX)
+v1.0.2 (2012-10-22)
 -------------------
+
+* repository CentOS-X.Y moved to CentOS-X, same for Debian
+
+* bugfix for rollback from edges
+
+* bugfix for hash indexes
+
+* bugfix for StringBuffer::erase_front
+
+* added autoload for modules
+
+* added AQL function TO_LIST
+
+v1.0.1 (2012-09-30)
+-------------------
+
+* draft for issue #165: front-end application howto
 
 * updated mruby to cf8fdea4a6598aa470e698e8cbc9b9b492319d
 

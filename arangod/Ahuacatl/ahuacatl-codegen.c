@@ -144,11 +144,11 @@ static inline TRI_aql_codegen_scope_t* CurrentScope (TRI_aql_codegen_js_t* const
 
 static inline bool OutputString (TRI_string_buffer_t* const buffer, 
                                  const char* const value) {
-  if (!buffer) {
+  if (buffer == NULL) {
     return true;
   }
 
-  if (!value) {
+  if (value == NULL) {
     return false;
   }
 
@@ -161,7 +161,7 @@ static inline bool OutputString (TRI_string_buffer_t* const buffer,
 
 static inline bool OutputChar (TRI_string_buffer_t* const buffer, 
                                const char value) {
-  if (!buffer) {
+  if (buffer == NULL) {
     return true;
   }
 
@@ -174,7 +174,7 @@ static inline bool OutputChar (TRI_string_buffer_t* const buffer,
 
 static inline bool OutputUInt (TRI_string_buffer_t* const buffer, 
                                const uint64_t value) {
-  if (!buffer) {
+  if (buffer == NULL) {
     return true;
   }
 
@@ -187,7 +187,7 @@ static inline bool OutputUInt (TRI_string_buffer_t* const buffer,
 
 static inline bool OutputInt (TRI_string_buffer_t* const buffer, 
                               const int64_t value) {
-  if (!buffer) {
+  if (buffer == NULL) {
     return true;
   }
 
@@ -202,7 +202,7 @@ static inline void ScopeOutput (TRI_aql_codegen_js_t* const generator,
                                 const char* const value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   
-  if (!OutputString(scope->_buffer, value)) {
+  if (! OutputString(scope->_buffer, value)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -215,7 +215,7 @@ static inline void ScopeOutputInt (TRI_aql_codegen_js_t* const generator,
                                    const int64_t value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!OutputInt(scope->_buffer, value)) {
+  if (! OutputInt(scope->_buffer, value)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -228,7 +228,7 @@ static inline void ScopeOutputUInt (TRI_aql_codegen_js_t* const generator,
                                     const uint64_t value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!OutputUInt(scope->_buffer, value)) {
+  if (! OutputUInt(scope->_buffer, value)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -241,13 +241,13 @@ static inline void ScopeOutputQuoted (TRI_aql_codegen_js_t* const generator,
                                       const char* const value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!OutputChar(scope->_buffer, '\'')) {
+  if (! OutputChar(scope->_buffer, '\'')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (!OutputString(scope->_buffer, value)) {
+  if (! OutputString(scope->_buffer, value)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (!OutputChar(scope->_buffer, '\'')) {
+  if (! OutputChar(scope->_buffer, '\'')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -262,13 +262,13 @@ static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
   char* escaped;
   size_t outLength;
 
-  if (!OutputChar(scope->_buffer, '"')) {
+  if (! OutputChar(scope->_buffer, '"')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 
   escaped = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, value, strlen(value), false, &outLength);
   if (escaped) {
-    if (!OutputString(scope->_buffer, escaped)) {
+    if (! OutputString(scope->_buffer, escaped)) {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -278,7 +278,7 @@ static inline void ScopeOutputQuoted2 (TRI_aql_codegen_js_t* const generator,
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  if (!OutputChar(scope->_buffer, '"')) {
+  if (! OutputChar(scope->_buffer, '"')) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -291,7 +291,7 @@ static inline void ScopeOutputJson (TRI_aql_codegen_js_t* const generator,
                                     const TRI_json_t* const json) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!scope->_buffer) {
+  if (! scope->_buffer) {
     return;
   }
 
@@ -322,10 +322,10 @@ static inline void ScopeOutputFunction (TRI_aql_codegen_js_t* const generator,
                                         const TRI_aql_codegen_register_t functionIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!OutputString(scope->_buffer, FUNCTION_PREFIX)) {
+  if (! OutputString(scope->_buffer, FUNCTION_PREFIX)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (!OutputInt(scope->_buffer, (int64_t) functionIndex)) {
+  if (! OutputInt(scope->_buffer, (int64_t) functionIndex)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -338,10 +338,10 @@ static inline void ScopeOutputRegister (TRI_aql_codegen_js_t* const generator,
                                         const TRI_aql_codegen_register_t registerIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
-  if (!OutputString(scope->_buffer, REGISTER_PREFIX)) {
+  if (! OutputString(scope->_buffer, REGISTER_PREFIX)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
-  if (!OutputInt(scope->_buffer, (int64_t) registerIndex)) {
+  if (! OutputInt(scope->_buffer, (int64_t) registerIndex)) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
   }
 }
@@ -385,10 +385,11 @@ static TRI_aql_codegen_variable_t* CreateVariable (const char* const name,
   }
 
   variable->_register = registerIndex;
-  variable->_name = TRI_DuplicateString(name);
+  variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
   if (variable->_name == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
+
     return NULL;
   }
 
@@ -432,7 +433,7 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_scope_t* scope;
   
   scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t), false);
-  if (!scope) {
+  if (scope == NULL) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return;
   }
@@ -633,7 +634,7 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_variable_t* variable = CreateVariable(name, registerIndex);
 
-  if (!variable) {
+  if (variable == NULL) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return;
   }
@@ -802,8 +803,9 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
     n = peek->_variables._nrAlloc;
     for (j = 0; j < n; ++j) {
       TRI_aql_codegen_variable_t* variable = (TRI_aql_codegen_variable_t*) peek->_variables._table[j];
+      char* copy;
 
-      if (!variable) {
+      if (! variable) {
         continue;
       }
 
@@ -813,8 +815,14 @@ static TRI_vector_string_t StoreSymbols (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, " = ");
       ScopeOutputRegister(generator, variable->_register);
       ScopeOutput(generator, ";\n");
-  
-      TRI_PushBackVectorString(&variableNames, TRI_DuplicateString(variable->_name));
+
+      copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, variable->_name);
+      if (copy == NULL) {
+        generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+      }
+      else {
+        TRI_PushBackVectorString(&variableNames, copy);
+      }
     }
 
     // break if we reached the top level for loop
@@ -2361,7 +2369,8 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
-
+  
+  // errorCode might have changed, no else!
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     // register the error
     TRI_SetErrorContextAql(context, generator->_errorCode, generator->_errorValue);
