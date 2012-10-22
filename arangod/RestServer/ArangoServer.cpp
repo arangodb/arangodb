@@ -825,9 +825,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           }
         }
 
-        console->close();
-
-        delete console;
 #endif
         break;
       }
