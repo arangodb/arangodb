@@ -44,7 +44,7 @@
 #include "BasicsC/init.h"
 #include "BasicsC/strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/Initialise.h"
+#include "Rest/InitialiseRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"

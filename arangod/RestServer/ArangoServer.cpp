@@ -47,7 +47,7 @@
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
-#include "Basics/Random.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
@@ -59,7 +59,7 @@
 #include "HttpServer/RedirectHandler.h"
 
 #include "Logger/Logger.h"
-#include "Rest/Initialise.h"
+#include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
 #include "RestHandler/ConnectionStatisticsHandler.h"
 #include "RestHandler/RequestStatisticsHandler.h"
@@ -68,7 +68,11 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
+
+#ifndef _WIN32
 #include "V8/V8LineEditor.h"
+#endif
+
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -245,7 +249,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setSystemConfigFile("arangod.conf");
-  _applicationServer->setUserConfigFile(".arango/arangod.conf");
+  _applicationServer->setUserConfigFile(string(".arango") + string(1,TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
   // .............................................................................
   // multi-threading scheduler and dispatcher
@@ -792,6 +796,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
+#ifndef _WIN32      
         context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
@@ -830,7 +835,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
         console->close();
 
         delete console;
-
+#endif
         break;
       }
 

@@ -26,10 +26,14 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_RANDOM_H
-#define TRIAGENS_BASICS_RANDOM_H 1
+#ifndef TRIAGENS_BASICS_RANDOM_GENERATOR_H
+#define TRIAGENS_BASICS_RANDOM_GENERATOR_H 1
 
 #include "Basics/Common.h"
+
+#ifdef _WIN32
+#include <Wincrypt.h>
+#endif
 
 namespace triagens {
   namespace basics {
@@ -48,7 +52,8 @@ namespace triagens {
         RAND_MERSENNE = 1,
         RAND_RANDOM = 2,
         RAND_URANDOM = 3,
-        RAND_COMBINED = 4
+        RAND_COMBINED = 4,
+        RAND_WIN32 = 5 // uses the built in cryptographic services offered and recommended by microsoft (e.g. CryptGenKey(...) ) 
       };
 
 

@@ -25,9 +25,9 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Initialise.h"
+#include "InitialiseGenerator.h"
 
-#include <Rest/Initialise.h>
+#include <Rest/InitialiseRest.h>
 
 #include "ResultGenerator/HtmlResultGenerator.h"
 #include "ResultGenerator/JsonResultGenerator.h"

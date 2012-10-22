@@ -41,7 +41,6 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
 #define TRI_HAVE_GETGRGID                   1
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
@@ -66,6 +65,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
+
+#define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_DIR_SEPARATOR_STR               "/"
 
 #define TRI_HAVE_POSIX                      1
 
@@ -163,6 +165,9 @@
 
 #ifdef __CYGWIN__
 
+#define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_DIR_SEPARATOR_STR               "/"
+
 #define TRI_HAVE_POSIX                      1
 
 #define TRI_HAVE_DLFCN_H                    1
@@ -237,6 +242,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __linux__
+
+#define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_DIR_SEPARATOR_STR               "/"
 
 #define TRI_HAVE_POSIX                      1
 
@@ -347,6 +355,9 @@
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
+#define TRI_DIR_SEPARATOR_CHAR              '\\'
+#define TRI_DIR_SEPARATOR_STR               "\\"
+
 #define _CRT_SECURE_NO_WARNINGS                     1
 #define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
@@ -449,6 +460,13 @@ typedef unsigned int bool;
 // weird. _inline should work for both I hope
 // ...........................................................................
 #define inline                          _inline
+
+// ...........................................................................
+// windows uses _alloca instead of alloca
+// ...........................................................................
+#define alloca                          _alloca
+
+
 
 #endif
 

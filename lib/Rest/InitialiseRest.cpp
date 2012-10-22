@@ -25,7 +25,7 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Initialise.h"
+#include "InitialiseRest.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -40,7 +40,7 @@
 
 #include "build.h"
 
-#include "Basics/Initialise.h"
+#include "Basics/InitialiseBasics.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Url.h"

@@ -36,7 +36,6 @@
 
 using namespace triagens::basics;
 using namespace triagens::rest;
-using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   local constants

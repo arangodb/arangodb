@@ -3623,6 +3623,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* sim,
   else {
     assert(false);
   }
+
+  return 0; // shut the vc++ up
 }
 
 ////////////////////////////////////////////////////////////////////////////////

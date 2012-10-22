@@ -32,7 +32,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-#include <Basics/Random.h>
+#include <Basics/RandomGenerator.h>
 #include <Basics/StringUtils.h>
 
 using namespace triagens::basics;

@@ -36,7 +36,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-inline bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
+bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
   if (type == TRI_AQL_NODE_SCOPE_START ||
       type == TRI_AQL_NODE_SCOPE_END ||
       type == TRI_AQL_NODE_SUBQUERY ||
@@ -193,7 +193,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
 /// @brief return true if a node is a list node
 ////////////////////////////////////////////////////////////////////////////////
 
-inline bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
+bool TRI_IsListNodeAql (const TRI_aql_node_t* const node) {
   return (node->_type == TRI_AQL_NODE_LIST);
 }
 
@@ -245,7 +245,7 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
 /// @brief checks if a node value is numeric
 ////////////////////////////////////////////////////////////////////////////////
 
-inline bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
+bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
   assert(node);
 
   if (node->_type != TRI_AQL_NODE_VALUE) {
@@ -260,7 +260,7 @@ inline bool TRI_IsNumericValueNodeAql (const TRI_aql_node_t* const node) {
 /// @brief checks if a node value is boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-inline bool TRI_IsBooleanValueNodeAql (const TRI_aql_node_t* const node) {
+bool TRI_IsBooleanValueNodeAql (const TRI_aql_node_t* const node) {
   assert(node);
   
   return (node->_type == TRI_AQL_NODE_VALUE && node->_value._type == TRI_AQL_TYPE_BOOL);
