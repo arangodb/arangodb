@@ -206,6 +206,18 @@ function main (argv) {
     SYS_SAVE(versionFile, "1");
     return true;
   });
+  
+  // create the _modules collection
+  addTask("setup _modules collection", 1, function () {
+    // create a collection named "_modules"
+    var modules = db._create("_modules", { isSystem: true });
+
+    if (modules == null) {
+      console.error("creating modules collection '_modules' failed");
+      return false;
+    }
+    return true;
+  });
 
 
   console.log("Upgrade script " + argv[0] + " started");
