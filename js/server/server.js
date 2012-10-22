@@ -655,6 +655,13 @@
 
 (function () {
   var internal = require("internal");
+  
+  var mc = internal.db._collection("_modules");
+
+  if (mc === null) {
+    mc = internal.db._create("_modules", { isSystem: true });
+  }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
