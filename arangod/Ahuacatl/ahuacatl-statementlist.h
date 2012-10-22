@@ -115,6 +115,13 @@ TRI_aql_node_t* TRI_GetDummyNopNodeAql (void);
 TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pull out subqueries in the statement list from the middle to the
+/// beginning
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all non-ops from the statement list
 ///
 /// this is achieved by skipping over all nop nodes in the statement list
@@ -131,11 +138,19 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const,
                                        const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a statement to the statement list
+/// @brief insert a statement into the statement list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddStatementListAql (TRI_aql_statement_list_t* const list,
-                              TRI_aql_node_t* const); 
+bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const,
+                                 TRI_aql_node_t* const,
+                                 const size_t); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a statement to the end of the statement list
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const,
+                                 TRI_aql_node_t* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -118,6 +118,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_id = NextId(context);
   scope->_type = NextType(context, type);
   scope->_ranges = NULL;
+  scope->_selfContained = true;
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
@@ -250,7 +251,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
     return false;
   }
   
-  if (!TRI_AddStatementListAql(context->_statements, node)) {
+  if (! TRI_AppendStatementListAql(context->_statements, node)) {
     return false;
   }
 
@@ -279,7 +280,7 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
     return false;
   }
   
-  if (!TRI_AddStatementListAql(context->_statements, node)) {
+  if (! TRI_AppendStatementListAql(context->_statements, node)) {
     return false;
   }
 
@@ -318,7 +319,7 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
       return false;
     }
   
-    if (!TRI_AddStatementListAql(context->_statements, node)) {
+    if (! TRI_AppendStatementListAql(context->_statements, node)) {
       return false;
     }
 
@@ -388,7 +389,7 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   }
 
   scope = CurrentScope(context);
-  assert(!TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
+  assert(! TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
 
   return true;
 }

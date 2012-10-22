@@ -32,6 +32,9 @@ v1.1.beta1 (2012-XX-XX)
   - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
     the server will fail with HTTP 431 (request header fields too large)
 
+* issue #248: allow AQL optimiser to pull out completely uncorrelated subqueries to the
+  top level, resulting in less repeated evaluation of the subquery
+
 * upgraded to Doxygen 1.8.0
 
 * issue #247: added AQL function MERGE_RECURSIVE
