@@ -61,6 +61,7 @@
 ///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-compacted"</li>
 ///      <li>@ref CommandLineArangoJsGcFrequency "javascript.gc-frequency"</li>
 ///      <li>@ref CommandLineArangoJsGcInterval "javascript.gc-interval"</li>
+///      <li>@ref CommandLineArangoJsV8Options "javascript.v8-options"</li>
 ///     </ul>
 ///    </li>
 ///    <li>@ref CommandLineLogging
@@ -221,6 +222,9 @@
 ///
 /// @anchor CommandLineArangoJsGcInterval
 /// @copydetails triagens::arango::ApplicationV8::_gcInterval
+///
+/// @anchor CommandLineArangoJsV8Options
+/// @copydetails triagens::arango::ApplicationV8::_v8Options;
 ///
 /// @section CommandLineScheduler Command-Line Options for Communication
 ////////////////////////////////////////////////////////////////////////
