@@ -37,6 +37,8 @@
 #include "Basics/StringBuffer.h"
 #include "Rest/ConnectionInfo.h"
 
+using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------

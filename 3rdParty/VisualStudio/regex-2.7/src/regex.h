@@ -38,7 +38,7 @@
 # ifdef BUILD_REGEX_DLL
 #  define REGEX_DLL_IMPEXP	__DLL_EXPORT__
 # elif defined(REGEX_STATIC)
-#  define REGEX_DLL_IMPEXP	 
+#  define REGEX_DLL_IMPEXP 	 
 # elif defined (USE_REGEX_DLL)
 #  define REGEX_DLL_IMPEXP	__DLL_IMPORT__
 # elif defined (USE_REGEX_STATIC)
@@ -204,7 +204,7 @@ typedef unsigned long int reg_syntax_t;
    some interfaces).  When a regexp is compiled, the syntax used is
    stored in the pattern buffer, so changing this does not affect
    already-compiled regexps.  */
-REGEX_DLL_IMPEXP reg_syntax_t re_syntax_options;
+extern REGEX_DLL_IMPEXP reg_syntax_t re_syntax_options;
 
 /* Define combinations of the above bits for the standard possibilities.
    (The [[[ comments delimit what gets put into the Texinfo file, so

@@ -514,6 +514,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
+  
 
   if (node->_type == TRI_AQL_NODE_OPERATOR_UNARY_PLUS) {
     // + number => number
@@ -725,7 +726,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
 
   isEligibleLhs = TRI_IsConstantValueNodeAql(lhs);
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
-  
+
   if (isEligibleLhs && !TRI_IsNumericValueNodeAql(lhs)) {
     // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
@@ -739,6 +740,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     return node;
   }
   
+
   if (!isEligibleLhs || !isEligibleRhs) {
     return node;
   }

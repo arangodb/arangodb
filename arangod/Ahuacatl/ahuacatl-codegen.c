@@ -32,6 +32,7 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-functions.h"
+#include "Ahuacatl/ahuacatl-node.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
 // -----------------------------------------------------------------------------
@@ -423,7 +424,7 @@ static TRI_aql_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator,
 
 static void StartScope (TRI_aql_codegen_js_t* const generator, 
                         TRI_string_buffer_t* const buffer,
-                        const TRI_aql_scope_e const type,
+                        const TRI_aql_scope_e type,
                         const TRI_aql_codegen_register_t listRegister, 
                         const TRI_aql_codegen_register_t keyRegister, 
                         const TRI_aql_codegen_register_t ownRegister, 
@@ -2102,7 +2103,7 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
 /// this is a dispatcher function only
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessNode (TRI_aql_codegen_js_t* generator, const TRI_aql_node_t* const node) {
+static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_node_t* const node) {
   if (node == NULL) {
     return;
   }

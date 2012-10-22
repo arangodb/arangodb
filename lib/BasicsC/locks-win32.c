@@ -300,6 +300,7 @@ void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
     LeaveCriticalSection(&lock->_lockReaders);
 
     if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
+      exit(EXIT_FAILURE);
       EnterCriticalSection(&lock->_lockReaders);
       DecrementReaders(lock);
       LeaveCriticalSection(&lock->_lockReaders);
@@ -335,7 +336,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
     exit(EXIT_FAILURE);
   }
 
-  LeaveCriticalSection(&lock->_lockWriter);
+  LeaveCriticalSection(&lock->_lockReaders);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,6 +360,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
+  //printf("%s:%s:%s:%d:%s:%d\n","oreste",__FILE__,__FUNCTION__,__LINE__,"!!!!!!!!!!!!!!!!!",(uint64_t)(lock));
   EnterCriticalSection(&lock->_lockReaders);
 
   // a write lock eists

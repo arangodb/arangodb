@@ -58,7 +58,7 @@
 # elif defined (USE_READLINE_DLL)
 #  define READLINE_DLL_IMPEXP     __DLL_IMPORT__
 # elif defined (USE_READLINE_STATIC)
-#  define READLINE_DLL_IMPEXP      
+#  define READLINE_DLL_IMPEXP extern      
 # else /* assume USE_READLINE_DLL */
 #  define READLINE_DLL_IMPEXP     __DLL_IMPORT__
 # endif

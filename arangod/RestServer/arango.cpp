@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 
 #include "RestServer/ArangoServer.h"
-#include "ResultGenerator/Initialise.h"
+#include "ResultGenerator/InitialiseGenerator.h"
 
 using namespace triagens;
 using namespace triagens::rest;
@@ -48,6 +48,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
+  int res = 0;
+
   TRIAGENS_RESULT_GENERATOR_INITIALISE(argc, argv);
   TRI_InitialiseVocBase();
 
@@ -55,7 +57,7 @@ int main (int argc, char* argv[]) {
   ArangoServer server(argc, argv);
 
   
-  int res = server.start();
+  res = server.start();
 
 
   // shutdown

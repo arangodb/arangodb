@@ -191,9 +191,6 @@
     <ClInclude Include="..\..\lib\Basics\Functor.h">
       <Filter>BasicsHeader</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\Basics\Initialise.h">
-      <Filter>BasicsHeader</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Basics\LibraryLoader.h">
       <Filter>BasicsHeader</Filter>
     </ClInclude>
@@ -204,9 +201,6 @@
       <Filter>BasicsHeader</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\Basics\ProgramOptions.h">
-      <Filter>BasicsHeader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\Basics\Random.h">
       <Filter>BasicsHeader</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\Basics\RandomHeap.h">
@@ -374,9 +368,6 @@
     <ClInclude Include="..\..\lib\Rest\HttpResponse.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\Rest\Initialise.h">
-      <Filter>RestHeader</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\Rest\JsonContainer.h">
       <Filter>RestHeader</Filter>
     </ClInclude>
@@ -409,6 +400,21 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\BasicsC\memory-map-win32.h">
       <Filter>BasicsCHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Basics\RandomGenerator.h">
+      <Filter>BasicsHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Basics\InitialiseBasics.h">
+      <Filter>BasicsHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\Rest\InitialiseRest.h">
+      <Filter>RestHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\VisualStudio\mygetopt\getopt.h">
+      <Filter>ProgramOptionsHeader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\3rdParty\VisualStudio\mygetopt\mygetopt.h">
+      <Filter>ProgramOptionsHeader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -502,9 +508,6 @@
     <ClCompile Include="..\..\lib\Basics\FileUtils.cpp">
       <Filter>BasicsSource</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\Basics\Initialise.cpp">
-      <Filter>BasicsSource</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\Basics\LibraryLoader.cpp">
       <Filter>BasicsSource</Filter>
     </ClCompile>
@@ -518,9 +521,6 @@
       <Filter>BasicsSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Basics\ProgramOptionsDescription.cpp">
-      <Filter>BasicsSource</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\Basics\Random.cpp">
       <Filter>BasicsSource</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\Basics\ReadLocker.cpp">
@@ -646,9 +646,6 @@
     <ClCompile Include="..\..\lib\Statistics\statistics.cpp">
       <Filter>StatisticsSource</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\Utilities\LineEditor.cpp">
-      <Filter>UtilitiesSource</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\Utilities\ScriptLoader.cpp">
       <Filter>UtilitiesSource</Filter>
     </ClCompile>
@@ -670,9 +667,6 @@
     <ClCompile Include="..\..\lib\Rest\HttpResponse.cpp">
       <Filter>RestSource</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\Rest\Initialise.cpp">
-      <Filter>RestSource</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\Rest\JsonContainer.cpp">
       <Filter>RestSource</Filter>
     </ClCompile>
@@ -690,6 +684,18 @@
     </ClCompile>
     <ClCompile Include="..\..\lib\BasicsC\memory-map-win32.c">
       <Filter>BasicsCSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Basics\RandomGenerator.cpp">
+      <Filter>BasicsSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Basics\InitialiseBasics.cpp">
+      <Filter>BasicsSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Rest\InitialiseRest.cpp">
+      <Filter>RestSource</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\VisualStudio\mygetopt\mygetopt.c">
+      <Filter>ProgramOptionsSource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
