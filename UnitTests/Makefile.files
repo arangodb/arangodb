@@ -258,12 +258,12 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+		        @top_srcdir@/js/server/tests/ahuacatl-subquery.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
