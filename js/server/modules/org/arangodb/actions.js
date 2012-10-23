@@ -819,7 +819,7 @@ function reloadRouting () {
   // .............................................................................
 
   RoutingCache = {};
-
+  RoutingCache.flat = {};
   RoutingCache.routes = {};
   RoutingCache.middleware = {};
 
@@ -984,7 +984,7 @@ function firstRouting (type, parts) {
     url = "/" + parts.join("/");
   }
 
-  if (! RoutingCache.flat.hasOwnProperty(type)) {
+  if (! RoutingCache.flat || ! RoutingCache.flat.hasOwnProperty(type)) {
     return {
       parts: parts,
       position: -1,
