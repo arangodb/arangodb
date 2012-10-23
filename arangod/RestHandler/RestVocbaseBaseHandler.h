@@ -173,25 +173,25 @@ namespace triagens {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+        void generateCreated (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateAccepted (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+        void generateAccepted (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+        void generateDeleted (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateUpdated (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+        void generateUpdated (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates collection not found error message
@@ -227,7 +227,7 @@ namespace triagens {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (TRI_voc_cid_t, TRI_voc_did_t, TRI_voc_rid_t);
+        void generatePreconditionFailed (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
@@ -277,7 +277,7 @@ namespace triagens {
 
         int parseDocumentId (string const& handle,
                              TRI_voc_cid_t& cid,
-                             TRI_voc_did_t& did);
+                             TRI_voc_key_t& key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

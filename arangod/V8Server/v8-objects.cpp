@@ -51,14 +51,15 @@ using namespace triagens::basics;
 /// @brief converts identifier into a object reference
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_did_t did) {
+v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_key_t key) {
   v8::HandleScope scope;
   TRI_string_buffer_t buffer;
 
   TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
   TRI_AppendUInt64StringBuffer(&buffer, cid);
   TRI_AppendCharStringBuffer(&buffer, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-  TRI_AppendUInt64StringBuffer(&buffer, did);
+  //TRI_AppendUInt64StringBuffer(&buffer, did);
+  TRI_AppendStringStringBuffer(&buffer, (char*) key);
 
   v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
 
