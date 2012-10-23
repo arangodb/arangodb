@@ -631,7 +631,7 @@ bool RestDocumentHandler::checkDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document,updates a document}
+/// @RESTHEADER{PUT /_api/document,replaces a document}
 ///
 /// @REST{PUT /_api/document/@FA{document-handle}}
 ///
@@ -663,21 +663,42 @@ bool RestDocumentHandler::checkDocument () {
 /// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
-/// If an etag is supplied in the "If-Match" header field, then the ArangoDB
-/// checks that the revision of the document is equal to the etag. If there is a
-/// mismatch, then a @LIT{HTTP 409} conflict is returned and no update is
-/// performed.
+/// There are two ways for specifying the targeted document revision id for
+/// conditional replacements (i.e. replacements that will only be executed if
+/// the revision id found in the database matches the document revision id specified
+/// in the request):
+/// - specifying the target revision in the @LIT{rev} URL parameter
+/// - specifying the target revision in the @LIT{if-match} HTTP header
+///
+/// Specifying a target revision is optional, however, if done, only one of the
+/// described mechanisms must be used (either the @LIT{rev} URL parameter or the
+/// @LIT{if-match} HTTP header).
+/// Regardless which mechanism is used, the parameter needs to contain the target 
+/// document revision id as returned in the @LIT{_rev} attribute of a document or
+/// by an HTTP @LIT{etag} header.
+///
+/// For example, to conditionally replace a document based on a specific revision
+/// id, you the following request:
+/// @REST{PUT /_api/document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
+///
+/// If a target revision id is provided in the request (e.g. via the @FA{etag} value
+/// in the @LIT{rev} URL parameter above), ArangoDB will check that
+/// the revision id of the document found in the database is equal to the target
+/// revision id provided in the request. If there is a mismatch between the revision
+/// id, then by default a @LIT{HTTP 409} conflict is returned and no replacement is 
+/// performed. ArangoDB will return an HTTP @LIT{412 precondition failed} response then.
+///
+/// The conditional update behavior can be overriden with the @FA{policy} URL parameter:
 ///
 /// @REST{PUT /_api/document/@FA{document-handle}?policy=@FA{policy}}
 ///
-/// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last},
-/// then the last write will win.
+/// If @FA{policy} is set to @LIT{error}, then the behavior is as before: replacements
+/// will fail if the revision id found in the database does not match the target 
+/// revision id specified in the request.
 ///
-/// @REST{PUT /_api/document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
-///
-/// You can also supply the etag using the parameter @LIT{rev} instead of an "ETag"
-/// header. You must never supply both the "ETag" header and the @LIT{rev}
-/// parameter.
+/// If @FA{policy} is set to @LIT{last}, then the replacement will succeed, even if the
+/// revision id found in the database does not match the target revision id specified 
+/// in the request. You can use the @LIT{last} @FA{policy} to force replacements.
 ///
 /// @EXAMPLES
 ///
@@ -739,12 +760,18 @@ bool RestDocumentHandler::replaceDocument () {
 /// of @LIT{true}.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute @LIT{_id} contains the known
+/// the handle and the revision. The attribute @LIT{_id} contains the known
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
+///
+/// You can conditionally update a document based on a target revision id by
+/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header. 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the @FA{policy} parameter. This is the same as when replacing 
+/// documents (see replacing documents for details).
 ///
 /// @EXAMPLES
 ///
@@ -914,21 +941,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
-/// If an etag is supplied in the "If-Match" field, then the ArangoDB checks
-/// that the revision of the document is equal to the etag. If there is a
-/// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
-/// performed.
-///
-/// @REST{DELETE /_api/document/@FA{document-handle}?policy=@FA{policy}}
-///
-/// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last}, then
-/// the last write will win.
-///
-/// @REST{DELETE /_api/document/@FA{document-handle}?rev=@FA{etag}}
-///
-/// You can also supply the etag using the parameter @LIT{rev} instead of an
-/// "If-Match" header. You must never supply both the "If-Match" header and the
-/// @LIT{rev} parameter.
+/// You can conditionally delete a document based on a target revision id by
+/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header. 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the @FA{policy} parameter. This is the same as when replacing 
+/// documents (see replacing documents for more details).
 ///
 /// Optionally, the URL parameter @FA{waitForSync} can be used to force 
 /// synchronisation of the document deletion operation to disk even in case

@@ -289,6 +289,6 @@ Search for all persons over 30.
        }
     ]
 
-You can learn all about the query language @ref AQL "here". Note that
+You can learn all about the query language @ref Aql "here". Note that
 `_query` is a short-cut for `_createStatement` and `execute`. We will
 come back to these functions when we talk about cursors.
