@@ -1,0 +1,217 @@
+--- a/js/server/modules/org/arangodb/actions.js
++++ b/js/server/modules/org/arangodb/actions.js
+@@ -66,6 +66,38 @@ var RoutingCache;
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ ////////////////////////////////////////////////////////////////////////////////
++/// @brief function that's returned for non-implemented actions
++////////////////////////////////////////////////////////////////////////////////
++        
++function notImplementedFunction (triggerRoute, message) {
++  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
++
++  console.error(message);
++
++  return function (req, res, options, next) {
++    res.responseCode = exports.HTTP_NOT_IMPLEMENTED;
++    res.contentType = "text/plain";
++    res.body = message;
++  };
++}
++
++////////////////////////////////////////////////////////////////////////////////
++/// @brief function that's returned for actions that produce an error
++////////////////////////////////////////////////////////////////////////////////
++
++function errorFunction (triggerRoute, message) {
++  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
++
++  console.error(message);
++
++  return function (req, res, options, next) {
++    res.responseCode = exports.HTTP_SERVER_ERROR;
++    res.contentType = "text/plain";
++    res.body = message;
++  };
++}
++
++////////////////////////////////////////////////////////////////////////////////
+ /// @brief splits an URL into parts
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+@@ -181,14 +213,22 @@ function lookupCallbackStatic (content) {
+ /// @brief looks up a callback for an action
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+-function lookupCallbackAction (action) {
++function lookupCallbackAction (route, action) {
+   var path;
+   var name;
+   var func;
+   var module;
++  var httpMethods = { 
++    'get': exports.GET,
++    'head': exports.HEAD,
++    'put': exports.PUT,
++    'post': exports.POST,
++    'delete': exports.DELETE,
++    'patch': exports.PATCH
++  };
+ 
+   if (typeof action === 'string') {
+-    return lookupCallbackAction({ prefixController: action });
++    return lookupCallbackAction(route, { prefixController: action });
+   }
+ 
+   if (action.hasOwnProperty('do')) {
+@@ -203,17 +243,15 @@ function lookupCallbackAction (action) {
+         func = module[name];
+       }
+       else {
+-        console.error("cannot find action named '%s' in module '%s'", name, path.join("/"));
++        func = notImplementedFunction(route, "Could not find action named '" + name + "' in module '" + path.join("/") + "'");
+       }
+     }
+     catch (err) {
+-      console.error("cannot find action named '%s' in module '%s': %s",
+-                    name, path.join("/"), String(err));
+-      return null;
++      func = errorFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+     }
+ 
+     if (func === null || typeof func !== 'function') {
+-      return null;
++      func = errorFunction(route, "Invalid definition for the action named '" + name + "' in module '" + path.join("/") + "'");
+     }
+ 
+     return {
+@@ -229,32 +267,25 @@ function lookupCallbackAction (action) {
+ 
+       return {
+         controller: function (req, res, options, next) {
+-          if (req.requestType === exports.GET && module.hasOwnProperty('get')) {
+-            return module['get'](req, res, options, next);
+-          }
+-
+-          if (req.requestType === exports.HEAD && module.hasOwnProperty('head')) {
+-            return module['head'](req, res, options, next);
+-          }
+-
+-          if (req.requestType === exports.PUT && module.hasOwnProperty('put')) {
+-            return module['put'](req, res, options, next);
+-          }
+-
+-          if (req.requestType === exports.POST && module.hasOwnProperty('post')) {
+-            return module['post'](req, res, options, next);
+-          }
+-
+-          if (req.requestType === exports.DELETE && module.hasOwnProperty('delete')) {
+-            return module['delete'](req, res, options, next);
+-          }
+-
+-          if (req.requestType === exports.PATCH && module.hasOwnProperty('patch')) {
+-            return module['patch'](req, res, options, next);
++          // enum all HTTP methods
++          for (var m in httpMethods) {
++            if (! httpMethods.hasOwnProperty(m)) {
++              continue;
++            }
++
++            if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
++              func = module[m] || 
++                     errorFunction(route, "Invalid definition for " + m + " action in action controller module '" + action.controller + "'");
++
++              return func(req, res, options, next); 
++            }
+           }
+ 
+           if (module.hasOwnProperty('do')) {
+-            return module['do'](req, res, options, next);
++            func = module['do'] || 
++                   errorFunction(route, "Invalid definition for do action in action controller module '" + action.controller + "'");
++
++            return func(req, res, options, next);
+           }
+ 
+           next();
+@@ -264,9 +295,7 @@ function lookupCallbackAction (action) {
+       };
+     }
+     catch (err) {
+-      console.error("cannot load action controller module '%s': %s", 
+-                    action.controller, String(err));
+-      return null;
++      return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err))(req, res, options, next);
+     }
+   }
+ 
+@@ -286,37 +315,32 @@ function lookupCallbackAction (action) {
+           }
+         }
+         catch (err) {
+-          console.error("cannot load prefix controller: %s", String(err));
+-          next();
+-          return;
+-        }
+-
+-        if (req.requestType === exports.GET && module.hasOwnProperty('get')) {
+-          return module['get'](req, res, options, next);
+-        }
+-
+-        if (req.requestType === exports.HEAD && module.hasOwnProperty('head')) {
+-          return module['head'](req, res, options, next);
+-        }
+-
+-        if (req.requestType === exports.PUT && module.hasOwnProperty('put')) {
+-          return module['put'](req, res, options, next);
++          return errorFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+         }
+ 
+-        if (req.requestType === exports.POST && module.hasOwnProperty('post')) {
+-          return module['post'](req, res, options, next);
+-        }
+-
+-        if (req.requestType === exports.DELETE && module.hasOwnProperty('delete')) {
+-          return module['delete'](req, res, options, next);
+-        }
+-
+-        if (req.requestType === exports.PATCH && module.hasOwnProperty('patch')) {
+-          return module['patch'](req, res, options, next);
++        try {
++          // enum all HTTP methods
++          for (var m in httpMethods) {
++            if (! httpMethods.hasOwnProperty(m)) {
++              continue;
++            }
++
++            if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
++              func = module[m] || 
++                     errorFunction(route, "Invalid definition for " + m + " action in prefix controller '" + action.prefixController + "'");
++
++              return func(req, res, options, next);
++            }
++          }
++  
++          if (module.hasOwnProperty('do')) {
++            func = module['do'] || 
++                   errorFunction(route, "Invalid definition for do action in prefix controller '" + action.prefixController + "'");
++            return func(req, res, options, next);
++          }
+         }
+-
+-        if (module.hasOwnProperty('do')) {
+-          return module['do'](req, res, options, next);
++        catch (err) {
++          return errorFunction(route, "Cannot load/execute prefix controller '" + action.prefixController + "': " + String(err))(req, res, options, next);
+         }
+ 
+         next();
+@@ -340,7 +364,7 @@ function lookupCallback (route) {
+     result = lookupCallbackStatic(route.content);
+   }
+   else if (route.hasOwnProperty('action')) {
+-    result = lookupCallbackAction(route.action);
++    result = lookupCallbackAction(route, route.action);
+   }
+ 
+   return result;
