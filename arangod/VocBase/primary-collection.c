@@ -49,9 +49,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key) {
+/*
   TRI_voc_did_t const* k = key;
 
   return TRI_FnvHashPointer(k, sizeof(TRI_voc_did_t));
+*/
+  return TRI_FnvHashString((char const*) key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +63,10 @@ static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key
 
 static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
   TRI_doc_mptr_t const* e = element;
-
+/*
   return TRI_FnvHashPointer(&e->_did, sizeof(TRI_voc_did_t));
+*/
+  return TRI_FnvHashString((char const*) e->_key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,22 +74,28 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
+/*
   TRI_voc_did_t const* k = key;
   TRI_doc_mptr_t const* e = element;
 
   return *k == e->_did;
+*/
+  TRI_doc_mptr_t const* e = element;
+  
+  char const * k = key;
+  return (strcmp(k, e->_key) == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_did_t CreateLock (TRI_primary_collection_t* document,
+static TRI_voc_key_t CreateLock (TRI_primary_collection_t* document,
                                  TRI_df_marker_type_e type,
                                  TRI_shaped_json_t const* json,
                                  void const* data) {
   document->beginWrite(document);
-  return document->create(document, type, json, data, 0, 0, true)._did;
+  return document->create(document, type, json, data, 0, true)._key;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,8 +110,9 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
                                   bool release) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
-  TRI_voc_did_t did = 0;
-  TRI_voc_rid_t rid = 0;
+  //TRI_voc_did_t did = 0;
+  //TRI_voc_rid_t rid = 0;
+  TRI_voc_key_t key = 0;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
@@ -110,6 +122,7 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
     return result;
   }
   
+  /*
   if (reuseId && json != NULL && json->_type == TRI_JSON_ARRAY) {
     TRI_json_t* id = TRI_LookupArrayJson((TRI_json_t*) json, "_id");
     TRI_json_t* rev = TRI_LookupArrayJson((TRI_json_t*) json, "_rev");
@@ -121,8 +134,16 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
       rid = (TRI_voc_rid_t) rev->_value._number;
     }
   }
-
-  result = collection->create(collection, type, shaped, data, did, rid, release);
+ */
+  
+  if (json != NULL && json->_type == TRI_JSON_ARRAY) {
+    TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
+    if (k != NULL && k->_type == TRI_JSON_STRING) {
+      key = k->_value._string.data;
+    }    
+  }
+  
+  result = collection->create(collection, type, shaped, data, key, release);
 
   TRI_FreeShapedJson(collection->_shaper, shaped);
 
@@ -135,16 +156,16 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
 
 static int UpdateLock (TRI_primary_collection_t* document,
                        TRI_shaped_json_t const* json,
-                       TRI_voc_did_t did,
+                       TRI_voc_key_t key,
                        TRI_voc_rid_t rid,
                        TRI_voc_rid_t* oldRid,
                        TRI_doc_update_policy_e policy) {
   TRI_doc_mptr_t result;
 
   document->beginWrite(document);
-  result = document->update(document, json, did, rid, oldRid, policy, true);
+  result = document->update(document, json, key, rid, oldRid, policy, true);
 
-  if (result._did == 0) {
+  if (result._key == 0) {
     return TRI_errno();
   }
   else {
@@ -158,7 +179,7 @@ static int UpdateLock (TRI_primary_collection_t* document,
 
 static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
                                   TRI_json_t const* json,
-                                  TRI_voc_did_t did,
+                                  TRI_voc_key_t key,
                                   TRI_voc_rid_t rid,
                                   TRI_voc_rid_t* oldRid,
                                   TRI_doc_update_policy_e policy,
@@ -174,7 +195,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
     return result;
   }
 
-  result = collection->update(collection, shaped, did, rid, oldRid, policy, release);
+  result = collection->update(collection, shaped, key, rid, oldRid, policy, release);
 
   TRI_FreeShapedJson(collection->_shaper, shaped);
 
@@ -186,12 +207,12 @@ static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DestroyLock (TRI_primary_collection_t* document,
-                        TRI_voc_did_t did,
+                        TRI_voc_key_t key,
                         TRI_voc_rid_t rid,
                         TRI_voc_rid_t* oldRid,
                         TRI_doc_update_policy_e policy) {
   document->beginWrite(document);
-  return document->destroy(document, did, rid, oldRid, policy, true);
+  return document->destroy(document, key, rid, oldRid, policy, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,9 +390,9 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
 
   cm._cid = collection->base._cid;
 
-  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
+  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
 
-  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
+  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->base._lastError = journal->_lastError;
@@ -650,14 +671,14 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_MarkerMasterPointer (void const* data, TRI_doc_mptr_t* header) {
-  TRI_doc_document_marker_t const* marker;
-  marker = (TRI_doc_document_marker_t const*) data;
+  TRI_doc_document_key_marker_t const* marker;
+  marker = (TRI_doc_document_key_marker_t const*) data;
 
-  header->_did = marker->_did;
   header->_rid = marker->_rid;
   header->_fid = 0; // should be datafile->_fid, but we do not have this info here
   header->_deletion = 0;
   header->_data = data;
+  header->_key = (char*) marker + marker->_offsetKey;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -668,11 +689,11 @@ size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
   if (mptr != NULL) {
     void const* data = mptr->_data;
 
-    if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_DOCUMENT) {
-      return ((TRI_df_marker_t*) data)->_size - sizeof(TRI_doc_document_marker_t);
+    if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {      
+      return ((TRI_df_marker_t*) data)->_size - ((TRI_doc_document_key_marker_t const*) data)->_offsetJson;
     }
-    else if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_EDGE) {
-      return ((TRI_df_marker_t*) data)->_size - sizeof(TRI_doc_edge_marker_t);
+    else if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      return ((TRI_df_marker_t*) data)->_size - ((TRI_doc_edge_key_marker_t const*) data)->base._offsetJson;
     }
   }
 

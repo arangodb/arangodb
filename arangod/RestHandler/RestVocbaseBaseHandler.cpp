@@ -165,11 +165,10 @@ void RestVocbaseBaseHandler::generateOk () {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   string cidStr = StringUtils::itoa(cid);
-  string didStr = StringUtils::itoa(did);
   string ridStr = StringUtils::itoa(rid);
-  string handle = cidStr + "/" + didStr;
+  string handle = cidStr + "/" + string(key);
 
   _response = createResponse(HttpResponse::CREATED);
 
@@ -182,18 +181,19 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
     .appendInteger(rid)
-    .appendText("}");
+    .appendText(",\"_key\":\"")
+    .appendText(key)
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   string cidStr = StringUtils::itoa(cid);
-  string didStr = StringUtils::itoa(did);
   string ridStr = StringUtils::itoa(rid);
-  string handle = cidStr + "/" + didStr;
+  string handle = cidStr + "/" + string(key);
 
   _response = createResponse(HttpResponse::ACCEPTED);
 
@@ -206,18 +206,19 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
     .appendInteger(rid)
-    .appendText("}");
+    .appendText(",\"_key\":\"")
+    .appendText(key)
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   string cidStr = StringUtils::itoa(cid);
-  string didStr = StringUtils::itoa(did);
   string ridStr = StringUtils::itoa(rid);
-  string handle = cidStr + "/" + didStr;
+  string handle = cidStr + "/" + string(key);
 
   _response = createResponse(HttpResponse::OK);
 
@@ -228,18 +229,19 @@ void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t d
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
     .appendInteger(rid)
-    .appendText("}");
+    .appendText(",\"_key\":\"")
+    .appendText(key)
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   string cidStr = StringUtils::itoa(cid);
-  string didStr = StringUtils::itoa(did);
   string ridStr = StringUtils::itoa(rid);
-  string handle = cidStr + "/" + didStr;
+  string handle = cidStr + "/" + string(key);
 
   _response = createResponse(HttpResponse::OK);
 
@@ -250,7 +252,9 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
     .appendInteger(rid)
-    .appendText("}");
+    .appendText(",\"_key\":\"")
+    .appendText(key)
+    .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +303,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
 
   VariantArray* result = new VariantArray();
@@ -307,8 +311,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
   result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
   result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
   result->add("errorMessage", new VariantString("precondition failed"));
-  result->add("_id", new VariantString(StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(did)));
+  result->add("_id", new VariantString(StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + string(key)));
   result->add("_rev", new VariantUInt64(rid));
+  result->add("_key", new VariantString(key));
 
   string contentType;
   bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
@@ -351,7 +356,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   // add document identifier to buffer
   TRI_string_buffer_t buffer;
 
-  string id = StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
+  string id = StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + string(document->_key);
 
   TRI_json_t augmented;
   TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
@@ -370,10 +375,10 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
-  if (type == TRI_DOC_MARKER_EDGE) {
-    TRI_doc_edge_marker_t* marker = (TRI_doc_edge_marker_t*) document->_data;
-    string from = StringUtils::itoa(marker->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_fromDid);
-    string to = StringUtils::itoa(marker->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(marker->_toDid);
+  if (type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+    string from = StringUtils::itoa(marker->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + string((char*) marker + marker->_offsetFromKey);
+    string to = StringUtils::itoa(marker->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + string((char*) marker +  marker->_offsetToKey);
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_from", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_to", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str()));
@@ -554,7 +559,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 
 int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
                                              TRI_voc_cid_t& cid,
-                                             TRI_voc_did_t& did) {
+                                             TRI_voc_key_t& key) {
   vector<string> split;
   int res;
 
@@ -571,7 +576,8 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
     return res;
   }
 
-  did = TRI_UInt64String(split[1].c_str());
+  //did = TRI_UInt64String(split[1].c_str());
+  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
 
   return TRI_errno();
 }

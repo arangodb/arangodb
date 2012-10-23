@@ -1365,6 +1365,7 @@ static uint32_t RandomGeoCoordinateDistance (void) {
   ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 
 #include "BasicsC/fsrt.inc"
+#include "strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo result
@@ -1510,25 +1511,32 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     for (uint32_t i = 0;  i < len; ++i) {
       TRI_vector_pointer_t edges;
       TRI_voc_cid_t cid;
-      TRI_voc_did_t did;
       TRI_voc_rid_t rid;
+      TRI_voc_key_t key = 0;
 
       TRI_vocbase_col_t const* vertexCollection = 0;
-      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, true, vertices->Get(i));
+      v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, key, rid, true, vertices->Get(i));
 
       if (! errMsg.IsEmpty()) {
         if (vertexCollection != 0) {
           TRI_ReleaseCollection(vertexCollection);
         }
 
+        if (key) {
+          TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+          key = 0;
+        }
+        
         continue;
       }
 
       cid = vertexCollection->_cid;
       TRI_ReleaseCollection(vertexCollection);
 
-      edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, did);
+      edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, key);
 
+      if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
@@ -1557,11 +1565,11 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   else {
     TRI_vector_pointer_t edges;
     TRI_voc_cid_t cid;
-    TRI_voc_did_t did;
     TRI_voc_rid_t rid;
+    TRI_voc_key_t key = 0;
 
     TRI_vocbase_col_t const* vertexCollection = 0;
-    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, did, rid, true, argv[0]);
+    v8::Handle<v8::Value> errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, vertexCollection, key, rid, true, argv[0]);
 
     if (! errMsg.IsEmpty()) {
       if (vertexCollection != 0) {
@@ -1570,6 +1578,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
       collection->_collection->endRead(collection->_collection);
 
+      if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_ReleaseCollection(collection);
       return scope.Close(v8::ThrowException(errMsg));
     }
@@ -1577,8 +1586,10 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     cid = vertexCollection->_cid;
     TRI_ReleaseCollection(vertexCollection);
 
-    edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, did);
+    edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, key);
 
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
         barrier = TRI_CreateBarrierElement(&sim->base._barrierList);

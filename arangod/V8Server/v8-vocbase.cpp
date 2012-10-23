@@ -50,6 +50,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 #include "Basics/Utf8Helper.h"
+#include "v8.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -237,11 +238,11 @@ static inline TRI_vocbase_t* GetContextVocBase () {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
+static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc_key_t& key) {
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
+/*
   if (arg->IsNumber()) {
     did = (TRI_voc_did_t) arg->ToNumber()->Value();
     return true;
@@ -263,6 +264,36 @@ static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI
   if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     did = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+    return true;
+  }
+
+  return false;
+*/
+
+  if (! arg->IsString()) {
+    return false;
+  }
+
+  TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, arg);
+  char const* s = *str;
+
+  if (s == 0) {
+    return false;
+  }
+
+  regmatch_t matches[3];
+
+  // "cid/key"
+  if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+    //did = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+    return true;
+  }
+  
+  // "key"
+  if (regexec(&v8g->DocumentKeyRegex, s, 0, NULL, 0) == 0) {
+    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str, str.length());
     return true;
   }
 
@@ -566,15 +597,15 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
                                                "usage: document(<document-handle>)")));
   }
 
-  TRI_voc_did_t did;
+  TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, lock, argv[0]);
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, key, rid, lock, argv[0]);
 
   if (! err.IsEmpty()) {
     if (collection != 0 && lock) {
       TRI_ReleaseCollection(collection);
     }
-
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -594,9 +625,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
     primary->beginRead(primary);
   }
 
-  document = primary->read(primary, did);
+  document = primary->read(primary, key);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
-  if (document._did != 0) {
+  if (document._key != 0) {
     TRI_barrier_t* barrier;
 
     barrier = TRI_CreateBarrierElement(&primary->_barrierList);
@@ -615,7 +647,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
     TRI_ReleaseCollection(collection);
   }
 
-  if (document._did == 0) {
+  if (document._key == 0) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                                "document not found")));
@@ -651,16 +683,17 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
                                                "usage: replace(<document>, <data>, <overwrite>)")));
   }
 
-  TRI_voc_did_t did;
+  TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
 
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, true, argv[0]);
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, key, rid, true, argv[0]);
 
   if (! err.IsEmpty()) {
     if (collection != 0) {
       TRI_ReleaseCollection(collection);
     }
 
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -670,6 +703,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (shaped == 0) {
     TRI_ReleaseCollection(collection);
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -696,7 +730,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
   primary->beginWrite(primary);
 
   TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t mptr = primary->update(primary, shaped, did, rid, &oldRid, policy, true);
+  TRI_doc_mptr_t mptr = primary->update(primary, shaped, key, rid, &oldRid, policy, true);
+  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   // .............................................................................
   // outside a write transaction
@@ -704,19 +739,20 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
-  if (mptr._did == 0) {
+  if (mptr._key == 0) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "cannot replace document")));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
   result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
   result->Set(v8g->OldRevKey, v8::Number::New(oldRid));
+  result->Set(v8g->KeyKey, v8::String::New(mptr._key));
 
   TRI_ReleaseCollection(collection);
   return scope.Close(result);
@@ -749,27 +785,27 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (argv.Length() != 1 && argv.Length() != 3) {
+  if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: save(<data>)")));
   }
 
-  // set document id and revision id
-  TRI_voc_did_t did = 0;
-  TRI_voc_rid_t rid = 0;
+  // set document key
+  TRI_voc_key_t key = 0;
 
-  if (argv.Length() == 3) {
-    // use existing document and revision ids
-    // this functionality is used when importing documents from another server etc.
-    // the functionality is not advertised
-    did = TRI_ObjectToUInt64(argv[1]);
-    rid = TRI_ObjectToUInt64(argv[2]);
+  if (argv[0]->IsObject()) {
+    v8::Handle<v8::Value> v = argv[0]->ToObject()->Get(v8g->KeyKey);
+    if (v->IsString()) {
+      TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+      key = TRI_DuplicateString2(*str, str.length());
+    }
   }
-
+  
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
 
   if (shaped == 0) {
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -782,25 +818,30 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   primary->beginWrite(primary);
 
   // the lock is freed in create
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_DOCUMENT, shaped, 0, did, rid, true);
+  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, key, true);
 
+  if (key) {
+    TRI_Free(TRI_CORE_MEM_ZONE, key);
+  }
+  
   // .............................................................................
   // outside a write transaction
   // .............................................................................
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
-  if (mptr._did == 0) {
+  if (mptr._key == 0) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "cannot save document")));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
   result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
+  result->Set(v8g->KeyKey, v8::String::New(mptr._key));
 
   return scope.Close(result);
 }
@@ -827,28 +868,29 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (argv.Length() != 3 && argv.Length() != 5) {
+  if (argv.Length() != 3) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: save(<from>, <to>, <data>)")));
   }
   
-  // set document id and revision id
-  TRI_voc_did_t did = 0;
-  TRI_voc_rid_t rid = 0;
+  // set document key
+  TRI_voc_key_t key = 0;
 
-  if (argv.Length() == 5) {
-    // use existing document and revision ids
-    // this functionality is used when importing documents from another server etc.
-    // the functionality is not advertised
-    did = TRI_ObjectToUInt64(argv[3]);
-    rid = TRI_ObjectToUInt64(argv[4]);
+  if (argv[2]->IsObject()) {
+    v8::Handle<v8::Value> v = argv[2]->ToObject()->Get(v8g->KeyKey);
+    if (v->IsString()) {
+      TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
+      key = TRI_DuplicateString2(*str, str.length());
+    }
   }
-
+    
   TRI_document_edge_t edge;
 
   edge._fromCid = collection->_cid;
   edge._toCid = collection->_cid;
+  edge._toKey = 0;
+  edge._fromKey = 0;
 
   v8::Handle<v8::Value> errMsg;
 
@@ -856,13 +898,16 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   TRI_vocbase_col_t const* fromCollection = 0;
   TRI_voc_rid_t fromRid;
 
-  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, fromCollection, edge._fromDid, fromRid, true, argv[0]);
+  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, fromCollection, edge._fromKey, fromRid, true, argv[0]);
 
   if (! errMsg.IsEmpty()) {
     if (fromCollection != 0) {
       TRI_ReleaseCollection(fromCollection);
     }
 
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    
     return scope.Close(v8::ThrowException(errMsg));
   }
 
@@ -873,13 +918,17 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   TRI_vocbase_col_t const* toCollection = 0;
   TRI_voc_rid_t toRid;
 
-  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, toCollection, edge._toDid, toRid, true, argv[1]);
+  errMsg = TRI_ParseDocumentOrDocumentHandle(collection->_vocbase, toCollection, edge._toKey, toRid, true, argv[1]);
 
   if (! errMsg.IsEmpty()) {
     if (toCollection != 0) {
       TRI_ReleaseCollection(toCollection);
     }
 
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    
     return scope.Close(v8::ThrowException(errMsg));
   }
 
@@ -890,6 +939,11 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper);
 
   if (shaped == 0) {
+    
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -901,7 +955,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   primary->beginWrite(primary);
 
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_EDGE, shaped, &edge, did, rid, true);
+  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, key, true);
 
   // .............................................................................
   // outside a write transaction
@@ -909,17 +963,23 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
-  if (mptr._did == 0) {
+  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+  if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+  
+  if (mptr._key == 0) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "cannot save document")));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+  //string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
   result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
+  result->Set(v8g->KeyKey, v8::String::New(mptr._key));
 
   return scope.Close(result);
 }
@@ -945,16 +1005,17 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
                                                "usage: update(<document>, <data>, <overwrite>, <keepnull>)")));
   }
 
-  TRI_voc_did_t did;
+  TRI_voc_key_t key;
   TRI_voc_rid_t rid;
 
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, true, argv[0]);
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, key, rid, true, argv[0]);
 
   if (! err.IsEmpty()) {
     if (collection != 0) {
       TRI_ReleaseCollection(collection);
     }
 
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -964,6 +1025,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (json == 0) {
     TRI_ReleaseCollection(collection);
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> is no valid JSON")));
@@ -1003,7 +1065,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_doc_mptr_t mptr;
 
   TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t document = primary->read(primary, did);
+  TRI_doc_mptr_t document = primary->read(primary, key);
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
   TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
@@ -1013,30 +1075,33 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     TRI_FreeJson(primary->_shaper->_memoryZone, old);
 
     if (patchedJson != 0) {
-      mptr = primary->updateJson(primary, patchedJson, did, rid, &oldRid, policy, true);
+      mptr = primary->updateJson(primary, patchedJson, key, rid, &oldRid, policy, true);
 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
     }
   }
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
+  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+
   // .............................................................................
   // outside a write transaction
   // .............................................................................
 
-  if (mptr._did == 0) {
+  if (mptr._key == 0) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "cannot update document")));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
+  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
   result->Set(v8g->RevKey, v8::Number::New(mptr._rid));
   result->Set(v8g->OldRevKey, v8::Number::New(oldRid));
+  result->Set(v8g->KeyKey, v8::String::New(mptr._key));
 
   TRI_ReleaseCollection(collection);
   return scope.Close(result);
@@ -1058,16 +1123,17 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
                                                                 "usage: delete(<document>, <overwrite>)")));
   }
 
-  TRI_voc_did_t did;
+  TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
 
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, did, rid, true, argv[0]);
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, key, rid, true, argv[0]);
 
   if (! err.IsEmpty()) {
     if (collection != 0) {
       TRI_ReleaseCollection(collection);
     }
 
+    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1092,7 +1158,8 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t oldRid;
 
-  int res = primary->destroyLock(primary, did, rid, &oldRid, policy);
+  int res = primary->destroyLock(primary, key, rid, &oldRid, policy);
+  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   // .............................................................................
   // outside a write transaction
@@ -4184,7 +4251,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   for (size_t i = 0; i < documents._length; ++i) {
     TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
     
-    int res = primary->destroy(primary, d->_did, d->_rid, &oldRid, policy, false);
+    int res = primary->destroy(primary, d->_key, d->_rid, &oldRid, policy, false);
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred, but we simply go on because truncate should remove all documents
     }
@@ -4948,6 +5015,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 
   result->Set(count++, v8g->DidKey);
   result->Set(count++, v8g->RevKey);
+  result->Set(count++, v8g->KeyKey);
 
   return scope.Close(result);
 }
@@ -4991,6 +5059,9 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
     return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
   }
 
+  if (key == "_key") {
+    return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
+  }
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
   TRI_shape_pid_t pid = shaper->findAttributePathByName(shaper, key.c_str());
@@ -5098,7 +5169,7 @@ void TRI_ReleaseCollection (TRI_vocbase_col_t const* collection) {
 
 v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                          TRI_vocbase_col_t const*& collection,
-                                                         TRI_voc_did_t& did,
+                                                         TRI_voc_key_t& key,
                                                          TRI_voc_rid_t& rid,
                                                          const bool lock,
                                                          v8::Handle<v8::Value> val) {
@@ -5113,7 +5184,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
 
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
-    if (! IsDocumentHandle(val, cid, did)) {
+    if (! IsDocumentHandle(val, cid, key)) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                            "<document-handle> must be a document-handle"));
     }
@@ -5124,7 +5195,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
 
-    if (! IsDocumentHandle(didVal, cid, did)) {
+    if (! IsDocumentHandle(didVal, cid, key)) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "expecting a document-handle in _id"));
     }
@@ -5171,8 +5242,8 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
   // check cross collection requests
   if (cid != collection->_collection->base._cid) {
     if (cid == 0) {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                               "collection of <document-handle> unknown"));
+      //return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      //                                         "collection of <document-handle> unknown"));
     }
     else {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
@@ -5357,21 +5428,20 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   }
 
   // store the document reference
-  TRI_voc_did_t did = document->_did;
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->DidKey, TRI_ObjectReference(collection->_collection->base._cid, did), v8::ReadOnly);
+  result->Set(v8g->DidKey, TRI_ObjectReference(collection->_collection->base._cid, document->_key), v8::ReadOnly);
   result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
+  result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
-
-  if (type == TRI_DOC_MARKER_EDGE) {
-    TRI_doc_edge_marker_t* marker = (TRI_doc_edge_marker_t*) document->_data;
-
-    result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, marker->_fromDid));
-    result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, marker->_toDid));
+  
+  if (type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+    result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
   }
-
+  
   // and return
   return scope.Close(result);
 }
@@ -5396,7 +5466,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   }
 
   // create the regular expressions
-  string expr = "([0-9][0-9]*)" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "([0-9][0-9]*)";
+  //string expr = "([0-9][0-9]*)" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "([0-9][0-9]*)";
+  string expr = "([0-9][0-9]*)" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "([0-9a-zA-Z][0-9a-zA-Z]*)";
 
   if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
@@ -5410,6 +5481,13 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
     exit(EXIT_FAILURE);
   }
 
+  expr = "^[0-9a-zA-Z][_0-9a-zA-Z]*$";
+  if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
+    LOG_FATAL("cannot compile regular expression");
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  
   // .............................................................................
   // local function names
   // .............................................................................
@@ -5490,6 +5568,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
+  }
+
+  if (v8g->KeyKey.IsEmpty()) {
+    v8g->KeyKey = v8::Persistent<v8::String>::New(v8::String::New("_key"));
   }
 
   if (v8g->FromKey.IsEmpty()) {

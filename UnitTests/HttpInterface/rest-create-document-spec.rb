@@ -265,64 +265,59 @@ describe ArangoDB do
 
       
       it "creating a document with an existing id" do
-        @did = 6657665
-        @rid = 6657666
+        @key = "a_new_key"
 
-	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+        ArangoDB.delete("/_api/document/#{@cid}/#{@key}")
 
-	cmd = "/_api/document?collection=#{@cid}&useId=true"
-	body = "{ \"some stuff\" : \"goes here\", \"_id\" : #{@did}, \"_rev\": #{@rid} }"
-	doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"some stuff\" : \"goes here\", \"_key\" : \"#{@key}\" }"
+        doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
 
-	doc.code.should eq(201)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(false)
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
 
-	etag = doc.headers['etag']
-	etag.should be_kind_of(String)
-        etag.should eq("\"#{@rid}\"")
+        etag = doc.headers['etag']
+        etag.should be_kind_of(String)
 
-	location = doc.headers['location']
-	location.should be_kind_of(String)
+        location = doc.headers['location']
+        location.should be_kind_of(String)
 
-	rev = doc.parsed_response['_rev']
-	rev.should be_kind_of(Integer)
-        rev.should eq(@rid)
+        rev = doc.parsed_response['_rev']
+        rev.should be_kind_of(Integer)
 
-	did = doc.parsed_response['_id']
-	did.should be_kind_of(String)
-	did.should eq("#{@cid}/#{@did}")
+        did = doc.parsed_response['_id']
+        did.should be_kind_of(String)
+        did.should eq("#{@cid}/#{@key}")
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+        match = /([0-9]*)\/([0-9a-zA-Z][0-9a-zA-Z_]+)/.match(did)
 
-	match[1].should eq("#{@cid}")
+        match[1].should eq("#{@cid}")
 
-	etag.should eq("\"#{rev}\"")
-	location.should eq("/_api/document/#{did}")
+        location.should eq("/_api/document/#{did}")
 
-	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+        ArangoDB.delete("/_api/document/#{@cid}/#{@key}")
       end
       
       it "creating a document with a duplicate existing id" do
-        @did = 6657665
-        @rid = 6657666
+        @key = "a_new_key"
 
-	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+        ArangoDB.delete("/_api/document/#{@cid}/#{@key}")
 
-	cmd = "/_api/document?collection=#{@cid}&useId=true"
-	body = "{ \"some stuff\" : \"goes here\", \"_id\" : #{@did}, \"_rev\": #{@rid} }"
-	doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"some stuff\" : \"goes here\", \"_key\" : \"#{@key}\" }"
+        doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
 
-	doc.code.should eq(201)
+        doc.code.should eq(201)
 
         # send again
-	doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
-	doc.code.should eq(409) # conflict
-	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['code'].should eq(409)
-	doc.parsed_response['errorNum'].should eq(1210)
+	      doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
+	      doc.code.should eq(409) # conflict
+      	doc.parsed_response['error'].should eq(true)
+      	doc.parsed_response['code'].should eq(409)
+      	doc.parsed_response['errorNum'].should eq(1210)
 
-	ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+	      ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
       end
     end
 

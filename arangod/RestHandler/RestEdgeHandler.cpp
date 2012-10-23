@@ -32,6 +32,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
 #include "VocBase/document-collection.h"
+#include "strings.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -173,19 +174,24 @@ bool RestEdgeHandler::createDocument () {
   // split document handle
   edge._fromCid = cid;
   edge._toCid = cid;
+  edge._fromKey = 0;
+  edge._toKey = 0;
 
-  res = parseDocumentId(from, edge._fromCid, edge._fromDid);
+  res = parseDocumentId(from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     generateError(HttpResponse::BAD,
                   res,
                   "'from' is not a document handle");
     return false;
   }
 
-  res = parseDocumentId(to, edge._toCid, edge._toDid);
+  res = parseDocumentId(to, edge._toCid, edge._toKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     generateError(HttpResponse::BAD,
                   res,
                   "'to' is not a document handle");
@@ -198,7 +204,7 @@ bool RestEdgeHandler::createDocument () {
   
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_EDGE, json, &edge, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_EDGE, json, &edge, reuseId, false);
 
   trx.end();
 
@@ -207,18 +213,21 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
 
   // generate result
-  if (mptr._did != 0) {
+  if (mptr._key != 0) {
     if (waitForSync) {
-      generateCreated(cid, mptr._did, mptr._rid);
+      generateCreated(cid, mptr._key, mptr._rid);
     }
     else {
-      generateAccepted(cid, mptr._did, mptr._rid);
+      generateAccepted(cid, mptr._key, mptr._rid);
     }
 
     return true;
   }
   else {
     int res = TRI_errno();
+    
+    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
 
     switch (res) {
       case TRI_ERROR_ARANGO_READ_ONLY:

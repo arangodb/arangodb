@@ -129,10 +129,10 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   cm._cid = collection->base._cid;
 
-  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0);
+  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
 
   // on journal creation, always use waitForSync = true
-  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, true);
+  res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeDatafile(journal);
@@ -295,7 +295,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
     waitForSync = false;
   }
 
-  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, body, bodySize, waitForSync);
+  res = TRI_WriteElementDatafile(journal, position, marker, markerSize, 0, 0, body, bodySize, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->base._state = TRI_COL_STATE_WRITE_ERROR;
@@ -408,7 +408,7 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   marker->_tick = TRI_NewTickVocBase();
 
   // generate crc
-  TRI_FillCrcMarkerDatafile(marker, markerSize, body, bodySize);
+  TRI_FillCrcMarkerDatafile(marker, markerSize, 0, 0, body, bodySize);
 
   // lock the collection
   TRI_LockMutex(&collection->_lock);

@@ -115,7 +115,7 @@ TRI_doc_update_policy_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_mptr_s {
-  TRI_voc_did_t _did; // this is the document identifier
+  //TRI_voc_did_t _did; // this is the document identifier
   TRI_voc_rid_t _rid; // this is the revision identifier
   TRI_voc_eid_t _eid; // this is the step identifier
 
@@ -124,6 +124,8 @@ typedef struct TRI_doc_mptr_s {
   TRI_voc_tick_t _deletion; // this is the deletion time
 
   void const* _data; // this is the pointer to the raw marker
+  
+  char* _key; // this is the document identifier (string)
 }
 TRI_doc_mptr_t;
 
@@ -329,18 +331,18 @@ typedef struct TRI_primary_collection_s {
   void (*createHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  TRI_doc_mptr_t (*create) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_did_t, TRI_voc_rid_t, bool);
+  TRI_doc_mptr_t (*create) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key, bool);
   TRI_doc_mptr_t (*createJson) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool);
-  TRI_voc_did_t (*createLock) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
+  TRI_voc_key_t (*createLock) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
 
-  TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_did_t);
+  TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_key_t);
 
-  TRI_doc_mptr_t (*update) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  TRI_doc_mptr_t (*updateJson) (struct TRI_primary_collection_s*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  int (*updateLock) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
+  TRI_doc_mptr_t (*update) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
+  TRI_doc_mptr_t (*updateJson) (struct TRI_primary_collection_s*, TRI_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
+  int (*updateLock) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
-  int (*destroy) (struct TRI_primary_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  int (*destroyLock) (struct TRI_primary_collection_s* collection, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
+  int (*destroy) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
+  int (*destroyLock) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);
@@ -362,14 +364,14 @@ typedef struct TRI_doc_document_marker_s {
 
   // char data[]
 }
-TRI_doc_document_marker_t;
+TRI_doc_document_marker_t_deprecated;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge datafile marker
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_edge_marker_s {
-  TRI_doc_document_marker_t base;
+  TRI_doc_document_marker_t_deprecated base;
 
   TRI_voc_cid_t _toCid;
   TRI_voc_did_t _toDid;
@@ -379,7 +381,39 @@ typedef struct TRI_doc_edge_marker_s {
 
   // char data[]
 }
-TRI_doc_edge_marker_t;
+TRI_doc_edge_marker_t_deprecated;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document datafile marker with key 
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_document_key_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_rid_t _rid;        // this is the tick for an create and update
+  TRI_voc_eid_t _sid;
+
+  TRI_shape_sid_t _shape;
+
+  size_t _offsetKey;
+  size_t _offsetJson;
+}
+TRI_doc_document_key_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge datafile marker with key
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_edge_key_marker_s {
+  TRI_doc_document_key_marker_t base;
+
+  TRI_voc_cid_t _toCid;
+  size_t _offsetToKey;
+  
+  TRI_voc_cid_t _fromCid;  
+  size_t _offsetFromKey;
+}
+TRI_doc_edge_key_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile deletion marker
@@ -392,7 +426,21 @@ typedef struct TRI_doc_deletion_marker_s {
   TRI_voc_rid_t _rid;        // this is the tick for an create and update
   TRI_voc_eid_t _sid;
 }
-TRI_doc_deletion_marker_t;
+TRI_doc_deletion_marker_t_deprecated;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document datafile deletion marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_deletion_key_marker_s {
+  TRI_df_marker_t base;
+  
+  TRI_voc_rid_t _rid;        // this is the tick for an create and update
+  TRI_voc_eid_t _sid;
+
+  size_t _offsetKey;
+}
+TRI_doc_deletion_key_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile begin transaction marker

@@ -88,7 +88,7 @@ function CollectionEdgeSuiteErrorHandling () {
 
     testErrorHandlingBadHandle : function () {
       try {
-        edge.save("123456", v1, {});
+        edge.save("123~456", v1, {});
         fail();
       }
       catch (err) {
@@ -96,7 +96,7 @@ function CollectionEdgeSuiteErrorHandling () {
       }
 
       try {
-        edge.save(v1, "123456", {});
+        edge.save(v1, "123~456", {});
         fail();
       }
       catch (err) {
@@ -359,7 +359,7 @@ function CollectionEdgeSuite () {
         var e = edge.edges(1);
       } 
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
       }
     },
 
@@ -386,7 +386,7 @@ function CollectionEdgeSuite () {
       var d = edge.save(v1, v2, { "Hallo" : "World" });
 
       try {
-        var e = edge.inEdges(1);
+        var e = edge.inEdges("123~456");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
@@ -416,7 +416,7 @@ function CollectionEdgeSuite () {
       var d = edge.save(v1, v2, { "Hallo" : "World" });
 
       try {
-        var e = edge.outEdges(1);
+        var e = edge.outEdges("123~456");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);

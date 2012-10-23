@@ -132,7 +132,7 @@ static TRI_doc_mptr_t* VerifySimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* he
 
 static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
   simple_headers_t* headers = (simple_headers_t*) h;
-
+  
   ClearSimpleHeaders(header, headers->_headerSize);
 
   header->_data = headers->_freelist;

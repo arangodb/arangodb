@@ -50,7 +50,7 @@
 /// @brief converts identifier into a object reference
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t, TRI_voc_did_t);
+v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t, TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extratcs identifiers from a object reference

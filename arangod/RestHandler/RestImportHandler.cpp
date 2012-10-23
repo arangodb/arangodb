@@ -243,8 +243,8 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false);
-      if (mptr._did != 0) {
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, values, 0, reuseId, false);
+      if (mptr._key != 0) {
         ++numCreated;
       }
       else {
@@ -426,8 +426,8 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
-      if (mptr._did != 0) {
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, reuseId, false);
+      if (mptr._key != 0) {
         ++numCreated;
       }
       else {

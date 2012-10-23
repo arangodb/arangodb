@@ -286,7 +286,7 @@ bool RestDocumentHandler::createDocument () {
 
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, reuseId, false);
 
   trx.end();
 
@@ -295,12 +295,12 @@ bool RestDocumentHandler::createDocument () {
   // .............................................................................
 
   // generate result
-  if (mptr._did != 0) {
+  if (mptr._key != 0) {
     if (waitForSync) {
-      generateCreated(cid, mptr._did, mptr._rid);
+      generateCreated(cid, mptr._key, mptr._rid);
     }
     else {
-      generateAccepted(cid, mptr._did, mptr._rid);
+      generateAccepted(cid, mptr._key, mptr._rid);
     }
 
     return true;
@@ -410,7 +410,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // split the document reference
   string collection = suffix[0];
-  string did = suffix[1];
+  string key = suffix[1];
 
   // find and load collection given by name or identifier
   CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
@@ -424,7 +424,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   
   TRI_voc_cid_t cid = ca.cid();
   TRI_shaper_t* shaper = ca.shaper();
-  TRI_voc_did_t id = StringUtils::uint64(did);
+  //TRI_voc_did_t id = StringUtils::uint64(did);
 
   // .............................................................................
   // inside read transaction
@@ -432,7 +432,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   ReadTransaction trx(&ca);
 
-  TRI_doc_mptr_t const document = trx.primary()->read(trx.primary(), id);
+  TRI_doc_mptr_t const document = trx.primary()->read(trx.primary(), (TRI_voc_key_t) key.c_str());
 
   // register a barrier. will be destroyed automatically
   Barrier barrier(trx.primary());
@@ -444,8 +444,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // .............................................................................
 
   // generate result
-  if (document._did == 0) {
-    generateDocumentNotFound(cid, did);
+  if (document._key == 0) {
+    generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
@@ -456,7 +456,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(&document, cid, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document._did, rid);
+      generatePreconditionFailed(cid, document._key, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -467,7 +467,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
-      generatePreconditionFailed(cid, document._did, rid);
+      generatePreconditionFailed(cid, document._key, rid);
     }
   }
   else {
@@ -475,7 +475,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(&document, cid, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document._did, rid);
+      generatePreconditionFailed(cid, document._key, rid);
     }
   }
 
@@ -514,7 +514,7 @@ bool RestDocumentHandler::readAllDocuments () {
     return false;
   }
 
-  vector<TRI_voc_did_t> ids;
+  vector<string> ids;
   TRI_voc_cid_t cid = ca.cid();
 
   // .............................................................................
@@ -534,7 +534,7 @@ bool RestDocumentHandler::readAllDocuments () {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
         if (d->_deletion == 0) {
-          ids.push_back(d->_did);
+          ids.push_back(d->_key);
         }
       }
     }
@@ -556,9 +556,9 @@ bool RestDocumentHandler::readAllDocuments () {
   bool first = true;
   string prefix = "\"" + DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/";
 
-  for (vector<TRI_voc_did_t>::iterator i = ids.begin();  i != ids.end();  ++i) {
+  for (vector<string>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
-    TRI_AppendUInt64StringBuffer(&buffer, *i);
+    TRI_AppendString2StringBuffer(&buffer, (*i).c_str(), (*i).size());
     TRI_AppendCharStringBuffer(&buffer, '"');
 
     if (first) {
@@ -730,7 +730,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // split the document reference
   string collection = suffix[0];
-  string didStr = suffix[1];
+  string key = suffix[1];
 
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
@@ -739,9 +739,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   if (json == 0) {
     return false;
   }
-
-  // extract document identifier
-  TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
@@ -788,7 +785,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     // read the existing document
-    TRI_doc_mptr_t document = trx.primary()->read(trx.primary(), did);
+    TRI_doc_mptr_t document = trx.primary()->read(trx.primary(), (TRI_voc_key_t) key.c_str());
     TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
@@ -798,7 +795,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_FreeJson(shaper->_memoryZone, old);
 
       if (patchedJson != 0) {
-        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false);
+        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, (TRI_voc_key_t) key.c_str(), revision, &rid, policy, false);
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
@@ -806,7 +803,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   else {
     // replacing an existing document
-    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false);
+    mptr = trx.primary()->updateJson(trx.primary(), json, (TRI_voc_key_t) key.c_str(), revision, &rid, policy, false);
   }
 
   trx.end();
@@ -815,11 +812,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // outside write transaction
   // .............................................................................
 
-  res = mptr._did == 0 ? TRI_errno() : 0;
+  res = mptr._key == 0 ? TRI_errno() : 0;
 
   // generate result
-  if (mptr._did != 0) {
-    generateUpdated(cid, did, mptr._rid);
+  if (mptr._key != 0) {
+    generateUpdated(cid, (TRI_voc_key_t) key.c_str(), mptr._rid);
     return true;
   }
 
@@ -831,7 +828,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
 
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-      generateDocumentNotFound(cid, didStr);
+      generateDocumentNotFound(cid, key);
       return false;
 
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
@@ -843,7 +840,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
 
     case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(cid, did, rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) key.c_str(), rid);
       return false;
 
     default:
@@ -915,10 +912,10 @@ bool RestDocumentHandler::deleteDocument () {
 
   // split the document reference
   string collection = suffix[0];
-  string didStr = suffix[1];
+  string key = suffix[1];
 
   // extract document identifier
-  TRI_voc_did_t did = StringUtils::uint64(didStr);
+  //TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
@@ -953,7 +950,7 @@ bool RestDocumentHandler::deleteDocument () {
   WriteTransaction trx(&ca);
 
   // unlocking is performed in destroy()
-  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false);
+  res = trx.primary()->destroy(trx.primary(), (TRI_voc_key_t) key.c_str(), revision, &rid, policy, false);
 
   trx.end();
 
@@ -963,7 +960,7 @@ bool RestDocumentHandler::deleteDocument () {
 
   // generate result
   if (res == TRI_ERROR_NO_ERROR) {
-    generateDeleted(cid, did, rid);
+    generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
     return true;
   }
   else {
@@ -975,11 +972,11 @@ bool RestDocumentHandler::deleteDocument () {
         return false;
 
       case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid, didStr);
+        generateDocumentNotFound(cid, key);
         return false;
 
       case TRI_ERROR_ARANGO_CONFLICT:
-        generatePreconditionFailed(cid, did, rid);
+        generatePreconditionFailed(cid, (TRI_voc_key_t) key.c_str(), rid);
         return false;
 
       default:

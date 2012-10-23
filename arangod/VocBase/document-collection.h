@@ -36,6 +36,8 @@
 #include <VocBase/headers.h>
 #include <VocBase/index.h>
 
+#include <regex.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -129,11 +131,11 @@ extern "C" {
 
 #define TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(dst, src)                                     \
   do {                                                                                    \
-    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {             \
-      (dst) = ((TRI_doc_document_marker_t*) (src))->_shape;                               \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {         \
+      (dst) = ((TRI_doc_document_key_marker_t*) (src))->_shape;                           \
     }                                                                                     \
-    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {            \
-      (dst) = ((TRI_doc_edge_marker_t*) (src))->base._shape;                              \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_EDGE) {        \
+      (dst) = ((TRI_doc_edge_key_marker_t*) (src))->base._shape;                          \
     }                                                                                     \
     else {                                                                                \
       (dst) = 0;                                                                          \
@@ -144,21 +146,21 @@ extern "C" {
 /// @brief extracts the shaped JSON pointer from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_EXTRACT_SHAPED_JSON_MARKER(dst, src)                                                     \
-  do {                                                                                               \
-    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_DOCUMENT) {                        \
-      (dst)._sid = ((TRI_doc_document_marker_t*) (src))->_shape;                                     \
-      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - sizeof(TRI_doc_document_marker_t);    \
-      (dst)._data.data = (((char*) (src)) + sizeof(TRI_doc_document_marker_t));                      \
-    }                                                                                                \
-    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_EDGE) {                       \
-      (dst)._sid = ((TRI_doc_document_marker_t*) (src))->_shape;                                     \
-      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - sizeof(TRI_doc_edge_marker_t);        \
-      (dst)._data.data = (((char*) (src)) + sizeof(TRI_doc_edge_marker_t));                          \
-    }                                                                                                \
-    else {                                                                                           \
-      (dst)._sid = 0;                                                                                \
-    }                                                                                                \
+#define TRI_EXTRACT_SHAPED_JSON_MARKER(dst, src)                                                                       \
+  do {                                                                                                                 \
+    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {                                      \
+      (dst)._sid = ((TRI_doc_document_key_marker_t*) (src))->_shape;                                                   \
+      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((TRI_doc_document_key_marker_t*) (src))->_offsetJson;  \
+      (dst)._data.data = (((char*) (src)) + ((TRI_doc_document_key_marker_t*) (src))->_offsetJson);                    \
+    }                                                                                                                  \
+    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_EDGE) {                                     \
+      (dst)._sid = ((TRI_doc_document_key_marker_t*) (src))->_shape;                                                   \
+      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((TRI_doc_document_key_marker_t*) (src))->_offsetJson;  \
+      (dst)._data.data = (((char*) (src)) + ((TRI_doc_document_key_marker_t*) (src))->_offsetJson);                    \
+    }                                                                                                                  \
+    else {                                                                                                             \
+      (dst)._sid = 0;                                                                                                  \
+    }                                                                                                                  \
   } while (false)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +201,12 @@ typedef struct TRI_document_collection_s {
   // .............................................................................
 
   TRI_condition_t _journalsCondition;
+  
+  // .............................................................................
+  // key regex
+  // .............................................................................
+  
+  regex_t DocumentKeyRegex;
 }
 TRI_document_collection_t;
 
@@ -208,10 +216,12 @@ TRI_document_collection_t;
 
 typedef struct TRI_document_edge_s {
   TRI_voc_cid_t _fromCid;
-  TRI_voc_did_t _fromDid;
+  // TRI_voc_did_t _fromDid;
+  TRI_voc_key_t _fromKey;
 
   TRI_voc_cid_t _toCid;
-  TRI_voc_did_t _toDid;
+  // TRI_voc_did_t _toDid;
+  TRI_voc_key_t _toKey;
 }
 TRI_document_edge_t;
 
@@ -235,7 +245,8 @@ typedef struct TRI_edge_header_s {
   TRI_doc_mptr_t const* _mptr;
   TRI_edge_direction_e _direction;
   TRI_voc_cid_t _cid; // from or to, depending on the direction
-  TRI_voc_did_t _did; // from or to, depending on the direction
+  // TRI_voc_did_t _did; // from or to, depending on the direction
+  TRI_voc_key_t _key;
 }
 TRI_edge_header_t;
 
@@ -367,7 +378,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* collection, TRI
 TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
                                                         TRI_edge_direction_e direction,
                                                         TRI_voc_cid_t cid,
-                                                        TRI_voc_did_t did);
+                                                        TRI_voc_key_t key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
