@@ -94,7 +94,17 @@
 	req.urlParameters = {};
       }
 
-      action.route.callback.controller(req, res, action.route.callback.options, next);
+      var func = action.route.callback.controller;
+      if (func === null || typeof func !== 'function') {
+        func = actions.errorFunction(action.route, 'Invalid callback definition found for route ' + JSON.stringify(action.route));
+      }
+
+      try {
+        func(req, res, action.route.callback.options, next);
+      }
+      catch (err) {
+        actions.errorFunction(action.route, 'A runtime error occurred while executing an action: ' + String(err))(req, res, action.route.callback.options, next);
+      }
     };
 
     next = function () {
