@@ -32,6 +32,8 @@ v1.1.beta1 (2012-XX-XX)
   - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
     the server will fail with HTTP 431 (request header fields too large)
 
+* issue #265: allow optional base64 encoding/decoding of action response data
+
 * issue #252: create _modules collection using arango-upgrade
 
 * issue #251: allow passing arbitrary options to V8 engine using new command line option:
