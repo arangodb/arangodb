@@ -105,7 +105,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
     LOG_TRACE("renamed journal to '%s'", filename);
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // create a collection header
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);

@@ -9,6 +9,7 @@
 ################################################################################
 
 BUILT_SOURCES += @LIBEV_LIBS@
+CLEANUP += @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
 
 @LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 

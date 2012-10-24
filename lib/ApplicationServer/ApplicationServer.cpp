@@ -25,14 +25,20 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "ApplicationServer.h"
 
+#ifdef TRI_HAVE_POSIX_PWD_GRP
 #include <pwd.h>
 #include <grp.h>
+#endif
 
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Random.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/delete_object.h"
 #include "BasicsC/conversions.h"
@@ -100,6 +106,43 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+  : _options(),
+    _description(),
+    _descriptionFile(),
+    _arguments(),
+    _features(),
+    _exitOnParentDeath(false),
+    _watchParent(0),
+    _stopping(0),
+    _name(name),
+    _title(title),
+    _version(version),
+    _configFile(),
+    _userConfigFile(),
+    _systemConfigFile(),
+    _systemConfigPath(),
+    _uid(),
+    _realUid(0),
+    _effectiveUid(0),
+    _gid(),
+    _realGid(0),
+    _effectiveGid(0),
+    _logApplicationName("triagens"),
+    _logHostName("-"),
+    _logFacility("-"),
+    _logLevel("info"),
+    _logFormat(),
+    _logSeverity("human"),
+    _logFile("+"),
+    _logPrefix(),
+    _logSyslog(),
+    _logThreadId(false),
+    _logLineNumber(false),
+    _randomGenerator(5) {
+}
+#else
 ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
   : _options(),
     _description(),
@@ -135,6 +178,7 @@ ApplicationServer::ApplicationServer (string const& name, string const& title, s
     _logLineNumber(false),
     _randomGenerator(3) {
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -142,7 +186,7 @@ ApplicationServer::ApplicationServer (string const& name, string const& title, s
 
 ApplicationServer::~ApplicationServer () {
   Random::shutdown();
-  for_each(_features.begin(), _features.end(), DeleteObject());
+  for_each(_features.begin(), _features.end(), DeleteObjectAny());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +214,7 @@ void ApplicationServer::addFeature (ApplicationFeature* feature) {
 /// @brief sets the name of the system config file with a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (string const& name, string const& path) {
+void ApplicationServer::setSystemConfigFile (std::string const& name, std::string const& path) {
   _systemConfigFile = name;
   _systemConfigPath = path;
 }
@@ -179,7 +223,7 @@ void ApplicationServer::setSystemConfigFile (string const& name, string const& p
 /// @brief sets the name of the system config file without a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (string const& name) {
+void ApplicationServer::setSystemConfigFile (std::string const& name) {
   return setSystemConfigFile(name, "");
 }
 
@@ -187,7 +231,7 @@ void ApplicationServer::setSystemConfigFile (string const& name) {
 /// @brief sets the name of the user config file
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setUserConfigFile (string const& name) {
+void ApplicationServer::setUserConfigFile (std::string const& name) {
   _userConfigFile = name;
 }
 
@@ -243,7 +287,9 @@ void ApplicationServer::setupLogging () {
 
     }
   }
+#ifdef TRI_ENABLE_SYSLOG
   TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +324,7 @@ bool ApplicationServer::parse (int argc, char* argv[]) {
 
 bool ApplicationServer::parse (int argc,
                                char* argv[],
-                               map<string, ProgramOptionsDescription> opts) {
+                               std::map<std::string, ProgramOptionsDescription> opts) {
 
   // .............................................................................
   // setup the options
@@ -377,11 +423,29 @@ bool ApplicationServer::parse (int argc,
 
   try {
     switch (_randomGenerator) {
-      case 1: Random::selectVersion(Random::RAND_MERSENNE);  break;
-      case 2: Random::selectVersion(Random::RAND_RANDOM);  break;
-      case 3: Random::selectVersion(Random::RAND_URANDOM);  break;
-      case 4: Random::selectVersion(Random::RAND_COMBINED);  break;
-      default: break;
+      case 1: {
+        Random::selectVersion(Random::RAND_MERSENNE);  
+        break;
+      }
+      case 2: {
+        Random::selectVersion(Random::RAND_RANDOM);  
+        break;
+      }
+      case 3: {
+        Random::selectVersion(Random::RAND_URANDOM);  
+        break;
+      }
+      case 4: {
+        Random::selectVersion(Random::RAND_COMBINED);  
+        break;
+      }
+      case 5: {
+        Random::selectVersion(Random::RAND_WIN32);  
+        break;
+      }
+      default: {
+        break;
+      }
     }
   }
   catch (...) {
@@ -389,6 +453,7 @@ bool ApplicationServer::parse (int argc,
     TRI_ShutdownLogging();
     exit(EXIT_FAILURE);
   }
+
 
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ok = (*i)->parsePhase2(_options);
@@ -456,9 +521,11 @@ void ApplicationServer::prepare2 () {
 void ApplicationServer::start () {
   LOGGER_DEBUG << "ApplicationServer version " << TRIAGENS_VERSION;
 
+#ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
+#endif
 
   raisePrivileges();
 
@@ -780,14 +847,22 @@ bool ApplicationServer::checkParent () {
   }
 #endif
 
+// unfortunately even though windows has <signal.h>, there is no
+// kill method defined. Notice that the kill below is not to terminate
+// the process. 
+#ifdef TRI_HAVE_SIGNAL_H
   if (_watchParent != 0) {
+#ifdef TRI_HAVE_POSIX
     int res = kill(_watchParent, 0);
-
+#else
+    int res = -1;
+#endif
     if (res != 0) {
       LOGGER_INFO << "parent " << _watchParent << " has died";
       return false;
     }
   }
+#endif
 
   return true;
 }
@@ -827,12 +902,56 @@ bool ApplicationServer::readConfigurationFile () {
   // nothing has been specified on the command line regarding configuration file
   if (! _userConfigFile.empty()) {
 
+    // .........................................................................
     // first attempt to obtain a default configuration file from the users home directory
-    string homeDir = string(getenv("HOME"));
+    // .........................................................................
+
+    // .........................................................................
+    // Under windows there is no 'HOME' directory as such so getenv("HOME")
+    // may return NULL -- which it does under windows
+    // A safer approach below
+    // .........................................................................
+
+    string homeDir;
+    string homeEnv;
+    const char* envResult;
+
+#ifdef _WIN32
+    string homeDrive;
+    string homePath;
+
+    homeEnv = string("%HOMEDRIVE% and/or %HOMEPATH%");
+
+    envResult = getenv("HOMEDRIVE");
+    if (envResult != 0) {
+      homeDrive = string(envResult);
+    }
+    
+    envResult = getenv("HOMEPATH");
+    if (envResult != 0) {
+      homePath = string(envResult);
+    }
+    
+    if (! homeDrive.empty() && ! homePath.empty()) {
+      homeDir = homeDrive + homePath;
+    }
+    else {
+      homeDir = string("");
+    }
+#else
+    homeEnv = string("$HOME");
+    envResult = getenv("HOME");
+    if (envResult != 0) { 
+      homeDir = string(envResult);
+    }
+    else {
+      homeDir = string("");
+    }
+#endif
 
     if (! homeDir.empty()) {
-      if (homeDir[homeDir.size() - 1] != '/') {
-        homeDir += "/" + _userConfigFile;
+      if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+        homeDir += TRI_DIR_SEPARATOR_CHAR + _userConfigFile;
       }
       else {
         homeDir += _userConfigFile;
@@ -858,7 +977,7 @@ bool ApplicationServer::readConfigurationFile () {
       }
     }
     else {
-      LOGGER_DEBUG << "no user init file, $HOME is empty";
+      LOGGER_DEBUG << "no user init file, " << homeEnv << " is empty";
     }
   }
 

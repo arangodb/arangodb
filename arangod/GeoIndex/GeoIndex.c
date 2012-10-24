@@ -27,6 +27,8 @@
 
 /* GeoIndex.c -   GeoIndex algorithms                */
 /* Version 2.1   8.1.2012  R. A. Parker              */
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #include "GeoIndex.h"
 
@@ -337,7 +339,7 @@ int GeoIndexNewPot(GeoIx * gix)
         x=x/y;
         if(x>1000000000L) return -2;
         newpotct= (int) x;
-        gp = realloc(gix->pots,newpotct*sizeof(GeoPot));
+        gp = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots,newpotct*sizeof(GeoPot));
         if(gp!=NULL) gix->pots=gp;
             else     return -2;
         for(j=gix->potct;j<newpotct;j++) GeoIndexFreePot(gix,j);
@@ -942,8 +944,8 @@ int GeoResultsGrow(GeoResults * gr)
         /* otherwise grow by about 50%  */
     newsiz=gr->pointsct + (gr->pointsct/2) + 1;
     if(newsiz > 1000000000) return -1;
-    sa=realloc(gr->slot, newsiz*sizeof(int));
-    dd=realloc(gr->snmd, newsiz*sizeof(double));
+    sa=TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gr->slot, newsiz*sizeof(int));
+    dd=TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gr->snmd, newsiz*sizeof(double));
     if( (sa==NULL) || (dd==NULL) )
     {
         if(sa!=NULL) gr->slot = sa;
@@ -1260,7 +1262,7 @@ int GeoIndexNewSlot(GeoIx * gix)
         x=x/y;
         if(x>2000000000L) return -2;
         newslotct= (int) x;
-        gc = realloc(gix->gc,newslotct*sizeof(GeoCoordinate));
+        gc = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->gc,newslotct*sizeof(GeoCoordinate));
         if(gc!=NULL) gix->gc=gc;
             else     return -2;
         for(j=gix->slotct;j<newslotct;j++) GeoIndexFreeSlot(gix,j);

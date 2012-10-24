@@ -37,6 +37,8 @@
 #include "Basics/StringBuffer.h"
 #include "Rest/ConnectionInfo.h"
 
+using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------
@@ -289,7 +291,7 @@ namespace triagens {
 /// @brief returns the content length
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t contentLength () const;
+        int64_t contentLength () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -519,7 +521,7 @@ namespace triagens {
 /// @brief content length
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _contentLength;
+        int64_t _contentLength;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief body

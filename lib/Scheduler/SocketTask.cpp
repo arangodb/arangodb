@@ -111,6 +111,29 @@ SocketTask::~SocketTask () {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Scheduler
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void SocketTask::setKeepAliveTimeout (double timeout) {
+  if (keepAliveWatcher != 0 && timeout > 0.0) {
+    scheduler->rearmTimer(keepAliveWatcher, timeout);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                         protected virtual methods
 // -----------------------------------------------------------------------------
 
@@ -136,7 +159,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   else if (nr == 0) {
     closed = true;
 
-    LOGGER_TRACE << "read return 0 with " << errno << " (" << strerror(errno) << ")";
+    LOGGER_TRACE << "read returned 0";
 
     return false;
   }
@@ -221,10 +244,8 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
     }
 
     // rearm timer for keep-alive timeout
-    if (_keepAliveTimeout > 0.0) {
-      // TODO: do we need some lock before we modify the scheduler?
-      scheduler->rearmTimer(keepAliveWatcher, _keepAliveTimeout);
-    }
+    // TODO: do we need some lock before we modify the scheduler?
+    setKeepAliveTimeout(_keepAliveTimeout);
   }
 
   // we might have a new write buffer or none at all
@@ -444,6 +465,7 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
       // disable timer for keep-alive timeout
       scheduler->clearTimer(keepAliveWatcher);
     }
+
     result = handleRead(closed);
   }
 

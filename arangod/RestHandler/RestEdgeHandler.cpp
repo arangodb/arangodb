@@ -33,6 +33,7 @@
 #include "Rest/JsonContainer.h"
 #include "VocBase/document-collection.h"
 #include "strings.h"
+#include "VocBase/edge-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -109,6 +110,8 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
+  bool forceSync = extractWaitForSync();
+
   // edge
   TRI_document_edge_t edge;
 
@@ -169,7 +172,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   TRI_voc_cid_t cid = ca.cid();
-  const bool waitForSync = ca.waitForSync();
+  const bool waitForSync = forceSync || ca.waitForSync();
 
   // split document handle
   edge._fromCid = cid;
@@ -204,7 +207,7 @@ bool RestEdgeHandler::createDocument () {
   
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_EDGE, json, &edge, reuseId, false);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_EDGE, json, &edge, reuseId, false, forceSync);
 
   trx.end();
 

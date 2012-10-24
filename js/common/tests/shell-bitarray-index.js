@@ -759,9 +759,7 @@ function BitarrayIndexSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-print("Starting the bitarray index suite of tests");
 jsunity.run(BitarrayIndexSuite);
-print("ending the bitarray index suite of tests");
 return jsunity.done();
 
 // Local Variables:

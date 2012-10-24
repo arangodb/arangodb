@@ -81,20 +81,21 @@
 /// database. It is an string and is unique within the database. Unlike the
 /// collection identifier it is supplied by the creator of the collection.  The
 /// collection name can consist of letters, digits and the characters @LIT{_}
-/// (underscore) and @LIT{-} (dash). However, the first character must be a
-/// letter.
+/// (underscore) and @LIT{-} (dash). Please refer to @ref NamingConventions for more
+/// information on valid collection names. 
 ///
 /// @page GlossaryDocument
 //////////////////////////
 ///
 /// @GE{Document}: Documents in ArangoDB are JSON objects. These objects can be
-/// nested (to any depth) and may contains lists. Each document is unique identified
+/// nested (to any depth) and may contains lists. Each document is uniquely identified
 /// by its document handle.
 ///
 /// @page GlossaryDocumentEtag
 //////////////////////////////
 ///
-/// @GE{Document Etag}: The document revision enclosed in double quotes.
+/// @GE{Document Etag}: The document revision enclosed in double quotes. The revision
+/// is returned by several HTTP API methods in the @LIT{Etag} HTTP header.
 ///
 /// @page GlossaryDocumentHandle
 ////////////////////////////////
@@ -109,23 +110,33 @@
 /// @GE{Document Identifier}: A document identifier identifies a document in a
 /// given collection. It is an integer and is unique within the collection of the
 /// document.
+/// Currently, ArangoDB uses 64bit unsigned integers for document identifiers but this is an
+/// implementation detail that clients should not rely on. Additionally, as this
+/// datatype is not portable to all client languages, clients should rather use 
+/// strings to store document identifiers locally.
 ///
 /// @page GlossaryDocumentRevision
 //////////////////////////////////
 ///
-/// @GE{Document Revision}: As AvocaodDB supports MVCC, documents can exist in
+/// @GE{Document Revision}: As ArangoDB supports MVCC, documents can exist in
 /// more than one revision.  The document revision is the MVCC token used to
 /// identify a particular revision of a document. It is an integer and unique
-/// within the list of document revision for a single document. Earlier revision
-/// of a document have smaller numbers. In order to find a particular revision
+/// within the list of document revision for a single document. Earlier revisions
+/// of a document have smaller numbers. 
+/// Document revisions can be used to conditionally update, replace or delete
+/// documents in the database. In order to find a particular revision
 /// of a document, you need the document handle and the document revision.
+///
+/// ArangoDB currently uses 64bit unsigned integer values for document revisions. 
+/// As this datatype is not portable to all client languages, clients should 
+/// rather use strings to store document revision ids locally.
 ///
 /// @page GlossaryEdge
 //////////////////////
 ///
 /// @GE{Edge}: Edges in ArangoDB are special documents. In addition to the
 /// internal attributes @LIT{_id} and @LIT{_rev}, they have two attributes
-/// @LIT{_form} and @LIT{_to}, which contain document handles namely the
+/// @LIT{_from} and @LIT{_to}, which contain document handles, namely the
 /// start-point and the end-point of the edge.
 ///
 /// @page GlossaryEdgeCollection

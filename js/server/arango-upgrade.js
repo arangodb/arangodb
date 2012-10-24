@@ -71,6 +71,30 @@ function main (argv) {
     }
   }
 
+  function getCollection (name) {
+    return db._collection(name);
+  }
+
+  function collectionExists (name) {
+    var collection = getCollection(name);
+    return (collection != undefined) && (collection != null) && (collection.name() == name);
+  }
+
+  function createSystemCollection (name, attributes) {
+    if (collectionExists(name)) {
+      return true;
+    }
+
+    var realAttributes = attributes || { };
+    realAttributes['isSystem'] = true;
+
+    if (db._create(name, realAttributes)) {
+      return true;
+    }
+
+    return collectionExists(name);
+  }
+
 
   // --------------------------------------------------------------------------
   // the actual upgrade tasks. all tasks defined here should be "re-entrant"
@@ -78,25 +102,13 @@ function main (argv) {
 
   // set up the collection _users 
   addTask("setup _users collection", 1, function () {
-    var users = db._collection("_users");
-
-    if (users == null) {
-      users = db._create("_users", { isSystem: true, waitForSync: true });
-
-      if (users == null) {
-        console.error("creating users collection '_users' failed");
-        return false;
-      }
-    }
-
-    return true;
+    return createSystemCollection("_users", { waitForSync : true });
   });
 
   // create a unique index on username attribute in _users
   addTask("create index on username attribute in _users collection", 1, function () {
-    var users = db._collection("_users");
-
-    if (users == null) {
+    var users = getCollection("_users");
+    if (! users) {
       return false;
     }
 
@@ -107,9 +119,8 @@ function main (argv) {
   
   // add a default root user with no passwd
   addTask("add default root user", 1, function () {
-    var users = db._collection("_users");
-
-    if (users == null) {
+    var users = getCollection("_users");
+    if (! users) {
       return false;
     }
 
@@ -123,25 +134,14 @@ function main (argv) {
   
   // set up the collection _graphs
   addTask("setup _graphs collection", 1, function () {
-    var graphs = db._collection("_graphs");
-
-    if (graphs == null) {
-      graphs = db._create("_graphs", { isSystem: true, waitForSync: true });
-
-      if (graphs == null) {
-        console.error("creating graphs collection '_graphs' failed");
-        return false;
-      }
-    }
-
-    return true;
+    return createSystemCollection("_graphs", { waitForSync : true });
   });
   
   // create a unique index on name attribute in _graphs
   addTask("create index on name attribute in _graphs collection", 1, function () {
-    var graphs = db._collection("_graphs");
+    var graphs = getCollection("_graphs");
 
-    if (graphs == null) {
+    if (! graphs) {
       return false;
     }
 
@@ -200,14 +200,24 @@ function main (argv) {
     return true;
   });
   
+  // create the _modules collection
+  addTask("setup _modules collection", 1, function () {
+    return createSystemCollection("_modules");
+  });
+  
+  // create the _routing collection
+  addTask("setup _routing collection", 1, function () {
+    return createSystemCollection("_routing");
+  });
+  
   // create the VERSION file
-  addTask("create VERSION file", 1, function () {
+  addTask("create VERSION file", 2, function () {
     // save "1" into VERSION file
-    SYS_SAVE(versionFile, "1");
+    SYS_SAVE(versionFile, "2");
     return true;
   });
-
-
+  
+  
   console.log("Upgrade script " + argv[0] + " started");
   console.log("Server VERSION is: " + currentVersion);
 

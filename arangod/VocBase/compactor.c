@@ -25,6 +25,10 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "compactor.h"
 
 #include "BasicsC/conversions.h"
@@ -218,31 +222,25 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   bool deleted;
   int res;
 
-  LOG_FATAL("TODO Compactifier() ", 0);
-  exit(1);
-
   sim = data;
   primary = &sim->base;
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* d;
-    size_t markerSize;
-
+    
+    TRI_voc_size_t markerSize = 0;
+    TRI_voc_size_t keyBodySize = 0;
+    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
+    
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
       markerSize = sizeof(TRI_doc_document_key_marker_t);
     }
-    else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    else {
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
     }
-    else {
-      LOG_FATAL("unknown marker type %d", (int) marker->_type);
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
-    }
-
-    d = (TRI_doc_document_key_marker_t const*) marker;
+    
+    keyBodySize = d->_offsetJson - d->_offsetKey;
 
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -280,7 +278,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     if (deleted) {
       dfi->_numberDead += 1;
-      dfi->_sizeDead += marker->_size - markerSize;
+      dfi->_sizeDead += marker->_size - markerSize - keyBodySize;
 
       LOG_DEBUG("found a stale document after copying: %s", ((char*) d + d->_offsetKey));
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
@@ -294,15 +292,13 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     // update datafile info
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += marker->_size - markerSize;
+    dfi->_sizeAlive += marker->_size - markerSize - keyBodySize;
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
 
   // deletion
-  else if (marker->_type == TRI_DOC_MARKER_DELETION) {
-    // TODO: remove TRI_doc_deletion_marker_t from file
-
+  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     // write to compactor files
     res = CopyDocument(sim, marker, &result, &fid);
 
@@ -318,6 +314,11 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     dfi->_numberDeletion += 1;
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+  }
+  else {
+    LOG_FATAL("unknown marker type %d", (int) marker->_type);
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
 
   return true;

@@ -103,7 +103,7 @@ static unsigned long SeedRandom (void) {
 /// @brief generates a 16 bit random unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint16_t TRI_UInt16Random () {
+uint16_t TRI_UInt16Random (void) {
 #if RAND_MAX == 2147483647
 
   return rand() & 0xFFFF;
@@ -125,7 +125,7 @@ uint16_t TRI_UInt16Random () {
 /// @brief generates a 32 bit random unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_UInt32Random () {
+uint32_t TRI_UInt32Random (void) {
 #if RAND_MAX == 2147483647
 
   uint32_t l1;
@@ -174,7 +174,7 @@ uint32_t TRI_UInt32Random () {
 /// @brief initialises the random components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseRandom () {
+void TRI_InitialiseRandom (void) {
   if (Initialised) {
     return;
   }
@@ -188,13 +188,14 @@ void TRI_InitialiseRandom () {
 /// @brief shut downs the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownRandom () {
+void TRI_ShutdownRandom (void) {
   if (! Initialised) {
     return;
   }
 
   Initialised = false;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

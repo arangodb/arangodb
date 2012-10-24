@@ -135,7 +135,7 @@ namespace triagens {
         virtual void run () {
           allowAsynchronousCancelation();
 
-          _connection = GeneralClientConnection::factory(_endpoint, 5.0, 10.0, 3);
+          _connection = GeneralClientConnection::factory(_endpoint, 10.0, 10.0, 3);
           if (_connection == 0) {
             cerr << "out of memory" << endl;
             exit(EXIT_FAILURE);
@@ -248,6 +248,7 @@ namespace triagens {
             // append boundary
             batchPayload.appendText("--" + boundary + "\r\n");
             // append content-type, this will also begin the body
+            batchPayload.appendText("Content-Type: ", 14);
             batchPayload.appendText(HttpRequest::getPartContentType());
             batchPayload.appendText("\r\n\r\n", 4);
 

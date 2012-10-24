@@ -28,7 +28,7 @@ case "$1" in
     log_daemon_msg "Starting $DESC" "$NAME"
 
     test -d $PIDDIR || mkdir $PIDDIR
-    chown arango $PIDDIR
+    chown arangodb $PIDDIR
 
     $DAEMON -c $CONF --pid-file "$PIDFILE" --supervisor --uid arangodb
     log_end_msg $?

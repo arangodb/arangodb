@@ -63,8 +63,8 @@ namespace {
 #include <windows.h>
 #include <stdio.h>
 
-  bool static CtrlHandler(DWORD eventType); 
-  static SignalTask* localSignalTask;
+bool static CtrlHandler(DWORD eventType); 
+static SignalTask* localSignalTask;
 
 #endif
 
@@ -183,6 +183,7 @@ namespace {
     public:
       Scheduler* _scheduler;
   };
+
 
 #ifdef _WIN32
 

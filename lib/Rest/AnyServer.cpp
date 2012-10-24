@@ -384,6 +384,7 @@ AnyServer::~AnyServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::start () {
+
   if (_applicationServer == 0) {
     buildApplicationServer();
   }

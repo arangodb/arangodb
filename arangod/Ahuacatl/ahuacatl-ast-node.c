@@ -45,9 +45,12 @@
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
+// this is one reason why macros should never be used.
+// trying to return a pointer as a boolean
 #define ABORT_OOM                                                                \
   TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);                \
   return NULL;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut macro to create a new node or fail in case of OOM
@@ -87,7 +90,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNode (TRI_aql_context_t* const context,
+inline static void InitNode (TRI_aql_context_t* const context,
                              TRI_aql_node_t* const node, 
                              const TRI_aql_node_type_e type) {
   node->_type = type;
@@ -378,7 +381,18 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   
   if (strlen(name) == 0) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
+
     return NULL;
+  }
+  else {
+    TRI_col_parameter_t parameters;
+
+    parameters._isSystem = true;
+    if (! TRI_IsAllowedCollectionName(&parameters, name)) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+
+      return NULL;
+    }
   }
 
   {
@@ -995,7 +1009,7 @@ bool TRI_PushArrayAql (TRI_aql_context_t* const context,
 /// @brief get the boolean value of a node
 ////////////////////////////////////////////////////////////////////////////////
 
-inline bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
+bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
   assert(node);
   assert(node->_type == TRI_AQL_NODE_VALUE);
     

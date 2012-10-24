@@ -1769,7 +1769,7 @@ yyreduce:
         ABORT_OOM
       }
 
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -1785,7 +1785,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -1801,7 +1801,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -1832,7 +1832,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -1914,7 +1914,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -1993,11 +1993,11 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -2013,7 +2013,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     ;}
@@ -2029,7 +2029,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
       
@@ -2080,7 +2080,7 @@ yyreduce:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, subQuery)) {
+      if (!TRI_AppendStatementListAql(context->_statements, subQuery)) {
         ABORT_OOM
       }
 
@@ -2674,7 +2674,7 @@ yyreduce:
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, (yyvsp[(4) - (4)].node));
       
-      if (!TRI_AddStatementListAql(context->_statements, expand)) {
+      if (!TRI_AppendStatementListAql(context->_statements, expand)) {
         ABORT_OOM
       }
 

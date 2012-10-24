@@ -204,8 +204,7 @@ function GraphBasicsSuite() {
       v1 = graph.addVertex("vertex1");
       v2 = graph.addVertex("vertex2");
 
-      edge = graph.addEdge(v1,
-        v2);
+      edge = graph.addEdge(v1, v2);
 
       assertEqual(null, edge.getId());
     },

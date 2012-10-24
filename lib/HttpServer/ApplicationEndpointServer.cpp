@@ -31,7 +31,7 @@
 
 #include "Basics/delete_object.h"
 #include "Basics/ssl-helper.h"
-#include "Basics/Random.h"
+#include "Basics/RandomGenerator.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
@@ -118,7 +118,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
   // code. Granted however, that explicitly writing down the type for an
   // overloaded class operator is a little unwieldy.
   // ..........................................................................
-  for_each(_servers.begin(), _servers.end(), triagens::basics::DeleteObject());
+  for_each(_servers.begin(), _servers.end(), triagens::basics::DeleteObjectAny());
   _servers.clear();
 
   if (_handlerFactory != 0) {
@@ -262,7 +262,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   }
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
-  if (0 == _endpoints.size() && mode == OperationMode::MODE_SERVER) {
+  if (_endpoints.size() == 0 && mode == OperationMode::MODE_SERVER) {
     LOGGER_FATAL << "no endpoint has been specified, giving up";
     cerr << "no endpoint has been specified, giving up\n";
     LOGGER_INFO << "please use the '--server.endpoint' option";

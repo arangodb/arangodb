@@ -26,13 +26,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <windows.h>
+#include <io.h>
 #include "win-utils.h"
+
+/*
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <share.h>
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Windows_Utilties
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+int ftruncate(int fd, long newSize) {
+  int result = _chsize(fd, newSize);
+  return result;
+}
+
+
+int getpagesize(void) {
+  static int pageSize = 0; // only define it once
+
+  if (!pageSize) {
+    // first time, so call the system info function 
+    SYSTEM_INFO systemInfo;
+    GetSystemInfo (&systemInfo);
+    pageSize = systemInfo.dwPageSize;
+  }
+
+  return pageSize;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

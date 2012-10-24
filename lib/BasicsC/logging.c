@@ -29,7 +29,7 @@
 #include "win-utils.h"
 #endif
 
-#include "logging.h"
+#include "BasicsC/logging.h"
 
 #ifdef TRI_ENABLE_SYSLOG
 #define SYSLOG_NAMES

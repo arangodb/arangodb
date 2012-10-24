@@ -226,6 +226,12 @@ TRI_vector_pointer_t* TRI_GetScopesStatementWalkerAql (TRI_aql_statement_walker_
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to a variable, identified by its name
+///
+/// The variable will be searched in the current and the surrounding scopes.
+/// If the variable is not found and the reference to it is coming from a 
+/// subquery scope, we'll mark the subquery as not self-contained. This prevents
+/// moving of the subquery to some other position (which would break the query
+/// in this case)
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const walker, 
@@ -253,7 +259,14 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
 
     if (n == 0 || scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
       // reached the outermost scope
-      break;
+      if (scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
+        // variable not found but we reached the end of the scope
+        // we must mark the scope as not self-contained so it is not moved to
+        // some other position
+
+        scope->_selfContained = false;
+      }
+      return NULL;
     }
 
     // increase the scope counter

@@ -62,9 +62,38 @@
     internal.defineAction = function() {
       console.error("SYS_DEFINE_ACTION not available");
     };
+
+    internal.actionLoaded = function() {
+    }
   }
   else {
     internal.defineAction = SYS_DEFINE_ACTION;
+
+    internal.actionLoaded = function() {
+      var modules;
+      var i;
+      
+      console.debug("actions loaded");
+      
+      modules = internal.db._collection("_modules");
+
+      if (modules !== null) {
+	modules = modules.byExample({ autoload: true }).toArray();
+
+	for (i = 0;  i < modules.length;  ++i) {
+	  var module = modules[i];
+
+	  console.debug("autoloading module: %s", module.path);
+
+	  try {
+	    require(module.path);
+	  }
+	  catch (err) {
+	    console.error("while loading '%s': %s", module.path, String(err));
+	  }
+	}
+      }
+    }
   }
 
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
@@ -197,6 +226,22 @@
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._createStatement = function (data) {  
+    return new ArangoStatement(this, data);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create and execute a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._query = function (data) {  
+    return new ArangoStatement(this, { query: data }).execute();
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
@@ -567,6 +612,62 @@
 
   ArangoCollection.prototype.toString = function(seen, path, names, level) {
     return "[ArangoCollection " + this._id + "]";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   ArangoStatement
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+  
+  try {
+    var SQ = require("simple-query-basics");
+    var SB = require("statement-basics");
+    internal.ArangoStatement = SB.ArangoStatement;
+    ArangoStatement = SB.ArangoStatement;
+  }
+  catch (err) {
+    console.error("while loading 'statement-basics' module: %s", err);
+  }
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a query and return the results
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.parse = function () {
+    var result = AHUACATL_PARSE(this._query); 
+
+    return { "bindVars" : result.parameters, "collections" : result.collections };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explain a query and return the results
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.explain = function () {
+    return AHUACATL_EXPLAIN(this._query); 
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the query
+///
+/// This will return a cursor with the query results in case of success.
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.execute = function () {
+    var result = AHUACATL_RUN(this._query, 
+                              this._bindVars, 
+                              this._doCount != undefined ? this._doCount : false, 
+                              null, 
+                              true);  
+    return new SQ.GeneralArrayCursor(result, 0, null);
   };
 
 ////////////////////////////////////////////////////////////////////////////////

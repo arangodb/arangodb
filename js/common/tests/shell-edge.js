@@ -359,7 +359,7 @@ function CollectionEdgeSuite () {
         var e = edge.edges(1);
       } 
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
@@ -420,6 +420,44 @@ function CollectionEdgeSuite () {
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rollback of edge insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackEdgeInsert : function () {
+      var v1 = vertex.save({ "x" : 1 });
+      var v2 = vertex.save({ "x" : 2 });
+
+      edge.ensureUniqueConstraint("myid");
+      edge.save(v1, v2, { "myid" : 1 });
+      try {
+        edge.save(v1, v2, { "myid" : 1 });
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rollback of edge update
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackEdgeUpdate : function () {
+      var v1 = vertex.save({ "x" : 1 });
+      var v2 = vertex.save({ "x" : 2 });
+
+      edge.ensureUniqueConstraint("myid");
+      edge.save(v1, v2, { "myid" : 1 });
+      var e2 = edge.save(v1, v2, { "myid" : 2 });
+
+      try {
+        edge.update(e2, { "myid" : 1 });
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
     },
 

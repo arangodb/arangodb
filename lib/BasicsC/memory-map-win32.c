@@ -29,6 +29,7 @@
 
 #ifdef TRI_HAVE_WIN32_MMAP
 
+#include "Windows.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
 
@@ -66,7 +67,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
 
   DWORD objectProtection = PAGE_READONLY;
   DWORD viewProtection   = FILE_MAP_READ;
-  _LARGE_INTEGER mmLength;
+  LARGE_INTEGER mmLength;
   
 
   // ...........................................................................
@@ -145,30 +146,33 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
   // view is placed in memory.
   // ........................................................................
 
-  *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0)
+  *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0);
 
   if (*result == NULL) {
-    CLOSE THE OBJECT HANDLE
+    CloseHandle(*mmHandle);
     // we have failure for some reason
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
     return TRI_ERROR_SYS_ERROR;
   }
 
   return TRI_ERROR_NO_ERROR; 
-);
-
 }               
 
                 
 int TRI_UNMMFile(void* memoryAddress,  size_t numOfBytesToUnMap, void* fileHandle, void** mmHandle) {
- bool ok = UnmapViewOfFile(
+  bool ok = UnmapViewOfFile(memoryAddress);
+  ok = (CloseHandle(*mmHandle) && ok);
+  if (!ok) {
+    return TRI_ERROR_SYS_ERROR;
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 
 int TRI_ProtectMMFile(void* memoryAddress,  size_t numOfBytesToProtect, int flags, void* fileHandle, void** mmHandle) {
   DWORD objectProtection = PAGE_READONLY;
   DWORD viewProtection   = FILE_MAP_READ;
-  _LARGE_INTEGER mmLength;
+  LARGE_INTEGER mmLength;
   
 
   // ...........................................................................
