@@ -52,7 +52,7 @@ static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
 
   hash[0] = h->_direction;
   hash[1] = h->_cid;
-  hash[2] = TRI_FnvHashString((char const*) h->_key);  // h->_did;
+  hash[2] = TRI_FnvHashString((char const*) h->_key); 
 
   return TRI_FnvHashPointer(hash, sizeof(hash));  
 }
@@ -68,7 +68,6 @@ static bool IsEqualKeyEdge (TRI_multi_pointer_t* array, void const* left, void c
   l = left;
   r = right;
 
-  //return l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;  
   return l->_direction == r->_direction && l->_cid == r->_cid && (strcmp(l->_key, r->_key) == 0);  
 }
 
@@ -83,7 +82,6 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, vo
   l = left;
   r = right;
 
-  //return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
   return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && (strcmp(l->_key, r->_key) == 0);
 }
 
