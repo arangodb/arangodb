@@ -212,7 +212,7 @@ for_statement:
         ABORT_OOM
       }
 
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -225,7 +225,7 @@ filter_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -238,7 +238,7 @@ let_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -259,7 +259,7 @@ collect_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -310,7 +310,7 @@ sort_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -359,11 +359,11 @@ limit_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -373,7 +373,7 @@ limit_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }
@@ -386,7 +386,7 @@ return_statement:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, node)) {
+      if (!TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
       
@@ -422,7 +422,7 @@ expression:
         ABORT_OOM
       }
       
-      if (!TRI_AddStatementListAql(context->_statements, subQuery)) {
+      if (!TRI_AppendStatementListAql(context->_statements, subQuery)) {
         ABORT_OOM
       }
 
@@ -767,7 +767,7 @@ reference:
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, $4);
       
-      if (!TRI_AddStatementListAql(context->_statements, expand)) {
+      if (!TRI_AppendStatementListAql(context->_statements, expand)) {
         ABORT_OOM
       }
 

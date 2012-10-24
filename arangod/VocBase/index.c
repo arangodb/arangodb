@@ -117,7 +117,7 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
   if (name == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, number);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     LOG_ERROR("out of memory when creating index name");
     return false;
   }
@@ -127,17 +127,17 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
   if (filename == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, number);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, name);
     LOG_ERROR("out of memory when creating index filename");
     return false;
   }
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   res = TRI_UnlinkFile(filename);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot remove index definition: %s", TRI_last_error());
@@ -171,13 +171,13 @@ int TRI_SaveIndex (TRI_primary_collection_t* collection, TRI_index_t* idx) {
   name = TRI_Concatenate3String("index-", number, ".json");
   filename = TRI_Concatenate2File(collection->base._directory, name);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, number);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
   // and save
   ok = TRI_SaveJson(filename, json);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (! ok) {
@@ -204,8 +204,8 @@ TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* collection, TRI_idx_iid_
 
   doc = (TRI_document_collection_t*) collection;
 
-  for (i = 0;  i < doc->_secondaryIndexes._length;  ++i) {
-    idx = doc->_secondaryIndexes._buffer[i];
+  for (i = 0;  i < doc->_allIndexes._length;  ++i) {
+    idx = doc->_allIndexes._buffer[i];
 
     if (idx->_iid == iid) {
       return idx;
@@ -346,11 +346,16 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t* idx, TRI_primary_collection_t
   }
   
   // create json object and fill it
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (json == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id",   TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, idx->_iid));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "cap"));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, cap->_size));
+    return NULL;
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",   TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "cap"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, cap->_size));
 
   return json;
 }
@@ -424,7 +429,12 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collectio
                                       size_t size) {
   TRI_cap_constraint_t* cap;
 
-  cap = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  cap = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_cap_constraint_t), false);
+  if (cap == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
   
   cap->base._iid = TRI_NewTickVocBase();
   cap->base._type = TRI_IDX_TYPE_CAP_CONSTRAINT;
@@ -461,7 +471,7 @@ void TRI_DestroyCapConstraint (TRI_index_t* idx) {
 
 void TRI_FreeCapConstraint (TRI_index_t* idx) {
   TRI_DestroyCapConstraint(idx);
-  TRI_Free(TRI_CORE_MEM_ZONE, idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1029,11 +1039,17 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* collection,
 
   if (geo == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
     return NULL;
   }
 
-  ln = TRI_DuplicateString(locationName);
-  // TODO: ln might be NULL
+  ln = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, locationName);
+  if (ln == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   TRI_InitVectorString(&geo->base._fields, TRI_UNKNOWN_MEM_ZONE);
 
@@ -1103,11 +1119,26 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
 
   if (geo == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
     return NULL;
   }
 
-  lat = TRI_DuplicateString(latitudeName);
-  lon = TRI_DuplicateString(longitudeName);
+  lat = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, latitudeName);
+  if (lat == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+
+  lon = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, longitudeName);
+  if (lon == NULL) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, lat);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
 
   TRI_InitVectorString(&geo->base._fields, TRI_UNKNOWN_MEM_ZONE);
 
@@ -1150,6 +1181,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
     TRI_DestroyVectorString(&geo->base._fields);
     GeoIndex_free(geo->_geoIndex); 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, geo);
+
     LOG_WARNING("geo index creation failed -- internal error when assigning function calls");
     return NULL;
   }
@@ -1444,8 +1476,7 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // These will be used for hashing.
   // .............................................................................
     
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
          
   res = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
 
@@ -1466,12 +1497,12 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     
     if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
       if (hashIndex->base._unique) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
       }
     }
     else {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
       return res;
     }
   }
@@ -1492,7 +1523,7 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // contents of which are stored in the hash array.
   // .............................................................................
       
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+  TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
   
   return res;
 }
@@ -1521,8 +1552,7 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // Allocate some memory for the HashIndexElement structure
   // .............................................................................
 
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
 
   // .............................................................................
   // Fill the json field list from the document
@@ -1552,12 +1582,12 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     
     if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) { 
       if (hashIndex->base._unique) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
       }
     }
     else {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
       return res;
     }
   }
@@ -1577,7 +1607,7 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // Deallocate memory allocated to hashElement.fields above
   // .............................................................................
     
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+  TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
   
   return res;
 }
@@ -1616,8 +1646,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
   // Allocate some memory for the HashIndexElement structure
   // .............................................................................
 
-  hashElement.numFields = hashIndex->_paths._length;
-  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashElement.numFields, false);
+  hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
   
   // .............................................................................
   // Update for unique hash index
@@ -1680,12 +1709,12 @@ static int UpdateHashIndex (TRI_index_t* idx,
     // probably fields do not match. 
     if (res == TRI_WARNING_ARANGO_INDEX_HASH_DOCUMENT_ATTRIBUTE_MISSING) {
       if (hashIndex->base._unique) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+        TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
         return TRI_ERROR_NO_ERROR;
       }
     }
     else {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashElement.fields);
+      TRI_Free(TRI_CORE_MEM_ZONE, hashElement.fields);
       return res;
     }
   }
@@ -1730,7 +1759,8 @@ static int UpdateHashIndex (TRI_index_t* idx,
 TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
-                                  bool unique) {
+                                  bool unique,
+                                  size_t initialDocumentCount) {
   TRI_hash_index_t* hashIndex;
   int result;
   size_t j;
@@ -1770,15 +1800,27 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
-    TRI_PushBackVectorString(&hashIndex->base._fields, TRI_DuplicateString(name));
+    if (copy == NULL) {
+      TRI_DestroyVector(&hashIndex->_paths); 
+      TRI_DestroyVectorString(&hashIndex->base._fields); 
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+
+    TRI_PushBackVectorString(&hashIndex->base._fields, copy);
   }
 
   if (unique) {
-    hashIndex->_hashIndex = HashIndex_new();
+    // create a unique index preallocated for the current number of documents
+    hashIndex->_hashIndex = HashIndex_new(hashIndex->_paths._length, initialDocumentCount);
   }
   else {
-    hashIndex->_hashIndex = MultiHashIndex_new();
+    // create a non-unique index preallocated for the current number of documents
+    hashIndex->_hashIndex = MultiHashIndex_new(hashIndex->_paths._length, initialDocumentCount);
   }  
   
   if (hashIndex->_hashIndex == NULL) { // oops out of memory?
@@ -1865,56 +1907,6 @@ void TRI_FreeResultHashIndex (const TRI_index_t* const idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given a JSON list
-///
-/// @warning who ever calls this function is responsible for destroying
-/// TRI_hash_index_elements_t* results
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_elements_t* TRI_LookupJsonHashIndex (TRI_index_t* idx, TRI_json_t* values) {
-  TRI_hash_index_t* hashIndex;
-  TRI_hash_index_elements_t* result;
-  HashIndexElement element;
-  TRI_shaper_t* shaper;
-  size_t j;
-  
-  element.numFields = values->_value._objects._length;
-  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
-
-  if (element.fields == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    LOG_WARNING("out-of-memory in LookupJsonHashIndex");
-    return NULL; 
-  }  
-    
-  hashIndex = (TRI_hash_index_t*) idx;
-  shaper = hashIndex->base._collection->_shaper;
-    
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_json_t* jsonObject = (TRI_json_t*) (TRI_AtVector(&(values->_value._objects), j));
-    TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(shaper, jsonObject);
-
-    element.fields[j] = *shapedObject;
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject);
-  }
-  
-  if (hashIndex->base._unique) {
-    result = HashIndex_find(hashIndex->_hashIndex, &element);
-  }
-  else {
-    result = MultiHashIndex_find(hashIndex->_hashIndex, &element);
-  }
-
-  for (j = 0; j < element.numFields; ++j) {
-    TRI_DestroyShapedJson(shaper, element.fields + j);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-  
-  return result;  
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1926,8 +1918,7 @@ TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_
   
   hashIndex = (TRI_hash_index_t*) idx;
 
-  element.numFields = hashIndex->_paths._length;
-  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false);
+  element.fields    = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
 
   if (element.fields == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -1935,7 +1926,7 @@ TRI_hash_index_elements_t* TRI_LookupShapedJsonHashIndex (TRI_index_t* idx, TRI_
     return NULL; 
   }  
 
-  for (j = 0; j < element.numFields; ++j) {
+  for (j = 0; j < hashIndex->_paths._length; ++j) {
     element.fields[j] = *values[j];
   }
     
@@ -2530,8 +2521,18 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
-    TRI_PushBackVectorString(&pqIndex->base._fields, TRI_DuplicateString(name));
+    if (copy == NULL) {
+      TRI_DestroyVector(&pqIndex->_paths);
+      TRI_DestroyVectorString(&pqIndex->base._fields);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, pqIndex);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+
+    TRI_PushBackVectorString(&pqIndex->base._fields, copy);
   }
 
   if (!unique) {
@@ -3129,6 +3130,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
     path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, shape);
     if (path == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
+
       return NULL;
     }  
     fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
@@ -3139,8 +3141,9 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t* idx, TRI_primary_collection_t
   // create json object and fill it
   // ..........................................................................  
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (!json) {
+  if (json == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
+
     return NULL;
   }
 
@@ -3530,7 +3533,18 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
-    TRI_PushBackVectorString(&skiplistIndex->base._fields, TRI_DuplicateString(name));
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+
+    if (copy == NULL) {
+      TRI_DestroyVector(&skiplistIndex->_paths);
+      TRI_DestroyVectorString(&skiplistIndex->base._fields);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistIndex);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+
+    TRI_PushBackVectorString(&skiplistIndex->base._fields, copy); 
   }
   
   if (unique) {
@@ -4450,7 +4464,19 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
 
   for (j = 0;  j < fields->_length;  ++j) {
     char const* name = fields->_buffer[j];
-    TRI_PushBackVectorString(&baIndex->base._fields, TRI_DuplicateString(name));
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+
+    if (copy == NULL) {
+      TRI_DestroyVector(&baIndex->_values);
+      TRI_DestroyVector(&baIndex->_paths);
+      TRI_DestroyVectorString(&baIndex->base._fields);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, baIndex);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+      return NULL;
+    }
+
+    TRI_PushBackVectorString(&baIndex->base._fields, copy);
   }
   
   

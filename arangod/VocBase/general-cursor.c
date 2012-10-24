@@ -225,7 +225,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_general_cursor_result_t* resu
 /// @brief exclusively lock a general cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-inline void TRI_LockGeneralCursor (TRI_general_cursor_t* const cursor) {
+void TRI_LockGeneralCursor (TRI_general_cursor_t* const cursor) {
   TRI_LockMutex(&cursor->_lock);
 }
 
@@ -233,7 +233,7 @@ inline void TRI_LockGeneralCursor (TRI_general_cursor_t* const cursor) {
 /// @brief unlock a general cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-inline void TRI_UnlockGeneralCursor (TRI_general_cursor_t* const cursor) {
+void TRI_UnlockGeneralCursor (TRI_general_cursor_t* const cursor) {
   assert(cursor);
 
   TRI_UnlockMutex(&cursor->_lock);

@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/common.h>
-#include "lib/BasicsC/voc-errors.h"
+#include "./lib/BasicsC/voc-errors.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocError
@@ -54,7 +54,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
-  REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maixaml size of journal too small");
+  REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maixmal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");

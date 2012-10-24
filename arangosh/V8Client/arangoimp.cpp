@@ -43,7 +43,7 @@
 #include "ImportHelper.h"
 #include "Logger/Logger.h"
 #include "Rest/Endpoint.h"
-#include "Rest/Initialise.h"
+#include "Rest/InitialiseRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8Client/V8ClientConnection.h"

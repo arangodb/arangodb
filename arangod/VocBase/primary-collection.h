@@ -58,7 +58,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-locking collection index %p", a); \
   TRI_ReadLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +65,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-unlocking collection index %p", a); \
   TRI_ReadUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +72,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-locking collection index %p", a); \
   TRI_WriteLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +79,6 @@ struct TRI_cap_constraint_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-unlocking collection index %p", a); \
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,16 +210,6 @@ TRI_doc_collection_info_t;
 /// Ends a write transaction. Should only be called after a successful
 /// @LIT{beginWrite}.
 ///
-/// @FUN{void createHeader (TRI_primary_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t*, void const* @FA{data})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Creates a new header.
-///
-/// @FUN{void updateHeader (TRI_primary_collection_t*, TRI_datafile_t*, TRI_df_marker_t const*, size_t @FA{markerSize}, TRI_doc_mptr_t const* {current}, TRI_doc_mptr_t* @FA{update})}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Updates an existing header.
-///
 /// @FUN{TRI_doc_mptr_t const create (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool @FA{release})}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
@@ -308,7 +294,7 @@ typedef struct TRI_primary_collection_s {
   TRI_collection_t base;
   
   // .............................................................................
-  // this lock protects the _primaryIndex plus the _secondaryIndexes, _edgesIndex,
+  // this lock protects the _primaryIndex plus the _allIndexes, _edgesIndex,
   // and _headers attributes in derived types
   // .............................................................................
 
@@ -331,18 +317,17 @@ typedef struct TRI_primary_collection_s {
   void (*createHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  TRI_doc_mptr_t (*create) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key, bool);
-  TRI_doc_mptr_t (*createJson) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool);
-  TRI_voc_key_t (*createLock) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*);
-
+  TRI_doc_mptr_t (*create) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key, bool, bool);
+  TRI_doc_mptr_t (*createJson) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool, bool);
+  TRI_voc_key_t (*createLock) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, bool);
   TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_key_t);
 
-  TRI_doc_mptr_t (*update) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  TRI_doc_mptr_t (*updateJson) (struct TRI_primary_collection_s*, TRI_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  int (*updateLock) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
+  TRI_doc_mptr_t (*update) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
+  TRI_doc_mptr_t (*updateJson) (struct TRI_primary_collection_s*, TRI_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
+  int (*updateLock) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
 
-  int (*destroy) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
-  int (*destroyLock) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e);
+  int (*destroy) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
+  int (*destroyLock) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);
@@ -353,7 +338,7 @@ TRI_primary_collection_t;
 /// @brief document datafile marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_document_marker_s {
+typedef struct TRI_doc_document_marker_s_deprecated {
   TRI_df_marker_t base;
 
   TRI_voc_did_t _did;        // this is the tick for a create, but not an update
@@ -370,7 +355,7 @@ TRI_doc_document_marker_t_deprecated;
 /// @brief edge datafile marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_edge_marker_s {
+typedef struct TRI_doc_edge_marker_s_deprecated {
   TRI_doc_document_marker_t_deprecated base;
 
   TRI_voc_cid_t _toCid;
@@ -395,8 +380,8 @@ typedef struct TRI_doc_document_key_marker_s {
 
   TRI_shape_sid_t _shape;
 
-  size_t _offsetKey;
-  size_t _offsetJson;
+  uint16_t _offsetKey;
+  uint16_t _offsetJson;
 }
 TRI_doc_document_key_marker_t;
 
@@ -408,10 +393,10 @@ typedef struct TRI_doc_edge_key_marker_s {
   TRI_doc_document_key_marker_t base;
 
   TRI_voc_cid_t _toCid;
-  size_t _offsetToKey;
+  uint16_t _offsetToKey;
   
   TRI_voc_cid_t _fromCid;  
-  size_t _offsetFromKey;
+  uint16_t _offsetFromKey;
 }
 TRI_doc_edge_key_marker_t;
 
@@ -419,7 +404,7 @@ TRI_doc_edge_key_marker_t;
 /// @brief document datafile deletion marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_deletion_marker_s {
+typedef struct TRI_doc_deletion_marker_s_deprecated {
   TRI_df_marker_t base;
 
   TRI_voc_did_t _did;        // this is the tick for a create, but not an update
@@ -438,7 +423,7 @@ typedef struct TRI_doc_deletion_key_marker_s {
   TRI_voc_rid_t _rid;        // this is the tick for an create and update
   TRI_voc_eid_t _sid;
 
-  size_t _offsetKey;
+  uint16_t _offsetKey;
 }
 TRI_doc_deletion_key_marker_t;
 

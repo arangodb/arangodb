@@ -37,13 +37,15 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <TargetName>arango</TargetName>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl-0.9.8k-lib\include;..\..\3rdParty\boost_1_48_0\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>USE_READLINE_STATIC;_ORESTE_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl\x86\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;USE_READLINE_STATIC;_ORESTE_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -55,7 +57,9 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\..\lib;..\..\VisualStudio;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl\x86\include;..\..\3rdParty\VisualStudio\mygetopt;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;USE_READLINE_STATIC;_ORESTE_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -64,6 +68,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\3rdParty\VisualStudio\mygetopt\getopt.h" />
+    <ClInclude Include="..\..\3rdParty\VisualStudio\mygetopt\mygetopt.h" />
     <ClInclude Include="..\..\lib\BasicsC\associative-multi.h" />
     <ClInclude Include="..\..\lib\BasicsC\associative.h" />
     <ClInclude Include="..\..\lib\BasicsC\common.h" />
@@ -108,12 +114,12 @@
     <ClInclude Include="..\..\lib\Basics\Exceptions.h" />
     <ClInclude Include="..\..\lib\Basics\FileUtils.h" />
     <ClInclude Include="..\..\lib\Basics\Functor.h" />
-    <ClInclude Include="..\..\lib\Basics\Initialise.h" />
+    <ClInclude Include="..\..\lib\Basics\InitialiseBasics.h" />
     <ClInclude Include="..\..\lib\Basics\LibraryLoader.h" />
     <ClInclude Include="..\..\lib\Basics\Mutex.h" />
     <ClInclude Include="..\..\lib\Basics\MutexLocker.h" />
     <ClInclude Include="..\..\lib\Basics\ProgramOptions.h" />
-    <ClInclude Include="..\..\lib\Basics\Random.h" />
+    <ClInclude Include="..\..\lib\Basics\RandomGenerator.h" />
     <ClInclude Include="..\..\lib\Basics\RandomHeap.h" />
     <ClInclude Include="..\..\lib\Basics\ReadLocker.h" />
     <ClInclude Include="..\..\lib\Basics\ReadUnlocker.h" />
@@ -141,7 +147,7 @@
     <ClInclude Include="..\..\lib\Rest\Handler.h" />
     <ClInclude Include="..\..\lib\Rest\HttpRequest.h" />
     <ClInclude Include="..\..\lib\Rest\HttpResponse.h" />
-    <ClInclude Include="..\..\lib\Rest\Initialise.h" />
+    <ClInclude Include="..\..\lib\Rest\InitialiseRest.h" />
     <ClInclude Include="..\..\lib\Rest\JsonContainer.h" />
     <ClInclude Include="..\..\lib\Rest\LineRequest.h" />
     <ClInclude Include="..\..\lib\Rest\LineResponse.h" />
@@ -180,6 +186,7 @@
     <ClInclude Include="..\..\lib\Variant\VariantVector.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\3rdParty\VisualStudio\mygetopt\mygetopt.c" />
     <ClCompile Include="..\..\lib\BasicsC\associative-multi.c" />
     <ClCompile Include="..\..\lib\BasicsC\associative.c" />
     <ClCompile Include="..\..\lib\BasicsC\conversions.c" />
@@ -213,13 +220,13 @@
     <ClCompile Include="..\..\lib\Basics\ConditionVariable.cpp" />
     <ClCompile Include="..\..\lib\Basics\Exceptions.cpp" />
     <ClCompile Include="..\..\lib\Basics\FileUtils.cpp" />
-    <ClCompile Include="..\..\lib\Basics\Initialise.cpp" />
+    <ClCompile Include="..\..\lib\Basics\InitialiseBasics.cpp" />
     <ClCompile Include="..\..\lib\Basics\LibraryLoader.cpp" />
     <ClCompile Include="..\..\lib\Basics\Mutex.cpp" />
     <ClCompile Include="..\..\lib\Basics\MutexLocker.cpp" />
     <ClCompile Include="..\..\lib\Basics\ProgramOptions.cpp" />
     <ClCompile Include="..\..\lib\Basics\ProgramOptionsDescription.cpp" />
-    <ClCompile Include="..\..\lib\Basics\Random.cpp" />
+    <ClCompile Include="..\..\lib\Basics\RandomGenerator.cpp" />
     <ClCompile Include="..\..\lib\Basics\ReadLocker.cpp" />
     <ClCompile Include="..\..\lib\Basics\ReadUnlocker.cpp" />
     <ClCompile Include="..\..\lib\Basics\ReadWriteLock.cpp" />
@@ -243,7 +250,7 @@
     <ClCompile Include="..\..\lib\Rest\Handler.cpp" />
     <ClCompile Include="..\..\lib\Rest\HttpRequest.cpp" />
     <ClCompile Include="..\..\lib\Rest\HttpResponse.cpp" />
-    <ClCompile Include="..\..\lib\Rest\Initialise.cpp" />
+    <ClCompile Include="..\..\lib\Rest\InitialiseRest.cpp" />
     <ClCompile Include="..\..\lib\Rest\JsonContainer.cpp" />
     <ClCompile Include="..\..\lib\Rest\SslInterface.cpp" />
     <ClCompile Include="..\..\lib\Rest\Url.cpp" />
@@ -251,7 +258,6 @@
     <ClCompile Include="..\..\lib\ShapedJson\shape-accessor.c" />
     <ClCompile Include="..\..\lib\ShapedJson\shaped-json.c" />
     <ClCompile Include="..\..\lib\Statistics\statistics.cpp" />
-    <ClCompile Include="..\..\lib\Utilities\LineEditor.cpp" />
     <ClCompile Include="..\..\lib\Utilities\ScriptLoader.cpp" />
     <ClCompile Include="..\..\lib\Variant\VariantArray.cpp" />
     <ClCompile Include="..\..\lib\Variant\VariantBlob.cpp" />

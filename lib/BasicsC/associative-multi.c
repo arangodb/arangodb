@@ -34,6 +34,25 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Collections
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initial number of elements of a container
+////////////////////////////////////////////////////////////////////////////////
+
+#define INITIAL_SIZE (10)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -60,7 +79,9 @@ static void AddNewElement (TRI_multi_array_t* array, void* element) {
 
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
+#endif    
   }
 
   // add a new element to the associative array
@@ -81,9 +102,8 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrResizes++;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, false);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, true);
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -93,10 +113,9 @@ static void ResizeMultiArray (TRI_multi_array_t* array) {
   }
 
   array->_nrUsed = 0;
-
-  for (j = 0; j < array->_nrAlloc; j++) {
-    array->clearElement(array, array->_table + j * array->_elementSize);
-  }
+#ifdef TRI_INTERNAL_STATS
+  array->_nrResizes++;
+#endif
 
   for (j = 0; j < oldAlloc; j++) {
     if (! array->isEmptyElement(array, oldTable + j * array->_elementSize)) {
@@ -133,8 +152,6 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
                         bool (*isEmptyElement) (TRI_multi_array_t*, void*),
                         bool (*isEqualKeyElement) (TRI_multi_array_t*, void*, void*),
                         bool (*isEqualElementElement) (TRI_multi_array_t*, void*, void*)) {
-  char* p;
-  char* e;
 
   array->hashKey = hashKey;
   array->hashElement = hashElement;
@@ -145,18 +162,16 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
 
   array->_memoryZone = zone;
   array->_elementSize = elementSize;
-  array->_nrAlloc = 10;
+  array->_nrAlloc = INITIAL_SIZE;
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * array->_nrAlloc, false);
-
-  p = array->_table;
-  e = p + array->_elementSize * array->_nrAlloc;
-
-  for (;  p < e;  p += array->_elementSize) {
-    array->clearElement(array, p);
+  array->_table = TRI_Allocate(array->_memoryZone, array->_elementSize * array->_nrAlloc, true);
+  if (array->_table == NULL) {
+    array->_nrAlloc = 0;
   }
 
   array->_nrUsed = 0;
+
+#ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
   array->_nrAdds = 0;
   array->_nrRems = 0;
@@ -165,6 +180,7 @@ void TRI_InitMultiArray(TRI_multi_array_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,8 +231,10 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t* zone,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
@@ -224,9 +242,11 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiArray (TRI_memory_zone_t* zone,
     if (array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
       TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
     }
+#ifdef TRI_INTERNAL_STATS
     else {
       array->_nrProbesF++;
     }      
+#endif
 
     i = (i + 1) % array->_nrAlloc;
   }
@@ -258,17 +278,21 @@ TRI_vector_pointer_t TRI_LookupByElementMultiArray (TRI_memory_zone_t* zone,
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     if (array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
       TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
     }
+#ifdef TRI_INTERNAL_STATS
     else {
       array->_nrProbesF++;
     }      
+#endif
 
     i = (i + 1) % array->_nrAlloc;
   }
@@ -300,14 +324,18 @@ bool TRI_InsertElementMultiArray (TRI_multi_array_t* array, void* element, bool 
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
-  
+#endif
+    
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   // ...........................................................................
@@ -355,13 +383,17 @@ bool TRI_InsertKeyMultiArray (TRI_multi_array_t* array, void* key, void* element
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
   
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
-  
+#endif
+    
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   // ...........................................................................
@@ -394,14 +426,18 @@ bool TRI_RemoveElementMultiArray (TRI_multi_array_t* array, void* element, void*
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return false
@@ -452,14 +488,18 @@ bool TRI_RemoveKeyMultiArray (TRI_multi_array_t* array, void* key, void* old) {
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table -- we can only match keys
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return false
@@ -530,7 +570,9 @@ static void AddNewElementPointer (TRI_multi_pointer_t* array, void* element) {
 
   while (array->_table[i] != NULL) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
+#endif    
   }
 
   // add a new element to the associative array
@@ -551,7 +593,6 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrResizes++;
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
@@ -561,8 +602,11 @@ static void ResizeMultiPointer (TRI_multi_pointer_t* array) {
 
     return;
   }
-
+  
   array->_nrUsed = 0;
+#ifdef TRI_INTERNAL_STATS
+  array->_nrResizes++;
+#endif
 
   // table is already clear by allocate, copy old data
   for (j = 0; j < oldAlloc; j++) {
@@ -603,7 +647,7 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->isEqualElementElement = isEqualElementElement;
 
   array->_memoryZone = zone;
-  array->_nrAlloc = 10;
+  array->_nrAlloc = INITIAL_SIZE;
 
   array->_table = TRI_Allocate(zone, sizeof(void*) * array->_nrAlloc, true);
 
@@ -612,6 +656,8 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   }
 
   array->_nrUsed = 0;
+
+#ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
   array->_nrAdds = 0;
   array->_nrRems = 0;
@@ -620,6 +666,7 @@ void TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -670,18 +717,21 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL) {
     if (array->isEqualKeyElement(array, key, array->_table[i])) {
       TRI_PushBackVectorPointer(&result, array->_table[i]);
     }
+#ifdef TRI_INTERNAL_STATS
     else {
       array->_nrProbesF++;
     }
-
+#endif
     i = (i + 1) % array->_nrAlloc;
   }
 
@@ -701,13 +751,17 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif    
   }
 
   // return whatever we found
@@ -732,13 +786,17 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, void* element, 
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif
   }
 
   old = array->_table[i];
@@ -777,13 +835,17 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return 0

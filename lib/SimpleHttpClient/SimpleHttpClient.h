@@ -154,6 +154,8 @@ namespace triagens {
       
       std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
 
+      const size_t _maxPacketSize;
+
     };
   }
 }

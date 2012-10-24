@@ -25,6 +25,10 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "vocbase.h"
 
 #include <regex.h>
@@ -439,7 +443,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
 
 static inline void FreeCollectionPath (TRI_vocbase_col_t* const collection) {
   if (collection->_path) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, (char*) collection->_path);
+    TRI_Free(TRI_CORE_MEM_ZONE, (char*) collection->_path);
   }
   collection->_path = NULL;
 }
@@ -631,7 +635,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           if (c == NULL) {
             LOG_FATAL("failed to add simple collection from '%s'", file);
 
-            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, file);
+            TRI_FreeString(TRI_CORE_MEM_ZONE, file);
             regfree(&re);
             TRI_DestroyVectorString(&files);
 
@@ -651,7 +655,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
       LOG_DEBUG("ignoring non-directory '%s'", file);
     }
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
   }
 
   regfree(&re);
@@ -670,21 +674,12 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
   union { void const* v; TRI_vocbase_col_t* c; } found;
   TRI_vocbase_col_t* collection;
   TRI_col_parameter_t parameter;
-  char wrong;
-  
-  if (*name == '\0') {
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
   
   // check that the name does not contain any strange characters
   parameter._isSystem = false;
-  wrong = TRI_IsAllowedCollectionName(&parameter, name);
-
-  if (wrong != 0) {
-    LOG_DEBUG("found illegal character in name: %c", wrong);
-
+  if (! TRI_IsAllowedCollectionName(&parameter, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+
     return NULL;
   }
 
@@ -999,12 +994,13 @@ size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a collection name is allowed
 ///
-/// Returns 0 for success or the offending character.
+/// Returns true if the name is allowed and false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_IsAllowedCollectionName (TRI_col_parameter_t* paramater, char const* name) {
+bool TRI_IsAllowedCollectionName (TRI_col_parameter_t* paramater, char const* name) {
   bool ok;
   char const* ptr;
+  size_t length = 0;
 
   for (ptr = name;  *ptr;  ++ptr) {
     if (name < ptr || paramater->_isSystem) {
@@ -1015,11 +1011,18 @@ char TRI_IsAllowedCollectionName (TRI_col_parameter_t* paramater, char const* na
     }
 
     if (! ok) {
-      return *ptr;
+      return false;
     }
+
+    ++length;
   }
 
-  return 0;
+  if (length == 0 || length > 64) {
+    // invalid name length
+    return false;
+  } 
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1113,7 +1116,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   if (res == TRI_ERROR_NO_ERROR) {
     LOG_FATAL("database is locked, please check the lock file '%s'", lockFile);
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, lockFile);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
 
     TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_LOCKED);
     return NULL;
@@ -1128,7 +1131,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL("cannot lock the database, please check the lock file '%s': %s", lockFile, TRI_last_error());
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, lockFile);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
     return NULL;
   }
 
@@ -1197,7 +1200,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     TRI_DestroyVectorPointer(&vocbase->_collections);
     TRI_DestroyVectorPointer(&vocbase->_deadCollections);
     TRI_DestroyLockFile(vocbase->_lockFile);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, vocbase->_lockFile);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
     TRI_FreeShadowStore(vocbase->_cursors);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
@@ -1300,7 +1303,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // release lock on database
   TRI_DestroyLockFile(vocbase->_lockFile);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, vocbase->_lockFile);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
 
   // destroy locks
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
@@ -1407,24 +1410,15 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_document_collection_t* sim;
   TRI_col_type_e type;
   char const* name;
-  char wrong;
   void const* found;
   
   assert(parameter);
   name = parameter->_name;
 
-  if (*name == '\0') {
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return NULL;
-  }
-  
   // check that the name does not contain any strange characters
-  wrong = TRI_IsAllowedCollectionName(parameter, name);
-
-  if (wrong != 0) {
-    LOG_DEBUG("found illegal character in name: %c", wrong);
-
+  if (! TRI_IsAllowedCollectionName(parameter, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+
     return NULL;
   }
   
@@ -1691,7 +1685,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   TRI_col_info_t info;
   TRI_col_parameter_t parameter;
   void const* found;
-  char wrong;
   char const* oldName;
   int res;
 
@@ -1702,16 +1695,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_ERROR_NO_ERROR;
   }
 
-  // check name conventions
-  if (*newName == '\0') {
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
-
   parameter._isSystem = (*oldName == '_');
-  wrong = TRI_IsAllowedCollectionName(&parameter, newName);
-
-  if (wrong != 0) {
-    LOG_DEBUG("found illegal character in name: %c", wrong);
+  if (! TRI_IsAllowedCollectionName(&parameter, newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 

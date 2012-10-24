@@ -373,6 +373,12 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_rev", _rev);
   }
 
+  TRI_json_t* _key = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, document->_key, strlen(document->_key));
+
+  if (_key) {
+    TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_key", _key);
+  }
+
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -399,6 +405,10 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
   if (_rev) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, _rev);
+  }
+
+  if (_key) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _key);
   }
 
   // and generate a response
@@ -497,7 +507,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char 
 /// @brief extracts the update policy
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
+TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () const {
   bool found;
   char const* policy = _request->value("policy", found);
 
@@ -515,6 +525,21 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
   else {
     return TRI_DOC_UPDATE_ERROR;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the waitForSync value
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestVocbaseBaseHandler::extractWaitForSync () const {
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
+
+  if (found) {
+    return StringUtils::boolean(forceStr);
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,7 +561,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
 
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
     }
 
     return 0;

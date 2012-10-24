@@ -52,6 +52,9 @@
 # include "../locale/localeinfo.h"
 #endif
 
+
+#define alloca _alloca
+
 /* On some systems, limits.h sets RE_DUP_MAX to a lower value than
    GNU regex allows.  Include it before <regex.h>, which correctly
    #undefs RE_DUP_MAX and sets it to the right value.  */

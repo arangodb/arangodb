@@ -49,8 +49,36 @@ static int                   HashIndex_queryMethodCall  (void*, TRI_index_operat
 static TRI_index_iterator_t* HashIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
 static int                   HashIndex_freeMethodCall   (void*, void*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an initialise a hash index
+/// this function is used by unique and non-unique indexes to set up the
+/// hash index base structure
+////////////////////////////////////////////////////////////////////////////////
 
+static HashIndex* CreateHashIndex (size_t numFields, size_t initialDocumentCount) {
+  HashIndex* hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
+  if (hashIndex == NULL) {
+    return NULL;
+  }
 
+  hashIndex->hashArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hasharray_t), false);
+  if (hashIndex->hashArray == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
+
+    return NULL;
+  }    
+    
+  if (! TRI_InitHashArray(hashIndex->hashArray, 
+                          initialDocumentCount,
+                          numFields, 
+                          sizeof(HashIndexElement))) { 
+    HashIndex_free(hashIndex);
+
+    return NULL;    
+  }
+
+  return hashIndex;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a hash index results list
@@ -74,7 +102,7 @@ static void FreeResults (TRI_hash_index_elements_t* list) {
 /// @brief destroys the hash index by calling the hash array's own Free function 
 ////////////////////////////////////////////////////////////////////////////////
 
-void HashIndex_destroy(HashIndex* hashIndex) {
+void HashIndex_destroy (HashIndex* hashIndex) {
   if (hashIndex != NULL) {
     TRI_FreeHashArray(hashIndex->hashArray);
   }
@@ -85,7 +113,7 @@ void HashIndex_destroy(HashIndex* hashIndex) {
 /// @brief destroys the hash index and frees the memory associated with the index structure
 ////////////////////////////////////////////////////////////////////////////////
 
-void HashIndex_free(HashIndex* hashIndex) {
+void HashIndex_free (HashIndex* hashIndex) {
   if (hashIndex != NULL) {
     HashIndex_destroy(hashIndex);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);  
@@ -96,51 +124,34 @@ void HashIndex_free(HashIndex* hashIndex) {
 /// @brief free a result set allocated by HashIndex_find
 ////////////////////////////////////////////////////////////////////////////////
 
-void HashIndex_freeResult(TRI_hash_index_elements_t* const list) {
+void HashIndex_freeResult (TRI_hash_index_elements_t* const list) {
   FreeResults(list);
 }
-
-
 
 // -----------------------------------------------------------------------------
 // constructors public functions
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a new hash array used for storage of elements in the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-
-HashIndex* HashIndex_new() {
+HashIndex* HashIndex_new (size_t numFields, size_t initialDocumentCount) {
   HashIndex* hashIndex;
 
-  hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
-  if (hashIndex == NULL) {
-    return NULL;
+  hashIndex = CreateHashIndex(numFields, initialDocumentCount);
+  if (hashIndex != NULL) {
+    hashIndex->unique = true;
   }
 
-  hashIndex->unique = true;
-  hashIndex->hashArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hasharray_t), false);
-  if (hashIndex->hashArray == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
-    return NULL;
-  }    
-    
-  if (! TRI_InitHashArray(hashIndex->hashArray, sizeof(HashIndexElement), NULL, NULL, NULL, NULL, NULL, NULL) ) {
-    HashIndex_free(hashIndex);
-    return NULL;    
-  }
-  
   return hashIndex;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Assigns a static function call to a function pointer used by Query Engine
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+int HashIndex_assignMethod (void* methodHandle, TRI_index_method_assignment_type_e methodType) {
   switch (methodType) {
   
     case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
@@ -178,7 +189,7 @@ int HashIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_
 /// @brief Adds (inserts) a data element into the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
+int HashIndex_add (HashIndex* hashIndex, HashIndexElement* element) {
   bool result;  
 
   // .............................................................................
@@ -195,7 +206,7 @@ int HashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
 /// @brief Locates an entry within the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_hash_index_elements_t* HashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
+TRI_hash_index_elements_t* HashIndex_find (HashIndex* hashIndex, HashIndexElement* element) {
   HashIndexElement* result;
   TRI_hash_index_elements_t* results;
 
@@ -240,7 +251,7 @@ TRI_hash_index_elements_t* HashIndex_find(HashIndex* hashIndex, HashIndexElement
 /// @brief An alias for HashIndex_add 
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
+int HashIndex_insert (HashIndex* hashIndex, HashIndexElement* element) {
   return HashIndex_add(hashIndex,element);
 } 
 
@@ -249,7 +260,7 @@ int HashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
 /// @brief Removes an entry from the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
+int HashIndex_remove (HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
 
   result = TRI_RemoveElementHashArray(hashIndex->hashArray, element); 
@@ -262,8 +273,8 @@ int HashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
 /// @brief then adds the afterElement
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex_update(HashIndex* hashIndex, const HashIndexElement* beforeElement, 
-                      const HashIndexElement* afterElement) {
+int HashIndex_update (HashIndex* hashIndex, const HashIndexElement* beforeElement, 
+                       const HashIndexElement* afterElement) {
   // ...........................................................................
   // This function is not currently implemented and must not be called.
   // It's purpose would be to remove the existing beforeElement and replace it
@@ -292,7 +303,7 @@ int HashIndex_update(HashIndex* hashIndex, const HashIndexElement* beforeElement
 /// @brief destroys the hash index by calling the hash array's own Free function 
 ////////////////////////////////////////////////////////////////////////////////
 
-void MultiHashIndex_destroy(HashIndex* hashIndex) {
+void MultiHashIndex_destroy (HashIndex* hashIndex) {
   HashIndex_destroy(hashIndex);
 }
 
@@ -301,7 +312,7 @@ void MultiHashIndex_destroy(HashIndex* hashIndex) {
 /// @brief destroys the hash index and frees the memory associated with the index structure
 ////////////////////////////////////////////////////////////////////////////////
 
-void MultiHashIndex_free(HashIndex* hashIndex) {
+void MultiHashIndex_free (HashIndex* hashIndex) {
   HashIndex_free(hashIndex);
 }
 
@@ -309,7 +320,7 @@ void MultiHashIndex_free(HashIndex* hashIndex) {
 /// @brief free a result set allocated by MultiHashIndex_find
 ////////////////////////////////////////////////////////////////////////////////
 
-void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const list) {
+void MultiHashIndex_freeResult (TRI_hash_index_elements_t* const list) {
   FreeResults(list);
 }
 
@@ -322,29 +333,16 @@ void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const list) {
 /// @brief Creates a new multi (non-unique) hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-HashIndex* MultiHashIndex_new() {
+HashIndex* MultiHashIndex_new (size_t numFields, size_t initialDocumentCount) {
   HashIndex* hashIndex;
 
-  hashIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndex), false);
-  if (hashIndex == NULL) {
-    return NULL;
-  }
-
-  hashIndex->unique = false;
-  hashIndex->hashArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hasharray_t), false);
-  if (hashIndex->hashArray == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hashIndex);
-    return NULL;
-  }    
-    
-  if (! TRI_InitHashArray(hashIndex->hashArray, sizeof(HashIndexElement), NULL, NULL, NULL, NULL, NULL, NULL) ) {
-    HashIndex_free(hashIndex);
-    return NULL;    
+  hashIndex = CreateHashIndex(numFields, initialDocumentCount);
+  if (hashIndex != NULL) {
+    hashIndex->unique = false;
   }
 
   return hashIndex;
 }
-
 
 // -----------------------------------------------------------------------------
 // public functions : INSERT, REMOVE & LOOKUP
@@ -355,7 +353,7 @@ HashIndex* MultiHashIndex_new() {
 /// @brief Adds (inserts) a data element into the hash array (hash index)
 ////////////////////////////////////////////////////////////////////////////////
 
-int MultiHashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
+int MultiHashIndex_add (HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
   result = TRI_InsertElementHashArrayMulti(hashIndex->hashArray, element, false);
   if (result) {
@@ -368,7 +366,7 @@ int MultiHashIndex_add(HashIndex* hashIndex, HashIndexElement* element) {
 // Locates an entry within the associative array
 // ...............................................................................
 
-TRI_hash_index_elements_t* MultiHashIndex_find(HashIndex* hashIndex, HashIndexElement* element) {
+TRI_hash_index_elements_t* MultiHashIndex_find (HashIndex* hashIndex, HashIndexElement* element) {
   TRI_vector_pointer_t result;
   TRI_hash_index_elements_t* results;
   size_t j;
@@ -412,7 +410,7 @@ TRI_hash_index_elements_t* MultiHashIndex_find(HashIndex* hashIndex, HashIndexEl
 // An alias for addIndex 
 // ...............................................................................
 
-int MultiHashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
+int MultiHashIndex_insert (HashIndex* hashIndex, HashIndexElement* element) {
   return MultiHashIndex_add(hashIndex,element);
 } 
 
@@ -421,7 +419,7 @@ int MultiHashIndex_insert(HashIndex* hashIndex, HashIndexElement* element) {
 // Removes an entry from the associative array
 // ...............................................................................
 
-int MultiHashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
+int MultiHashIndex_remove (HashIndex* hashIndex, HashIndexElement* element) {
   bool result;
   result = TRI_RemoveElementHashArrayMulti(hashIndex->hashArray, element); 
   return result ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
@@ -433,7 +431,7 @@ int MultiHashIndex_remove(HashIndex* hashIndex, HashIndexElement* element) {
 //  then adds the afterElement
 // ...............................................................................
 
-int MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement, 
+int MultiHashIndex_update (HashIndex* hashIndex, HashIndexElement* beforeElement, 
                            HashIndexElement* afterElement) {
   assert(false);
   return TRI_ERROR_INTERNAL;
@@ -445,8 +443,8 @@ int MultiHashIndex_update(HashIndex* hashIndex, HashIndexElement* beforeElement,
 // Implementation of forward declared query engine callback functions
 ////////////////////////////////////////////////////////////////////////////////////////
 
-static int HashIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
-                                     TRI_index_challenge_t* challenge, void* data) {
+static int HashIndex_queryMethodCall (void* theIndex, TRI_index_operator_t* indexOperator, 
+                                      TRI_index_challenge_t* challenge, void* data) {
   HashIndex* hIndex = (HashIndex*)(theIndex);
   if (hIndex == NULL || indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
@@ -455,8 +453,8 @@ static int HashIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* index
   return TRI_ERROR_NO_ERROR;
 }
 
-static TRI_index_iterator_t* HashIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
-                                          void* data, bool (*filter) (TRI_index_iterator_t*)) {
+static TRI_index_iterator_t* HashIndex_resultMethodCall (void* theIndex, TRI_index_operator_t* indexOperator, 
+                                                         void* data, bool (*filter) (TRI_index_iterator_t*)) {
   HashIndex* hIndex = (HashIndex*)(theIndex);
   if (hIndex == NULL || indexOperator == NULL) {
     return NULL;

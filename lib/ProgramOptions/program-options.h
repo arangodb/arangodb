@@ -68,17 +68,6 @@ typedef enum {
 /// @brief abstract base structure for descriptions
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __TCHAR_DEFINED
-
-typedef struct TRI_PO_desc_s {
-  TRI_PO_description_types_e _type;
-  TCHAR * _name;
-  char _short;
-  char * _desc;
-} TRI_PO_desc_t;
-
-#else
-
 typedef struct TRI_PO_desc_s {
   TRI_PO_description_types_e _type;
   char * _name;
@@ -86,7 +75,6 @@ typedef struct TRI_PO_desc_s {
   char * _desc;
 } TRI_PO_desc_t;
 
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of attribute of type string

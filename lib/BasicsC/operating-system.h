@@ -41,12 +41,9 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
 #define TRI_HAVE_GETGRGID                   1
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
-#define TRI_HAVE_SETGID                     1
-#define TRI_HAVE_SETUID                     1
 
 #define GLOBAL_TIMEZONE                     timezone
 
@@ -68,6 +65,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
+
+#define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_DIR_SEPARATOR_STR               "/"
+
+#define TRI_HAVE_POSIX                      1
 
 #define TRI_HAVE_DLFCN_H                    1
 
@@ -93,11 +95,16 @@
 #define TRI_HAVE_MACOS_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 #define TRI_HAVE_POSIX_MMAP                 1
+#define TRI_HAVE_POSIX_PWD_GRP              1
 
 #define TRI_HAVE_GETPPID                    1
 #define TRI_HAVE_GETRUSAGE                  1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+
+#define TRI_HAVE_SETGID                     1
+#define TRI_HAVE_SETUID                     1
+
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
@@ -158,6 +165,11 @@
 
 #ifdef __CYGWIN__
 
+#define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_DIR_SEPARATOR_STR               "/"
+
+#define TRI_HAVE_POSIX                      1
+
 #define TRI_HAVE_DLFCN_H                    1
 
 #include <bits/wordsize.h>
@@ -178,10 +190,14 @@
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 #define TRI_HAVE_POSIX_MMAP                 1
-
+#define TRI_HAVE_POSIX_PWD_GRP              1
 #define TRI_HAVE_GETLINE                    1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+
+#define TRI_HAVE_SETGID                     1
+#define TRI_HAVE_SETUID                     1
+
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
@@ -226,6 +242,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __linux__
+
+#define TRI_DIR_SEPARATOR_CHAR              '/'
+#define TRI_DIR_SEPARATOR_STR               "/"
+
+#define TRI_HAVE_POSIX                      1
 
 #define TRI_HAVE_DLFCN_H                    1
 
@@ -277,6 +298,7 @@
 #define TRI_HAVE_POSIX_SPIN                 1
 #define TRI_HAVE_POSIX_THREADS              1
 #define TRI_HAVE_POSIX_MMAP                 1
+#define TRI_HAVE_POSIX_PWD_GRP              1
 
 #define TRI_HAVE_GETLINE                    1
 #define TRI_HAVE_GETPPID                    1
@@ -284,6 +306,10 @@
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
 #define TRI_HAVE_PRCTL                      1
+
+#define TRI_HAVE_SETGID                     1
+#define TRI_HAVE_SETUID                     1
+
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
@@ -329,6 +355,9 @@
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
+#define TRI_DIR_SEPARATOR_CHAR              '\\'
+#define TRI_DIR_SEPARATOR_STR               "\\"
+
 #define _CRT_SECURE_NO_WARNINGS                     1
 #define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
@@ -356,6 +385,7 @@
 #define TRI_HAVE_WIN32_SYMBOLIC_LINK        1
 #define TRI_HAVE_WIN32_THREADS              1
 #define TRI_HAVE_WIN32_MMAP                 1
+#define TRI_HAVE_WIN32_PWD                  1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
@@ -375,6 +405,7 @@
 // ..............................................................
 // #define usleep                          Sleep 
 #define usleep                          TRI_usleep
+#define sleep                           TRI_sleep
 #define srandom                         srand
 #define fsync                           _commit
 #define isatty                          _isatty
@@ -423,6 +454,20 @@ typedef unsigned int bool;
 // ...........................................................................
 #define TRI_uid_t                       void*
 #define TRI_gid_t                       void*
+
+// ...........................................................................
+// windows does not like the keyword inline -- but only if it uses the c compiler
+// weird. _inline should work for both I hope
+// ...........................................................................
+#define inline                          _inline
+
+// ...........................................................................
+// windows uses _alloca instead of alloca
+// ...........................................................................
+#define alloca                          _alloca
+
+
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

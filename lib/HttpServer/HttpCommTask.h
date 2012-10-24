@@ -154,9 +154,12 @@ namespace triagens {
             size_t headerLength = ptr - this->_readBuffer->c_str();
 
             if (headerLength > this->_maximalHeaderSize) {
-              LOGGER_WARNING << "maximal header size is " << this->_maximalHeaderSize << ", request header size is "
-                << headerLength;
-              return false;
+              LOGGER_WARNING << "maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength;
+              // header is too large
+              HttpResponse response(HttpResponse::HEADER_TOO_LARGE);
+              this->handleResponse(&response);
+
+              return true;
             }
 
             if (ptr < end) {
@@ -170,6 +173,10 @@ namespace triagens {
 
               if (this->_request == 0) {
                 LOGGER_ERROR << "cannot generate request";
+                // internal server error
+                HttpResponse response(HttpResponse::SERVER_ERROR);
+                this->handleResponse(&response);
+
                 return false;
               }
 
@@ -190,33 +197,31 @@ namespace triagens {
                 case HttpRequest::HTTP_REQUEST_GET:
                 case HttpRequest::HTTP_REQUEST_DELETE:
                 case HttpRequest::HTTP_REQUEST_HEAD:
-                  this->_bodyLength = this->_request->contentLength();
-
-                  if (this->_bodyLength > 0) {
-                    LOGGER_WARNING << "received http GET/DELETE/HEAD request with body length, this should not happen";
-                    this->_readRequestBody = true;
-                  }
-                  else {
-                    handleRequest = true;
-                  }
-                  break;
-
                 case HttpRequest::HTTP_REQUEST_POST:
                 case HttpRequest::HTTP_REQUEST_PUT:
-                case HttpRequest::HTTP_REQUEST_PATCH:
-                  this->_bodyLength = this->_request->contentLength();
+                case HttpRequest::HTTP_REQUEST_PATCH: {
+                  const bool expectContentLength = (this->_requestType == HttpRequest::HTTP_REQUEST_POST ||
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_PUT ||
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_DELETE);
 
-                  if (this->_bodyLength > 0) {
-                    this->_readRequestBody = true;
+                  if (! checkContentLength(expectContentLength)) {
+                    return true;
                   }
-                  else {
+
+                  if (this->_bodyLength == 0) {
                     handleRequest = true;
                   }
                   break;
+                }
 
-                default:
+                default: {
                   LOGGER_WARNING << "got corrupted HTTP request '" << string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)) << "'";
-                  return false;
+                  // bad request, method not allowed
+                  HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED);
+                  this->handleResponse(&response);
+
+                  return true;
+                }
               }
 
               // check for a 100-continue
@@ -251,10 +256,24 @@ namespace triagens {
           if (this->_readRequestBody) {
             if (this->_bodyLength > this->_maximalBodySize) {
               LOGGER_WARNING << "maximal body size is " << this->_maximalBodySize << ", request body size is " << this->_bodyLength;
-              return false;
+              // request entity too large
+              HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+              this->handleResponse(&response);
+
+              return true;
             }
 
             if (this->_readBuffer->length() - this->_bodyPosition < this->_bodyLength) {
+              // still more data to be read
+
+              SocketTask* socketTask = dynamic_cast<SocketTask*>(this);
+              if (socketTask) {
+                // set read request time-out
+                LOGGER_TRACE << "waiting for rest of body to be received. request timeout set to 60 s";
+                socketTask->setKeepAliveTimeout(60.0);
+              }
+
+              // let client send more
               return true;
             }
 
@@ -274,6 +293,28 @@ namespace triagens {
             RequestStatisticsAgentAddReceivedBytes(this, this->_bodyPosition + this->_bodyLength);
 
             this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
+
+            if (this->_readBuffer->length() > 0) {
+              // we removed the front of the read buffer, but it still contains data. 
+              // this means that the content-length header of the request must have been wrong 
+              // (value in content-length header smaller than actual body size)
+
+              // check if there is invalid stuff left in the readbuffer
+              // whitespace is allowed
+              const char* p = this->_readBuffer->begin();
+              const char* e = this->_readBuffer->end();
+              while (p < e) {
+                const char c = *(p++);
+                if (c != '\n' && c != '\r' && c != ' ' && c != '\t' && c != '\0') {
+                  LOGGER_WARNING << "read buffer is not empty. probably got a wrong Content-Length header?";
+              
+                  HttpResponse response(HttpResponse::BAD);
+                  this->handleResponse(&response);
+
+                  return true;
+                }
+              }
+            }
 
             this->_requestPending = true;
 
@@ -376,6 +417,7 @@ namespace triagens {
             response->headResponse(response->bodySize());
           }
 
+          // reserve some outbuffer size
           const size_t len = response->bodySize() + 128;
           triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, len);
           // write header
@@ -400,6 +442,48 @@ namespace triagens {
           // start output
           this->fillWriteBuffer();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// check the content-length header of a request and fail it is broken
+////////////////////////////////////////////////////////////////////////////////
+ 
+        bool checkContentLength (const bool expectContentLength) {
+          const int64_t bodyLength = this->_request->contentLength();
+
+          if (bodyLength < 0) {
+            // bad request, body length is < 0. this is a client error
+            HttpResponse response(HttpResponse::LENGTH_REQUIRED);
+            this->handleResponse(&response);
+
+            return false;
+          }
+
+          if (! expectContentLength && bodyLength > 0) {
+            // content-length header was sent but the request method does not support that
+            // we'll warn but read the body anyway
+            LOGGER_WARNING << "received HTTP GET/DELETE/HEAD request with content-length, this should not happen";
+          }
+
+          if ((size_t) bodyLength > this->_maximalBodySize) {
+            // request entity too large
+            LOGGER_WARNING << "maximal body size is " << this->_maximalBodySize << ", request body size is " << bodyLength;
+            HttpResponse response(HttpResponse::ENTITY_TOO_LARGE);
+            this->handleResponse(&response);
+
+            return false;
+          }
+
+          // set instance variable to content-length value
+          this->_bodyLength = (size_t) bodyLength;
+          if (this->_bodyLength > 0) {
+            // we'll read the body
+            this->_readRequestBody = true;
+          }
+         
+          // everything's fine 
+          return true;
+        }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -115,10 +115,10 @@ namespace triagens {
       /// @brief register and dump an error message
       ////////////////////////////////////////////////////////////////////////////////
       
-      void setErrorMessage (const string& message) {
+      void setErrorMessage (const string& message, bool forceWarn = false) {
         _errorMessage = message;
        
-        if (_warn) { 
+        if (_warn || forceWarn) { 
           LOGGER_WARNING << _errorMessage;
         }
       }

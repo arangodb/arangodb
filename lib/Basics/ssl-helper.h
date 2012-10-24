@@ -28,8 +28,6 @@
 #ifndef TRIAGENS_BASICS_SSL_HELPER_H
 #define TRIAGENS_BASICS_SSL_HELPER_H 1
 
-#ifdef TRI_OPENSSL_VERSION
-
 #include "Basics/Common.h"
 
 #include <openssl/err.h>
@@ -57,8 +55,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 #endif
 

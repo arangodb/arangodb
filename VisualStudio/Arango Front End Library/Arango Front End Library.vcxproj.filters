@@ -128,9 +128,6 @@
     <ClInclude Include="..\..\lib\ResultGenerator\HtmlResultGenerator.h">
       <Filter>Result Generator Header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\ResultGenerator\Initialise.h">
-      <Filter>Result Generator Header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\ResultGenerator\JsonResultGenerator.h">
       <Filter>Result Generator Header</Filter>
     </ClInclude>
@@ -190,6 +187,9 @@
     </ClInclude>
     <ClInclude Include="..\..\3rdParty\VisualStudio\libev-4.01\ev_wrap.h">
       <Filter>Libev header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\ResultGenerator\InitialiseGenerator.h">
+      <Filter>Result Generator Header</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -253,9 +253,6 @@
     <ClCompile Include="..\..\lib\ResultGenerator\HtmlResultGenerator.cpp">
       <Filter>Result Generator Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\ResultGenerator\Initialise.cpp">
-      <Filter>Result Generator Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\ResultGenerator\JsonResultGenerator.cpp">
       <Filter>Result Generator Source</Filter>
     </ClCompile>
@@ -307,7 +304,13 @@
     <ClCompile Include="..\..\lib\Scheduler\TimerTask.cpp">
       <Filter>Scheduler Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\3rdParty\VisualStudio\libev-4.01\evwrap.c">
+    <ClCompile Include="..\..\lib\ResultGenerator\InitialiseGenerator.cpp">
+      <Filter>Result Generator Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\Scheduler\Task.cpp">
+      <Filter>Scheduler Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rdParty\VisualStudio\libev\evwrap.c">
       <Filter>Libev source</Filter>
     </ClCompile>
   </ItemGroup>

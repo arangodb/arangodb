@@ -49,11 +49,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key) {
-/*
-  TRI_voc_did_t const* k = key;
-
-  return TRI_FnvHashPointer(k, sizeof(TRI_voc_did_t));
-*/
   return TRI_FnvHashString((char const*) key);
 }
 
@@ -63,9 +58,6 @@ static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key
 
 static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
   TRI_doc_mptr_t const* e = element;
-/*
-  return TRI_FnvHashPointer(&e->_did, sizeof(TRI_voc_did_t));
-*/
   return TRI_FnvHashString((char const*) e->_key);
 }
 
@@ -74,12 +66,6 @@ static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
-/*
-  TRI_voc_did_t const* k = key;
-  TRI_doc_mptr_t const* e = element;
-
-  return *k == e->_did;
-*/
   TRI_doc_mptr_t const* e = element;
   
   char const * k = key;
@@ -93,9 +79,10 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 static TRI_voc_key_t CreateLock (TRI_primary_collection_t* document,
                                  TRI_df_marker_type_e type,
                                  TRI_shaped_json_t const* json,
-                                 void const* data) {
+                                 void const* data,
+                                 bool forceSync) {
   document->beginWrite(document);
-  return document->create(document, type, json, data, 0, true)._key;
+  return document->create(document, type, json, data, 0, true, forceSync)._key;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,11 +94,10 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
                                   TRI_json_t const* json,
                                   void const* data,
                                   bool reuseId,
-                                  bool release) {
+                                  bool release,
+                                  bool forceSync) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
-  //TRI_voc_did_t did = 0;
-  //TRI_voc_rid_t rid = 0;
   TRI_voc_key_t key = 0;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
@@ -122,20 +108,6 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
     return result;
   }
   
-  /*
-  if (reuseId && json != NULL && json->_type == TRI_JSON_ARRAY) {
-    TRI_json_t* id = TRI_LookupArrayJson((TRI_json_t*) json, "_id");
-    TRI_json_t* rev = TRI_LookupArrayJson((TRI_json_t*) json, "_rev");
-
-    if (id != NULL && id->_type == TRI_JSON_NUMBER && 
-        rev != NULL && rev->_type == TRI_JSON_NUMBER) {
-      // read existing document id and revision id from document
-      did = (TRI_voc_did_t) id->_value._number;
-      rid = (TRI_voc_rid_t) rev->_value._number;
-    }
-  }
- */
-  
   if (json != NULL && json->_type == TRI_JSON_ARRAY) {
     TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
     if (k != NULL && k->_type == TRI_JSON_STRING) {
@@ -143,7 +115,7 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
     }    
   }
   
-  result = collection->create(collection, type, shaped, data, key, release);
+  result = collection->create(collection, type, shaped, data, key, release, forceSync);
 
   TRI_FreeShapedJson(collection->_shaper, shaped);
 
@@ -159,11 +131,12 @@ static int UpdateLock (TRI_primary_collection_t* document,
                        TRI_voc_key_t key,
                        TRI_voc_rid_t rid,
                        TRI_voc_rid_t* oldRid,
-                       TRI_doc_update_policy_e policy) {
+                       TRI_doc_update_policy_e policy,
+                       bool forceSync) {
   TRI_doc_mptr_t result;
 
   document->beginWrite(document);
-  result = document->update(document, json, key, rid, oldRid, policy, true);
+  result = document->update(document, json, key, rid, oldRid, policy, true, forceSync);
 
   if (result._key == 0) {
     return TRI_errno();
@@ -183,7 +156,8 @@ static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
                                   TRI_voc_rid_t rid,
                                   TRI_voc_rid_t* oldRid,
                                   TRI_doc_update_policy_e policy,
-                                  bool release) {
+                                  bool release,
+                                  bool forceSync) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
 
@@ -195,7 +169,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
     return result;
   }
 
-  result = collection->update(collection, shaped, key, rid, oldRid, policy, release);
+  result = collection->update(collection, shaped, key, rid, oldRid, policy, release, forceSync);
 
   TRI_FreeShapedJson(collection->_shaper, shaped);
 
@@ -210,9 +184,10 @@ static int DestroyLock (TRI_primary_collection_t* document,
                         TRI_voc_key_t key,
                         TRI_voc_rid_t rid,
                         TRI_voc_rid_t* oldRid,
-                        TRI_doc_update_policy_e policy) {
+                        TRI_doc_update_policy_e policy,
+                        bool forceSync) {
   document->beginWrite(document);
-  return document->destroy(document, key, rid, oldRid, policy, true);
+  return document->destroy(document, key, rid, oldRid, policy, true, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

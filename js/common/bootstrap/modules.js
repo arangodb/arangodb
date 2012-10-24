@@ -87,23 +87,33 @@ Module.prototype.require = function (path) {
   // locate file and read content
   raw = ModuleCache["/internal"].exports.readFile(path);
 
+  // test for parse errors first and fail early if a parse error detected
+  if (! SYS_PARSE(raw.content, path)) {
+    throw "Javascript parse error in file '" + path + "'";
+  }
+
   // create a new sandbox and execute
   module = ModuleCache[path] = new Module(path);
 
   content = "(function (module, exports, require, print) {"
           + raw.content 
           + "\n});";
-
+  
   f = SYS_EXECUTE(content, undefined, path);
 
   if (f === undefined) {
     throw "cannot create context function";
   }
-
-  f(module,
-    module.exports,
-    function(path) { return module.require(path); },
-    ModuleCache["/internal"].exports.print);
+ 
+  try {
+    f(module,
+      module.exports,
+      function(path) { return module.require(path); },
+      ModuleCache["/internal"].exports.print);
+  }
+  catch (err) {
+    throw "Javascript exception in file '" + path + "': " + err.stack;
+  }
 
   return module.exports;
 };
@@ -404,7 +414,12 @@ ModuleCache["/internal"] = new Module("/internal");
       n = mc.firstExample({ path: path });
 
       if (n !== null) {
-        return { path : "_collection/" + path, content : n.module };
+        if (n.hasOwnProperty('content')) {
+          return { path : "_collection/" + path, content : n.content };
+        }
+        else {
+	  require("console").error("found empty content in '%s'", JSON.stringify(n));
+        }
       }
     }
 
@@ -460,7 +475,7 @@ ModuleCache["/internal"] = new Module("/internal");
     mc = internal.db._collection("_modules");
 
     if (mc === null) {
-      throw "you need to upgrade your database using 'arango-upgrade'";
+      mc = internal.db._create("_modules", { isSystem: true });
     }
 
     path = module.normalise(path);

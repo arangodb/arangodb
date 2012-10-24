@@ -70,7 +70,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-locking datafiles %p", a); \
   TRI_ReadLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +77,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("read-unlocking datafiles %p", a); \
   TRI_ReadUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +84,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-locking datafiles %p", a); \
   TRI_WriteLockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +91,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(a) \
-  TRI_LOCK_CHECK_TRACE("write-unlocking datafiles %p", a); \
   TRI_WriteUnlockReadWriteLock(&(a)->_lock)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +189,7 @@ typedef struct TRI_document_collection_s {
 
   TRI_headers_t* _headers;
 
-  TRI_vector_pointer_t _secondaryIndexes;
+  TRI_vector_pointer_t _allIndexes;
   TRI_multi_pointer_t _edgesIndex;
 
   // .............................................................................
@@ -209,46 +205,6 @@ typedef struct TRI_document_collection_s {
   regex_t DocumentKeyRegex;
 }
 TRI_document_collection_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge from and to
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_document_edge_s {
-  TRI_voc_cid_t _fromCid;
-  // TRI_voc_did_t _fromDid;
-  TRI_voc_key_t _fromKey;
-
-  TRI_voc_cid_t _toCid;
-  // TRI_voc_did_t _toDid;
-  TRI_voc_key_t _toKey;
-}
-TRI_document_edge_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge direction
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_EDGE_UNUSED = 0,
-  TRI_EDGE_IN = 1,
-  TRI_EDGE_OUT = 2,
-  TRI_EDGE_ANY = 3
-}
-TRI_edge_direction_e;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index entry for edges
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_edge_header_s {
-  TRI_doc_mptr_t const* _mptr;
-  TRI_edge_direction_e _direction;
-  TRI_voc_cid_t _cid; // from or to, depending on the direction
-  // TRI_voc_did_t _did; // from or to, depending on the direction
-  TRI_voc_key_t _key;
-}
-TRI_edge_header_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -353,32 +309,6 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* collection, TRI_idx_iid_t iid);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       EDGES INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
-                                                        TRI_edge_direction_e direction,
-                                                        TRI_voc_cid_t cid,
-                                                        TRI_voc_key_t key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

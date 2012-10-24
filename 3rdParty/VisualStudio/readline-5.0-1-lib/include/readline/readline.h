@@ -20,6 +20,7 @@
    have a copy of the license, write to the Free Software Foundation,
    59 Temple Place, Suite 330, Boston, MA 02111 USA. */
 
+
 #if !defined (_READLINE_H_)
 #define _READLINE_H_
 
@@ -35,6 +36,7 @@ extern "C" {
 # define __DLL_EXPORT__  __attribute__((dllexport)) extern
 #endif 
 
+
 #if (defined __WIN32__) || (defined _WIN32)
 
 # ifdef BUILD_READLINE_DLL
@@ -44,7 +46,7 @@ extern "C" {
 # elif defined (USE_READLINE_DLL)
 #  define READLINE_DLL_IMPEXP     __DLL_IMPORT__
 # elif defined (USE_READLINE_STATIC)
-#  define READLINE_DLL_IMPEXP      
+#  define READLINE_DLL_IMPEXP extern      
 # else /* assume USE_READLINE_DLL */
 #  define READLINE_DLL_IMPEXP     __DLL_IMPORT__
 # endif
@@ -52,6 +54,7 @@ extern "C" {
 #else /* __WIN32__ */
 # define READLINE_DLL_IMPEXP  
 #endif
+
 
 #if defined (READLINE_LIBRARY)
 #  include "rlstdc.h"
@@ -641,7 +644,7 @@ READLINE_DLL_IMPEXP const char *rl_basic_word_break_characters;
 /* The list of characters that signal a break between words for
    rl_complete_internal.  The default list is the contents of
    rl_basic_word_break_characters.  */
-READLINE_DLL_IMPEXP /*const*/ char *rl_completer_word_break_characters;
+READLINE_DLL_IMPEXP  /*const*/ char *rl_completer_word_break_characters;
 
 /* Hook function to allow an application to set the completion word
    break characters before readline breaks up the line.  Allows

@@ -26,6 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statementlist.h"
+
+#include "BasicsC/logging.h"
+
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
@@ -177,11 +180,106 @@ TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a statement to the statement list
+/// @brief pull out uncorrelated subqueries from the middle of the statement 
+/// list to the beginning
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddStatementListAql (TRI_aql_statement_list_t* const list,
-                              TRI_aql_node_t* const node) {
+void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
+  size_t i, n;
+  size_t scopes = 0;
+  size_t targetScope = 0;
+  size_t moveStart = 0;
+  bool watch = false;
+
+  assert(list);
+
+  i = 0;
+  n = list->_statements._length;
+  
+  while (i < n) {
+    TRI_aql_node_t* node = StatementAt(list, i);
+    TRI_aql_node_type_e type = node->_type;
+    
+    if (type == TRI_AQL_NODE_SCOPE_START) {
+      // node is a scope start
+      TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
+      
+      if (scope->_type == TRI_AQL_SCOPE_SUBQUERY && scope->_selfContained) {
+        if (! watch && scopes > 0) {
+          watch = true;
+          targetScope = scopes;
+          moveStart = i;
+        }
+      }
+      
+      ++scopes;
+    }
+    else if (type == TRI_AQL_NODE_SCOPE_END) {
+      // node is a scope end
+      --scopes;
+
+      if (watch && scopes == targetScope) {
+        watch = false;
+
+        node = StatementAt(list, i + 1);
+
+        // check if next statement is a subquery statement
+        if (i + 1 < n && node->_type == TRI_AQL_NODE_SUBQUERY) {
+          size_t j = moveStart;
+          size_t inserted = 0;
+
+          // moving statements from the middle to the beginning of the list will also 
+          // modify the positions we're moving from
+          while (j < i + 2) {
+            node = StatementAt(list, j + inserted);
+            if (! TRI_InsertStatementListAql(list, node, inserted + 0)) {
+              return;
+            }
+
+            // insert a dummy node in place of the moved node 
+            list->_statements._buffer[j + inserted + 1] = TRI_GetDummyNopNodeAql();
+
+            // next
+            ++j;
+            ++inserted;
+          }
+
+          // moving statements from the middle to the beginning of the list will also 
+          // change the list length and the position we'll be continuing from
+          n += inserted;
+          i = j + inserted;
+        }
+
+      }
+    }
+
+    ++i;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a statement to the front of the statement list
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const list,
+                                 TRI_aql_node_t* const node,
+                                 const size_t position) {
+  int result;
+
+  assert(list);
+  assert(node);
+
+  result = TRI_InsertVectorPointer(&list->_statements, node, position);
+
+  return result == TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a statement to the end of the statement list
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
+                                 TRI_aql_node_t* const node) {
   TRI_aql_node_type_e type;
   int result;
 

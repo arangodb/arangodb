@@ -125,7 +125,14 @@ namespace triagens {
         string const& queue ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief returns the server version number
+///
+/// @RESTHEADER{GET /_admin/version,returns the server version number}
+///
+/// @REST{GET /_admin/version}
+///
+/// Returns an object containing the current server version in the @LIT{version}
+/// attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
         status_e execute ();

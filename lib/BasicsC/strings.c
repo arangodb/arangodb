@@ -394,7 +394,7 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiString (char const* value) {
+char* TRI_LowerAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -407,7 +407,10 @@ char* TRI_LowerAsciiString (char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+  buffer = TRI_Allocate(zone, (sizeof(char) * length) + 1, false);
+  if (buffer == NULL) {
+    return NULL;
+  }
 
   p = (char*) value;
   out = buffer;
@@ -427,10 +430,18 @@ char* TRI_LowerAsciiString (char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to lower case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_LowerAsciiString (char const* value) {
+  return TRI_LowerAsciiStringZ(TRI_CORE_MEM_ZONE, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to upper case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiString (char const* value) {
+char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -443,7 +454,10 @@ char* TRI_UpperAsciiString (char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+  buffer = TRI_Allocate(zone, (sizeof(char) * length) + 1, false);
+  if (buffer == NULL) {
+    return NULL;
+  }
   
   p = (char*) value;
   out = buffer;
@@ -460,6 +474,14 @@ char* TRI_UpperAsciiString (char const* value) {
   *out = '\0';
 
   return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to upper case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UpperAsciiString (char const* value) {
+  return TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,6 +522,24 @@ bool TRI_CaseEqualString2 (char const* left, char const* right, size_t n) {
 
 bool TRI_IsPrefixString (char const* full, char const* prefix) {
   return strncmp(full, prefix, strlen(prefix)) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief duplicates a string, without using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SystemDuplicateString (char const* value) {
+  size_t n;
+  char* result;
+
+  n = strlen(value) + 1;
+  result = (char*) TRI_SystemAllocate(n, false);
+
+  if (result) {
+    memcpy(result, value, n);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,6 +670,14 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
+  return TRI_Concatenate3StringZ(TRI_CORE_MEM_ZONE, a, b, c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate three strings using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate3StringZ (TRI_memory_zone_t* zone, char const* a, char const* b, char const* c) {
   char* result;
   size_t na;
   size_t nb;
@@ -639,13 +687,14 @@ char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
   nb = strlen(b);
   nc = strlen(c);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + 1, false);
+  result = TRI_Allocate(zone, na + nb + nc + 1, false);
+  if (result != NULL) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-
-  result[na + nb + nc] = '\0';
+    result[na + nb + nc] = '\0';
+  }
 
   return result;
 }
@@ -1245,7 +1294,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
     memcpy(qtr, buffer, *outLength + 1);
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, buffer);
+  TRI_Free(zone, buffer);
   return qtr;
 }
 

@@ -35,7 +35,37 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                forward declared private functions
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size of a cache line, in bytes
+/// the memory acquired for the hash table is aligned to a multiple of this
+/// value
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup HashArray
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+#define CACHE_LINE_SIZE 64
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initial preallocation size of the hash table when the table is
+/// first created
+/// setting this to a high value will waste memory but reduce the number of
+/// reallocations/repositionings necessary when the table grows
+////////////////////////////////////////////////////////////////////////////////
+
+#define INITIAL_SIZE    256
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,11 +73,118 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ResizeHashArray (TRI_hasharray_t*); 
-static bool ResizeHashArrayMulti (TRI_hasharray_t*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a new element
+////////////////////////////////////////////////////////////////////////////////
 
+static void AddNewElement (TRI_hasharray_t* array, void* element) {
+  uint64_t hash;
+  uint64_t i;
 
+  // ...........................................................................
+  // compute the hash
+  // ...........................................................................
 
+  hash = IndexStaticHashElement(array, element);
+
+  // ...........................................................................
+  // search the table
+  // ...........................................................................
+  
+  i = hash % array->_nrAlloc;
+
+  while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize)) {
+    i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
+    array->_nrProbesR++;
+#endif
+  }
+
+  // ...........................................................................
+  // add a new element to the associative array
+  // memcpy ok here since are simply moving array items internally
+  // ...........................................................................
+
+  memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
+  array->_nrUsed++;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allocate memory for the hash table
+///
+/// the hash table memory will be aligned on a cache line boundary
+////////////////////////////////////////////////////////////////////////////////
+  
+static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
+  char* data;
+  char* table;
+  size_t offset;
+
+  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, CACHE_LINE_SIZE + (array->_elementSize * numElements), true);
+  if (data == NULL) {
+    return false;
+  }
+
+  // check if memory was aligned on a cache line boundary
+  offset = ((uint64_t) data) % CACHE_LINE_SIZE;
+
+  if (offset == 0) {
+    // we're already on a cache line boundary
+    table = data;
+  }
+  else {
+    // move to start of a cache line boundary
+    table = data + (CACHE_LINE_SIZE - offset);
+  }
+  assert(((uint64_t) table) % CACHE_LINE_SIZE == 0);
+
+  array->_data = data;
+  array->_table = table;
+  array->_nrAlloc = numElements;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the array
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ResizeHashArray (TRI_hasharray_t* array) {
+  char* oldData;
+  char* oldTable;
+  uint64_t oldAlloc;
+  uint64_t j;
+
+  oldData = array->_data;
+  oldTable = array->_table;
+  oldAlloc = array->_nrAlloc;
+ 
+  if (! AllocateTable(array, 2 * array->_nrAlloc + 1)) {
+    return false;
+  }
+
+  array->_nrUsed = 0;
+#ifdef TRI_INTERNAL_STATS
+  array->_nrResizes++;
+#endif
+
+  for (j = 0; j < oldAlloc; j++) {
+    if (! IndexStaticIsEmptyElement(array, oldTable + j * array->_elementSize)) {
+      AddNewElement(array, oldTable + j * array->_elementSize);
+    }
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldData);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the array
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ResizeHashArrayMulti (TRI_hasharray_t* array) {
+  return ResizeHashArray(array);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -67,52 +204,41 @@ static bool ResizeHashArrayMulti (TRI_hasharray_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InitHashArray (TRI_hasharray_t* array,
-                        size_t elementSize,
-                        uint64_t (*hashKey) (TRI_hasharray_t*, void*),
-                        uint64_t (*hashElement) (TRI_hasharray_t*, void*),
-                        void (*clearElement) (TRI_hasharray_t*, void*),
-                        bool (*isEmptyElement) (TRI_hasharray_t*, void*),
-                        bool (*isEqualKeyElement) (TRI_hasharray_t*, void*, void*),
-                        bool (*isEqualElementElement) (TRI_hasharray_t*, void*, void*)) {
-  char* p;
-  char* e;
-
+                        size_t initialDocumentCount,
+                        size_t numFields,
+                        size_t elementSize) {
+  size_t initialSize;
 
   // ...........................................................................
   // Assign the callback functions
   // ...........................................................................
-  
-  array->clearElement          = clearElement;
-  array->isEmptyElement        = isEmptyElement;
-  array->isEqualKeyElement     = isEqualKeyElement;
-  array->isEqualElementElement = isEqualElementElement;
 
+  assert(numFields > 0);
   
+  array->_numFields = numFields;
   array->_elementSize = elementSize;
-  array->_nrAlloc = 10;
+  array->_table = NULL;
 
-  
+  if (initialDocumentCount > 0) {
+    // use initial document count provided as initial size
+    initialSize = (size_t) (2.5 * initialDocumentCount);
+  }
+  else {
+    initialSize = INITIAL_SIZE;
+  }
+
+ 
+  if (! AllocateTable(array, initialSize)) {
+    return false;
+  }
+   
   // ...........................................................................
   // allocate storage for the hash array
   // ...........................................................................
   
-  array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_elementSize * array->_nrAlloc, true);
-  if (array->_table == NULL) {
-    return false;
-  }  
-
-  
-  // ...........................................................................
-  // Go through and 'zero' (clear) each item in the hash array
-  // ...........................................................................
-  
-  p = array->_table;
-  e = p + array->_elementSize * array->_nrAlloc;  
-  for (;  p < e;  p += array->_elementSize) {
-    IndexStaticClearElement(array, p);
-  }
-
   array->_nrUsed = 0;
+
+#ifdef TRI_INTERNAL_STATS    
   array->_nrFinds = 0;
   array->_nrAdds = 0;
   array->_nrRems = 0;
@@ -121,38 +247,38 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
+#endif
   
   return true;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyHashArray (TRI_hasharray_t* array) {
-  char* p;
-  char* e;
-
   if (array == NULL) {
     return;
   }  
-  
   
   // ...........................................................................
   // Go through each item in the array and remove any internal allocated memory
   // ...........................................................................
   
-  p = array->_table;
-  e = p + array->_elementSize * array->_nrAlloc;
-  for (;  p < e;  p += array->_elementSize) {
-    IndexStaticDestroyElement(array, p);
+  // array->_table might be NULL if array initialisation fails
+  if (array->_table != NULL) {
+    char* p;
+    char* e;
+
+    p = array->_table;
+    e = p + array->_elementSize * array->_nrAlloc;
+    for (;  p < e;  p += array->_elementSize) {
+      IndexStaticDestroyElement(array, p);
+    }
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_data);
   }
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
@@ -178,8 +304,6 @@ void TRI_FreeHashArray (TRI_hasharray_t* array) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,13 +319,13 @@ void* TRI_LookupByKeyHashArray (TRI_hasharray_t* array, void* key) {
   hash = IndexStaticHashKey(array, key);
   i = hash % array->_nrAlloc;
 
-  
   // ...........................................................................
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrFinds++;
-
+#endif
   
   // ...........................................................................
   // search the table
@@ -210,7 +334,9 @@ void* TRI_LookupByKeyHashArray (TRI_hasharray_t* array, void* key) {
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesF++;
+#endif
   }
 
 
@@ -220,8 +346,6 @@ void* TRI_LookupByKeyHashArray (TRI_hasharray_t* array, void* key) {
   
   return array->_table + (i * array->_elementSize);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given a key, return NULL if not found
@@ -238,8 +362,6 @@ void* TRI_FindByKeyHashArray (TRI_hasharray_t* array, void* key) {
 
   return NULL;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
@@ -261,7 +383,9 @@ void* TRI_LookupByElementHashArray (TRI_hasharray_t* array, void* element) {
   // update statistics
   // ...........................................................................
   
+#ifdef TRI_INTERNAL_STATS    
   array->_nrFinds++;
+#endif
 
   
   // ...........................................................................
@@ -271,7 +395,9 @@ void* TRI_LookupByElementHashArray (TRI_hasharray_t* array, void* element) {
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesF++;
+#endif
   }
   
   // ...........................................................................
@@ -280,8 +406,6 @@ void* TRI_LookupByElementHashArray (TRI_hasharray_t* array, void* element) {
 
   return (array->_table) + (i * array->_elementSize);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element given an element, returns NULL if not found
@@ -298,8 +422,6 @@ void* TRI_FindByElementHashArray (TRI_hasharray_t* array, void* element) {
 
   return NULL;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
@@ -323,7 +445,9 @@ bool TRI_InsertElementHashArray (TRI_hasharray_t* array, void* element, bool ove
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrAdds++;
+#endif
 
   
   // ...........................................................................
@@ -333,7 +457,9 @@ bool TRI_InsertElementHashArray (TRI_hasharray_t* array, void* element, bool ove
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesA++;
+#endif
   }
   
   arrayElement = array->_table + (i * array->_elementSize);
@@ -352,8 +478,6 @@ bool TRI_InsertElementHashArray (TRI_hasharray_t* array, void* element, bool ove
     }
     return false;
   }
-  
-
   
   // ...........................................................................
   // add a new element to the hash array (existing item is empty so no need to
@@ -380,8 +504,6 @@ bool TRI_InsertElementHashArray (TRI_hasharray_t* array, void* element, bool ove
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,7 +526,9 @@ bool TRI_InsertKeyHashArray (TRI_hasharray_t* array, void* key, void* element, b
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrAdds++;
+#endif
 
     
   // ...........................................................................
@@ -414,7 +538,9 @@ bool TRI_InsertKeyHashArray (TRI_hasharray_t* array, void* key, void* element, b
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesA++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -457,8 +583,6 @@ bool TRI_InsertKeyHashArray (TRI_hasharray_t* array, void* key, void* element, b
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
@@ -482,7 +606,9 @@ bool TRI_RemoveElementHashArray (TRI_hasharray_t* array, void* element) {
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrRems++;
+#endif
 
 
   // ...........................................................................
@@ -492,7 +618,9 @@ bool TRI_RemoveElementHashArray (TRI_hasharray_t* array, void* element) {
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesD++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -539,7 +667,6 @@ bool TRI_RemoveElementHashArray (TRI_hasharray_t* array, void* element) {
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,13 +686,13 @@ bool TRI_RemoveKeyHashArray (TRI_hasharray_t* array, void* key) {
   i = hash % array->_nrAlloc;
 
 
-
   // ...........................................................................
   // update statistics
   // ...........................................................................
   
+#ifdef TRI_INTERNAL_STATS    
   array->_nrRems++;
-
+#endif
 
 
   // ...........................................................................
@@ -575,7 +702,9 @@ bool TRI_RemoveKeyHashArray (TRI_hasharray_t* array, void* key) {
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesD++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -631,35 +760,11 @@ bool TRI_RemoveKeyHashArray (TRI_hasharray_t* array, void* key) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-
-
-
-
-
-
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 HASH ARRAY MULTI
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -699,7 +804,9 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hasharray_t* array, void
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrFinds++;
+#endif
 
   
   // ...........................................................................
@@ -711,9 +818,11 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hasharray_t* array, void
     if (IndexStaticIsEqualKeyElementMulti(array, key, array->_table + i * array->_elementSize)) {
       TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
     }
+#ifdef TRI_INTERNAL_STATS    
     else {
       array->_nrProbesF++;
     }      
+#endif
 
     i = (i + 1) % array->_nrAlloc;
   }
@@ -725,7 +834,6 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hasharray_t* array, void
   // ...........................................................................
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
@@ -756,7 +864,9 @@ TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hasharray_t* array, 
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrFinds++;
+#endif
 
   
   // ...........................................................................
@@ -768,9 +878,11 @@ TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hasharray_t* array, 
     if (IndexStaticIsEqualElementElementMulti(array, element, array->_table + i * array->_elementSize)) {
       TRI_PushBackVectorPointer(&result, array->_table + i * array->_elementSize);             
     }
+#ifdef TRI_INTERNAL_STATS    
     else {
       array->_nrProbesF++;
     }      
+#endif
 
     i = (i + 1) % array->_nrAlloc;
   }
@@ -782,7 +894,6 @@ TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hasharray_t* array, 
   
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
@@ -807,7 +918,9 @@ bool TRI_InsertElementHashArrayMulti (TRI_hasharray_t* array, void* element, boo
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrAdds++;
+#endif
 
   
   
@@ -818,7 +931,9 @@ bool TRI_InsertElementHashArrayMulti (TRI_hasharray_t* array, void* element, boo
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualElementElementMulti(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesA++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -886,7 +1001,9 @@ bool TRI_InsertKeyHashArrayMulti (TRI_hasharray_t* array, void* key, void* eleme
   // update statistics
   // ...........................................................................
 
+#ifdef TRI_INTERNAL_STATS    
   array->_nrAdds++;
+#endif
 
   
   // ...........................................................................
@@ -895,7 +1012,9 @@ bool TRI_InsertKeyHashArrayMulti (TRI_hasharray_t* array, void* key, void* eleme
 
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesA++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -948,7 +1067,10 @@ bool TRI_RemoveElementHashArrayMulti (TRI_hasharray_t* array, void* element) {
   // ...........................................................................
   // update statistics
   // ...........................................................................
+
+#ifdef TRI_INTERNAL_STATS    
   array->_nrRems++;
+#endif
 
   
   // ...........................................................................
@@ -957,7 +1079,9 @@ bool TRI_RemoveElementHashArrayMulti (TRI_hasharray_t* array, void* element) {
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualElementElementMulti(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesD++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -1025,7 +1149,10 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t* array, void* key) {
   // ...........................................................................
   // update statistics
   // ...........................................................................
+
+#ifdef TRI_INTERNAL_STATS    
   array->_nrRems++;
+#endif
 
 
   // ...........................................................................
@@ -1035,7 +1162,9 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t* array, void* key) {
   while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize) &&
          ! IndexStaticIsEqualKeyElementMulti(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS    
     array->_nrProbesD++;
+#endif
   }
 
   arrayElement = array->_table + (i * array->_elementSize);
@@ -1083,138 +1212,6 @@ bool TRI_RemoveKeyHashArrayMulti (TRI_hasharray_t* array, void* key) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                forward declared private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new element
-////////////////////////////////////////////////////////////////////////////////
-
-static void AddNewElement (TRI_hasharray_t* array, void* element) {
-  uint64_t hash;
-  uint64_t i;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = IndexStaticHashElement(array, element);
-
-  
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-  
-  i = hash % array->_nrAlloc;
-
-  while (! IndexStaticIsEmptyElement(array, array->_table + i * array->_elementSize)) {
-    i = (i + 1) % array->_nrAlloc;
-    array->_nrProbesR++;
-  }
-
-
-  // ...........................................................................
-  // add a new element to the associative array
-  // memcpy ok here since are simply moving array items internally
-  // ...........................................................................
-
-  memcpy(array->_table + i * array->_elementSize, element, array->_elementSize);
-  array->_nrUsed++;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the array
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ResizeHashArray (TRI_hasharray_t* array) {
-  char * oldTable;
-  uint64_t oldAlloc;
-  uint64_t j;
-
-  oldTable = array->_table;
-  oldAlloc = array->_nrAlloc;
-
-  array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
-  array->_nrResizes++;
-
-  array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_nrAlloc * array->_elementSize, true);
-  if (array->_table == NULL) {
-    array->_table = oldTable;
-    return false;
-  }  
-
-  for (j = 0; j < array->_nrAlloc; j++) {
-    IndexStaticClearElement(array, array->_table + j * array->_elementSize);
-  }
-  
-  for (j = 0; j < oldAlloc; j++) {
-    if (! IndexStaticIsEmptyElement(array, oldTable + j * array->_elementSize)) {
-      AddNewElement(array, oldTable + j * array->_elementSize);
-    }
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
-  return true;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the array
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ResizeHashArrayMulti (TRI_hasharray_t* array) {
-  char* oldTable;
-  uint64_t oldAlloc;
-  uint64_t j;
-
-  oldTable = array->_table;
-  oldAlloc = array->_nrAlloc;
-
-  array->_nrAlloc = 2 * array->_nrAlloc + 1;
-  array->_nrUsed = 0;
-  array->_nrResizes++;
-
-  array->_table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, array->_nrAlloc * array->_elementSize, true);
-  if (array->_table == NULL) {
-    array->_table = oldTable;
-    return false;
-  }
-  
-  for (j = 0; j < array->_nrAlloc; j++) {
-    IndexStaticClearElement(array, array->_table + j * array->_elementSize);
-  }
-
-  for (j = 0; j < oldAlloc; j++) {
-    if (! IndexStaticIsEmptyElement(array, oldTable + j * array->_elementSize)) {
-      AddNewElement(array, oldTable + j * array->_elementSize);
-    }
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
-  return true;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
 
 // Local Variables:
 // mode: outline-minor
