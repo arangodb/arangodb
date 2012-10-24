@@ -365,6 +365,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       req->Set(v8g->RequestTypeKey, v8g->PutConstant);
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
+    
+    case HttpRequest::HTTP_REQUEST_PATCH:
+      req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
+      break;
 
     case HttpRequest::HTTP_REQUEST_DELETE:
       req->Set(v8g->RequestTypeKey, v8g->DeleteConstant);
@@ -374,6 +378,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       req->Set(v8g->RequestTypeKey, v8g->HeadConstant);
       break;
 
+    case HttpRequest::HTTP_REQUEST_GET:
     default:
       req->Set(v8g->RequestTypeKey, v8g->GetConstant);
       break;
@@ -482,7 +487,40 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     }
 
     if (res->Has(v8g->BodyKey)) {
-      response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      // check if we should apply result transformations
+      // transformations turn the result from one type into another
+      // a Javascript action can request transformations by 
+      // putting a list of transformations into the res.transformations
+      // array, e.g. res.transformations = [ "base64encode" ]
+      v8::Handle<v8::Value> val = res->Get(v8g->TransformationsKey);
+      if (val->IsArray()) {
+        string out(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+
+        v8::Handle<v8::Array> transformations = val.As<v8::Array>();
+        for (uint32_t i = 0; i < transformations->Length(); i++) {
+          v8::Handle<v8::Value> transformator = transformations->Get(v8::Integer::New(i));
+          string name = TRI_ObjectToString(transformator);
+      
+          // check available transformations  
+          if (name == "base64encode") {
+            // base64-encode the result
+            out = StringUtils::encodeBase64(out);
+            // set the correct content-encoding header
+            response->setHeader("content-encoding", "base64");
+          }
+          else if (name == "base64decode") {
+            // base64-decode the result
+            out = StringUtils::decodeBase64(out);
+            // set the correct content-encoding header
+            response->setHeader("content-encoding", "binary");
+          }
+        }
+        
+        response->body().appendText(out);
+      }
+      else {
+        response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      }
     }
 
     if (res->Has(v8g->HeadersKey)) {
@@ -688,11 +726,13 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->RequestTypeKey = v8::Persistent<v8::String>::New(v8::String::New("requestType"));
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("suffix"));
+  v8g->TransformationsKey = v8::Persistent<v8::String>::New(v8::String::New("transformations"));
   v8g->UserKey = v8::Persistent<v8::String>::New(v8::String::New("user"));
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(v8::String::New("DELETE"));
   v8g->GetConstant = v8::Persistent<v8::String>::New(v8::String::New("GET"));
   v8g->HeadConstant = v8::Persistent<v8::String>::New(v8::String::New("HEAD"));
+  v8g->PatchConstant = v8::Persistent<v8::String>::New(v8::String::New("PATCH"));
   v8g->PostConstant = v8::Persistent<v8::String>::New(v8::String::New("POST"));
   v8g->PutConstant = v8::Persistent<v8::String>::New(v8::String::New("PUT"));
 }
