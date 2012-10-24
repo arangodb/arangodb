@@ -356,50 +356,7 @@ describe ArangoDB do
 
 	ArangoDB.drop_collection(@cn)
       end
-      
-      it "create a collection, using a collection id" do
-	ArangoDB.drop_collection(@cn)
-	cmd = api
-	body = "{ \"name\" : \"#{@cn}\", \"_id\" : 12345678 }"
-        doc = ArangoDB.log_post("#{prefix}-create-collection-id", cmd, :body => body)
-
-	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(false)
-	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['id'].should be_kind_of(Integer)
-	doc.parsed_response['id'].should eq(12345678)
-	doc.parsed_response['name'].should eq(@cn)
-
-	ArangoDB.drop_collection(@cn)
-      end
-      
-      it "create a collection, using duplicate collection id" do
-	ArangoDB.drop_collection(@cn)
-	ArangoDB.drop_collection(123456789)
-	cmd = api
-	body = "{ \"name\" : \"#{@cn}\", \"_id\" : 123456789 }"
-        doc = ArangoDB.log_post("#{prefix}-create-collection-id-dup", cmd, :body => body)
-
-	doc.code.should eq(200)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(false)
-	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['id'].should be_kind_of(Integer)
-	doc.parsed_response['id'].should eq(123456789)
-	doc.parsed_response['name'].should eq(@cn)
-        
-	body = "{ \"name\" : \"#{@cn}2\", \"_id\" : 123456789 }"
-        doc = ArangoDB.log_post("#{prefix}-create-collection-id-dup", cmd, :body => body)
-	
-        doc.code.should eq(400)
-	doc.headers['content-type'].should eq("application/json; charset=utf-8")
-	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['code'].should eq(400)
-
-	ArangoDB.drop_collection(@cn)
-      end
-      
+            
       it "create a collection, invalid name" do
 	cmd = api
 	body = "{ \"name\" : \"_invalid\" }"
