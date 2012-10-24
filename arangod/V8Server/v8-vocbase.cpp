@@ -1058,7 +1058,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
                                                "usage: update(<document>, <data>, <overwrite>, <keepnull>, <waitForSync>)")));
   }
 
-  TRI_voc_key_t key;
+  TRI_voc_key_t key = NULL;
   TRI_voc_rid_t rid;
 
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, key, rid, true, argv[0]);
@@ -1256,7 +1256,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   if (argv.Length() < 1 || argv.Length() > 3) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                               "usage: _create(<name>, <properties>, <cid>)")));
+                                               "usage: _create(<name>, <properties>)")));
   }
 
   // set default journal size
@@ -1305,26 +1305,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), collectionType, effectiveSize);
   }
 
-  TRI_voc_cid_t cid = 0;
-  
-  // extract collection id
-  if (3 <= argv.Length()) {
-    v8::Handle<v8::Value> val = argv[2];
-
-    // a pre-defined collection is passed when data is re-imported from a dump etc.
-    // this allows reproduction of data from different servers
-    if (! val->IsNull() && ! val->IsUndefined()) {
-      cid = TRI_ObjectToUInt64(argv[2]);
-
-      if (cid <= 0) {
-        return scope.Close(v8::ThrowException(
-                           TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                 "<_id> value is invalid")));
-      }
-    }
-  }
-
-  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, cid);
+  TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
 
   if (collection == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
