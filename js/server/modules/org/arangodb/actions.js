@@ -295,7 +295,7 @@ function lookupCallbackAction (route, action) {
       };
     }
     catch (err) {
-      return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err))(req, res, options, next);
+      return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
     }
   }
 
