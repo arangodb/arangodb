@@ -451,7 +451,7 @@
 //////////////////////////////////////////////////////////////
 ///
 /// The client API or browser sends a HTTP request to the ArangoDB server and
-/// the server returns a HTTP response to the client. A HTTP requests consist
+/// the server returns a HTTP response to the client. A HTTP requests consists
 /// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
 /// request path like @LIT{/hello/world}. For a real Web server there are a zillion
 /// of other thing to consider, we will ignore this for the moment. The HTTP
@@ -753,7 +753,7 @@
 /// @code
 /// arangosh> db._routing.save({ 
 /// ........>   url: "/hello/echo",
-/// ........>   action: "org/arangodb/actions/echoRequest" });
+/// ........>   action: { controller: "org/arangodb/actions", do: "echoRequest" } });
 /// @endcode
 ///
 /// Reload the routing and check
@@ -874,7 +874,7 @@
 /// @code
 /// arangosh> db._routing.save({ 
 /// ........>   url: "/echo",
-/// ........>   action: "org/arangodb/actions/echoRequest" });
+/// ........>   action: { controller: "org/arangodb/actions", do: "echoRequest" } });
 /// @endcode
 ///
 /// Reload the routing and check
@@ -907,29 +907,14 @@
 /// }
 /// @endcode
 ///
-/// Note that
-///
-/// @code
-/// arangosh> db._routing.save({ 
-/// ........>   url: "/echo",
-/// ........>   action: "org/arangodb/actions/echoRequest" });
-/// @endcode
-///
-/// is a short-cut for
-///
-/// @code
-/// arangosh> db._routing.save({ 
-/// ........>   url: "/echo",
-/// ........>   action: { do: "org/arangodb/actions/echoRequest" } });
-/// @endcode
-///
-/// The latter form allows you to pass options to the called function:
+/// You may also pass options to the called function:
 ///
 /// @code
 /// arangosh> db._routing.save({ 
 /// ........>   url: "/echo",
 /// ........>   action: {
-/// ........>     do: "org/arangodb/actions/echoRequest",
+/// ........>     controller: "org/arangodb/actions",
+/// ........>     do: "echoRequest",
 /// ........>     options: { "Hallo": "World" } } });
 /// @endcode
 ///
@@ -938,11 +923,10 @@
 /// @code
 /// {
 ///     "request": {
-///         "prefix": "/hello/echo-long",
 ///         ...
 ///     },
 ///     "options": {
-///         "option": "my option1"
+///         "Hallo": "world"
 ///     }
 /// }
 /// @endcode
@@ -960,7 +944,8 @@
 /// arangosh> db._routing.save({ 
 /// ........>   url: "/",
 /// ........>   action: {
-/// ........>     do: "org/arangodb/actions/redirectRequest", 
+/// ........>     controller: "org/arangodb/actions", 
+/// ........>     do: "redirectRequest", 
 /// ........>     options: { 
 /// ........>       permanently: true,
 /// ........>       destination: "http://somewhere.else/" } } });
@@ -1015,14 +1000,14 @@
 /// };
 /// @endcode
 ///
-/// This functions is available as @LIT{org/arangodb/actions/logRequest}.
+/// This function is available as @LIT{org/arangodb/actions/logRequest}.
 /// You need to tell ArangoDB that it is should use a prefix match and
 /// that the shortest match should win in this case:
 ///
 /// @code
 /// arangosh> db._routing.save({ 
 /// ........>   middleware: [
-/// ........>     { url: { match: "/*" }, action: "org/arangodb/actions/logRequest" }
+/// ........>     { url: { match: "/*" }, action: { controller: "org/arangodb/actions", do: "logRequest" } }
 /// ........>   ]
 /// ........> });
 /// @endcode
