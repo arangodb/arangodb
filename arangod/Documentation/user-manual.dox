@@ -980,6 +980,22 @@
 /// this header itself. ArangoDB might also add a @LIT{Connection} header itself
 /// to handle HTTP keep-alive.
 ///
+/// ArangoDB also supports automatic transformation of the body data to another
+/// format. Currently, the only supported transformations are base64-encoding and
+/// base64-decoding. Using the transformations, an action can create a base64
+/// encoded body and still let ArangoDB send the non-encoded version, for example:
+///
+/// @code
+/// res.body = 'VGhpcyBpcyBhIHRlc3Q=';
+/// res.transformations = res.transformations || [ ]; // initialise
+/// res.transformations.push('base64decode'); // will base64 decode the response body
+/// @endcode
+///
+/// When ArangoDB processes the response, it will base64-decode what's in @LIT{res.body}
+/// and set the HTTP header @LIT{Content-Encoding: binary}. The opposite can be
+/// achieved with the @LIT{base64encode} transformation: ArangoDB will then automatically
+/// base64-encode the body and set a @LIT{Content-Encoding: base64} HTTP header.
+///
 /// @section UserManualActionsHandlers Writing dynamic action handlers
 /////////////////////////////////////////////////////////////////////
 ///
