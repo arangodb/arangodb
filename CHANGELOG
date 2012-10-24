@@ -1,6 +1,8 @@
 v1.0.3 (XXXX-XX-XX)
 -------------------
 
+* issue #265: allow optional base64 encoding/decoding of action response data
+
 * issue #252: _modules collection not created automatically
 
 v1.0.2 (2012-10-22)
