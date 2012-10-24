@@ -374,6 +374,8 @@
 ///     </ul>
 ///    </li>
 ///    <li>@ref UserManualActionsReqRes</li>
+///    <li>@ref UserManualActionsModify</li>
+///    <li>@ref UserManualActionsHandlers</li>
 ///    <li>@ref UserManualActionsAdvanced
 ///     <ul>
 ///      <li>@ref UserManualActionsAdvancedRedirects</li>
@@ -930,6 +932,93 @@
 ///     }
 /// }
 /// @endcode
+/// 
+/// @section UserManualActionsModify Modifying Request and Response
+///
+/// As we've seen in the previous examples, actions get called
+/// with the request and response objects (named @LIT{req} and @LIT{res} in the
+/// examples) passed as parameters to their handler functions. 
+///
+/// The @LIT{req} object contains the incoming HTTP request, which
+/// might or might not have been modified by a previous action (if actions were
+/// chained).
+///
+/// A handler can modify the request object in place if desired. This might
+/// be useful when writing middleware (see below) that is used to intercept
+/// incoming requests, modify them and pass them to the actual handlers.
+///
+/// While modifying the request object might not be that relevant for 
+/// non-middleware actions, modifying the response object definitely is. Modifying
+/// the response object is an action's only way to return data to the caller of
+/// the action.
+///
+/// We've already seen how to set the HTTP status code, the content type, and the
+/// result body. The @LIT{res} object has the following properties for these:
+/// - contentType: MIME type of the body as defined in the HTTP standard (e.g. 
+///   @LIT{text/html}, @LIT{text/plain}, @LIT{application/json}, ...)
+/// - responsecode: the HTTP status code of the response as defined in the HTTP
+///   standard. Common values for actions that succeed are @LIT{200} or @LIT{201}. 
+///   Please refer to the HTTP standard for more information.
+/// - body: the actual response data
+///
+/// To set or modify arbitrary headers of the response object, the @LIT{headers}
+/// property can be used. For example, to add a user-defined header to the response,
+/// the following code will do:
+///
+/// @code
+/// res.headers = res.headers || { }; // headers might or might not be present
+/// res.headers['X-Test'] = 'someValue'; // set header X-Test to "someValue"
+/// @endcode
+///
+/// This will set the additional HTTP header @LIT{X-Test} to value @LIT{someValue}.
+/// Other headers can be set as well. Note that ArangoDB might change the case
+/// of the header names to lower case when assembling the overall response that
+/// is sent to the caller.
+///
+/// It is not necessary to explicitly set a @LIT{Content-Length} header for the
+/// response as ArangoDB will calculate the content length automatically and add
+/// this header itself. ArangoDB might also add a @LIT{Connection} header itself
+/// to handle HTTP keep-alive.
+///
+/// @section UserManualActionsHandlers Writing dynamic action handlers
+/////////////////////////////////////////////////////////////////////
+///
+/// To write your own dynamic action handlers, you must put them into modules.
+///
+/// Modules are a means of organising action handlers and making them loadable
+/// under specific names. 
+///
+/// To start, we'll define a simple action handler in a module @LIT{/own/test}:
+///
+/// @code
+/// arangosh> db._modules.save({ 
+/// ........>   path: "/own/test",
+/// ........>   content: "exports.do = function(req, res, options, next) { res.body = 'test'; res.responseCode = 200; res.contentType = 'text/html'; };",
+/// ........>   autoload: true });
+/// @endcode
+///
+/// This does nothing but register a do action handler in a module @LIT{/own/test}.
+/// The action handler is not yet callable, but must be mapped to a route first.
+/// To map the action to the route @LIT{/ourtest}, execute the following command:
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   url: "/ourtest",
+/// ........>   action: { controller: "/own/test" } }); 
+/// @endcode
+///
+/// In order to see the module in action, you must either restart the server
+/// or call the internal reload function.
+///
+/// @code
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// Now use the browser and access
+///
+/// @LIT{http://localhost:8529/ourtest}
+///
+/// You will see that the module's do function has been executed.
 ///
 /// @section UserManualActionsAdvanced Advanced Usages
 //////////////////////////////////////////////////////
