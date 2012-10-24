@@ -1446,6 +1446,7 @@ function redirectRequest (req, res, options, next) {
 exports.defineHttp              = defineHttp;
 exports.getErrorMessage         = getErrorMessage;
 exports.getJsonBody             = getJsonBody;
+exports.errorFunction           = errorFunction;
 exports.reloadRouting           = reloadRouting;
 exports.firstRouting            = firstRouting;
 exports.nextRouting             = nextRouting;
