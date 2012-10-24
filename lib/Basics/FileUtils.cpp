@@ -44,6 +44,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
+#include "BasicsC/files.h"
 
 namespace triagens {
   namespace basics {
@@ -360,15 +361,14 @@ namespace triagens {
       
       
       off_t size (string const& path) {
-        struct stat stbuf;
-        int res = stat(path.c_str(), &stbuf);
-        if (res != 0) {
-          return 0;
+        int64_t result = TRI_SizeFile(path.c_str());
+        
+        if (result < 0) {
+          return (off_t) 0;
         }
 
-        return stbuf.st_size;
+        return (off_t) result;
       }
-
 
 
       string stripExtension (string const& path, string const& extension) {
