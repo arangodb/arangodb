@@ -1676,6 +1676,10 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context> context) {
     v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
   }
 
+  if (v8g->KeyKey.IsEmpty()) {
+    v8g->KeyKey = v8::Persistent<v8::String>::New(v8::String::New("_key"));
+  }
+
   if (v8g->FromKey.IsEmpty()) {
     v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
   }

@@ -66,7 +66,7 @@ function ahuacatlGeoTestSuite () {
       var row = result[i];
       var keys = [ ];
       for (var k in row) {
-        if (row.hasOwnProperty(k) && k != '_id' && k != '_rev') {
+        if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
           keys.push(k);
         }
       }

@@ -139,6 +139,8 @@ static int CopyDocument (TRI_document_collection_t* collection,
                                   marker->_size,
                                   NULL, 
                                   0,
+                                  NULL, 
+                                  0,
                                   false);
 }
 
@@ -224,35 +226,32 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   primary = &sim->base;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
-      marker->_type == TRI_DOC_MARKER_EDGE) {
-    TRI_doc_document_marker_t const* d;
-    size_t markerSize;
-
-    if (marker->_type == TRI_DOC_MARKER_DOCUMENT) {
-      markerSize = sizeof(TRI_doc_document_marker_t);
-    }
-    else if (marker->_type == TRI_DOC_MARKER_EDGE) {
-      markerSize = sizeof(TRI_doc_edge_marker_t);
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
+      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    
+    TRI_voc_size_t markerSize = 0;
+    TRI_voc_size_t keyBodySize = 0;
+    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
+    
+    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+      markerSize = sizeof(TRI_doc_document_key_marker_t);
     }
     else {
-      LOG_FATAL("unknown marker type %d", (int) marker->_type);
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
+      markerSize = sizeof(TRI_doc_edge_key_marker_t);
     }
-
-    d = (TRI_doc_document_marker_t const*) marker;
+    
+    keyBodySize = d->_offsetJson - d->_offsetKey;
 
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, ((char*) d + d->_offsetKey));
     deleted = found == NULL || found->_deletion != 0;
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     if (deleted) {
-      LOG_TRACE("found a stale document: %lu", d->_did);
+      LOG_TRACE("found a stale document: %s", ((char*) d + d->_offsetKey));
       return true;
     }
 
@@ -267,7 +266,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex,((char*) d + d->_offsetKey));
     deleted = found == NULL || found->_deletion != 0;
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -279,9 +278,9 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     if (deleted) {
       dfi->_numberDead += 1;
-      dfi->_sizeDead += marker->_size - markerSize;
+      dfi->_sizeDead += marker->_size - markerSize - keyBodySize;
 
-      LOG_DEBUG("found a stale document after copying: %lu", d->_did);
+      LOG_DEBUG("found a stale document after copying: %s", ((char*) d + d->_offsetKey));
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
       return true;
@@ -293,15 +292,13 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     // update datafile info
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += marker->_size - markerSize;
+    dfi->_sizeAlive += marker->_size - markerSize - keyBodySize;
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
 
   // deletion
-  else if (marker->_type == TRI_DOC_MARKER_DELETION) {
-    // TODO: remove TRI_doc_deletion_marker_t from file
-
+  else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     // write to compactor files
     res = CopyDocument(sim, marker, &result, &fid);
 
@@ -317,6 +314,11 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     dfi->_numberDeletion += 1;
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+  }
+  else {
+    LOG_FATAL("unknown marker type %d", (int) marker->_type);
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
 
   return true;

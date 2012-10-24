@@ -160,7 +160,11 @@ typedef enum {
   TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003, // currently unused
   TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
   TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
-  TRI_DOC_MARKER_EDGE               = 3006
+  TRI_DOC_MARKER_EDGE               = 3006,
+          
+  TRI_DOC_MARKER_KEY_DOCUMENT       = 3007, // new marker with key values
+  TRI_DOC_MARKER_KEY_EDGE           = 3008, // new marker with key values
+  TRI_DOC_MARKER_KEY_DELETION       = 3009  // new marker with key values
 }
 TRI_df_marker_type_e;
 
@@ -456,6 +460,19 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker);
 
 void TRI_FillCrcMarkerDatafile (TRI_df_marker_t* marker,
                                 TRI_voc_size_t markerSize,
+                                void const* keyBody,
+                                TRI_voc_size_t keyBodySize,
+                                void const* body,
+                                TRI_voc_size_t bodySize);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a CRC and writes that into the header
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FillCrcKeyMarkerDatafile (TRI_df_marker_t* marker,
+                                TRI_voc_size_t markerSize,
+                                void const* keyBody,
+                                TRI_voc_size_t keyBodySize,
                                 void const* body,
                                 TRI_voc_size_t bodySize);
 
@@ -475,6 +492,8 @@ int TRI_WriteElementDatafile (TRI_datafile_t*,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,
+                              void const* keyBody,
+                              TRI_voc_size_t keyBodySize,
                               void const* body,
                               TRI_voc_size_t bodySize,
                               bool sync);

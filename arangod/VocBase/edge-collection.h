@@ -54,10 +54,10 @@ extern "C" {
 
 typedef struct TRI_document_edge_s {
   TRI_voc_cid_t _fromCid;
-  TRI_voc_did_t _fromDid;
+  TRI_voc_key_t _fromKey;
 
   TRI_voc_cid_t _toCid;
-  TRI_voc_did_t _toDid;
+  TRI_voc_key_t _toKey;
 }
 TRI_document_edge_t;
 
@@ -81,7 +81,7 @@ typedef struct TRI_edge_header_s {
   TRI_doc_mptr_t const* _mptr;
   TRI_edge_direction_e _direction;
   TRI_voc_cid_t _cid; // from or to, depending on the direction
-  TRI_voc_did_t _did; // from or to, depending on the direction
+  TRI_voc_key_t _key;
 }
 TRI_edge_header_t;
 
@@ -135,7 +135,7 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t*,
 TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
                                                         TRI_edge_direction_e direction,
                                                         TRI_voc_cid_t cid,
-                                                        TRI_voc_did_t did);
+                                                        TRI_voc_key_t key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

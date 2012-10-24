@@ -52,9 +52,9 @@ static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
 
   hash[0] = h->_direction;
   hash[1] = h->_cid;
-  hash[2] = h->_did;
+  hash[2] = TRI_FnvHashString((char const*) h->_key);  // h->_did;
 
-  return TRI_FnvHashPointer(hash, sizeof(hash));
+  return TRI_FnvHashPointer(hash, sizeof(hash));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,8 @@ static bool IsEqualKeyEdge (TRI_multi_pointer_t* array, void const* left, void c
   l = left;
   r = right;
 
-  return l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
+  //return l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;  
+  return l->_direction == r->_direction && l->_cid == r->_cid && (strcmp(l->_key, r->_key) == 0);  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +83,8 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, vo
   l = left;
   r = right;
 
-  return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
+  //return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && l->_did == r->_did;
+  return l->_mptr == r->_mptr && l->_direction == r->_direction && l->_cid == r->_cid && (strcmp(l->_key, r->_key) == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,13 +141,13 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
   TRI_edge_header_t* entryOut;
   TRI_edge_header_t* entryAny;
   TRI_edge_header_t* entryAny2 = NULL;
-  TRI_doc_edge_marker_t const* edge;
+  TRI_doc_edge_key_marker_t const* edge;
   bool needEntryAny2;
     
   edge = header->_data;
 
   // do we need one or two entries into for direction ANY?
-  needEntryAny2 = (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid);
+  needEntryAny2 = (edge->_toCid != edge->_fromCid || strcmp(((char*) edge) + edge->_offsetToKey, ((char*) edge) + edge->_offsetFromKey) != 0);
 
   // allocate 3 or 4 edge headers and return early if memory allocation fails
 
@@ -190,8 +192,9 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
   entryIn->_mptr = header;
   entryIn->_direction = TRI_EDGE_IN;
   entryIn->_cid = edge->_toCid;
-  entryIn->_did = edge->_toDid;
-
+  //entryIn->_did = edge->_toDid;
+  entryIn->_key = ((char*) edge) + edge->_offsetToKey;
+  
   TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryIn, true);
 
   // OUT
@@ -199,7 +202,8 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
   entryOut->_mptr = header;
   entryOut->_direction = TRI_EDGE_OUT;
   entryOut->_cid = edge->_fromCid;
-  entryOut->_did = edge->_fromDid;
+  //entryOut->_did = edge->_fromDid;
+  entryOut->_key = ((char*) edge) + edge->_offsetFromKey;
 
   TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryOut, true);
 
@@ -208,7 +212,8 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
   entryAny->_mptr = header;
   entryAny->_direction = TRI_EDGE_ANY;
   entryAny->_cid = edge->_toCid;
-  entryAny->_did = edge->_toDid;
+  //entryAny->_did = edge->_toDid;
+  entryAny->_key = ((char*) edge) + edge->_offsetToKey;
 
   TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryAny, true);
 
@@ -218,7 +223,8 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
     entryAny2->_mptr = header;
     entryAny2->_direction = TRI_EDGE_ANY;
     entryAny2->_cid = edge->_fromCid;
-    entryAny2->_did = edge->_fromDid;
+    //entryAny2->_did = edge->_fromDid;
+    entryAny2->_key = ((char*) edge) + edge->_offsetFromKey;
 
     TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryAny2, true);
   }
@@ -234,7 +240,7 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
                                        TRI_doc_mptr_t const* header) {
   TRI_edge_header_t entry;
   TRI_edge_header_t* old;
-  TRI_doc_edge_marker_t const* edge;
+  TRI_doc_edge_key_marker_t const* edge;
   
   edge = header->_data;
 
@@ -244,7 +250,8 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
   // IN
   entry._direction = TRI_EDGE_IN;
   entry._cid = edge->_toCid;
-  entry._did = edge->_toDid;
+  //entry._did = edge->_toDid;
+  entry._key = ((char*) edge) + edge->_offsetToKey;
   old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
   if (old != NULL) {
@@ -254,7 +261,8 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
   // OUT
   entry._direction = TRI_EDGE_OUT;
   entry._cid = edge->_fromCid;
-  entry._did = edge->_fromDid;
+  //entry._did = edge->_fromDid;
+  entry._key = ((char*) edge) + edge->_offsetFromKey;
   old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
   if (old != NULL) {
@@ -264,17 +272,19 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
   // ANY
   entry._direction = TRI_EDGE_ANY;
   entry._cid = edge->_toCid;
-  entry._did = edge->_toDid;
+  //entry._did = edge->_toDid;
+  entry._key = ((char*) edge) + edge->_offsetToKey;
   old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
   if (old != NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
   }
 
-  if (edge->_toCid != edge->_fromCid || edge->_toDid != edge->_fromDid) {
+  if (edge->_toCid != edge->_fromCid || strcmp(((char*) edge) + edge->_offsetToKey, ((char*) edge) + edge->_offsetFromKey) != 0) {
     entry._direction = TRI_EDGE_ANY;
     entry._cid = edge->_fromCid;
-    entry._did = edge->_fromDid;
+    //entry._did = edge->_fromDid;
+    entry._key = ((char*) edge) + edge->_offsetFromKey;
     old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
 
     if (old != NULL) {
@@ -290,7 +300,7 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
 TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* collection,
                                                         TRI_edge_direction_e direction,
                                                         TRI_voc_cid_t cid,
-                                                        TRI_voc_did_t did) {
+                                                        TRI_voc_key_t key) {
   union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
   TRI_vector_pointer_t result;
   TRI_edge_header_t entry;
@@ -301,7 +311,7 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
 
   entry._direction = direction;
   entry._cid = cid;
-  entry._did = did;
+  entry._key = key;
 
   found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_edgesIndex, &entry);
 

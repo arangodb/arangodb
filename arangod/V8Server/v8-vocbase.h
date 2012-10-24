@@ -73,7 +73,7 @@ void TRI_ReleaseCollection (TRI_vocbase_col_t const* collection);
 
 v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                          TRI_vocbase_col_t const*& collection,
-                                                         TRI_voc_did_t& did,
+                                                         TRI_voc_key_t& key,
                                                          TRI_voc_rid_t& rid,
                                                          const bool lock,
                                                          v8::Handle<v8::Value> val);
