@@ -356,7 +356,7 @@ function CollectionEdgeSuite () {
       var d = edge.save(v1, v2, { "Hallo" : "World" });
 
       try {
-        var e = edge.edges(1);
+        var e = edge.edges("123~456");
       } 
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
