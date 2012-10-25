@@ -5989,9 +5989,24 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-    result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
-    result->Set(v8g->BidirectionalKey, marker->_isBidirectional ? v8::True() : v8::False());
+
+    if (marker->_isBidirectional) {
+      // bdirectional edge
+      result->Set(v8g->BidirectionalKey, v8::True());
+      
+      // create _vertices array
+      v8::Handle<v8::Array> vertices = v8::Array::New();
+      vertices->Set(0, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      vertices->Set(1, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      result->Set(v8::String::New("_vertices"), vertices);
+    }
+    else {
+      // unidirectional edge
+      result->Set(v8g->BidirectionalKey, v8::False());
+
+      result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+    }
   }
   
   // and return
@@ -6138,7 +6153,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   if (v8g->IidKey.IsEmpty()) {
     v8g->IidKey = v8::Persistent<v8::String>::New(v8::String::New("id"));
   }
-
+  
   if (v8g->OldRevKey.IsEmpty()) {
     v8g->OldRevKey = v8::Persistent<v8::String>::New(v8::String::New("_oldRev"));
   }
@@ -6150,7 +6165,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   if (v8g->ToKey.IsEmpty()) {
     v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
   }
-
+  
   // .............................................................................
   // generate the TRI_vocbase_t template
   // .............................................................................
