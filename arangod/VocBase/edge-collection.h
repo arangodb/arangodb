@@ -49,6 +49,15 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for edge flags
+/// the type is an integer which indicates the edge direction (IN/OUT)
+/// plus two extra bits that indicate whether the edge is self-reflexive and 
+/// whether the edge is directed
+////////////////////////////////////////////////////////////////////////////////
+
+typedef uint8_t TRI_edge_flags_t;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief edge from and to
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,6 +67,7 @@ typedef struct TRI_document_edge_s {
 
   TRI_voc_cid_t _toCid;
   TRI_voc_key_t _toKey;
+  bool          _isBidirectional;
 }
 TRI_document_edge_t;
 
@@ -66,10 +76,9 @@ TRI_document_edge_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_EDGE_UNUSED = 0,
-  TRI_EDGE_IN = 1,
-  TRI_EDGE_OUT = 2,
-  TRI_EDGE_ANY = 3
+  TRI_EDGE_ANY    = 0, // can only be used for searching
+  TRI_EDGE_IN     = 1,
+  TRI_EDGE_OUT    = 2
 }
 TRI_edge_direction_e;
 
@@ -79,9 +88,9 @@ TRI_edge_direction_e;
 
 typedef struct TRI_edge_header_s {
   TRI_doc_mptr_t const* _mptr;
-  TRI_edge_direction_e _direction;
   TRI_voc_cid_t _cid; // from or to, depending on the direction
   TRI_voc_key_t _key;
+  TRI_edge_flags_t _flags;
 }
 TRI_edge_header_t;
 

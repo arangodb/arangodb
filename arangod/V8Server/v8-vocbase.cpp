@@ -924,14 +924,21 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
                                                "usage: save(<from>, <to>, <data>, <waitForSync>)")));
   }
   
+  bool isBidirectional = false;
+  
   // set document key
   TRI_voc_key_t key = 0;
 
   if (argv[2]->IsObject()) {
-    v8::Handle<v8::Value> v = argv[2]->ToObject()->Get(v8g->KeyKey);
+    v8::Handle<v8::Object> obj = argv[2]->ToObject();
+    v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
     if (v->IsString()) {
       TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
       key = TRI_DuplicateString2(*str, str.length());
+    }
+
+    if (obj->Has(v8g->BidirectionalKey)) {
+      isBidirectional = TRI_ObjectToBoolean(obj->Get(v8g->BidirectionalKey));
     }
   }
     
@@ -946,6 +953,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   edge._toCid = collection->_cid;
   edge._toKey = 0;
   edge._fromKey = 0;
+  edge._isBidirectional = isBidirectional;
 
   v8::Handle<v8::Value> errMsg;
 
@@ -980,9 +988,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
       TRI_ReleaseCollection(toCollection);
     }
 
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+    if (edge._toKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    }
     
     return scope.Close(v8::ThrowException(errMsg));
   }
@@ -995,9 +1009,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   if (shaped == 0) {
     
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+    if (edge._toKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    }
     
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
@@ -1018,9 +1038,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
-  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-  if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-  if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+  if (key) {
+   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  }
+  if (edge._fromKey) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+  }
+  if (edge._toKey) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+  }
   
   if (mptr._key == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
@@ -5585,6 +5611,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
     result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
     result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+    result->Set(v8g->BidirectionalKey, marker->_isBidirectional ? v8::True() : v8::False());
   }
   
   // and return
@@ -5710,11 +5737,15 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
   v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
+  
+  if (v8g->BidirectionalKey.IsEmpty()) {
+    v8g->BidirectionalKey = v8::Persistent<v8::String>::New(v8::String::New("_bidirectional"));
+  }
 
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
   }
-
+  
   if (v8g->KeyKey.IsEmpty()) {
     v8g->KeyKey = v8::Persistent<v8::String>::New(v8::String::New("_key"));
   }

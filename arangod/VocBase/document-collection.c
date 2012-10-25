@@ -1045,7 +1045,7 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
     
     if (key) {
       // we have a key!
-      keySize = strlen(key)+1;
+      keySize = strlen(key) + 1;
       keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
       keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
       TRI_CopyString(keyBody, key, keySize);      
@@ -1069,9 +1069,12 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
     marker._shape = json->_sid;
 
     CreateDocument(collection,
-                          &marker, sizeof(marker),
-                          keyBody, keyBodySize, 
-                          json->_data.data, json->_data.length,
+                          &marker, 
+                          sizeof(marker),
+                          keyBody, 
+                          keyBodySize, 
+                          json->_data.data, 
+                          json->_data.length,
                           &result,
                           data,
                           keyBody,
@@ -1096,7 +1099,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
 
     marker._fromCid = edge->_fromCid;
     marker._toCid = edge->_toCid;
-    
+    marker._isBidirectional = (uint8_t) edge->_isBidirectional;
+
     fromSize = strlen(edge->_fromKey) + 1;    
     toSize = strlen(edge->_toKey) + 1;        
     
@@ -1130,9 +1134,12 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
     marker.base.base._size = sizeof(marker) + keyBodySize + json->_data.length;
     
     CreateDocument(collection,
-                          &marker.base, sizeof(marker),
-                          keyBody, keyBodySize, 
-                          json->_data.data, json->_data.length,
+                          &marker.base, 
+                          sizeof(marker),
+                          keyBody, 
+                          keyBodySize, 
+                          json->_data.data, 
+                          json->_data.length,
                           &result,
                           data,
                           keyBody,
@@ -1264,6 +1271,7 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_primary_collection_t* primary,
 
     marker._fromCid = o->_fromCid;
     marker._toCid = o->_toCid;
+    marker._isBidirectional = o->_isBidirectional;
 
     keyBody = ((char*) o) + o->base._offsetKey;  
     keyBodyLength = o->base._offsetJson - o->base._offsetKey;

@@ -1469,11 +1469,6 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     TRI_ReleaseCollection(collection);
 
     switch (direction) {
-      case TRI_EDGE_UNUSED:
-        return scope.Close(v8::ThrowException(
-                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "usage: edges(<vertices>)")));
-
       case TRI_EDGE_IN:
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -1485,9 +1480,11 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
                                                    "usage: outEdges(<vertices>)")));
 
       case TRI_EDGE_ANY:
+      default: {
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                    "usage: edges(<vertices>)")));
+      }
     }
   }
 

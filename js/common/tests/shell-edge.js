@@ -479,6 +479,92 @@ function CollectionEdgeSuite () {
       }
 
       internal.db._drop(dn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read edges of a small graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesGraph : function () {
+      var a = vertex.save( {"name" : "a" });
+      var b = vertex.save( {"name" : "b" });
+      var c = vertex.save( {"name" : "c" });
+      var d = vertex.save( {"name" : "d" });
+      var e = vertex.save( {"name" : "e" });
+      var f = vertex.save( {"name" : "f" });
+
+      edge.save(a, a, { "what" : "a->a" });
+      edge.save(a, b, { "what" : "a<->b" });
+      edge.save(a, c, { "what" : "a->c" });
+      edge.save(d, a, { "what" : "d->a" });
+      edge.save(c, d, { "what" : "c->d" });
+      edge.save(d, f, { "what" : "d<->f" });
+      edge.save(f, e, { "what" : "f->e" });
+      edge.save(e, e, { "what" : "e->e" });
+
+      assertEqual(3, edge.outEdges(a).length);
+      assertEqual(0, edge.outEdges(b).length);
+      assertEqual(1, edge.outEdges(c).length);
+      assertEqual(2, edge.outEdges(d).length);
+      assertEqual(1, edge.outEdges(e).length);
+      assertEqual(1, edge.outEdges(f).length);
+      
+      assertEqual(2, edge.inEdges(a).length);
+      assertEqual(1, edge.inEdges(b).length);
+      assertEqual(1, edge.inEdges(c).length);
+      assertEqual(1, edge.inEdges(d).length);
+      assertEqual(2, edge.inEdges(e).length);
+      assertEqual(1, edge.inEdges(f).length);
+      
+      assertEqual(4, edge.edges(a).length);
+      assertEqual(1, edge.edges(b).length);
+      assertEqual(2, edge.edges(c).length);
+      assertEqual(3, edge.edges(d).length);
+      assertEqual(2, edge.edges(e).length);
+      assertEqual(2, edge.edges(f).length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read edges of a small graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesGraphBi : function () {
+      var a = vertex.save( {"name" : "a" });
+      var b = vertex.save( {"name" : "b" });
+      var c = vertex.save( {"name" : "c" });
+      var d = vertex.save( {"name" : "d" });
+      var e = vertex.save( {"name" : "e" });
+      var f = vertex.save( {"name" : "f" });
+
+      edge.save(a, a, { "what" : "a->a", "_bidirectional" : false });
+      edge.save(a, b, { "what" : "a<->b", "_bidirectional" : true });
+      edge.save(a, c, { "what" : "a->c", "_bidirectional" : false });
+      edge.save(d, a, { "what" : "d->a", "_bidirectional" : false });
+      edge.save(c, d, { "what" : "c->d", "_bidirectional" : false });
+      edge.save(d, f, { "what" : "d<->f", "_bidirectional" : true });
+      edge.save(f, e, { "what" : "f->e", "_bidirectional" : false });
+      edge.save(e, e, { "what" : "e->e", "_bidirectional" : false });
+
+      assertEqual(3, edge.outEdges(a).length);
+      assertEqual(1, edge.outEdges(b).length);
+      assertEqual(1, edge.outEdges(c).length);
+      assertEqual(2, edge.outEdges(d).length);
+      assertEqual(1, edge.outEdges(e).length);
+      assertEqual(2, edge.outEdges(f).length);
+
+      assertEqual(3, edge.inEdges(a).length);
+      assertEqual(1, edge.inEdges(b).length);
+      assertEqual(1, edge.inEdges(c).length);
+      assertEqual(2, edge.inEdges(d).length);
+      assertEqual(2, edge.inEdges(e).length);
+      assertEqual(1, edge.inEdges(f).length);
+      
+      assertEqual(4, edge.edges(a).length);
+      assertEqual(1, edge.edges(b).length);
+      assertEqual(2, edge.edges(c).length);
+      assertEqual(3, edge.edges(d).length);
+      assertEqual(2, edge.edges(e).length);
+      assertEqual(2, edge.edges(f).length);
     }
 
   };
