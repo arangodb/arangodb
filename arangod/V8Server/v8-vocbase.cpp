@@ -2685,7 +2685,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
         break;
       }
 
-      if (bytesRead < sizeof(marker)) {
+      if (bytesRead < (ssize_t) sizeof(marker)) {
         // eof
         LOG_WARNING("bytesRead = %d < sizeof(marker) = %d", bytesRead, sizeof(marker));
         break;
@@ -2722,6 +2722,10 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
         if (marker._size > sizeof(marker)) {
           //int r = ::read(fd, p + sizeof(marker), marker._size - sizeof(marker));
           int r = ::read(fd, p + sizeof(marker), paddedSize - sizeof(marker));
+          if (r < (int) (paddedSize - sizeof(marker))) {
+            LOG_WARNING("read less than paddedSize - sizeof(marker) = %d", r);
+            break;
+          }
         }
 
         if ((int) marker._type == 0) {
@@ -2823,6 +2827,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker._offsetFromKey = newMarkerSize + keySize + toSize;
             newMarker._toCid = oldMarker->_toCid;
             newMarker._fromCid = oldMarker->_fromCid;
+            newMarker._isBidirectional = 0;
             
             newMarker.base.base._size = newMarkerSize + keyBodySize + bodySize;
             newMarker.base.base._type = TRI_DOC_MARKER_KEY_EDGE;
@@ -2936,7 +2941,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   for (size_t j = 0; j < files._length; ++j) {
     ostringstream outfile1;
     ostringstream outfile2;
-    int fd, fdout;
 
     TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&files, j);
     outfile1 << df->_filename << ".old";
