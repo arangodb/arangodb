@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edge collection
+/// @brief edge collection functionality
 ///
 /// @file
 ///
@@ -22,6 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,14 +66,6 @@
 #define BIT_BIDIRECTIONAL ((TRI_edge_flags_t) (1 << 4))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief special bit that can be set within edge flags
-/// this bit will be set if the entry is the reversed entry for an 
-/// undirected (bidirectional) edge
-////////////////////////////////////////////////////////////////////////////////
-
-#define BIT_REVERSED      ((TRI_edge_flags_t) (1 << 5))
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief combination of the two directional bits
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -88,20 +81,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether an edge is bi-directional
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsBidirectional (const TRI_edge_header_t* const edge) {
+  return ((edge->_flags & BIT_BIDIRECTIONAL) > 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether an edge is self-reflexive
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsReflexive (const TRI_edge_header_t* const edge) {
   return ((edge->_flags & BIT_REFLEXIVE) > 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether an edge entry was constructed as the reversed entry
-/// of an undirected (bidirectional) edge
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsReversedEntryOfUndirected (const TRI_edge_header_t* const edge) {
-  return ((edge->_flags & BIT_REVERSED) > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,15 +113,13 @@ static TRI_edge_flags_t MakeLookupFlags (const TRI_edge_direction_e direction) {
   return 0;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compose edge flags aggregate out of multiple individual parameters
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_edge_flags_t MakeFlags (const TRI_edge_direction_e direction, 
                                    const bool isReflexive, 
-                                   const bool isBidirectional,
-                                   const bool isReversedEntry) {
+                                   const bool isBidirectional) {
   TRI_edge_flags_t result = MakeLookupFlags(direction);
 
   if (isReflexive) {
@@ -137,10 +127,6 @@ static TRI_edge_flags_t MakeFlags (const TRI_edge_direction_e direction,
   }
   if (isBidirectional) {
     result |= BIT_BIDIRECTIONAL;
-  }
-  if (isReversedEntry) {
-    assert(isBidirectional);
-    result |= BIT_REVERSED;
   }
 
   return result;
@@ -200,6 +186,83 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, vo
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find edges matching search criteria and add them to the result
+/// this function is called two times for each edge query:
+/// the first call (with matchType 1) will query the index with the originally
+/// requested direction, whereas the second call will query the index with the
+/// opposite direction (with matchType 2 or 3) to find all counterparts
+////////////////////////////////////////////////////////////////////////////////
+
+static bool FindEdges (const TRI_edge_direction_e direction,
+                       TRI_multi_pointer_t* index, 
+                       TRI_vector_pointer_t* result,
+                       TRI_edge_header_t* entry,
+                       const int matchType) {
+  union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
+  TRI_vector_pointer_t found;
+  TRI_edge_header_t* edge;
+  
+  entry->_flags = MakeLookupFlags(direction);
+  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, index, entry);
+
+  if (found._length > 0) {
+    size_t i;
+
+    if (result->_capacity == 0) {
+      int res;
+
+      // if result vector is still empty and we have results, re-init the 
+      // result vector to a "good" size. this will save later reallocations
+      res = TRI_InitVectorPointer2(result, TRI_UNKNOWN_MEM_ZONE, found._length);
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_DestroyVectorPointer(&found);
+        TRI_set_errno(res);
+
+        return false;
+      }
+    }
+
+    // add all results found
+    for (i = 0;  i < found._length;  ++i) {
+      edge = (TRI_edge_header_t*) found._buffer[i];
+      cnv.c = edge->_mptr;
+
+      // the following queries will use the following sequences of matchTypes:
+      // inEdges(): 1, 2,  outEdges(): 1, 2,  edges(): 1, 3
+
+      // if matchType is 1, we'll return all found edges without further filtering
+      //
+      // if matchType is 2 (inEdges or outEdges query), the direction is reversed. 
+      // We'll exclude all self-reflexive edges now (we already got them in iteration 1), 
+      // and alsoexclude all unidirectional edges
+      //
+      // if matchType is 3, the direction is also reversed. We'll exclude all
+      // self-reflexive edges now (we already got them in iteration 1)
+
+      if (matchType > 1) {
+        // if the edge is self-reflexive, we have already found it in iteration 1
+        // we must skip it here, otherwise we would produce duplicates
+        if (IsReflexive(edge)) {
+          continue;
+        }
+
+        // in type 2 we are only interested in the counterparts of bidirectional edges
+        if (matchType == 2 && ! IsBidirectional(edge)) {
+          continue;
+        }
+      }
+
+      TRI_PushBackVectorPointer(result, cnv.v);
+    }
+  } 
+    
+  
+  TRI_DestroyVectorPointer(&found);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -251,8 +314,6 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
                                       TRI_doc_mptr_t const* header) {
   TRI_edge_header_t* entryIn;
   TRI_edge_header_t* entryOut;
-  TRI_edge_header_t* entryIn2 = NULL;
-  TRI_edge_header_t* entryOut2 = NULL;
   TRI_doc_edge_key_marker_t const* edge;
   bool isReflexive;
   bool isBidirectional;
@@ -279,31 +340,12 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
   
-  if (! isReflexive && isBidirectional) {
-    // IN2
-    entryIn2 = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entryIn2 == NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryOut);
-    
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    entryOut2 = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
-    if (entryOut2 == NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryOut);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn2);
-
-      return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    }
-  }
   // we have allocated all necessary memory by here
 
   // IN
   assert(entryIn);
   entryIn->_mptr = header;
-  entryIn->_flags = MakeFlags(TRI_EDGE_IN, isReflexive, isBidirectional, false);
+  entryIn->_flags = MakeFlags(TRI_EDGE_IN, isReflexive, isBidirectional);
   entryIn->_cid = edge->_toCid;
   entryIn->_key = ((char*) edge) + edge->_offsetToKey;
   
@@ -312,35 +354,12 @@ int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t* collection,
   // OUT
   assert(entryOut);
   entryOut->_mptr = header;
-  entryOut->_flags = MakeFlags(TRI_EDGE_OUT, isReflexive, isBidirectional, false);
+  entryOut->_flags = MakeFlags(TRI_EDGE_OUT, isReflexive, isBidirectional);
   entryOut->_cid = edge->_fromCid;
   entryOut->_key = ((char*) edge) + edge->_offsetFromKey;
 
   TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryOut, true);
 
-
-  // bidirectional, non-reflexive edge requires additional entries
-  // the reverse edge will be inserted into the index for quick lookups
-  if (isBidirectional && ! isReflexive) {
-    // IN2
-    assert(entryIn2);
-    entryIn2->_mptr = header;
-    entryIn2->_flags = MakeFlags(TRI_EDGE_IN, isReflexive, isBidirectional, true);
-    entryIn2->_cid = edge->_fromCid;
-    entryIn2->_key = ((char*) edge) + edge->_offsetFromKey;
-
-    TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryIn2, true);
-
-    // OUT2
-    assert(entryOut2);
-    entryOut2->_mptr = header;
-    entryOut2->_flags = MakeFlags(TRI_EDGE_OUT, isReflexive, isBidirectional, true);
-    entryOut2->_cid = edge->_toCid;
-    entryOut2->_key = ((char*) edge) + edge->_offsetToKey;
-
-    TRI_InsertElementMultiPointer(&collection->_edgesIndex, entryOut2, true);
-  }
-  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -383,30 +402,7 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
   if (old != NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
   }
-  
-  // a non-directed, non-reflexive edge requires additional deletions
-  // delete the reversed entries from the index
-  if (isBidirectional && ! isReflexive) {
-    entry._flags = MakeLookupFlags(TRI_EDGE_IN);
-    entry._cid = edge->_fromCid;
-    entry._key = ((char*) edge) + edge->_offsetFromKey;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-    }
-
-    entry._flags = MakeLookupFlags(TRI_EDGE_OUT);
-    entry._cid = edge->_toCid;
-    entry._key = ((char*) edge) + edge->_offsetToKey;
-    old = TRI_RemoveElementMultiPointer(&collection->_edgesIndex, &entry);
-
-    if (old != NULL) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-    }
-  }
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,92 +411,37 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
                                                         TRI_edge_direction_e direction,
                                                         TRI_voc_cid_t cid,
                                                         TRI_voc_key_t key) {
-  union { TRI_doc_mptr_t* v; TRI_doc_mptr_t const* c; } cnv;
   TRI_vector_pointer_t result;
   TRI_edge_header_t entry;
-  TRI_edge_header_t* edge;
-  size_t i;
-  int res;
 
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
-
- 
   // search criteria 
   entry._mptr = 0;
   entry._cid = cid;
   entry._key = key;
 
-  if (direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT) {
-    // use direction IN or OUT directly
-    TRI_vector_pointer_t found;
+  // initialise the result vector
+  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
 
-    // look for just the direction indicated
-    entry._flags = MakeLookupFlags(direction);
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_edgesIndex, &entry);
-
-    // initialise the result vector to the correct size so we save reallocs
-    res = TRI_InitVectorPointer2(&result, TRI_UNKNOWN_MEM_ZONE, found._length);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_DestroyVectorPointer(&found);
-      TRI_set_errno(res);
-      return result;
-    }
-
-    for (i = 0;  i < found._length;  ++i) {
-      edge = (TRI_edge_header_t*) found._buffer[i];
-      cnv.c = edge->_mptr;
-      TRI_PushBackVectorPointer(&result, cnv.v);
-    }
-  
-    TRI_DestroyVectorPointer(&found);
-    
-    return result;
+  if (direction == TRI_EDGE_IN) {
+    // get all edges with a matching IN vertex
+    FindEdges(TRI_EDGE_IN, &collection->_edgesIndex, &result, &entry, 1);
+    // add all bidirectional edges with a matching OUT vertex
+    FindEdges(TRI_EDGE_OUT, &collection->_edgesIndex, &result, &entry, 2);
   }
-  else {
-    // for direction ANY, we'll start with finding all IN edges
-    TRI_vector_pointer_t found;
-
-    entry._flags = MakeLookupFlags(TRI_EDGE_IN);
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_edgesIndex, &entry);
-
-    // initialise the result vector to the correct size so we save reallocs, at least here
-    res = TRI_InitVectorPointer2(&result, TRI_UNKNOWN_MEM_ZONE, found._length);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_DestroyVectorPointer(&found);
-      TRI_set_errno(res);
-      return result;
-    }
-
-    for (i = 0;  i < found._length;  ++i) {
-      edge = (TRI_edge_header_t*) found._buffer[i];
-      if (! IsReversedEntryOfUndirected(edge)) {
-        cnv.c = edge->_mptr;
-        TRI_PushBackVectorPointer(&result, cnv.v);
-      }
-    }
-    
-    TRI_DestroyVectorPointer(&found);
-
-    // for direction ANY, we now have to OR-combine all OUT edges to the result
-    entry._flags = MakeLookupFlags(TRI_EDGE_OUT);
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_edgesIndex, &entry);
-
-    for (i = 0;  i < found._length;  ++i) {
-      // check whether the edge is self-reflexive or the second (reversed) entry for an undirected edge. 
-      // if yes, we must not insert it again, as we have already caught it while processing the IN edges
-      edge = (TRI_edge_header_t*) found._buffer[i];
-      if (! IsReflexive(edge) && ! IsReversedEntryOfUndirected(edge)) { 
-        cnv.c = edge->_mptr;
-        TRI_PushBackVectorPointer(&result, cnv.v);
-      }
-    }
-    
-    TRI_DestroyVectorPointer(&found);
-  
-    return result;
+  else if (direction == TRI_EDGE_OUT) {
+    // get all edges with a matching OUT vertex
+    FindEdges(TRI_EDGE_OUT, &collection->_edgesIndex, &result, &entry, 1);
+    // add all bidirectional edges with a matching IN vertex
+    FindEdges(TRI_EDGE_IN, &collection->_edgesIndex, &result, &entry, 2);
   }
+  else if (direction == TRI_EDGE_ANY) {
+    // get all edges with a matching IN vertex
+    FindEdges(TRI_EDGE_IN, &collection->_edgesIndex, &result, &entry, 1);
+    // add all non-reflexive edges with a matching OUT vertex
+    FindEdges(TRI_EDGE_OUT, &collection->_edgesIndex, &result, &entry, 3);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
