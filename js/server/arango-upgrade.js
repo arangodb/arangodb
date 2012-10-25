@@ -210,10 +210,41 @@ function main (argv) {
     return createSystemCollection("_routing");
   });
   
-  // create the VERSION file
+  // create/update the VERSION file
   addTask("create VERSION file", 2, function () {
-    // save "1" into VERSION file
+    // save "2" into VERSION file
     SYS_SAVE(versionFile, "2");
+    return true;
+  });
+  
+  // update markers in all collection datafiles to key markers
+  addTask("update markers in all collection datafiles", 2, function () {
+    var collections = db._collections();
+    
+    for (var i in collections) {
+      var collection = collections[i];
+
+      try {
+        if (collection.version() >= 3) {
+          // already upgraded
+          continue;
+        }
+
+        if (collection.upgrade()) {
+          // success
+          collection.setAttribute("version", 3);
+        }
+        else {
+          // fail
+          console.error("could not upgrade collection datafiles for '" + collection.name() + "'");
+          return false;
+        }
+      }
+      catch (e) {
+        console.error("could not upgrade collection datafiles for '" + collection.name() + "'");
+        return false;
+      }
+    }
     return true;
   });
   

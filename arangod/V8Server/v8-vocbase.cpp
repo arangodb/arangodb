@@ -34,6 +34,7 @@
 #include "Ahuacatl/ahuacatl-result.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
@@ -2589,6 +2590,385 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+  
+static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: upgrade()")));
+  }
+  
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_collection_t* col = &sim->base.base;
+  const char* name = col->_name;
+  TRI_col_version_t version = col->_version;
+
+  if (version >= 3) {
+    LOG_ERROR("Cannot upgrade collection '%s' with version '%d' in directory '%s'", name, version, col->_directory);
+    return scope.Close(v8::False());
+  }
+  
+  LOG_INFO("Upgrading collection '%s' with version '%d' in directory '%s'", name, version, col->_directory);
+
+  // get all filenames
+  size_t i;
+  TRI_vector_pointer_t files;
+  TRI_InitVectorPointer(&files, TRI_UNKNOWN_MEM_ZONE);
+  for (i = 0; i < col->_datafiles._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&col->_datafiles, i);
+    TRI_PushBackVectorPointer(&files, df);
+  }
+  for (i = 0; i < col->_journals._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&col->_journals, i);
+    TRI_PushBackVectorPointer(&files, df);
+  }
+  for (i = 0; i < col->_compactors._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&col->_compactors, i);
+    TRI_PushBackVectorPointer(&files, df);
+  }
+
+  // convert each file
+  for (size_t j = 0; j < files._length; ++j) {
+    int fd, fdout;
+
+    TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&files, j);
+    
+    int64_t fileSize = TRI_SizeFile(df->_filename);
+    int64_t writtenSize = 0;
+    
+    LOG_INFO("convert file '%s' (size = %d)", df->_filename, fileSize);
+  
+    fd = TRI_OPEN(df->_filename, O_RDONLY);
+    if (fd < 0) {
+      LOG_ERROR("could not open file '%s' for reading", df->_filename);
+
+      TRI_DestroyVectorPointer(&files);
+      TRI_ReleaseCollection(collection);
+  
+      return scope.Close(v8::False());
+    }
+
+    ostringstream outfile;
+    outfile << df->_filename << ".new";
+   
+    //std::cout << "outfile is " << outfile.str().c_str() << endl; 
+    fdout = TRI_CREATE(outfile.str().c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+    if (fdout < 0) {
+      LOG_ERROR("could not open file '%s' for writing", outfile.str().c_str());
+      
+      TRI_DestroyVectorPointer(&files);
+      TRI_ReleaseCollection(collection);
+  
+      close(fd);
+      return scope.Close(v8::False());
+    }
+
+    //LOG_INFO("fd: %d, fdout: %d", fd, fdout);
+
+    TRI_df_marker_t marker;
+
+    while (true) {
+      // read marker header
+      ssize_t bytesRead = ::read(fd, &marker, sizeof(marker));
+
+      //std::cout << "we try to read " << sizeof(marker) << " bytes, got " << bytesRead << "\n";
+      
+      if (bytesRead == 0) {
+        // eof
+        break;
+      }
+
+      if (bytesRead < sizeof(marker)) {
+        // eof
+        LOG_WARNING("bytesRead = %d < sizeof(marker) = %d", bytesRead, sizeof(marker));
+        break;
+      }
+
+      if (marker._size == 0) {
+        // eof
+        break;
+      }
+      
+      if (bytesRead == sizeof(marker)) {
+        // read marker body
+      
+        if (marker._size < sizeof(marker)) {
+          // eof
+          LOG_WARNING("marker._size = %d < sizeof(marker) = %d", marker._size, sizeof(marker));
+          break;
+        }
+        
+        //std::cout << "total marker size is " << marker._size << " bytes, sizeof(marker) is " << sizeof(marker) << "\n";
+        //std::cout << "type  " << marker._type << "\n";
+
+        off_t paddedSize = ((marker._size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+        
+        // char payload[marker._size];
+        char payload[paddedSize];
+        char* p = (char*) &payload;
+      
+        //std::cout << "marker._size - sizeof(marker) = " << marker._size - sizeof(marker) << " bytes, paddedSize- sizeof(marker) = " << paddedSize - sizeof(marker) << "\n";
+        // copy header
+                
+        memcpy(&payload, &marker, sizeof(marker));
+        
+        if (marker._size > sizeof(marker)) {
+          //int r = ::read(fd, p + sizeof(marker), marker._size - sizeof(marker));
+          int r = ::read(fd, p + sizeof(marker), paddedSize - sizeof(marker));
+        }
+
+        if ((int) marker._type == 0) {
+          // eof
+          break;
+        }
+
+        switch (marker._type) {
+          case TRI_DOC_MARKER_DOCUMENT: {
+            TRI_doc_document_marker_t_deprecated* oldMarker = (TRI_doc_document_marker_t_deprecated*) &payload;
+            TRI_doc_document_key_marker_t newMarker;
+            TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_document_key_marker_t);
+
+            char* body = ((char*) oldMarker) + sizeof(TRI_doc_document_marker_t_deprecated);
+            TRI_voc_size_t bodySize = oldMarker->base._size - sizeof(TRI_doc_document_marker_t_deprecated); 
+            TRI_voc_size_t bodySizePadded = paddedSize - sizeof(TRI_doc_document_marker_t_deprecated); 
+            
+            char* keyBody = 0;
+            TRI_voc_size_t keyBodySize = 0; 
+            
+            TRI_voc_size_t keySize = 0;
+            char didBuffer[33];  
+
+            memset(&newMarker, 0, newMarkerSize); 
+
+            sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
+            keySize = strlen(didBuffer) + 1;
+            keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+            keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
+            TRI_CopyString(keyBody, didBuffer, keySize);      
+
+            newMarker._rid = oldMarker->_rid;
+            newMarker._sid = oldMarker->_sid;
+            newMarker._shape = oldMarker->_shape;
+            newMarker._offsetKey = newMarkerSize;
+            newMarker._offsetJson = newMarkerSize + keyBodySize;
+            
+            newMarker.base._type = TRI_DOC_MARKER_KEY_DOCUMENT;
+            newMarker.base._tick = oldMarker->base._tick;
+            newMarker.base._size = newMarkerSize + keyBodySize + bodySize;
+            TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
+
+            write(fdout, &newMarker, sizeof(newMarker));
+            write(fdout, keyBody, keyBodySize);
+            write(fdout, body, bodySizePadded);
+
+            //LOG_INFO("found doc marker, type: '%d', did: '%d', rid: '%d', size: '%d', crc: '%d'", marker._type, oldMarker->_did, oldMarker->_rid,newMarker.base._size,newMarker.base._crc);
+
+            TRI_Free(TRI_CORE_MEM_ZONE, keyBody);
+
+            writtenSize += sizeof(newMarker) + keyBodySize + bodySizePadded;
+            break;
+          }
+            
+          case TRI_DOC_MARKER_EDGE: {
+            TRI_doc_edge_marker_t_deprecated* oldMarker = (TRI_doc_edge_marker_t_deprecated*) &payload;            
+            TRI_doc_edge_key_marker_t newMarker;
+            TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_edge_key_marker_t);
+            
+            char* body = ((char*) oldMarker) + sizeof(TRI_doc_edge_marker_t_deprecated);
+            TRI_voc_size_t bodySize = oldMarker->base.base._size - sizeof(TRI_doc_edge_marker_t_deprecated); 
+            TRI_voc_size_t bodySizePadded = paddedSize - sizeof(TRI_doc_edge_marker_t_deprecated); 
+            
+            char* keyBody = 0;
+            TRI_voc_size_t keyBodySize = 0;
+            
+            size_t keySize = 0;
+            size_t toSize = 0;
+            size_t fromSize = 0;            
+            
+            char didBuffer[33];  
+            char toDidBuffer[33];  
+            char fromDidBuffer[33];  
+
+            memset(&newMarker, 0, newMarkerSize); 
+
+            sprintf(didBuffer,"%d", (unsigned int) oldMarker->base._did);
+            sprintf(toDidBuffer,"%d", (unsigned int) oldMarker->_toDid);
+            sprintf(fromDidBuffer,"%d", (unsigned int) oldMarker->_fromDid);
+            
+            keySize = strlen(didBuffer) + 1;
+            toSize = strlen(toDidBuffer) + 1;
+            fromSize = strlen(fromDidBuffer) + 1;
+
+            keyBodySize = ((keySize + toSize + fromSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;            
+            keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
+            
+            TRI_CopyString(keyBody,                    didBuffer,     keySize);      
+            TRI_CopyString(keyBody + keySize,          toDidBuffer,   toSize);      
+            TRI_CopyString(keyBody + keySize + toSize, fromDidBuffer, fromSize);      
+
+            newMarker.base._rid = oldMarker->base._rid;
+            newMarker.base._sid = oldMarker->base._sid;                        
+            newMarker.base._shape = oldMarker->base._shape;
+            newMarker.base._offsetKey = newMarkerSize;
+            newMarker.base._offsetJson = newMarkerSize + keyBodySize;
+            
+            newMarker._offsetToKey = newMarkerSize + keySize;
+            newMarker._offsetFromKey = newMarkerSize + keySize + toSize;
+            newMarker._toCid = oldMarker->_toCid;
+            newMarker._fromCid = oldMarker->_fromCid;
+            
+            newMarker.base.base._size = newMarkerSize + keyBodySize + bodySize;
+            newMarker.base.base._type = TRI_DOC_MARKER_KEY_EDGE;
+            newMarker.base.base._tick = oldMarker->base.base._tick;
+
+            TRI_FillCrcKeyMarkerDatafile(&newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
+
+            write(fdout, &newMarker, newMarkerSize);
+            write(fdout, keyBody, keyBodySize);
+            write(fdout, body, bodySizePadded);
+
+            //LOG_INFO("found edge marker, type: '%d', did: '%d', rid: '%d', size: '%d', crc: '%d'", marker._type, oldMarker->base._did, oldMarker->base._rid,newMarker.base.base._size,newMarker.base.base._crc);
+
+            TRI_Free(TRI_CORE_MEM_ZONE, keyBody);
+
+            writtenSize += newMarkerSize + keyBodySize + bodySizePadded;
+            break;
+          }
+
+          case TRI_DOC_MARKER_DELETION: {
+            TRI_doc_deletion_marker_t_deprecated* oldMarker = (TRI_doc_deletion_marker_t_deprecated*) &payload;                        
+            TRI_doc_deletion_key_marker_t newMarker;
+            TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_deletion_key_marker_t);
+            
+            TRI_voc_size_t keyBodySize = 0; 
+            char* keyBody = 0;
+            TRI_voc_size_t keySize = 0;
+            char didBuffer[33];  
+
+            memset(&newMarker, 0, newMarkerSize); 
+
+            sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
+            keySize = strlen(didBuffer) + 1;
+            keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+            keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
+            TRI_CopyString(keyBody, didBuffer, keySize);      
+
+            newMarker._rid = oldMarker->_rid;
+            newMarker._sid = oldMarker->_sid;
+            newMarker._offsetKey = newMarkerSize;
+            
+            newMarker.base._size = newMarkerSize + keyBodySize;
+            newMarker.base._type = TRI_DOC_MARKER_KEY_DELETION;
+            newMarker.base._tick = oldMarker->base._tick;
+
+            TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
+
+            write(fdout, &newMarker, newMarkerSize);
+            write(fdout, (char*) keyBody, keyBodySize);
+
+            //LOG_INFO("found deletion marker, type: '%d', did: '%d', rid: '%d'", marker._type, oldMarker->_did, oldMarker->_rid);
+
+            TRI_Free(TRI_CORE_MEM_ZONE, keyBody);
+            
+            writtenSize += newMarker.base._size;
+            break;
+          }
+
+          default: {
+            // copy other types without modification
+            
+            write(fdout, &payload, sizeof(payload));
+            writtenSize += sizeof(payload);
+            //LOG_INFO("found marker, type: '%d'", marker._type);
+
+          }
+        }
+
+      }
+      else if (bytesRead == 0) {
+        // eof
+        break;
+      }
+      else {
+        LOG_ERROR("Could not read data from file '%s' while upgrading collection '%s'.", df->_filename, name);
+        LOG_ERROR("Remove collection manually.");
+        close(fd);
+        close(fdout);
+
+        TRI_DestroyVectorPointer(&files);
+        TRI_ReleaseCollection(collection);
+  
+        return scope.Close(v8::False());
+      }
+    }
+
+    // fill up
+    if (writtenSize < fileSize) {
+      const int max = 10000;
+      char b[max];
+      memset(b, 0, max); 
+      
+      while (writtenSize + max < fileSize) {
+        write(fdout, b, max);
+        writtenSize += max;
+      }
+      
+      if (writtenSize < fileSize) {
+        write(fdout, b, fileSize - writtenSize);
+      }
+    }
+
+    // file converted!
+    close(fd);
+    close(fdout);
+  }
+
+
+  int ok = TRI_ERROR_NO_ERROR;
+  
+  for (size_t j = 0; j < files._length; ++j) {
+    ostringstream outfile1;
+    ostringstream outfile2;
+    int fd, fdout;
+
+    TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&files, j);
+    outfile1 << df->_filename << ".old";
+    
+    ok = TRI_RenameFile(df->_filename, outfile1.str().c_str());
+    if (ok != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("Could not rename file '%s' while upgrading collection '%s'.", df->_filename, name);
+      break;
+    }
+
+    outfile2 << df->_filename << ".new";
+    
+    ok = TRI_RenameFile(outfile2.str().c_str(), df->_filename);
+    if (ok != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("Could not rename file '%s' while upgrading collection '%s'.", outfile2.str().c_str(), name);
+      break;
+    }
+  }
+  
+  //  int TRI_UnlinkFile (char const* filename);
+  
+  
+  TRI_DestroyVectorPointer(&files);
+  
+  TRI_ReleaseCollection(collection);
+  
+  if (ok != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::False());
+  }
+  
+  return scope.Close(v8::True());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafiles
@@ -5710,6 +6090,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8::Handle<v8::String> TypeFuncName = v8::Persistent<v8::String>::New(v8::String::New("type"));
   v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
   v8::Handle<v8::String> UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("update"));
+  v8::Handle<v8::String> UpgradeFuncName = v8::Persistent<v8::String>::New(v8::String::New("upgrade"));
   v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
   v8::Handle<v8::String> VersionFuncName = v8::Persistent<v8::String>::New(v8::String::New("version"));
 
@@ -5872,6 +6253,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
   rt->Set(TypeFuncName, v8::FunctionTemplate::New(JS_TypeVocbaseCol));
   rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
+  rt->Set(UpgradeFuncName, v8::FunctionTemplate::New(JS_UpgradeVocbaseCol), v8::DontEnum);
   rt->Set(VersionFuncName, v8::FunctionTemplate::New(JS_VersionVocbaseCol));
   
   rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
