@@ -2590,6 +2590,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief migrate an "old" collection to a newer version 
+////////////////////////////////////////////////////////////////////////////////
   
 static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2658,7 +2662,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
     ostringstream outfile;
     outfile << df->_filename << ".new";
    
-    //std::cout << "outfile is " << outfile.str().c_str() << endl; 
     fdout = TRI_CREATE(outfile.str().c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (fdout < 0) {
       LOG_ERROR("could not open file '%s' for writing", outfile.str().c_str());
@@ -2678,8 +2681,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       // read marker header
       ssize_t bytesRead = ::read(fd, &marker, sizeof(marker));
 
-      //std::cout << "we try to read " << sizeof(marker) << " bytes, got " << bytesRead << "\n";
-      
       if (bytesRead == 0) {
         // eof
         break;
@@ -2705,16 +2706,11 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
           break;
         }
         
-        //std::cout << "total marker size is " << marker._size << " bytes, sizeof(marker) is " << sizeof(marker) << "\n";
-        //std::cout << "type  " << marker._type << "\n";
-
         off_t paddedSize = ((marker._size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
         
-        // char payload[marker._size];
         char payload[paddedSize];
         char* p = (char*) &payload;
       
-        //std::cout << "marker._size - sizeof(marker) = " << marker._size - sizeof(marker) << " bytes, paddedSize- sizeof(marker) = " << paddedSize - sizeof(marker) << "\n";
         // copy header
                 
         memcpy(&payload, &marker, sizeof(marker));
