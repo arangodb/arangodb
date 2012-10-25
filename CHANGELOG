@@ -15,6 +15,12 @@ v1.1.beta1 (2012-XX-XX)
     db._create() is also still there and will create a document collection by default, 
     whereas edges._create() will create an edge collection.
 
+  - the admin web interface that was previously available via the simple URL suffix / 
+    is now available via a dedicated URL suffix only: /_admin/html
+    The reason for this is that routing and URLs are now subject to changes by the end user,
+    and only URLs parts prefixed with underscores (e.g. /_admin or /_api) are reserved
+    for ArangoDB's internal usage.
+
 * the server now handles requests with invalid Content-Length header values as follows:
   - if Content-Length is negative, the server will respond instantly with HTTP 411
     (length required)
