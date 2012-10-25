@@ -247,7 +247,12 @@ function lookupCallbackAction (route, action) {
       }
     }
     catch (err) {
-      func = errorFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+      if (! ExistsCache[path.join("/")]) {
+        func = notImplementedFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+      }
+      else {
+        func = errorFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+      }
     }
 
     if (func === null || typeof func !== 'function') {
@@ -295,6 +300,10 @@ function lookupCallbackAction (route, action) {
       };
     }
     catch (err) {
+      if (! ExistsCache[action.controller]) {
+        return notImplementedFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+      }
+
       return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
     }
   }
@@ -305,16 +314,25 @@ function lookupCallbackAction (route, action) {
     return {
       controller: function (req, res, options, next) {
         var module;
+        var path;
 
+        // determine path
+        if (req.hasOwnProperty('suffix')) {
+          path = prefixController + "/" + req.suffix.join("/");
+        }
+        else {
+          path = prefixController;
+        }
+
+        // load module
         try {
-          if (req.hasOwnProperty('suffix')) {
-            module = require(prefixController + "/" + req.suffix.join("/"));
-          }
-          else {
-            module = require(prefixController);
-          }
+          require(path);
         }
         catch (err) {
+          if (! ExistsCache[path]) {
+            return notImplementedFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+          }
+
           return errorFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
         }
 
