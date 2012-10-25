@@ -56,6 +56,12 @@
 ModuleCache = {};
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief file exists cache
+////////////////////////////////////////////////////////////////////////////////
+
+ExistsCache = {};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -389,6 +395,8 @@ ModuleCache["/internal"] = new Module("/internal");
     var mc;
     var n;
 
+    var existsCache = ExistsCache;
+
     // try to load the file
     var paths = internal.MODULES_PATH;
 
@@ -403,6 +411,7 @@ ModuleCache["/internal"] = new Module("/internal");
       }
 
       if (fs.exists(n)) {
+        existsCache[path] = true;
         return { path : n, content : internal.read(n) };
       }
     }
@@ -415,6 +424,7 @@ ModuleCache["/internal"] = new Module("/internal");
 
       if (n !== null) {
         if (n.hasOwnProperty('content')) {
+          existsCache[path] = true;
           return { path : "_collection/" + path, content : n.content };
         }
         else {
@@ -423,6 +433,7 @@ ModuleCache["/internal"] = new Module("/internal");
       }
     }
 
+    existsCache[path] = false;
     throw "cannot find a file named '"
         + path
         + "' using the module path(s) '" 
