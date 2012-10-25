@@ -71,7 +71,6 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
   vector->_buffer          = NULL;
   vector->_length          = 0;
   vector->_capacity        = 0;
-  vector->_initialCapacity = 0;
   vector->_growthFactor    = GROW_FACTOR;
 }
 
@@ -84,16 +83,11 @@ int TRI_InitVector2 (TRI_vector_t* vector,
                      size_t elementSize,
                      size_t initialCapacity, 
                      double growthFactor) {
-  vector->_memoryZone      = zone;
-  vector->_elementSize     = elementSize;
-  vector->_buffer          = NULL;
-  vector->_length          = 0;
-  vector->_capacity        = 0;
-  vector->_initialCapacity = initialCapacity;
-  vector->_growthFactor    = growthFactor;
-  
-  if (growthFactor <= 1) {
-    vector->_growthFactor = GROW_FACTOR;
+  // init vector as usual
+  TRI_InitVector(vector, zone, elementSize);
+
+  if (growthFactor > 1.0) {
+    vector->_growthFactor = growthFactor;
   }
   
   if (initialCapacity != 0) {
@@ -106,7 +100,6 @@ int TRI_InitVector2 (TRI_vector_t* vector,
   vector->_capacity = initialCapacity;
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a vector, but does not free the pointer
@@ -247,7 +240,6 @@ int TRI_PushBackVector (TRI_vector_t* vector, void const* element) {
   return TRI_ERROR_NO_ERROR;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,6 +373,26 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
   vector->_buffer = NULL;
   vector->_length = 0;
   vector->_capacity = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a vector, with user-definable settings
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitVectorPointer2 (TRI_vector_pointer_t* vector, 
+                            TRI_memory_zone_t* zone, 
+                            size_t initialCapacity) { 
+  TRI_InitVectorPointer(vector, zone);
+  
+  if (initialCapacity != 0) {
+    vector->_buffer = (void*) TRI_Allocate(vector->_memoryZone, (initialCapacity * sizeof(void*)), true);
+    if (vector->_buffer == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  
+  vector->_capacity = initialCapacity;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
