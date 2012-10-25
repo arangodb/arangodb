@@ -535,6 +535,10 @@ function CollectionEdgeSuite () {
       var d = vertex.save( {"name" : "d" });
       var e = vertex.save( {"name" : "e" });
       var f = vertex.save( {"name" : "f" });
+      var g = vertex.save( {"name" : "g" });
+      var h = vertex.save( {"name" : "h" });
+      var i = vertex.save( {"name" : "i" });
+      var j = vertex.save( {"name" : "j" });
 
       edge.save(a, a, { "what" : "a->a", "_bidirectional" : false });
       edge.save(a, b, { "what" : "a<->b", "_bidirectional" : true });
@@ -544,6 +548,12 @@ function CollectionEdgeSuite () {
       edge.save(d, f, { "what" : "d<->f", "_bidirectional" : true });
       edge.save(f, e, { "what" : "f->e", "_bidirectional" : false });
       edge.save(e, e, { "what" : "e->e", "_bidirectional" : false });
+      edge.save(g, g, { "what" : "g->g", "_bidirectional" : false });
+      edge.save(g, h, { "what" : "g<->h", "_bidirectional" : true });
+      edge.save(h, g, { "what" : "h<->g", "_bidirectional" : true });
+      edge.save(h, i, { "what" : "h<->i", "_bidirectional" : true });
+      edge.save(i, i, { "what" : "i<->i", "_bidirectional" : true });
+      edge.save(j, j, { "what" : "j->j", "_bidirectional" : false });
 
       assertEqual(3, edge.outEdges(a).length);
       assertEqual(1, edge.outEdges(b).length);
@@ -551,13 +561,23 @@ function CollectionEdgeSuite () {
       assertEqual(2, edge.outEdges(d).length);
       assertEqual(1, edge.outEdges(e).length);
       assertEqual(2, edge.outEdges(f).length);
+      assertEqual(3, edge.outEdges(g).length);
+      assertEqual(3, edge.outEdges(h).length);
+      assertEqual(2, edge.outEdges(i).length);
+      assertEqual(1, edge.outEdges(j).length);
 
       assertEqual(3, edge.inEdges(a).length);
       assertEqual(1, edge.inEdges(b).length);
       assertEqual(1, edge.inEdges(c).length);
       assertEqual(2, edge.inEdges(d).length);
+      assertEqual(3, edge.inEdges(a).length);
       assertEqual(2, edge.inEdges(e).length);
       assertEqual(1, edge.inEdges(f).length);
+      assertEqual(3, edge.inEdges(g).length);
+      assertEqual(3, edge.inEdges(a).length);
+      assertEqual(3, edge.inEdges(h).length);
+      assertEqual(2, edge.inEdges(i).length);
+      assertEqual(1, edge.inEdges(j).length);
       
       assertEqual(4, edge.edges(a).length);
       assertEqual(1, edge.edges(b).length);
@@ -565,6 +585,10 @@ function CollectionEdgeSuite () {
       assertEqual(3, edge.edges(d).length);
       assertEqual(2, edge.edges(e).length);
       assertEqual(2, edge.edges(f).length);
+      assertEqual(3, edge.edges(g).length);
+      assertEqual(3, edge.edges(h).length);
+      assertEqual(2, edge.edges(i).length);
+      assertEqual(1, edge.edges(j).length);
     }
 
   };
