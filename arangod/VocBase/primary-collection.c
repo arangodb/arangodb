@@ -93,7 +93,6 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
                                   TRI_df_marker_type_e type,
                                   TRI_json_t const* json,
                                   void const* data,
-                                  bool reuseId,
                                   bool release,
                                   bool forceSync) {
   TRI_shaped_json_t* shaped;

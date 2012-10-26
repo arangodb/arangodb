@@ -198,10 +198,6 @@ bool RestImportHandler::createByArray () {
   char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
-  // shall we reuse document and revision id?
-  valueStr = _request->value("useId", found);
-  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
-
   // find and load collection given by name or identifier
   CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
   
@@ -244,7 +240,7 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, values, 0, reuseId, false, forceSync);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, values, 0, false, forceSync);
       if (mptr._key != 0) {
         ++numCreated;
       }
@@ -314,10 +310,6 @@ bool RestImportHandler::createByList () {
   char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
-  // shall we reuse document and revision id?
-  valueStr = _request->value("useId", found);
-  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
-
   size_t start = 0;
   string body(_request->body(), _request->bodySize());
   size_t next = body.find('\n', start);
@@ -428,7 +420,7 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, reuseId, false, forceSync);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, false, forceSync);
       if (mptr._key != 0) {
         ++numCreated;
       }
