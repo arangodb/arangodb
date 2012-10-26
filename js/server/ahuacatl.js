@@ -2042,11 +2042,11 @@ function AHUACATL_GRAPH_PATHS () {
   }
 
   var searchAttributes = { 
-    "edgeCollection" : internal.db[edgeCollection],
-    "minLength" : minLength, 
-    "maxLength" : maxLength, 
-    "direction" : searchDirection,
-    "followCycles" : followCycles,
+    edgeCollection : internal.db[edgeCollection],
+    minLength : minLength, 
+    maxLength : maxLength, 
+    direction : searchDirection,
+    followCycles : followCycles,
   };
 
   // TODO: restrict allEdges to edges with certain _from values etc.
@@ -2056,6 +2056,7 @@ function AHUACATL_GRAPH_PATHS () {
   for (var i = 0; i < n; ++i) {
     var vertex = vertices[i];
     var visited = { };
+
     visited[vertex._id] = true;
     var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
     for (j = 0; j < connected.length; ++j) {
@@ -2075,10 +2076,10 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 
   if (level >= searchAttributes.minLength) {
     result.push({ 
-        "vertices" : vertices, 
-        "edges" : edges,
-        "source" : vertices[0],
-        "destination" : vertices[vertices.length - 1],
+        vertices : vertices, 
+        edges : edges,
+        source : vertices[0],
+        destination : vertices[vertices.length - 1],
         });
   }
 
@@ -2112,7 +2113,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
     for (var j = 0; j < targets.length; ++j) {
       var targetId = targets[j];
       
-      if (!searchAttributes.followCycles) {
+      if (! searchAttributes.followCycles) {
         if (visited[targetId]) {
           continue;
         }
@@ -2134,7 +2135,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
         result.push(connected[k]);
       }
 
-      if (!searchAttributes.followCycles) {
+      if (! searchAttributes.followCycles) {
         delete visited[targetId];
       }
     }
