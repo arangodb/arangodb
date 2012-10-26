@@ -27,6 +27,8 @@
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 
+#include "Ahuacatl/ahuacatl-functions.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -1784,7 +1786,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   assert(field);
   assert(field->_name._buffer);
   assert(node);
-
+  
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
   if (fieldAccess == NULL) {
     // OOM
@@ -1807,8 +1809,8 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     fieldAccess->_type = TRI_AQL_ACCESS_ALL;
 
     return fieldAccess;
-  } 
-
+  }
+  
   if (node->_type == TRI_AQL_NODE_REFERENCE ||
       node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     // create the reference access
@@ -1908,13 +1910,13 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
   assert(context);
   assert(node);
 
-  if (!field || !field->_name._buffer) {
+  if (field == NULL || ! field->_name._buffer) {
     // this is ok if the node type is not supported
     return NULL;
   }
     
   fieldAccess = CreateAccessForNode(context, field, operator, node);
-  if (!fieldAccess) { 
+  if (fieldAccess == NULL) { 
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
@@ -1959,6 +1961,29 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
     field->_variable = TRI_AQL_NODE_STRING(node);
     TRI_InitStringBuffer(&field->_name, TRI_UNKNOWN_MEM_ZONE);
     TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
+
+    return field;
+  }
+  else if (node->_type == TRI_AQL_NODE_FCALL) {
+    TRI_aql_function_t* function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
+    TRI_aql_node_t* args = TRI_AQL_NODE_MEMBER(node, 0);
+    TRI_aql_attribute_name_t* field;
+
+    // if we have anything but 1 function call argument, we cannot optimise this
+    if (args->_members._length != 1) {
+      return NULL;
+    }
+
+    field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(args, 0));
+
+    if (field == NULL) {
+      return NULL;
+    }
+ 
+    // name of generated attribute is XXX.FUNC(), e.g. for LENGTH(users.friends) => users.friends.LENGTH()
+    TRI_AppendCharStringBuffer(&field->_name, '.');
+    TRI_AppendStringStringBuffer(&field->_name, function->_externalName);
+    TRI_AppendStringStringBuffer(&field->_name, "()");
 
     return field;
   }
@@ -2046,28 +2071,28 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 
     useBoth = false;
 
-    if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
-        (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // collection.attribute|reference operator const value|reference|attribute access
+    if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) && 
+        (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL)) {
+      // collection.attribute|reference|fcall operator const value|reference|attribute access|fcall
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
       
-      if (rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
-        // expression of type reference|attribute access operator reference|attribute access
+      if (rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL) {
+        // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
         useBoth = true;
       }
     }
-    else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
-             (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // const value|reference|attribute access operator collection.attribute|reference
+    else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL) && 
+             (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL)) {
+      // const value|reference|attribute|fcall access operator collection.attribute|reference|fcall
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
       assert(operator != TRI_AQL_NODE_NOP);
       
-      if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
-        // expression of type reference|attribute access operator reference|attribute access
+      if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) {
+        // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
         useBoth = true;
       }
     }
@@ -2090,7 +2115,7 @@ again:
     // we'll get back here for expressions of type a.x == b.y (where both sides are references)
     field = GetAttributeName(context, node1);
 
-    if (field) {
+    if (field && node2->_type != TRI_AQL_NODE_FCALL) {
       TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, operator, node2);
       TRI_vector_pointer_t* result;
 

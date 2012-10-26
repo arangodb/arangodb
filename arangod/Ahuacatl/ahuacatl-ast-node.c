@@ -59,7 +59,7 @@
 #define CREATE_NODE(type)                                                        \
   TRI_aql_node_t* node = (TRI_aql_node_t*)                                       \
     TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);           \
-  if (!node) {                                                                   \
+  if (node == NULL) {                                                            \
     ABORT_OOM                                                                    \
   }                                                                              \
                                                                                  \
@@ -71,7 +71,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define ADD_MEMBER(member)                                                       \
-  if (!member) {                                                                 \
+  if (member == NULL) {                                                          \
     ABORT_OOM                                                                    \
   }                                                                              \
                                                                                  \
