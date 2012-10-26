@@ -68,7 +68,7 @@ struct CFilesSetup {
     int fd = TRI_OPEN(filename->c_str(), O_RDWR | O_CREAT);
 
     if (fd) {
-      ::write(fd, &blob, strlen(blob));
+      ::write(fd, blob, strlen(blob));
       ::close(fd);
     }
     else {

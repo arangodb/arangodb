@@ -346,8 +346,6 @@ typedef struct TRI_doc_document_marker_s_deprecated {
   TRI_voc_eid_t _sid;
 
   TRI_shape_sid_t _shape;
-
-  // char data[]
 }
 TRI_doc_document_marker_t_deprecated;
 
@@ -363,8 +361,6 @@ typedef struct TRI_doc_edge_marker_s_deprecated {
 
   TRI_voc_cid_t _fromCid;
   TRI_voc_did_t _fromDid;
-
-  // char data[]
 }
 TRI_doc_edge_marker_t_deprecated;
 
@@ -378,10 +374,10 @@ typedef struct TRI_doc_document_key_marker_s {
   TRI_voc_rid_t _rid;        // this is the tick for an create and update
   TRI_voc_eid_t _sid;
 
-  TRI_shape_sid_t _shape;
-
-  uint16_t _offsetKey;
-  uint16_t _offsetJson;
+  TRI_shape_sid_t _shape; 
+ 
+  uint16_t _offsetKey; 
+  uint16_t _offsetJson; 
 }
 TRI_doc_document_key_marker_t;
 
@@ -392,11 +388,12 @@ TRI_doc_document_key_marker_t;
 typedef struct TRI_doc_edge_key_marker_s {
   TRI_doc_document_key_marker_t base;
 
-  TRI_voc_cid_t _toCid;
+  TRI_voc_cid_t _toCid;  
+  TRI_voc_cid_t _fromCid; 
+
   uint16_t _offsetToKey;
-  
-  TRI_voc_cid_t _fromCid;  
   uint16_t _offsetFromKey;
+  uint8_t _isBidirectional;
 }
 TRI_doc_edge_key_marker_t;
 

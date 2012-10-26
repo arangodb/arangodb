@@ -380,6 +380,8 @@ function RunCommandLineTests () {
 
   for (var i = 0;  i < SYS_UNIT_TESTS.length;  ++i) {
     var file = SYS_UNIT_TESTS[i];
+    print();
+    print("running tests from file '" + file + "'");
 
     try {
       var ok = RunTest(file);
