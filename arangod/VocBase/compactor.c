@@ -315,11 +315,6 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
-  else {
-    LOG_FATAL("unknown marker type %d", (int) marker->_type);
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
 
   return true;
 }
