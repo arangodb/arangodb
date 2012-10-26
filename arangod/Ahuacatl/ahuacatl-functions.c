@@ -312,6 +312,15 @@ static bool EqualName (TRI_associative_pointer_t* array,
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               optimiser callbacks
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise callback function for PATHS() AQL function
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,8 +345,6 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
     return;
   }
 
-  assert(args->_members._length >= 3);
-
   vertexCollection = TRI_AQL_NODE_MEMBER(args, 0);
   edgeCollection = TRI_AQL_NODE_MEMBER(args, 1);
   direction = TRI_AQL_NODE_MEMBER(args, 2);
@@ -352,6 +359,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
 
   directionValue = TRI_AQL_NODE_STRING(direction);
 
+  // try to optimise the vertex collection access
   if (TRI_EqualString(directionValue, "outbound")) {
     lookFor = ".source.";
     len = strlen(lookFor);
@@ -375,11 +383,15 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
     // copy trailing \0 byte as well
     memmove(name, name + len - 1, n - fieldAccess->_variableNameLength - len + 2);
     
-    // attach the modified fieldAccess to the collection
+    // attach the modified fieldaccess to the collection
     hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(vertexCollection));
     hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
