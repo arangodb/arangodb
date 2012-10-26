@@ -401,6 +401,8 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
     
     // init collection hint
     hint = TRI_CreateCollectionHintAql();
+
+    // attach the hint to the collection
     node->_value._value._data = hint;
 
     if (hint == NULL) {
@@ -950,14 +952,14 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
 
     function = TRI_GetByExternalNameFunctionAql(functions, name);
 
-    if (!function) {
+    if (! function) {
       // function name is unknown
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
       return NULL;
     }
 
     // validate function call arguments
-    if (!TRI_ValidateArgsFunctionAql(context, function, parameters)) {
+    if (! TRI_ValidateArgsFunctionAql(context, function, parameters)) {
       return NULL;
     }
 
