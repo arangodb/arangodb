@@ -274,10 +274,6 @@ bool RestDocumentHandler::createDocument () {
   char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
-  // shall we reuse document and revision id?
-  valueStr = _request->value("useId", found);
-  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
-
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   TRI_json_t* json = container.ptr();
@@ -305,7 +301,7 @@ bool RestDocumentHandler::createDocument () {
 
   WriteTransaction trx(&ca);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, reuseId, false, forceSync);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, false, forceSync);
 
   trx.end();
 

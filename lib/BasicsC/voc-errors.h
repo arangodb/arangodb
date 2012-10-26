@@ -135,6 +135,8 @@ extern "C" {
 ///   status.
 /// - 1218: @CODE{collection type invalid}
 ///   Will be raised when an invalid collection type is used in a request.
+/// - 1219: @CODE{illegal document key}
+///   Will be raised when a document key is corrupt.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -889,6 +891,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          (1218)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1219: ERROR_ARANGO_DOCUMENT_KEY_BAD
+///
+/// illegal document key
+///
+/// Will be raised when a document key is corrupt.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD                                 (1219)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

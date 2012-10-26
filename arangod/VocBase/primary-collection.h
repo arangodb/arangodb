@@ -318,7 +318,7 @@ typedef struct TRI_primary_collection_s {
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
   TRI_doc_mptr_t (*create) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key, bool, bool);
-  TRI_doc_mptr_t (*createJson) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool, bool);
+  TRI_doc_mptr_t (*createJson) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool);
   TRI_voc_key_t (*createLock) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, bool);
   TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_key_t);
 
