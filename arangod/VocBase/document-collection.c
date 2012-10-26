@@ -1022,13 +1022,10 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
 
   collection = (TRI_document_collection_t*) primary;
 
-  //regmatch_t match;  
   if (key) {
     // check key
-    
-    int x = regexec(&collection->DocumentKeyRegex, key, 0, NULL, 0);
-    
-    if (x != 0) {
+    if (regexec(&collection->DocumentKeyRegex, key, 0, NULL, 0) != 0) {
+      collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);      
       memset(&mptr, 0, sizeof(mptr));
       primary->endWrite(primary);
       return mptr;
