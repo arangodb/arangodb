@@ -194,7 +194,7 @@ static bool IsEqualElementEdge (TRI_multi_pointer_t* array, void const* left, vo
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool FindEdges (const TRI_edge_direction_e direction,
-                       TRI_multi_pointer_t* index, 
+                       TRI_multi_pointer_t* idx, 
                        TRI_vector_pointer_t* result,
                        TRI_edge_header_t* entry,
                        const int matchType) {
@@ -203,7 +203,7 @@ static bool FindEdges (const TRI_edge_direction_e direction,
   TRI_edge_header_t* edge;
   
   entry->_flags = MakeLookupFlags(direction);
-  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, index, entry);
+  found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, idx, entry);
 
   if (found._length > 0) {
     size_t i;
