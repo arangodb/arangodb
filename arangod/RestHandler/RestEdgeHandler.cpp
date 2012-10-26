@@ -175,25 +175,42 @@ bool RestEdgeHandler::createDocument () {
   edge._toCid = cid;
   edge._fromKey = 0;
   edge._toKey = 0;
+  edge._isBidirectional = false;
+  
+  if (json->_type == TRI_JSON_ARRAY) {
+    TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_bidirectional");
+    if (k != NULL && k->_type == TRI_JSON_BOOLEAN) {
+      edge._isBidirectional = k->_value._boolean;
+    }    
+  }
 
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+
     generateError(HttpResponse::BAD,
                   res,
-                  "'from' is not a document handle");
+                  "'_from' is not a document handle");
     return false;
   }
 
   res = parseDocumentId(to, edge._toCid, edge._toKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    if (edge._toKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    }
+
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+
     generateError(HttpResponse::BAD,
                   res,
-                  "'to' is not a document handle");
+                  "'_to' is not a document handle");
     return false;
   }
 

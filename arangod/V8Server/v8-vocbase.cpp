@@ -925,14 +925,21 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
                                                "usage: save(<from>, <to>, <data>, <waitForSync>)")));
   }
   
+  bool isBidirectional = false;
+  
   // set document key
   TRI_voc_key_t key = 0;
 
   if (argv[2]->IsObject()) {
-    v8::Handle<v8::Value> v = argv[2]->ToObject()->Get(v8g->KeyKey);
+    v8::Handle<v8::Object> obj = argv[2]->ToObject();
+    v8::Handle<v8::Value> v = obj->Get(v8g->KeyKey);
     if (v->IsString()) {
       TRI_Utf8ValueNFC str(TRI_CORE_MEM_ZONE, v);
       key = TRI_DuplicateString2(*str, str.length());
+    }
+
+    if (obj->Has(v8g->BidirectionalKey)) {
+      isBidirectional = TRI_ObjectToBoolean(obj->Get(v8g->BidirectionalKey));
     }
   }
     
@@ -947,6 +954,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   edge._toCid = collection->_cid;
   edge._toKey = 0;
   edge._fromKey = 0;
+  edge._isBidirectional = isBidirectional;
 
   v8::Handle<v8::Value> errMsg;
 
@@ -981,9 +989,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
       TRI_ReleaseCollection(toCollection);
     }
 
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+    if (edge._toKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    }
     
     return scope.Close(v8::ThrowException(errMsg));
   }
@@ -996,9 +1010,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   if (shaped == 0) {
     
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+    }
+    if (edge._toKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+    }
     
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
@@ -1019,9 +1039,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
-  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-  if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-  if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+  if (key) {
+   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  }
+  if (edge._fromKey) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
+  }
+  if (edge._toKey) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
+  }
   
   if (mptr._key == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
@@ -2564,6 +2590,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief migrate an "old" collection to a newer version 
+////////////////////////////////////////////////////////////////////////////////
   
 static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2632,7 +2662,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
     ostringstream outfile;
     outfile << df->_filename << ".new";
    
-    //std::cout << "outfile is " << outfile.str().c_str() << endl; 
     fdout = TRI_CREATE(outfile.str().c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (fdout < 0) {
       LOG_ERROR("could not open file '%s' for writing", outfile.str().c_str());
@@ -2652,14 +2681,12 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       // read marker header
       ssize_t bytesRead = ::read(fd, &marker, sizeof(marker));
 
-      //std::cout << "we try to read " << sizeof(marker) << " bytes, got " << bytesRead << "\n";
-      
       if (bytesRead == 0) {
         // eof
         break;
       }
 
-      if (bytesRead < sizeof(marker)) {
+      if (bytesRead < (ssize_t) sizeof(marker)) {
         // eof
         LOG_WARNING("bytesRead = %d < sizeof(marker) = %d", bytesRead, sizeof(marker));
         break;
@@ -2679,16 +2706,11 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
           break;
         }
         
-        //std::cout << "total marker size is " << marker._size << " bytes, sizeof(marker) is " << sizeof(marker) << "\n";
-        //std::cout << "type  " << marker._type << "\n";
-
         off_t paddedSize = ((marker._size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
         
-        // char payload[marker._size];
         char payload[paddedSize];
         char* p = (char*) &payload;
       
-        //std::cout << "marker._size - sizeof(marker) = " << marker._size - sizeof(marker) << " bytes, paddedSize- sizeof(marker) = " << paddedSize - sizeof(marker) << "\n";
         // copy header
                 
         memcpy(&payload, &marker, sizeof(marker));
@@ -2696,6 +2718,10 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
         if (marker._size > sizeof(marker)) {
           //int r = ::read(fd, p + sizeof(marker), marker._size - sizeof(marker));
           int r = ::read(fd, p + sizeof(marker), paddedSize - sizeof(marker));
+          if (r < (int) (paddedSize - sizeof(marker))) {
+            LOG_WARNING("read less than paddedSize - sizeof(marker) = %d", r);
+            break;
+          }
         }
 
         if ((int) marker._type == 0) {
@@ -2797,6 +2823,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker._offsetFromKey = newMarkerSize + keySize + toSize;
             newMarker._toCid = oldMarker->_toCid;
             newMarker._fromCid = oldMarker->_fromCid;
+            newMarker._isBidirectional = 0;
             
             newMarker.base.base._size = newMarkerSize + keyBodySize + bodySize;
             newMarker.base.base._type = TRI_DOC_MARKER_KEY_EDGE;
@@ -2910,7 +2937,6 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   for (size_t j = 0; j < files._length; ++j) {
     ostringstream outfile1;
     ostringstream outfile2;
-    int fd, fdout;
 
     TRI_datafile_t* df = (TRI_datafile_t*) TRI_AtVectorPointer(&files, j);
     outfile1 << df->_filename << ".old";
@@ -5963,8 +5989,24 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-    result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+
+    if (marker->_isBidirectional) {
+      // bdirectional edge
+      result->Set(v8g->BidirectionalKey, v8::True());
+      
+      // create _vertices array
+      v8::Handle<v8::Array> vertices = v8::Array::New();
+      vertices->Set(0, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      vertices->Set(1, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      result->Set(v8::String::New("_vertices"), vertices);
+    }
+    else {
+      // unidirectional edge
+      result->Set(v8g->BidirectionalKey, v8::False());
+
+      result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+    }
   }
   
   // and return
@@ -6091,11 +6133,15 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
   v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
+  
+  if (v8g->BidirectionalKey.IsEmpty()) {
+    v8g->BidirectionalKey = v8::Persistent<v8::String>::New(v8::String::New("_bidirectional"));
+  }
 
   if (v8g->DidKey.IsEmpty()) {
     v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
   }
-
+  
   if (v8g->KeyKey.IsEmpty()) {
     v8g->KeyKey = v8::Persistent<v8::String>::New(v8::String::New("_key"));
   }
@@ -6107,7 +6153,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   if (v8g->IidKey.IsEmpty()) {
     v8g->IidKey = v8::Persistent<v8::String>::New(v8::String::New("id"));
   }
-
+  
   if (v8g->OldRevKey.IsEmpty()) {
     v8g->OldRevKey = v8::Persistent<v8::String>::New(v8::String::New("_oldRev"));
   }
@@ -6119,7 +6165,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   if (v8g->ToKey.IsEmpty()) {
     v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
   }
-
+  
   // .............................................................................
   // generate the TRI_vocbase_t template
   // .............................................................................
