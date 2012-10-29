@@ -111,7 +111,6 @@ TRI_doc_update_policy_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_mptr_s {
-  //TRI_voc_did_t _did; // this is the document identifier
   TRI_voc_rid_t _rid; // this is the revision identifier
   TRI_voc_eid_t _eid; // this is the step identifier
 
