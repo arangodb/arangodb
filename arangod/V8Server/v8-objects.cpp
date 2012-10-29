@@ -58,7 +58,6 @@ v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_key_t key)
   TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
   TRI_AppendUInt64StringBuffer(&buffer, cid);
   TRI_AppendCharStringBuffer(&buffer, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-  //TRI_AppendUInt64StringBuffer(&buffer, did);
   TRI_AppendStringStringBuffer(&buffer, (char*) key);
 
   v8::Handle<v8::String> ref = v8::String::New(buffer._buffer);
@@ -66,42 +65,6 @@ v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t cid, TRI_voc_key_t key)
   TRI_AnnihilateStringBuffer(&buffer);
 
   return scope.Close(ref);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extratcs identifiers from a object reference
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IdentifiersObjectReference (v8::Handle<v8::Value> value, TRI_voc_cid_t& cid, TRI_voc_did_t& did) {
-  bool error;
-
-  cid = 0;
-  did = 0;
-
-  if (value->IsNumber() || value->IsNumberObject()) {
-    did = (TRI_voc_did_t) TRI_ObjectToDouble(value, error);
-    return ! error;
-  }
-
-  string v = TRI_ObjectToString(value);
-
-  vector<string> doc = StringUtils::split(v, TRI_DOCUMENT_HANDLE_SEPARATOR_STR);
-
-  switch (doc.size()) {
-    case 1:
-      did = StringUtils::uint64(doc[1]);
-      return did != 0;
-
-    case 2:
-      cid = StringUtils::uint64(doc[0]);
-      did = StringUtils::uint64(doc[1]);
-      return cid != 0 && did != 0;
-
-    default:
-      return false;
-  }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
