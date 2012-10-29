@@ -439,7 +439,6 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   
   TRI_voc_cid_t cid = ca.cid();
   TRI_shaper_t* shaper = ca.shaper();
-  //TRI_voc_did_t id = StringUtils::uint64(did);
 
   // .............................................................................
   // inside read transaction
@@ -983,7 +982,6 @@ bool RestDocumentHandler::deleteDocument () {
   string key = suffix[1];
 
   // extract document identifier
-  //TRI_voc_did_t did = StringUtils::uint64(didStr);
 
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
