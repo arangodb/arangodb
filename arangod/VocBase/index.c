@@ -84,7 +84,8 @@ void TRI_FreeIndex (TRI_index_t* const idx) {
       break;
 
     case TRI_IDX_TYPE_PRIMARY_INDEX:
-      TRI_FreePrimaryIndex(idx);
+      TRI_DestroyPrimaryIndex(idx);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx); 
       break;
 
     default: 
@@ -301,15 +302,6 @@ void TRI_DestroyPrimaryIndex (TRI_index_t* idx) {
   LOG_TRACE("destroying primary index");
 
   TRI_DestroyVectorString(&idx->_fields);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a primary index and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreePrimaryIndex (TRI_index_t* idx) {
-  TRI_DestroyPrimaryIndex(idx);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
