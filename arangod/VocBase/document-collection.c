@@ -1024,7 +1024,7 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
 
   if (key) {
     // check key
-    if (regexec(&collection->DocumentKeyRegex, key, 0, NULL, 0) != 0) {
+    if (regexec(&collection->DocumentKeyRegex, key, 0, NULL, 0) != 0 || collection->keyLength > 128) {
       collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);      
       memset(&mptr, 0, sizeof(mptr));
       primary->endWrite(primary);
@@ -1464,7 +1464,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       markerSize = sizeof(TRI_doc_document_key_marker_t);
       key = ((char*) d) + d->_offsetKey;
     }
-    else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    else {
       TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
       LOG_TRACE("edge: fid %lu, key %s, fromKey %s, toKey %s, rid %lu, _offsetJson %lu, _offsetKey %lu",
@@ -1478,11 +1478,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       
       markerSize = sizeof(TRI_doc_edge_key_marker_t);
       key = ((char*) d) + d->_offsetKey;
-    }
-    else {
-      LOG_FATAL("unknown marker type %lu", (unsigned long) marker->_type);
-      TRI_FlushLogging();
-      exit(EXIT_FAILURE);
     }
 
     if (primary->base._maximumMarkerSize < markerSize) {
@@ -1854,6 +1849,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
+  
+  collection->keyLength = 200;
   
   return true;
 }
