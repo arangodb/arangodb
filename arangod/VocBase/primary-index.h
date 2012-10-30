@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 utility functions
+/// @brief primary index of a collection
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,63 +21,105 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_OBJECTS_H
-#define TRIAGENS_V8_V8_OBJECTS_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_PRIMARY_INDEX_H
+#define TRIAGENS_DURHAM_VOC_BASE_PRIMARY_INDEX_H 1
 
-#include "V8/v8-globals.h"
+#include "BasicsC/common.h"
 
-#include "BasicsC/json.h"
+#include "VocBase/primary-collection.h"
+#include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                              CONVERSION FUNCTIONS
+// --SECTION--                                                     PRIMARY INDEX
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Conversions
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts identifier into a object reference
+/// @brief constraint container
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectReference (TRI_voc_cid_t, TRI_voc_key_t);
+typedef struct TRI_revision_constraint_s {
+  TRI_doc_update_policy_e     _policy;
+  TRI_transaction_local_id_t  _expectedRevision;
+  TRI_transaction_local_id_t  _previousRevision;
+}
+TRI_revision_constraint_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transactional master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_transaction_doc_mptr_s {
+  TRI_transaction_local_id_t _validFrom; // valid from trx id
+  TRI_transaction_local_id_t _validTo;   // valid to trx id
+  char*                      _key;       // document identifier (string)
+  TRI_voc_fid_t              _fid;       // datafile identifier
+  void const*                _data;      // pointer to the raw marker (NULL for deleted documents)
+}
+TRI_transaction_doc_mptr_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief primary index of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_primary_index_s {
+  TRI_read_write_lock_t        _lock;
+
+  TRI_transaction_doc_mptr_t** _table;
+  uint64_t                     _nrAlloc;
+  uint64_t                     _nrUsed;
+}
+TRI_primary_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           GENERAL
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Conversions
+/// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the V8 conversion module
+/// @brief create the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Conversions (v8::Handle<v8::Context>);
+TRI_primary_index_t* TRI_CreatePrimaryIndex (void);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreePrimaryIndex (TRI_primary_index_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

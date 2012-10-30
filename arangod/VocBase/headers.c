@@ -159,7 +159,7 @@ static void ReleaseSimpleHeaders (TRI_headers_t* h, TRI_doc_mptr_t* header) {
 TRI_headers_t* TRI_CreateSimpleHeaders (size_t headerSize) {
   simple_headers_t* headers = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t), false);
 
-  if (!headers) {
+  if (headers == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
