@@ -1024,7 +1024,7 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
 
   if (key) {
     // check key
-    if (regexec(&collection->DocumentKeyRegex, key, 0, NULL, 0) != 0 || collection->keyLength > 128) {
+    if (regexec(&collection->DocumentKeyRegex, key, 0, NULL, 0) != 0 || strlen(key) > collection->keyLength) {
       collection->base.base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);      
       memset(&mptr, 0, sizeof(mptr));
       primary->endWrite(primary);
