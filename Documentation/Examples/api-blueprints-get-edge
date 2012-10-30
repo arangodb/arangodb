@@ -1,0 +1,20 @@
+> curl -X GET --dump - http://localhost:8529/_api/blueprints/edge/edge1?graph=graph1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "edge": {
+    "_id": "74569190/77321702",
+    "_rev": 77321702,
+    "_key": "77321702",
+    "_bidirectional": false,
+    "_from": "73782758/76994022",
+    "_to": "73782758/76797414",
+    "$label": null,
+    "$id": "edge1",
+    "optional1": "val1"
+  },
+  "error": false,
+  "code": 200
+}

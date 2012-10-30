@@ -1105,7 +1105,6 @@ function Graph(name, vertices, edges) {
       if (graphProperties === null) {
         throw "no graph named '" + name + "' found";
       }
-      throw "no graph named '" + name + "' found";
     }
 
     vertices = internal.db._collection(graphProperties.vertices);
@@ -1129,9 +1128,9 @@ function Graph(name, vertices, edges) {
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
 
-    // Currently buggy:
-    // edges.ensureUniqueConstraint("$id");
-    // vertices.ensureUniqueConstraint("$id");
+    // Currently buggy?
+    edges.ensureUniqueConstraint("$id");
+    vertices.ensureUniqueConstraint("$id");
 
     graphProperties = gdb.firstExample('name', name);
 
@@ -1400,6 +1399,37 @@ Graph.prototype.getVertices = function () {
   };
 
   return new Iterator();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an edge given its id
+///
+/// @FUN{@FA{graph}.getEdge(@FA{id})}
+///
+/// Returns the edge identified by @FA{id} or @LIT{null}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-graph-get-edge
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getEdge = function (id) {
+  var ref,
+    edge;
+
+  ref = this._edges.firstExample('$id', id);
+
+  if (ref !== null) {
+    edge = this.constructEdge(ref._id);
+  } else {
+    try {
+      edge = this.constructEdge(id);
+    } catch (e) {
+      edge = null;
+    }
+  }
+
+  return edge;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
