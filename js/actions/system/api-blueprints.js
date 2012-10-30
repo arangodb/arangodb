@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief blueprint graph api
+/// @brief blueprints graph api
 ///
 /// @file
 ///
@@ -43,13 +43,100 @@
 /// @brief url prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-  var BLUEPRINT_URL = "_api/blueprint";
+  var BLUEPRINTS_URL = "_api/blueprints";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context
 ////////////////////////////////////////////////////////////////////////////////
 
-  var BLUEPRINT_CONTEXT = "api";
+  var BLUEPRINTS_CONTEXT = "api";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get graph by request parameter (throws exception)
+////////////////////////////////////////////////////////////////////////////////
+
+  function blueprints_graph_by_request_parameter (req) {
+    var name = req.parameters['graph'];    
+
+    if (name == undefined) {
+      throw "missing graph name";
+    }
+
+    return new graph.Graph(name);
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get graph by request parameter (throws exception)
+////////////////////////////////////////////////////////////////////////////////
+
+  function blueprints_graph_by_request (req) {
+    var id = req.suffix[0];
+
+    if (req.suffix.length > 1) {
+      id += "/" + req.suffix[1];
+    }
+      
+    var g = new graph.Graph(id);
+      
+    if (g._properties == null) {
+      throw "no graph found for: " + id;
+    }
+    
+    return g;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get vertex by request (throws exception)
+////////////////////////////////////////////////////////////////////////////////
+
+  function blueprints_vertex_by_request (graph, req) {
+    var id = req.suffix[0];
+
+    if (req.suffix.length > 1) {
+      id += "/" + req.suffix[1];
+    }
+
+    var vertex = graph.getVertex(id);
+
+    if (vertex == undefined || vertex._properties == undefined) {
+      throw "no vertex found for: " + id;
+    }
+    
+    return vertex;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edge by request (throws exception)
+////////////////////////////////////////////////////////////////////////////////
+
+  function blueprints_edge_by_request (graph, req) {
+    var id = req.suffix[0];
+    if (req.suffix.length > 1) {
+      id += "/" + req.suffix[1];
+    }
+
+    var edge = graph.getEdge(id);
+
+    if (edge == undefined || edge._properties == undefined) {
+      throw "no edge found for: " + id;
+    }
+    
+    return edge;
+  }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -60,13 +147,38 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create graph
-///
-/// @REST{POST /_api/blueprint/graph}
-/// {"name":"...","verticesName":"...","edgesName":"..."}
+/// @addtogroup ArangoAPI
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  function postGraph (req, res) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a blueprint graph
+///
+/// @RESTHEADER{POST /_api/blueprints/graph,create graph}
+///
+/// @REST{POST /_api/blueprints/graph}
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Creates a new graph.
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{name}: The identifier or name of the new graph.
+///
+/// - @LIT{verticesName}: The name of the vertices collection.
+///
+/// - @LIT{edgesName}: The name of the egge collection.
+///
+/// Returns an object with an attribute @LIT{graph} containing a 
+/// list of all graph properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-create-graph
+////////////////////////////////////////////////////////////////////////////////
+
+  function POST_blueprints_graph (req, res) {
     try {    
       var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
       
@@ -83,6 +195,7 @@
       if (g._properties == null) {
         throw "no properties of graph found";
       }
+      
       actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
     }
     catch (err) {
@@ -91,29 +204,36 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get graph
+/// @brief get blueprint graph properties
 ///
-/// @REST{GET /_api/blueprint/graph/@FA{graph-identifier}}
+/// @RESTHEADER{GET /_api/blueprints/graph/@FA{graph-identifier},get graph properties}
+///
+/// @REST{GET /_api/blueprints/graph/@FA{graph-identifier}}
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Returns an object with an attribute @LIT{graph} containing a 
+/// list of all graph properties.
+//
+/// @EXAMPLES
+///
+/// get graph by name
+/// 
+/// @verbinclude api-blueprints-get-graph
+/// 
+/// get graph by document id
+///
+/// @verbinclude api-blueprints-get-graph-by-id
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getGraph (req, res) {
+  function GET_blueprints_graph (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
       return;
     }
     
     try {    
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-      
-      var g = new graph.Graph(id);
-      
-      if (g._properties == null) {
-        throw "no properties of graph found";
-      }
+      var g = blueprints_graph_by_request(req);
       
       actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
     }
@@ -123,31 +243,31 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete graph
+/// @brief deletes a blueprint graph
 ///
-/// @REST{DELETE /_api/blueprint/graph/@FA{graph-identifier}}
+/// @RESTHEADER{DELETE /_api/blueprints/graph/@FA{graph-identifier},delete graph}
+///
+/// @REST{DELETE /_api/blueprints/graph/@FA{graph-identifier}}
+///
+/// Deletes graph, edges and vertices
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-delete-graph
 ////////////////////////////////////////////////////////////////////////////////
 
-  function deleteGraph (req, res) {
+  function DELETE_blueprints_graph (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
       return;
     }
     
     try {    
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
+      var g = blueprints_graph_by_request(req);
       
-      var g = new graph.Graph(id);
+      g.drop();
       
-      if (g._properties == null) {
-        throw "no properties of graph found";
-      }
-      
-      actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
+      actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
     }
     catch (err) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
@@ -159,22 +279,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   actions.defineHttp({
-    url : BLUEPRINT_URL + "/graph",
-    context : BLUEPRINT_CONTEXT,
+    url : BLUEPRINTS_URL + "/graph",
+    context : BLUEPRINTS_CONTEXT,
 
     callback : function (req, res) {
       try {
         switch (req.requestType) {
           case (actions.POST) :
-            postGraph(req, res); 
+            POST_blueprints_graph(req, res); 
             break;
 
           case (actions.GET) :
-            getGraph(req, res); 
+            GET_blueprints_graph(req, res); 
             break;
 
           case (actions.DELETE) :
-            deleteGraph(req, res); 
+            DELETE_blueprints_graph(req, res); 
             break;
 
           default:
@@ -191,33 +311,43 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  vertex functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create vertex
-///
-/// @REST{POST /_api/blueprint/vertex?graph=@FA{graph-identifier}}
-/// {"$id":"...","key1":"...","key2":"..."}
+/// @addtogroup ArangoAPI
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  function postVertex (req, res) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a blueprint graph vertex
+///
+/// @RESTHEADER{POST /_api/blueprints/vertex?graph=@FA{graph-identifier},create vertex}
+///
+/// @REST{POST /_api/blueprints/vertex?graph=@FA{graph-identifier}}
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Creates a vertex in a graph.
+///
+/// The call expects a JSON hash array as body with the vertex properties:
+///
+/// - @LIT{$id}: The identifier or name of the vertex (optional).
+///
+/// - further optional attributes.
+///
+/// Returns an object with an attribute @LIT{vertex} containing a
+/// list of all vertex properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-create-vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  function POST_blueprints_vertex (req, res) {
     try {
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
+      var g = blueprints_graph_by_request_parameter(req);
       var json = actions.getJsonBody(req, res);
       var id = undefined;
 
@@ -239,38 +369,35 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vertex
+/// @brief get vertex properties
 ///
-/// @REST{GET /_api/blueprint/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
+/// @RESTHEADER{GET /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},get vertex}
+///
+/// @REST{GET /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
+///
+/// Returns an object with an attribute @LIT{vertex} containing a
+/// list of all vertex properties.
+///
+/// @EXAMPLES
+///
+/// get vertex properties by $id
+///
+/// @verbinclude api-blueprints-get-vertex
+///
+/// get vertex properties by document id
+///
+/// @verbinclude api-blueprints-get-vertex-by-id
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getVertex (req, res) {
+  function GET_blueprints_vertex (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
       return;
     }
 
     try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }    
-
-      var g = new graph.Graph(name);
-
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-
-      var v = g.getVertex(id);
-
-      if (v == undefined || v._properties == undefined) {
-        throw "no vertex found for: " + id;
-      }
+      var g = blueprints_graph_by_request_parameter(req);
+      var v = blueprints_vertex_by_request(g, req);
 
       actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
     }
@@ -282,36 +409,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
 ///
-/// @REST{DELETE /_api/blueprint/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
+/// @RESTHEADER{DELETE /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},delete vertex}
 ///
+/// @REST{DELETE /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
+///
+/// Deletes vertex and all in and out edges of the vertex
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-delete-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function deleteVertex (req, res) {
+  function DELETE_blueprints_vertex (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
       return;
     }
 
     try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-      var g = new graph.Graph(name);
-
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-
-      var v = g.getVertex(id);
-
-      if (v == undefined || v._properties == undefined) {
-        throw "no vertex found for: " + id;
-      }
+      var g = blueprints_graph_by_request_parameter(req);
+      var v = blueprints_vertex_by_request(g, req);
 
       g.removeVertex(v);
 
@@ -323,40 +440,39 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief change vertex
+/// @brief updates a vertex
 ///
-/// @REST{PUT /_api/blueprint/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
-/// {"$id":"...","key1":"...","key2":"..."}
+/// @RESTHEADER{PUT /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},update vertex}
+///
+/// @REST{PUT /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
 ////////////////////////////////////////////////////////////////////////////////
+///
+/// Replaces the vertex properties.
+///
+/// The call expects a JSON hash array as body with the new vertex properties:
+///
+/// - @LIT{$id}: The identifier or name of the vertex (not changeable).
+///
+/// - further optional attributes.
+///
+/// Returns an object with an attribute @LIT{vertex} containing a
+/// list of all vertex properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-change-vertex
+////////////////////////////////////////////////////////////////////////////////
 
-  function putVertex (req, res) {
+  function PUT_blueprints_vertex (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "vertex not found");
       return;
     }
 
     try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-
-      var v = g.getVertex(id);
-
-      if (v == undefined || v._properties == undefined) {
-        throw "no vertex found for: " + id;
-      }
+      var g = blueprints_graph_by_request_parameter(req);
+      var v = blueprints_vertex_by_request(g, req);
 
       var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
 
@@ -382,22 +498,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   actions.defineHttp({
-    url : BLUEPRINT_URL + "/vertex",
-    context : BLUEPRINT_CONTEXT,
+    url : BLUEPRINTS_URL + "/vertex",
+    context : BLUEPRINTS_CONTEXT,
 
     callback : function (req, res) {
       try {
         switch (req.requestType) {
           case (actions.POST) :
-            postVertex(req, res); 
+            POST_blueprints_vertex(req, res); 
+            break;
+
+          case (actions.DELETE) :
+            DELETE_blueprints_vertex(req, res); 
             break;
 
           case (actions.GET) :
-            getVertex(req, res); 
+            GET_blueprints_vertex(req, res); 
             break;
 
           case (actions.PUT) :
-            putVertex(req, res); 
+            PUT_blueprints_vertex(req, res); 
             break;
 
           default:
@@ -414,41 +534,41 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                vertices functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vertices
-///
-/// @REST{GET /_api/blueprint/vertices?graph=@FA{graph-identifier}}
-///
+/// @addtogroup ArangoAPI
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getVertices (req, res) {
-    try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all graph vertices
+///
+/// @RESTHEADER{GET /_api/blueprints/vertices?graph=@FA{graph-identifier},get vertices}
+///
+/// @REST{GET /_api/blueprints/vertices?graph=@FA{graph-identifier}}
+///
+/// Returns an object with an attribute @LIT{vertices} containing a
+/// list of all vertices.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-get-vertices
+////////////////////////////////////////////////////////////////////////////////
 
-      if (name == undefined) {
-        throw "missing graph name";
+  function GET_blueprints_vertices (req, res) {
+    try {    
+      var g = blueprints_graph_by_request_parameter(req);
+
+      var result = {
+        "vertices" : []
       }
 
-      var g = new graph.Graph(name);
-
       var v = g.getVertices();
-
-      var result = {};
-      result["vertices"] = [];
-
       while (v.hasNext()) {
-        var e = v.next();
-        result["vertices"].push(e._properties);
+        result["vertices"].push(v.next()._properties);
       }
 
       actions.resultOk(req, res, actions.HTTP_OK, result);
@@ -463,14 +583,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   actions.defineHttp({
-    url : BLUEPRINT_URL + "/vertices",
-    context : BLUEPRINT_CONTEXT,
+    url : BLUEPRINTS_URL + "/vertices",
+    context : BLUEPRINTS_CONTEXT,
 
     callback : function (req, res) {
       try {
         switch (req.requestType) {
           case (actions.GET) :
-            getVertices(req, res); 
+            GET_blueprints_vertices(req, res); 
             break;
 
           default:
@@ -487,33 +607,49 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    edge functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create edge
-///
-/// @REST{POST /_api/blueprint/edge?graph=@FA{graph-identifier}}
-/// {"$id":"...","_from":"...","_to":"...","$label":"...","data1":{...}}
+/// @addtogroup ArangoAPI
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  function postEdge (req, res) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a blueprint graph edge
+///
+/// @RESTHEADER{POST /_api/blueprints/edge?graph=@FA{graph-identifier},create edge}
+///
+/// @REST{POST /_api/blueprints/edge?graph=@FA{graph-identifier}}
+///
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Creates an edge in a graph.
+///
+/// The call expects a JSON hash array as body with the edge properties:
+///
+/// - @LIT{$id}: The identifier or name of the edge.
+///
+/// - @LIT{_from}: The identifier or name of the from vertex.
+///
+/// - @LIT{_to}: The identifier or name of the to vertex.
+///
+/// - @LIT{$label}: A label for the edge (optional).
+///
+/// - further optional attributes.
+///
+/// Returns an object with an attribute @LIT{edge} containing the
+/// list of all edge properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-create-edge
+////////////////////////////////////////////////////////////////////////////////
+
+  function POST_blueprints_edge (req, res) {
     try {
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
+      var g = blueprints_graph_by_request_parameter(req);
       var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
 
       if (json === undefined) {
@@ -525,7 +661,7 @@
       var ine = g.getVertex(json["_to"]);
       var label = json["$label"];    
 
-      var e = g.addEdge(id, out, ine, label, json);      
+      var e = g.addEdge(out, ine, id, label, json);      
 
       if (e == undefined || e._properties == undefined) {
         throw "could not create edge";
@@ -539,38 +675,29 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get edge
+/// @brief get edge properties
 ///
-/// @REST{GET /_api/blueprint/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
+/// @RESTHEADER{GET /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},get edge}
+///
+/// @REST{GET /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
+///
+/// Returns an object with an attribute @LIT{edge} containing a
+/// list of all edge properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-get-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getEdge (req, res) {
+  function GET_blueprints_edge (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
       return;
     }
 
     try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-
-      var e = new graph.Edge(g, id);
-
-      if (e == undefined || e._properties == undefined) {
-        throw "no edge found for: " + id;
-      }
+      var g = blueprints_graph_by_request_parameter(req);
+      var e = blueprints_edge_by_request(g, req);
 
       actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
     }
@@ -580,38 +707,28 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete edge
+/// @brief deletes an edge
 ///
-/// @REST{DELETE /_api/blueprint/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
+/// @RESTHEADER{DELETE /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},delete edge}
 ///
+/// @REST{DELETE /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
+///
+/// Deletes an edges of the graph
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-delete-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-  function deleteEdge (req, res) {
+  function DELETE_blueprints_edge (req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
       return;
     }
 
     try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
-      var id = req.suffix[0];
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-
-      var e = new graph.Edge(g, id);
-
-      if (e == undefined || e._properties == undefined) {
-        throw "no edge found for: " + id;
-      }
+      var g = blueprints_graph_by_request_parameter(req);
+      var e = blueprints_edge_by_request(g, req);
 
       g.removeEdge(e);
 
@@ -623,40 +740,35 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update edge data
+/// @brief updates an edge
 ///
-/// @REST{PUT /_api/blueprint/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
-/// {"$id":"...","_from":"...","_to":"...","$label":"...","data1":{...}}
+/// @RESTHEADER{PUT /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},update edge}
+///
+/// @REST{PUT /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
 ////////////////////////////////////////////////////////////////////////////////
+///
+/// Replaces the optional edge properties.
+///
+/// The call expects a JSON hash array as body with the new edge properties.
+///
+/// Returns an object with an attribute @LIT{edge} containing a
+/// list of all edge properties.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-change-edge
+////////////////////////////////////////////////////////////////////////////////
 
-  function putEdge(req, res) {
+  function PUT_blueprints_edge(req, res) {
     if (req.suffix.length < 1) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "edge not found");
       return;
     }
 
     try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];    
-
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
-      var id = req.suffix[0];
-
-      if (req.suffix.length > 1) {
-        id += "/" + req.suffix[1];
-      }
-
-      var e = new graph.Edge(g, id);
-
-      if (e == undefined || e._properties == undefined) {
-        throw "no edge found for: " + id;
-      }
+      var g = blueprints_graph_by_request_parameter(req);
+      var e = blueprints_edge_by_request(g, req);
 
       var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
 
@@ -683,26 +795,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   actions.defineHttp({
-    url : BLUEPRINT_URL + "/edge",
-    context : BLUEPRINT_CONTEXT,
+    url : BLUEPRINTS_URL + "/edge",
+    context : BLUEPRINTS_CONTEXT,
 
     callback : function (req, res) {
       try {
         switch (req.requestType) {
           case (actions.POST) :
-            postEdge(req, res); 
+            POST_blueprints_edge(req, res); 
             break;
 
           case (actions.GET) :
-            getEdge(req, res); 
+            GET_blueprints_edge(req, res); 
             break;
 
           case (actions.DELETE) :
-            deleteEdge(req, res); 
+            DELETE_blueprints_edge(req, res); 
             break;
 
           case (actions.PUT) :
-            putEdge(req, res); 
+            PUT_blueprints_edge(req, res); 
             break;
  
           default:
@@ -729,36 +841,54 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get edges
+/// @brief get all graph edges
 ///
-/// Returns a list of all edges of a @FA{graph}
+/// @RESTHEADER{GET /_api/blueprints/edges?graph=@FA{graph-identifier},get edges}
 ///
-/// @REST{GET /_api/blueprint/edges?graph=@FA{graph-identifier}}
+/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}}
 ///
-/// Returns a list of edges of a @FA{vertex}
+/// Returns an object with an attribute @LIT{edges} containing a
+/// list of all edges of the graph.
 ///
-/// @REST{GET /_api/blueprint/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}}
+/// @EXAMPLES
 ///
-/// Returns a list of outbound edges of a @FA{vertex}
+/// @verbinclude api-blueprints-get-edges
+////////////////////////////////////////////////////////////////////////////////
 ///
-/// @REST{GET /_api/blueprint/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}&type=out}
+/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}}
 ///
-/// Returns a list of inbound edges of a @FA{vertex}
+/// Returns an object with an attribute @LIT{edges} containing a
+/// list of all inbound and outbound edges of a vertex.
 ///
-/// @REST{GET /_api/blueprint/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}&type=in}
+/// @EXAMPLES
 ///
+/// @verbinclude api-blueprints-get-edges-by-vertex
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}&type=out}
+///
+/// Returns an object with an attribute @LIT{edges} containing a
+/// list of all outbound edges of a vertex.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-get-out-edges-by-vertex
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}&type=in}
+///
+/// Returns an object with an attribute @LIT{edges} containing a
+/// list of all inbound edges of a vertex.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-blueprints-get-in-edges-by-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getEdges(req, res) {
-    try {    
-      // name/id of the graph
-      var name = req.parameters['graph'];
-      if (name == undefined) {
-        throw "missing graph name";
-      }
-
-      var g = new graph.Graph(name);
-
+  function GET_blueprints_edges(req, res) {
+    try {
+      var g = blueprints_graph_by_request_parameter(req);
+      
       var result = {
         "edges" : []
       }
@@ -802,14 +932,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   actions.defineHttp({
-    url : BLUEPRINT_URL + "/edges",
-    context : BLUEPRINT_CONTEXT,
+    url : BLUEPRINTS_URL + "/edges",
+    context : BLUEPRINTS_CONTEXT,
 
     callback : function (req, res) {
       try {
         switch (req.requestType) {
           case (actions.GET) :
-            getEdges(req, res); 
+            GET_blueprints_edges(req, res); 
             break;
 
           default:

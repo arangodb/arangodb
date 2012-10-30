@@ -1,0 +1,50 @@
+> curl -X GET --dump - http://localhost:8529/_api/blueprints/vertices?graph=graph1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "vertices": [
+    {
+      "_id": "49927654/53401062",
+      "_rev": 53401062,
+      "_key": "53401062",
+      "$id": null,
+      "optional1": "val1",
+      "optional2": "val2"
+    },
+    {
+      "_id": "49927654/53073382",
+      "_rev": 53073382,
+      "_key": "53073382",
+      "$id": null,
+      "optional1": "val1",
+      "optional2": "val2"
+    },
+    {
+      "_id": "49927654/53335526",
+      "_rev": 53335526,
+      "_key": "53335526",
+      "$id": null,
+      "optional1": "val1",
+      "optional2": "val2"
+    },
+    {
+      "_id": "49927654/53269990",
+      "_rev": 53269990,
+      "_key": "53269990",
+      "$id": null,
+      "optional1": "val1",
+      "optional2": "val2"
+    },
+    {
+      "_id": "49927654/53532134",
+      "_rev": 53532134,
+      "_key": "53532134",
+      "$id": "id1",
+      "optional2": "val2"
+    }
+  ],
+  "error": false,
+  "code": 200
+}
