@@ -111,7 +111,6 @@ TRI_doc_update_policy_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_mptr_s {
-  //TRI_voc_did_t _did; // this is the document identifier
   TRI_voc_rid_t _rid; // this is the revision identifier
   TRI_voc_eid_t _eid; // this is the step identifier
 
@@ -224,12 +223,12 @@ TRI_doc_collection_info_t;
 ///
 /// As before, but instead of a shaped json a json object must be given.
 ///
-/// @FUN{TRI_voc_did_t createLock (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)}
+/// @FUN{TRI_voc_key_t createLock (TRI_primary_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*)}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// As before, but the function will acquire and release the write lock.
 ///
-/// @FUN{TRI_doc_mptr_t const read (TRI_primary_collection_t*, TRI_voc_did_t)}
+/// @FUN{TRI_doc_mptr_t const read (TRI_primary_collection_t*, TRI_voc_key_t)}
 //////////////////////////////////////////////////////////////////////////
 ///
 /// Returns the master pointer of the document with the given identifier. If the
@@ -237,7 +236,7 @@ TRI_doc_collection_info_t;
 /// the result is @LIT{0}. The function DOES NOT acquire or release a read
 /// lock. This must be done by the caller.
 ///
-/// @FUN{TRI_doc_mptr_t const update (TRI_primary_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
+/// @FUN{TRI_doc_mptr_t const update (TRI_primary_collection_t*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// Updates an existing document of the collection and returns copy of a valid
@@ -253,17 +252,17 @@ TRI_doc_collection_info_t;
 /// performed if the current revision matches the given. In any case the current
 /// revision after the updated of the document is returned in @FA{current}.
 ///
-/// @FUN{TRI_doc_mptr_t const updateJson (TRI_primary_collection_t*, TRI_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
+/// @FUN{TRI_doc_mptr_t const updateJson (TRI_primary_collection_t*, TRI_json_t const*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// As before, but instead of a shaped json a json object must be given.
 ///
-/// @FUN{int updateLock (TRI_primary_collection_t*, TRI_shaped_json_t const*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
+/// @FUN{int updateLock (TRI_primary_collection_t*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// As before, but the function will acquire and release the write lock.
 ///
-/// @FUN{int destroy (TRI_primary_collection_t*, TRI_voc_did_t, TRI_voc_rid_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
+/// @FUN{int destroy (TRI_primary_collection_t*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// Deletes an existing document from the given collection and returns @ref
@@ -278,7 +277,7 @@ TRI_doc_collection_info_t;
 /// valid revision of the document. If the delete was aborted, than @FA{current}
 /// contains the revision of the still alive document.
 ///
-/// @FUN{int destroyLock (TRI_primary_collection_t*, TRI_voc_did_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
+/// @FUN{int destroyLock (TRI_primary_collection_t*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e)}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// As before, but the function will acquire and release the write lock.
@@ -335,36 +334,6 @@ typedef struct TRI_primary_collection_s {
 TRI_primary_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_document_marker_s_deprecated {
-  TRI_df_marker_t base;
-
-  TRI_voc_did_t _did;        // this is the tick for a create, but not an update
-  TRI_voc_rid_t _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t _sid;
-
-  TRI_shape_sid_t _shape;
-}
-TRI_doc_document_marker_t_deprecated;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge datafile marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_edge_marker_s_deprecated {
-  TRI_doc_document_marker_t_deprecated base;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_did_t _toDid;
-
-  TRI_voc_cid_t _fromCid;
-  TRI_voc_did_t _fromDid;
-}
-TRI_doc_edge_marker_t_deprecated;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile marker with key 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -396,19 +365,6 @@ typedef struct TRI_doc_edge_key_marker_s {
   uint8_t _isBidirectional;
 }
 TRI_doc_edge_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile deletion marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_deletion_marker_s_deprecated {
-  TRI_df_marker_t base;
-
-  TRI_voc_did_t _did;        // this is the tick for a create, but not an update
-  TRI_voc_rid_t _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t _sid;
-}
-TRI_doc_deletion_marker_t_deprecated;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile deletion marker
