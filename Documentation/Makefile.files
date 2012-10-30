@@ -9,6 +9,7 @@
 ################################################################################
 
 DOXYGEN = \
+	Doxygen/js/actions/system/api-blueprints.c \
 	Doxygen/js/actions/system/api-collection.c \
 	Doxygen/js/actions/system/api-cursor.c \
 	Doxygen/js/actions/system/api-edges.c \
@@ -47,6 +48,7 @@ WIKI = \
 	Graphs \
 	Home \
 	HttpBatch \
+	HttpBlueprints \
 	HttpCollection \
 	HttpCursor \
 	HttpImport \
