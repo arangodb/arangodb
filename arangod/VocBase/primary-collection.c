@@ -120,6 +120,37 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief size of a primary collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
+  TRI_doc_mptr_t const* mptr;
+  TRI_voc_size_t result;
+  void** end;
+  void** ptr;
+
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  ptr = primary->_primaryIndex._table;
+  end = ptr + primary->_primaryIndex._nrAlloc;
+  result = 0;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr != NULL) {
+      mptr = *ptr;
+
+      if (mptr->_deletion == 0) {
+        ++result;
+      }
+    }
+  }
+
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs a datafile identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -389,6 +420,7 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
   collection->_capConstraint = NULL;
 
   collection->figures = Figures;
+  collection->size    = Count;
 
   TRI_InitBarrierList(&collection->_barrierList, collection);
 
@@ -560,11 +592,11 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const contex
   context->_collection = collection;
   context->_policy = policy;
   context->_expectedRid = 0;
-  context->_previousRid = 0;
+  context->_previousRid = NULL;
   context->_lock = false;
   context->_release = false;
   context->_sync = forceSync || collection->base._waitForSync;
-  context->_allowRollback = false;
+  context->_allowRollback = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

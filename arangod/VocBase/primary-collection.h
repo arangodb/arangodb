@@ -108,18 +108,22 @@ typedef enum {
 TRI_doc_update_policy_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for arbitrary operation parameters
+/// @brief typedef for arbitrary collection operation parameters
+/// the context controls behavior such as revision check, locking/unlocking
+///
+/// the context struct needs to be passed as a parameter for CRUD operations
+/// this makes function signatures a lot easier
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_operation_context_s {
-  struct TRI_primary_collection_s* _collection;
-  TRI_doc_update_policy_e _policy;
-  TRI_voc_rid_t _expectedRid;
-  TRI_voc_rid_t* _previousRid;
-  bool _lock : 1;
-  bool _release : 1;
-  bool _sync : 1;
-  bool _allowRollback : 1;
+  struct TRI_primary_collection_s* _collection; // collection to be used
+  TRI_doc_update_policy_e _policy; // the update policy
+  TRI_voc_rid_t _expectedRid;  // the expected revision id of a document. only used if set and for update/delete
+  TRI_voc_rid_t* _previousRid; // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
+  bool _release : 1; // release the write lock after the operation
+  bool _sync : 1; // force syncing to disk after successful operation
+  bool _allowRollback : 1; // allow rollback of operation. this is normally true except for contexts created by rollback operations
+  bool _lock : 1; // currently unused
 }
 TRI_doc_operation_context_t;
 
@@ -337,11 +341,10 @@ typedef struct TRI_primary_collection_s {
   TRI_doc_mptr_t (*createJson) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*);
   TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_key_t);
 
-  TRI_doc_mptr_t (*update) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
+  TRI_doc_mptr_t (*update) (struct TRI_doc_operation_context_s*, TRI_shaped_json_t const*, TRI_voc_key_t);
   TRI_doc_mptr_t (*updateJson) (struct TRI_doc_operation_context_s*, TRI_json_t const*, TRI_voc_key_t);
- // , TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
 
-  int (*destroy) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
+  int (*destroy) (struct TRI_doc_operation_context_s*, TRI_voc_key_t);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);
