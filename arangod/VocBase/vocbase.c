@@ -1166,7 +1166,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
                              NULL);
 
 #ifdef TRI_ENABLE_TRX
-  vocbase->_transactionContext = TRI_CreateTransactionContext(1);
+  vocbase->_transactionContext = TRI_CreateTransactionContext(vocbase, 1);
 #endif
 
   TRI_InitAssociativePointer(&vocbase->_authInfo,

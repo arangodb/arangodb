@@ -28,7 +28,9 @@
 #include "transaction.h" 
 
 #include "BasicsC/logging.h" 
-#include "BasicsC/strings.h" 
+#include "BasicsC/strings.h"
+ 
+#include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               TRANSACTION CONTEXT
@@ -75,6 +77,8 @@ static const char* StatusString (const TRI_transaction_status_e status) {
       return "aborted";
     case TRI_TRANSACTION_FINISHED:
       return "finished";
+    case TRI_TRANSACTION_FAILED:
+      return "failed";
   }
 
   assert(false);
@@ -290,7 +294,8 @@ static void DumpTransactionList (const TRI_transaction_list_t* const list) {
 /// @brief create the global transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_transaction_server_id_t serverId) {
+TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_vocbase_t* const vocbase,
+                                                         TRI_transaction_server_id_t serverId) {
   TRI_transaction_context_t* context;
 
   context = (TRI_transaction_context_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_context_t), false);
@@ -303,6 +308,7 @@ TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_transaction_server_
   InitTransactionList(&context->_readTransactions);
   InitTransactionList(&context->_writeTransactions);
 
+  context->_vocbase = vocbase;
   context->_id._localId  = 0;
   context->_id._serverId = serverId;
 
@@ -400,7 +406,8 @@ static TRI_transaction_collection_t* CreateCollection (const char* const name,
     return NULL;
   }
 
-  collection->_type = type;
+  collection->_type       = type;
+  collection->_collection = NULL;
 
   return collection;
 }
@@ -417,6 +424,57 @@ static void FreeCollection (TRI_transaction_collection_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief acquire collection locks for a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static int AcquireLocks (TRI_transaction_t* const trx) {
+  size_t i, n;
+  
+  LOG_DEBUG("acquiring collection locks");
+
+  n = trx->_collections._length;
+  assert(n > 0);
+
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection;
+
+    collection = TRI_AtVectorPointer(&trx->_collections, i);
+    collection->_collection = TRI_UseCollectionByNameVocBase(trx->_context->_vocbase, collection->_name);
+
+    if (collection->_collection == NULL) {
+      return TRI_errno();
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release collection locks for a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static int ReleaseLocks (TRI_transaction_t* const trx) {
+  size_t i;
+
+  LOG_DEBUG("releasing collection locks");
+
+  i = trx->_collections._length;
+  assert(i > 0);
+
+  while (i-- > 0) {
+    TRI_transaction_collection_t* collection;
+
+    collection = TRI_AtVectorPointer(&trx->_collections, i);
+    if (collection->_collection != NULL) {
+      TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, collection->_collection);
+      collection->_collection = NULL;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief register a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -427,7 +485,7 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
 
   assert(trx->_status == TRI_TRANSACTION_CREATED);
   assert(trx->_collections._length > 0);
-  
+
   context = trx->_context;
 
   trx->_status = TRI_TRANSACTION_RUNNING;
@@ -554,15 +612,14 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
     TRI_AbortTransaction(trx);
   }
 
+  ReleaseLocks(trx);
+
   // free all collections
   i = trx->_collections._length;
   while (i-- > 0) {
     TRI_transaction_collection_t* collection = TRI_AtVectorPointer(&trx->_collections, i);
 
     FreeCollection(collection);
-    if (i == 0) {
-      break;
-    }
   }
 
   TRI_DestroyVectorPointer(&trx->_collections);
@@ -677,10 +734,25 @@ bool TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
 
 int TRI_StartTransaction (TRI_transaction_t* const trx) {
   int res;
+  
   assert(trx->_status == TRI_TRANSACTION_CREATED);
+  assert(trx->_collections._length > 0);
+
+  res = AcquireLocks(trx);
+  if (res != TRI_ERROR_NO_ERROR) {
+    // free what we have got so far
+    trx->_status = TRI_TRANSACTION_FAILED;
+    ReleaseLocks(trx);
+
+    return res;
+  }
 
   res = RegisterTransaction(trx);
   if (res != TRI_ERROR_NO_ERROR) {
+    // free what we have got so far
+    trx->_status = TRI_TRANSACTION_FAILED;
+    ReleaseLocks(trx);
+
     return res;
   }
 
@@ -694,9 +766,14 @@ int TRI_StartTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CommitTransaction (TRI_transaction_t* const trx) {
+  int res;
+
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
 
-  return UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+  res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+  ReleaseLocks(trx);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,9 +781,14 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AbortTransaction (TRI_transaction_t* const trx) {
+  int res;
+
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
   
-  return UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+  res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+  ReleaseLocks(trx);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -714,16 +796,22 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FinishTransaction (TRI_transaction_t* const trx) {
+  int res;
+
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_type == TRI_TRANSACTION_READ) {
     // read transactions
-    return UpdateTransactionStatus(trx, TRI_TRANSACTION_FINISHED);
+    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_FINISHED);
   }
   else {
     // write transactions
-    return UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
   }
+
+  ReleaseLocks(trx);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

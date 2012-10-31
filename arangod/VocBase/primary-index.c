@@ -50,6 +50,7 @@ static TRI_transaction_local_id_t DocumentTransaction (const TRI_transaction_doc
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a specific transaction is currently running
+/// (not yet implemented)
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InWriteTransactionsTable (const TRI_transaction_t* const trx, 
