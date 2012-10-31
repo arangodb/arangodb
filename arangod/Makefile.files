@@ -89,6 +89,11 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
 
+if ENABLE_TRX
+
+bin_arangod_SOURCES += \
+	arangod/VocBase/transaction.c
+endif
 
 
 if ENABLE_MRUBY

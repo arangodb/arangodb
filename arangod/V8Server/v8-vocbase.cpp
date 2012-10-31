@@ -54,6 +54,10 @@
 #include "Basics/Utf8Helper.h"
 #include "v8.h"
 
+#ifdef TRI_ENABLE_TRX
+#include "VocBase/transaction.h"
+#endif
+
 using namespace std;
 using namespace triagens::basics;
 
@@ -1716,6 +1720,52 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_TRX
+////////////////////////////////////////////////////////////////////////////////
+/// @brief REMOVE ME
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Trx (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  TRI_transaction_context_t* context = vocbase->_transactionContext;
+
+  TRI_transaction_t* trx = TRI_CreateTransaction(context, TRI_TRANSACTION_READ_REPEATABLE);
+  TRI_AddCollectionTransaction(trx, "users", TRI_TRANSACTION_READ);
+  TRI_AddCollectionTransaction(trx, "friends", TRI_TRANSACTION_WRITE);
+  TRI_AddCollectionTransaction(trx, "relations", TRI_TRANSACTION_READ);
+  TRI_AddCollectionTransaction(trx, "hans", TRI_TRANSACTION_READ);
+  TRI_AddCollectionTransaction(trx, "peter", TRI_TRANSACTION_READ);
+  TRI_AddCollectionTransaction(trx, "peter", TRI_TRANSACTION_WRITE);
+  TRI_AddCollectionTransaction(trx, "friends", TRI_TRANSACTION_READ);
+
+  TRI_DumpTransaction(trx);
+
+  TRI_StartTransaction(trx);
+  TRI_DumpTransaction(trx);
+
+  bool commit = true;
+  if (1 <= argv.Length()) {
+    commit = TRI_ObjectToBoolean(argv[0]);
+  }
+
+  if (commit) {
+    TRI_CommitTransaction(trx);
+  }
+  else {
+    TRI_AbortTransaction(trx);
+  }
+  TRI_DumpTransaction(trx);
+
+  TRI_DumpTransactionContext(context);
+  
+  TRI_FreeTransaction(trx);
+
+  return scope.Close(v8::True());
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
@@ -6326,6 +6376,12 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
   // generate the global functions
   // .............................................................................
+
+#ifdef TRI_ENABLE_TRX
+  context->Global()->Set(v8::String::New("TRX"),
+                         v8::FunctionTemplate::New(JS_Trx)->GetFunction(),
+                         v8::ReadOnly);
+#endif
 
   context->Global()->Set(v8::String::New("CURSOR"),
                          v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),

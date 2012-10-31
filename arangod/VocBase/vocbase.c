@@ -1165,6 +1165,10 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
                              EqualKeyCollectionName,
                              NULL);
 
+#ifdef TRI_ENABLE_TRX
+  vocbase->_transactionContext = TRI_CreateTransactionContext(1);
+#endif
+
   TRI_InitAssociativePointer(&vocbase->_authInfo,
                              TRI_CORE_MEM_ZONE, 
                              HashKeyAuthInfo,
@@ -1304,6 +1308,10 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // release lock on database
   TRI_DestroyLockFile(vocbase->_lockFile);
   TRI_FreeString(TRI_CORE_MEM_ZONE, vocbase->_lockFile);
+ 
+#ifdef TRI_ENABLE_TRX 
+  TRI_FreeTransactionContext(vocbase->_transactionContext);
+#endif
 
   // destroy locks
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
