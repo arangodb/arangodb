@@ -1021,8 +1021,13 @@ bool RestDocumentHandler::deleteDocument () {
 
   WriteTransaction trx(&ca);
 
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, trx.primary(), policy, forceSync);
+  context._expectedRid = revision;
+  context._previousRid = &rid;
+
   // unlocking is performed in destroy()
-  res = trx.primary()->destroy(trx.primary(), (TRI_voc_key_t) key.c_str(), revision, &rid, policy, false, forceSync);
+  res = trx.primary()->destroy(&context, (TRI_voc_key_t) key.c_str());
 
   trx.end();
 

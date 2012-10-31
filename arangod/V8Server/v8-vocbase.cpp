@@ -722,15 +722,24 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
     forceSync = TRI_ObjectToBoolean(argv[3]);
   }
 
+  TRI_voc_rid_t oldRid = 0;
+
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+  context._expectedRid = rid;
+  context._previousRid = &oldRid;
+  context._release = true;
+
   // .............................................................................
   // inside a write transaction
   // .............................................................................
 
   primary->beginWrite(primary);
 
-  TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t mptr = primary->update(primary, shaped, key, rid, &oldRid, policy, true, forceSync);
-  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  TRI_doc_mptr_t mptr = primary->update(&context, shaped, key);
+  if (key) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  }
 
   // .............................................................................
   // outside a write transaction
@@ -1240,9 +1249,15 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
 
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t oldRid;
+  
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+  context._release = true;
+  context._expectedRid = rid;
+  context._previousRid = &oldRid;
 
   primary->beginWrite(primary);
-  int res = primary->destroy(primary, key, rid, &oldRid, policy, true, forceSync);
+  int res = primary->destroy(&context, key);
   if (key) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
   }
@@ -4785,6 +4800,9 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   
   TRI_doc_mptr_t const** ptr;
   TRI_doc_mptr_t const** end;
+  
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
 
   primary->beginWrite(collection->_collection);
   
@@ -4797,12 +4815,15 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
       TRI_PushBackVectorPointer(&documents, (void*) *ptr);
     }
   }
-
+  
   // now delete all documents. this will modify the index as well
   for (size_t i = 0; i < documents._length; ++i) {
     TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
+  
+    context._expectedRid = d->_rid;
+    context._previousRid = &oldRid;
     
-    int res = primary->destroy(primary, d->_key, d->_rid, &oldRid, policy, false, forceSync);
+    int res = primary->destroy(&context, d->_key);
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred, but we simply go on because truncate should remove all documents
     }
