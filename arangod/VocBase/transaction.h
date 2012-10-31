@@ -38,6 +38,13 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_vocbase_s;
+struct TRI_vocbase_col_s;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 TRANSACTION TYPES 
 // -----------------------------------------------------------------------------
 
@@ -102,7 +109,8 @@ typedef enum {
   TRI_TRANSACTION_RUNNING      = 1,
   TRI_TRANSACTION_COMMITTED    = 2,
   TRI_TRANSACTION_ABORTED      = 3,
-  TRI_TRANSACTION_FINISHED     = 4
+  TRI_TRANSACTION_FINISHED     = 4,
+  TRI_TRANSACTION_FAILED       = 5
 } 
 TRI_transaction_status_e;
 
@@ -171,6 +179,7 @@ typedef struct TRI_transaction_context_s {
   TRI_mutex_t            _lock;
   TRI_transaction_list_t _readTransactions;
   TRI_transaction_list_t _writeTransactions;
+  struct TRI_vocbase_s*  _vocbase;
 }
 TRI_transaction_context_t;
 
@@ -191,7 +200,8 @@ TRI_transaction_context_t;
 /// @brief create the global transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_transaction_server_id_t);
+TRI_transaction_context_t* TRI_CreateTransactionContext (struct TRI_vocbase_s*,
+                                                         TRI_transaction_server_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the global transaction context
@@ -236,8 +246,9 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_collection_s {
-  const char*            _name;
-  TRI_transaction_type_e _type;
+  const char*                _name;
+  TRI_transaction_type_e     _type;
+  struct TRI_vocbase_col_s*  _collection;
   // locks and pointers go here
 }
 TRI_transaction_collection_t;
