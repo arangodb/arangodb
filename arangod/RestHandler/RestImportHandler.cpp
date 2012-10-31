@@ -212,6 +212,8 @@ bool RestImportHandler::createByArray () {
   // .............................................................................
   
   WriteTransaction trx(&ca);
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
 
   size_t start = 0;
   size_t next = 0;
@@ -240,7 +242,7 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, values, 0, false, forceSync);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, values, 0);
       if (mptr._key != 0) {
         ++numCreated;
       }
@@ -384,6 +386,8 @@ bool RestImportHandler::createByList () {
   // .............................................................................
 
   WriteTransaction trx(&ca);
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
 
   while (next != string::npos && start < body.length()) {
     next = body.find('\n', start);
@@ -420,7 +424,7 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, false, forceSync);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, json, 0);
       if (mptr._key != 0) {
         ++numCreated;
       }

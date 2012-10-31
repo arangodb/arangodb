@@ -293,15 +293,17 @@ bool RestDocumentHandler::createDocument () {
   }
   
   TRI_voc_cid_t cid = ca.cid();
-  const bool waitForSync = forceSync || ca.waitForSync();
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
   WriteTransaction trx(&ca);
+  
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_DOCUMENT, json, 0, false, forceSync);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, json, 0);
 
   trx.end();
 
@@ -311,7 +313,7 @@ bool RestDocumentHandler::createDocument () {
 
   // generate result
   if (mptr._key != 0) {
-    if (waitForSync) {
+    if (context._sync) {
       generateCreated(cid, mptr._key, mptr._rid);
     }
     else {
@@ -833,6 +835,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // .............................................................................
 
   WriteTransaction trx(&ca);
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, trx.primary(), policy, forceSync);
+  context._expectedRid = revision;
+  context._previousRid = &rid;
 
   if (isPatch) {
     // patching an existing document
@@ -859,7 +865,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_FreeJson(shaper->_memoryZone, old);
 
       if (patchedJson != 0) {
-        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, (TRI_voc_key_t) key.c_str(), revision, &rid, policy, false, forceSync);
+        mptr = trx.primary()->updateJson(&context, patchedJson, (TRI_voc_key_t) key.c_str());
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
@@ -867,7 +873,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
   else {
     // replacing an existing document
-    mptr = trx.primary()->updateJson(trx.primary(), json, (TRI_voc_key_t) key.c_str(), revision, &rid, policy, false, forceSync);
+    mptr = trx.primary()->updateJson(&context, json, (TRI_voc_key_t) key.c_str());
   }
 
   trx.end();

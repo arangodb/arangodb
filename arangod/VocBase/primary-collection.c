@@ -550,6 +550,24 @@ size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a new operation context
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context, 
+                                       TRI_primary_collection_t* const collection,
+                                       TRI_doc_update_policy_e policy,
+                                       bool forceSync) {
+  context->_collection = collection;
+  context->_policy = policy;
+  context->_expectedRid = 0;
+  context->_previousRid = 0;
+  context->_lock = false;
+  context->_release = false;
+  context->_sync = forceSync || collection->base._waitForSync;
+  context->_allowRollback = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

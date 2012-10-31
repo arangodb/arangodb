@@ -821,7 +821,9 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper);
 
   if (shaped == 0) {
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> cannot be converted into JSON shape")));
@@ -831,10 +833,14 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
   // inside a write transaction
   // .............................................................................
 
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+  context._release = true;
+
   primary->beginWrite(primary);
 
   // the lock is freed in create
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, key, true, forceSync);
+  TRI_doc_mptr_t mptr = primary->create(&context, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, key);
 
   if (key) {
     TRI_Free(TRI_CORE_MEM_ZONE, key);
@@ -1004,10 +1010,15 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
   // .............................................................................
   // inside a write transaction
   // .............................................................................
+  
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+  context._release = true;
 
   primary->beginWrite(primary);
 
-  TRI_doc_mptr_t mptr = primary->create(primary, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, key, true, forceSync);
+  // the lock is freed in create
+  TRI_doc_mptr_t mptr = primary->create(&context, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, key);
 
   // .............................................................................
   // outside a write transaction
@@ -1136,13 +1147,22 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     TRI_FreeJson(primary->_shaper->_memoryZone, old);
 
     if (patchedJson != 0) {
-      mptr = primary->updateJson(primary, patchedJson, key, rid, &oldRid, policy, true, forceSync);
+      TRI_doc_operation_context_t context;
+
+      TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);     
+      context._release = true; 
+      context._expectedRid = rid;
+      context._previousRid = &oldRid;
+
+      mptr = primary->updateJson(&context, patchedJson, key);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
     }
   }
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  if (key) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  }
 
   // .............................................................................
   // outside a write transaction
