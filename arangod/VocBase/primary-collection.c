@@ -73,76 +73,10 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new document in the collection from json
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
-                                  TRI_df_marker_type_e type,
-                                  TRI_json_t const* json,
-                                  void const* data,
-                                  bool release,
-                                  bool forceSync) {
-  TRI_shaped_json_t* shaped;
-  TRI_doc_mptr_t result;
-  TRI_voc_key_t key = 0;
-
-  shaped = TRI_ShapedJsonJson(collection->_shaper, json);
-
-  if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    memset(&result, 0, sizeof(result));
-    return result;
-  }
-  
-  if (json != NULL && json->_type == TRI_JSON_ARRAY) {
-    TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
-    if (k != NULL && k->_type == TRI_JSON_STRING) {
-      key = k->_value._string.data;
-    }    
-  }
-  
-  result = collection->create(collection, type, shaped, data, key, release, forceSync);
-
-  TRI_FreeShapedJson(collection->_shaper, shaped);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from json
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
-                                  TRI_json_t const* json,
-                                  TRI_voc_key_t key,
-                                  TRI_voc_rid_t rid,
-                                  TRI_voc_rid_t* oldRid,
-                                  TRI_doc_update_policy_e policy,
-                                  bool release,
-                                  bool forceSync) {
-  TRI_shaped_json_t* shaped;
-  TRI_doc_mptr_t result;
-
-  shaped = TRI_ShapedJsonJson(collection->_shaper, json);
-
-  if (shaped == 0) {
-    collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    memset(&result, 0, sizeof(result));
-    return result;
-  }
-
-  result = collection->update(collection, shaped, key, rid, oldRid, policy, release, forceSync);
-
-  TRI_FreeShapedJson(collection->_shaper, shaped);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* document) {
+static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   TRI_doc_collection_info_t* info;
   TRI_collection_t* base;
   size_t i;
@@ -154,8 +88,8 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* document) {
     return NULL;
   }
 
-  for (i = 0;  i < document->_datafileInfo._nrAlloc;  ++i) {
-    TRI_doc_datafile_info_t* d = document->_datafileInfo._table[i];
+  for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
+    TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
 
     if (d != NULL) {
       info->_numberAlive += d->_numberAlive;
@@ -167,7 +101,7 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* document) {
   }
 
   // add the file sizes for datafiles and journals
-  base = &document->base;
+  base = &primary->base;
   for (i = 0; i < base->_datafiles._length; ++i) {
     TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
 
@@ -453,9 +387,6 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
                                 TRI_shaper_t* shaper) {
   collection->_shaper = shaper;
   collection->_capConstraint = NULL;
-
-  collection->createJson = CreateJson;
-  collection->updateJson = UpdateJson;
 
   collection->figures = Figures;
 
