@@ -168,7 +168,6 @@ bool RestEdgeHandler::createDocument () {
   }
 
   TRI_voc_cid_t cid = ca.cid();
-  const bool waitForSync = forceSync || ca.waitForSync();
 
   // split document handle
   edge._fromCid = cid;
@@ -213,14 +212,16 @@ bool RestEdgeHandler::createDocument () {
                   "'_to' is not a document handle");
     return false;
   }
-
+  
   // .............................................................................
   // inside write transaction
   // .............................................................................
   
   WriteTransaction trx(&ca);
+  TRI_doc_operation_context_t context;
+  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_KEY_EDGE, json, &edge, false, forceSync);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, json, &edge);
 
   trx.end();
 
@@ -230,7 +231,7 @@ bool RestEdgeHandler::createDocument () {
 
   // generate result
   if (mptr._key != 0) {
-    if (waitForSync) {
+    if (context._sync) {
       generateCreated(cid, mptr._key, mptr._rid);
     }
     else {

@@ -893,15 +893,16 @@ static int DeleteDocument (TRI_document_collection_t* collection,
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
+static TRI_doc_mptr_t CreateJson (TRI_doc_operation_context_t* context,
                                   TRI_df_marker_type_e type,
                                   TRI_json_t const* json,
-                                  void const* data,
-                                  bool release,
-                                  bool forceSync) {
+                                  void const* data) {
   TRI_shaped_json_t* shaped;
+  TRI_primary_collection_t* collection;
   TRI_doc_mptr_t result;
   TRI_voc_key_t key = 0;
+
+  collection = context->_collection;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
@@ -918,7 +919,7 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
     }    
   }
   
-  result = collection->create(collection, type, shaped, data, key, release, forceSync);
+  result = collection->create(context, type, shaped, data, key);
 
   TRI_FreeShapedJson(collection->_shaper, shaped);
 
@@ -929,16 +930,14 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
+static TRI_doc_mptr_t UpdateJson (TRI_doc_operation_context_t* context,
                                   TRI_json_t const* json,
-                                  TRI_voc_key_t key,
-                                  TRI_voc_rid_t rid,
-                                  TRI_voc_rid_t* oldRid,
-                                  TRI_doc_update_policy_e policy,
-                                  bool release,
-                                  bool forceSync) {
+                                  TRI_voc_key_t key) {
   TRI_shaped_json_t* shaped;
   TRI_doc_mptr_t result;
+  TRI_primary_collection_t* collection;
+
+  collection = context->_collection;
 
   shaped = TRI_ShapedJsonJson(collection->_shaper, json);
 
@@ -948,7 +947,7 @@ static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
     return result;
   }
   
-  result = collection->update(collection, shaped, key, rid, oldRid, policy, release, forceSync);
+  result = collection->update(collection, shaped, key, context->_expectedRid, context->_previousRid, context->_policy, context->_release, context->_sync);
   
   TRI_FreeShapedJson(collection->_shaper, shaped);
   return result;
@@ -1063,14 +1062,13 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
+static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
                                         TRI_df_marker_type_e type,
                                         TRI_shaped_json_t const* json,
                                         void const* data,
-                                        char * key,
-                                        bool release,
-                                        bool forceSync) {
+                                        char* key) {
   TRI_df_marker_t* result;
+  TRI_primary_collection_t* primary;
   TRI_document_collection_t* collection;
   size_t keySize = 0;
   char* keyBody = 0;
@@ -1079,6 +1077,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
   size_t fromSize = 0;
   size_t toSize = 0;
   TRI_doc_mptr_t mptr;
+
+  primary = context->_collection;
 
   collection = (TRI_document_collection_t*) primary;
 
@@ -1136,9 +1136,9 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
                           data,
                           keyBody,
                           marker._rid,
-                          release,
+                          context->_release,
                           &mptr,
-                          forceSync);    
+                          context->_sync);    
     TRI_FreeString(TRI_CORE_MEM_ZONE, keyBody);
   }
   else if (type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -1201,9 +1201,9 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_primary_collection_t* primary,
                           data,
                           keyBody,
                           marker.base._rid,
-                          release,
+                          context->_release,
                           &mptr,
-                          forceSync);    
+                          context->_sync);    
     TRI_FreeString(TRI_CORE_MEM_ZONE, keyBody);
   }
   else {

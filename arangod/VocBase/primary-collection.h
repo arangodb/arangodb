@@ -43,6 +43,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_cap_constraint_s;
+struct TRI_primary_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -105,6 +106,22 @@ typedef enum {
   TRI_DOC_UPDATE_ILLEGAL
 }
 TRI_doc_update_policy_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for arbitrary operation parameters
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_operation_context_s {
+  struct TRI_primary_collection_s* _collection;
+  TRI_doc_update_policy_e _policy;
+  TRI_voc_rid_t _expectedRid;
+  TRI_voc_rid_t* _previousRid;
+  bool _lock : 1;
+  bool _release : 1;
+  bool _sync : 1;
+  bool _allowRollback : 1;
+}
+TRI_doc_operation_context_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
@@ -316,12 +333,13 @@ typedef struct TRI_primary_collection_s {
   void (*createHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t*, void const* data);
   void (*updateHeader) (struct TRI_primary_collection_s*, TRI_datafile_t*, TRI_df_marker_t const*, size_t, TRI_doc_mptr_t const*, TRI_doc_mptr_t*);
 
-  TRI_doc_mptr_t (*create) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key, bool, bool);
-  TRI_doc_mptr_t (*createJson) (struct TRI_primary_collection_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*, bool, bool);
+  TRI_doc_mptr_t (*create) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key);
+  TRI_doc_mptr_t (*createJson) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*);
   TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_key_t);
 
   TRI_doc_mptr_t (*update) (struct TRI_primary_collection_s*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
-  TRI_doc_mptr_t (*updateJson) (struct TRI_primary_collection_s*, TRI_json_t const*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
+  TRI_doc_mptr_t (*updateJson) (struct TRI_doc_operation_context_s*, TRI_json_t const*, TRI_voc_key_t);
+ // , TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
 
   int (*destroy) (struct TRI_primary_collection_s* collection, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t*, TRI_doc_update_policy_e, bool, bool);
 
@@ -492,6 +510,15 @@ void TRI_MarkerMasterPointer (void const*, TRI_doc_mptr_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a new operation context
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const, 
+                                       TRI_primary_collection_t* const,
+                                       TRI_doc_update_policy_e,
+                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
