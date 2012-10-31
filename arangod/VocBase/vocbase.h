@@ -36,6 +36,10 @@
 #include "BasicsC/vector.h"
 #include "BasicsC/voc-errors.h"
 
+#if TRI_ENABLE_TRX
+#include "VocBase/transaction.h"
+#endif 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -374,6 +378,10 @@ typedef struct TRI_vocbase_s {
 
   TRI_associative_pointer_t _authInfo;
   TRI_read_write_lock_t _authInfoLock;
+
+#ifdef TRI_ENABLE_TRX 
+  TRI_transaction_context_t* _transactionContext;
+#endif
 
   // state of the database
   // 0 = inactive
