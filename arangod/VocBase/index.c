@@ -289,10 +289,110 @@ bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
 // --SECTION--                                                     PRIMARY INDEX
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert methods does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update methods does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove methods does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON description of a geo index, location is a list
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
+  TRI_json_t* json;
+  TRI_json_t* fields;
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "_id"));
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "primary"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* collection) {
+  TRI_index_t* primary;
+  char* id;
+
+  // create primary index
+  primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
+  if (primary == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+  
+  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_id");
+  if (id == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, primary);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+  
+  TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorString(&primary->_fields, id);
+  
+  primary->_iid = 0;
+  primary->_type = TRI_IDX_TYPE_PRIMARY_INDEX;
+  primary->_unique = true;
+
+  primary->insert = InsertPrimary;
+  primary->remove = RemovePrimary;
+  primary->update = UpdatePrimary;
+  primary->json = JsonPrimary;
+
+  return primary;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a primary index, but does not free the pointer
