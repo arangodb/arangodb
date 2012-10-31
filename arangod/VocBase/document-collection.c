@@ -86,11 +86,6 @@ static int DeleteShapedJson (TRI_primary_collection_t* doc,
                              bool release,
                              bool forceSync);
 
-static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
-static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old);
-static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc);
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection);
-
 static int CapConstraintFromJson (TRI_document_collection_t* sim,
                                   TRI_json_t* definition,
                                   TRI_idx_iid_t);
@@ -1843,31 +1838,14 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 static bool InitDocumentCollection (TRI_document_collection_t* collection,
                                     TRI_shaper_t* shaper) {
   TRI_index_t* primary;
-  char* id;
   char* expr;
   
-  // create primary index
-  primary = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_t), false);
-  if (primary == NULL) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return false;
-  }
-
-  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_id");
-  if (id == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, primary);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return false;
-  }
-
   TRI_InitPrimaryCollection(&collection->base, shaper);
-
+ 
   collection->_headers = TRI_CreateSimpleHeaders(sizeof(TRI_doc_mptr_t));
-
   if (collection->_headers == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, id);
     TRI_DestroyPrimaryCollection(&collection->base);
+
     return false;
   }
 
@@ -1875,41 +1853,35 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     TRI_InitEdgesDocumentCollection(collection);
   }
 
-  TRI_InitCondition(&collection->_journalsCondition);
-
+  // create primary index 
   TRI_InitVectorPointer(&collection->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
-  
-  TRI_PushBackVectorString(&primary->_fields, id);
+  primary = TRI_CreatePrimaryIndex(&collection->base);
+  if (primary == NULL) {
+    TRI_DestroyVectorPointer(&collection->_allIndexes);
+    TRI_DestroyPrimaryCollection(&collection->base);
 
-  primary->_iid = 0;
-  primary->_type = TRI_IDX_TYPE_PRIMARY_INDEX;
-  primary->_unique = true;
-
-  primary->insert = InsertPrimary;
-  primary->remove = RemovePrimary;
-  primary->update = UpdatePrimary;
-  primary->json = JsonPrimary;
-
+    return false;
+  }
   TRI_PushBackVectorPointer(&collection->_allIndexes, primary);
+  
+  TRI_InitCondition(&collection->_journalsCondition);
 
   // setup methods
-  collection->base.beginRead = BeginRead;
-  collection->base.endRead = EndRead;
+  collection->base.beginRead  = BeginRead;
+  collection->base.endRead    = EndRead;
 
   collection->base.beginWrite = BeginWrite;
-  collection->base.endWrite = EndWrite;
+  collection->base.endWrite   = EndWrite;
 
-  collection->base.create = CreateShapedJson;
-  collection->base.read = ReadShapedJson;
-  collection->base.update = UpdateShapedJson;
-  collection->base.destroy = DeleteShapedJson;
+  collection->base.size       = SizeDocumentCollection;
+
+  collection->base.create     = CreateShapedJson;
   collection->base.createJson = CreateJson;
+  collection->base.read       = ReadShapedJson;
+  collection->base.update     = UpdateShapedJson;
   collection->base.updateJson = UpdateJson;
-
-
-  collection->base.size = SizeDocumentCollection;
+  collection->base.destroy    = DeleteShapedJson;
   
   expr = "^[0-9a-zA-Z][_0-9a-zA-Z]*$";
   if (regcomp(&collection->DocumentKeyRegex, expr, REG_ICASE | REG_EXTENDED) != 0) {
@@ -3199,67 +3171,6 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     PRIMARY INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert methods does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update methods does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove methods does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON description of a geo index, location is a list
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
-  TRI_json_t* json;
-  TRI_json_t* fields;
-
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "_id"));
-
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "primary"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
-
-  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
