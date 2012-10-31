@@ -895,11 +895,76 @@ static int DeleteDocument (TRI_document_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new document in the collection from json
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
+                                  TRI_df_marker_type_e type,
+                                  TRI_json_t const* json,
+                                  void const* data,
+                                  bool release,
+                                  bool forceSync) {
+  TRI_shaped_json_t* shaped;
+  TRI_doc_mptr_t result;
+  TRI_voc_key_t key = 0;
+
+  shaped = TRI_ShapedJsonJson(collection->_shaper, json);
+
+  if (shaped == 0) {
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
+    memset(&result, 0, sizeof(result));
+    return result;
+  }
+  
+  if (json != NULL && json->_type == TRI_JSON_ARRAY) {
+    TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
+    if (k != NULL && k->_type == TRI_JSON_STRING) {
+      key = k->_value._string.data;
+    }    
+  }
+  
+  result = collection->create(collection, type, shaped, data, key, release, forceSync);
+
+  TRI_FreeShapedJson(collection->_shaper, shaped);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in the collection from json
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
+                                  TRI_json_t const* json,
+                                  TRI_voc_key_t key,
+                                  TRI_voc_rid_t rid,
+                                  TRI_voc_rid_t* oldRid,
+                                  TRI_doc_update_policy_e policy,
+                                  bool release,
+                                  bool forceSync) {
+  TRI_shaped_json_t* shaped;
+  TRI_doc_mptr_t result;
+
+  shaped = TRI_ShapedJsonJson(collection->_shaper, json);
+
+  if (shaped == 0) {
+    collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
+    memset(&result, 0, sizeof(result));
+    return result;
+  }
+  
+  result = collection->update(collection, shaped, key, rid, oldRid, policy, release, forceSync);
+  
+  TRI_FreeShapedJson(collection->_shaper, shaped);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 SIMPLE COLLECTION
+// --SECTION--                                               DOCUMENT COLLECTION
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -1840,6 +1905,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.read = ReadShapedJson;
   collection->base.update = UpdateShapedJson;
   collection->base.destroy = DeleteShapedJson;
+  collection->base.createJson = CreateJson;
+  collection->base.updateJson = UpdateJson;
+
 
   collection->base.size = SizeDocumentCollection;
   
