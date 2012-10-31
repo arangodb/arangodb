@@ -3678,7 +3678,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   if (ok) {
     char* errorStr = 0;
-    bitarrayIndex = TRI_EnsureBitarrayIndexSimCollection(sim, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
+    bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(sim, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
          errorString = "index could not be created from Simple Collection";
