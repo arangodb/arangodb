@@ -1221,8 +1221,11 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_voc_rid_t oldRid;
 
-  int res = primary->destroyLock(primary, key, rid, &oldRid, policy, forceSync);
-  if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  primary->beginWrite(primary);
+  int res = primary->destroy(primary, key, rid, &oldRid, policy, true, forceSync);
+  if (key) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  }
 
   // .............................................................................
   // outside a write transaction
@@ -1735,15 +1738,10 @@ static v8::Handle<v8::Value> JS_Trx (v8::Arguments const& argv) {
   TRI_transaction_t* trx = TRI_CreateTransaction(context, TRI_TRANSACTION_READ_REPEATABLE);
   TRI_AddCollectionTransaction(trx, "users", TRI_TRANSACTION_READ);
   TRI_AddCollectionTransaction(trx, "friends", TRI_TRANSACTION_WRITE);
-  TRI_AddCollectionTransaction(trx, "relations", TRI_TRANSACTION_READ);
-  TRI_AddCollectionTransaction(trx, "hans", TRI_TRANSACTION_READ);
-  TRI_AddCollectionTransaction(trx, "peter", TRI_TRANSACTION_READ);
-  TRI_AddCollectionTransaction(trx, "peter", TRI_TRANSACTION_WRITE);
-  TRI_AddCollectionTransaction(trx, "friends", TRI_TRANSACTION_READ);
 
   TRI_DumpTransaction(trx);
 
-  TRI_StartTransaction(trx);
+  int res = TRI_StartTransaction(trx);
   TRI_DumpTransaction(trx);
 
   bool commit = true;
@@ -1751,13 +1749,15 @@ static v8::Handle<v8::Value> JS_Trx (v8::Arguments const& argv) {
     commit = TRI_ObjectToBoolean(argv[0]);
   }
 
-  if (commit) {
-    TRI_CommitTransaction(trx);
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (commit) {
+      TRI_CommitTransaction(trx);
+    }
+    else {
+      TRI_AbortTransaction(trx);
+    }
+    TRI_DumpTransaction(trx);
   }
-  else {
-    TRI_AbortTransaction(trx);
-  }
-  TRI_DumpTransaction(trx);
 
   TRI_DumpTransactionContext(context);
   
