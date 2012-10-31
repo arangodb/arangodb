@@ -73,19 +73,6 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new document in the collection from shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_voc_key_t CreateLock (TRI_primary_collection_t* document,
-                                 TRI_df_marker_type_e type,
-                                 TRI_shaped_json_t const* json,
-                                 void const* data,
-                                 bool forceSync) {
-  document->beginWrite(document);
-  return document->create(document, type, json, data, 0, true, forceSync)._key;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,30 +109,6 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateLock (TRI_primary_collection_t* document,
-                       TRI_shaped_json_t const* json,
-                       TRI_voc_key_t key,
-                       TRI_voc_rid_t rid,
-                       TRI_voc_rid_t* oldRid,
-                       TRI_doc_update_policy_e policy,
-                       bool forceSync) {
-  TRI_doc_mptr_t result;
-
-  document->beginWrite(document);
-  result = document->update(document, json, key, rid, oldRid, policy, true, forceSync);
-
-  if (result._key == 0) {
-    return TRI_errno();
-  }
-  else {
-    return TRI_ERROR_NO_ERROR;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -173,20 +136,6 @@ static TRI_doc_mptr_t UpdateJson (TRI_primary_collection_t* collection,
   TRI_FreeShapedJson(collection->_shaper, shaped);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a json document given the identifier under a write lock
-////////////////////////////////////////////////////////////////////////////////
-
-static int DestroyLock (TRI_primary_collection_t* document,
-                        TRI_voc_key_t key,
-                        TRI_voc_rid_t rid,
-                        TRI_voc_rid_t* oldRid,
-                        TRI_doc_update_policy_e policy,
-                        bool forceSync) {
-  document->beginWrite(document);
-  return document->destroy(document, key, rid, oldRid, policy, true, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,13 +454,8 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
   collection->_shaper = shaper;
   collection->_capConstraint = NULL;
 
-  collection->createLock = CreateLock;
   collection->createJson = CreateJson;
-
-  collection->updateLock = UpdateLock;
   collection->updateJson = UpdateJson;
-
-  collection->destroyLock = DestroyLock;
 
   collection->figures = Figures;
 
