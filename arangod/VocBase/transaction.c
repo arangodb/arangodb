@@ -46,6 +46,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hash a collection list
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashCollection (TRI_associative_pointer_t* array, 
+                                void const* element) {
+  TRI_transaction_context_collection_t* collection = (TRI_transaction_context_collection_t*) element;
+
+  return TRI_FnvHashString(collection->_name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparison function used to determine collection list equality
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualCollectionName (TRI_associative_pointer_t* array, 
+                                   void const* key, 
+                                   void const* element) {
+  TRI_transaction_context_collection_t* collection = (TRI_transaction_context_collection_t*) element;
+
+  return TRI_EqualString(key, collection->_name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the transaction as a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +107,6 @@ static const char* StatusString (const TRI_transaction_status_e status) {
   assert(false);
   return "unknown";
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a transaction id
@@ -278,6 +300,42 @@ static void DumpTransactionList (const TRI_transaction_list_t* const list) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a collection for the global context
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_context_collection_t* CreateCollectionTransactionContext (TRI_transaction_collection_t* const collection) {
+  TRI_transaction_context_collection_t* globalCollection;
+
+  globalCollection = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_context_collection_t), false);
+  if (globalCollection == NULL) {
+    return NULL;
+  }
+
+  globalCollection->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, collection->_name);
+  if (globalCollection->_name == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, globalCollection);
+
+    return NULL;
+  }
+
+  TRI_InitMutex(&globalCollection->_writeLock);
+  InitTransactionList(&globalCollection->_writeTransactions);
+
+  return globalCollection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a collection from the global context
+////////////////////////////////////////////////////////////////////////////////
+
+void FreeCollectionTransactionContext (TRI_transaction_context_collection_t* const globalCollection) {
+  DestroyTransactionList(&globalCollection->_writeTransactions);
+  TRI_DestroyMutex(&globalCollection->_writeLock);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, globalCollection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -307,6 +365,12 @@ TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_vocbase_t* const vo
 
   InitTransactionList(&context->_readTransactions);
   InitTransactionList(&context->_writeTransactions);
+  TRI_InitAssociativePointer(&context->_collections,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             TRI_HashStringKeyAssociativePointer, 
+                             HashCollection,
+                             IsEqualCollectionName, 
+                             NULL);
 
   context->_vocbase = vocbase;
   context->_id._localId  = 0;
@@ -322,6 +386,7 @@ TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_vocbase_t* const vo
 void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
   DestroyTransactionList(&context->_writeTransactions);
   DestroyTransactionList(&context->_readTransactions);
+  TRI_DestroyAssociativePointer(&context->_collections);
 
   TRI_DestroyMutex(&context->_lock);
 
@@ -340,6 +405,29 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all data associated with a specific collection
+/// TODO: this function must be called for all collections that are dropped
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const context, 
+                                             const char* const name) {
+  TRI_transaction_context_collection_t* collection;
+
+  // start critical section -----------------------------------------
+  TRI_LockMutex(&context->_lock); 
+    
+  // TODO: must not remove collections with transactions going on
+  collection = (TRI_transaction_context_collection_t*) TRI_RemoveKeyAssociativePointer(&context->_collections, name);
+
+  TRI_UnlockMutex(&context->_lock); 
+  // end critical section -----------------------------------------
+
+  if (collection != NULL) {
+    FreeCollectionTransactionContext(collection);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump transaction context data
@@ -408,6 +496,8 @@ static TRI_transaction_collection_t* CreateCollection (const char* const name,
 
   collection->_type       = type;
   collection->_collection = NULL;
+  collection->_locked     = false;
+  InitTransactionList(&collection->_writeTransactions);
 
   return collection;
 }
@@ -420,6 +510,10 @@ static void FreeCollection (TRI_transaction_collection_t* collection) {
   assert(collection);
   assert(collection->_name);
 
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (char*) collection->_name);
+  
+  DestroyTransactionList(&collection->_writeTransactions);
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
@@ -427,10 +521,13 @@ static void FreeCollection (TRI_transaction_collection_t* collection) {
 /// @brief acquire collection locks for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AcquireLocks (TRI_transaction_t* const trx) {
+static int AcquireCollectionLocks (TRI_transaction_t* const trx) {
+  TRI_transaction_context_t* context;
   size_t i, n;
   
   LOG_DEBUG("acquiring collection locks");
+
+  context = trx->_context;
 
   n = trx->_collections._length;
   assert(n > 0);
@@ -444,6 +541,33 @@ static int AcquireLocks (TRI_transaction_t* const trx) {
     if (collection->_collection == NULL) {
       return TRI_errno();
     }
+  
+    if (collection->_type == TRI_TRANSACTION_WRITE) {
+      TRI_transaction_context_collection_t* globalCollection;
+      
+      LOG_DEBUG("acquiring write-lock on collection '%s'", collection->_name);
+
+      // start critical section -----------------------------------------
+      TRI_LockMutex(&context->_lock); 
+
+      globalCollection = (TRI_transaction_context_collection_t*) TRI_LookupByKeyAssociativePointer(&context->_collections, collection->_name);
+      if (globalCollection == NULL) {
+        globalCollection = CreateCollectionTransactionContext(collection);
+        if (globalCollection != NULL) {
+          TRI_InsertKeyAssociativePointer(&context->_collections, collection->_name, globalCollection, false); 
+        }
+      }
+
+      TRI_UnlockMutex(&context->_lock); 
+      // end critical section -----------------------------------------
+
+      if (globalCollection == NULL) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+
+      TRI_LockMutex(&globalCollection->_writeLock);
+      collection->_locked = true;
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -453,10 +577,15 @@ static int AcquireLocks (TRI_transaction_t* const trx) {
 /// @brief release collection locks for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ReleaseLocks (TRI_transaction_t* const trx) {
+static int ReleaseCollectionLocks (TRI_transaction_t* const trx) {
+  TRI_transaction_context_t* context;
   size_t i;
+  int res;
 
   LOG_DEBUG("releasing collection locks");
+  
+  res = TRI_ERROR_NO_ERROR;
+  context = trx->_context;
 
   i = trx->_collections._length;
   assert(i > 0);
@@ -466,12 +595,200 @@ static int ReleaseLocks (TRI_transaction_t* const trx) {
 
     collection = TRI_AtVectorPointer(&trx->_collections, i);
     if (collection->_collection != NULL) {
+      if (collection->_type == TRI_TRANSACTION_WRITE && collection->_locked) {
+        TRI_transaction_context_collection_t* globalCollection;
+
+        LOG_DEBUG("releasing write-lock on collection '%s'", collection->_name);
+
+        globalCollection = (TRI_transaction_context_collection_t*) TRI_LookupByKeyAssociativePointer(&context->_collections, collection->_name);
+        if (globalCollection != NULL) {
+          TRI_UnlockMutex(&globalCollection->_writeLock);
+        }
+        else {
+          res = TRI_ERROR_INTERNAL;
+        }
+
+        collection->_locked = false;
+      }
+
       TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, collection->_collection);
       collection->_collection = NULL;
     }
   }
 
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a transaction into all collections' write transaction lists
+/// The context lock must be held when calling this function
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertCollectionsWriteTransaction (TRI_transaction_t* const trx) {
+  TRI_transaction_context_t* context;
+  size_t i, n;
+
+  context = trx->_context;
+
+  n = trx->_collections._length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection;
+    TRI_transaction_context_collection_t* globalCollection;
+    int res;
+    
+    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+
+    if (collection->_type == TRI_TRANSACTION_READ) {
+      continue;
+    }
+
+    globalCollection = (TRI_transaction_context_collection_t*) TRI_LookupByKeyAssociativePointer(&context->_collections, collection->_name);
+    if (globalCollection == NULL) {
+      return TRI_ERROR_INTERNAL;
+    }
+  
+    res = InsertTransactionList(&globalCollection->_writeTransactions, trx);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a transaction from all collections' write transaction lists
+/// The context lock must be held when calling this function
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemoveCollectionsWriteTransaction (TRI_transaction_t* const trx, 
+                                              const TRI_transaction_local_id_t id) {
+  TRI_transaction_context_t* context;
+  size_t i, n;
+
+  context = trx->_context;
+
+  n = trx->_collections._length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection;
+    TRI_transaction_context_collection_t* globalCollection;
+    int res;
+    
+    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+
+    if (collection->_type == TRI_TRANSACTION_READ) {
+      continue;
+    }
+
+    globalCollection = (TRI_transaction_context_collection_t*) TRI_LookupByKeyAssociativePointer(&context->_collections, collection->_name);
+    if (globalCollection == NULL) {
+      // should not happen
+      continue;
+    }
+    
+    res = RemoveTransactionList(&globalCollection->_writeTransactions, id); 
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the status of a transaction in all collections' write
+///  transaction lists
+/// The context lock must be held when calling this function
+////////////////////////////////////////////////////////////////////////////////
+
+static int UpdateCollectionsWriteTransaction (TRI_transaction_t* const trx, 
+                                              const TRI_transaction_local_id_t id,
+                                              const TRI_transaction_status_e status) {
+  TRI_transaction_context_t* context;
+  size_t i, n;
+
+  context = trx->_context;
+
+  n = trx->_collections._length;
+
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection;
+    TRI_transaction_context_collection_t* globalCollection;
+    int res;
+    
+    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+
+    if (collection->_type == TRI_TRANSACTION_READ) {
+      continue;
+    }
+
+    globalCollection = (TRI_transaction_context_collection_t*) TRI_LookupByKeyAssociativePointer(&context->_collections, collection->_name);
+    if (globalCollection == NULL) {
+      // should not happen
+      continue;
+    }
+    
+    res = UpdateTransactionList(&globalCollection->_writeTransactions, id, status); 
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the status of a transaction 
+////////////////////////////////////////////////////////////////////////////////
+
+static int UpdateTransactionStatus (TRI_transaction_t* const trx, 
+                                    const TRI_transaction_status_e status) {
+  const TRI_transaction_local_id_t id = trx->_id._localId;
+  TRI_transaction_context_t* context;
+  int res;
+
+  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+
+  context = trx->_context;
+
+  // start critical section -----------------------------------------
+  TRI_LockMutex(&context->_lock); 
+
+  if (trx->_type == TRI_TRANSACTION_READ) {
+    // read-only transactions cannot commit or roll-back
+    assert(status == TRI_TRANSACTION_FINISHED);
+
+    LOG_TRACE("removing read transaction %lu", (unsigned long) id);
+    res = RemoveTransactionList(&context->_readTransactions, id);
+  }
+  else {
+    // write transactions
+    
+    if (status == TRI_TRANSACTION_COMMITTED) {
+      LOG_TRACE("removing write transaction %lu", (unsigned long) id);
+      RemoveCollectionsWriteTransaction(trx, id);
+      res = RemoveTransactionList(&context->_writeTransactions, id);
+    }
+    else if (status == TRI_TRANSACTION_ABORTED) {
+      LOG_TRACE("updating write transaction %lu status %s", (unsigned long) id, StatusString(status));
+      UpdateCollectionsWriteTransaction(trx, id, status);
+      res = UpdateTransactionList(&context->_writeTransactions, id, status);
+    }
+    else {
+      res = TRI_ERROR_INTERNAL;
+    }
+  }
+
+  TRI_UnlockMutex(&context->_lock); 
+  // end critical section -----------------------------------------
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    trx->_status = status;
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -504,58 +821,12 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
   trx->_id._localId = NextLocalTransactionId(context);
   res = InsertTransactionList(list, trx);
 
+  if (trx->_type == TRI_TRANSACTION_WRITE) {
+    InsertCollectionsWriteTransaction(trx);
+  }
+
   TRI_UnlockMutex(&context->_lock);
   // end critical section -----------------------------------------
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update the status of a transaction 
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateTransactionStatus (TRI_transaction_t* const trx, 
-                                    const TRI_transaction_status_e status) {
-  const TRI_transaction_local_id_t id = trx->_id._localId;
-  TRI_transaction_context_t* context;
-  int res;
-
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
-
-  context = trx->_context;
-
-  // start critical section -----------------------------------------
-  TRI_LockMutex(&context->_lock); 
-
-  if (trx->_type == TRI_TRANSACTION_READ) {
-    // read-only transactions cannot commit or roll-back
-    assert(status == TRI_TRANSACTION_FINISHED);
-
-    LOG_TRACE("removing read transaction %lu", (unsigned long) id);
-    res = RemoveTransactionList(&context->_readTransactions, id);
-  }
-  else {
-    // write transactions
-    
-    if (status == TRI_TRANSACTION_COMMITTED) {
-      LOG_TRACE("removing write transaction %lu", (unsigned long) id);
-      res = RemoveTransactionList(&context->_writeTransactions, id);
-    }
-    else if (status == TRI_TRANSACTION_ABORTED) {
-      LOG_TRACE("updating write transaction %lu status %s", (unsigned long) id, StatusString(status));
-      res = UpdateTransactionList(&context->_writeTransactions, id, status);
-    }
-    else {
-      res = TRI_ERROR_INTERNAL;
-    }
-  }
-
-  TRI_UnlockMutex(&context->_lock); 
-  // end critical section -----------------------------------------
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    trx->_status = status;
-  }
 
   return res;
 }
@@ -612,7 +883,7 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
     TRI_AbortTransaction(trx);
   }
 
-  ReleaseLocks(trx);
+  ReleaseCollectionLocks(trx);
 
   // free all collections
   i = trx->_collections._length;
@@ -696,6 +967,7 @@ bool TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
     res = strcmp(name, collection->_name);
 
     if (res < 0) {
+      // collection is not contained in vector
       collection = CreateCollection(name, type);
       if (collection == NULL) {
         // out of memory
@@ -703,16 +975,17 @@ bool TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
       }
 
       TRI_InsertVectorPointer(&trx->_collections, collection, i);
+
       return true;
     }
-
-    if (res == 0) {
+    else if (res == 0) {
       // collection is already contained in vector
 
       // upgrade collection type if required
       if (type == TRI_TRANSACTION_WRITE && collection->_type == TRI_TRANSACTION_READ) {
         collection->_type = TRI_TRANSACTION_WRITE;
       }
+
       return true;
     }
   }
@@ -738,11 +1011,11 @@ int TRI_StartTransaction (TRI_transaction_t* const trx) {
   assert(trx->_status == TRI_TRANSACTION_CREATED);
   assert(trx->_collections._length > 0);
 
-  res = AcquireLocks(trx);
+  res = AcquireCollectionLocks(trx);
   if (res != TRI_ERROR_NO_ERROR) {
     // free what we have got so far
     trx->_status = TRI_TRANSACTION_FAILED;
-    ReleaseLocks(trx);
+    ReleaseCollectionLocks(trx);
 
     return res;
   }
@@ -751,7 +1024,7 @@ int TRI_StartTransaction (TRI_transaction_t* const trx) {
   if (res != TRI_ERROR_NO_ERROR) {
     // free what we have got so far
     trx->_status = TRI_TRANSACTION_FAILED;
-    ReleaseLocks(trx);
+    ReleaseCollectionLocks(trx);
 
     return res;
   }
@@ -771,7 +1044,7 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx) {
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
 
   res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
-  ReleaseLocks(trx);
+  ReleaseCollectionLocks(trx);
 
   return res;
 }
@@ -786,7 +1059,7 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx) {
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
   
   res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
-  ReleaseLocks(trx);
+  ReleaseCollectionLocks(trx);
 
   return res;
 }
@@ -797,19 +1070,22 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx) {
 
 int TRI_FinishTransaction (TRI_transaction_t* const trx) {
   int res;
+  TRI_transaction_status_e status;
 
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_type == TRI_TRANSACTION_READ) {
     // read transactions
-    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_FINISHED);
+    status = TRI_TRANSACTION_FINISHED;
   }
   else {
     // write transactions
-    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    status = TRI_TRANSACTION_COMMITTED;
   }
+  
+  res = UpdateTransactionStatus(trx, status);
 
-  ReleaseLocks(trx);
+  ReleaseCollectionLocks(trx);
 
   return res;
 }

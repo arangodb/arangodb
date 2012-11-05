@@ -29,6 +29,9 @@
 #define TRIAGENS_DURHAM_VOC_BASE_TRANSACTION_H 1
 
 #include "BasicsC/common.h"
+
+#include "BasicsC/associative.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/voc-errors.h"
@@ -175,13 +178,25 @@ TRI_transaction_list_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_context_s {
-  TRI_transaction_id_t   _id;
-  TRI_mutex_t            _lock;
-  TRI_transaction_list_t _readTransactions;
-  TRI_transaction_list_t _writeTransactions;
-  struct TRI_vocbase_s*  _vocbase;
+  TRI_transaction_id_t      _id;
+  TRI_mutex_t               _lock;
+  TRI_transaction_list_t    _readTransactions;
+  TRI_transaction_list_t    _writeTransactions;
+  TRI_associative_pointer_t _collections;
+  struct TRI_vocbase_s*     _vocbase;
 }
 TRI_transaction_context_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write transactions list used per collection
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_transaction_context_collection_s {
+  const char*                _name;
+  TRI_transaction_list_t     _writeTransactions;
+  TRI_mutex_t                _writeLock;
+}
+TRI_transaction_context_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -222,6 +237,18 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t*);
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all data associated with a specific collection
+/// this function must be called for all collections that are dropped
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const, 
+                                             const char* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump transaction context data
+////////////////////////////////////////////////////////////////////////////////
+
 void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +275,9 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 typedef struct TRI_transaction_collection_s {
   const char*                _name;
   TRI_transaction_type_e     _type;
+  TRI_transaction_list_t     _writeTransactions;
   struct TRI_vocbase_col_s*  _collection;
-  // locks and pointers go here
+  bool                       _locked;
 }
 TRI_transaction_collection_t;
 
@@ -364,4 +392,3 @@ int TRI_FinishTransaction (TRI_transaction_t* const);
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

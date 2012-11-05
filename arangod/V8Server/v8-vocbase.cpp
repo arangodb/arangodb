@@ -1772,7 +1772,7 @@ static v8::Handle<v8::Value> JS_Trx (v8::Arguments const& argv) {
 
   TRI_transaction_t* trx = TRI_CreateTransaction(context, TRI_TRANSACTION_READ_REPEATABLE);
   TRI_AddCollectionTransaction(trx, "users", TRI_TRANSACTION_READ);
-  TRI_AddCollectionTransaction(trx, "friends", TRI_TRANSACTION_WRITE);
+  TRI_AddCollectionTransaction(trx, "relations", TRI_TRANSACTION_WRITE);
 
   TRI_DumpTransaction(trx);
 
