@@ -46,7 +46,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hash a collection list
+/// @brief hash a creator pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashCreator (TRI_associative_pointer_t* array, 
+                             void const* element) {
+  return TRI_FnvHashPointer(element, sizeof(void const*));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparison function used to determine creator equality
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualCreator (TRI_associative_pointer_t* array, 
+                            void const* key, 
+                            void const* element) {
+  return key == element;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashCollection (TRI_associative_pointer_t* array, 
@@ -57,7 +76,7 @@ static uint64_t HashCollection (TRI_associative_pointer_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function used to determine collection list equality
+/// @brief comparison function used to determine collection equality
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualCollectionName (TRI_associative_pointer_t* array, 
@@ -364,15 +383,27 @@ TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_vocbase_t* const vo
   }
 
   TRI_InitMutex(&context->_lock);
+  TRI_InitMutex(&context->_collectionLock);
+  TRI_InitMutex(&context->_creatorLock);
 
-  InitTransactionList(&context->_readTransactions);
-  InitTransactionList(&context->_writeTransactions);
+  // create hashes
   TRI_InitAssociativePointer(&context->_collections,
                              TRI_UNKNOWN_MEM_ZONE,
                              TRI_HashStringKeyAssociativePointer, 
                              HashCollection,
                              IsEqualCollectionName, 
                              NULL);
+  
+  TRI_InitAssociativePointer(&context->_creators,
+                             TRI_UNKNOWN_MEM_ZONE,
+                             TRI_HashPointerKeyAssociativePointer, 
+                             HashCreator,
+                             IsEqualCreator,
+                             NULL);
+  
+  // setup global transaction lists
+  InitTransactionList(&context->_readTransactions);
+  InitTransactionList(&context->_writeTransactions);
 
   context->_vocbase = vocbase;
   context->_id._localId  = 0;
@@ -386,11 +417,17 @@ TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_vocbase_t* const vo
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
+  // destroy global transaction lists
   DestroyTransactionList(&context->_writeTransactions);
   DestroyTransactionList(&context->_readTransactions);
+
+  // destroy hashes
+  TRI_DestroyAssociativePointer(&context->_creators);
   TRI_DestroyAssociativePointer(&context->_collections);
 
   TRI_DestroyMutex(&context->_lock);
+  TRI_DestroyMutex(&context->_collectionLock);
+  TRI_DestroyMutex(&context->_creatorLock);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, context);
 }
@@ -418,12 +455,12 @@ void TRI_RemoveCollectionTransactionContext (TRI_transaction_context_t* const co
   TRI_transaction_collection_global_t* collection;
 
   // start critical section -----------------------------------------
-  TRI_LockMutex(&context->_lock); 
+  TRI_LockMutex(&context->_collectionLock); 
     
   // TODO: must not remove collections with transactions going on
   collection = (TRI_transaction_collection_global_t*) TRI_RemoveKeyAssociativePointer(&context->_collections, name);
 
-  TRI_UnlockMutex(&context->_lock); 
+  TRI_UnlockMutex(&context->_collectionLock); 
   // end critical section -----------------------------------------
 
   if (collection != NULL) {
@@ -475,6 +512,34 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const context) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine whether the current transaction is a nested write trx
+////////////////////////////////////////////////////////////////////////////////
+  
+static bool IsNested (TRI_transaction_t* const trx) {
+  void* found;
+
+  // we're only interested in write transactions with known creators
+  if (trx->_creator == NULL || trx->_type != TRI_TRANSACTION_WRITE) {
+    return false;
+  }
+  
+  // if we got a pointer to who created the collection, we'll register it. 
+  // the pointer will be unregistered on transaction shutdown
+  // this prevents nested write transactions
+    
+  // start critical section -----------------------------------------
+  TRI_LockMutex(&trx->_context->_creatorLock);
+
+  // check whether we already have an ongoing write transaction for the same creator
+  found = TRI_InsertKeyAssociativePointer(&trx->_context->_creators, trx->_creator, trx->_creator, false);
+    
+  TRI_UnlockMutex(&trx->_context->_creatorLock);
+  // end critical section -----------------------------------------
+
+  return (found != NULL);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a transaction collection container
@@ -535,7 +600,7 @@ static TRI_transaction_collection_global_t* GetGlobalCollection (TRI_transaction
   TRI_transaction_collection_global_t* globalInstance;
 
   // start critical section -----------------------------------------
-  TRI_LockMutex(&context->_lock); 
+  TRI_LockMutex(&context->_collectionLock); 
 
   globalInstance = (TRI_transaction_collection_global_t*) TRI_LookupByKeyAssociativePointer(&context->_collections, collection->_name);
   if (globalInstance == NULL) {
@@ -545,7 +610,7 @@ static TRI_transaction_collection_global_t* GetGlobalCollection (TRI_transaction
     }
   }
 
-  TRI_UnlockMutex(&context->_lock); 
+  TRI_UnlockMutex(&context->_collectionLock); 
   // end critical section -----------------------------------------
 
   return globalInstance;
@@ -774,6 +839,9 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
   int res;
 
   assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  assert(status == TRI_TRANSACTION_COMMITTED || 
+         status == TRI_TRANSACTION_ABORTED || 
+         status == TRI_TRANSACTION_FINISHED);
 
   context = trx->_context;
 
@@ -782,7 +850,8 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
 
   if (trx->_type == TRI_TRANSACTION_READ) {
     // read-only transactions cannot commit or roll-back
-    assert(status == TRI_TRANSACTION_FINISHED);
+    assert(status == TRI_TRANSACTION_ABORTED ||
+           status == TRI_TRANSACTION_FINISHED);
 
     LOG_TRACE("removing read transaction %lu", (unsigned long) id);
     res = RemoveTransactionList(&context->_readTransactions, id);
@@ -811,6 +880,18 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
   if (res == TRI_ERROR_NO_ERROR) {
     trx->_status = status;
   }
+  
+  // unregister the collection creator  
+  if (trx->_creator != NULL && trx->_type == TRI_TRANSACTION_WRITE) {
+    // start critical section -----------------------------------------
+    TRI_LockMutex(&context->_creatorLock);
+
+    TRI_RemoveKeyAssociativePointer(&context->_creators, trx->_creator);
+
+    TRI_UnlockMutex(&context->_creatorLock);
+    // end critical section -----------------------------------------
+  }
+
 
   return res;
 }
@@ -830,7 +911,7 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
   context = trx->_context;
 
   trx->_status = TRI_TRANSACTION_RUNNING;
-
+  
   if (trx->_type == TRI_TRANSACTION_READ) {
     // read-only transaction
     list = &context->_readTransactions;
@@ -876,7 +957,8 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
-                                          const TRI_transaction_isolation_level_e isolationLevel) {
+                                          const TRI_transaction_isolation_level_e isolationLevel,
+                                          void* creator) {
   TRI_transaction_t* trx;
   
   trx = (TRI_transaction_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false);
@@ -891,6 +973,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
   trx->_status         = TRI_TRANSACTION_CREATED;  
   trx->_type           = TRI_TRANSACTION_READ;
   trx->_isolationLevel = isolationLevel;
+  trx->_creator        = creator;
   
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
@@ -1050,6 +1133,13 @@ int TRI_StartTransaction (TRI_transaction_t* const trx) {
   assert(trx->_status == TRI_TRANSACTION_CREATED);
 
   assert(trx->_collections._length > 0);
+
+  if (IsNested(trx)) {
+    // already got another write transaction. abort the current one
+    trx->_status = TRI_TRANSACTION_FAILED;
+
+    return TRI_ERROR_TRANSACTION_NESTED;
+  }
 
   res = AcquireCollectionLocks(trx);
   if (res != TRI_ERROR_NO_ERROR) {
