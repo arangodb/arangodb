@@ -2302,6 +2302,7 @@ static v8::Handle<v8::Value> JS_CountGeneralCursor (v8::Arguments const& argv) {
   if (cursor) {
     size_t length = (size_t) cursor->_length;
     TRI_EndUsageDataShadowData(vocbase->_cursors, cursor);
+
     return scope.Close(v8::Number::New(length));
   }
 
@@ -6320,7 +6321,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(MAKE_SYMBOL("_id"), v8::Number::New(collection->_cid), v8::ReadOnly);
+  result->Set(v8g->DidKey, v8::Number::New(collection->_cid), v8::ReadOnly);
 
   return scope.Close(result);
 }
