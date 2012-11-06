@@ -6385,7 +6385,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
       v8::Handle<v8::Array> vertices = v8::Array::New();
       vertices->Set(0, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
       vertices->Set(1, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
-      result->Set(v8::String::New("_vertices"), vertices);
+      result->Set(v8g->VerticesKey, vertices);
     }
     else {
       // unidirectional edge
@@ -6480,6 +6480,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   if (v8g->ToKey.IsEmpty()) {
     v8g->ToKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_to"));
+  }
+  
+  if (v8g->VerticesKey.IsEmpty()) {
+    v8g->VerticesKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_vertices"));
   }
   
   // .............................................................................
