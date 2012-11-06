@@ -205,6 +205,9 @@ extern "C" {
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
+/// - 1650: @CODE{invalid transaction state}
+///   Will be raised when an operation is requested on a transaction that has
+///   an incompatible state.
 /// - 1800: @CODE{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @CODE{key already exists}
@@ -1181,6 +1184,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1650: ERROR_TRANSACTION_INVALID_STATE
+///
+/// invalid transaction state
+///
+/// Will be raised when an operation is requested on a transaction that has an
+/// incompatible state.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1650)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

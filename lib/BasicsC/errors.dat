@@ -1,5 +1,5 @@
 ################################################################################
-## generale error messages
+## general error messages
 ################################################################################
 
 ERROR_NO_ERROR,0,"no error","No error has occurred."
@@ -37,7 +37,7 @@ ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised w
 ################################################################################
 ## ArangoDB internal storage errors
 ##
-## For error that occur because of an programming error.
+## For errors that occur because of a programming error.
 ################################################################################
 
 ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be raised when the datafile is not in the required state."
@@ -51,7 +51,7 @@ ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that
 ################################################################################
 ## ArangoDB storage errors
 ##
-## For error that occur because of an outside event.
+## For errors that occur because of an outside event.
 ################################################################################
 
 ERROR_ARANGO_CORRUPTED_DATAFILE,1100,"corrupted datafile","Will be raised when a corruption is detected in a datafile."
@@ -67,7 +67,7 @@ ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename coll
 ################################################################################
 ## ArangoDB storage errors
 ##
-## For error that occur when fulfilling a user request.
+## For errors that occur when fulfilling a user request.
 ################################################################################
 
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
@@ -94,7 +94,7 @@ ERROR_ARANGO_DOCUMENT_KEY_BAD,1219,"illegal document key","Will be raised when a
 ################################################################################
 ## ArangoDB storage errors
 ##
-## For error that occur but are anticipated.
+## For errors that occur but are anticipated.
 ################################################################################
 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
@@ -134,6 +134,12 @@ ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restrict
 ################################################################################
 
 ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is requested via its id but a cursor with that id cannot be found."
+
+################################################################################
+## ArangoDB transaction errors
+################################################################################
+
+ERROR_TRANSACTION_INVALID_STATE,1650,"invalid transaction state","Will be raised when an operation is requested on a transaction that has an incompatible state."
 
 ################################################################################
 ## Key value access
