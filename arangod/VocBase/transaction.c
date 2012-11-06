@@ -1132,7 +1132,9 @@ int TRI_StartTransaction (TRI_transaction_t* const trx) {
   
   assert(trx->_status == TRI_TRANSACTION_CREATED);
 
-  assert(trx->_collections._length > 0);
+  if (trx->_collections._length == 0) {
+    return TRI_ERROR_TRANSACTION_INCOMPLETE;
+  }
 
   if (IsNested(trx)) {
     // already got another write transaction. abort the current one

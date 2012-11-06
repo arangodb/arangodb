@@ -95,6 +95,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_FAIL_CALLED, "FAIL(%s) called");
   REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
+  REG_ERROR(ERROR_TRANSACTION_INCOMPLETE, "transaction definition is incomplete");
   REG_ERROR(ERROR_TRANSACTION_INVALID_STATE, "invalid transaction state");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested write transaction detected");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
