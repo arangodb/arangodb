@@ -140,6 +140,7 @@ ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is 
 ################################################################################
 
 ERROR_TRANSACTION_INVALID_STATE,1650,"invalid transaction state","Will be raised when an operation is requested on a transaction that has an incompatible state."
+ERROR_TRANSACTION_NESTED,1651,"nested write transaction detected","Will be raised when write transactions are nested."
 
 ################################################################################
 ## Key value access

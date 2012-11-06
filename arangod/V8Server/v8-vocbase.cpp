@@ -68,6 +68,25 @@ using namespace triagens::basics;
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a v8 symbol for the specified string
+////////////////////////////////////////////////////////////////////////////////
+
+#define MAKE_SYMBOL(name) v8::String::NewSymbol(name, strlen(name))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
@@ -131,7 +150,7 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 /// - SLOT_CLASS
 ////////////////////////////////////////////////////////////////////////////////
 
-static int32_t const WRP_TRANSACTION_TYPE = 4;
+static int32_t const WRP_TRANSACTION_TYPE = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -214,6 +233,65 @@ class AhuacatlContextGuard {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a global function to the given context
+////////////////////////////////////////////////////////////////////////////////
+  
+static inline void AddGlobalFunction (v8::Handle<v8::Context> context, 
+                                      const char* const name, 
+                                      v8::Handle<v8::Value>(*func)(v8::Arguments const&)) {
+  // all global functions are read-only
+  context->Global()->Set(MAKE_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a global function to the given context
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void AddGlobalFunction (v8::Handle<v8::Context> context, 
+                                      const char* const name, 
+                                      v8::Handle<v8::Function> func) {
+  // all global functions are read-only
+  context->Global()->Set(MAKE_SYMBOL(name), func, v8::ReadOnly);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a method to a prototype object
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void AddProtoMethod (v8::Handle<v8::Template> tpl, 
+                                   const char* const name, 
+                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+                                   const bool isHidden = false) {
+  if (isHidden) {
+    // hidden method
+    tpl->Set(MAKE_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
+  }
+  else {
+    // normal method
+    tpl->Set(MAKE_SYMBOL(name), v8::FunctionTemplate::New(func));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a method to an object
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void AddMethod (v8::Handle<v8::ObjectTemplate> tpl, 
+                              const char* const name, 
+                              v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+                              const bool isHidden = false) {
+  if (isHidden) {
+    // hidden method
+    tpl->Set(MAKE_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
+  }
+  else {
+    // normal method
+    tpl->Set(MAKE_SYMBOL(name), v8::FunctionTemplate::New(func));
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection type the object is responsible for
 /// - "db" will return TRI_COL_TYPE_DOCUMENT
 /// - "edges" will return TRI_COL_TYPE_EDGE
@@ -261,7 +339,7 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 
 static inline TRI_vocbase_t* GetContextVocBase () {
   v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent();
-  v8::Handle<v8::Object> db = currentContext->Global()->Get(v8::String::New("db"))->ToObject();
+  v8::Handle<v8::Object> db = currentContext->Global()->Get(MAKE_SYMBOL("db"))->ToObject();
 
   return TRI_UnwrapClass<TRI_vocbase_t>(db, WRP_VOCBASE_TYPE);
 }
@@ -1661,7 +1739,6 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   return scope.Close(WrapGeneralCursor(cursor));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1773,30 +1850,24 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_TRX
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for transactions
 ////////////////////////////////////////////////////////////////////////////////
 
 static void WeakTransactionCallback (v8::Persistent<v8::Value> object, void* parameter) {
   v8::HandleScope scope; // do not remove, will fail otherwise!!
-
+  
   LOG_TRACE("weak-callback for transaction called");
 
   TRI_transaction_t* trx = static_cast<TRI_transaction_t*>(parameter);
-
-  // find the persistent handle
-  TRI_v8_global_t* v8g;
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  v8::Persistent<v8::Value> persistent = v8g->JSTransactions[parameter];
-  v8g->JSTransactions.erase(parameter);
-
   if (trx != 0) {
     TRI_FreeTransaction(trx);
   }
 
-  // dispose and clear the persistent handle
-  persistent.Dispose();
-  persistent.Clear();
+  object.Dispose();
+  object.Clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1817,26 +1888,16 @@ static v8::Handle<v8::Value> WrapTransaction (void* transaction) {
     // TODO check for empty results
     return scope.Close(trxObject);
   }  
-  
-  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSTransactions.find(transaction);
-
-  if (i == v8g->JSTransactions.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(transaction));
-
-    if (tryCatch.HasCaught()) {
-      return scope.Close(v8::Undefined());
-    }
-
-    trxObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_TRANSACTION_TYPE));
-    trxObject->SetInternalField(SLOT_CLASS, persistent);
-    v8g->JSTransactions[transaction] = persistent;
-
-    persistent.MakeWeak(transaction, WeakTransactionCallback);
+    
+  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(transaction));
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::Undefined());
   }
-  else {
-    trxObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_TRANSACTION_TYPE));
-    trxObject->SetInternalField(SLOT_CLASS, i->second);
-  }
+
+  trxObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_TRANSACTION_TYPE));
+  trxObject->SetInternalField(SLOT_CLASS, persistent);
+
+  persistent.MakeWeak(transaction, WeakTransactionCallback);
 
   return scope.Close(trxObject);
 }
@@ -1845,9 +1906,11 @@ static v8::Handle<v8::Value> WrapTransaction (void* transaction) {
 /// @brief extracts a transaction from a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_transaction_t* UnwrapTransaction (v8::Handle<v8::Object> trxObject) {
+static inline TRI_transaction_t* UnwrapTransaction (v8::Handle<v8::Object> trxObject) {
   return TRI_UnwrapClass<TRI_transaction_t>(trxObject, WRP_TRANSACTION_TYPE);
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1870,10 +1933,14 @@ static TRI_transaction_t* UnwrapTransaction (v8::Handle<v8::Object> trxObject) {
 
 static v8::Handle<v8::Value> JS_CreateTransaction (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  
+  v8::Handle<v8::Context> currentContext = v8::Context::GetCurrent();
+  void* ptr = *(currentContext->Global());
+
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
   TRI_transaction_context_t* context = vocbase->_transactionContext;
-  TRI_transaction_t* trx = TRI_CreateTransaction(context, TRI_TRANSACTION_READ_REPEATABLE);
+  TRI_transaction_t* trx = TRI_CreateTransaction(context, TRI_TRANSACTION_READ_REPEATABLE, ptr);
   
   return scope.Close(WrapTransaction(trx));
 }
@@ -1981,7 +2048,15 @@ static v8::Handle<v8::Value> JS_CommitTransaction (v8::Arguments const& argv) {
                                              "cannot commit non-running transaction")));
   }
 
-  int res = TRI_CommitTransaction(trx);
+  int res;
+  
+  if (trx->_type == TRI_TRANSACTION_READ) {
+    res = TRI_FinishTransaction(trx);
+  }
+  else {
+    res = TRI_CommitTransaction(trx);
+  }
+
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
   }
@@ -5300,7 +5375,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 /// @verbinclude shell_read-collection-unknown
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   return CollectionVocBase(argv);
 }
 
@@ -5316,7 +5391,7 @@ static v8::Handle<v8::Value> JS_CollectionVocBase (v8::Arguments const& argv) {
 /// @verbinclude shell_read-collection-all
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
@@ -5345,7 +5420,7 @@ static v8::Handle<v8::Value> JS_CollectionsVocBase (v8::Arguments const& argv) {
 /// @brief returns all collection names
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::Handle<v8::Array> result = v8::Array::New();
 
@@ -5419,7 +5494,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 /// @verbinclude shell_create-collection-properties
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
   // get the collection type (document/edge)
   const TRI_col_type_e collectionType = GetVocBaseCollectionType(argv.Holder());
 
@@ -5438,7 +5513,7 @@ static v8::Handle<v8::Value> JS_CreateVocBase (v8::Arguments const& argv) {
 /// collection type is not automatically detected.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments const& argv) {
   return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
 }
 
@@ -5468,7 +5543,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocBase (v8::Arguments c
 /// See @ref JS_CreateVocBase for examples.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocBase (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const& argv) {
   return CreateVocBase(argv, TRI_COL_TYPE_EDGE);
 }
 
@@ -6341,6 +6416,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
+  v8::Handle<v8::Template> pt;
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -6373,77 +6449,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
     exit(EXIT_FAILURE);
   }
   
-  // .............................................................................
-  // local function names
-  // .............................................................................
-
-  v8::Handle<v8::String> CountFuncName = v8::Persistent<v8::String>::New(v8::String::New("count"));
-  v8::Handle<v8::String> DatafileScanFuncName = v8::Persistent<v8::String>::New(v8::String::New("datafileScan"));
-  v8::Handle<v8::String> DatafilesFuncName = v8::Persistent<v8::String>::New(v8::String::New("datafiles"));
-  v8::Handle<v8::String> DisposeFuncName = v8::Persistent<v8::String>::New(v8::String::New("dispose"));
-  v8::Handle<v8::String> DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("document"));
-  v8::Handle<v8::String> DocumentNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("document_nl"));
-  v8::Handle<v8::String> DropFuncName = v8::Persistent<v8::String>::New(v8::String::New("drop"));
-  v8::Handle<v8::String> DropIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("dropIndex"));
-  v8::Handle<v8::String> EnsureBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureBitarray"));
-  v8::Handle<v8::String> EnsureCapConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureCapConstraint"));
-  v8::Handle<v8::String> EnsureGeoConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoConstraint"));
-  v8::Handle<v8::String> EnsureGeoIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureGeoIndex"));
-  v8::Handle<v8::String> EnsureHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureHashIndex"));
-  v8::Handle<v8::String> EnsurePriorityQueueIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensurePQIndex"));
-  v8::Handle<v8::String> EnsureSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureSkiplist"));
-  v8::Handle<v8::String> EnsureUndefBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUndefBitarray"));
-  v8::Handle<v8::String> EnsureUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueConstraint"));
-  v8::Handle<v8::String> EnsureUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("ensureUniqueSkiplist"));
-  v8::Handle<v8::String> FiguresFuncName = v8::Persistent<v8::String>::New(v8::String::New("figures"));
-  v8::Handle<v8::String> GetBatchSizeFuncName = v8::Persistent<v8::String>::New(v8::String::New("getBatchSize"));
-  v8::Handle<v8::String> GetIndexesFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexes"));
-  v8::Handle<v8::String> GetIndexesNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("getIndexesNL"));
-  v8::Handle<v8::String> GetRowsFuncName = v8::Persistent<v8::String>::New(v8::String::New("getRows"));
-  v8::Handle<v8::String> HasCountFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasCount"));
-  v8::Handle<v8::String> HasNextFuncName = v8::Persistent<v8::String>::New(v8::String::New("hasNext"));
-  v8::Handle<v8::String> IdFuncName = v8::Persistent<v8::String>::New(v8::String::New("id"));
-  v8::Handle<v8::String> LoadFuncName = v8::Persistent<v8::String>::New(v8::String::New("load"));
-  v8::Handle<v8::String> LookupHashIndexFuncName = v8::Persistent<v8::String>::New(v8::String::New("lookupHashIndex"));
-  v8::Handle<v8::String> LookupSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("lookupSkiplist"));
-  v8::Handle<v8::String> LookupUniqueConstraintFuncName = v8::Persistent<v8::String>::New(v8::String::New("lookupUniqueConstraint"));
-  v8::Handle<v8::String> LookupUniqueSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("lookupUniqueSkiplist"));
-  v8::Handle<v8::String> NameFuncName = v8::Persistent<v8::String>::New(v8::String::New("name"));
-  v8::Handle<v8::String> NextFuncName = v8::Persistent<v8::String>::New(v8::String::New("next"));
-  v8::Handle<v8::String> PersistFuncName = v8::Persistent<v8::String>::New(v8::String::New("persist"));
-  v8::Handle<v8::String> PropertiesFuncName = v8::Persistent<v8::String>::New(v8::String::New("properties"));
-  v8::Handle<v8::String> RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("remove"));
-  v8::Handle<v8::String> RenameFuncName = v8::Persistent<v8::String>::New(v8::String::New("rename"));
-  v8::Handle<v8::String> ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("replace"));
-  v8::Handle<v8::String> SaveFuncName = v8::Persistent<v8::String>::New(v8::String::New("save"));
-  v8::Handle<v8::String> SetAttributeFuncName = v8::Persistent<v8::String>::New(v8::String::New("setAttribute"));
-  v8::Handle<v8::String> StatusFuncName = v8::Persistent<v8::String>::New(v8::String::New("status"));
-  v8::Handle<v8::String> TruncateFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncate"));
-  v8::Handle<v8::String> TruncateDatafileFuncName = v8::Persistent<v8::String>::New(v8::String::New("truncateDatafile"));
-  v8::Handle<v8::String> TypeFuncName = v8::Persistent<v8::String>::New(v8::String::New("type"));
-  v8::Handle<v8::String> UnloadFuncName = v8::Persistent<v8::String>::New(v8::String::New("unload"));
-  v8::Handle<v8::String> UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("update"));
-  v8::Handle<v8::String> UpgradeFuncName = v8::Persistent<v8::String>::New(v8::String::New("upgrade"));
-  v8::Handle<v8::String> UnuseFuncName = v8::Persistent<v8::String>::New(v8::String::New("unuse"));
-  v8::Handle<v8::String> VersionFuncName = v8::Persistent<v8::String>::New(v8::String::New("version"));
-
-  v8::Handle<v8::String> _CollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collection"));
-  v8::Handle<v8::String> _CollectionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_collections"));
-  v8::Handle<v8::String> _CompletionsFuncName = v8::Persistent<v8::String>::New(v8::String::New("_COMPLETIONS"));
-  v8::Handle<v8::String> _CreateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_create"));
-  v8::Handle<v8::String> _CreateDocumentCollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_createDocumentCollection"));
-  v8::Handle<v8::String> _CreateEdgeCollectionFuncName = v8::Persistent<v8::String>::New(v8::String::New("_createEdgeCollection"));
-  v8::Handle<v8::String> _DocumentFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document"));
-  v8::Handle<v8::String> _DocumentNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("_document_nl"));
-  v8::Handle<v8::String> _RemoveFuncName = v8::Persistent<v8::String>::New(v8::String::New("_remove"));
-  v8::Handle<v8::String> _ReplaceFuncName = v8::Persistent<v8::String>::New(v8::String::New("_replace"));
-  v8::Handle<v8::String> _UpdateFuncName = v8::Persistent<v8::String>::New(v8::String::New("_update"));
-
-  // .............................................................................
-  // query types
-  // .............................................................................
-
-  v8g->CollectionQueryType = v8::Persistent<v8::String>::New(v8::String::New("collection"));
 
   // .............................................................................
   // keys
@@ -6489,37 +6494,34 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ArangoDatabase"));
+  ft->SetClassName(MAKE_SYMBOL("ArangoDatabase"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-
   rt->SetNamedPropertyHandler(MapGetVocBase);
 
-  rt->Set(_CollectionFuncName, v8::FunctionTemplate::New(JS_CollectionVocBase));
-  rt->Set(_CollectionsFuncName, v8::FunctionTemplate::New(JS_CollectionsVocBase));
-  rt->Set(_CompletionsFuncName, v8::FunctionTemplate::New(JS_CompletionsVocBase));
-  rt->Set(_CreateFuncName, v8::FunctionTemplate::New(JS_CreateVocBase));
-  rt->Set(_CreateDocumentCollectionFuncName, v8::FunctionTemplate::New(JS_CreateDocumentCollectionVocBase));
-  rt->Set(_CreateEdgeCollectionFuncName, v8::FunctionTemplate::New(JS_CreateEdgeCollectionVocBase));
-
-  rt->Set(_DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbase));
-  rt->Set(_DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbase));
-  rt->Set(_RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbase));
-  rt->Set(_ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbase));
-  rt->Set(_UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbase));
+  AddMethod(rt, "_collection", JS_CollectionVocbase);
+  AddMethod(rt, "_collections", JS_CollectionsVocbase);
+  AddMethod(rt, "_COMPLETIONS", JS_CompletionsVocbase, true);
+  AddMethod(rt, "_create", JS_CreateVocbase, true);
+  AddMethod(rt, "_createDocumentCollection", JS_CreateDocumentCollectionVocbase);
+  AddMethod(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
+  AddMethod(rt, "_document", JS_DocumentVocbase);
+  AddMethod(rt, "_document_nl", JS_DocumentNLVocbase, true);
+  AddMethod(rt, "_remove", JS_RemoveVocbase);
+  AddMethod(rt, "_replace", JS_ReplaceVocbase);
+  AddMethod(rt, "_update", JS_UpdateVocbase);
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  AddGlobalFunction(context, "ArangoDatabase", ft->GetFunction());
 
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ArangoDatabase"), ft->GetFunction());
 
   // .............................................................................
   // generate the TRI_shaped_json_t template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ShapedJson"));
+  ft->SetClassName(MAKE_SYMBOL("ShapedJson"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
@@ -6533,104 +6535,100 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
                               );
 
   v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  AddGlobalFunction(context, "ShapedJson", ft->GetFunction());
 
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ShapedJson"), ft->GetFunction());
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ArangoCollection"));
+  ft->SetClassName(MAKE_SYMBOL("ArangoCollection"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
-  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
-  rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
-  rt->Set(DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbaseCol), v8::DontEnum);
-  rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
-  rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
-  rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
-  rt->Set(EnsureUndefBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureUndefBitarrayVocbaseCol));
-  rt->Set(EnsureCapConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureCapConstraintVocbaseCol));
-  rt->Set(EnsureGeoConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureGeoConstraintVocbaseCol));
-  rt->Set(EnsureGeoIndexFuncName, v8::FunctionTemplate::New(JS_EnsureGeoIndexVocbaseCol));
-  rt->Set(EnsureHashIndexFuncName, v8::FunctionTemplate::New(JS_EnsureHashIndexVocbaseCol));
-  rt->Set(EnsurePriorityQueueIndexFuncName, v8::FunctionTemplate::New(JS_EnsurePriorityQueueIndexVocbaseCol));
-  rt->Set(EnsureSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureSkiplistVocbaseCol));
-  rt->Set(EnsureUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueConstraintVocbaseCol));
-  rt->Set(EnsureUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_EnsureUniqueSkiplistVocbaseCol));
-  rt->Set(DatafileScanFuncName, v8::FunctionTemplate::New(JS_DatafileScanVocbaseCol));
-  rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
-  rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
-  rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
-  rt->Set(GetIndexesNLFuncName, v8::FunctionTemplate::New(JS_GetIndexesNLVocbaseCol), v8::DontEnum);
-  rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
-  rt->Set(LookupHashIndexFuncName, v8::FunctionTemplate::New(JS_LookupHashIndexVocbaseCol));
-  rt->Set(LookupSkiplistFuncName, v8::FunctionTemplate::New(JS_LookupSkiplistVocbaseCol));
-  rt->Set(LookupUniqueConstraintFuncName, v8::FunctionTemplate::New(JS_LookupUniqueConstraintVocbaseCol));
-  rt->Set(LookupUniqueSkiplistFuncName, v8::FunctionTemplate::New(JS_LookupUniqueSkiplistVocbaseCol));
-  rt->Set(NameFuncName, v8::FunctionTemplate::New(JS_NameVocbaseCol));
-  rt->Set(PropertiesFuncName, v8::FunctionTemplate::New(JS_PropertiesVocbaseCol));
-  rt->Set(RemoveFuncName, v8::FunctionTemplate::New(JS_RemoveVocbaseCol));
-  rt->Set(RenameFuncName, v8::FunctionTemplate::New(JS_RenameVocbaseCol));
-  rt->Set(SetAttributeFuncName, v8::FunctionTemplate::New(JS_SetAttributeVocbaseCol), v8::DontEnum);
-  rt->Set(StatusFuncName, v8::FunctionTemplate::New(JS_StatusVocbaseCol));
-  rt->Set(TruncateFuncName, v8::FunctionTemplate::New(JS_TruncateVocbaseCol));
-  rt->Set(TruncateDatafileFuncName, v8::FunctionTemplate::New(JS_TruncateDatafileVocbaseCol));
-  rt->Set(TypeFuncName, v8::FunctionTemplate::New(JS_TypeVocbaseCol));
-  rt->Set(UnloadFuncName, v8::FunctionTemplate::New(JS_UnloadVocbaseCol));
-  rt->Set(UpgradeFuncName, v8::FunctionTemplate::New(JS_UpgradeVocbaseCol), v8::DontEnum);
-  rt->Set(VersionFuncName, v8::FunctionTemplate::New(JS_VersionVocbaseCol));
+  AddMethod(rt, "count", JS_CountVocbaseCol);
+  AddMethod(rt, "datafiles", JS_DatafilesVocbaseCol);
+  AddMethod(rt, "datafileScan", JS_DatafileScanVocbaseCol);
+  AddMethod(rt, "document", JS_DocumentVocbaseCol);
+  AddMethod(rt, "document_nl", JS_DocumentNLVocbaseCol, true);
+  AddMethod(rt, "drop", JS_DropVocbaseCol);
+  AddMethod(rt, "dropIndex", JS_DropIndexVocbaseCol);
+  AddMethod(rt, "ensureBitarray", JS_EnsureBitarrayVocbaseCol);
+  AddMethod(rt, "ensureUndefBitarray", JS_EnsureUndefBitarrayVocbaseCol);
+  AddMethod(rt, "ensureCapConstraint", JS_EnsureCapConstraintVocbaseCol);
+  AddMethod(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
+  AddMethod(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
+  AddMethod(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
+  AddMethod(rt, "ensurePQIndex", JS_EnsurePriorityQueueIndexVocbaseCol);
+  AddMethod(rt, "ensureSkiplist", JS_EnsureSkiplistVocbaseCol);
+  AddMethod(rt, "ensureUniqueConstraint", JS_EnsureUniqueConstraintVocbaseCol);
+  AddMethod(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
+  AddMethod(rt, "figures", JS_FiguresVocbaseCol);
+  AddMethod(rt, "getIndexes", JS_GetIndexesVocbaseCol);
+  AddMethod(rt, "getIndexesNL", JS_GetIndexesNLVocbaseCol, true);
+  AddMethod(rt, "load", JS_LoadVocbaseCol);
+  AddMethod(rt, "lookupHashIndex", JS_LookupHashIndexVocbaseCol);
+  AddMethod(rt, "lookupSkiplist", JS_LookupSkiplistVocbaseCol);
+  AddMethod(rt, "lookupUniqueConstraint", JS_LookupUniqueConstraintVocbaseCol);
+  AddMethod(rt, "lookupUniqueSkiplist", JS_LookupUniqueSkiplistVocbaseCol);
+  AddMethod(rt, "name", JS_NameVocbaseCol);
+  AddMethod(rt, "properties", JS_PropertiesVocbaseCol);
+  AddMethod(rt, "remove", JS_RemoveVocbaseCol);
+  AddMethod(rt, "rename", JS_RenameVocbaseCol);
+  AddMethod(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
+  AddMethod(rt, "status", JS_StatusVocbaseCol);
+  AddMethod(rt, "truncate", JS_TruncateVocbaseCol);
+  AddMethod(rt, "truncateDatafile", JS_TruncateDatafileVocbaseCol);
+  AddMethod(rt, "type", JS_TypeVocbaseCol);
+  AddMethod(rt, "unload", JS_UnloadVocbaseCol);
+  AddMethod(rt, "upgrade", JS_UpgradeVocbaseCol, true);
+  AddMethod(rt, "version", JS_VersionVocbaseCol);
   
-  rt->Set(ReplaceFuncName, v8::FunctionTemplate::New(JS_ReplaceVocbaseCol));
-  rt->Set(SaveFuncName, v8::FunctionTemplate::New(JS_SaveVocbaseCol));
-  rt->Set(UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbaseCol));
+  AddMethod(rt, "replace", JS_ReplaceVocbaseCol);
+  AddMethod(rt, "save", JS_SaveVocbaseCol);
+  AddMethod(rt, "update", JS_UpdateVocbaseCol);
 
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ArangoCollection"), ft->GetFunction());
+  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+  AddGlobalFunction(context, "ArangoCollection", ft->GetFunction());
+
 
   // .............................................................................
   // generate the general error template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ArangoError"));
+  ft->SetClassName(MAKE_SYMBOL("ArangoError"));
 
   rt = ft->InstanceTemplate();
-
   v8g->ErrorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-  context->Global()->Set(v8::String::New("ArangoError"), ft->GetFunction());
+  AddGlobalFunction(context, "ArangoError", ft->GetFunction());
   
+
   // .............................................................................
   // generate the general cursor template
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ArangoCursor"));
+  ft->SetClassName(MAKE_SYMBOL("ArangoCursor"));
 
+  pt = ft->PrototypeTemplate();
+  AddProtoMethod(pt, "count", JS_CountGeneralCursor);
+  AddProtoMethod(pt, "dispose", JS_DisposeGeneralCursor);
+  AddProtoMethod(pt, "getBatchSize", JS_GetBatchSizeGeneralCursor);
+  AddProtoMethod(pt, "getRows", JS_GetRowsGeneralCursor);
+  AddProtoMethod(pt, "hasCount", JS_HasCountGeneralCursor);
+  AddProtoMethod(pt, "hasNext", JS_HasNextGeneralCursor);
+  AddProtoMethod(pt, "id", JS_IdGeneralCursor);
+  AddProtoMethod(pt, "next", JS_NextGeneralCursor);
+  AddProtoMethod(pt, "persist", JS_PersistGeneralCursor);
+  AddProtoMethod(pt, "unuse", JS_UnuseGeneralCursor);
+  
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-
-  rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountGeneralCursor));
-  rt->Set(DisposeFuncName, v8::FunctionTemplate::New(JS_DisposeGeneralCursor));
-  rt->Set(GetBatchSizeFuncName, v8::FunctionTemplate::New(JS_GetBatchSizeGeneralCursor));
-  rt->Set(GetRowsFuncName, v8::FunctionTemplate::New(JS_GetRowsGeneralCursor));
-  rt->Set(HasCountFuncName, v8::FunctionTemplate::New(JS_HasCountGeneralCursor));
-  rt->Set(HasNextFuncName, v8::FunctionTemplate::New(JS_HasNextGeneralCursor));
-  rt->Set(IdFuncName, v8::FunctionTemplate::New(JS_IdGeneralCursor));
-  rt->Set(NextFuncName, v8::FunctionTemplate::New(JS_NextGeneralCursor));
-  rt->Set(PersistFuncName, v8::FunctionTemplate::New(JS_PersistGeneralCursor));
-  rt->Set(UnuseFuncName, v8::FunctionTemplate::New(JS_UnuseGeneralCursor));
-
   v8g->GeneralCursorTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ArangoCursor"), ft->GetFunction());
+  AddGlobalFunction(context, "ArangoCursor", ft->GetFunction());
   
   
 #ifdef TRI_ENABLE_TRX
@@ -6639,67 +6637,44 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // .............................................................................
 
   ft = v8::FunctionTemplate::New();
-  ft->SetClassName(v8::String::New("ArangoTransaction"));
+  ft->SetClassName(MAKE_SYMBOL("ArangoTransaction"));
 
+  pt = ft->PrototypeTemplate();
+  AddProtoMethod(pt, "abort", JS_AbortTransaction);
+  AddProtoMethod(pt, "addCollection", JS_AddCollectionTransaction);
+  AddProtoMethod(pt, "begin", JS_BeginTransaction);
+  AddProtoMethod(pt, "commit", JS_CommitTransaction);
+  AddProtoMethod(pt, "dump", JS_DumpTransaction);
+  AddProtoMethod(pt, "status", JS_StatusTransaction);
+  
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-
-  rt->Set(v8::String::New("abort"), v8::FunctionTemplate::New(JS_AbortTransaction));
-  rt->Set(v8::String::New("addCollection"), v8::FunctionTemplate::New(JS_AddCollectionTransaction));
-  rt->Set(v8::String::New("begin"), v8::FunctionTemplate::New(JS_BeginTransaction));
-  rt->Set(v8::String::New("commit"), v8::FunctionTemplate::New(JS_CommitTransaction));
-  rt->Set(v8::String::New("dump"), v8::FunctionTemplate::New(JS_DumpTransaction));
-  rt->Set(v8::String::New("status"), v8::FunctionTemplate::New(JS_StatusTransaction));
-
   v8g->TransactionTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
-
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ArangoTransaction"), ft->GetFunction());
+  AddGlobalFunction(context, "ArangoTransaction", JS_CreateTransaction);
 #endif
 
+
   // .............................................................................
-  // generate the global functions
+  // generate global functions
   // .............................................................................
 
-#ifdef TRI_ENABLE_TRX
-  context->Global()->Set(v8::String::New("ArangoTransaction"),
-                         v8::FunctionTemplate::New(JS_CreateTransaction)->GetFunction(),
-                         v8::ReadOnly);
-#endif
+  AddGlobalFunction(context, "CURSOR", JS_Cursor);
+  AddGlobalFunction(context, "CREATE_CURSOR", JS_CreateCursor);
+  AddGlobalFunction(context, "DELETE_CURSOR", JS_DeleteCursor);
 
-  context->Global()->Set(v8::String::New("CURSOR"),
-                         v8::FunctionTemplate::New(JS_Cursor)->GetFunction(),
-                         v8::ReadOnly);
+  AddGlobalFunction(context, "AHUACATL_RUN", JS_RunAhuacatl);
+  AddGlobalFunction(context, "AHUACATL_EXPLAIN", JS_ExplainAhuacatl);
+  AddGlobalFunction(context, "AHUACATL_PARSE", JS_ParseAhuacatl);
   
-  context->Global()->Set(v8::String::New("DELETE_CURSOR"),
-                         v8::FunctionTemplate::New(JS_DeleteCursor)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("AHUACATL_RUN"),
-                         v8::FunctionTemplate::New(JS_RunAhuacatl)->GetFunction(),
-                         v8::ReadOnly);
+  AddGlobalFunction(context, "COMPARE_STRING", JS_compare_string);
+  AddGlobalFunction(context, "NORMALIZE_STRING", JS_normalize_string);
+ 
   
-  context->Global()->Set(v8::String::New("AHUACATL_EXPLAIN"),
-                         v8::FunctionTemplate::New(JS_ExplainAhuacatl)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("AHUACATL_PARSE"),
-                         v8::FunctionTemplate::New(JS_ParseAhuacatl)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("CREATE_CURSOR"),
-                         v8::FunctionTemplate::New(JS_CreateCursor)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
-                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COMPARE_STRING"),
-                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("HAS_ICU"),
+  // .............................................................................
+  // create global variables
+  // .............................................................................
+  
+  context->Global()->Set(MAKE_SYMBOL("HAS_ICU"),
 #ifdef TRI_ICU_VERSION
                          v8::Boolean::New(true),
 #else
@@ -6707,16 +6682,13 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 #endif
                          v8::ReadOnly);
   
-  // .............................................................................
-  // create the global variables
-  // .............................................................................
 
-  context->Global()->Set(v8::String::New("db"),
+  context->Global()->Set(MAKE_SYMBOL("db"),
                          TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),
                          v8::ReadOnly);
 
   // DEPRECATED: only here for compatibility
-  context->Global()->Set(v8::String::New("edges"),
+  context->Global()->Set(MAKE_SYMBOL("edges"),
                          TRI_WrapVocBase(vocbase, TRI_COL_TYPE_EDGE),
                          v8::ReadOnly);
 

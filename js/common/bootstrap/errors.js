@@ -100,6 +100,7 @@
     "ERROR_QUERY_GEO_INDEX_MISSING" : { "code" : 1570, "message" : "no suitable geo index found for geo restriction on '%s'" }, 
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" }, 
     "ERROR_TRANSACTION_INVALID_STATE" : { "code" : 1650, "message" : "invalid transaction state" }, 
+    "ERROR_TRANSACTION_NESTED"     : { "code" : 1651, "message" : "nested write transaction detected" }, 
     "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" }, 
     "ERROR_KEYVALUE_KEY_EXISTS"    : { "code" : 1801, "message" : "key already exists" }, 
     "ERROR_KEYVALUE_KEY_NOT_FOUND" : { "code" : 1802, "message" : "key not found" }, 
