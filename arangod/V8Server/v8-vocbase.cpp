@@ -124,6 +124,16 @@ static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wrapped class for transactions
+///
+/// Layout:
+/// - SLOT_CLASS_TYPE
+/// - SLOT_CLASS
+////////////////////////////////////////////////////////////////////////////////
+
+static int32_t const WRP_TRANSACTION_TYPE = 4;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
  
@@ -1679,7 +1689,7 @@ static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* p
   LOG_TRACE("weak-callback for general cursor called");
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (!vocbase) {
+  if (! vocbase) {
     return;
   }
 
@@ -1751,6 +1761,99 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                      TRANSACTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for transactions
+////////////////////////////////////////////////////////////////////////////////
+
+static void WeakTransactionCallback (v8::Persistent<v8::Value> object, void* parameter) {
+  v8::HandleScope scope; // do not remove, will fail otherwise!!
+
+  LOG_TRACE("weak-callback for transaction called");
+
+  TRI_transaction_t* trx = static_cast<TRI_transaction_t*>(parameter);
+
+  // find the persistent handle
+  TRI_v8_global_t* v8g;
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  v8::Persistent<v8::Value> persistent = v8g->JSTransactions[parameter];
+  v8g->JSTransactions.erase(parameter);
+
+  if (trx != 0) {
+    TRI_FreeTransaction(trx);
+  }
+
+  // dispose and clear the persistent handle
+  persistent.Dispose();
+  persistent.Clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores a transaction in a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> WrapTransaction (void* transaction) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  TRI_v8_global_t* v8g;
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  v8::Handle<v8::Object> trxObject = v8g->TransactionTempl->NewInstance();
+  
+  if (trxObject.IsEmpty()) {
+    // error 
+    // TODO check for empty results
+    return scope.Close(trxObject);
+  }  
+  
+  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSTransactions.find(transaction);
+
+  if (i == v8g->JSTransactions.end()) {
+    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(transaction));
+
+    if (tryCatch.HasCaught()) {
+      return scope.Close(v8::Undefined());
+    }
+
+    trxObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_TRANSACTION_TYPE));
+    trxObject->SetInternalField(SLOT_CLASS, persistent);
+    v8g->JSTransactions[transaction] = persistent;
+
+    persistent.MakeWeak(transaction, WeakTransactionCallback);
+  }
+  else {
+    trxObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_TRANSACTION_TYPE));
+    trxObject->SetInternalField(SLOT_CLASS, i->second);
+  }
+
+  return scope.Close(trxObject);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a transaction from a javascript object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_transaction_t* UnwrapTransaction (v8::Handle<v8::Object> trxObject) {
+  return TRI_UnwrapClass<TRI_transaction_t>(trxObject, WRP_TRANSACTION_TYPE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
 
@@ -1760,46 +1863,164 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_TRX
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief REMOVE ME
+/// @brief create a transaction Javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_Trx (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_CreateTransaction (v8::Arguments const& argv) {
   v8::HandleScope scope;
+
   TRI_vocbase_t* vocbase = GetContextVocBase();
-
   TRI_transaction_context_t* context = vocbase->_transactionContext;
-
   TRI_transaction_t* trx = TRI_CreateTransaction(context, TRI_TRANSACTION_READ_REPEATABLE);
-  TRI_AddCollectionTransaction(trx, "users", TRI_TRANSACTION_READ);
-  TRI_AddCollectionTransaction(trx, "relations", TRI_TRANSACTION_WRITE);
-
-  TRI_DumpTransaction(trx);
-
-  int res = TRI_StartTransaction(trx);
-  TRI_DumpTransaction(trx);
-
-  bool commit = true;
-  if (1 <= argv.Length()) {
-    commit = TRI_ObjectToBoolean(argv[0]);
-  }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (commit) {
-      TRI_CommitTransaction(trx);
-    }
-    else {
-      TRI_AbortTransaction(trx);
-    }
-    TRI_DumpTransaction(trx);
-  }
-
-  TRI_DumpTransactionContext(context);
   
-  TRI_FreeTransaction(trx);
+  return scope.Close(WrapTransaction(trx));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to a Javascript transaction object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AddCollectionTransaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_transaction_t* trx = UnwrapTransaction(argv.Holder());
+  if (trx == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "invalid transaction")));
+  }
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                             "usage: addCollection(<name>, <write>)")));
+  }
+    
+  if (trx->_status != TRI_TRANSACTION_CREATED) {
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_TRANSACTION_INVALID_STATE,
+                                             "cannot add collection to an already started transaction")));
+  }
+
+  string name = TRI_ObjectToString(argv[0]);
+  const TRI_transaction_type_e type = (TRI_ObjectToBoolean(argv[1]) ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
+  
+  if (! TRI_AddCollectionTransaction(trx, name.c_str(), type)) {
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "internal error")));
+  }
 
   return scope.Close(v8::True());
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abort a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AbortTransaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_transaction_t* trx = UnwrapTransaction(argv.Holder());
+  if (trx == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "invalid transaction")));
+  }
+    
+  if (trx->_status != TRI_TRANSACTION_RUNNING) {
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_TRANSACTION_INVALID_STATE,
+                                             "cannot abort a non-running transaction")));
+  }
+  
+  const int res = TRI_AbortTransaction(trx);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_BeginTransaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_transaction_t* trx = UnwrapTransaction(argv.Holder());
+  if (trx != 0) {
+    if (trx->_status != TRI_TRANSACTION_CREATED) {
+      return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_TRANSACTION_INVALID_STATE,
+                                               "cannot begin an already started transaction")));
+    }
+
+    const int res = TRI_StartTransaction(trx);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+    }
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief commit a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_CommitTransaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_transaction_t* trx = UnwrapTransaction(argv.Holder());
+  if (trx == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "invalid transaction")));
+  }
+
+  if (trx->_status != TRI_TRANSACTION_RUNNING) {
+    return scope.Close(v8::ThrowException(
+                       TRI_CreateErrorObject(TRI_ERROR_TRANSACTION_INVALID_STATE,
+                                             "cannot commit non-running transaction")));
+  }
+
+  int res = TRI_CommitTransaction(trx);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_DumpTransaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_transaction_t* trx = UnwrapTransaction(argv.Holder());
+  if (trx == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "invalid transaction")));
+  }
+
+  TRI_DumpTransaction(trx);
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current status of a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_StatusTransaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_transaction_t* trx = UnwrapTransaction(argv.Holder());
+  if (trx == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "invalid transaction")));
+  }
+
+  return scope.Close(v8::Integer::New((int32_t) trx->_status));
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1933,7 +2154,7 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (!vocbase) {
+  if (! vocbase) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
                                                "corrupted vocbase")));
@@ -5501,10 +5722,10 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for a bridge
+/// @brief weak reference callback for a barrier
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WeakBridgeCallback (v8::Persistent<v8::Value> object, void* parameter) {
+static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* parameter) {
   TRI_barrier_t* barrier;
   TRI_v8_global_t* v8g;
 
@@ -6070,7 +6291,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 
     v8g->JSBarriers[barrier] = persistent;
 
-    persistent.MakeWeak(barrier, WeakBridgeCallback);
+    persistent.MakeWeak(barrier, WeakBarrierCallback);
   }
   else {
     result->SetInternalField(SLOT_BARRIER, i->second);
@@ -6291,8 +6512,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ArangoDatabase"),
-                         ft->GetFunction());
+  context->Global()->Set(v8::String::New("ArangoDatabase"), ft->GetFunction());
 
   // .............................................................................
   // generate the TRI_shaped_json_t template
@@ -6315,8 +6535,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ShapedJson"),
-                         ft->GetFunction());
+  context->Global()->Set(v8::String::New("ShapedJson"), ft->GetFunction());
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -6332,7 +6551,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   rt->Set(CountFuncName, v8::FunctionTemplate::New(JS_CountVocbaseCol));
   rt->Set(DocumentFuncName, v8::FunctionTemplate::New(JS_DocumentVocbaseCol));
-  rt->Set(DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbaseCol));
+  rt->Set(DocumentNLFuncName, v8::FunctionTemplate::New(JS_DocumentNLVocbaseCol), v8::DontEnum);
   rt->Set(DropFuncName, v8::FunctionTemplate::New(JS_DropVocbaseCol));
   rt->Set(DropIndexFuncName, v8::FunctionTemplate::New(JS_DropIndexVocbaseCol));
   rt->Set(EnsureBitarrayFuncName, v8::FunctionTemplate::New(JS_EnsureBitarrayVocbaseCol));
@@ -6349,7 +6568,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(DatafilesFuncName, v8::FunctionTemplate::New(JS_DatafilesVocbaseCol));
   rt->Set(FiguresFuncName, v8::FunctionTemplate::New(JS_FiguresVocbaseCol));
   rt->Set(GetIndexesFuncName, v8::FunctionTemplate::New(JS_GetIndexesVocbaseCol));
-  rt->Set(GetIndexesNLFuncName, v8::FunctionTemplate::New(JS_GetIndexesNLVocbaseCol));
+  rt->Set(GetIndexesNLFuncName, v8::FunctionTemplate::New(JS_GetIndexesNLVocbaseCol), v8::DontEnum);
   rt->Set(LoadFuncName, v8::FunctionTemplate::New(JS_LoadVocbaseCol));
   rt->Set(LookupHashIndexFuncName, v8::FunctionTemplate::New(JS_LookupHashIndexVocbaseCol));
   rt->Set(LookupSkiplistFuncName, v8::FunctionTemplate::New(JS_LookupSkiplistVocbaseCol));
@@ -6373,8 +6592,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   rt->Set(UpdateFuncName, v8::FunctionTemplate::New(JS_UpdateVocbaseCol));
 
   // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("ArangoCollection"),
-                         ft->GetFunction());
+  context->Global()->Set(v8::String::New("ArangoCollection"), ft->GetFunction());
 
   // .............................................................................
   // generate the general error template
@@ -6414,13 +6632,38 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   // must come after SetInternalFieldCount
   context->Global()->Set(v8::String::New("ArangoCursor"), ft->GetFunction());
   
+  
+#ifdef TRI_ENABLE_TRX
+  // .............................................................................
+  // generate the transaction template
+  // .............................................................................
+
+  ft = v8::FunctionTemplate::New();
+  ft->SetClassName(v8::String::New("ArangoTransaction"));
+
+  rt = ft->InstanceTemplate();
+  rt->SetInternalFieldCount(2);
+
+  rt->Set(v8::String::New("abort"), v8::FunctionTemplate::New(JS_AbortTransaction));
+  rt->Set(v8::String::New("addCollection"), v8::FunctionTemplate::New(JS_AddCollectionTransaction));
+  rt->Set(v8::String::New("begin"), v8::FunctionTemplate::New(JS_BeginTransaction));
+  rt->Set(v8::String::New("commit"), v8::FunctionTemplate::New(JS_CommitTransaction));
+  rt->Set(v8::String::New("dump"), v8::FunctionTemplate::New(JS_DumpTransaction));
+  rt->Set(v8::String::New("status"), v8::FunctionTemplate::New(JS_StatusTransaction));
+
+  v8g->TransactionTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
+
+  // must come after SetInternalFieldCount
+  context->Global()->Set(v8::String::New("ArangoTransaction"), ft->GetFunction());
+#endif
+
   // .............................................................................
   // generate the global functions
   // .............................................................................
 
 #ifdef TRI_ENABLE_TRX
-  context->Global()->Set(v8::String::New("TRX"),
-                         v8::FunctionTemplate::New(JS_Trx)->GetFunction(),
+  context->Global()->Set(v8::String::New("ArangoTransaction"),
+                         v8::FunctionTemplate::New(JS_CreateTransaction)->GetFunction(),
                          v8::ReadOnly);
 #endif
 
