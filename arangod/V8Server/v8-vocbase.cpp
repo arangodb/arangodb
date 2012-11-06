@@ -290,15 +290,14 @@ static inline void AddMethod (v8::Handle<v8::ObjectTemplate> tpl,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection type the object is responsible for
 /// - "db" will return TRI_COL_TYPE_DOCUMENT
 /// - "edges" will return TRI_COL_TYPE_EDGE
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
-  v8::Handle<v8::Value> type = obj->Get(v8::String::New("_type"));
+static inline TRI_col_type_e GetVocBaseCollectionType (const v8::Handle<v8::Object>& obj) {
+  v8::Handle<v8::Value> type = obj->Get(MAKE_SYMBOL("_type"));
 
   if (type->IsNumber()) {
     return (TRI_col_type_e) TRI_ObjectToInt64(type);
@@ -6302,13 +6301,8 @@ v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database,
                                             WRP_VOCBASE_TYPE,
                                             const_cast<TRI_vocbase_t*>(database));
 
-  result->Set(v8::String::New("_path"),
-              v8::String::New(database->_path),
-              v8::ReadOnly);
-  
-  result->Set(v8::String::New("_type"),
-              v8::Integer::New((int) type),
-              v8::ReadOnly);
+  result->Set(MAKE_SYMBOL("_path"), v8::String::New(database->_path), v8::ReadOnly);
+  result->Set(MAKE_SYMBOL("_type"), v8::Integer::New((int) type), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6326,9 +6320,7 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
                                             WRP_VOCBASE_COL_TYPE,
                                             const_cast<TRI_vocbase_col_t*>(collection));
 
-  result->Set(v8::String::New("_id"),
-              v8::Number::New(collection->_cid),
-              v8::ReadOnly);
+  result->Set(MAKE_SYMBOL("_id"), v8::Number::New(collection->_cid), v8::ReadOnly);
 
   return scope.Close(result);
 }
@@ -6458,35 +6450,35 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
   
   if (v8g->BidirectionalKey.IsEmpty()) {
-    v8g->BidirectionalKey = v8::Persistent<v8::String>::New(v8::String::New("_bidirectional"));
+    v8g->BidirectionalKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_bidirectional"));
   }
 
   if (v8g->DidKey.IsEmpty()) {
-    v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
+    v8g->DidKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_id"));
   }
   
   if (v8g->KeyKey.IsEmpty()) {
-    v8g->KeyKey = v8::Persistent<v8::String>::New(v8::String::New("_key"));
+    v8g->KeyKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_key"));
   }
 
   if (v8g->FromKey.IsEmpty()) {
-    v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
+    v8g->FromKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_from"));
   }
 
   if (v8g->IidKey.IsEmpty()) {
-    v8g->IidKey = v8::Persistent<v8::String>::New(v8::String::New("id"));
+    v8g->IidKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("id"));
   }
   
   if (v8g->OldRevKey.IsEmpty()) {
-    v8g->OldRevKey = v8::Persistent<v8::String>::New(v8::String::New("_oldRev"));
+    v8g->OldRevKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_oldRev"));
   }
 
   if (v8g->RevKey.IsEmpty()) {
-    v8g->RevKey = v8::Persistent<v8::String>::New(v8::String::New("_rev"));
+    v8g->RevKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_rev"));
   }
 
   if (v8g->ToKey.IsEmpty()) {
-    v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
+    v8g->ToKey = v8::Persistent<v8::String>::New(MAKE_SYMBOL("_to"));
   }
   
   // .............................................................................
@@ -6547,7 +6539,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
-
+  
   AddMethod(rt, "count", JS_CountVocbaseCol);
   AddMethod(rt, "datafiles", JS_DatafilesVocbaseCol);
   AddMethod(rt, "datafileScan", JS_DatafileScanVocbaseCol);

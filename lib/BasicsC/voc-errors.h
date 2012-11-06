@@ -205,10 +205,13 @@ extern "C" {
 /// - 1600: @CODE{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @CODE{invalid transaction state}
+/// - 1650: @CODE{transaction definition is incomplete}
+///   Will be raised when the transaction definition is incomplete (e.g. lacks
+///   collections to use).
+/// - 1651: @CODE{invalid transaction state}
 ///   Will be raised when an operation is requested on a transaction that has
 ///   an incompatible state.
-/// - 1651: @CODE{nested write transaction detected}
+/// - 1652: @CODE{nested write transaction detected}
 ///   Will be raised when write transactions are nested.
 /// - 1800: @CODE{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
@@ -1188,7 +1191,18 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1650: ERROR_TRANSACTION_INVALID_STATE
+/// @brief 1650: ERROR_TRANSACTION_INCOMPLETE
+///
+/// transaction definition is incomplete
+///
+/// Will be raised when the transaction definition is incomplete (e.g. lacks
+/// collections to use).
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_INCOMPLETE                                  (1650)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1651: ERROR_TRANSACTION_INVALID_STATE
 ///
 /// invalid transaction state
 ///
@@ -1196,17 +1210,17 @@ void TRI_InitialiseErrorMessages (void);
 /// incompatible state.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1650)
+#define TRI_ERROR_TRANSACTION_INVALID_STATE                               (1651)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1651: ERROR_TRANSACTION_NESTED
+/// @brief 1652: ERROR_TRANSACTION_NESTED
 ///
 /// nested write transaction detected
 ///
 /// Will be raised when write transactions are nested.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_TRANSACTION_NESTED                                      (1651)
+#define TRI_ERROR_TRANSACTION_NESTED                                      (1652)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
