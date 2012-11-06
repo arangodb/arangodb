@@ -172,6 +172,37 @@ TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone, TRI_vector_t* vector) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief copy data from one vector into another
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyDataVector (TRI_vector_t* dest, const TRI_vector_t* const source) {
+  if (dest->_elementSize != source->_elementSize) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (dest->_buffer != NULL) {
+    TRI_Free(dest->_memoryZone, dest->_buffer);
+    dest->_buffer = NULL;
+  }
+
+  dest->_capacity = 0;
+  dest->_length = 0;
+
+  if (source->_length > 0) {
+    dest->_buffer = TRI_Allocate(dest->_memoryZone, source->_length * source->_elementSize, false);
+    if (dest->_buffer == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    
+    memcpy(dest->_buffer, source->_buffer, source->_length * source->_elementSize);
+    dest->_capacity = source->_length;
+    dest->_length = source->_length;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if the vector is empty
 ////////////////////////////////////////////////////////////////////////////////
 
