@@ -1272,7 +1272,7 @@ static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
     object->Set(i, val);
   }
 
-    return object;
+  return object;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
