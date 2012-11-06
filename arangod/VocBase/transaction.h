@@ -191,12 +191,12 @@ TRI_transaction_context_t;
 /// @brief write transactions list used per collection
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_transaction_context_collection_s {
+typedef struct TRI_transaction_collection_global_s {
   const char*                _name;
   TRI_transaction_list_t     _writeTransactions;
   TRI_mutex_t                _writeLock;
 }
-TRI_transaction_context_collection_t;
+TRI_transaction_collection_global_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -273,11 +273,12 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_transaction_collection_s {
-  const char*                _name;
-  TRI_transaction_type_e     _type;
-  TRI_transaction_list_t     _writeTransactions;
-  struct TRI_vocbase_col_s*  _collection;
-  bool                       _locked;
+  const char*                          _name;
+  TRI_transaction_type_e               _type;
+  TRI_transaction_list_t               _writeTransactions;
+  struct TRI_vocbase_col_s*            _collection;
+  TRI_transaction_collection_global_t* _globalInstance;
+  bool                                 _locked;
 }
 TRI_transaction_collection_t;
 
