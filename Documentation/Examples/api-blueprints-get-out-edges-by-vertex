@@ -1,0 +1,22 @@
+> curl -X GET --dump - http://localhost:8529/_api/blueprints/edges?graph=graph1&vertex=id2&type=out
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "edges": [
+    {
+      "_id": "107533798/110810598",
+      "_rev": 110810598,
+      "_key": "110810598",
+      "_bidirectional": false,
+      "_from": "106747366/110089702",
+      "_to": "106747366/110155238",
+      "$label": null,
+      "$id": "edge2",
+      "optional1": "val1b"
+    }
+  ],
+  "error": false,
+  "code": 200
+}
