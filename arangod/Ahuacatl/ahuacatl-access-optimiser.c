@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
+#include "ahuacatl-access-optimiser.h"
 
 #include "Ahuacatl/ahuacatl-functions.h"
 
@@ -41,6 +41,31 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the type name for a field access type
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeName (const TRI_aql_access_e type) {
+  switch (type) {
+    case TRI_AQL_ACCESS_IMPOSSIBLE:
+      return "impossible";
+    case TRI_AQL_ACCESS_EXACT:
+      return "exact match";
+    case TRI_AQL_ACCESS_LIST:
+      return "list match";
+    case TRI_AQL_ACCESS_RANGE_SINGLE:
+      return "single range";
+    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+      return "double range";
+    case TRI_AQL_ACCESS_REFERENCE:
+      return "reference";
+    case TRI_AQL_ACCESS_ALL:
+      return "all";
+  }
+
+  return "unknown";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the length of the variable name for a field access struct
@@ -1020,7 +1045,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     TRI_json_t* result;
 
     // check if values are identical
-    if ( TRI_CheckSameValueJson(lhs->_value._value, rhs->_value._value)) {
+    if (TRI_CheckSameValueJson(lhs->_value._value, rhs->_value._value)) {
       // lhs and rhs values are identical, return lhs
       TRI_FreeAccessAql(rhs);
     
@@ -1641,12 +1666,15 @@ static void MergeVector (TRI_aql_context_t* const context,
       assert(compareAccess);
       assert(compareAccess->_fullName);
 
+      // check if the current buffer element is the one we want to update
       if (TRI_EqualString(fieldAccess->_fullName, compareAccess->_fullName)) {
         // found the element
         if (mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND) {
+          // update the existing element in place
           result->_buffer[j] = MergeAttributeAccessAnd(context, fieldAccess, compareAccess);
         }
         else {
+          // update the existing element in place
           result->_buffer[j] = MergeAttributeAccessOr(context, fieldAccess, compareAccess);
         }
       
@@ -1655,7 +1683,8 @@ static void MergeVector (TRI_aql_context_t* const context,
       } 
     }
 
-    if (!found) {
+    if (! found) {
+      // element not found, now add it to the list of restrictions
       TRI_PushBackVectorPointer(result, fieldAccess);
     }
   }
@@ -1683,13 +1712,63 @@ static void InsertVector (TRI_aql_context_t* const context,
 
     copy = TRI_CloneAccessAql(context, fieldAccess);
 
-    if (!copy) {
+    if (! copy) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
     }
 
     TRI_PushBackVectorPointer(result, (void*) copy);
+  }
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count how often an element is contained in a string vector
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t CountNames (const char* const name,
+                          const TRI_vector_pointer_t* const vector) {
+  size_t found;
+  size_t i, n;
+
+  assert(vector);
+  assert(name);
+
+  found = 0;
+  
+  n = vector->_length;
+  for (i = 0; i < n; ++i) {
+    char* current = (char*) TRI_AtVectorPointer(vector, i);
+
+    if (TRI_EqualString(name, current)) {
+      ++found;
+    }
+  }
+
+  return found;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the names of all field accesses from a vector into a 
+/// string vector
+////////////////////////////////////////////////////////////////////////////////
+
+static void InsertNames (const TRI_vector_pointer_t* const source, 
+                         TRI_vector_pointer_t* const dest) {
+  size_t i, n;
+
+  if (dest == NULL) {
+    return;
+  }
+
+  n = source->_length;
+  for (i = 0; i < n; ++i) {
+    TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(source, i);
+
+    char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName);
+    if (copy) {
+      TRI_PushBackVectorPointer(dest, (void*) copy);
+    }
   }
 }
 
@@ -1703,6 +1782,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
                                            TRI_vector_pointer_t* const rhs,
                                            const TRI_vector_pointer_t* const inheritedRestrictions) {
   TRI_vector_pointer_t* result;
+  TRI_vector_pointer_t* namesVector;
 
   assert(context);
   assert(mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND || mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR);
@@ -1723,7 +1803,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
   }
 
   result = CreateEmptyVector(context);
-  if (!result) {
+  if (! result) {
     // free memory
     if (lhs) {
       TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, lhs);
@@ -1738,23 +1818,73 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
     return NULL;
   }
   
+  namesVector = NULL;
+
+  if (mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR &&  lhs && rhs) {
+    // this is an OR merge
+    // we need to check which elements are contained in just one of the vectors and
+    // remove them. if we don't do this, we would probably restrict the query too much
+    namesVector = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+    TRI_InitVectorPointer(namesVector, TRI_UNKNOWN_MEM_ZONE);
+  }
+  
+
   if (inheritedRestrictions) {
+    InsertNames(inheritedRestrictions, namesVector);
+
     // insert a copy of all restrictions first
     InsertVector(context, result, inheritedRestrictions);
   }
 
   if (lhs) {
+    InsertNames(lhs, namesVector);
+
     // copy elements from lhs into result vector
     MergeVector(context, mergeType, result, lhs);
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, lhs);
   }
 
   if (rhs) {
+    InsertNames(rhs, namesVector);
+
     // copy elements from rhs into result vector
     MergeVector(context, mergeType, result, rhs);
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, rhs);
   }
 
+
+  if (namesVector) {
+    // this is an OR merge
+    // we need to check which elements are contained in just one of the vectors and
+    // remove them. if we don't do this, we would probably restrict the query too much
+    size_t found;
+    size_t i;
+
+    for (i = 0; i < result->_length; ++i) {
+      TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(result, i);
+
+      if (fieldAccess->_type == TRI_AQL_ACCESS_ALL) {
+        continue;
+      }
+
+      found = CountNames(fieldAccess->_fullName, namesVector);
+      
+      if (found < 2) {
+        // must make the element an all access
+        FreeAccessMembers(fieldAccess);
+        fieldAccess->_type = TRI_AQL_ACCESS_ALL;
+      }
+    }
+    
+    for (i = 0; i < namesVector->_length; ++i) {
+      char* name = (char*) TRI_AtVectorPointer(namesVector, i); 
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
+    }
+
+    TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, namesVector);
+  }
+    
   return result;
 }
 
@@ -2182,6 +2312,16 @@ again:
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump an AQL access type
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DumpAccessAql (const TRI_aql_field_access_t* const fieldAccess) {
+  LOG_INFO("info for field access. field: '%s', type: %s", 
+           fieldAccess->_fullName, 
+           TypeName(fieldAccess->_type));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an access structure of type impossible
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2216,7 +2356,6 @@ bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const fieldAccesses)
   // impossible range not found
   return false;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a vector of accesses
