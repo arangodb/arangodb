@@ -310,7 +310,6 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       // now loop over all candidates
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
-      
         
         if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE || 
             candidate->_type == TRI_AQL_ACCESS_ALL) {
@@ -318,7 +317,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           continue;
         }
         
-        if (!TRI_EqualString(indexedFieldName, candidate->_fullName + candidate->_variableNameLength + 1)) {
+        if (! TRI_EqualString(indexedFieldName, candidate->_fullName + candidate->_variableNameLength + 1)) {
           // different attribute, doesn't help
           continue;
         }
@@ -326,7 +325,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         // attribute is used in index
 
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-          if (!IsExactCandidate(candidate)) {
+          if (! IsExactCandidate(candidate)) {
             // wrong access type for primary index
             continue;
           }
@@ -335,7 +334,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         }
         
         else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-          if (!IsExactCandidate(candidate)) {
+          if (! IsExactCandidate(candidate)) {
             // wrong access type for hash index
             continue;
           }
@@ -349,7 +348,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
         }
         
         else if (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) {
-          if (!IsExactCandidate(candidate)) {
+          if (! IsExactCandidate(candidate)) {
             // wrong access type for hash index
             continue;
           }
@@ -381,8 +380,8 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
           candidateIsExact = IsExactCandidate(candidate);
 
-          if ((candidateIsExact && !lastTypeWasExact) ||
-              (!candidateIsExact && !lastTypeWasExact)) {
+          if ((candidateIsExact && ! lastTypeWasExact) ||
+              (!candidateIsExact && ! lastTypeWasExact)) {
             // if we already had a range query, we cannot check for equality after that
             // if we already had a range query, we cannot check another range after that
             continue;
