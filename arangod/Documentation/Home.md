@@ -13,7 +13,7 @@ design goals are described @EXTREF{http://www.arangodb.org/,here}.
 The ArangoDB package consists of a server, a separate shell, which
 allows you to administrate the server, and a set of client API (or
 sometimes called drivers) for various languages including the Big-P
-(PHP, Python, Perl) and Ruy.
+(PHP, Python, Perl) and Ruby.
 
 @xmlonly
 The HTML and PDF versions of the manual can be found
