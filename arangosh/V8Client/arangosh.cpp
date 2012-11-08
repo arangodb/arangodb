@@ -206,6 +206,24 @@ static string ServerAddress = DEFAULT_SERVER_NAME;
 static int ServerPort = DEFAULT_SERVER_PORT;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief user name
+////////////////////////////////////////////////////////////////////////////////
+
+static string Username = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief password
+////////////////////////////////////////////////////////////////////////////////
+
+static string Password = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use password flag
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -551,6 +569,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("quiet,s", "no banner")
     ("request-timeout", &RequestTimeout, "request timeout in seconds")
     ("server", &ServerAddressPort, "server address and port, use 'none' to start without a server")
+    ("username", &Username, "username to use when connecting")
+    ("password", &Password, "password to use when connecting (leave empty for prompt)")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("use-pager", "use pager")
     (hidden, true)
@@ -574,6 +594,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // set the logging
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
+  
+  // check if have a password
+  HasPassword = options.has("password");
 
   // set colors
   if (options.has("colors")) {
@@ -684,7 +707,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
     port = ap._port;
   }
   
-  V8ClientConnection* connection = new V8ClientConnection(server, port, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
+  V8ClientConnection* connection = new V8ClientConnection(server, Username, Password, port, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
   
   if (connection->isConnected()) {
     printf("Connected to Arango DB %s:%d Version %s\n", 
@@ -1208,6 +1231,14 @@ int main (int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  // must specify a user name
+  if (! HasPassword && Username != "") {
+    cout << "Please specify a password: " << flush;
+
+    // now prompt for it
+    getline(cin, Password);
+  }
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -1238,6 +1269,8 @@ int main (int argc, char* argv[]) {
     
     ClientConnection = new V8ClientConnection(
       ServerAddress, 
+      Username,
+      Password,
       ServerPort, 
       (double) RequestTimeout,
       DEFAULT_RETRIES, 
