@@ -95,6 +95,42 @@ static int PriorityQueueFromJson (TRI_document_collection_t*,
                                   TRI_idx_iid_t);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  HELPER FUNCTIONS
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the data length from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
+  if (mptr != NULL) {
+    void const* data = mptr->_data;
+
+    if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {      
+      return ((TRI_df_marker_t*) data)->_size - ((TRI_doc_document_key_marker_t const*) data)->_offsetJson;
+    }
+    else if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      return ((TRI_df_marker_t*) data)->_size - ((TRI_doc_edge_key_marker_t const*) data)->base._offsetJson;
+    }
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          JOURNALS
 // -----------------------------------------------------------------------------
 
@@ -350,9 +386,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
                            TRI_voc_size_t bodySize,
                            TRI_df_marker_t** result,
                            void const* additional,
-                           TRI_voc_key_t key,
-                           TRI_voc_rid_t rid,
-                           TRI_doc_mptr_t *mptr) { 
+                           TRI_doc_mptr_t* mptr) { 
 
   TRI_datafile_t* journal;
   TRI_primary_collection_t* primary;
@@ -364,7 +398,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
-  
+
   // .............................................................................
   // create header
   // .............................................................................
@@ -419,7 +453,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
   if (dfi != NULL) {
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
+    dfi->_sizeAlive += LengthDataMasterPointer(header);
   }
 
   // update immediate indexes
@@ -434,8 +468,8 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
     // rollback, ignore any additional errors
     TRI_InitContextPrimaryCollection(&rollbackContext, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
-    rollbackContext._expectedRid = rid;
-    resRollback = DeleteShapedJson(&rollbackContext, key);
+    rollbackContext._expectedRid = marker->_rid;
+    resRollback = DeleteShapedJson(&rollbackContext, (TRI_voc_key_t) keyBody);
 
     if (resRollback != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
@@ -673,7 +707,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   // update the datafile info
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
   if (dfi != NULL) {
-    size_t length = TRI_LengthDataMasterPointer(header);
+    size_t length = LengthDataMasterPointer(header);
 
     dfi->_numberAlive -= 1;
     dfi->_sizeAlive -= length;
@@ -684,7 +718,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
   if (dfi != NULL) {
     dfi->_numberAlive += 1;
-    dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
+    dfi->_sizeAlive += LengthDataMasterPointer(&update);
   }
 
   // update immediate indexes
@@ -800,7 +834,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   // update the datafile info
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, header->_fid);
   if (dfi != NULL) {
-    size_t length = TRI_LengthDataMasterPointer(header);
+    size_t length = LengthDataMasterPointer(header);
 
     dfi->_numberAlive -= 1;
     dfi->_sizeAlive -= length;
@@ -1106,8 +1140,6 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
                    json->_data.length,
                    &result,
                    data,
-                   keyBody,
-                   marker._rid,
                    &mptr);
   }
   else {
@@ -1162,8 +1194,6 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
                    json->_data.length,
                    &result,
                    data,
-                   keyBody,
-                   marker.base._rid,
                    &mptr);
   }
   
@@ -1452,7 +1482,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += TRI_LengthDataMasterPointer(header);
+        dfi->_sizeAlive += LengthDataMasterPointer(header);
       }
 
       // update immediate indexes
@@ -1475,7 +1505,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
 
       if (dfi != NULL) {
-        size_t length = TRI_LengthDataMasterPointer(found);
+        size_t length = LengthDataMasterPointer(found);
 
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= length;
@@ -1488,7 +1518,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberAlive += 1;
-        dfi->_sizeAlive += TRI_LengthDataMasterPointer(&update);
+        dfi->_sizeAlive += LengthDataMasterPointer(&update);
       }
 
       // update immediate indexes
@@ -1501,7 +1531,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       if (dfi != NULL) {
         dfi->_numberDead += 1;
-        dfi->_sizeDead += TRI_LengthDataMasterPointer(found);
+        dfi->_sizeDead += LengthDataMasterPointer(found);
       }
     }
   }
@@ -1556,7 +1586,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
 
       if (dfi != NULL) {
-        size_t length = TRI_LengthDataMasterPointer(found);
+        size_t length = LengthDataMasterPointer(found);
 
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= length;
