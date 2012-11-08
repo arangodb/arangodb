@@ -73,84 +73,6 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
-  TRI_doc_collection_info_t* info;
-  TRI_collection_t* base;
-  size_t i;
-
-  // prefill with 0's to init counters
-  info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
-
-  if (info == NULL) {
-    return NULL;
-  }
-
-  for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
-    TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
-
-    if (d != NULL) {
-      info->_numberAlive += d->_numberAlive;
-      info->_numberDead += d->_numberDead;
-      info->_sizeAlive += d->_sizeAlive;
-      info->_sizeDead += d->_sizeDead;
-      info->_numberDeletion += d->_numberDeletion;
-    }
-  }
-
-  // add the file sizes for datafiles and journals
-  base = &primary->base;
-  for (i = 0; i < base->_datafiles._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
-
-    info->_datafileSize += df->_maximalSize;
-    ++info->_numberDatafiles;
-  }
-
-  for (i = 0; i < base->_journals._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
-
-    info->_journalfileSize += df->_maximalSize;
-    ++info->_numberJournalfiles;
-  }
-
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief size of a primary collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
-  TRI_doc_mptr_t const* mptr;
-  TRI_voc_size_t result;
-  void** end;
-  void** ptr;
-
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  ptr = primary->_primaryIndex._table;
-  end = ptr + primary->_primaryIndex._nrAlloc;
-  result = 0;
-
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr != NULL) {
-      mptr = *ptr;
-
-      if (mptr->_deletion == 0) {
-        ++result;
-      }
-    }
-  }
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs a datafile identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -398,6 +320,84 @@ static void FreeDatafileInfo (TRI_associative_pointer_t* const files) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
+  TRI_doc_collection_info_t* info;
+  TRI_collection_t* base;
+  size_t i;
+
+  // prefill with 0's to init counters
+  info = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
+
+  if (info == NULL) {
+    return NULL;
+  }
+
+  for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
+    TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
+
+    if (d != NULL) {
+      info->_numberAlive += d->_numberAlive;
+      info->_numberDead += d->_numberDead;
+      info->_sizeAlive += d->_sizeAlive;
+      info->_sizeDead += d->_sizeDead;
+      info->_numberDeletion += d->_numberDeletion;
+    }
+  }
+
+  // add the file sizes for datafiles and journals
+  base = &primary->base;
+  for (i = 0; i < base->_datafiles._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
+
+    info->_datafileSize += df->_maximalSize;
+    ++info->_numberDatafiles;
+  }
+
+  for (i = 0; i < base->_journals._length; ++i) {
+    TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
+
+    info->_journalfileSize += df->_maximalSize;
+    ++info->_numberJournalfiles;
+  }
+
+  return info;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size of a primary collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
+  TRI_doc_mptr_t const* mptr;
+  TRI_voc_size_t result;
+  void** end;
+  void** ptr;
+
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  ptr = primary->_primaryIndex._table;
+  end = ptr + primary->_primaryIndex._nrAlloc;
+  result = 0;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr != NULL) {
+      mptr = *ptr;
+
+      if (mptr->_deletion == 0) {
+        ++result;
+      }
+    }
+  }
+
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -545,25 +545,6 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* 
 bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
                                       size_t position) {
   return CloseJournalPrimaryCollection(collection, position, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the data length from a master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_LengthDataMasterPointer (const TRI_doc_mptr_t* const mptr) {
-  if (mptr != NULL) {
-    void const* data = mptr->_data;
-
-    if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {      
-      return ((TRI_df_marker_t*) data)->_size - ((TRI_doc_document_key_marker_t const*) data)->_offsetJson;
-    }
-    else if (((TRI_df_marker_t const*) data)->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      return ((TRI_df_marker_t*) data)->_size - ((TRI_doc_edge_key_marker_t const*) data)->base._offsetJson;
-    }
-  }
-
-  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
