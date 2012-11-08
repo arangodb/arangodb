@@ -541,15 +541,15 @@ size_t TRI_StringUInt32InPlace (uint32_t attr, char* buffer) {
 
   p = buffer;
 
-  if (1000000000L <= attr) { *p++ = (char)((attr / 1000000000L) % 10 + '0'); }
-  if ( 100000000L <= attr) { *p++ = (char)((attr /  100000000L) % 10 + '0'); }
-  if (  10000000L <= attr) { *p++ = (char)((attr /   10000000L) % 10 + '0'); }
-  if (   1000000L <= attr) { *p++ = (char)((attr /    1000000L) % 10 + '0'); }
-  if (    100000L <= attr) { *p++ = (char)((attr /     100000L) % 10 + '0'); }
-  if (     10000L <= attr) { *p++ = (char)((attr /      10000L) % 10 + '0'); }
-  if (      1000L <= attr) { *p++ = (char)((attr /       1000L) % 10 + '0'); }
-  if (       100L <= attr) { *p++ = (char)((attr /        100L) % 10 + '0'); }
-  if (        10L <= attr) { *p++ = (char)((attr /         10L) % 10 + '0'); }
+  if (1000000000UL <= attr) { *p++ = (char)((attr / 1000000000UL) % 10 + '0'); }
+  if ( 100000000UL <= attr) { *p++ = (char)((attr /  100000000UL) % 10 + '0'); }
+  if (  10000000UL <= attr) { *p++ = (char)((attr /   10000000UL) % 10 + '0'); }
+  if (   1000000UL <= attr) { *p++ = (char)((attr /    1000000UL) % 10 + '0'); }
+  if (    100000UL <= attr) { *p++ = (char)((attr /     100000UL) % 10 + '0'); }
+  if (     10000UL <= attr) { *p++ = (char)((attr /      10000UL) % 10 + '0'); }
+  if (      1000UL <= attr) { *p++ = (char)((attr /       1000UL) % 10 + '0'); }
+  if (       100UL <= attr) { *p++ = (char)((attr /        100UL) % 10 + '0'); }
+  if (        10UL <= attr) { *p++ = (char)((attr /         10UL) % 10 + '0'); }
 
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
@@ -864,6 +864,105 @@ char* TRI_StringUInt64Hex (uint64_t attr) {
   size_t len;
   
   len = TRI_StringUInt64HexInPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to octal string from uint32, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt32OctalInPlace (uint32_t attr, char* buffer) {
+  char* p;
+  
+  p = buffer;
+  
+  if (010000000000UL <= attr) { *p++ = (char) ((attr / 010000000000UL) % 010 + '0'); }
+  if ( 01000000000UL <= attr) { *p++ = (char) ((attr /  01000000000UL) % 010 + '0'); }
+  if (  0100000000UL <= attr) { *p++ = (char) ((attr /   0100000000UL) % 010 + '0'); }
+  if (   010000000UL <= attr) { *p++ = (char) ((attr /    010000000UL) % 010 + '0'); }
+  if (    01000000UL <= attr) { *p++ = (char) ((attr /     01000000UL) % 010 + '0'); }
+  if (     0100000UL <= attr) { *p++ = (char) ((attr /      0100000UL) % 010 + '0'); }
+  if (      010000UL <= attr) { *p++ = (char) ((attr /       010000UL) % 010 + '0'); }
+  if (       01000UL <= attr) { *p++ = (char) ((attr /        01000UL) % 010 + '0'); }
+  if (        0100UL <= attr) { *p++ = (char) ((attr /         0100UL) % 010 + '0'); }
+  if (         010UL <= attr) { *p++ = (char) ((attr /          010UL) % 010 + '0'); }
+
+  *p++ = (char) (attr % 010 + '0');
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to octal string from uint64, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt64OctalInPlace (uint64_t attr, char* buffer) {
+  char* p;
+  
+  p = buffer;
+  if (01000000000000000000000ULL <= attr) { *p++ = (char) ((attr / 01000000000000000000000ULL) % 010 + '0'); }
+  if ( 0100000000000000000000ULL <= attr) { *p++ = (char) ((attr /  0100000000000000000000ULL) % 010 + '0'); }
+  if (  010000000000000000000ULL <= attr) { *p++ = (char) ((attr /   010000000000000000000ULL) % 010 + '0'); }
+  if (   01000000000000000000ULL <= attr) { *p++ = (char) ((attr /    01000000000000000000ULL) % 010 + '0'); }
+  if (    0100000000000000000ULL <= attr) { *p++ = (char) ((attr /     0100000000000000000ULL) % 010 + '0'); }
+  if (     010000000000000000ULL <= attr) { *p++ = (char) ((attr /      010000000000000000ULL) % 010 + '0'); }
+  if (      01000000000000000ULL <= attr) { *p++ = (char) ((attr /       01000000000000000ULL) % 010 + '0'); }
+  if (       0100000000000000ULL <= attr) { *p++ = (char) ((attr /        0100000000000000ULL) % 010 + '0'); }
+  if (        010000000000000ULL <= attr) { *p++ = (char) ((attr /         010000000000000ULL) % 010 + '0'); }
+  if (         01000000000000ULL <= attr) { *p++ = (char) ((attr /          01000000000000ULL) % 010 + '0'); }
+  if (          0100000000000ULL <= attr) { *p++ = (char) ((attr /           0100000000000ULL) % 010 + '0'); }
+  if (           010000000000ULL <= attr) { *p++ = (char) ((attr /            010000000000ULL) % 010 + '0'); }
+  if (            01000000000ULL <= attr) { *p++ = (char) ((attr /             01000000000ULL) % 010 + '0'); }
+  if (             0100000000ULL <= attr) { *p++ = (char) ((attr /              0100000000ULL) % 010 + '0'); }
+  if (              010000000ULL <= attr) { *p++ = (char) ((attr /               010000000ULL) % 010 + '0'); }
+  if (               01000000ULL <= attr) { *p++ = (char) ((attr /                01000000ULL) % 010 + '0'); }
+  if (                0100000ULL <= attr) { *p++ = (char) ((attr /                 0100000ULL) % 010 + '0'); }
+  if (                 010000ULL <= attr) { *p++ = (char) ((attr /                  010000ULL) % 010 + '0'); }
+  if (                  01000ULL <= attr) { *p++ = (char) ((attr /                   01000ULL) % 010 + '0'); }
+  if (                   0100ULL <= attr) { *p++ = (char) ((attr /                    0100ULL) % 010 + '0'); }
+  if (                    010ULL <= attr) { *p++ = (char) ((attr /                     010ULL) % 010 + '0'); }
+
+  *p++ = (char) (attr % 010 + '0');
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to octal string from uint32
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt32Octal (uint32_t attr) {
+  char buffer[9];
+  size_t len;
+  
+  len = TRI_StringUInt32OctalInPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to octal string from uint64
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt64Octal (uint64_t attr) {
+  char buffer[17];
+  size_t len;
+  
+  len = TRI_StringUInt64OctalInPlace(attr, (char*) &buffer);
 
   return TRI_DuplicateString2(buffer, len);
 }
