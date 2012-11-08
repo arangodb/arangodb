@@ -572,11 +572,21 @@ size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
     return 20;
   }
 
+  if (attr >= 0 && (attr >> 32) == 0) {
+    // shortcut
+    return TRI_StringInt32InPlace((int32_t) attr, buffer);
+  }
+
   p = buffer;
   
   if (attr < 0) {
     *p++ = '-';
     attr = -attr;
+  
+    if ((attr >> 32) == 0) {
+      // shortcut
+      return TRI_StringInt32InPlace((int32_t) attr, p) + 1;
+    }
   }
 
   if (1000000000000000000LL <= attr) { *p++ = (char)((attr / 1000000000000000000LL) % 10 + '0'); }
@@ -615,6 +625,11 @@ size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
 
 size_t TRI_StringUInt64InPlace (uint64_t attr, char* buffer) {
   char* p;
+  
+  if ((attr >> 32) == 0) {
+    // shortcut
+    return TRI_StringUInt32InPlace((uint32_t) attr, buffer);
+  }
 
   p = buffer;
 

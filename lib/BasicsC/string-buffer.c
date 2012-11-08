@@ -27,6 +27,8 @@
 
 #include "string-buffer.h"
 
+#include "BasicsC/conversions.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -552,10 +554,7 @@ int TRI_AppendInteger4StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 
 int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
   int res;
-
-  if (attr == INT8_MIN) {
-    return TRI_AppendString2StringBuffer(self, "-128", 4);
-  }
+  size_t len;
 
   res = Reserve(self, 4);
 
@@ -563,15 +562,8 @@ int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
     return res;
   }
 
-  if (attr < 0) {
-    AppendChar(self, '-');
-    attr = -attr;
-  }
-
-  if (100 <= attr) { AppendChar(self, (attr / 100) % 10 + '0'); }
-  if ( 10 <= attr) { AppendChar(self, (attr /  10) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
+  len = TRI_StringInt8InPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -582,17 +574,16 @@ int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
 
 int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
   int res;
+  size_t len;
 
   res = Reserve(self, 3);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (100U <= attr) { AppendChar(self, (attr / 100U) % 10 + '0'); }
-  if ( 10U <= attr) { AppendChar(self, (attr /  10U) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
+  len = TRI_StringUInt8InPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -603,28 +594,16 @@ int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
 
 int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
   int res;
-
-  if (attr == INT16_MIN) {
-    return TRI_AppendString2StringBuffer(self, "-32768", 6);
-  }
-
+  size_t len;
+  
   res = Reserve(self, 6);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (attr < 0) {
-    AppendChar(self, '-');
-    attr = -attr;
-  }
-
-  if (10000 <= attr) { AppendChar(self, (attr / 10000) % 10 + '0'); }
-  if ( 1000 <= attr) { AppendChar(self, (attr /  1000) % 10 + '0'); }
-  if (  100 <= attr) { AppendChar(self, (attr /   100) % 10 + '0'); }
-  if (   10 <= attr) { AppendChar(self, (attr /    10) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
+  len = TRI_StringInt16InPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -635,20 +614,17 @@ int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
 
 int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
   int res;
-
+  size_t len;
+  
   res = Reserve(self, 5);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (10000U <= attr) { AppendChar(self, (attr / 10000U) % 10 + '0'); }
-  if ( 1000U <= attr) { AppendChar(self, (attr /  1000U) % 10 + '0'); }
-  if (  100U <= attr) { AppendChar(self, (attr /   100U) % 10 + '0'); }
-  if (   10U <= attr) { AppendChar(self, (attr /    10U) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
-
+  len = TRI_StringUInt16InPlace(attr, self->_current);
+  self->_current += len;
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -658,34 +634,17 @@ int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
 
 int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
   int res;
-
-  if (attr == INT32_MIN) {
-    return TRI_AppendString2StringBuffer(self, "-2147483648", 11);
-  }
+  size_t len;
 
   res = Reserve(self, 11);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  if (attr < 0) {
-    AppendChar(self, '-');
-    attr = -attr;
-  }
-
-  if (1000000000 <= attr) { AppendChar(self, (attr / 1000000000) % 10 + '0'); }
-  if ( 100000000 <= attr) { AppendChar(self, (attr /  100000000) % 10 + '0'); }
-  if (  10000000 <= attr) { AppendChar(self, (attr /   10000000) % 10 + '0'); }
-  if (   1000000 <= attr) { AppendChar(self, (attr /    1000000) % 10 + '0'); }
-  if (    100000 <= attr) { AppendChar(self, (attr /     100000) % 10 + '0'); }
-  if (     10000 <= attr) { AppendChar(self, (attr /      10000) % 10 + '0'); }
-  if (      1000 <= attr) { AppendChar(self, (attr /       1000) % 10 + '0'); }
-  if (       100 <= attr) { AppendChar(self, (attr /        100) % 10 + '0'); }
-  if (        10 <= attr) { AppendChar(self, (attr /         10) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
-
+  
+  len = TRI_StringInt32InPlace(attr, self->_current);
+  self->_current += len;
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -695,24 +654,16 @@ int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
 
 int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
   int res;
-
+  size_t len;
+  
   res = Reserve(self, 10);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (1000000000U <= attr) { AppendChar(self, (attr / 1000000000U) % 10 + '0'); }
-  if ( 100000000U <= attr) { AppendChar(self, (attr /  100000000U) % 10 + '0'); }
-  if (  10000000U <= attr) { AppendChar(self, (attr /   10000000U) % 10 + '0'); }
-  if (   1000000U <= attr) { AppendChar(self, (attr /    1000000U) % 10 + '0'); }
-  if (    100000U <= attr) { AppendChar(self, (attr /     100000U) % 10 + '0'); }
-  if (     10000U <= attr) { AppendChar(self, (attr /      10000U) % 10 + '0'); }
-  if (      1000U <= attr) { AppendChar(self, (attr /       1000U) % 10 + '0'); }
-  if (       100U <= attr) { AppendChar(self, (attr /        100U) % 10 + '0'); }
-  if (        10U <= attr) { AppendChar(self, (attr /         10U) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
+  len = TRI_StringUInt32InPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -723,52 +674,16 @@ int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 
 int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
   int res;
-
-  if (attr == INT64_MIN) {
-    return TRI_AppendString2StringBuffer(self, "-9223372036854775808", 20);
-  }
-  else if (attr < 0) {
-    res = Reserve(self, 1);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    AppendChar(self, '-');
-    attr = -attr;
-  }
-
-  if ((attr >> 32) == 0) {
-    return TRI_AppendUInt32StringBuffer(self, (uint32_t) attr);
-  }
-
+  size_t len;
+  
   res = Reserve(self, 20);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  // uint64_t has one more decimal than int64_t
-  if (1000000000000000000LL <= attr) { AppendChar(self, (attr / 1000000000000000000LL) % 10 + '0'); }
-  if ( 100000000000000000LL <= attr) { AppendChar(self, (attr /  100000000000000000LL) % 10 + '0'); }
-  if (  10000000000000000LL <= attr) { AppendChar(self, (attr /   10000000000000000LL) % 10 + '0'); }
-  if (   1000000000000000LL <= attr) { AppendChar(self, (attr /    1000000000000000LL) % 10 + '0'); }
-  if (    100000000000000LL <= attr) { AppendChar(self, (attr /     100000000000000LL) % 10 + '0'); }
-  if (     10000000000000LL <= attr) { AppendChar(self, (attr /      10000000000000LL) % 10 + '0'); }
-  if (      1000000000000LL <= attr) { AppendChar(self, (attr /       1000000000000LL) % 10 + '0'); }
-  if (       100000000000LL <= attr) { AppendChar(self, (attr /        100000000000LL) % 10 + '0'); }
-  if (        10000000000LL <= attr) { AppendChar(self, (attr /         10000000000LL) % 10 + '0'); }
-  if (         1000000000LL <= attr) { AppendChar(self, (attr /          1000000000LL) % 10 + '0'); }
-  if (          100000000LL <= attr) { AppendChar(self, (attr /           100000000LL) % 10 + '0'); }
-  if (           10000000LL <= attr) { AppendChar(self, (attr /            10000000LL) % 10 + '0'); }
-  if (            1000000LL <= attr) { AppendChar(self, (attr /             1000000LL) % 10 + '0'); }
-  if (             100000LL <= attr) { AppendChar(self, (attr /              100000LL) % 10 + '0'); }
-  if (              10000LL <= attr) { AppendChar(self, (attr /               10000LL) % 10 + '0'); }
-  if (               1000LL <= attr) { AppendChar(self, (attr /                1000LL) % 10 + '0'); }
-  if (                100LL <= attr) { AppendChar(self, (attr /                 100LL) % 10 + '0'); }
-  if (                 10LL <= attr) { AppendChar(self, (attr /                  10LL) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
+  len = TRI_StringInt64InPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -779,39 +694,16 @@ int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
 
 int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
   int res;
-
-  if ((attr >> 32) == 0) {
-    return TRI_AppendUInt32StringBuffer(self, (uint32_t) attr);
-  }
+  size_t len;
 
   res = Reserve(self, 21);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  // uint64_t has one more decimal than int64_t
-  if (10000000000000000000ULL <= attr) { AppendChar(self, (attr / 10000000000000000000ULL) % 10 + '0'); }
-  if ( 1000000000000000000ULL <= attr) { AppendChar(self, (attr /  1000000000000000000ULL) % 10 + '0'); }
-  if (  100000000000000000ULL <= attr) { AppendChar(self, (attr /   100000000000000000ULL) % 10 + '0'); }
-  if (   10000000000000000ULL <= attr) { AppendChar(self, (attr /    10000000000000000ULL) % 10 + '0'); }
-  if (    1000000000000000ULL <= attr) { AppendChar(self, (attr /     1000000000000000ULL) % 10 + '0'); }
-  if (     100000000000000ULL <= attr) { AppendChar(self, (attr /      100000000000000ULL) % 10 + '0'); }
-  if (      10000000000000ULL <= attr) { AppendChar(self, (attr /       10000000000000ULL) % 10 + '0'); }
-  if (       1000000000000ULL <= attr) { AppendChar(self, (attr /        1000000000000ULL) % 10 + '0'); }
-  if (        100000000000ULL <= attr) { AppendChar(self, (attr /         100000000000ULL) % 10 + '0'); }
-  if (         10000000000ULL <= attr) { AppendChar(self, (attr /          10000000000ULL) % 10 + '0'); }
-  if (          1000000000ULL <= attr) { AppendChar(self, (attr /           1000000000ULL) % 10 + '0'); }
-  if (           100000000ULL <= attr) { AppendChar(self, (attr /            100000000ULL) % 10 + '0'); }
-  if (            10000000ULL <= attr) { AppendChar(self, (attr /             10000000ULL) % 10 + '0'); }
-  if (             1000000ULL <= attr) { AppendChar(self, (attr /              1000000ULL) % 10 + '0'); }
-  if (              100000ULL <= attr) { AppendChar(self, (attr /               100000ULL) % 10 + '0'); }
-  if (               10000ULL <= attr) { AppendChar(self, (attr /                10000ULL) % 10 + '0'); }
-  if (                1000ULL <= attr) { AppendChar(self, (attr /                 1000ULL) % 10 + '0'); }
-  if (                 100ULL <= attr) { AppendChar(self, (attr /                  100ULL) % 10 + '0'); }
-  if (                  10ULL <= attr) { AppendChar(self, (attr /                   10ULL) % 10 + '0'); }
-
-  AppendChar(self, attr % 10 + '0');
+  len = TRI_StringUInt64InPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
