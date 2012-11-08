@@ -907,16 +907,16 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = 0;
+  TRI_document_collection_t* document = 0;
   
   if (lock) {
-    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+    document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
   }
   else {
-    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+    document = TRI_ExtractSimpleCollection(argv, collection, &err);
   }
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -949,7 +949,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
                        TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, msg)));
   }
 
-  TRI_shaper_t* shaper = sim->base._shaper;
+  TRI_shaper_t* shaper = document->base._shaper;
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -972,7 +972,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, &err);
 
   if (idx == 0) {
     collection->_collection->endRead(collection->_collection);
@@ -1028,7 +1028,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
     if (total > skip && count < limit) {
       if (barrier == 0) {
-        barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+        barrier = TRI_CreateBarrierElement(&document->base._barrierList);
       }
       // TODO: barrier might be 0
       v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier);
@@ -1119,16 +1119,16 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // extract and use the simple collection
   // ...........................................................................
 
-  TRI_document_collection_t* sim = 0;
+  TRI_document_collection_t* document = 0;
 
   if (lock) {  
-    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+    document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
   }
   else {
-    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+    document = TRI_ExtractSimpleCollection(argv, collection, &err);
   }
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1170,7 +1170,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
  
   
-  TRI_shaper_t* shaper = sim->base._shaper;
+  TRI_shaper_t* shaper = document->base._shaper;
 
   
   // .............................................................................
@@ -1207,7 +1207,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // extract the index
   // .............................................................................
   
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, &err);
 
   if (idx == 0) {
     collection->_collection->endRead(collection->_collection);
@@ -1282,7 +1282,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
 
       if (total > skip && count < limit) {
         if (barrier == 0) {
-          barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+          barrier = TRI_CreateBarrierElement(&document->base._barrierList);
         }
         // TODO: barrier might be 0
         v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, data, barrier);
@@ -1450,9 +1450,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1531,13 +1531,13 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       cid = vertexCollection->_cid;
       TRI_ReleaseCollection(vertexCollection);
 
-      edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, key);
+      edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
       if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
-          barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+          barrier = TRI_CreateBarrierElement(&document->base._barrierList);
         }
         // TODO: barrier might be 0
         
@@ -1584,13 +1584,13 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     cid = vertexCollection->_cid;
     TRI_ReleaseCollection(vertexCollection);
 
-    edges = TRI_LookupEdgesDocumentCollection(sim, direction, cid, key);
+    edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
     if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
-        barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+        barrier = TRI_CreateBarrierElement(&document->base._barrierList);
       }
       // TODO: barrier might be 0
 
@@ -1644,7 +1644,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim, 
+static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* document, 
                                        TRI_vocbase_col_t const* collection,
                                        v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -1659,7 +1659,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
   // extract skip and limit
   TRI_voc_ssize_t skip;
   TRI_voc_size_t limit;
-  TRI_primary_collection_t* primary = &sim->base;
+  TRI_primary_collection_t* primary = &document->base;
 
   ExtractSkipAndLimit(argv, 0, skip, limit);
 
@@ -1723,7 +1723,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
 
         if (d->_validTo == 0) {
           if (barrier == 0) {
-            barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+            barrier = TRI_CreateBarrierElement(&document->base._barrierList);
           }
           // TODO: barrier might be 0
 
@@ -1763,9 +1763,9 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1775,7 +1775,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   
   collection->_collection->beginRead(collection->_collection);
 
-  v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
+  v8::Handle<v8::Value> result = AllQuery(document, collection, argv);
 
   collection->_collection->endRead(collection->_collection);
 
@@ -1800,13 +1800,13 @@ static v8::Handle<v8::Value> JS_AllNLQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
+  v8::Handle<v8::Value> result = AllQuery(document, collection, argv);
 
   return scope.Close(result);
 }
@@ -1821,13 +1821,13 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_shaper_t* shaper = sim->base._shaper;
+  TRI_shaper_t* shaper = document->base._shaper;
 
   // expecting example, skip, limit
   if (argv.Length() < 1) {
@@ -1945,7 +1945,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 /// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t* sim,
+static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t* document,
                                                       TRI_vocbase_col_t const* collection,
                                                       v8::Handle<v8::Object>* err,
                                                       v8::Arguments const& argv) {
@@ -1980,7 +1980,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   result->Set(v8::String::New("documents"), documents);
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -1996,7 +1996,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   size_t n;
   TRI_shaped_json_t** values;
 
-  TRI_shaper_t* shaper = sim->base._shaper;
+  TRI_shaper_t* shaper = document->base._shaper;
   int res = SetupExampleObjectIndex(hashIndex, example, shaper, n, values, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2018,7 +2018,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
     CalculateSkipLimitSlice(total, skip, limit, s, e);
 
     if (s < e) {
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
+      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->base._barrierList);
       // TODO: barrier might be 0
 
       for (size_t i = s;  i < e;  ++i) {
@@ -2063,9 +2063,9 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -2075,7 +2075,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   collection->_collection->beginRead(collection->_collection);
   
-  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(sim, collection, &err, argv);
+  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(document, collection, &err, argv);
 
   collection->_collection->endRead(collection->_collection);
 
@@ -2100,13 +2100,13 @@ static v8::Handle<v8::Value> JS_ByExampleNLHashIndex (v8::Arguments const& argv)
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(sim, collection, &err, argv);
+  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(document, collection, &err, argv);
 
   return scope.Close(result);
 }
@@ -2229,7 +2229,7 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* sim,
+static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
                                         TRI_vocbase_col_t const* collection,
                                         v8::Handle<v8::Object>* err,
                                         v8::Arguments const& argv) {
@@ -2243,7 +2243,7 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* sim,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2288,9 +2288,9 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
   
@@ -2300,7 +2300,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   collection->_collection->beginRead(collection->_collection);
 
-  v8::Handle<v8::Value> result = NearQuery(sim, collection, &err, argv);
+  v8::Handle<v8::Value> result = NearQuery(document, collection, &err, argv);
   
   collection->_collection->endRead(collection->_collection);
 
@@ -2325,13 +2325,13 @@ static v8::Handle<v8::Value> JS_NearNLQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
   
-  v8::Handle<v8::Value> result = NearQuery(sim, collection, &err, argv);
+  v8::Handle<v8::Value> result = NearQuery(document, collection, &err, argv);
 
   return scope.Close(result);
 }
@@ -2364,7 +2364,7 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* sim,
+static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
                                           TRI_vocbase_col_t const* collection,
                                           v8::Handle<v8::Object>* err,
                                           v8::Arguments const& argv) {
@@ -2378,7 +2378,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* sim,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(sim->base.base._vocbase, collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, err);
 
   if (idx == 0) {
     return scope.Close(v8::ThrowException(*err));
@@ -2423,9 +2423,9 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -2435,7 +2435,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   collection->_collection->beginRead(collection->_collection);
   
-  v8::Handle<v8::Value> result = WithinQuery(sim, collection, &err, argv);
+  v8::Handle<v8::Value> result = WithinQuery(document, collection, &err, argv);
 
   collection->_collection->endRead(collection->_collection);
 
@@ -2460,13 +2460,13 @@ static v8::Handle<v8::Value> JS_WithinNLQuery (v8::Arguments const& argv) {
   // extract the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  v8::Handle<v8::Value> result = WithinQuery(sim, collection, &err, argv);
+  v8::Handle<v8::Value> result = WithinQuery(document, collection, &err, argv);
 
   return scope.Close(result);
 }
