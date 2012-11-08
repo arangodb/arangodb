@@ -826,27 +826,23 @@ int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const * const HEX = "0123456789ABCDEF";
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
   int res;
+  size_t len;
 
-  res = Reserve(self, 4);
-
+  res = Reserve(self, 5);
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  if (0x1000U <= attr) { AppendChar(self, HEX[(attr / 0x1000U) % 0x10]); }
-  if ( 0x100U <= attr) { AppendChar(self, HEX[(attr /  0x100U) % 0x10]); }
-  if (  0x10U <= attr) { AppendChar(self, HEX[(attr /   0x10U) % 0x10]); }
-
-  AppendChar(self, HEX[attr % 0x10]);
-
+  
+  len = TRI_StringUInt32HexInPlace(attr, self->_current);
+  self->_current += len;
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -856,23 +852,17 @@ int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) 
 
 int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
   int res;
+  size_t len;
 
-  res = Reserve(self, 8);
+  res = Reserve(self, 9);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  if (0x10000000U <= attr) { AppendChar(self, HEX[(attr / 0x10000000U) % 0x10]); }
-  if ( 0x1000000U <= attr) { AppendChar(self, HEX[(attr /  0x1000000U) % 0x10]); }
-  if (  0x100000U <= attr) { AppendChar(self, HEX[(attr /   0x100000U) % 0x10]); }
-  if (   0x10000U <= attr) { AppendChar(self, HEX[(attr /    0x10000U) % 0x10]); }
-  if (    0x1000U <= attr) { AppendChar(self, HEX[(attr /     0x1000U) % 0x10]); }
-  if (     0x100U <= attr) { AppendChar(self, HEX[(attr /      0x100U) % 0x10]); }
-  if (      0x10U <= attr) { AppendChar(self, HEX[(attr /       0x10U) % 0x10]); }
-
-  AppendChar(self, HEX[attr % 0x10]);
-
+  
+  len = TRI_StringUInt64HexInPlace(attr, self->_current);
+  self->_current += len;
+  
   return TRI_ERROR_NO_ERROR;
 }
 

@@ -39,6 +39,8 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+static char const * const HEX = "0123456789ABCDEF";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a single hex to an integer
 ////////////////////////////////////////////////////////////////////////////////
@@ -774,6 +776,96 @@ char* TRI_StringDouble (double value) {
   TRI_AppendDoubleStringBuffer(&buffer, value);
 
   return buffer._buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to hex string from uint32, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt32HexInPlace (uint32_t attr, char* buffer) {
+  char* p;
+  
+  p = buffer;
+  
+  if (0x10000000U <= attr) { *p++ = HEX[(attr / 0x10000000U) % 0x10]; }
+  if ( 0x1000000U <= attr) { *p++ = HEX[(attr /  0x1000000U) % 0x10]; }
+  if (  0x100000U <= attr) { *p++ = HEX[(attr /   0x100000U) % 0x10]; }
+  if (   0x10000U <= attr) { *p++ = HEX[(attr /    0x10000U) % 0x10]; }
+  if (    0x1000U <= attr) { *p++ = HEX[(attr /     0x1000U) % 0x10]; }
+  if (     0x100U <= attr) { *p++ = HEX[(attr /      0x100U) % 0x10]; }
+  if (      0x10U <= attr) { *p++ = HEX[(attr /       0x10U) % 0x10]; }
+
+  *p++ = HEX[attr % 0x10];
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to hex string from uint64, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt64HexInPlace (uint64_t attr, char* buffer) {
+  char* p;
+  
+  p = buffer;
+
+  if (0x1000000000000000ULL <= attr) { *p++ = HEX[(attr / 0x1000000000000000ULL) % 0x10]; }
+  if ( 0x100000000000000ULL <= attr) { *p++ = HEX[(attr /  0x100000000000000ULL) % 0x10]; }
+  if (  0x10000000000000ULL <= attr) { *p++ = HEX[(attr /   0x10000000000000ULL) % 0x10]; }
+  if (   0x1000000000000ULL <= attr) { *p++ = HEX[(attr /    0x1000000000000ULL) % 0x10]; }
+  if (    0x100000000000ULL <= attr) { *p++ = HEX[(attr /     0x100000000000ULL) % 0x10]; }
+  if (     0x10000000000ULL <= attr) { *p++ = HEX[(attr /      0x10000000000ULL) % 0x10]; }
+  if (      0x1000000000ULL <= attr) { *p++ = HEX[(attr /       0x1000000000ULL) % 0x10]; }
+  if (       0x100000000ULL <= attr) { *p++ = HEX[(attr /        0x100000000ULL) % 0x10]; }
+  if (        0x10000000ULL <= attr) { *p++ = HEX[(attr /         0x10000000ULL) % 0x10]; }
+  if (         0x1000000ULL <= attr) { *p++ = HEX[(attr /          0x1000000ULL) % 0x10]; }
+  if (          0x100000ULL <= attr) { *p++ = HEX[(attr /           0x100000ULL) % 0x10]; }
+  if (           0x10000ULL <= attr) { *p++ = HEX[(attr /            0x10000ULL) % 0x10]; }
+  if (            0x1000ULL <= attr) { *p++ = HEX[(attr /             0x1000ULL) % 0x10]; }
+  if (             0x100ULL <= attr) { *p++ = HEX[(attr /              0x100ULL) % 0x10]; }
+  if (              0x10ULL <= attr) { *p++ = HEX[(attr /               0x10ULL) % 0x10]; }
+
+  *p++ = HEX[attr % 0x10];
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to hex string from uint32
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt32Hex (uint32_t attr) {
+  char buffer[9];
+  size_t len;
+  
+  len = TRI_StringUInt32HexInPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to hex string from uint64
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt64Hex (uint64_t attr) {
+  char buffer[17];
+  size_t len;
+  
+  len = TRI_StringUInt64HexInPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

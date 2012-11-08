@@ -107,6 +107,23 @@
   BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
   BOOST_CHECK_EQUAL(buffer, expectedValue); 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint64_t to hex
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CONVERSION_UINT64_HEX(value, expectedValue, buffer)              \
+  actualLength = TRI_StringUInt64HexInPlace((uint64_t) value, (char*) &buffer);\
+  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
+  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint32_t to hex
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CONVERSION_UINT32_HEX(value, expectedValue, buffer)              \
+  actualLength = TRI_StringUInt32HexInPlace((uint32_t) value, (char*) &buffer);\
+  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
+  BOOST_CHECK_EQUAL(buffer, expectedValue); 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -302,6 +319,50 @@ BOOST_AUTO_TEST_CASE (tst_uint64) {
   CHECK_CONVERSION_UINT64(9223372036854775808ULL, "9223372036854775808", buffer)
   CHECK_CONVERSION_UINT64(18446744073709551614ULL, "18446744073709551614", buffer)
   CHECK_CONVERSION_UINT64(UINT64_MAX, "18446744073709551615", buffer)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uint32_t hex conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_uint32_hex) {
+  char buffer[128];
+  size_t actualLength;
+
+  CHECK_CONVERSION_UINT32_HEX(0UL, "0", buffer)
+  CHECK_CONVERSION_UINT32_HEX(1UL, "1", buffer)
+  CHECK_CONVERSION_UINT32_HEX(9UL, "9", buffer)
+  CHECK_CONVERSION_UINT32_HEX(10UL, "A", buffer)
+  CHECK_CONVERSION_UINT32_HEX(128UL, "80", buffer)
+  CHECK_CONVERSION_UINT32_HEX(3254UL, "CB6", buffer)
+  CHECK_CONVERSION_UINT32_HEX(65535UL, "FFFF", buffer)
+  CHECK_CONVERSION_UINT32_HEX(65536UL, "10000", buffer)
+  CHECK_CONVERSION_UINT32_HEX(68863UL, "10CFF", buffer)
+  CHECK_CONVERSION_UINT32_HEX(465765536ULL, "1BC304A0", buffer)
+  CHECK_CONVERSION_UINT32_HEX(UINT32_MAX, "FFFFFFFF", buffer)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uint64_t hex conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_uint64_hex) {
+  char buffer[128];
+  size_t actualLength;
+
+  CHECK_CONVERSION_UINT64_HEX(0ULL, "0", buffer)
+  CHECK_CONVERSION_UINT64_HEX(1ULL, "1", buffer)
+  CHECK_CONVERSION_UINT64_HEX(9ULL, "9", buffer)
+  CHECK_CONVERSION_UINT64_HEX(10ULL, "A", buffer)
+  CHECK_CONVERSION_UINT64_HEX(128ULL, "80", buffer)
+  CHECK_CONVERSION_UINT64_HEX(3254ULL, "CB6", buffer)
+  CHECK_CONVERSION_UINT64_HEX(65535ULL, "FFFF", buffer)
+  CHECK_CONVERSION_UINT64_HEX(65536ULL, "10000", buffer)
+  CHECK_CONVERSION_UINT64_HEX(68863ULL, "10CFF", buffer)
+  CHECK_CONVERSION_UINT64_HEX(465765536ULL, "1BC304A0", buffer)
+  CHECK_CONVERSION_UINT64_HEX(47634665765536ULL, "2B52CF54FAA0", buffer)
+  CHECK_CONVERSION_UINT64_HEX(8668398959769325ULL, "1ECBDCE8C4B6ED", buffer)
+  CHECK_CONVERSION_UINT64_HEX(UINT64_MAX, "FFFFFFFFFFFFFFFF", buffer)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
