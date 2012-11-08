@@ -1386,7 +1386,10 @@ int main (int argc, char* argv[]) {
       }
       else {
         printf("Could not connect to server %s:%d\n", ServerAddress.c_str(), ServerPort);
-        printf("Error message '%s'\n", ClientConnection->getErrorMessage().c_str());
+        string errorMessage = ClientConnection->getErrorMessage();
+        if (errorMessage != "") {
+          printf("Error message '%s'\n", errorMessage.c_str());
+        }
       }
     }
   }
