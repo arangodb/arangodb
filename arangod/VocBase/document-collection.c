@@ -1084,12 +1084,12 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
       TRI_CopyString(keyBody, key, keySize);      
     }
     else {
-      // create key from did
-      sprintf(ridBuffer,"%d", (unsigned int) marker._rid);
-      keySize = strlen(ridBuffer) + 1;
+      // create key from did      
+      TRI_StringUInt64InPlace(marker._rid, ridBuffer);      
+      keySize = strlen(ridBuffer) + 1;      
       keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
       keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-      TRI_CopyString(keyBody, ridBuffer, keySize);      
+      TRI_CopyString(keyBody, ridBuffer, keySize);
     }
 
     marker._offsetKey = sizeof(marker);
@@ -1136,7 +1136,7 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     }
     else {
       // create key from did
-      sprintf(ridBuffer,"%d", (unsigned int) marker.base._rid);
+      TRI_StringUInt64InPlace(marker.base._rid, ridBuffer);      
       keySize = strlen(ridBuffer) + 1;
       keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
       keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
