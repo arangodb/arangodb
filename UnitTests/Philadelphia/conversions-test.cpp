@@ -34,6 +34,44 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert an int8_t
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CONVERSION_INT8(value, expectedValue, buffer)                    \
+  actualLength = TRI_StringInt8InPlace((int8_t) value, (char*) &buffer);       \
+  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
+  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint8_t
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CONVERSION_UINT8(value, expectedValue, buffer)                   \
+  actualLength = TRI_StringUInt8InPlace((uint8_t) value, (char*) &buffer);     \
+  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
+  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert an int16_t
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CONVERSION_INT16(value, expectedValue, buffer)                   \
+  actualLength = TRI_StringInt16InPlace((int16_t) value, (char*) &buffer);     \
+  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
+  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uint16_t
+////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CONVERSION_UINT16(value, expectedValue, buffer)                  \
+  actualLength = TRI_StringUInt16InPlace((uint16_t) value, (char*) &buffer);   \
+  BOOST_CHECK_EQUAL(actualLength, strlen(expectedValue));                      \
+  BOOST_CHECK_EQUAL(buffer, expectedValue); 
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an int32_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,6 +131,89 @@ struct CConversionsSetup {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(CConversionsTest, CConversionsSetup)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test int8_t conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_int8) {
+  char buffer[128];
+  size_t actualLength;
+
+  CHECK_CONVERSION_INT8(0, "0", buffer)
+  CHECK_CONVERSION_INT8(1, "1", buffer)
+  CHECK_CONVERSION_INT8(10, "10", buffer)
+  CHECK_CONVERSION_INT8(123, "123", buffer)
+  CHECK_CONVERSION_INT8(126, "126", buffer)
+  CHECK_CONVERSION_INT8(INT8_MAX, "127", buffer)
+  
+  CHECK_CONVERSION_INT8(-1, "-1", buffer)
+  CHECK_CONVERSION_INT8(-10, "-10", buffer)
+  CHECK_CONVERSION_INT8(-123, "-123", buffer)
+  CHECK_CONVERSION_INT8(-126, "-126", buffer)
+  CHECK_CONVERSION_INT8(-127, "-127", buffer)
+  CHECK_CONVERSION_INT16(INT8_MIN, "-128", buffer)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uint8_t conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_uint8) {
+  char buffer[128];
+  size_t actualLength;
+
+  CHECK_CONVERSION_UINT8(0, "0", buffer)
+  CHECK_CONVERSION_UINT8(1, "1", buffer)
+  CHECK_CONVERSION_UINT8(10, "10", buffer)
+  CHECK_CONVERSION_UINT8(127, "127", buffer)
+  CHECK_CONVERSION_UINT8(254, "254", buffer)
+  CHECK_CONVERSION_UINT8(UINT8_MAX, "255", buffer)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test int16_t conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_int16) {
+  char buffer[128];
+  size_t actualLength;
+
+  CHECK_CONVERSION_INT16(0, "0", buffer)
+  CHECK_CONVERSION_INT16(1, "1", buffer)
+  CHECK_CONVERSION_INT16(10, "10", buffer)
+  CHECK_CONVERSION_INT16(123, "123", buffer)
+  CHECK_CONVERSION_INT16(1234, "1234", buffer)
+  CHECK_CONVERSION_INT16(12345, "12345", buffer)
+  CHECK_CONVERSION_INT16(32766, "32766", buffer)
+  CHECK_CONVERSION_INT16(INT16_MAX, "32767", buffer)
+  
+  CHECK_CONVERSION_INT16(-1, "-1", buffer)
+  CHECK_CONVERSION_INT16(-10, "-10", buffer)
+  CHECK_CONVERSION_INT16(-123, "-123", buffer)
+  CHECK_CONVERSION_INT16(-1234, "-1234", buffer)
+  CHECK_CONVERSION_INT16(-12345, "-12345", buffer)
+  CHECK_CONVERSION_INT16(-32766, "-32766", buffer)
+  CHECK_CONVERSION_INT16(-32767, "-32767", buffer)
+  CHECK_CONVERSION_INT16(INT16_MIN, "-32768", buffer)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test uint16_t conversion
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_uint16) {
+  char buffer[128];
+  size_t actualLength;
+
+  CHECK_CONVERSION_UINT16(0, "0", buffer)
+  CHECK_CONVERSION_UINT16(1, "1", buffer)
+  CHECK_CONVERSION_UINT16(10, "10", buffer)
+  CHECK_CONVERSION_UINT16(32767, "32767", buffer)
+  CHECK_CONVERSION_UINT16(32768, "32768", buffer)
+  CHECK_CONVERSION_UINT16(65534, "65534", buffer)
+  CHECK_CONVERSION_UINT16(UINT16_MAX, "65535", buffer)
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test int32_t conversion

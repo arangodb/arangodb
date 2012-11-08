@@ -370,6 +370,122 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int8, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringInt8InPlace (int8_t attr, char* buffer) {
+  char* p;
+  
+  if (attr == INT8_MIN) {
+    memcpy(buffer, "-128\0", 4);
+    return 3;
+  }
+
+  p = buffer;
+
+  if (attr < 0) {
+    *p++ = '-';
+    attr = -attr;
+  }
+
+  if (       100 <= attr) { *p++ = (char)((attr /        100) % 10 + '0'); }
+  if (        10 <= attr) { *p++ = (char)((attr /         10) % 10 + '0'); }
+
+  *p++ = (char)(attr % 10 + '0');
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint8, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt8InPlace (uint8_t attr, char* buffer) {
+  char* p;
+
+  p = buffer;
+
+  if (       100U <= attr) { *p++ = (char)((attr /        100U) % 10 + '0'); }
+  if (        10U <= attr) { *p++ = (char)((attr /         10U) % 10 + '0'); }
+
+  *p++ = (char)(attr % 10 + '0');
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int16, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringInt16InPlace (int16_t attr, char* buffer) {
+  char* p;
+  
+  if (attr == INT16_MIN) {
+    memcpy(buffer, "-32768\0", 7);
+    return 6;
+  }
+
+  p = buffer;
+
+  if (attr < 0) {
+    *p++ = '-';
+    attr = -attr;
+  }
+
+  if (     10000 <= attr) { *p++ = (char)((attr /      10000) % 10 + '0'); }
+  if (      1000 <= attr) { *p++ = (char)((attr /       1000) % 10 + '0'); }
+  if (       100 <= attr) { *p++ = (char)((attr /        100) % 10 + '0'); }
+  if (        10 <= attr) { *p++ = (char)((attr /         10) % 10 + '0'); }
+
+  *p++ = (char)(attr % 10 + '0');
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint16, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt16InPlace (uint16_t attr, char* buffer) {
+  char* p;
+
+  p = buffer;
+
+  if (     10000U <= attr) { *p++ = (char)((attr /      10000U) % 10 + '0'); }
+  if (      1000U <= attr) { *p++ = (char)((attr /       1000U) % 10 + '0'); }
+  if (       100U <= attr) { *p++ = (char)((attr /        100U) % 10 + '0'); }
+  if (        10U <= attr) { *p++ = (char)((attr /         10U) % 10 + '0'); }
+
+  *p++ = (char)(attr % 10 + '0');
+  *p = '\0';
+
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to
@@ -526,6 +642,58 @@ size_t TRI_StringUInt64InPlace (uint64_t attr, char* buffer) {
   *p = '\0';
 
   return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int8
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringInt8 (int8_t attr) {
+  char buffer[4];
+  size_t len;
+
+  len = TRI_StringInt8InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint8
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt8 (uint8_t attr) {
+  char buffer[3];
+  size_t len;
+  
+  len = TRI_StringUInt8InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int16
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringInt16 (int16_t attr) {
+  char buffer[7];
+  size_t len;
+
+  len = TRI_StringInt16InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint16
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt16 (uint16_t attr) {
+  char buffer[6];
+  size_t len;
+  
+  len = TRI_StringUInt16InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
