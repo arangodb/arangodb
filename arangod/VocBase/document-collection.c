@@ -1024,11 +1024,10 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 
       d = *ptr;
 
-      printf("fid %lu, key %s, rid %lu, eid %lu, del %lu\n",
+      printf("fid %lu, key %s, rid %lu, del %lu\n",
              (unsigned long) d->_fid,
              (char*) d->_key,
              (unsigned long) d->_rid,
-             (unsigned long) d->_eid,
              (unsigned long) d->_deletion);
     }
   }
@@ -2373,7 +2372,6 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
   change.c = header;
 
   change.v->_rid = update->_rid;
-  change.v->_eid = update->_eid;
   change.v->_fid = update->_fid;
   change.v->_deletion = update->_deletion;
 

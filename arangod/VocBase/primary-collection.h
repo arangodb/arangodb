@@ -117,13 +117,13 @@ TRI_doc_update_policy_e;
 
 typedef struct TRI_doc_operation_context_s {
   struct TRI_primary_collection_s* _collection; // collection to be used
-  TRI_doc_update_policy_e _policy; // the update policy
-  TRI_voc_rid_t _expectedRid;  // the expected revision id of a document. only used if set and for update/delete
-  TRI_voc_rid_t* _previousRid; // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
-  bool _release : 1; // release the write lock after the operation
-  bool _sync : 1; // force syncing to disk after successful operation
-  bool _allowRollback : 1; // allow rollback of operation. this is normally true except for contexts created by rollback operations
-  bool _lock : 1; // currently unused
+  TRI_doc_update_policy_e _policy;              // the update policy
+  TRI_voc_rid_t _expectedRid;                   // the expected revision id of a document. only used if set and for update/delete
+  TRI_voc_rid_t* _previousRid;                  // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
+  bool _release : 1;                            // release the write lock after the operation
+  bool _sync : 1;                               // force syncing to disk after successful operation
+  bool _allowRollback : 1;                      // allow rollback of operation. this is normally true except for contexts created by rollback operations
+  bool _lock : 1;                               // currently unused
 }
 TRI_doc_operation_context_t;
 
@@ -132,16 +132,11 @@ TRI_doc_operation_context_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_mptr_s {
-  TRI_voc_rid_t _rid; // this is the revision identifier
-  TRI_voc_eid_t _eid; // this is the step identifier
-
-  TRI_voc_fid_t _fid; // this is the datafile identifier
-
+  TRI_voc_rid_t _rid;       // this is the revision identifier
+  TRI_voc_fid_t _fid;       // this is the datafile identifier
   TRI_voc_tick_t _deletion; // this is the deletion time
-
-  void const* _data; // this is the pointer to the raw marker
-  
-  char* _key; // this is the document identifier (string)
+  void const* _data;        // this is the pointer to the raw marker
+  char* _key;               // this is the document identifier (string)
 }
 TRI_doc_mptr_t;
 
