@@ -2150,7 +2150,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   if (argv.Length() < 1) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
-                                               "usage: GENERAL_CURSOR(<list>, <do-count>, <batch-size>)")));
+                                               "usage: CREATE_CURSOR(<list>, <do-count>, <batch-size>)")));
   }
 
   if (! argv[0]->IsArray()) {
