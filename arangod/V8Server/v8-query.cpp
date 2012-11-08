@@ -2497,67 +2497,39 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
   v8::Handle<v8::ObjectTemplate> rt;
 
-  // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
-
-  // .............................................................................
-  // local function names
-  // .............................................................................
+  assert(v8g != 0);
   
-  // the _NL functions are the same as their unsuffixed counterparts, just without any locking 
-  v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
-  v8::Handle<v8::String> AllNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL_NL"));
-  v8::Handle<v8::String> ByConditionBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_BITARRAY"));
-  v8::Handle<v8::String> ByConditionBitarrayNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_BITARRAY_NL"));
-  v8::Handle<v8::String> ByConditionSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST"));
-  v8::Handle<v8::String> ByConditionSkiplistNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST_NL"));
-  v8::Handle<v8::String> ByExampleFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE"));
-  v8::Handle<v8::String> ByExampleBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY"));
-  v8::Handle<v8::String> ByExampleBitarrayNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_BITARRAY_NL"));
-  v8::Handle<v8::String> ByExampleHashFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH"));
-  v8::Handle<v8::String> ByExampleHashNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_HASH_NL"));
-  v8::Handle<v8::String> ByExampleSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST"));
-  v8::Handle<v8::String> ByExampleSkiplistNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_EXAMPLE_SKIPLIST_NL"));
-  v8::Handle<v8::String> EdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("edges"));
-  v8::Handle<v8::String> InEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("inEdges"));
-  v8::Handle<v8::String> NearFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR"));
-  v8::Handle<v8::String> NearNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("NEAR_NL"));
-  v8::Handle<v8::String> OutEdgesFuncName = v8::Persistent<v8::String>::New(v8::String::New("outEdges"));
-  v8::Handle<v8::String> WithinFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN"));
-  v8::Handle<v8::String> WithinNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("WITHIN_NL"));
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
   // .............................................................................
 
   rt = v8g->VocbaseColTempl;
-
-  rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
-  rt->Set(AllNLFuncName, v8::FunctionTemplate::New(JS_AllNLQuery), v8::DontEnum);
-  rt->Set(ByConditionBitarrayFuncName, v8::FunctionTemplate::New(JS_ByConditionBitarray));
-  rt->Set(ByConditionBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLBitarray), v8::DontEnum);
-  rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));
-  rt->Set(ByConditionSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLSkiplist), v8::DontEnum);
-  rt->Set(ByExampleBitarrayFuncName, v8::FunctionTemplate::New(JS_ByExampleBitarray));
-  rt->Set(ByExampleBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLBitarray), v8::DontEnum);
-  rt->Set(ByExampleFuncName, v8::FunctionTemplate::New(JS_ByExampleQuery));
-  rt->Set(ByExampleHashFuncName, v8::FunctionTemplate::New(JS_ByExampleHashIndex));
-  rt->Set(ByExampleHashNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLHashIndex), v8::DontEnum);
-  rt->Set(ByExampleSkiplistFuncName, v8::FunctionTemplate::New(JS_ByExampleSkiplist));
-  rt->Set(ByExampleSkiplistNLFuncName, v8::FunctionTemplate::New(JS_ByExampleNLSkiplist), v8::DontEnum);
-  rt->Set(NearFuncName, v8::FunctionTemplate::New(JS_NearQuery));
-  rt->Set(NearNLFuncName, v8::FunctionTemplate::New(JS_NearNLQuery), v8::DontEnum);
-  rt->Set(WithinFuncName, v8::FunctionTemplate::New(JS_WithinQuery));
-  rt->Set(WithinNLFuncName, v8::FunctionTemplate::New(JS_WithinNLQuery), v8::DontEnum);
-  rt->Set(EdgesFuncName, v8::FunctionTemplate::New(JS_EdgesQuery));
-  rt->Set(InEdgesFuncName, v8::FunctionTemplate::New(JS_InEdgesQuery));
-  rt->Set(OutEdgesFuncName, v8::FunctionTemplate::New(JS_OutEdgesQuery));
+  
+  // the _NL functions are the same as their unsuffixed counterparts, just without any locking 
+  TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
+  TRI_AddMethodVocbase(rt, "ALL_NL", JS_AllNLQuery, true);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY_NL", JS_ByConditionNLBitarray, true);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist);
+  TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST_NL", JS_ByConditionNLSkiplist, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY", JS_ByExampleBitarray);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_BITARRAY_NL", JS_ByExampleNLBitarray, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH_NL", JS_ByExampleNLHashIndex, true);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
+  TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST_NL", JS_ByExampleNLSkiplist, true);
+  TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
+  TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
+  TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
+  TRI_AddMethodVocbase(rt, "NEARL_NL", JS_NearNLQuery, true);
+  TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
+  TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
+  TRI_AddMethodVocbase(rt, "WITHIN_NL", JS_WithinNLQuery, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
