@@ -1,5 +1,13 @@
-v1.0.3 (XXXX-XX-XX)
+v1.0.4 (XXXX-XX-XX)
 -------------------
+
+
+v1.0.3 (2012-11-08)
+-------------------
+
+* fixed AQL optimiser bug
+
+* issue #273: fixed segfault in arangosh on HTTP 40x 
 
 * issue #265: allow optional base64 encoding/decoding of action response data
 
