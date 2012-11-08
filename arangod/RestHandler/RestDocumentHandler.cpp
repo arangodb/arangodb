@@ -441,14 +441,16 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   
   TRI_voc_cid_t cid = ca.cid();
   TRI_shaper_t* shaper = ca.shaper();
-
+  
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
   ReadTransaction trx(&ca);
+  TRI_doc_operation_context_t context;
+  TRI_InitReadContextPrimaryCollection(&context, trx.primary());
 
-  TRI_doc_mptr_t const document = trx.primary()->read(trx.primary(), (TRI_voc_key_t) key.c_str());
+  TRI_doc_mptr_t const document = trx.primary()->read(&context, (TRI_voc_key_t) key.c_str());
 
   // register a barrier. will be destroyed automatically
   Barrier barrier(trx.primary());
@@ -549,7 +551,7 @@ bool RestDocumentHandler::readAllDocuments () {
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-        if (d->_deletion == 0) {
+        if (d->_validTo == 0) {
           ids.push_back(d->_key);
         }
       }
@@ -853,9 +855,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       // delete null attributes
       nullMeansRemove = true;
     }
+  
+    TRI_doc_operation_context_t readContext;
+    TRI_InitReadContextPrimaryCollection(&readContext, trx.primary());
 
     // read the existing document
-    TRI_doc_mptr_t document = trx.primary()->read(trx.primary(), (TRI_voc_key_t) key.c_str());
+    TRI_doc_mptr_t document = trx.primary()->read(&readContext, (TRI_voc_key_t) key.c_str());
     TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);

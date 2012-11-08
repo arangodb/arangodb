@@ -1686,7 +1686,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
         if (*ptr) {
           TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-          if (d->_deletion == 0) {
+          if (d->_validTo == 0) {
             --skip;
           }
         }
@@ -1701,7 +1701,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
         if (*ptr) {
           TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-          if (d->_deletion == 0) {
+          if (d->_validTo == 0) {
             ++skip;
 
             if (skip == 0) {
@@ -1721,7 +1721,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* sim,
       if (*ptr) {
         TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-        if (d->_deletion == 0) {
+        if (d->_validTo == 0) {
           if (barrier == 0) {
             barrier = TRI_CreateBarrierElement(&sim->base._barrierList);
           }
@@ -1871,6 +1871,9 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
+  TRI_doc_operation_context_t context;
+  TRI_InitReadContextPrimaryCollection(&context, collection->_collection);
+
   // .............................................................................
   // inside a read transaction
   // .............................................................................
@@ -1878,7 +1881,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   collection->_collection->beginRead(collection->_collection);
 
   // find documents by example
-  TRI_vector_t filtered = TRI_SelectByExample(sim, n,  pids, values);
+  TRI_vector_t filtered = TRI_SelectByExample(&context, n,  pids, values);
 
   // convert to list of shaped jsons
   size_t total = filtered._length;

@@ -386,7 +386,7 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
     if (*ptr != NULL) {
       mptr = *ptr;
 
-      if (mptr->_deletion == 0) {
+      if (mptr->_validTo == 0) {
         ++result;
       }
     }
@@ -563,6 +563,22 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const contex
   context->_release = false;
   context->_sync = forceSync || collection->base._waitForSync;
   context->_allowRollback = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a new operation context for reads
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const context, 
+                                           TRI_primary_collection_t* const collection) {
+  context->_collection = collection;
+  context->_policy = TRI_DOC_UPDATE_LAST_WRITE;
+  context->_expectedRid = 0;
+  context->_previousRid = NULL;
+  context->_lock = false;
+  context->_release = false;
+  context->_sync = false; 
+  context->_allowRollback = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

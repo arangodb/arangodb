@@ -134,7 +134,7 @@ TRI_doc_operation_context_t;
 typedef struct TRI_doc_mptr_s {
   TRI_voc_rid_t _rid;       // this is the revision identifier
   TRI_voc_fid_t _fid;       // this is the datafile identifier
-  TRI_voc_tick_t _deletion; // this is the deletion time
+  TRI_voc_tick_t _validTo;  // this is the deletion time
   void const* _data;        // this is the pointer to the raw marker
   char* _key;               // this is the document identifier (string)
 }
@@ -334,7 +334,7 @@ typedef struct TRI_primary_collection_s {
 
   TRI_doc_mptr_t (*create) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, TRI_voc_key_t key);
   TRI_doc_mptr_t (*createJson) (struct TRI_doc_operation_context_s*, TRI_df_marker_type_e, TRI_json_t const*, void const*);
-  TRI_doc_mptr_t (*read) (struct TRI_primary_collection_s*, TRI_voc_key_t);
+  TRI_doc_mptr_t (*read) (struct TRI_doc_operation_context_s*, TRI_voc_key_t);
 
   TRI_doc_mptr_t (*update) (struct TRI_doc_operation_context_s*, TRI_shaped_json_t const*, TRI_voc_key_t);
   TRI_doc_mptr_t (*updateJson) (struct TRI_doc_operation_context_s*, TRI_json_t const*, TRI_voc_key_t);
@@ -505,6 +505,13 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
                                        TRI_primary_collection_t* const,
                                        TRI_doc_update_policy_e,
                                        bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a new operation context for reads
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const, 
+                                           TRI_primary_collection_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

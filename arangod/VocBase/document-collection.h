@@ -230,8 +230,8 @@ TRI_document_collection_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t*,
-                                                         char const* path,
-                                                         TRI_col_parameter_t* parameter,
+                                                         char const*,
+                                                         TRI_col_parameter_t*,
                                                          TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,13 +240,13 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t*,
 /// Note that the collection must be closed first.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection);
+void TRI_DestroyDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeDocumentCollection (TRI_document_collection_t* collection);
+void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -265,26 +265,25 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t* collection);
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* collection);
+TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t* collection,
-                                         size_t position);
+bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*, char const* path);
+TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseDocumentCollection (TRI_document_collection_t* collection);
+int TRI_CloseDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -314,7 +313,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*,
 /// @brief drops an index
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* collection, TRI_idx_iid_t iid);
+bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*, TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -337,9 +336,9 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* collection, TRI
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* sim,
-                                                        size_t size,
-                                                        bool* created);
+TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
+                                                        size_t,
+                                                        bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -371,19 +370,19 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               const TRI_vector_pointer_t* attributes);
+                                                               const TRI_vector_pointer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               const TRI_vector_pointer_t* attributes,
-                                                               const TRI_vector_pointer_t* values,
-                                                               bool supportUndef, 
-                                                               bool* created,
-                                                               int* errorNum,
-                                                               char** errorStr);
+                                                               const TRI_vector_pointer_t*,
+                                                               const TRI_vector_pointer_t*,
+                                                               bool, 
+                                                               bool*,
+                                                               int*,
+                                                               char**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -409,11 +408,11 @@ struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_coll
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* collection,
-                                                           TRI_shape_pid_t location,
-                                                           bool geoJson,
-                                                           bool constraint,
-                                                           bool ignoreNull);
+struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
+                                                           TRI_shape_pid_t,
+                                                           bool,
+                                                           bool,
+                                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, attribute style
@@ -421,33 +420,33 @@ struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collecti
 /// Note that the caller must hold at least a read-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* collection,
-                                                           TRI_shape_pid_t latitude,
-                                                           TRI_shape_pid_t longitude,
-                                                           bool constraint,
-                                                           bool ignoreNull);
+struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
+                                                           TRI_shape_pid_t,
+                                                           TRI_shape_pid_t,
+                                                           bool,
+                                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* collection,
-                                                           char const* location,
-                                                           bool geoJson,
-                                                           bool constraint,
-                                                           bool ignoreNull,
-                                                           bool* created);
+struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
+                                                           char const*,
+                                                           bool,
+                                                           bool,
+                                                           bool,
+                                                           bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* collection,
-                                                           char const* latitude,
-                                                           char const* longitude,
-                                                           bool constraint,
-                                                           bool ignoreNull,
-                                                           bool* created);
+struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
+                                                           char const*,
+                                                           char const*,
+                                                           bool,
+                                                           bool,
+                                                           bool*);
                                                 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -470,11 +469,11 @@ struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collecti
 /// @brief converts attribute names to sorted lists of pids and names
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
-                                  TRI_shaper_t* shaper,
-                                  TRI_vector_t* pids,
-                                  TRI_vector_pointer_t* names,
-                                  bool sorted);
+int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const*,
+                                  TRI_shaper_t*,
+                                  TRI_vector_t*,
+                                  TRI_vector_pointer_t*,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
@@ -485,17 +484,17 @@ int TRI_PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
-                                                           TRI_vector_pointer_t const* attributes,
-                                                           bool unique);
+                                                           TRI_vector_pointer_t const*,
+                                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* collection,
-                                                           TRI_vector_pointer_t const* attributes,
-                                                           bool unique,
-                                                           bool* created);
+struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
+                                                           TRI_vector_pointer_t const*,
+                                                           bool,
+                                                           bool*);
                                                 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -521,17 +520,17 @@ struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collecti
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
-                                                               TRI_vector_pointer_t const* attributes,
-                                                               bool unique);
+                                                               TRI_vector_pointer_t const*,
+                                                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
-                                                               TRI_vector_pointer_t const* attributes,
-                                                               bool unique,
-                                                               bool* created);
+                                                               TRI_vector_pointer_t const*,
+                                                               bool,
+                                                               bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -564,10 +563,10 @@ struct TRI_index_s* TRI_LookupPriorityQueueIndexDocumentCollection (TRI_document
 /// @brief ensures that a priority queue index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_index_s* TRI_EnsurePriorityQueueIndexDocumentCollection (TRI_document_collection_t* collection,
-                                                                    TRI_vector_pointer_t const* attributes,
-                                                                    bool unique,
-                                                                    bool* created);
+struct TRI_index_s* TRI_EnsurePriorityQueueIndexDocumentCollection (TRI_document_collection_t*,
+                                                                    TRI_vector_pointer_t const*,
+                                                                    bool,
+                                                                    bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -590,9 +589,9 @@ struct TRI_index_s* TRI_EnsurePriorityQueueIndexDocumentCollection (TRI_document
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* sim,
-                                                        size_t size,
-                                                        bool* created);
+TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
+                                                        size_t,
+                                                        bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -611,10 +610,10 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (TRI_document_collection_t* sim,
-                                  size_t length,
-                                  TRI_shape_pid_t* pids,
-                                  TRI_shaped_json_t** values);
+TRI_vector_t TRI_SelectByExample (TRI_doc_operation_context_t*,
+                                  size_t,
+                                  TRI_shape_pid_t*,
+                                  TRI_shaped_json_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
