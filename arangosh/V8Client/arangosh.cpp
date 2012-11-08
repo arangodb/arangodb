@@ -1208,7 +1208,9 @@ int main (int argc, char* argv[]) {
       }
       else {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "'" << endl;
-        cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
+        if (ClientConnection->getErrorMessage() != "") {
+          cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
+        }
       }
     }
   }

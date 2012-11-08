@@ -1,6 +1,8 @@
 v1.1.beta1 (2012-XX-XX)
 -----------------------
 
+* fixed AQL optimiser bug
+
 * WARNING:
   - the user has changed from "arango" to "arangodb", the start script has changed from
     "arangod" to "arangodb", the database directory has changed from "/var/arangodb" to
