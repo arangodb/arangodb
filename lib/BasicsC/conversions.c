@@ -370,15 +370,20 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from int32
+/// @brief convert to string from int32, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_StringInt32 (int32_t attr) {
-  char buffer[12];
+size_t TRI_StringInt32InPlace (int32_t attr, char* buffer) {
   char* p;
-
+  
   if (attr == INT32_MIN) {
-    return TRI_DuplicateString("-2147483648");
+    memcpy(buffer, "-2147483648\0", 12);
+    return 11;
   }
 
   p = buffer;
@@ -401,16 +406,22 @@ char* TRI_StringInt32 (int32_t attr) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return TRI_DuplicateString(buffer);
+  return (p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from uint32
+/// @brief convert to string from uint32, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_StringUInt32 (uint32_t attr) {
-  char buffer[11];
-  char* p = buffer;
+size_t TRI_StringUInt32InPlace (uint32_t attr, char* buffer) {
+  char* p;
+
+  p = buffer;
 
   if (1000000000L <= attr) { *p++ = (char)((attr / 1000000000L) % 10 + '0'); }
   if ( 100000000L <= attr) { *p++ = (char)((attr /  100000000L) % 10 + '0'); }
@@ -425,21 +436,28 @@ char* TRI_StringUInt32 (uint32_t attr) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return TRI_DuplicateString(buffer);
+  return (p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from int64
+/// @brief convert to string from int64, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_StringInt64 (int64_t attr) {
-  char buffer[21];
-  char* p = buffer;
-
+size_t TRI_StringInt64InPlace (int64_t attr, char* buffer) {
+  char* p;
+  
   if (attr == INT64_MIN) {
-    return TRI_DuplicateString("-9223372036854775808");
+    memcpy(buffer, "-9223372036854775808\0", 21);
+    return 20;
   }
 
+  p = buffer;
+  
   if (attr < 0) {
     *p++ = '-';
     attr = -attr;
@@ -467,16 +485,22 @@ char* TRI_StringInt64 (int64_t attr) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return TRI_DuplicateString(buffer);
+  return (p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from uint64
+/// @brief convert to string from uint64, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_StringUInt64 (uint64_t attr) {
-  char buffer[21];
-  char* p = buffer;
+size_t TRI_StringUInt64InPlace (uint64_t attr, char* buffer) {
+  char* p;
+
+  p = buffer;
 
   if (10000000000000000000ULL <= attr) { *p++ = (char)((attr / 10000000000000000000ULL) % 10 + '0'); }
   if ( 1000000000000000000ULL <= attr) { *p++ = (char)((attr /  1000000000000000000ULL) % 10 + '0'); }
@@ -501,7 +525,59 @@ char* TRI_StringUInt64 (uint64_t attr) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return TRI_DuplicateString(buffer);
+  return (p - buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int32
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringInt32 (int32_t attr) {
+  char buffer[12];
+  size_t len;
+
+  len = TRI_StringInt32InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint32
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt32 (uint32_t attr) {
+  char buffer[11];
+  size_t len;
+  
+  len = TRI_StringUInt32InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int64
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringInt64 (int64_t attr) {
+  char buffer[21];
+  size_t len;
+
+  len = TRI_StringInt64InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint64
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_StringUInt64 (uint64_t attr) {
+  char buffer[21];
+  size_t len;
+  
+  len = TRI_StringUInt64InPlace(attr, (char*) &buffer);
+
+  return TRI_DuplicateString2(buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

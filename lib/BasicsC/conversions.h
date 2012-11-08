@@ -123,6 +123,50 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int32, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringInt32InPlace (int32_t, char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint32, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt32InPlace (uint32_t, char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from int64, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringInt64InPlace (int64_t, char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to string from uint64, using the specified buffer.
+/// A NUL-byte will be appended at the end.
+/// It is the caller's responsibility to ensure the buffer is big enough to
+/// contain the result string and the NUL byte. 
+/// The length of the string number in characters without the NUL byte is 
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_StringUInt64InPlace (uint64_t, char*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int32
 ////////////////////////////////////////////////////////////////////////////////
 
