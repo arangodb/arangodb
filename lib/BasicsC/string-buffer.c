@@ -743,22 +743,16 @@ int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 
 int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
   int res;
+  size_t len;
 
-  res = Reserve(self, 8);
-
+  res = Reserve(self, 11);
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (010000000U <= attr) { AppendChar(self, (attr / 010000000U) % 010 + '0'); }
-  if ( 01000000U <= attr) { AppendChar(self, (attr /  01000000U) % 010 + '0'); }
-  if (  0100000U <= attr) { AppendChar(self, (attr /   0100000U) % 010 + '0'); }
-  if (   010000U <= attr) { AppendChar(self, (attr /    010000U) % 010 + '0'); }
-  if (    01000U <= attr) { AppendChar(self, (attr /     01000U) % 010 + '0'); }
-  if (     0100U <= attr) { AppendChar(self, (attr /      0100U) % 010 + '0'); }
-  if (      010U <= attr) { AppendChar(self, (attr /       010U) % 010 + '0'); }
-
-  AppendChar(self, attr % 010 + '0');
+  len = TRI_StringUInt32OctalInPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -769,30 +763,16 @@ int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr
 
 int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
   int res;
+  size_t len;
 
-  res = Reserve(self, 16);
+  res = Reserve(self, 22);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  if (01000000000000000ULL <= attr) { AppendChar(self, (attr / 01000000000000000ULL) % 010 + '0'); }
-  if ( 0100000000000000ULL <= attr) { AppendChar(self, (attr /  0100000000000000ULL) % 010 + '0'); }
-  if (  010000000000000ULL <= attr) { AppendChar(self, (attr /   010000000000000ULL) % 010 + '0'); }
-  if (   01000000000000ULL <= attr) { AppendChar(self, (attr /    01000000000000ULL) % 010 + '0'); }
-  if (    0100000000000ULL <= attr) { AppendChar(self, (attr /     0100000000000ULL) % 010 + '0'); }
-  if (     010000000000ULL <= attr) { AppendChar(self, (attr /      010000000000ULL) % 010 + '0'); }
-  if (      01000000000ULL <= attr) { AppendChar(self, (attr /       01000000000ULL) % 010 + '0'); }
-  if (       0100000000ULL <= attr) { AppendChar(self, (attr /        0100000000ULL) % 010 + '0'); }
-  if (        010000000ULL <= attr) { AppendChar(self, (attr /         010000000ULL) % 010 + '0'); }
-  if (         01000000ULL <= attr) { AppendChar(self, (attr /          01000000ULL) % 010 + '0'); }
-  if (          0100000ULL <= attr) { AppendChar(self, (attr /           0100000ULL) % 010 + '0'); }
-  if (           010000ULL <= attr) { AppendChar(self, (attr /            010000ULL) % 010 + '0'); }
-  if (            01000ULL <= attr) { AppendChar(self, (attr /             01000ULL) % 010 + '0'); }
-  if (             0100ULL <= attr) { AppendChar(self, (attr /              0100ULL) % 010 + '0'); }
-  if (              010ULL <= attr) { AppendChar(self, (attr /               010ULL) % 010 + '0'); }
-
-  AppendChar(self, attr % 010 + '0');
+  
+  len = TRI_StringUInt32OctalInPlace(attr, self->_current);
+  self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
 }
