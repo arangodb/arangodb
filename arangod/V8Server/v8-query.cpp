@@ -920,6 +920,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     return scope.Close(v8::ThrowException(err));
   }
 
+  TRI_primary_collection_t* primary = &document->base;
+
   // expecting index, example, skip, and limit
   if (argv.Length() < 2) {
     if (lock) {
@@ -968,14 +970,14 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   // .............................................................................
 
   if (lock) {
-    collection->_collection->beginRead(collection->_collection);
+    primary->beginRead(primary); 
   }
 
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, &err);
 
   if (idx == 0) {
-    collection->_collection->endRead(collection->_collection);
+    primary->endRead(primary); 
 
     if (lock) {
       TRI_ReleaseCollection(collection);
@@ -985,7 +987,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (lock) {
-      collection->_collection->endRead(collection->_collection);
+      primary->endRead(primary); 
 
       TRI_ReleaseCollection(collection);
     }
@@ -1001,9 +1003,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     skiplistOperator = SetupConditionsSkiplist(idx, shaper, values);
   }
 
-  if (!skiplistOperator) {
+  if (! skiplistOperator) {
     if (lock) {
-      collection->_collection->endRead(collection->_collection);
+      primary->endRead(primary); 
 
       TRI_ReleaseCollection(collection);
     }
@@ -1031,15 +1033,15 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
         barrier = TRI_CreateBarrierElement(&document->base._barrierList);
       }
       // TODO: barrier might be 0
-      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier);
+      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier);
 
-      if (document.IsEmpty()) {
+      if (doc.IsEmpty()) {
         // error
         error = true;
         break;
       }
       else {
-        documents->Set(count, document);
+        documents->Set(count, doc);
         ++count;
       }
     
@@ -1047,7 +1049,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (lock) {
-    collection->_collection->endRead(collection->_collection);
+    primary->endRead(primary);
   }
 
   // .............................................................................
@@ -1131,7 +1133,8 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-
+  
+  TRI_primary_collection_t* primary = &document->base;
 
                                                
   // ...........................................................................
@@ -1200,7 +1203,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // .............................................................................
 
   if (lock) {
-    collection->_collection->beginRead(collection->_collection);
+    primary->beginRead(primary);
   }
 
   // .............................................................................
@@ -1210,7 +1213,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, &err);
 
   if (idx == 0) {
-    collection->_collection->endRead(collection->_collection);
+    primary->endRead(primary);
 
     if (lock) {
       TRI_ReleaseCollection(collection);
@@ -1221,7 +1224,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
     if (lock) {
-      collection->_collection->endRead(collection->_collection);
+      primary->endRead(primary);
 
       TRI_ReleaseCollection(collection);
     }
@@ -1241,7 +1244,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   
   if (indexOperator == 0) { // something wrong
     if (lock) {
-      collection->_collection->endRead(collection->_collection);
+      primary->endRead(primary);
 
       TRI_ReleaseCollection(collection);
     }
@@ -1285,15 +1288,15 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
           barrier = TRI_CreateBarrierElement(&document->base._barrierList);
         }
         // TODO: barrier might be 0
-        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, data, barrier);
+        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, data, barrier);
 
-        if (document.IsEmpty()) {
+        if (doc.IsEmpty()) {
           // error
           error = true;
           break;
         }
         else {
-          documents->Set(count, document);
+          documents->Set(count, doc);
           ++count;
         }        
       }
@@ -1311,7 +1314,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
  
   if (lock) { 
-    collection->_collection->endRead(collection->_collection);
+    primary->endRead(primary);
   }
 
   // .............................................................................
@@ -1455,6 +1458,8 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
+  
+  TRI_primary_collection_t* primary = &document->base;
 
   if (collection->_type != TRI_COL_TYPE_EDGE) {
     TRI_ReleaseCollection(collection);
@@ -1495,7 +1500,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   // inside a read transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
+  primary->beginRead(primary);
 
   TRI_barrier_t* barrier = 0;
   uint32_t count = 0;
@@ -1541,15 +1546,15 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
         }
         // TODO: barrier might be 0
         
-        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
+        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
-        if (document.IsEmpty()) {
+        if (doc.IsEmpty()) {
           // error
           error = true;
           break;
         }
         else {
-          documents->Set(count, document);
+          documents->Set(count, doc);
           ++count;
         }
         
@@ -1574,9 +1579,11 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
         TRI_ReleaseCollection(vertexCollection);
       }
 
-      collection->_collection->endRead(collection->_collection);
+      primary->endRead(primary);
 
-      if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      if (key) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      }
       TRI_ReleaseCollection(collection);
       return scope.Close(v8::ThrowException(errMsg));
     }
@@ -1594,15 +1601,15 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       }
       // TODO: barrier might be 0
 
-      v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
+      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
-      if (document.IsEmpty()) {
+      if (doc.IsEmpty()) {
         // error
         error = true;
         break;
       }
       else {
-        documents->Set(count, document);
+        documents->Set(count, doc);
         ++count;
       }
     }
@@ -1610,7 +1617,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     TRI_DestroyVectorPointer(&edges);
   }
 
-  collection->_collection->endRead(collection->_collection);
+  primary->endRead(primary);
 
   // .............................................................................
   // outside a write transaction
@@ -1727,15 +1734,15 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* document,
           }
           // TODO: barrier might be 0
 
-          v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, d, barrier);
+          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, d, barrier);
 
-          if (document.IsEmpty()) {
+          if (doc.IsEmpty()) {
             // error
             error = true;
             break;
           }
           else {
-            documents->Set(count, document);
+            documents->Set(count, doc);
             ++count;
           }
         }
@@ -1773,11 +1780,11 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   // inside a read transaction
   // .............................................................................
   
-  collection->_collection->beginRead(collection->_collection);
+  TRI_primary_collection_t* primary = &document->base;
 
+  primary->beginRead(primary);
   v8::Handle<v8::Value> result = AllQuery(document, collection, argv);
-
-  collection->_collection->endRead(collection->_collection);
+  primary->endRead(primary);
 
   // .............................................................................
   // outside a write transaction
@@ -1871,14 +1878,16 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  TRI_doc_operation_context_t context;
-  TRI_InitReadContextPrimaryCollection(&context, collection->_collection);
-
   // .............................................................................
   // inside a read transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
+  TRI_primary_collection_t* primary = &document->base;
+  TRI_doc_operation_context_t context;
+
+  TRI_InitReadContextPrimaryCollection(&context, primary);
+
+  primary->beginRead(primary);
 
   // find documents by example
   TRI_vector_t filtered = TRI_SelectByExample(&context, n,  pids, values);
@@ -1896,20 +1905,20 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     if (s < e) {
       // only go in here if something has to be done, otherwise barrier memory might be lost
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
+      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
       // TODO: barrier might be 0
 
       for (size_t j = s; j < e; ++j) {
         TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
-        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, mptr, barrier);
+        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, mptr, barrier);
 
-        if (document.IsEmpty()) {
+        if (doc.IsEmpty()) {
           // error
           error = true;
           break;
         }
         else {
-          documents->Set(count, document);
+          documents->Set(count, doc);
           ++count;
         }
 
@@ -1919,7 +1928,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   TRI_DestroyVector(&filtered);
 
-  collection->_collection->endRead(collection->_collection);
+  primary->endRead(primary); 
 
   // .............................................................................
   // outside a write transaction
@@ -2022,15 +2031,15 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
       // TODO: barrier might be 0
 
       for (size_t i = s;  i < e;  ++i) {
-        v8::Handle<v8::Value> document = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
+        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
 
-        if (document.IsEmpty()) {
+        if (doc.IsEmpty()) {
           // error
           error = true;
           break;
         }
         else {
-          documents->Set(count, document);
+          documents->Set(count, doc);
           ++count;
         }
         
@@ -2073,11 +2082,11 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   // inside a read transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
-  
-  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(document, collection, &err, argv);
+  TRI_primary_collection_t* primary = &document->base;
 
-  collection->_collection->endRead(collection->_collection);
+  primary->beginRead(primary);
+  v8::Handle<v8::Value> result = ByExampleHashIndexQuery(document, collection, &err, argv);
+  primary->endRead(primary);
 
   // .............................................................................
   // outside a write transaction
@@ -2298,11 +2307,11 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   // inside a read transaction
   // .............................................................................
 
-  collection->_collection->beginRead(collection->_collection);
+  TRI_primary_collection_t* primary = &document->base;
 
+  primary->beginRead(primary);
   v8::Handle<v8::Value> result = NearQuery(document, collection, &err, argv);
-  
-  collection->_collection->endRead(collection->_collection);
+  primary->endRead(primary);
 
   // .............................................................................
   // outside a write transaction
@@ -2428,16 +2437,16 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
-
+  
   // .............................................................................
   // inside a read transaction
   // .............................................................................
-
-  collection->_collection->beginRead(collection->_collection);
   
-  v8::Handle<v8::Value> result = WithinQuery(document, collection, &err, argv);
+  TRI_primary_collection_t* primary = &document->base;
 
-  collection->_collection->endRead(collection->_collection);
+  primary->beginRead(primary);
+  v8::Handle<v8::Value> result = WithinQuery(document, collection, &err, argv);
+  primary->endRead(primary);
 
   // .............................................................................
   // outside a write transaction
