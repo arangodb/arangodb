@@ -697,6 +697,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_doc_mptr_t document;
   v8::Handle<v8::Value> result;
   TRI_primary_collection_t* primary = collection->_collection;
+  
+  TRI_doc_operation_context_t readContext;
+  TRI_InitReadContextPrimaryCollection(&readContext, primary);
 
   // .............................................................................
   // inside a read transaction
@@ -706,7 +709,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
     primary->beginRead(primary);
   }
 
-  document = primary->read(primary, key);
+  document = primary->read(&readContext, key);
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (document._key != 0) {
@@ -1226,6 +1229,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   // .............................................................................
   // inside a write transaction
   // .............................................................................
+      
+  TRI_doc_operation_context_t readContext;
+  TRI_InitReadContextPrimaryCollection(&readContext, primary);
 
   primary->beginWrite(primary);
   
@@ -1233,7 +1239,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   TRI_doc_mptr_t mptr;
 
   TRI_voc_rid_t oldRid = 0;
-  TRI_doc_mptr_t document = primary->read(primary, key);
+  TRI_doc_mptr_t document = primary->read(&readContext, key);
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
   TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shapedJson);
@@ -5107,7 +5113,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   
   // first, collect all document pointers by traversing the primary index
   for (;  ptr < end;  ++ptr) {
-    if (*ptr && (*ptr)->_deletion == 0) {
+    if (*ptr && (*ptr)->_validTo == 0) {
       TRI_PushBackVectorPointer(&documents, (void*) *ptr);
     }
   }
