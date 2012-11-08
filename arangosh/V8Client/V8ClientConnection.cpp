@@ -68,6 +68,8 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::V8ClientConnection (const std::string& hostname,
+                                        const string& username,
+                                        const string& password,
                                         int port,
                                         double requestTimeout,
                                         size_t retries,
@@ -80,6 +82,9 @@ V8ClientConnection::V8ClientConnection (const std::string& hostname,
     _httpResult(0) {
       
   _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+  if (username != "") {
+    _client->setUserNamePassword("/", username, password);
+  }
 
   // connect to server and get version number
   map<string, string> headerFields;
