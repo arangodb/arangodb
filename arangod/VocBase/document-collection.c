@@ -1074,29 +1074,27 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
   TRI_df_marker_t* result;
   TRI_primary_collection_t* primary;
   TRI_document_collection_t* document;
-  size_t keySize = 0;
-  char* keyBody = 0;
-  TRI_voc_size_t keyBodySize = 0; 
-  char ridBuffer[33];  
-  size_t fromSize = 0;
-  size_t toSize = 0;
+  size_t keySize;
+  char* keyBody;
+  TRI_voc_size_t keyBodySize; 
+  char ridBuffer[22]; // can hold even the biggest stringified uint64_t
+  char* keySource;
   TRI_doc_mptr_t mptr;
 
   // initialise the result
   memset(&mptr, 0, sizeof(mptr));
   
+  primary = context->_collection;
+  
   if (type != TRI_DOC_MARKER_KEY_DOCUMENT && 
       type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
     Unlock(context);
+    primary->base._lastError = TRI_set_errno(TRI_ERROR_INTERNAL);
 
-    LOG_FATAL("unknown marker type %lu", (unsigned long) type);
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    return mptr;
   }
- 
 
-  primary = context->_collection;
 
   if (key) {
     document = (TRI_document_collection_t*) primary;
@@ -1122,18 +1120,17 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     if (key) {
       // we have a key!
       keySize = strlen(key) + 1;
-      keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
-      keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-      TRI_CopyString(keyBody, key, keySize);      
+      keySource = key;
     }
     else {
       // create key from did      
-      TRI_StringUInt64InPlace(marker._rid, ridBuffer);      
-      keySize = strlen(ridBuffer) + 1;      
-      keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
-      keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-      TRI_CopyString(keyBody, ridBuffer, keySize);
+      keySize = TRI_StringUInt64InPlace(marker._rid, ridBuffer) + 1;
+      keySource = (char*) &ridBuffer;
     }
+
+    keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
+    TRI_CopyString(keyBody, keySource, keySize);
 
     marker._offsetKey = sizeof(marker);
     marker._offsetJson = sizeof(marker) + keyBodySize;
@@ -1155,6 +1152,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     // create an edge
     TRI_doc_edge_key_marker_t marker;
     TRI_document_edge_t const* edge;
+    size_t fromSize;
+    size_t toSize;
 
     edge = data;
 
@@ -1170,19 +1169,18 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     
     if (key) {
       // we have a key!
-      keySize = strlen(key)+1;
-      keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
-      keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-      TRI_CopyString(keyBody, key, keySize);      
+      keySize = strlen(key) + 1;
+      keySource = key;
     }
     else {
       // create key from did
-      TRI_StringUInt64InPlace(marker.base._rid, ridBuffer);      
-      keySize = strlen(ridBuffer) + 1;
-      keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
-      keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-      TRI_CopyString(keyBody, ridBuffer, keySize);      
+      keySize = TRI_StringUInt64InPlace(marker.base._rid, ridBuffer) + 1;
+      keySource = (char*) &ridBuffer;
     }
+
+    keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
+    TRI_CopyString(keyBody, keySource, keySize);      
 
     TRI_CopyString((keyBody + keySize),          edge->_toKey, toSize);      
     TRI_CopyString((keyBody + keySize + toSize), edge->_fromKey, fromSize);      
