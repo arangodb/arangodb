@@ -167,7 +167,7 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"150px", "bSortable":false}, {"sWidth": "200px"}, {"sWidth": "200px"}, null, {"sWidth": "200px"}, {"sWidth": "200px"} ],
+    "aoColumns": [{"sWidth":"150px", "bSortable":false, "sClass":"leftCell"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null, {"sWidth": "200px"}, {"sWidth": "200px", "sClass":"rightCell"} ],
     "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
@@ -186,9 +186,9 @@ var documentEditTable = $('#documentEditTableID').dataTable({
     "bDeferRender": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sClass":"read_only", "bSortable": false, "sWidth": "30px"}, 
+    "aoColumns": [{"sClass":"read_only leftCell", "bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"400px" }, 
-                  {"sClass":"writeable", "bSortable": false},
+                  {"sClass":"writeable rightCell", "bSortable": false},
                   {"bVisible": false } ], 
     "oLanguage": {"sEmptyTable": "No documents"}
 });
@@ -206,9 +206,9 @@ var newDocumentTable = $('#NewDocumentTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"center", "sClass":"read_only","bSortable": false, "sWidth": "30px"}, 
+    "aoColumns": [{"sClass":"read_only center leftCell","bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
-                  {"sClass":"writeable", "bSortable": false },
+                  {"sClass":"writeable rightCell", "bSortable": false },
                   {"bVisible": false } ] 
   });
 
@@ -225,10 +225,10 @@ var documentsTable = $('#documentsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{ "sClass":"read_only", "bSortable": false, "sWidth":"80px"}, 
+    "aoColumns": [{ "sClass":"read_only leftCell", "bSortable": false, "sWidth":"80px"}, 
                  { "sClass":"read_only","bSortable": false, "sWidth": "200px"}, 
                  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},  
-                 { "bSortable": false, "sClass": "cuttedContent"}],
+                 { "bSortable": false, "sClass": "cuttedContent rightCell"}],
     "oLanguage": { "sEmptyTable": "No documents"}
   });
 
@@ -437,10 +437,10 @@ var logTable = $('#logTableID').dataTable({
           $('#documentEditSourceView').hide();
           $.each(data, function(key, val) {
             if (key == '_id') {
-              documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
+              documentEditTable.fnAddData(["&nbsp;", key, val, JSON.stringify(val)]);
             }
             else if (key == '_rev') {
-              documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
+              documentEditTable.fnAddData(["&nbsp;", key, val, JSON.stringify(val)]);
             }
             else if (key != '_rev' && key != '_id') {
               documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
@@ -1637,7 +1637,7 @@ function drawCollectionsTable () {
       else if (tempStatus == 2) {
         tempStatus = "<font color=orange>unloaded</font>";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
-        val.id, val.name, tempStatus, "", ""]);
+        val.id, val.name, tempStatus, "-", "-"]);
        }
       else if (tempStatus == 3) {
         tempStatus = "<font color=green>loaded</font>";
