@@ -178,9 +178,23 @@ static int SetupExampleObject (v8::Handle<v8::Object> example,
 
   // setup storage
   pids = (TRI_shape_pid_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shape_pid_t), false);
-  // TODO: memory allocation might fail
+  if (pids == 0) {
+    // out of memory
+    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY); 
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
-  // TODO: memory allocation might fail
+  if (values == 0) {
+    // out of memory
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids); 
+    pids = 0;
+    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, pids); 
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
@@ -858,7 +872,12 @@ static int SetupExampleObjectIndex (TRI_hash_index_t* hashIndex,
 
   // setup storage
   values = (TRI_shaped_json_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t*), false);
-  // TODO: memory allocation might fail
+  if (values == 0) {
+    // out of memory
+    *err = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
@@ -1031,12 +1050,15 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     if (total > skip && count < limit) {
       if (barrier == 0) {
         barrier = TRI_CreateBarrierElement(&document->base._barrierList);
+        if (barrier == 0) {
+          error = true;
+          break;
+        }
       }
-      // TODO: barrier might be 0
+      
       v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) indexElement->data, barrier);
 
       if (doc.IsEmpty()) {
-        // error
         error = true;
         break;
       }
@@ -1067,7 +1089,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   if (error) {
-    scope.Close(result);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
   
   return scope.Close(result);
@@ -1286,12 +1308,15 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
       if (total > skip && count < limit) {
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&document->base._barrierList);
+          if (barrier == 0) {
+            error = true;
+            break;
+          }
         }
-        // TODO: barrier might be 0
+
         v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, data, barrier);
 
         if (doc.IsEmpty()) {
-          // error
           error = true;
           break;
         }
@@ -1330,7 +1355,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   if (error) {
-    return scope.Close(v8::Null());
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
   
   return scope.Close(result);
@@ -1375,10 +1400,10 @@ static uint32_t RandomGeoCoordinateDistance (void) {
 /// @brief creates a geo result
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StoreGeoResult (TRI_vocbase_col_t const* collection,
-                            GeoCoordinates* cors,
-                            v8::Handle<v8::Array>& documents,
-                            v8::Handle<v8::Array>& distances) {
+static int StoreGeoResult (TRI_vocbase_col_t const* collection,
+                           GeoCoordinates* cors,
+                           v8::Handle<v8::Array>& documents,
+                           v8::Handle<v8::Array>& distances) {
   GeoCoordinate* end;
   GeoCoordinate* ptr;
   double* dtr;
@@ -1394,10 +1419,16 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
 
   if (n == 0) {
     GeoIndex_CoordinatesFree(cors);
-    return;
+    return TRI_ERROR_NO_ERROR;
   }
 
   gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
+  if (gtr == 0) {
+    GeoIndex_CoordinatesFree(cors);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   gnd = tmp + n;
 
   ptr = cors->coordinates;
@@ -1415,7 +1446,12 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   SortGeoCoordinates(tmp, gnd);
 
   barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
-  // TODO: barrier might be 0
+
+  if (barrier == 0) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // copy the documents
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
@@ -1424,6 +1460,8 @@ static void StoreGeoResult (TRI_vocbase_col_t const* collection,
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1538,13 +1576,18 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 
       edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
-      if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      if (key) {
+       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+      }
       
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
           barrier = TRI_CreateBarrierElement(&document->base._barrierList);
+          if (barrier == 0) {
+            error = true;
+            break;
+          }
         }
-        // TODO: barrier might be 0
         
         v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
@@ -1561,6 +1604,10 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
       }
 
       TRI_DestroyVectorPointer(&edges);
+
+      if (error) {
+        break;
+      }
     }
   }
 
@@ -1598,13 +1645,15 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
         barrier = TRI_CreateBarrierElement(&document->base._barrierList);
+        if (barrier == 0) {
+          error = true;
+          break;
+        }
       }
-      // TODO: barrier might be 0
 
       v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) edges._buffer[j], barrier);
 
       if (doc.IsEmpty()) {
-        // error
         error = true;
         break;
       }
@@ -1626,7 +1675,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
   TRI_ReleaseCollection(collection);
   
   if (error) {
-    return scope.Close(v8::Null());
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
   
   return scope.Close(documents);
@@ -1731,13 +1780,15 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* document,
         if (d->_validTo == 0) {
           if (barrier == 0) {
             barrier = TRI_CreateBarrierElement(&document->base._barrierList);
+            if (barrier == 0) {
+              error = true;
+              break;
+            }
           }
-          // TODO: barrier might be 0
 
           v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, d, barrier);
 
           if (doc.IsEmpty()) {
-            // error
             error = true;
             break;
           }
@@ -1754,7 +1805,7 @@ static v8::Handle<v8::Value> AllQuery (TRI_document_collection_t* document,
   result->Set(v8::String::New("count"), v8::Number::New(count));
   
   if (error) {
-    return scope.Close(v8::Null());
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
   
   return scope.Close(result);
@@ -1906,22 +1957,24 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     if (s < e) {
       // only go in here if something has to be done, otherwise barrier memory might be lost
       TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-      // TODO: barrier might be 0
+      if (barrier == 0) {
+        error = true;
+      }
+      else {
+        for (size_t j = s; j < e; ++j) {
+          TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
+          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, mptr, barrier);
 
-      for (size_t j = s; j < e; ++j) {
-        TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
-        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, mptr, barrier);
+          if (doc.IsEmpty()) {
+            error = true;
+            break;
+          }
+          else {
+            documents->Set(count, doc);
+            ++count;
+          }
 
-        if (doc.IsEmpty()) {
-          // error
-          error = true;
-          break;
         }
-        else {
-          documents->Set(count, doc);
-          ++count;
-        }
-
       }
     }
   }
@@ -1942,7 +1995,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   TRI_ReleaseCollection(collection);
 
   if (error) {
-    return scope.Close(v8::Null());
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
 
   return scope.Close(result);
@@ -2028,21 +2081,23 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
 
     if (s < e) {
       TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->base._barrierList);
-      // TODO: barrier might be 0
+      if (barrier == 0) {
+        error = true;
+      }
+      else {
+        for (size_t i = s;  i < e;  ++i) {
+          v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
 
-      for (size_t i = s;  i < e;  ++i) {
-        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) list->_elements[i].data, barrier);
+          if (doc.IsEmpty()) {
+            error = true;
+            break;
+          }
+          else {
+            documents->Set(count, doc);
+            ++count;
+          }
 
-        if (doc.IsEmpty()) {
-          // error
-          error = true;
-          break;
         }
-        else {
-          documents->Set(count, doc);
-          ++count;
-        }
-        
       }
     }
   }
@@ -2056,7 +2111,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (TRI_document_collection_t*
   CleanupExampleObject(shaper, n, 0, values);
 
   if (error) {
-    return scope.Close(v8::Null());
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
   
   return scope.Close(result);
@@ -2281,7 +2336,11 @@ static v8::Handle<v8::Value> NearQuery (TRI_document_collection_t* document,
   GeoCoordinates* cors = TRI_NearestGeoIndex(idx, latitude, longitude, limit);
 
   if (cors != 0) {
-    StoreGeoResult(collection, cors, documents, distances);
+    int res = StoreGeoResult(collection, cors, documents, distances);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res))); 
+    }
   }
 
   return scope.Close(result);
@@ -2379,7 +2438,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
                                           v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  // expect: WITHIN(<index-handle>, <latitude>, <longitude>, <limit>)
+  // expect: WITHIN(<index-handle>, <latitude>, <longitude>, <radius>)
   if (argv.Length() != 4) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -2401,7 +2460,7 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
   double latitude = TRI_ObjectToDouble(argv[1]);
   double longitude = TRI_ObjectToDouble(argv[2]);
 
-  // extract the limit
+  // extract the radius
   double radius = TRI_ObjectToDouble(argv[3]);
 
   // setup result
@@ -2416,7 +2475,11 @@ static v8::Handle<v8::Value> WithinQuery (TRI_document_collection_t* document,
   GeoCoordinates* cors = TRI_WithinGeoIndex(idx, latitude, longitude, radius);
 
   if (cors != 0) {
-    StoreGeoResult(collection, cors, documents, distances);
+    int res = StoreGeoResult(collection, cors, documents, distances);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res))); 
+    }
   }
 
   return scope.Close(result);
@@ -2535,7 +2598,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
-  TRI_AddMethodVocbase(rt, "NEARL_NL", JS_NearNLQuery, true);
+  TRI_AddMethodVocbase(rt, "NEAR_NL", JS_NearNLQuery, true);
   TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
   TRI_AddMethodVocbase(rt, "WITHIN_NL", JS_WithinNLQuery, true);
