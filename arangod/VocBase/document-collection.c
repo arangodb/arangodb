@@ -1269,10 +1269,9 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_operation_context_t* context,
       original->_type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
     Unlock(context);
-
-    LOG_FATAL("unknown marker type %lu", (unsigned long) original->_type);
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
+    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    
+    return mptr;
   }
 
 
