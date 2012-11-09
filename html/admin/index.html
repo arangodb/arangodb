@@ -56,9 +56,9 @@
         <button class="minimal" id="AvocSH">Shell</button>
         <button class="minimal" id="Logs">Logs</button>
         <button class="minimal" id="Status">Statistics</button>
-        <a href="http://www.arangodb.org/manuals/" target="_blank">
         <img class="externalLink" src="../html/media/icons/expand16icon.png" alt=""></img>
         <button class="minimal" id="Documentation">Documentation</button></a>
+        <a href="http://www.arangodb.org/manuals/current/" target="_blank"><button class="minimal" id="Documentation">Documentation</button></a>
       </div>
 
     </div>
@@ -431,13 +431,13 @@
         <form>
           <input type="text" class="editBox" id="avocshContent"></input><button class="minimal" id="submitAvoc">Ok</button>
         </form>
-          <button class="minimal" id="refreshShell">Refresh</button>
+          <button class="minimal" id="refreshShell"><a id="refrehShellTextRefresh">Refresh</a></button>
             <form action="#" id="formatshellJSONyesno" style="font-size:0.8em;">
               Format JSON? 
               <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
               <input type="radio" name="formatshellJSONyesno" value=false>no</input>
             </form>
-          <a href="http://www.arangodb.org/manuals/current/" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a>
+          <a id="shellInfo" href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a>
       </div>
 
       <div id="queryView" style="display: none"> 
@@ -445,10 +445,10 @@
           <a>Output</a>
         </div>
         <div id="queryOutput">
-          <a style="padding-left:10px"></a>
         </div>
         <div class="queryDiv">
           <a>Input</a>
+          <a style="padding-left:10px;">Please enter your query in the box below</a>
         </div>
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
