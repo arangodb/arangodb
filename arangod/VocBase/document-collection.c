@@ -375,11 +375,12 @@ static void CreateHeader (TRI_primary_collection_t* c,
 
   marker = (TRI_doc_document_key_marker_t const*) m;
 
-  header->_rid     = marker->_rid;
-  header->_fid     = datafile->_fid;
-  header->_validTo = 0;
-  header->_data    = marker;
-  header->_key     = ((char*)marker) + marker->_offsetKey;  
+  header->_rid       = marker->_rid;
+  header->_fid       = datafile->_fid;
+  header->_validFrom = marker->_rid; // document creation time
+  header->_validTo   = 0;            // document deletion time, 0 means "infinitely valid"
+  header->_data      = marker;
+  header->_key       = ((char*)marker) + marker->_offsetKey;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,7 +697,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   TRI_FillCrcMarkerDatafile(&marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
 
   // and write marker and blob
-  //TODO: update 
+  // TODO: update 
   res = WriteElement(document, journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize, *result);
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1032,10 +1033,11 @@ static void DebugHeaderDocumentCollection (TRI_document_collection_t* collection
 
       d = *ptr;
 
-      printf("fid %lu, key %s, rid %lu, validTo %lu\n",
+      printf("fid %lu, key %s, rid %lu, validFrom:%lu validTo %lu\n",
              (unsigned long) d->_fid,
              (char*) d->_key,
              (unsigned long) d->_rid,
+             (unsigned long) d->_validFrom,
              (unsigned long) d->_validTo);
     }
   }
@@ -1433,7 +1435,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_doc_datafile_info_t* dfi;
   TRI_voc_key_t key = NULL;
   
-  
   primary = &collection->base;
 
   // new or updated document
@@ -1499,8 +1500,9 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       CreateImmediateIndexes(collection, header);
     }
 
-    // it is an delete
+    // it is a delete
     else if (found->_validTo != 0) {
+      // TODO: fix for trx: check if delete was committed or not
       LOG_TRACE("skipping already deleted document: %s", key);
     }
 
@@ -1569,7 +1571,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header = collection->_headers->verify(collection->_headers, header);
 
       header->_rid = d->_rid;
-      header->_validTo = marker->_tick;
+      header->_validFrom = marker->_tick;
+      header->_validTo   = marker->_tick; // TODO: fix for trx
       header->_data = 0;
       header->_key = key;
 
@@ -1590,7 +1593,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
 
       // mark element as deleted
       change.c = found;
-      change.v->_validTo = marker->_tick;
+      change.v->_validFrom = marker->_tick;
+      change.v->_validTo   = marker->_tick; // TODO: fix for trx
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, found->_fid);
@@ -2268,6 +2272,12 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
   bool constraint;
 
   primary = &document->base;
+  
+  // return in case of a deleted document
+  if (header->_validTo != 0) {
+    // TODO: fix for trx
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // .............................................................................
   // update primary index
@@ -2290,11 +2300,6 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
 
     document->_headers->release(document->_headers, header);
     return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-  }
-
-  // return in case of a deleted document
-  if (header->_validTo != 0) {
-    return TRI_ERROR_NO_ERROR;
   }
 
   // check the document type
@@ -2384,7 +2389,8 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
 
   change.v->_rid = update->_rid;
   change.v->_fid = update->_fid;
-  change.v->_validTo = update->_validTo;
+  change.v->_validFrom = update->_validFrom; 
+  change.v->_validTo = update->_validTo; // TODO: fix for trx
 
   change.v->_data = update->_data;
 
@@ -2441,7 +2447,8 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
 
   // set the deletion flag
   change.c = header;
-  change.v->_validTo = deletion;
+  change.v->_validFrom = deletion;
+  change.v->_validTo   = deletion; // TODO: fix for trx
 
   primary = &collection->base;
 
@@ -4605,7 +4612,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
     
     // ...........................................................................    
     // If index could not be saved, report the error and return NULL
-    // Todo: get TRI_SaveIndex to report the error
+    // TODO: get TRI_SaveIndex to report the error
     // ...........................................................................    
     
     if (res == TRI_ERROR_NO_ERROR) {
