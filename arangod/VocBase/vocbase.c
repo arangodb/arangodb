@@ -216,7 +216,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
 static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_col_t* collection;
-  TRI_document_collection_t* sim;
+  TRI_document_collection_t* document;
   int res;
 
   collection = data;
@@ -235,10 +235,10 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return true;
   }
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_collection->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     LOG_ERROR("cannot unload collection '%s' of type '%d'",
               collection->_name,
-              (int) collection->_collection->base._type);
+              (int) collection->_type);
 
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
 
@@ -246,9 +246,9 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return false;
   }
 
-  sim = (TRI_document_collection_t*) collection->_collection;
+  document = (TRI_document_collection_t*) collection->_collection;
 
-  res = TRI_CloseDocumentCollection(sim);
+  res = TRI_CloseDocumentCollection(document);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("failed to close collection '%s': %s",
@@ -261,7 +261,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return true;
   }
 
-  TRI_FreeDocumentCollection(sim);
+  TRI_FreeDocumentCollection(document);
 
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
   collection->_collection = NULL;
@@ -275,7 +275,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
-  TRI_document_collection_t* sim;
+  TRI_document_collection_t* document;
   TRI_vocbase_col_t* collection;
   TRI_vocbase_t* vocbase;
   regmatch_t matches[3];
@@ -302,18 +302,18 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (collection->_collection != NULL) {
-    if (! TRI_IS_DOCUMENT_COLLECTION(collection->_collection->base._type)) {
+    if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
       LOG_ERROR("cannot drop collection '%s' of type '%d'",
                 collection->_name,
-                (int) collection->_collection->base._type);
+                (int) collection->_type);
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
       return false;
     }
 
-    sim = (TRI_document_collection_t*) collection->_collection;
+    document = (TRI_document_collection_t*) collection->_collection;
 
-    res = TRI_CloseDocumentCollection(sim);
+    res = TRI_CloseDocumentCollection(document);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("failed to close collection '%s': %s",
@@ -324,7 +324,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       return true;
     }
 
-    TRI_FreeDocumentCollection(sim);
+    TRI_FreeDocumentCollection(document);
 
     collection->_collection = NULL;
   }
@@ -633,7 +633,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
           c = AddCollection(vocbase, type, info._name, info._cid, file);
 
           if (c == NULL) {
-            LOG_FATAL("failed to add simple collection from '%s'", file);
+            LOG_FATAL("failed to add document collection from '%s'", file);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, file);
             regfree(&re);
@@ -644,7 +644,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
 
           c->_status = TRI_VOC_COL_STATUS_UNLOADED;
 
-          LOG_DEBUG("added simple collection from '%s'", file);
+          LOG_DEBUG("added document collection from '%s'", file);
         }
         else {
           LOG_DEBUG("skipping collection of unknown type %d", (int) type);
@@ -764,16 +764,16 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
   type = (TRI_col_type_e) collection->_type;
 
   if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-    TRI_document_collection_t* sim;
+    TRI_document_collection_t* document;
     TRI_col_parameter_t parameter;
 
     TRI_InitParameterCollection(vocbase, &parameter, collection->_name, type, vocbase->_defaultMaximalSize);
 
     parameter._type = (TRI_col_type_t) type;
 
-    sim = TRI_CreateDocumentCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
+    document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, &parameter, collection->_cid);
 
-    if (sim == NULL) {
+    if (document == NULL) {
       collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -781,9 +781,9 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
     }
 
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
-    collection->_collection = &sim->base;
+    collection->_collection = &document->base;
     FreeCollectionPath(collection);
-    collection->_path = TRI_DuplicateString(sim->base.base._directory);
+    collection->_path = TRI_DuplicateString(document->base.base._directory);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
     return TRI_ERROR_NO_ERROR;
@@ -924,21 +924,21 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
     type = (TRI_col_type_e) collection->_type;
 
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-      TRI_document_collection_t* sim;
+      TRI_document_collection_t* document;
 
-      sim = TRI_OpenDocumentCollection(vocbase, collection->_path);
+      document = TRI_OpenDocumentCollection(vocbase, collection->_path);
 
-      if (sim == NULL) {
+      if (document == NULL) {
         collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
 
         TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
         return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
       }
 
-      collection->_collection = &sim->base;
+      collection->_collection = &document->base;
       collection->_status = TRI_VOC_COL_STATUS_LOADED;
       FreeCollectionPath(collection);
-      collection->_path = TRI_DuplicateString(sim->base.base._directory);
+      collection->_path = TRI_DuplicateString(document->base.base._directory);
 
       // release the WRITE lock and try again
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1415,7 +1415,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_voc_cid_t cid) {
   TRI_primary_collection_t* primary = NULL;
   TRI_vocbase_col_t* collection;
-  TRI_document_collection_t* sim;
+  TRI_document_collection_t* document;
   TRI_col_type_e type;
   char const* name;
   void const* found;
@@ -1460,14 +1460,14 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   // ok, construct the collection
   // .............................................................................
 
-  sim = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
+  document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
 
-  if (sim == NULL) {
+  if (document == NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     return NULL;
   }
 
-  primary = &sim->base;
+  primary = &document->base;
 
   // add collection container
   collection = AddCollection(vocbase,
@@ -1778,6 +1778,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // collection is loaded
   // .............................................................................
 
+  // TODO: FIXME: this if condition is always true because the sub-parts are mutually exclusive
   else if (collection->_status != TRI_VOC_COL_STATUS_LOADED || collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 

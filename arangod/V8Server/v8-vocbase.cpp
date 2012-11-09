@@ -461,12 +461,10 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
-
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
 
   // .............................................................................
   // Ensure that there is at least one string parameter sent to this method
@@ -507,29 +505,30 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   bool created;
   TRI_index_t* idx;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (type == TRI_IDX_TYPE_HASH_INDEX) {
     if (create) {
-      idx = TRI_EnsureHashIndexDocumentCollection(sim, &attributes, unique, &created);
+      idx = TRI_EnsureHashIndexDocumentCollection(document, &attributes, unique, &created);
 
       if (idx == 0) {
         res = TRI_errno();
       }
     }
     else {
-      idx = TRI_LookupHashIndexDocumentCollection(sim, &attributes, unique);
+      idx = TRI_LookupHashIndexDocumentCollection(document, &attributes, unique);
     }
   }
   else if (type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (create) {
-      idx = TRI_EnsureSkiplistIndexDocumentCollection(sim, &attributes, unique, &created);
+      idx = TRI_EnsureSkiplistIndexDocumentCollection(document, &attributes, unique, &created);
 
       if (idx == 0) {
         res = TRI_errno();
       }
     }
     else {
-      idx = TRI_LookupSkiplistIndexDocumentCollection(sim, &attributes, unique);
+      idx = TRI_LookupSkiplistIndexDocumentCollection(document, &attributes, unique);
     }
   }
   else {
@@ -546,12 +545,11 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   TRI_DestroyVectorPointer(&attributes);
 
   if (idx == 0) {
+    TRI_ReleaseCollection(collection);
     if (create) {
-      TRI_ReleaseCollection(collection);
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created", true)));
     }
     else {
-      TRI_ReleaseCollection(collection);
       return scope.Close(v8::Null());
     }
   }
@@ -560,7 +558,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
   // return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx, collection->_collection);
+  TRI_json_t* json = idx->json(idx, primary);
 
   if (!json) {
     TRI_ReleaseCollection(collection);
@@ -609,7 +607,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
     if (collection != 0 && lock) {
       TRI_ReleaseCollection(collection);
     }
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (key) {
+     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -765,7 +765,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot replace document", true)));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
+  string id = StringUtils::itoa(collection->_cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
@@ -878,7 +878,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
+  string id = StringUtils::itoa(collection->_cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
@@ -1062,8 +1062,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (TRI_vocbase_col_t const* collection,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot save document", true)));
   }
 
-  //string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + StringUtils::itoa(mptr._did);
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
+  string id = StringUtils::itoa(collection->_cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
@@ -1104,7 +1103,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
       TRI_ReleaseCollection(collection);
     }
 
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1114,7 +1115,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
 
   if (json == 0) {
     TRI_ReleaseCollection(collection);
-    if (key) TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    if (key) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    }
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_errno(),
                                                "<data> is no valid JSON")));
@@ -1198,7 +1201,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot update document", true)));
   }
 
-  string id = StringUtils::itoa(primary->base._cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
+  string id = StringUtils::itoa(collection->_cid) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(mptr._key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->DidKey, v8::String::New(id.c_str()));
@@ -1427,12 +1430,12 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
   bool created;
   int off = constraint ? 1 : 0;
@@ -1456,7 +1459,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       ignoreNull = TRI_ObjectToBoolean(argv[1]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(sim, *loc, false, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, false, constraint, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1477,7 +1480,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex1DocumentCollection(sim, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex1DocumentCollection(document, *loc, TRI_ObjectToBoolean(argv[1]), constraint, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1506,7 +1509,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
       ignoreNull = TRI_ObjectToBoolean(argv[2]);
     }
 
-    idx = TRI_EnsureGeoIndex2DocumentCollection(sim, *lat, *lon, constraint, ignoreNull, &created);
+    idx = TRI_EnsureGeoIndex2DocumentCollection(document, *lat, *lon, constraint, ignoreNull, &created);
   }
 
   // .............................................................................
@@ -1535,7 +1538,7 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
         TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
   }
 
-  TRI_json_t* json = idx->json(idx, collection->_collection);
+  TRI_json_t* json = idx->json(idx, primary);
 
   if (! json) {
     TRI_ReleaseCollection(collection);
@@ -1627,7 +1630,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
-  if (allowDirectReturn || !result->IsArray()) {
+  if (allowDirectReturn || ! result->IsArray()) {
     // return the value we got as it is. this is a performance optimisation
     return scope.Close(result);
   }
@@ -1635,7 +1638,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   // return the result as a cursor object
   TRI_json_t* json = TRI_JsonObject(result);
 
-  if (!json) {
+  if (! json) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -1643,7 +1646,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
 
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
-  if (!cursorResult) {
+  if (! cursorResult) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
@@ -1652,7 +1655,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   }
 
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(cursorResult, doCount, batchSize);
-  if (!cursor) {
+  if (! cursor) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1700,15 +1703,9 @@ static void WeakGeneralCursorCallback (v8::Persistent<v8::Value> object, void* p
 
   TRI_EndUsageDataShadowData(vocbase->_cursors, parameter);
 
-  // find the persistent handle
-  TRI_v8_global_t* v8g;
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  v8::Persistent<v8::Value> persistent = v8g->JSGeneralCursors[parameter];
-  v8g->JSGeneralCursors.erase(parameter);
-
   // dispose and clear the persistent handle
-  persistent.Dispose();
-  persistent.Clear();
+  object.Dispose();
+  object.Clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1730,25 +1727,16 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
     return scope.Close(cursorObject);
   }  
   
-  map< void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSGeneralCursors.find(cursor);
+  v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
 
-  if (i == v8g->JSGeneralCursors.end()) {
-    v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(v8::External::New(cursor));
-
-    if (tryCatch.HasCaught()) {
-      return scope.Close(v8::Undefined());
-    }
-
-    cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
-    cursorObject->SetInternalField(SLOT_CLASS, persistent);
-    v8g->JSGeneralCursors[cursor] = persistent;
-
-    persistent.MakeWeak(cursor, WeakGeneralCursorCallback);
+  if (tryCatch.HasCaught()) {
+    return scope.Close(v8::Undefined());
   }
-  else {
-    cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
-    cursorObject->SetInternalField(SLOT_CLASS, i->second);
-  }
+
+  cursorObject->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_GENERAL_CURSOR_TYPE));
+  cursorObject->SetInternalField(SLOT_CLASS, persistent);
+
+  persistent.MakeWeak(cursor, WeakGeneralCursorCallback);
 
   return scope.Close(cursorObject);
 }
@@ -2921,13 +2909,13 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
   
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_collection_t* col = &sim->base.base;
+  TRI_collection_t* col = &document->base.base;
   const char* name = col->_name;
   TRI_col_version_t version = col->_version;
 
@@ -3597,19 +3585,19 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (argv.Length() != 1) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: dropIndex(<index-handle>)")));
   }
 
-  TRI_index_t* idx = TRI_LookupIndexByHandle(primary->base._vocbase, collection, argv[0], true, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(collection->_vocbase, collection, argv[0], true, &err);
 
   if (idx == 0) {
     if (err.IsEmpty()) {
@@ -3631,7 +3619,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // inside a write transaction
   // .............................................................................
 
-  bool ok = TRI_DropIndexDocumentCollection(sim, idx->_iid);
+  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid);
 
   // .............................................................................
   // outside a write transaction
@@ -3678,12 +3666,12 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   TRI_index_t* idx = 0;
   bool created;
 
@@ -3697,7 +3685,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
                               "<size> must be at least 1")));
     }
 
-    idx = TRI_EnsureCapConstraintDocumentCollection(sim, size, &created);
+    idx = TRI_EnsureCapConstraintDocumentCollection(document, size, &created);
   }
 
   // .............................................................................
@@ -3717,7 +3705,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "index could not be created", true)));
   }
 
-  TRI_json_t* json = idx->json(idx, collection->_collection);
+  TRI_json_t* json = idx->json(idx, primary);
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -3773,12 +3761,12 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
   
   // .............................................................................
   // Ensure that there is at least one string parameter sent to this method
@@ -3903,7 +3891,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 
   if (ok) {
     char* errorStr = 0;
-    bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(sim, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
+    bitarrayIndex = TRI_EnsureBitarrayIndexDocumentCollection(document, &attributes, &values, supportUndef, &indexCreated, &errorCode, &errorStr);
     if (bitarrayIndex == 0) {
       if (errorStr == 0) {
          errorString = "index could not be created from Simple Collection";
@@ -3938,7 +3926,7 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
     // Create a json represention of the index
     // ...........................................................................
 
-    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, collection->_collection);
+    TRI_json_t* json = bitarrayIndex->json(bitarrayIndex, primary);
 
     if (json == NULL) {
       errorCode = TRI_ERROR_OUT_OF_MEMORY;
@@ -4146,12 +4134,12 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   // .............................................................................
   // Return string when there is an error of some sort.
@@ -4197,7 +4185,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Actually create the index here. Note that priority queue is never unique.
   // .............................................................................
 
-  idx = TRI_EnsurePriorityQueueIndexDocumentCollection(sim, &attributes, false, &created);
+  idx = TRI_EnsurePriorityQueueIndexDocumentCollection(document, &attributes, false, &created);
 
   // .............................................................................
   // Remove the memory allocated to the list of attributes used for the hash index
@@ -4215,7 +4203,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
   // Return the newly assigned index identifier
   // .............................................................................
 
-  TRI_json_t* json = idx->json(idx, collection->_collection);
+  TRI_json_t* json = idx->json(idx, primary);
 
   v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -4326,13 +4314,14 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     return scope.Close(result);
   }
+  
+  TRI_primary_collection_t* primary = collection->_collection;
 
-  if (collection->_collection == 0) {
+  if (primary == 0) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-  TRI_primary_collection_t* primary = collection->_collection;
 
   primary->beginRead(primary);
   TRI_doc_collection_info_t* info = primary->figures(primary);
@@ -4409,17 +4398,17 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv,
 
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     if (lock) {
       TRI_ReleaseCollection(collection);
     }
     return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   // get a list of indexes
-  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(sim, lock);
+  TRI_vector_pointer_t* indexes = TRI_IndexesDocumentCollection(document, lock);
  
   if (lock) { 
     TRI_ReleaseCollection(collection);
@@ -4567,13 +4556,14 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   }
 
   TRI_primary_collection_t* primary = collection->_collection;
+  TRI_collection_t* base = &primary->base;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(base->_type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
 
-  TRI_document_collection_t* sim = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   // check if we want to change some parameters
   if (0 < argv.Length()) {
@@ -4583,13 +4573,13 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       v8::Handle<v8::Object> po = par->ToObject();
 
       // get the old values
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-      bool waitForSync = sim->base.base._waitForSync;
-      size_t maximalSize = sim->base.base._maximalSize;
-      size_t maximumMarkerSize = sim->base.base._maximumMarkerSize;
+      bool waitForSync = base->_waitForSync;
+      size_t maximalSize = base->_maximalSize;
+      size_t maximumMarkerSize = base->_maximumMarkerSize;
 
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
       // extract sync flag
       if (po->Has(v8g->WaitForSyncKey)) {
@@ -4622,7 +4612,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(collection->_vocbase, &sim->base.base, &newParameter);
+      int res = TRI_UpdateParameterInfoCollection(base->_vocbase, base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);
@@ -4634,9 +4624,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   // return the current parameter set
   v8::Handle<v8::Object> result = v8::Object::New();
 
-  if (TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
-    TRI_voc_size_t maximalSize = sim->base.base._maximalSize;
-    bool waitForSync = sim->base.base._waitForSync;
+  if (TRI_IS_DOCUMENT_COLLECTION(base->_type)) {
+    TRI_voc_size_t maximalSize = base->_maximalSize;
+    bool waitForSync = base->_waitForSync;
 
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
@@ -5009,9 +4999,9 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   // extract and use the simple collection
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
 
-  if (sim == 0) {
+  if (document == 0) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -5029,7 +5019,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   TRI_doc_operation_context_t context;
   TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
 
-  primary->beginWrite(collection->_collection);
+  primary->beginWrite(primary);
   
   ptr = (TRI_doc_mptr_t const**) (primary->_primaryIndex._table);
   end = (TRI_doc_mptr_t const**) ptr + primary->_primaryIndex._nrAlloc;
@@ -5054,7 +5044,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
     }
   }
 
-  primary->endWrite(collection->_collection);
+  primary->endWrite(primary);
   
   TRI_ReleaseCollection(collection);
 
@@ -6045,7 +6035,7 @@ TRI_document_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& arg
   // handle various collection types
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type");
     return 0;
   }
@@ -6070,7 +6060,7 @@ TRI_document_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments cons
   // handle various collection types
   TRI_primary_collection_t* primary = collection->_collection;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(primary->base._type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
     TRI_ReleaseCollection(collection);
     *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type");
     return 0;
@@ -6167,7 +6157,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
   }
 
   // check cross collection requests
-  if (cid != collection->_collection->base._cid) {
+  if (cid != collection->_cid) {
     if (cid == 0) {
       //return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
       //                                         "collection of <document-handle> unknown"));
@@ -6247,7 +6237,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
   }
 
   // check cross collection requests
-  if (cid != collection->_collection->base._cid) {
+  if (cid != collection->_cid) {
     if (cid == 0) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                    "collection of <index-handle> unknown");
@@ -6355,7 +6345,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->DidKey, TRI_ObjectReference(collection->_collection->base._cid, document->_key), v8::ReadOnly);
+  result->Set(v8g->DidKey, TRI_ObjectReference(collection->_cid, document->_key), v8::ReadOnly);
   result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
   result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 

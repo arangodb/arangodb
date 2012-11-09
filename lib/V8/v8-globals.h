@@ -61,8 +61,7 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   TRI_v8_global_s ()
-    : JSGeneralCursors(),
-      JSBarriers(),
+    : JSBarriers(),
       ErrorTempl(),
       GeneralCursorTempl(),
       TransactionTempl(),
@@ -97,12 +96,6 @@ typedef struct TRI_v8_global_s {
     regfree(&DocumentKeyRegex);
     regfree(&IndexIdRegex);
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief general cursor mapping for weak pointers
-////////////////////////////////////////////////////////////////////////////////
-
-  std::map< void*, v8::Persistent<v8::Value> > JSGeneralCursors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief barrier mapping for weak pointers
