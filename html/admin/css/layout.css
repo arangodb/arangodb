@@ -594,12 +594,13 @@ form {
 }
 
 #queryContent {
+  padding-top: 10px; 
   height: 45%; 
   font-family: "courier";
   width: 100%;
   resize: vertical; 
-  padding-top: 10px;  
-  padding-left: 10px; 
+  padding-left: 10px;
+  margin-top: 2px;  
 }
 
 #avocshWindow {
