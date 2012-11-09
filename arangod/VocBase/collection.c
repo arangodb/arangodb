@@ -416,6 +416,31 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterate over all datafiles in a vector
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
+                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                    void* data) {
+  size_t i, n;
+
+  n = files->_length;
+  for (i = 0;  i < n;  ++i) {
+    TRI_datafile_t* datafile;
+    int result;
+
+    datafile = (TRI_datafile_t*) TRI_AtVectorPointer(files, i);
+    result = TRI_IterateDatafile(datafile, iterator, data, false);
+
+    if (! result) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief closes the datafiles passed in the vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -902,8 +927,7 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
   TRI_vector_pointer_t* datafiles;
   TRI_vector_pointer_t* journals;
   TRI_vector_pointer_t* compactors;
-  size_t i;
-  size_t n;
+  bool result;
 
   datafiles = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_datafiles);
   if (datafiles == NULL) {
@@ -929,73 +953,22 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
     return false;
   }
 
-  // iterate over all datafiles
-  n = datafiles->_length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* datafile;
-    bool result;
-
-    datafile = datafiles->_buffer[i];
-
-    result = TRI_IterateDatafile(datafile, iterator, data, false);
-
-    if (! result) {
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
-
-      return false;
-    }
+  if (! IterateDatafilesVector(datafiles , iterator, data) ||
+      ! IterateDatafilesVector(compactors, iterator, data) ||
+      ! IterateDatafilesVector(journals,   iterator, data)) {
+    result = false;
   }
-
-  // iterate over all compactors
-  n = compactors->_length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* datafile;
-    bool result;
-
-    datafile = compactors->_buffer[i];
-
-    result = TRI_IterateDatafile(datafile, iterator, data, false);
-
-    if (! result) {
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
-
-      return false;
-    }
-  }
-
-  // iterate over all journals
-  n = journals->_length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* datafile;
-    bool result;
-
-    datafile = journals->_buffer[i];
-
-    result = TRI_IterateDatafile(datafile, iterator, data, false);
-
-    if (! result) {
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
-      TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
-
-      return false;
-    }
+  else {
+    result = true;
   }
 
   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, datafiles);
   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, journals);
   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, compactors);
 
-  return true;
+  return result;
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over all index files of a collection
 ////////////////////////////////////////////////////////////////////////////////
