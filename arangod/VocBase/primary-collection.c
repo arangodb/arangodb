@@ -582,6 +582,41 @@ void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare revision of found document with revision specified in policy
+/// this will also store the actual revision id found in the database in the
+/// context variable _previousRid, but only if this is not NULL
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RevisionCheck (const TRI_doc_operation_context_t* const context,
+                       const TRI_voc_rid_t actualRid) {
+ 
+  // store previous revision 
+  if (context->_previousRid != NULL) {
+    *(context->_previousRid) = actualRid;
+  }
+ 
+  // check policy
+  switch (context->_policy) {
+    case TRI_DOC_UPDATE_ERROR:
+      if (context->_expectedRid != 0 && context->_expectedRid != actualRid) {
+        return TRI_ERROR_ARANGO_CONFLICT;
+      }
+      break;
+
+    case TRI_DOC_UPDATE_CONFLICT:
+      return TRI_ERROR_NOT_IMPLEMENTED;
+
+    case TRI_DOC_UPDATE_ILLEGAL:
+      return TRI_ERROR_INTERNAL;
+    
+    case TRI_DOC_UPDATE_LAST_WRITE:
+      return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

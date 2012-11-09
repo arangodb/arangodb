@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief primary index of a collection
+/// @brief versioned index of a collection
 ///
 /// @file
 ///
@@ -25,21 +25,26 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_DURHAM_VOC_BASE_PRIMARY_INDEX_H
-#define TRIAGENS_DURHAM_VOC_BASE_PRIMARY_INDEX_H 1
+#ifndef TRIAGENS_DURHAM_VOC_BASE_VERSIONED_INDEX_H
+#define TRIAGENS_DURHAM_VOC_BASE_VERSIONED_INDEX_H 1
 
 #include "BasicsC/common.h"
 
-#include "VocBase/primary-collection.h"
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+#include "BasicsC/locks.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     PRIMARY INDEX
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_doc_mptr_s;
+struct TRI_doc_operation_context_s;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   VERSIONED INDEX
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -52,41 +57,16 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constraint container
+/// @brief versioned index of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_revision_constraint_s {
-  TRI_doc_update_policy_e     _policy;
-  TRI_transaction_local_id_t  _expectedRevision;
-  TRI_transaction_local_id_t  _previousRevision;
+typedef struct TRI_versioned_index_s {
+  struct TRI_doc_mptr_s** _table;
+  uint64_t                _nrAlloc;
+  uint64_t                _nrUsed;
+  TRI_read_write_lock_t   _lock;
 }
-TRI_revision_constraint_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transactional master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_transaction_doc_mptr_s {
-  TRI_transaction_local_id_t _validFrom; // valid from trx id
-  TRI_transaction_local_id_t _validTo;   // valid to trx id
-  char*                      _key;       // document identifier (string)
-  TRI_voc_fid_t              _fid;       // datafile identifier
-  void const*                _data;      // pointer to the raw marker (NULL for deleted documents)
-}
-TRI_transaction_doc_mptr_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief primary index of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_primary_index_s {
-  TRI_read_write_lock_t        _lock;
-
-  TRI_transaction_doc_mptr_t** _table;
-  uint64_t                     _nrAlloc;
-  uint64_t                     _nrUsed;
-}
-TRI_primary_index_t;
+TRI_versioned_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -102,16 +82,40 @@ TRI_primary_index_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the primary index
+/// @brief create the versioned index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_primary_index_t* TRI_CreatePrimaryIndex (void);
+TRI_versioned_index_t* TRI_CreateVersionedIndex (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the primary index
+/// @brief free the versioned index
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreePrimaryIndex (TRI_primary_index_t* const);
+void TRI_FreeVersionedIndex (TRI_versioned_index_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an element to the versioned index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InsertVersionedIndex (TRI_versioned_index_t* const idx,
+                              struct TRI_doc_operation_context_s* const context, 
+                              struct TRI_doc_mptr_s* const doc);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates an element in the versioned index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UpdateVersionedIndex (TRI_versioned_index_t* const,
+                              struct TRI_doc_operation_context_s* const, 
+                              struct TRI_doc_mptr_s* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an element from the versioned index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DeleteVersionedIndex (TRI_versioned_index_t* const,
+                              struct TRI_doc_operation_context_s* const,
+                              struct TRI_doc_mptr_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
