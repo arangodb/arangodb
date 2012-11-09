@@ -127,8 +127,6 @@ img.externalLink {
   text-align: left; 
   width: 500px; 
   background-color: #F3F1EE;
-
-.jediTextarea textarea {
   border: solid 1px #525252; 
 }
 
@@ -551,14 +549,14 @@ form {
 }
 
 #formatJSONyesno {
-  margin-top: -50px;  
+  margin-top: -40px;  
   float:right; 
   margin-right: 120px;  
   color: #797979;
 }
 
 #aqlinfo {
-  line-height: 250%;     
+  line-height: 150%;     
 }
 
 #submitQuery {
@@ -567,26 +565,19 @@ form {
 }
 #refreshShell{
   padding-bottom: 3px;
-  margin-top: -6px;  
+  margin-top: -10px;  
   width: 9.5% !important;
 }
 
 #queryOutput a, .queryError, .querySuccess {
   font-size: 0.9em !important; 
-  font-family: "courier";
-  padding-left: 10px;  
-  padding-top: 10px !important;  
+  font-family: "courier"; 
 }
 
-#queryOutput pre {
-  padding-left: 10px; 
-  padding-top: 10px;  
-}
 
 #queryOutput {
   margin-bottom: 5px; 
   height:35%; 
-  padding-top: 10px;  
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
@@ -599,9 +590,7 @@ form {
   height: 45%; 
   font-family: "courier";
   width: 100%;
-  resize: vertical;
-  padding-top: 10px;  
-  padding-left: 10px; 
+  resize: vertical; 
 }
 
 #avocshWindow {
@@ -837,11 +826,6 @@ form {
 #logTableID_info {
 }
 
-#logTableID, #warnLogTableID, #critLogTableID, #infoLogTableID, #debugLogTableID {
-  border-left: 1px solid #AAAAAA;
-  border-right: 1px solid #AAAAAA;
-}
-
 .ui-dialog {
   height:100px; 
   font-size: 0.8em;  
@@ -945,12 +929,9 @@ form {
 #avocshView button, #queryView button, #tab_right button, #footerSlideContent button, form.jediTextarea > button  {
   background: #e3e3e3;
   border: 1px solid #bbb;
-  -webkit-border-radius: 1px;
-  -moz-border-radius: 1px;
-  border-radius: 1px;
-  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-  box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+//  box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
   font: 12px "helvetica neue", helvetica, arial, sans-serif;
   text-align: center;
@@ -981,42 +962,3 @@ form {
 #iInfo {
   font-size: 0.8em; 
 }
-
-#shellInfo {
-  line-height: 200%; 
-}
-
-#formatJSONyesno {
-  padding-top: 5px !important
-}
-
-@media screen 
-  and (-webkit-min-device-pixel-ratio:0)
-{
-  #submitAvoc {
-    padding-top: 4px !important; 
-    height: 30px !important;  
-  }
-
-  #refreshShell {
-    margin-top: -4px !important;  
-    margin-right: 2px !important; 
-  }
-
-  #refrehShellTextRefresh {
-    line-height:230% !important; 
-  }
-
-  #formatshellJSONyesno {
-    padding-top: 5px; 
-  }
-}
-
-.leftCell {
-  border-left: 1px solid #AAAAAA !important;
-}
-
-.rightCell {
-  border-right: 1px solid #AAAAAA !important;
-}
-
