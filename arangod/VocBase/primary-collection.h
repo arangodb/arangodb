@@ -44,6 +44,7 @@ extern "C" {
 
 struct TRI_cap_constraint_s;
 struct TRI_primary_collection_s;
+struct TRI_transaction_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -116,14 +117,15 @@ TRI_doc_update_policy_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_doc_operation_context_s {
-  struct TRI_primary_collection_s* _collection; // collection to be used
-  TRI_doc_update_policy_e _policy;              // the update policy
-  TRI_voc_rid_t _expectedRid;                   // the expected revision id of a document. only used if set and for update/delete
-  TRI_voc_rid_t* _previousRid;                  // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
-  bool _release : 1;                            // release the write lock after the operation
-  bool _sync : 1;                               // force syncing to disk after successful operation
-  bool _allowRollback : 1;                      // allow rollback of operation. this is normally true except for contexts created by rollback operations
-  bool _lock : 1;                               // currently unused
+  struct TRI_primary_collection_s* _collection;        // collection to be used
+  struct TRI_transaction_s*        _transaction;       // transaction context
+  TRI_voc_rid_t                    _expectedRid;       // the expected revision id of a document. only used if set and for update/delete
+  TRI_voc_rid_t*                   _previousRid;       // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
+  TRI_doc_update_policy_e          _policy;            // the update policy
+  bool                             _sync : 1;          // force syncing to disk after successful operation
+  bool                             _allowRollback : 1; // allow rollback of operation. this is normally true except for contexts created by rollback operations
+  bool                             _lock : 1;          // currently unused
+  bool                             _release : 1;       // release the write lock after the operation
 }
 TRI_doc_operation_context_t;
 
@@ -354,13 +356,13 @@ TRI_primary_collection_t;
 typedef struct TRI_doc_document_key_marker_s {
   TRI_df_marker_t base;
 
-  TRI_voc_rid_t _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t _sid;
+  TRI_voc_rid_t   _rid;        // this is the tick for an create and update
+  TRI_voc_eid_t   _sid;
 
   TRI_shape_sid_t _shape; 
  
-  uint16_t _offsetKey; 
-  uint16_t _offsetJson; 
+  uint16_t        _offsetKey; 
+  uint16_t        _offsetJson; 
 }
 TRI_doc_document_key_marker_t;
 
@@ -371,12 +373,12 @@ TRI_doc_document_key_marker_t;
 typedef struct TRI_doc_edge_key_marker_s {
   TRI_doc_document_key_marker_t base;
 
-  TRI_voc_cid_t _toCid;  
-  TRI_voc_cid_t _fromCid; 
+  TRI_voc_cid_t  _toCid;  
+  TRI_voc_cid_t  _fromCid; 
 
-  uint16_t _offsetToKey;
-  uint16_t _offsetFromKey;
-  uint8_t _isBidirectional;
+  uint16_t       _offsetToKey;
+  uint16_t       _offsetFromKey;
+  uint8_t        _isBidirectional;
 }
 TRI_doc_edge_key_marker_t;
 
@@ -387,10 +389,10 @@ TRI_doc_edge_key_marker_t;
 typedef struct TRI_doc_deletion_key_marker_s {
   TRI_df_marker_t base;
   
-  TRI_voc_rid_t _rid;        // this is the tick for an create and update
-  TRI_voc_eid_t _sid;
+  TRI_voc_rid_t  _rid;        // this is the tick for an create and update
+  TRI_voc_eid_t  _sid;
 
-  uint16_t _offsetKey;
+  uint16_t       _offsetKey;
 }
 TRI_doc_deletion_key_marker_t;
 
@@ -401,7 +403,7 @@ TRI_doc_deletion_key_marker_t;
 typedef struct TRI_doc_begin_transaction_marker_s {
   TRI_df_marker_t base;
 
-  TRI_voc_tid_t _tid;
+  TRI_voc_tid_t   _tid;
 }
 TRI_doc_begin_transaction_marker_t;
 
@@ -513,6 +515,15 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const,
 
 void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const, 
                                            TRI_primary_collection_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare revision of found document with revision specified in policy
+/// this will also store the actual revision id found in the database in the
+/// context variable _previousRid, but only if this is not NULL
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RevisionCheck (const TRI_doc_operation_context_t*,
+                       const TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

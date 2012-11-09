@@ -92,6 +92,7 @@ bin_arangod_SOURCES = \
 if ENABLE_TRX
 
 bin_arangod_SOURCES += \
+	arangod/VocBase/versioned-index.c \
 	arangod/VocBase/transaction.c
 endif
 

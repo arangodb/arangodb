@@ -315,41 +315,6 @@ static int WriteElement (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compare revision of found document with revision specified in policy
-/// this will also store the actual revision id found in the database in the
-/// context variable _previousRid, but only if this is not NULL
-////////////////////////////////////////////////////////////////////////////////
-
-static int RevisionCheck (const TRI_doc_operation_context_t* const context,
-                          const TRI_voc_rid_t actualRid) {
- 
-  // store previous revision 
-  if (context->_previousRid != NULL) {
-    *(context->_previousRid) = actualRid;
-  }
- 
-  // check policy
-  switch (context->_policy) {
-    case TRI_DOC_UPDATE_ERROR:
-      if (context->_expectedRid != 0 && context->_expectedRid != actualRid) {
-        return TRI_ERROR_ARANGO_CONFLICT;
-      }
-      break;
-
-    case TRI_DOC_UPDATE_CONFLICT:
-      return TRI_ERROR_NOT_IMPLEMENTED;
-
-    case TRI_DOC_UPDATE_ILLEGAL:
-      return TRI_ERROR_INTERNAL;
-    
-    case TRI_DOC_UPDATE_LAST_WRITE:
-      return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief write-unlock the collection if it was write-locked
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -663,7 +628,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   // check the revision
   // .............................................................................
 
-  res = RevisionCheck(context, header->_rid);
+  res = TRI_RevisionCheck(context, header->_rid);
   if (res != TRI_ERROR_NO_ERROR) {
     Unlock(context);
     TRI_set_errno(res);
@@ -801,8 +766,12 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
+  
+  // .............................................................................
+  // check the revision
+  // .............................................................................
 
-  res = RevisionCheck(context, header->_rid);
+  res = TRI_RevisionCheck(context, header->_rid);
   if (res != TRI_ERROR_NO_ERROR) {
     Unlock(context);
 
