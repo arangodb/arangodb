@@ -572,8 +572,14 @@ form {
 #queryOutput a, .queryError, .querySuccess {
   font-size: 0.9em !important; 
   font-family: "courier"; 
+  padding-left: 10px;  
+  padding-top: 10px !important;  
 }
 
+#queryOutput pre {
+  padding-left: 10px; 
+  padding-top: 10px;  
+}
 
 #queryOutput {
   margin-bottom: 5px; 
@@ -591,6 +597,8 @@ form {
   font-family: "courier";
   width: 100%;
   resize: vertical; 
+  padding-top: 10px;  
+  padding-left: 10px; 
 }
 
 #avocshWindow {
@@ -962,3 +970,42 @@ form {
 #iInfo {
   font-size: 0.8em; 
 }
+
+#shellInfo {
+  line-height: 200%; 
+}
+
+#formatJSONyesno {
+  padding-top: 5px !important
+}
+
+@media screen 
+  and (-webkit-min-device-pixel-ratio:0)
+{
+  #submitAvoc {
+    padding-top: 4px !important; 
+    height: 30px !important;  
+  }
+
+  #refreshShell {
+    margin-top: -4px !important;  
+    margin-right: 2px !important; 
+  }
+
+  #refrehShellTextRefresh {
+    line-height:230% !important; 
+  }
+
+  #formatshellJSONyesno {
+    padding-top: 5px; 
+  }
+}
+
+.leftCell {
+  border-left: 1px solid #AAAAAA !important;
+}
+
+.rightCell {
+  border-right: 1px solid #AAAAAA !important;
+}
+
