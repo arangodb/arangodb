@@ -68,6 +68,17 @@
 /// @TINYEXAMPLE{arangosh-start,starting the shell}
 ///
 /// This gives you a prompt, where you can issue JavaScript commands.
+///
+/// If you have turned on authentication in ArangoDB, you need to supply a
+/// username and a password when starting arangosh:
+///
+/// @verbinclude arangosh-auth
+///
+/// The password can either be specified on the command line using the
+/// @LIT{password} option, or it will be prompted for when not specified.
+/// There is no need to specify a username or password if authentication
+/// is turned off on the server side.
+///
 /// All documents are stored in collections. All collections are stored in a
 /// database.
 ///

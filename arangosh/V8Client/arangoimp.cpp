@@ -75,6 +75,24 @@ static int64_t DEFAULT_CONNECTION_TIMEOUT = 5;
 static string ServerAddress = "127.0.0.1:8529";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief user name
+////////////////////////////////////////////////////////////////////////////////
+
+static string Username = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief password
+////////////////////////////////////////////////////////////////////////////////
+
+static string Password = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use password flag
+////////////////////////////////////////////////////////////////////////////////
+
+static bool HasPassword = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,6 +188,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("help,h", "help message")
     ("log.level,l", &level,  "log level")
     ("server", &ServerAddress, "server address and port")
+    ("username", &Username, "username to use when connecting")
+    ("password", &Password, "password to use when connecting (leave empty for prompt)")
     ("file", &FileName, "file name (\"-\" for STDIN)")
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
@@ -207,6 +227,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // set the logging
   TRI_SetLogLevelLogging(level.c_str());
   TRI_CreateLogAppenderFile("-");
+  
+  // check if have a password
+  HasPassword = options.has("password");
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,15 +268,24 @@ int main (int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
     
-  // processComandLineArguments(argc, argv);
   if (! splitServerAdress(ServerAddress, DEFAULT_SERVER_NAME, DEFAULT_SERVER_PORT)) {
     if (ServerAddress.length()) {
       printf("Could not split %s.\n", ServerAddress.c_str());                  
     }
   }
+  
+  // must specify a user name
+  if (! HasPassword && Username != "") {
+    cout << "Please specify a password: " << flush;
+
+    // now prompt for it
+    getline(cin, Password);
+  }
           
   clientConnection = new V8ClientConnection(
           DEFAULT_SERVER_NAME, 
+          Username,
+          Password,
           DEFAULT_SERVER_PORT, 
           (double) requestTimeout,
           DEFAULT_RETRIES, 
