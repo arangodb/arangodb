@@ -3,6 +3,7 @@ test -d logs || mkdir logs
 
 rspec --format d \
 	api-http-spec.rb \
+	api-admin-spec.rb \
 	api-batch-spec.rb \
 	api-blueprints-spec.rb \
 	api-collection-spec.rb \
