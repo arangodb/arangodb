@@ -57,48 +57,48 @@ TRI_document_collection_t* TRI_ExtractSimpleCollection (v8::Arguments const& arg
 /// @brief extracts and locks the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments const& argv,
-                                                              TRI_vocbase_col_t const*& collection,
-                                                              v8::Handle<v8::Object>* err);
+TRI_document_collection_t* TRI_ExtractAndUseSimpleCollection (v8::Arguments const&,
+                                                              TRI_vocbase_col_t const*&,
+                                                              v8::Handle<v8::Object>*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseCollection (TRI_vocbase_col_t const* collection);
+void TRI_ReleaseCollection (TRI_vocbase_col_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
-                                                         TRI_vocbase_col_t const*& collection,
-                                                         TRI_voc_key_t& key,
-                                                         TRI_voc_rid_t& rid,
-                                                         const bool lock,
-                                                         v8::Handle<v8::Value> val);
+v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t*,
+                                                         TRI_vocbase_col_t const*&,
+                                                         TRI_voc_key_t&,
+                                                         TRI_voc_rid_t&,
+                                                         const bool,
+                                                         v8::Handle<v8::Value>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
-                                      TRI_vocbase_col_t const*& collection,
-                                      v8::Handle<v8::Value> val,
-                                      bool ignoreNotFound,
-                                      v8::Handle<v8::Object>* err);
+TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t*,
+                                      TRI_vocbase_col_t const*&,
+                                      v8::Handle<v8::Value>,
+                                      bool,
+                                      v8::Handle<v8::Object>*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const* database);
+v8::Handle<v8::Object> TRI_WrapVocBase (TRI_vocbase_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t for edges
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> TRI_WrapEdges (TRI_vocbase_t const* database);
+v8::Handle<v8::Object> TRI_WrapEdges (TRI_vocbase_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_col_t
@@ -116,15 +116,15 @@ v8::Handle<v8::Object> TRI_WrapEdgesCollection (TRI_vocbase_col_t const*);
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
-                                          TRI_doc_mptr_t const* document,
-                                          TRI_barrier_t* barrier);
+v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const*,
+                                          TRI_doc_mptr_t const*,
+                                          TRI_barrier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase);
+TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context>, TRI_vocbase_t*, const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

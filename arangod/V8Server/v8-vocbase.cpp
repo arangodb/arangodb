@@ -6314,7 +6314,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase) {
+TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, 
+                                      TRI_vocbase_t* vocbase, 
+                                      const size_t threadNumber) {
   v8::HandleScope scope;
 
   v8::Handle<v8::ObjectTemplate> rt;
@@ -6598,6 +6600,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
   context->Global()->Set(TRI_V8_SYMBOL("edges"),
                          TRI_WrapVocBase(vocbase, TRI_COL_TYPE_EDGE),
                          v8::ReadOnly);
+  
+  // current thread number
+  context->Global()->Set(TRI_V8_SYMBOL("threadNumber"), v8::Number::New(threadNumber), v8::ReadOnly);
 
   return v8g;
 }
