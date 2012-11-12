@@ -92,15 +92,11 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
-///
-/// @param string hostname            server hostname
-/// @param int port                   server port
-/// @param double requestTimeout      timeout in seconds for one request
-/// @param size_t retries             maximum number of request retries
-/// @param double connTimeout         timeout in seconds for the tcp connect 
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8ClientConnection (const string& hostname, 
+        V8ClientConnection (const string& hostname,
+                            const string& username, 
+                            const string& password, 
                             int port, 
                             double requestTimeout,
                             size_t retries,

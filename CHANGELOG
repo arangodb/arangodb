@@ -1,7 +1,14 @@
-v1.0.3 (XXXX-XX-XX)
+v1.0.3 (2012-11-08)
 -------------------
 
+* fixed AQL optimiser bug
+
+* issue #273: fixed segfault in arangosh on HTTP 40x 
+
+* issue #265: allow optional base64 encoding/decoding of action response data
+
 * issue #252: _modules collection not created automatically
+
 
 v1.0.2 (2012-10-22)
 -------------------
@@ -17,6 +24,7 @@ v1.0.2 (2012-10-22)
 * added autoload for modules
 
 * added AQL function TO_LIST
+
 
 v1.0.1 (2012-09-30)
 -------------------

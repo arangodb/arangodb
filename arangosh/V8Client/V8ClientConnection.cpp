@@ -68,6 +68,8 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::V8ClientConnection (const std::string& hostname,
+                                        const string& username,
+                                        const string& password,
                                         int port,
                                         double requestTimeout,
                                         size_t retries,
@@ -80,6 +82,9 @@ V8ClientConnection::V8ClientConnection (const std::string& hostname,
     _httpResult(0) {
       
   _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+  if (username != "") {
+    _client->setUserNamePassword("/", username, password);
+  }
 
   // connect to server and get version number
   map<string, string> headerFields;
@@ -348,13 +353,24 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
     }
     else {
       // no body 
-      // this should not happen
-      v8::Handle<v8::Object> result;        
+      v8::HandleScope scope;
 
-      result->Set(v8::String::New("error"), v8::Boolean::New(false));
-      result->Set(v8::String::New("code"), v8::Integer::New(_httpResult->getHttpReturnCode()));
+      v8::Handle<v8::Object> result = v8::Object::New();        
+      
+      result->Set(v8::String::New("code"), v8::Integer::New(_lastHttpReturnCode));
 
-      return result;
+      if (_lastHttpReturnCode >= 400) {
+        string returnMessage(_httpResult->getHttpReturnMessage());
+
+        result->Set(v8::String::New("error"), v8::Boolean::New(true));
+        result->Set(v8::String::New("errorNum"), v8::Integer::New(_lastHttpReturnCode));
+        result->Set(v8::String::New("errorMessage"), v8::String::New(returnMessage.c_str(), returnMessage.size()));
+      }
+      else {
+        result->Set(v8::String::New("error"), v8::Boolean::New(false));
+      }
+
+      return scope.Close(result);
     }        
   }      
 }
