@@ -13,6 +13,7 @@ v1.0.3 (2012-11-08)
 
 * issue #252: _modules collection not created automatically
 
+
 v1.0.2 (2012-10-22)
 -------------------
 
@@ -27,6 +28,7 @@ v1.0.2 (2012-10-22)
 * added autoload for modules
 
 * added AQL function TO_LIST
+
 
 v1.0.1 (2012-09-30)
 -------------------
