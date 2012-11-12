@@ -383,7 +383,7 @@ ModuleCache["/internal"] = new Module("/internal");
     // try to load the module from the database
     mc = internal.db._collection("_modules");
 
-    if (mc !== null) {
+    if (mc !== null && ("firstExample" in mc)) {
       n = mc.firstExample({ path: path });
 
       if (n !== null) {

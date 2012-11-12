@@ -384,7 +384,7 @@ static string JS_common_bootstrap_modules =
   "    // try to load the module from the database\n"
   "    mc = internal.db._collection(\"_modules\");\n"
   "\n"
-  "    if (mc !== null) {\n"
+  "    if (mc !== null && (\"firstExample\" in mc)) {\n"
   "      n = mc.firstExample({ path: path });\n"
   "\n"
   "      if (n !== null) {\n"
