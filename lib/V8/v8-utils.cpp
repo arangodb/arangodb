@@ -46,6 +46,7 @@
 #include "BasicsC/utf8-helper.h"
 #include "Rest/SslInterface.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-globals.h"
 
 #ifdef TRI_HAVE_ICU
 #include "unicode/normalizer2.h"
@@ -1617,17 +1618,14 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  assert(v8g != 0);
 
   // .............................................................................
   // create the Dictionary constructor
   // .............................................................................
 
   ft = v8::FunctionTemplate::New(WeakDictionaryInvocationCallback);
-  ft->SetClassName(v8::String::New("WeakDictionary"));
+  ft->SetClassName(TRI_V8_SYMBOL("WeakDictionary"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
@@ -1642,80 +1640,30 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   v8g->DictionaryTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
 
-  // must come after SetInternalFieldCount
-  context->Global()->Set(v8::String::New("WeakDictionary"), ft->GetFunction());
+  TRI_AddGlobalFunctionVocbase(context, "WeakDictionary", ft->GetFunction()); 
 
   // .............................................................................
   // create the global functions
   // .............................................................................
   
-  context->Global()->Set(v8::String::New("SYS_PARSE"),
-                         v8::FunctionTemplate::New(JS_Parse)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_EXECUTE"),
-                         v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_EXISTS"),
-                         v8::FunctionTemplate::New(JS_Exists)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_GETLINE"),
-                         v8::FunctionTemplate::New(JS_Getline)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_LOAD"),
-                         v8::FunctionTemplate::New(JS_Load)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_LOG"),
-                         v8::FunctionTemplate::New(JS_Log)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_LOG_LEVEL"),
-                         v8::FunctionTemplate::New(JS_LogLevel)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_MOVE"),
-                         v8::FunctionTemplate::New(JS_Move)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_REMOVE"),
-                         v8::FunctionTemplate::New(JS_Remove)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_OUTPUT"),
-                         v8::FunctionTemplate::New(JS_Output)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_PROCESS_STAT"),
-                         v8::FunctionTemplate::New(JS_ProcessStat)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_READ"),
-                         v8::FunctionTemplate::New(JS_Read)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_SAVE"),
-                         v8::FunctionTemplate::New(JS_Save)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_SHA256"),
-                         v8::FunctionTemplate::New(JS_Sha256)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_SPRINTF"),
-                         v8::FunctionTemplate::New(JS_SPrintF)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_TIME"),
-                         v8::FunctionTemplate::New(JS_Time)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("SYS_WAIT"),
-                         v8::FunctionTemplate::New(JS_Wait)->GetFunction(),
-                         v8::ReadOnly);
+  TRI_AddGlobalFunctionVocbase(context, "FS_EXISTS", JS_Exists);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
+  TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
+  
+  TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE", JS_Execute);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_LOG_LEVEL", JS_LogLevel);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STAT", JS_ProcessStat);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_TIME", JS_Time);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_WAIT", JS_Wait);
 
   // .............................................................................
   // create the global variables

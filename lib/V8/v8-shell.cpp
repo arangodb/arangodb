@@ -335,13 +335,8 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   // create the global functions
   // .............................................................................
 
-  context->Global()->Set(v8::String::New("processCsvFile"),
-                         v8::FunctionTemplate::New(JS_ProcessCsvFile)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("processJsonFile"),
-                         v8::FunctionTemplate::New(JS_ProcessJsonFile)->GetFunction(),
-                         v8::ReadOnly);
+  TRI_AddGlobalFunctionVocbase(context, "processCsvFile", JS_ProcessCsvFile);
+  TRI_AddGlobalFunctionVocbase(context, "processJsonFile", JS_ProcessJsonFile);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

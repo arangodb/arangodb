@@ -33,25 +33,6 @@
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 symbol for the specified string
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_V8_SYMBOL(name) v8::String::NewSymbol(name, strlen(name))
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -59,40 +40,6 @@
 /// @addtogroup V8VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a method to a prototype object
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl, 
-                                const char* const name, 
-                                v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
-                                const bool isHidden = false);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a method to an object
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl, 
-                           const char* const name, 
-                           v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
-                           const bool isHidden = false);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a global function to the given context
-////////////////////////////////////////////////////////////////////////////////
-  
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
-                                   const char* const name, 
-                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&));
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a global function to the given context
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
-                                   const char* const name, 
-                                   v8::Handle<v8::Function> func);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the collection, but doesn't lock it
