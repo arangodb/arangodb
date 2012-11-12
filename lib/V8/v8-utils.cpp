@@ -1618,7 +1618,12 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  assert(v8g != 0);
+  if (v8g == 0) {
+    // this check is necessary because when building arangosh, we do not include v8-vocbase and 
+    // this init function is the first one we call 
+    v8g = new TRI_v8_global_t;
+    isolate->SetData(v8g);
+  }
 
   // .............................................................................
   // create the Dictionary constructor
