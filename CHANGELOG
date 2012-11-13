@@ -1,3 +1,9 @@
+v1.0.4 (2012-11-12)
+-------------------
+
+* issue #275: strange error message in arangosh 1.0.3 at startup
+
+
 v1.0.3 (2012-11-08)
 -------------------
 
