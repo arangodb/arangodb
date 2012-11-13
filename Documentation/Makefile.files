@@ -113,6 +113,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions/system || mkdir -p Doxygen/js/actions/system
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules || mkdir -p Doxygen/js/common/modules
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
