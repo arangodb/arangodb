@@ -31,14 +31,13 @@
 #include "Admin/RestBaseHandler.h"
 
 #include "Logger/Logger.h"
-#include "Utils/CollectionAccessor.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/Collection.h"
+#include "Utils/SelfContainedTransaction.h"
+
 #include "VocBase/primary-collection.h"
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
-#include "Utils/CollectionAccessor.h"
-#include "Utils/ReadTransaction.h"
-#include "Utils/WriteTransaction.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -194,22 +193,16 @@ namespace triagens {
         void generateUpdated (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates collection not found error message
-////////////////////////////////////////////////////////////////////////////////
-
-        void generateCollectionNotFound (string const& cid);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (TRI_voc_cid_t, string const& did);
+        void generateDocumentNotFound (TRI_voc_cid_t, string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateConflict (string const& cid, string const& did);
+        void generateConflict (string const&, string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
@@ -233,7 +226,7 @@ namespace triagens {
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateNotModified (string const& etag);
+        void generateNotModified (string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates first entry from a result set
@@ -245,11 +238,15 @@ namespace triagens {
                                const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate an approriate error message for the collection-related 
-/// error that occurred
+/// @brief generate an error message for a transaction error
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCollectionError (const string&, const int);
+        void generateTransactionError (const string&, 
+                                       const int,
+                                       TRI_voc_cid_t = 0,
+                                       TRI_voc_key_t = 0,
+                                       TRI_voc_rid_t = 0);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision

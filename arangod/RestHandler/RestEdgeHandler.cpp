@@ -110,8 +110,6 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  bool forceSync = extractWaitForSync();
-
   // edge
   TRI_document_edge_t edge;
 
@@ -157,17 +155,22 @@ bool RestEdgeHandler::createDocument () {
   if (json == 0) {
     return false;
   }
-
-  // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, getCollectionType(), create);
   
-  int res = ca.use();
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
+  // find and load collection given by name or identifier
+  Collection c(_vocbase, collection, getCollectionType(), create);
+  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
+ 
+  int res = trx.begin(); 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
   }
 
-  TRI_voc_cid_t cid = ca.cid();
+  TRI_voc_cid_t cid = c.cid();
 
   // split document handle
   edge._fromCid = cid;
@@ -190,9 +193,7 @@ bool RestEdgeHandler::createDocument () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
 
-    generateError(HttpResponse::BAD,
-                  res,
-                  "'_from' is not a document handle");
+    generateError(HttpResponse::BAD, res, "'_from' is not a document handle");
     return false;
   }
 
@@ -207,9 +208,7 @@ bool RestEdgeHandler::createDocument () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
 
-    generateError(HttpResponse::BAD,
-                  res,
-                  "'_to' is not a document handle");
+    generateError(HttpResponse::BAD, res, "'_to' is not a document handle");
     return false;
   }
   
@@ -217,55 +216,39 @@ bool RestEdgeHandler::createDocument () {
   // inside write transaction
   // .............................................................................
   
-  WriteTransaction trx(&ca);
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
+  TRI_doc_mptr_t const document = trx.createEdge(json, extractWaitForSync(), &edge);
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, json, &edge);
-
-  trx.end();
-
+  res = trx.commit();
+  
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // generate result
-  if (mptr._key != 0) {
-    if (context._sync) {
-      generateCreated(cid, mptr._key, mptr._rid);
+  if (document._key == 0 && res == TRI_ERROR_NO_ERROR) {
+    res = TRI_errno();
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (edge._toKey) {
+     TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
     }
-    else {
-      generateAccepted(cid, mptr._key, mptr._rid);
+    if (edge._fromKey) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
 
-    return true;
+    generateTransactionError(collection, res);
+    return false;
+  }
+
+  // generate result
+  if (trx.synchronous()) {
+    generateCreated(c.cid(), document._key, document._rid);
   }
   else {
-    int res = TRI_errno();
-    
-    if (edge._toKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
-    if (edge._fromKey) TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-
-    switch (res) {
-      case TRI_ERROR_ARANGO_READ_ONLY:
-        generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
-        return false;
-
-      case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-        generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
-        return false;
-
-      case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-        generateError(HttpResponse::BAD, res, "geo constraint violated");
-        return false;
-
-      default:
-        generateError(HttpResponse::SERVER_ERROR,
-                      TRI_ERROR_INTERNAL,
-                      "cannot create, failed with: " + string(TRI_last_error()));
-        return false;
-    }
+    generateAccepted(c.cid(), document._key, document._rid);
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
