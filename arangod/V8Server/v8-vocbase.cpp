@@ -1759,6 +1759,115 @@ static void* UnwrapGeneralCursor (v8::Handle<v8::Object> cursorObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() != 2 || ! argv[0]->IsObject() || ! argv[1]->IsFunction()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (! vocbase) {
+    v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
+
+    return scope.Close(v8::ThrowException(errorObject));
+  }
+
+
+  v8::Handle<v8::Array> collections = v8::Handle<v8::Array>::Cast(argv[0]);
+  if (collections.IsEmpty()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+  }
+
+  bool isValid = true;
+
+  vector<string> readCollections;
+  vector<string> writeCollections;
+
+  if (collections->Has(TRI_V8_SYMBOL("read")) && collections->Get(TRI_V8_SYMBOL("read"))->IsArray()) {
+    v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("read")));
+    
+    for (uint32_t i = 0 ; i < names->Length(); ++i) {
+      v8::Handle<v8::Value> collection = names->Get(i);
+      if (! collection->IsString()) {
+        isValid = false;
+        break;
+      }
+
+      readCollections.push_back(TRI_ObjectToString(collection));
+    }
+  }
+  
+  if (collections->Has(TRI_V8_SYMBOL("write")) && collections->Get(TRI_V8_SYMBOL("write"))->IsArray()) {
+    v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(collections->Get(TRI_V8_SYMBOL("write")));
+
+    for (uint32_t i = 0 ; i < names->Length(); ++i) {
+      v8::Handle<v8::Value> collection = names->Get(i);
+      if (! collection->IsString()) {
+        isValid = false;
+        break;
+      }
+      
+      writeCollections.push_back(TRI_ObjectToString(collection));
+    }
+  }
+
+  if (! isValid) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: TRANSACTION(<collections>, <function>)")));
+  }
+
+  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+
+  TRI_transaction_t* trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, &current);
+
+  for (size_t i = 0; i < readCollections.size(); ++i) {
+    TRI_AddCollectionTransaction(trx, readCollections[i].c_str(), TRI_TRANSACTION_READ, 0);
+  }
+
+  for (size_t i = 0; i < writeCollections.size(); ++i) {
+    TRI_AddCollectionTransaction(trx, writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0);
+  }
+
+  int res = TRI_StartTransaction(trx);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeTransaction(trx);
+    
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+  }
+
+  v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(argv[1]);
+  v8::Handle<v8::Value> args;
+  v8::Handle<v8::Value> result = func->Call(current, 0, &args);
+
+  if (tryCatch.HasCaught()) {
+    TRI_AbortTransaction(trx);
+    TRI_FreeTransaction(trx);
+
+    return scope.Close(v8::ThrowException(tryCatch.Exception()));
+  }
+
+  if (! TRI_ObjectToBoolean(result)) {
+    TRI_AbortTransaction(trx);
+    TRI_FreeTransaction(trx);
+    
+    return scope.Close(v8::False());
+  }
+  
+  res = TRI_CommitTransaction(trx);
+  TRI_FreeTransaction(trx);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
+  }
+  
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2264,7 +2373,7 @@ static v8::Handle<v8::Value> JS_UnuseGeneralCursor (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (!vocbase) {
+  if (! vocbase) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_INTERNAL,
                                                "corrupted vocbase")));
@@ -2384,7 +2493,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (!vocbase) {
+  if (! vocbase) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -2460,7 +2569,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (!vocbase) {
+  if (! vocbase) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -2537,7 +2646,7 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (!vocbase) {
+  if (! vocbase) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "corrupted vocbase");
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -6287,17 +6396,18 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // generate global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor);
-  TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor);
-  TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
-
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_RUN", JS_RunAhuacatl);
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_EXPLAIN", JS_ExplainAhuacatl);
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_PARSE", JS_ParseAhuacatl);
   
+  TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor);
+  TRI_AddGlobalFunctionVocbase(context, "CREATE_CURSOR", JS_CreateCursor);
+  TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor);
+
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
- 
+  
+  TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
   
   // .............................................................................
   // create global variables
