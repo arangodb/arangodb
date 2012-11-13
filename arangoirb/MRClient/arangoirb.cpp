@@ -244,7 +244,7 @@ static void InitMRClientConnection (mrb_state* mrb, MRubyClientConnection* conne
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RunShell (mrb_state* mrb) {
-  MRLineEditor* console(mrb, ".arango-mrb");
+  MRLineEditor console(mrb, ".arango-mrb");
 
   console.open(false /*! NoAutoComplete*/);
 

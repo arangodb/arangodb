@@ -40,6 +40,7 @@ MAINTAINER = \
 AUTOMAGIC = \
 	Makefile.in \
 	aclocal.m4 \
+	configure \
 	config/compile \
 	config/config.guess \
 	config/config.sub \
