@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief base transaction wrapper
+/// @brief "safe" single-collection wrapper
 ///
 /// @file
 ///
@@ -25,19 +25,26 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_TRANSACTION_H
-#define TRIAGENS_UTILS_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_H
+#define TRIAGENS_UTILS_COLLECTION_H 1
 
-#include "VocBase/transaction.h"
+#include "Logger/Logger.h"
+#include "Basics/StringUtils.h"
+#include "ShapedJson/json-shaper.h"
+#include "VocBase/primary-collection.h"
+#include "VocBase/vocbase.h"
+
+using namespace std;
+using namespace triagens::basics;
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class Transaction
+// --SECTION--                                                  class Collection
 // -----------------------------------------------------------------------------
 
-    class Transaction {
+    class Collection {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -45,12 +52,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Transaction
+/// @brief Collection
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        Transaction (const Transaction&);
-        Transaction& operator= (const Transaction&);
+        Collection (const Collection&);
+        Collection& operator= (const Collection&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -68,22 +75,28 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction (const TRI_vocbase_t* const vocbase) : 
-          _vocbase(vocbase), _trx(0) {
-          assert(_vocbase != 0);
+        Collection (TRI_vocbase_t* const vocbase, 
+                    const string& name,
+                    const TRI_col_type_e type,
+                    const bool create) : 
+          _vocbase(vocbase), 
+          _name(name),
+          _type(type),
+          _create(create),
+          _collection(0) {
+
+          assert(_vocbase);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction
+/// @brief destroy the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~Transaction () {
-          if (_trx != 0) {
-            TRI_FreeTransaction(_trx);
-          }
+        ~Collection () {
+          release();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,86 +115,182 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the status of the transaction
+/// @brief use the collection and initialise the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_transaction_status_e status () const {
-          if (_trx != 0) {
-            return _trx->_status;
+        int use () {
+          if (_collection != 0) {
+            // we already called use() before
+            return TRI_ERROR_NO_ERROR;
           }
-          
-          return TRI_TRANSACTION_UNDEFINED;
+
+          if (_name.empty()) {
+            // name is empty. cannot open the collection
+            return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
+
+          // open or create the collection
+          if (isdigit(_name[0])) {
+            TRI_voc_cid_t id = StringUtils::uint64(_name);
+
+            _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
+          }
+          else {
+            if (_type == TRI_COL_TYPE_DOCUMENT) {
+              _collection = TRI_FindDocumentCollectionByNameVocBase(_vocbase, _name.c_str(), _create);
+            }
+            else if (_type == TRI_COL_TYPE_EDGE) {
+              _collection = TRI_FindEdgeCollectionByNameVocBase(_vocbase, _name.c_str(), _create);
+            }
+          }
+ 
+          if (_collection == 0) {
+            // collection not found
+            return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
+
+          int result = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+
+          if (TRI_ERROR_NO_ERROR != result) {
+            _collection = 0;
+
+            return TRI_set_errno(result);
+          }
+
+          LOGGER_TRACE << "using collection " << _name;
+          assert(_collection->_collection != 0);
+
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        void dump () {
-          if (_trx != 0) {
-            TRI_DumpTransaction(_trx);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin the transaction
+/// @brief release all locks
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual int begin () = 0;
+        bool release () {
+          if (_collection == 0) {
+            return false;
+          }
+
+          LOGGER_TRACE << "releasing collection";
+          TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+          _collection = 0;
+
+          return true;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief commit / finish the transaction
+/// @brief check whether a collection is initialised
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int commit () = 0;
+        inline bool isValid () const {
+          return (_collection != 0);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort the transaction
+/// @brief get the underlying vocbase collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int abort () = 0;
+        inline TRI_vocbase_col_t* collection () {
+          assert(_collection != 0);
+          return _collection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying primary collection
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_primary_collection_t* primary () {
+          assert(_collection->_collection != 0);
+          return _collection->_collection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool waitForSync () {
+          assert(_collection->_collection != 0);
+          return primary()->base._waitForSync;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection's shaper
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline TRI_shaper_t* shaper () {
+          return primary()->_shaper;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying collection's id
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_voc_cid_t cid () const {
+          assert(_collection != 0);
+          return _collection->_cid;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the underlying collection's name
+////////////////////////////////////////////////////////////////////////////////
+
+        const string& name () const {
+          return _name;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the vocbase
+////////////////////////////////////////////////////////////////////////////////
+
+        const TRI_vocbase_t* const vocbase () const {
+          return _vocbase;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-      
-      protected:
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_t* const _vocbase;
+        TRI_vocbase_t* const _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual transaction
+/// @brief collection name / id
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_transaction_t* _trx;
+        const string _name;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of collection
+////////////////////////////////////////////////////////////////////////////////
+        
+        const TRI_col_type_e _type;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create flag for collection
+////////////////////////////////////////////////////////////////////////////////
+
+        const bool _create;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying vocbase collection
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_t* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

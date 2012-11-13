@@ -108,12 +108,13 @@ TRI_transaction_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_TRANSACTION_CREATED      = 0,
-  TRI_TRANSACTION_RUNNING      = 1,
-  TRI_TRANSACTION_COMMITTED    = 2,
-  TRI_TRANSACTION_ABORTED      = 3,
-  TRI_TRANSACTION_FINISHED     = 4,
-  TRI_TRANSACTION_FAILED       = 5
+  TRI_TRANSACTION_UNDEFINED    = 0,
+  TRI_TRANSACTION_CREATED      = 1,
+  TRI_TRANSACTION_RUNNING      = 2,
+  TRI_TRANSACTION_COMMITTED    = 3,
+  TRI_TRANSACTION_ABORTED      = 4,
+  TRI_TRANSACTION_FINISHED     = 5,
+  TRI_TRANSACTION_FAILED       = 6
 } 
 TRI_transaction_status_e;
 
@@ -282,6 +283,7 @@ typedef struct TRI_transaction_collection_s {
   struct TRI_vocbase_col_s*            _collection;         // vocbase collection pointer
   TRI_transaction_collection_global_t* _globalInstance;     // pointer to the global instance of the collection in the trx system
   bool                                 _locked;             // lock flag (used for write-transactions)
+  bool                                 _externalLock;       // flag whether collection was locked externally
 }
 TRI_transaction_collection_t;
 
@@ -358,7 +360,8 @@ void TRI_DumpTransaction (TRI_transaction_t* const);
 
 bool TRI_AddCollectionTransaction (TRI_transaction_t* const,
                                    const char* const, 
-                                   const TRI_transaction_type_e);
+                                   const TRI_transaction_type_e,
+                                   struct TRI_vocbase_col_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start a transaction

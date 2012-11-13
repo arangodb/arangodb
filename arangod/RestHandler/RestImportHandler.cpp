@@ -199,21 +199,18 @@ bool RestImportHandler::createByArray () {
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
+  Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
+  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
   
-  int res = ca.use();
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
-  }
-
   // .............................................................................
   // inside write transaction
   // .............................................................................
-  
-  WriteTransaction trx(&ca);
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
+ 
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
+  }
 
   size_t start = 0;
   size_t next = 0;
@@ -242,8 +239,8 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, values, 0);
-      if (mptr._key != 0) {
+      TRI_doc_mptr_t const document = trx.createDocument(values, forceSync);
+      if (document._key != 0) {
         ++numCreated;
       }
       else {
@@ -258,14 +255,19 @@ bool RestImportHandler::createByArray () {
     }
   }
 
-  trx.end();
-  
+  res = trx.commit();
+
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // generate result
-  generateDocumentsCreated(numCreated, numError, numEmpty);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+  }
+  else {
+    // generate result
+    generateDocumentsCreated(numCreated, numError, numEmpty);
+  }
   
   return true;
 }
@@ -368,26 +370,27 @@ bool RestImportHandler::createByList () {
                   "no JSON string list in first line found");
     return false;      
   }        
-      
-  // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
   
-  int res = ca.use();
-  if (TRI_ERROR_NO_ERROR != res) {
-    if (keys) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
-    }
-    generateCollectionError(collection, res);
-    return false;
-  }
-
+  // find and load collection given by name or identifier
+  Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
+  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  
   // .............................................................................
   // inside write transaction
   // .............................................................................
-
-  WriteTransaction trx(&ca);
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
+ 
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (keys) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
+    }
+    generateTransactionError(collection, res);
+    return true;
+  }
+      
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
 
   while (next != string::npos && start < body.length()) {
     next = body.find('\n', start);
@@ -424,8 +427,8 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, json, 0);
-      if (mptr._key != 0) {
+      TRI_doc_mptr_t const document = trx.createDocument(json, forceSync);
+      if (document._key != 0) {
         ++numCreated;
       }
       else {
@@ -444,15 +447,20 @@ bool RestImportHandler::createByList () {
   if (keys) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
   }
-
-  trx.end();
+  
+  res = trx.commit();
   
   // .............................................................................
   // outside write transaction
   // .............................................................................
-
-  // generate result
-  generateDocumentsCreated(numCreated, numError, numEmpty);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+  }
+  else {
+    // generate result
+    generateDocumentsCreated(numCreated, numError, numEmpty);
+  }
   
   return true;
 }
