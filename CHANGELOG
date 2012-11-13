@@ -1,4 +1,12 @@
-v1.1.beta1 (2012-XX-XX)
+v1.1.beta2 (2012-11-13)
+-----------------------
+
+* fixed arangoirb compilation
+
+* fixed doxygen
+
+
+v1.1.beta1 (2012-10-24)
 -----------------------
 
 * fixed AQL optimiser bug
