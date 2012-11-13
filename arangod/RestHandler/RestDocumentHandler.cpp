@@ -282,7 +282,7 @@ bool RestDocumentHandler::createDocument () {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), create);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  SelfContainedWriteTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
@@ -406,7 +406,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), false);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_READ); 
+  SelfContainedReadTransaction trx(&c); 
   
   // .............................................................................
   // inside read transaction
@@ -496,7 +496,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), false);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_READ); 
+  SelfContainedReadTransaction trx(&c); 
   
   vector<string> ids;
   
@@ -772,7 +772,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), false);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  SelfContainedWriteTransaction trx(&c); 
   
   TRI_voc_rid_t rid = 0;
   TRI_doc_mptr_t document;
@@ -926,7 +926,7 @@ bool RestDocumentHandler::deleteDocument () {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), false);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  SelfContainedWriteTransaction trx(&c); 
   TRI_voc_rid_t rid = 0;
   
   // .............................................................................
