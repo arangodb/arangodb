@@ -39,6 +39,8 @@ mv configure.ac.tmp configure.ac
 
 ./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu --enable-maintainer-mode --disable-mruby || exit 1
 make built-sources || exit 1
+make add-maintainer || exit 1
+make add-automagic || exit 1
 make doxygen || exit 1
 make latex || exit 1
 make wiki || exit 1
