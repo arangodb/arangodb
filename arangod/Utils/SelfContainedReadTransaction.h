@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "safe" read transaction
+/// @brief wrapper for self-contained, single collection read transactions
 ///
 /// @file
 ///
@@ -25,38 +25,23 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_READ_TRANSACTION_H
-#define TRIAGENS_UTILS_READ_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_SELF_CONTAINED_READ_TRANSACTION_H
+#define TRIAGENS_UTILS_SELF_CONTAINED_READ_TRANSACTION_H 1
 
-#include "Logger/Logger.h"
-#include "Utils/CollectionAccessor.h"
-#include "Utils/Transaction.h"
-#include "VocBase/primary-collection.h"
+#include "Utils/SelfContainedTransaction.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class ReadTransaction
+// --SECTION--                                class SelfContainedReadTransaction
 // -----------------------------------------------------------------------------
 
-    class ReadTransaction : public Transaction {
+    class SelfContainedReadTransaction : public SelfContainedTransaction {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ReadTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-        ReadTransaction (const ReadTransaction&);
-        ReadTransaction& operator= (const ReadTransaction&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -71,20 +56,41 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the transaction, using a collection object
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReadTransaction (CollectionAccessor* collection) : 
-          Transaction(collection) {
-          _collection->beginRead();
+        SelfContainedReadTransaction (Collection* collection) :
+          SelfContainedTransaction(collection) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ReadTransaction () {
-          end();
+        ~SelfContainedReadTransaction () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       virtual protected functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction type
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_type_e type () const {
+          return TRI_TRANSACTION_READ;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

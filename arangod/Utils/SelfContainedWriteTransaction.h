@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for self-contained, single collection transactions
+/// @brief wrapper for self-contained, single collection write transactions
 ///
 /// @file
 ///
@@ -25,26 +25,20 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SELF_CONTAINED_TRANSACTION_H
-#define TRIAGENS_UTILS_SELF_CONTAINED_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H
+#define TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H 1
 
-#include "common.h"
-
-#include "BasicsC/voc-errors.h"
-#include "VocBase/primary-collection.h"
-
-#include "Utils/Collection.h"
-#include "Utils/CollectionReadLock.h"
-#include "Utils/Transaction.h"
+#include "Utils/CollectionWriteLock.h"
+#include "Utils/SelfContainedTransaction.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                    class SelfContainedTransaction
+// --SECTION--                               class SelfContainedWriteTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedTransaction : public Transaction {
+    class SelfContainedWriteTransaction : public SelfContainedTransaction {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -66,25 +60,16 @@ namespace triagens {
 /// @brief create the transaction, using a collection object
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedTransaction (Collection* collection) :
-          Transaction(collection->vocbase()), 
-          _collection(collection) {
+        SelfContainedWriteTransaction (Collection* collection) :
+          SelfContainedTransaction(collection), 
+          _synchronous(false) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SelfContainedTransaction () {
-          if (_trx != 0) {
-            if (status() == TRI_TRANSACTION_RUNNING) {
-              // auto abort
-              abort();
-            }
-          }
-
-          // unuse underlying collection
-          _collection->release();
+        ~SelfContainedWriteTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,121 +88,91 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start a transaction
+/// @brief return whether the last write in a transaction was synchronous
 ////////////////////////////////////////////////////////////////////////////////
 
-        int begin () {
-          if (_trx != 0) {
-            // already started
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          // register usage of the underlying collection
-          int res = _collection->use();
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, 0);
-          if (_trx == 0) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-  
-          if (! TRI_AddCollectionTransaction(_trx, _collection->name().c_str(), type(), _collection->collection())) {
-            return TRI_ERROR_INTERNAL;
-          }
-
-          if (status() != TRI_TRANSACTION_CREATED) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          return TRI_StartTransaction(_trx);
+        inline bool synchronous () const {
+          return _synchronous;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
+/// @brief create a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int commit () {
-          if (_trx == 0 || status() != TRI_TRANSACTION_RUNNING) {
-            // not created or not running
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res;
-
-          if (type() == TRI_TRANSACTION_READ) {
-            res = TRI_FinishTransaction(_trx);
-          }
-          else {
-            res = TRI_CommitTransaction(_trx);
-          }
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int abort () {
-          if (_trx == 0) {
-            // transaction already ended or not created
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (status() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res = TRI_AbortTransaction(_trx);
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document within a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_doc_mptr_t read (const string& key) {
+        TRI_doc_mptr_t createDocument (TRI_json_t const* json, 
+                                       bool forceSync) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
-          TRI_InitReadContextPrimaryCollection(&context, primary);
-          
-          CollectionReadLock lock(_collection);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+          _synchronous = context._sync;
 
-          return primary->read(&context, (TRI_voc_key_t) key.c_str());
+          CollectionWriteLock lock(_collection);
+
+          return primary->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, json, 0);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read all documents within a transaction
+/// @brief create a single edge within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<string>& ids) {
+        TRI_doc_mptr_t createEdge (TRI_json_t const* json, 
+                                   bool forceSync, 
+                                   void const* data) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
-          TRI_InitReadContextPrimaryCollection(&context, primary);
-          
-          CollectionReadLock lock(_collection);
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+          _synchronous = context._sync;
 
-          if (primary->_primaryIndex._nrUsed > 0) {
-            void** ptr = primary->_primaryIndex._table;
-            void** end = ptr + primary->_primaryIndex._nrAlloc;
+          CollectionWriteLock lock(_collection);
 
-            for (;  ptr < end;  ++ptr) {
-              if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+          return primary->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, json, data);
+        }
 
-                if (d->_validTo == 0) {
-                  ids.push_back(d->_key);
-                }
-              }
-            }
-          }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document within a transaction
+////////////////////////////////////////////////////////////////////////////////
 
-          return TRI_ERROR_NO_ERROR;
+        TRI_doc_mptr_t updateJson (const string& key, 
+                                   TRI_json_t* const json, 
+                                   const TRI_doc_update_policy_e policy, 
+                                   bool forceSync, 
+                                   const TRI_voc_rid_t expectedRevision, 
+                                   TRI_voc_rid_t* actualRevision) {
+          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_doc_operation_context_t context;
+
+          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          context._expectedRid = expectedRevision;
+          context._previousRid = actualRevision;
+          _synchronous = context._sync;
+
+          CollectionWriteLock lock(_collection);
+
+          return primary->updateJson(&context, json, (TRI_voc_key_t) key.c_str());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a single document within a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int destroy (const string& key, 
+                     const TRI_doc_update_policy_e policy, 
+                     bool forceSync, 
+                     const TRI_voc_rid_t expectedRevision, 
+                     TRI_voc_rid_t* actualRevision) {
+          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_doc_operation_context_t context;
+
+          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          context._expectedRid = expectedRevision;
+          context._previousRid = actualRevision;
+          _synchronous = context._sync;
+
+          CollectionWriteLock lock(_collection);
+
+          return primary->destroy(&context, (TRI_voc_key_t) key.c_str());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +194,9 @@ namespace triagens {
 /// @brief get the transaction type
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual TRI_transaction_type_e type () const = 0;
+        TRI_transaction_type_e type () const {
+          return TRI_TRANSACTION_WRITE;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -251,16 +208,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-      protected:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the collection that is worked on
+/// @brief whether of not the last write action was executed synchronously
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        bool _synchronous;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

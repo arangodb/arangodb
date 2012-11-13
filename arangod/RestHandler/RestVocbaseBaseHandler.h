@@ -33,9 +33,10 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Utils/Collection.h"
-#include "Utils/SelfContainedTransaction.h"
+#include "Utils/SelfContainedReadTransaction.h"
+#include "Utils/SelfContainedWriteTransaction.h"
 
-#include "VocBase/primary-collection.h"
+////#include "VocBase/primary-collection.h"
 #include "BasicsC/json.h"
 #include "BasicsC/json-utilities.h"
 

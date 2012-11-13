@@ -158,7 +158,7 @@ bool RestEdgeHandler::createDocument () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), create);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  SelfContainedWriteTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction

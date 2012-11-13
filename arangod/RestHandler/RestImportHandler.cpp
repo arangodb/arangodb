@@ -200,7 +200,7 @@ bool RestImportHandler::createByArray () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  SelfContainedWriteTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
@@ -373,7 +373,7 @@ bool RestImportHandler::createByList () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  SelfContainedTransaction trx(&c, TRI_TRANSACTION_WRITE); 
+  SelfContainedWriteTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
