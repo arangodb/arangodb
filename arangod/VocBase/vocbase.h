@@ -448,7 +448,7 @@ TRI_vocbase_col_t;
 /// @brief checks if a collection is allowed
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedCollectionName (struct TRI_col_parameter_s*, char const*);
+bool TRI_IsAllowedCollectionName (bool isSystem, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick

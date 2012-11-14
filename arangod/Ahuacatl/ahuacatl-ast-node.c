@@ -385,10 +385,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
     return NULL;
   }
   else {
-    TRI_col_parameter_t parameters;
-
-    parameters._isSystem = true;
-    if (! TRI_IsAllowedCollectionName(&parameters, name)) {
+    if (! TRI_IsAllowedCollectionName(true, name)) {
       TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
 
       return NULL;
