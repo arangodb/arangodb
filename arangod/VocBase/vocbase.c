@@ -1409,8 +1409,9 @@ TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase, 
                                                 TRI_col_parameter_t* parameter,
                                                 TRI_voc_cid_t cid) {
-  TRI_primary_collection_t* primary = NULL;
   TRI_vocbase_col_t* collection;
+  TRI_collection_t* col;
+  TRI_primary_collection_t* primary = NULL;
   TRI_document_collection_t* document;
   TRI_col_type_e type;
   char const* name;
@@ -1465,17 +1466,19 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   primary = &document->base;
 
+  col = &primary->base;
+
   // add collection container
   collection = AddCollection(vocbase,
-                             primary->base._type,
-                             primary->base._name,
-                             primary->base._cid,
-                             primary->base._directory);
+                             col->_type,
+                             col->_name,
+                             col->_cid,
+                             col->_directory);
 
   if (collection == NULL) {
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-      TRI_CloseDocumentCollection((TRI_document_collection_t*) primary);
-      TRI_FreeDocumentCollection((TRI_document_collection_t*) primary);
+      TRI_CloseDocumentCollection(document);
+      TRI_FreeDocumentCollection(document);
     }
 
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);

@@ -108,8 +108,9 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 /// @brief creates a journal or a compactor journal
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool compactor) {
+static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool compactor) {
   TRI_col_header_marker_t cm;
+  TRI_collection_t* collection;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
   bool ok;
@@ -117,6 +118,8 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
   char* filename;
   char* jname;
   char* number;
+
+  collection = &primary->base;
 
   // construct a suitable filename
   number = TRI_StringUInt32(TRI_NewTickVocBase());
@@ -128,22 +131,22 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
     jname = TRI_Concatenate3String("compactor-", number, ".db");
   }
 
-  filename = TRI_Concatenate2File(collection->base._directory, jname);
+  filename = TRI_Concatenate2File(collection->_directory, jname);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   // create journal file
-  journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
+  journal = TRI_CreateDatafile(filename, collection->_maximalSize);
 
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
-      collection->base._lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      collection->base._state = TRI_COL_STATE_READ;
+      collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      collection->_state = TRI_COL_STATE_READ;
     }
     else {
-      collection->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-      collection->base._state = TRI_COL_STATE_WRITE_ERROR;
+      collection->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+      collection->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
     LOG_ERROR("cannot create new journal in '%s'", filename);
@@ -165,7 +168,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
     jname = TRI_Concatenate3String("journal-", number, ".db");
   }
 
-  filename = TRI_Concatenate2File(collection->base._directory, jname);
+  filename = TRI_Concatenate2File(collection->_directory, jname);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
@@ -185,7 +188,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->base._lastError = journal->_lastError;
+    collection->_lastError = journal->_lastError;
     TRI_FreeDatafile(journal);
 
     LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
@@ -199,14 +202,14 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
   cm.base._type = TRI_COL_MARKER_HEADER;
   cm.base._tick = TRI_NewTickVocBase();
 
-  cm._cid = collection->base._cid;
+  cm._cid = collection->_cid;
 
   TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
 
   res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->base._lastError = journal->_lastError;
+    collection->_lastError = journal->_lastError;
     TRI_FreeDatafile(journal);
 
     LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
@@ -216,10 +219,10 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
 
   // that's it
   if (compactor) {
-    TRI_PushBackVectorPointer(&collection->base._compactors, journal);
+    TRI_PushBackVectorPointer(&collection->_compactors, journal);
   }
   else {
-    TRI_PushBackVectorPointer(&collection->base._journals, journal);
+    TRI_PushBackVectorPointer(&collection->_journals, journal);
   }
 
   return journal;
@@ -232,10 +235,11 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* collection, bool
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
+static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
                                            size_t position,
                                            bool compactor) {
   TRI_datafile_t* journal;
+  TRI_collection_t* collection;
   TRI_vector_pointer_t* vector;
   bool ok;
   int res;
@@ -243,12 +247,14 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
   char* filename;
   char* number;
 
+  collection = &primary->base;
+
   // either use a journal or a compactor
   if (compactor) {
-    vector = &collection->base._compactors;
+    vector = &collection->_compactors;
   }
   else {
-    vector = &collection->base._journals;
+    vector = &collection->_journals;
   }
 
   // no journal at this position
@@ -265,14 +271,14 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
     LOG_ERROR("failed to seal datafile '%s': %s", journal->_filename, TRI_last_error());
 
     TRI_RemoveVectorPointer(vector, position);
-    TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+    TRI_PushBackVectorPointer(&collection->_datafiles, journal);
 
     return false;
   }
 
   number = TRI_StringUInt32(journal->_fid);
   dname = TRI_Concatenate3String("datafile-", number, ".db");
-  filename = TRI_Concatenate2File(collection->base._directory, dname);
+  filename = TRI_Concatenate2File(collection->_directory, dname);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -283,7 +289,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
     LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->_filename, filename, TRI_last_error());
 
     TRI_RemoveVectorPointer(vector, position);
-    TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+    TRI_PushBackVectorPointer(&collection->_datafiles, journal);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return false;
@@ -294,7 +300,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
   LOG_TRACE("closed journal '%s'", journal->_filename);
 
   TRI_RemoveVectorPointer(vector, position);
-  TRI_PushBackVectorPointer(&collection->base._datafiles, journal);
+  TRI_PushBackVectorPointer(&collection->_datafiles, journal);
 
   return true;
 }
@@ -415,37 +421,37 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 /// @brief initialises a primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
+int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
                                TRI_shaper_t* shaper) {
   int res;
 
-  collection->_shaper = shaper;
-  collection->_capConstraint = NULL;
-  collection->_keyGenerator = NULL;
+  primary->_shaper = shaper;
+  primary->_capConstraint = NULL;
+  primary->_keyGenerator = NULL;
 
-  collection->figures = Figures;
-  collection->size    = Count;
+  primary->figures = Figures;
+  primary->size    = Count;
 
-  TRI_InitBarrierList(&collection->_barrierList, collection);
+  TRI_InitBarrierList(&primary->_barrierList, primary);
 
-  TRI_InitAssociativePointer(&collection->_datafileInfo,
+  TRI_InitAssociativePointer(&primary->_datafileInfo,
                              TRI_UNKNOWN_MEM_ZONE, 
                              HashKeyDatafile,
                              HashElementDatafile,
                              IsEqualKeyElementDatafile,
                              NULL);
 
-  TRI_InitAssociativePointer(&collection->_primaryIndex,
+  TRI_InitAssociativePointer(&primary->_primaryIndex,
                              TRI_UNKNOWN_MEM_ZONE, 
                              HashKeyHeader,
                              HashElementDocument,
                              IsEqualKeyDocument,
                              0);
   
-  TRI_InitReadWriteLock(&collection->_lock);
+  TRI_InitReadWriteLock(&primary->_lock);
   
   // init key generator. TODO: make this configurable
-  res = TRI_CreateKeyGenerator(NULL, collection);
+  res = TRI_CreateKeyGenerator(NULL, primary);
 
   return res;
 }
@@ -454,22 +460,22 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
 /// @brief destroys a primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection) {
-  if (collection->_keyGenerator != NULL) {
-    TRI_FreeKeyGenerator(collection->_keyGenerator);
+void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
+  if (primary->_keyGenerator != NULL) {
+    TRI_FreeKeyGenerator(primary->_keyGenerator);
   }
 
-  TRI_DestroyReadWriteLock(&collection->_lock);
-  TRI_DestroyAssociativePointer(&collection->_primaryIndex);
+  TRI_DestroyReadWriteLock(&primary->_lock);
+  TRI_DestroyAssociativePointer(&primary->_primaryIndex);
 
-  if (collection->_shaper != NULL) {
-    TRI_FreeVocShaper(collection->_shaper);
+  if (primary->_shaper != NULL) {
+    TRI_FreeVocShaper(primary->_shaper);
   }
   
-  FreeDatafileInfo(&collection->_datafileInfo);
-  TRI_DestroyBarrierList(&collection->_barrierList);
+  FreeDatafileInfo(&primary->_datafileInfo);
+  TRI_DestroyBarrierList(&primary->_barrierList);
 
-  TRI_DestroyCollection(&collection->base);
+  TRI_DestroyCollection(&primary->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,12 +495,12 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection) {
 /// @brief finds a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t* collection,
+TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_collection_t* primary,
                                                                 TRI_voc_fid_t fid) {
   TRI_doc_datafile_info_t const* found;
   TRI_doc_datafile_info_t* dfi;
 
-  found = TRI_LookupByKeyAssociativePointer(&collection->_datafileInfo, &fid);
+  found = TRI_LookupByKeyAssociativePointer(&primary->_datafileInfo, &fid);
 
   if (found != NULL) {
     union { TRI_doc_datafile_info_t const* c; TRI_doc_datafile_info_t* v; } cnv;
@@ -511,7 +517,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
 
   dfi->_fid = fid;
 
-  TRI_InsertKeyAssociativePointer(&collection->_datafileInfo, &fid, dfi, true);
+  TRI_InsertKeyAssociativePointer(&primary->_datafileInfo, &fid, dfi, true);
 
   return dfi;
 }
@@ -522,8 +528,8 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_primary_coll
 /// Note that the caller must hold a lock protecting the _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* collection) {
-  return CreateJournal(collection, false);
+TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* primary) {
+  return CreateJournal(primary, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,9 +539,9 @@ TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_primary_collection_t* co
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
+bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
                                     size_t position) {
-  return CloseJournalPrimaryCollection(collection, position, false);
+  return CloseJournalPrimaryCollection(primary, position, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -544,8 +550,8 @@ bool TRI_CloseJournalPrimaryCollection (TRI_primary_collection_t* collection,
 /// Note that the caller must hold a lock protecting the _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* collection) {
-  return CreateJournal(collection, true);
+TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* primary) {
+  return CreateJournal(primary, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,9 +561,9 @@ TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_primary_collection_t* 
 /// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
+bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* primary,
                                       size_t position) {
-  return CloseJournalPrimaryCollection(collection, position, true);
+  return CloseJournalPrimaryCollection(primary, position, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,16 +571,16 @@ bool TRI_CloseCompactorPrimaryCollection (TRI_primary_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const context, 
-                                       TRI_primary_collection_t* const collection,
+                                       TRI_primary_collection_t* const primary,
                                        TRI_doc_update_policy_e policy,
                                        bool forceSync) {
-  context->_collection = collection;
+  context->_collection = primary;
   context->_policy = policy;
   context->_expectedRid = 0;
   context->_previousRid = NULL;
   context->_lock = false;
   context->_release = false;
-  context->_sync = forceSync || collection->base._waitForSync;
+  context->_sync = forceSync || primary->base._waitForSync;
   context->_allowRollback = true;
 }
 
@@ -583,8 +589,8 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const contex
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const context, 
-                                           TRI_primary_collection_t* const collection) {
-  context->_collection = collection;
+                                           TRI_primary_collection_t* const primary) {
+  context->_collection = primary;
   context->_policy = TRI_DOC_UPDATE_LAST_WRITE;
   context->_expectedRid = 0;
   context->_previousRid = NULL;
