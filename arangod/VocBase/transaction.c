@@ -109,6 +109,8 @@ static const char* TypeString (const TRI_transaction_type_e type) {
 
 static const char* StatusString (const TRI_transaction_status_e status) {
   switch (status) {
+    case TRI_TRANSACTION_UNDEFINED:
+      return "undefined";
     case TRI_TRANSACTION_CREATED:
       return "created";
     case TRI_TRANSACTION_RUNNING:
@@ -546,7 +548,8 @@ static bool IsNested (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* CreateCollection (const char* const name, 
-                                                       const TRI_transaction_type_e type) {
+                                                       const TRI_transaction_type_e type,
+                                                       struct TRI_vocbase_col_s* initialiser) {
   TRI_transaction_collection_t* collection;
 
   collection = (TRI_transaction_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_t), false);
@@ -565,9 +568,10 @@ static TRI_transaction_collection_t* CreateCollection (const char* const name,
 
   // initialise collection properties
   collection->_type           = type;
-  collection->_collection     = NULL;
+  collection->_collection     = initialiser;
   collection->_globalInstance = NULL;
   collection->_locked         = false;
+  collection->_externalLock   = (initialiser != NULL);
 
   // initialise private copy of write transactions list
   InitTransactionList(&collection->_writeTransactions);
@@ -636,11 +640,14 @@ static int AcquireCollectionLocks (TRI_transaction_t* const trx) {
     TRI_transaction_collection_t* collection;
 
     collection = TRI_AtVectorPointer(&trx->_collections, i);
-    collection->_collection = TRI_UseCollectionByNameVocBase(trx->_context->_vocbase, collection->_name);
+    if (! collection->_externalLock) {
+      collection->_collection = TRI_UseCollectionByNameVocBase(trx->_context->_vocbase, collection->_name);
+    }
 
     if (collection->_collection == NULL) {
       return TRI_errno();
     }
+    
 
     collection->_globalInstance = GetGlobalCollection(context, collection);
     if (collection->_globalInstance == NULL) {
@@ -692,7 +699,10 @@ static int ReleaseCollectionLocks (TRI_transaction_t* const trx) {
     }
 
     // unuse collection
-    TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, collection->_collection);
+    if (! collection->_externalLock) {
+      TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, collection->_collection);
+    }
+    
     collection->_collection = NULL;
   }
 
@@ -1066,7 +1076,8 @@ void TRI_DumpTransaction (TRI_transaction_t* const trx) {
 
 bool TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
                                    const char* const name,
-                                   const TRI_transaction_type_e type) {
+                                   const TRI_transaction_type_e type,
+                                   struct TRI_vocbase_col_s* initialiser) {
   TRI_transaction_collection_t* collection;
   size_t i, n;
 
@@ -1090,7 +1101,7 @@ bool TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
 
     if (res < 0) {
       // collection is not contained in vector
-      collection = CreateCollection(name, type);
+      collection = CreateCollection(name, type, initialiser);
       if (collection == NULL) {
         // out of memory
         return false;
@@ -1113,7 +1124,7 @@ bool TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
   }
   
   // collection was not contained. now insert it
-  collection = CreateCollection(name, type);
+  collection = CreateCollection(name, type, initialiser);
   if (collection == NULL) {
     // out of memory
     return false;

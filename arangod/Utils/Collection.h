@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "safe" collection accessor
+/// @brief "safe" single-collection wrapper
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_COLLECTION_LOCK_H
-#define TRIAGENS_UTILS_COLLECTION_LOCK_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_H
+#define TRIAGENS_UTILS_COLLECTION_H 1
 
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
@@ -41,10 +41,10 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class CollectionAccessor
+// --SECTION--                                                  class Collection
 // -----------------------------------------------------------------------------
 
-    class CollectionAccessor {
+    class Collection {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -52,31 +52,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief CollectionAccessor
+/// @brief Collection
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        CollectionAccessor (const CollectionAccessor&);
-        CollectionAccessor& operator= (const CollectionAccessor&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private enums
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-        enum LockTypes {
-          TYPE_NONE = 0,
-          TYPE_READ,
-          TYPE_WRITE
-        };
+        Collection (const Collection&);
+        Collection& operator= (const Collection&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -97,17 +78,15 @@ namespace triagens {
 /// @brief create the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionAccessor (TRI_vocbase_t* const vocbase, 
-                            const string& name,
-                            const TRI_col_type_e type,
-                            const bool create) : 
+        Collection (TRI_vocbase_t* const vocbase, 
+                    const string& name,
+                    const TRI_col_type_e type,
+                    const bool create) : 
           _vocbase(vocbase), 
           _name(name),
           _type(type),
           _create(create),
-          _lockType(TYPE_NONE), 
-          _collection(0), 
-          _primaryCollection(0) {
+          _collection(0) {
 
           assert(_vocbase);
         }
@@ -116,7 +95,7 @@ namespace triagens {
 /// @brief destroy the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~CollectionAccessor () {
+        ~Collection () {
           release();
         }
 
@@ -174,54 +153,30 @@ namespace triagens {
 
           if (TRI_ERROR_NO_ERROR != result) {
             _collection = 0;
+
             return TRI_set_errno(result);
           }
 
           LOGGER_TRACE << "using collection " << _name;
           assert(_collection->_collection != 0);
-          _primaryCollection = _collection->_collection;
 
           return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free all resources. accessor cannot be used after calling this
+/// @brief release all locks
 ////////////////////////////////////////////////////////////////////////////////
+        
+        bool release () {
+          if (_collection == 0) {
+            return false;
+          }
 
-        bool unuse () {
-          return release();
-        }
+          LOGGER_TRACE << "releasing collection";
+          TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+          _collection = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-lock the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        bool beginRead () {
-          return lock(TYPE_READ);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write-lock the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        bool beginWrite () {
-          return lock(TYPE_WRITE);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-unlock the collection
-////////////////////////////////////////////////////////////////////////////////
-          
-        bool endRead () {
-          return unlock(TYPE_READ);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write-unlock the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        bool endWrite () {
-          return unlock(TYPE_WRITE);
+          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,20 +188,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a lock is already held
+/// @brief get the underlying vocbase collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isLocked () const {
-          return (_lockType != TYPE_NONE);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying collection
-////////////////////////////////////////////////////////////////////////////////
-
-        inline const bool waitForSync () const {
-          assert(_primaryCollection != 0);
-          return _primaryCollection->base._waitForSync;
+        inline TRI_vocbase_col_t* collection () {
+          assert(_collection != 0);
+          return _collection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,148 +201,50 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_primary_collection_t* primary () {
-          assert(_primaryCollection != 0);
-          return _primaryCollection;
+          assert(_collection->_collection != 0);
+          return _collection->_collection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying collection's id
+/// @brief get the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        const inline TRI_voc_cid_t cid () const {
-          assert(_collection != 0);
-          return _collection->_cid;
+        inline bool waitForSync () {
+          assert(_collection->_collection != 0);
+          return primary()->base._waitForSync;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection's shaper
 ////////////////////////////////////////////////////////////////////////////////
         
-        inline TRI_shaper_t* shaper () const {
-          assert(_primaryCollection != 0);
-          return _primaryCollection->_shaper;
+        inline TRI_shaper_t* shaper () {
+          return primary()->_shaper;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief get the underlying collection's id
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release all locks
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool release () {
-          if (_collection == 0) {
-            return false;
-          }
-
-          if (isLocked()) {
-            unlock(_lockType);
-          }
-          
-          LOGGER_TRACE << "releasing collection";
-          TRI_ReleaseCollectionVocBase(_vocbase, _collection);
-          _collection = 0;
-          _primaryCollection = 0;
-
-          return true;
+        inline TRI_voc_cid_t cid () const {
+          assert(_collection != 0);
+          return _collection->_cid;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the lock type
+/// @brief get the underlying collection's name
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void setLock (const LockTypes type) {
-          _lockType = type;
+        const string& name () const {
+          return _name;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lock a collection in read or write mode
+/// @brief get the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool lock (const LockTypes type) {
-          if (! isValid()) {
-            LOGGER_ERROR << "logic error - attempt to lock uninitialised collection " << _name;
-            return false;
-          }
-
-          if (isLocked()) {
-            LOGGER_ERROR << "logic error - attempt to lock already locked collection " << _name;
-          }
-
-          assert(_primaryCollection != 0);
-
-          int result = TRI_ERROR_INTERNAL;
-          if (TYPE_READ == type) {
-            LOGGER_TRACE << "read-locking collection " << _name;
-            result = _primaryCollection->beginRead(_primaryCollection);
-          }
-          else if (TYPE_WRITE == type) {
-            LOGGER_TRACE << "write-locking collection " << _name;
-            result = _primaryCollection->beginWrite(_primaryCollection);
-          }
-          else {
-            assert(false);
-          }
-
-          if (TRI_ERROR_NO_ERROR == result) {
-            setLock(type);
-            return true;
-          }
-          
-          LOGGER_WARNING << "could not lock collection";
-
-          return false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlock a collection 
-////////////////////////////////////////////////////////////////////////////////
-
-        bool unlock (const LockTypes type) {
-          if (! isValid()) {
-            LOGGER_ERROR << "logic error - attempt to unlock uninitialised collection " << _name;
-            return false;
-          }
-
-          if (! isLocked()) {
-            LOGGER_ERROR << "logic error - attempt to unlock non-locked collection " << _name;
-          }
-          
-          assert(_primaryCollection != 0);
-
-          int result = TRI_ERROR_INTERNAL;
-          if (TYPE_READ == type) { 
-            LOGGER_TRACE << "read-unlocking collection " << _name;
-            result = _primaryCollection->endRead(_primaryCollection);
-          }
-          else if (TYPE_WRITE == type) {
-            LOGGER_TRACE << "write-unlocking collection " << _name;
-            result = _primaryCollection->endWrite(_primaryCollection);
-          }
-          else {
-            assert(false);
-          }
-
-          if (TRI_ERROR_NO_ERROR == result) {
-            setLock(TYPE_NONE);
-            return true;
-          }
-
-          LOGGER_WARNING << "could not unlock collection " << _name;
-
-          return false;
+        const TRI_vocbase_t* const vocbase () const {
+          return _vocbase;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,22 +287,10 @@ namespace triagens {
         const bool _create;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the type of lock currently held
-////////////////////////////////////////////////////////////////////////////////
-
-        LockTypes _lockType;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the underlying vocbase collection
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_col_t* _collection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief corresponding loaded primary collection
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_primary_collection_t* _primaryCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

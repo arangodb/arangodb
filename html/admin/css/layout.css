@@ -549,14 +549,14 @@ form {
 }
 
 #formatJSONyesno {
-  margin-top: -40px;  
+  margin-top: -50px;  
   float:right; 
   margin-right: 120px;  
   color: #797979;
 }
 
 #aqlinfo {
-  line-height: 150%;     
+  line-height: 250%;     
 }
 
 #submitQuery {
@@ -565,19 +565,26 @@ form {
 }
 #refreshShell{
   padding-bottom: 3px;
-  margin-top: -10px;  
+  margin-top: -6px;  
   width: 9.5% !important;
 }
 
 #queryOutput a, .queryError, .querySuccess {
   font-size: 0.9em !important; 
   font-family: "courier"; 
+  padding-left: 10px;  
+  padding-top: 10px !important;  
 }
 
+#queryOutput pre {
+  padding-left: 10px; 
+  padding-top: 10px;  
+}
 
 #queryOutput {
   margin-bottom: 5px; 
-  height:35%; 
+  height:35%;
+  padding-top: 10px;  
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
@@ -587,10 +594,13 @@ form {
 }
 
 #queryContent {
+  padding-top: 10px; 
   height: 45%; 
   font-family: "courier";
   width: 100%;
   resize: vertical; 
+  padding-left: 10px;
+  margin-top: 2px;  
 }
 
 #avocshWindow {
@@ -826,6 +836,12 @@ form {
 #logTableID_info {
 }
 
+#logTableID, #warnLogTableID, #critLogTableID, #infoLogTableID, #debugLogTableID {
+  border-left: 1px solid #AAAAAA;
+  border-right: 1px solid #AAAAAA;
+}
+
+
 .ui-dialog {
   height:100px; 
   font-size: 0.8em;  
@@ -834,9 +850,9 @@ form {
 .fg-toolbar {
   font-size: 0.7em; 
   border: 1px solid #D3D3D3 !important; 
-//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-//  box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
+  box-shadow: inset 0 0 1px 1px #f6f6f6;
 }
 
 /*
@@ -909,7 +925,7 @@ form {
 }
 
 #queryForm {
-  margin-top: -5px;     
+  margin-top: -3px;     
 }
 
 #queryView {
@@ -962,3 +978,42 @@ form {
 #iInfo {
   font-size: 0.8em; 
 }
+
+#shellInfo {
+  line-height: 200%; 
+}
+
+#formatJSONyesno {
+  padding-top: 5px !important
+}
+
+@media screen 
+  and (-webkit-min-device-pixel-ratio:0)
+{
+  #submitAvoc {
+    padding-top: 4px !important; 
+    height: 30px !important;  
+  }
+
+  #refreshShell {
+    margin-top: -4px !important;  
+    margin-right: 2px !important; 
+  }
+
+  #refrehShellTextRefresh {
+    line-height:230% !important; 
+  }
+
+  #formatshellJSONyesno {
+    padding-top: 5px; 
+  }
+}
+
+.leftCell {
+  border-left: 1px solid #AAAAAA !important;
+}
+
+.rightCell {
+  border-right: 1px solid #AAAAAA !important;
+}
+

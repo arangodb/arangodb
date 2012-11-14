@@ -653,7 +653,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
 
   context->_context->Enter();
 
-  TRI_InitV8VocBridge(context->_context, _vocbase);
+  TRI_InitV8VocBridge(context->_context, _vocbase, i);
   TRI_InitV8Queries(context->_context);
 
   if (_useActions) {

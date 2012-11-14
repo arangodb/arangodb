@@ -427,37 +427,57 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates collection not found error message
+/// @brief generate an error message for a transaction error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
-  generateError(HttpResponse::NOT_FOUND, 
-                TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                "collection " + COLLECTION_PATH + "/" + cid + " not found");
-}
+void RestVocbaseBaseHandler::generateTransactionError (const string& collection, 
+                                                       const int res,
+                                                       TRI_voc_cid_t cid,
+                                                       TRI_voc_key_t key,
+                                                       TRI_voc_rid_t rid) {
+  switch (res) {
+    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+      if (collection.empty()) {
+        // no collection name specified
+        generateError(HttpResponse::BAD, res, "no collection name specified"); 
+      }
+      else {
+        // collection name specified but collection not found
+        generateError(HttpResponse::NOT_FOUND, res, "collection " + COLLECTION_PATH + "/" + StringUtils::itoa(cid) + " not found");
+      }
+      return;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate an approriate error message for the collection-related 
-/// error that occurred
-////////////////////////////////////////////////////////////////////////////////
+    case TRI_ERROR_ARANGO_READ_ONLY:
+      generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
+      return;
 
-void RestVocbaseBaseHandler::generateCollectionError (const string& collection, 
-                                                      const int res) {
-  if (TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND == res) {
-    if (collection.empty()) {
-      // no collection name specified
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "no collection name specified"); 
-    }
-    else {
-      // collection name specified but collection not found
-      generateCollectionNotFound(collection);
-    }
+    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
+      return;
 
-    return;
+    case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
+      generateError(HttpResponse::BAD, res, "geo constraint violated");
+      return;
+    
+    case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
+      generateError(HttpResponse::BAD, res, "invalid document key");
+      return;
+    
+    case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
+      generateError(HttpResponse::BAD, res, "collection does not allow using user-defined keys");
+      return;
+    
+    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+      generateDocumentNotFound(cid, key);
+      return;
+    
+    case TRI_ERROR_ARANGO_CONFLICT:
+      generatePreconditionFailed(cid, key, rid);
+      return;
+
+    default:
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "failed with error: " + string(TRI_errno_string(res)));
   }
-
-  // other errors
-  generateError(HttpResponse::SERVER_ERROR, res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

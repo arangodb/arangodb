@@ -257,8 +257,6 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  bool forceSync = extractWaitForSync();
-
   // extract the cid
   bool found;
   char const* collection = _request->value("collection", found);
@@ -283,68 +281,45 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, getCollectionType(), create);
-
-  int res = ca.use();
-
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
-  }
+  Collection c(_vocbase, collection, getCollectionType(), create);
+  SelfContainedWriteTransaction trx(&c); 
   
-  TRI_voc_cid_t cid = ca.cid();
-
   // .............................................................................
   // inside write transaction
   // .............................................................................
-
-  WriteTransaction trx(&ca);
+ 
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
+  }
   
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, trx.primary(), TRI_DOC_UPDATE_ERROR, forceSync);
+  TRI_doc_mptr_t const document = trx.createDocument(json, extractWaitForSync());
 
-  TRI_doc_mptr_t const mptr = trx.primary()->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, json, 0);
-
-  trx.end();
-
+  res = trx.commit();
+  
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // generate result
-  if (mptr._key != 0) {
-    if (context._sync) {
-      generateCreated(cid, mptr._key, mptr._rid);
-    }
-    else {
-      generateAccepted(cid, mptr._key, mptr._rid);
-    }
+  if (document._key == 0 && res == TRI_ERROR_NO_ERROR) {
+    res = TRI_errno();
+  }
 
-    return true;
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return false;
+  }
+
+  // generate result
+  if (trx.synchronous()) {
+    generateCreated(c.cid(), document._key, document._rid);
   }
   else {
-    int res = TRI_errno();
-
-    switch (res) {
-      case TRI_ERROR_ARANGO_READ_ONLY:
-        generateError(HttpResponse::FORBIDDEN, res, "collection is read-only");
-        return false;
-
-      case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-        generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
-        return false;
-
-      case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-        generateError(HttpResponse::BAD, res, "geo constraint violated");
-        return false;
-
-      default:
-        generateError(HttpResponse::SERVER_ERROR,
-                      TRI_ERROR_INTERNAL,
-                      "cannot create, failed with: " + string(TRI_last_error()));
-        return false;
-    }
+    generateAccepted(c.cid(), document._key, document._rid);
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,38 +405,38 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   string key = suffix[1];
 
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
+  Collection c(_vocbase, collection, getCollectionType(), false);
+  SelfContainedReadTransaction trx(&c); 
   
-  int res = ca.use();
-
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
-  }
-  
-  TRI_voc_cid_t cid = ca.cid();
-  TRI_shaper_t* shaper = ca.shaper();
-
   // .............................................................................
   // inside read transaction
   // .............................................................................
+ 
+  int res = trx.begin(); 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
+  }
 
-  ReadTransaction trx(&ca);
-
-  TRI_doc_mptr_t const document = trx.primary()->read(trx.primary(), (TRI_voc_key_t) key.c_str());
+  TRI_doc_mptr_t const document = trx.read(key);
 
   // register a barrier. will be destroyed automatically
-  Barrier barrier(trx.primary());
+  Barrier barrier(c.primary());
 
-  trx.end();
+  res = trx.commit();
 
   // .............................................................................
   // outside read transaction
   // .............................................................................
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return false;
+  }
+
   // generate result
   if (document._key == 0) {
-    generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
+    generateDocumentNotFound(c.cid(), (TRI_voc_key_t) key.c_str());
     return false;
   }
 
@@ -469,10 +444,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(&document, cid, shaper, generateBody);
+      generateDocument(&document, c.cid(), c.shaper(), generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document._key, rid);
+      generatePreconditionFailed(c.cid(), document._key, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -483,15 +458,15 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
-      generatePreconditionFailed(cid, document._key, rid);
+      generatePreconditionFailed(c.cid(), document._key, rid);
     }
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(&document, cid, shaper, generateBody);
+      generateDocument(&document, c.cid(), c.shaper(), generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document._key, rid);
+      generatePreconditionFailed(c.cid(), document._key, rid);
     }
   }
 
@@ -516,61 +491,45 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
-  // extract the cid
   bool found;
   string collection = _request->value("collection", found);
 
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
+  Collection c(_vocbase, collection, getCollectionType(), false);
+  SelfContainedReadTransaction trx(&c); 
   
-  int res = ca.use();
-
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
-  }
-
   vector<string> ids;
-  TRI_voc_cid_t cid = ca.cid();
-
+  
   // .............................................................................
   // inside read transaction
   // .............................................................................
-
-  ReadTransaction trx(&ca);
-
-  const TRI_primary_collection_t* primary = trx.primary();
-
-  if (0 < primary->_primaryIndex._nrUsed) {
-    void** ptr = primary->_primaryIndex._table;
-    void** end = ptr + primary->_primaryIndex._nrAlloc;
-
-    for (;  ptr < end;  ++ptr) {
-      if (*ptr) {
-        TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-        if (d->_deletion == 0) {
-          ids.push_back(d->_key);
-        }
-      }
-    }
+ 
+  int res = trx.begin(); 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
   }
 
-  trx.end();
+  res = trx.read(ids);
 
+  res = trx.commit();
+  
   // .............................................................................
   // outside read transaction
   // .............................................................................
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return false;
+  }
+
   // generate result
   TRI_string_buffer_t buffer;
-
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-
   TRI_AppendStringStringBuffer(&buffer, "{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = "\"" + DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/";
+  string prefix = "\"" + DOCUMENT_PATH + "/" + StringUtils::itoa(c.cid()) + "/";
 
   for (vector<string>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
@@ -793,8 +752,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
-  bool forceSync = extractWaitForSync();
-
   // split the document reference
   string collection = suffix[0];
   string key = suffix[1];
@@ -814,31 +771,21 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
-
-  int res = ca.use();
-
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
-  }
+  Collection c(_vocbase, collection, getCollectionType(), false);
+  SelfContainedWriteTransaction trx(&c); 
   
-  TRI_shaper_t* shaper = ca.shaper();
-  TRI_voc_cid_t cid = ca.cid();
   TRI_voc_rid_t rid = 0;
+  TRI_doc_mptr_t document;
   
-  // init target document
-  TRI_doc_mptr_t mptr;
-
   // .............................................................................
   // inside write transaction
   // .............................................................................
-
-  WriteTransaction trx(&ca);
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, trx.primary(), policy, forceSync);
-  context._expectedRid = revision;
-  context._previousRid = &rid;
+ 
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
+  }
 
   if (isPatch) {
     // patching an existing document
@@ -853,11 +800,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       // delete null attributes
       nullMeansRemove = true;
     }
-
+  
     // read the existing document
-    TRI_doc_mptr_t document = trx.primary()->read(trx.primary(), (TRI_voc_key_t) key.c_str());
+    TRI_doc_mptr_t oldDocument = trx.read(key); 
+
+    TRI_shaper_t* shaper = c.shaper();
     TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
   
     if (old != 0) {
@@ -865,59 +814,34 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_FreeJson(shaper->_memoryZone, old);
 
       if (patchedJson != 0) {
-        mptr = trx.primary()->updateJson(&context, patchedJson, (TRI_voc_key_t) key.c_str());
-
+        document = trx.updateJson(key, patchedJson, policy, extractWaitForSync(), revision, &rid);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
     }
   }
   else {
     // replacing an existing document
-    mptr = trx.primary()->updateJson(&context, json, (TRI_voc_key_t) key.c_str());
+    document = trx.updateJson(key, json, policy, extractWaitForSync(), revision, &rid);
   }
 
-  trx.end();
+  res = trx.commit();
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  res = mptr._key == 0 ? TRI_errno() : 0;
-
-  // generate result
-  if (mptr._key != 0) {
-    generateUpdated(cid, (TRI_voc_key_t) key.c_str(), mptr._rid);
-    return true;
+  if (document._key == 0 && res == TRI_ERROR_NO_ERROR) {
+    res = TRI_errno();
   }
 
-  switch (res) {
-    case TRI_ERROR_ARANGO_READ_ONLY:
-      generateError(HttpResponse::FORBIDDEN, 
-          TRI_ERROR_ARANGO_READ_ONLY,
-          "collection is read-only");
-      return false;
-
-    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-      generateDocumentNotFound(cid, key);
-      return false;
-
-    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
-      return false;
-
-    case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-      generateError(HttpResponse::BAD, res, "geo constraint violated");
-      return false;
-
-    case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(cid, (TRI_voc_key_t) key.c_str(), rid);
-      return false;
-
-    default:
-      generateError(HttpResponse::SERVER_ERROR,
-          TRI_ERROR_INTERNAL,
-          "cannot update, failed with " + string(TRI_last_error()));
-      return false;
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res, c.cid(), (TRI_voc_key_t) key.c_str(), rid);
+    return false;
+  }
+  else {
+    // generate result
+    generateUpdated(c.cid(), (TRI_voc_key_t) key.c_str(), document._rid);
+    return true;
   }
 }
 
@@ -981,8 +905,6 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  bool forceSync = extractWaitForSync();
-
   // split the document reference
   string collection = suffix[0];
   string key = suffix[1];
@@ -1003,66 +925,39 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // find and load collection given by name or identifier
-  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
-
-  int res = ca.use();
-
-  if (TRI_ERROR_NO_ERROR != res) {
-    generateCollectionError(collection, res);
-    return false;
-  }
-  
-  TRI_voc_cid_t cid = ca.cid();
+  Collection c(_vocbase, collection, getCollectionType(), false);
+  SelfContainedWriteTransaction trx(&c); 
   TRI_voc_rid_t rid = 0;
-
+  
   // .............................................................................
   // inside write transaction
   // .............................................................................
+ 
+  int res = trx.begin(); 
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return true;
+  }
 
-  WriteTransaction trx(&ca);
-
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, trx.primary(), policy, forceSync);
-  context._expectedRid = revision;
-  context._previousRid = &rid;
-
-  // unlocking is performed in destroy()
-  res = trx.primary()->destroy(&context, (TRI_voc_key_t) key.c_str());
-
-  trx.end();
+  res = trx.destroy(key, policy, extractWaitForSync(), revision, &rid);
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = trx.commit();
+  }
+  else {
+    trx.abort();
+  }
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // generate result
-  if (res == TRI_ERROR_NO_ERROR) {
-    generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
-    return true;
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res, c.cid(), (TRI_voc_key_t) key.c_str(), rid);
+    return false;
   }
-  else {
-    switch (res) {
-      case TRI_ERROR_ARANGO_READ_ONLY:
-        generateError(HttpResponse::FORBIDDEN, 
-                      TRI_ERROR_ARANGO_READ_ONLY,
-                      "collection is read-only");
-        return false;
-
-      case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid, key);
-        return false;
-
-      case TRI_ERROR_ARANGO_CONFLICT:
-        generatePreconditionFailed(cid, (TRI_voc_key_t) key.c_str(), rid);
-        return false;
-
-      default:
-        generateError(HttpResponse::SERVER_ERROR, 
-                      TRI_ERROR_INTERNAL,
-                      "cannot delete, failed with " + string(TRI_last_error()));
-        return false;
-    }
-  }
+  
+  generateDeleted(c.cid(), (TRI_voc_key_t) key.c_str(), rid);
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

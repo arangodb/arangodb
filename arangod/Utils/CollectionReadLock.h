@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "safe" write transaction
+/// @brief "safe" collection read lock
 ///
 /// @file
 ///
@@ -25,24 +25,22 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_WRITE_TRANSACTION_H
-#define TRIAGENS_UTILS_WRITE_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_READ_LOCK_H
+#define TRIAGENS_UTILS_COLLECTION_READ_LOCK_H 1
 
-#include "Logger/Logger.h"
-#include "Utils/CollectionAccessor.h"
-#include "Utils/Transaction.h"
+#include "Utils/Collection.h"
 #include "VocBase/primary-collection.h"
 
-using namespace triagens::basics;
+using namespace std;
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class WriteTransaction
+// --SECTION--                                          class CollectionReadLock
 // -----------------------------------------------------------------------------
 
-    class WriteTransaction : public Transaction {
+    class CollectionReadLock {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -50,12 +48,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief WriteTransaction
+/// @brief CollectionReadLock
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        WriteTransaction (const WriteTransaction&);
-        WriteTransaction& operator= (const WriteTransaction&);
+        CollectionReadLock (const CollectionReadLock&);
+        CollectionReadLock& operator= (const CollectionReadLock&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -73,21 +71,45 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        WriteTransaction (CollectionAccessor* collection) : 
-          Transaction(collection) {
-          _collection->beginWrite();
+        CollectionReadLock (Collection* collection) : _collection(collection) {
+          TRI_primary_collection_t* primary = _collection->primary();
+
+          primary->beginRead(primary);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
+/// @brief destroy the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~WriteTransaction () {
-          end();
+        ~CollectionReadLock () {
+          TRI_primary_collection_t* primary = _collection->primary();
+
+          primary->endRead(primary);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

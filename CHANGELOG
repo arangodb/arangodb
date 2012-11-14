@@ -1,4 +1,12 @@
-v1.1.beta1 (2012-XX-XX)
+v1.1.beta2 (2012-11-13)
+-----------------------
+
+* fixed arangoirb compilation
+
+* fixed doxygen
+
+
+v1.1.beta1 (2012-10-24)
 -----------------------
 
 * fixed AQL optimiser bug
@@ -190,6 +198,12 @@ v1.1.beta1 (2012-XX-XX)
   documents. Overwriting/replacing documents is still available via the HTTP PUT method
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
+
+v1.0.4 (2012-11-12)
+-------------------
+
+* strange error message in arangosh 1.0.3 at startup
+
 
 v1.0.2 (2012-10-22)
 -------------------
