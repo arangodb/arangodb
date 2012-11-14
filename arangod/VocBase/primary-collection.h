@@ -43,6 +43,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_cap_constraint_s;
+struct TRI_key_generator_s;
 struct TRI_primary_collection_s;
 struct TRI_transaction_s;
 
@@ -323,6 +324,7 @@ typedef struct TRI_primary_collection_s {
   TRI_associative_pointer_t _datafileInfo;
   
   TRI_associative_pointer_t _primaryIndex;
+  struct TRI_key_generator_s* _keyGenerator;
 
   struct TRI_cap_constraint_s* _capConstraint;
 
@@ -446,7 +448,7 @@ TRI_doc_abort_transaction_marker_t;
 /// @brief initializes a primary collection structure
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitPrimaryCollection (TRI_primary_collection_t*, TRI_shaper_t*);
+int TRI_InitPrimaryCollection (TRI_primary_collection_t*, TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a primary collection

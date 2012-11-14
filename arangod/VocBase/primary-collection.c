@@ -33,7 +33,8 @@
 #include <BasicsC/logging.h>
 #include <BasicsC/strings.h>
 
-#include <VocBase/voc-shaper.h>
+#include "VocBase/key-generator.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -414,10 +415,13 @@ static TRI_voc_size_t Count (TRI_primary_collection_t* primary) {
 /// @brief initialises a primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
-                                TRI_shaper_t* shaper) {
+int TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
+                               TRI_shaper_t* shaper) {
+  int res;
+
   collection->_shaper = shaper;
   collection->_capConstraint = NULL;
+  collection->_keyGenerator = NULL;
 
   collection->figures = Figures;
   collection->size    = Count;
@@ -439,6 +443,11 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
                              0);
   
   TRI_InitReadWriteLock(&collection->_lock);
+  
+  // init key generator. TODO: make this configurable
+  res = TRI_CreateKeyGenerator(NULL, collection);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,6 +455,10 @@ void TRI_InitPrimaryCollection (TRI_primary_collection_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* collection) {
+  if (collection->_keyGenerator != NULL) {
+    TRI_FreeKeyGenerator(collection->_keyGenerator);
+  }
+
   TRI_DestroyReadWriteLock(&collection->_lock);
   TRI_DestroyAssociativePointer(&collection->_primaryIndex);
 

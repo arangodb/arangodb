@@ -66,7 +66,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   collection->_state = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
 
-  collection->_cid = info->_cid;
+  collection->_cid  = info->_cid;
   TRI_CopyString(collection->_name, info->_name, sizeof(collection->_name));
   collection->_maximalSize = info->_maximalSize;
   collection->_waitForSync = info->_waitForSync;
