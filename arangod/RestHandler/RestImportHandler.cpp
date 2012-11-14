@@ -239,8 +239,10 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const document = trx.createDocument(values, forceSync);
-      if (document._key != 0) {
+      TRI_doc_mptr_t* document = 0;
+      
+      res = trx.createDocument(&document, values, forceSync);
+      if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
@@ -255,6 +257,7 @@ bool RestImportHandler::createByArray () {
     }
   }
 
+  // this will commit, even if previous errors occurred
   res = trx.commit();
 
   // .............................................................................
@@ -427,8 +430,10 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const document = trx.createDocument(json, forceSync);
-      if (document._key != 0) {
+      TRI_doc_mptr_t* document = 0;
+      res = trx.createDocument(&document, json, forceSync);
+
+      if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
@@ -448,6 +453,7 @@ bool RestImportHandler::createByList () {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
   }
   
+  // we'll always commit, even if previous errors occurred
   res = trx.commit();
   
   // .............................................................................

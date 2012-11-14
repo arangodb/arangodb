@@ -216,18 +216,15 @@ bool RestEdgeHandler::createDocument () {
   // inside write transaction
   // .............................................................................
   
-  TRI_doc_mptr_t const document = trx.createEdge(json, extractWaitForSync(), &edge);
+  // will hold the result
+  TRI_doc_mptr_t* document = 0;
+  res = trx.createEdge(&document, json, extractWaitForSync(), &edge);
+  res = trx.finish(res);
 
-  res = trx.commit();
-  
   // .............................................................................
   // outside write transaction
   // .............................................................................
-
-  if (document._key == 0 && res == TRI_ERROR_NO_ERROR) {
-    res = TRI_errno();
-  }
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     if (edge._toKey) {
      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
@@ -240,12 +237,15 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
+  assert(document);
+  assert(document->_key);
+
   // generate result
   if (trx.synchronous()) {
-    generateCreated(c.cid(), document._key, document._rid);
+    generateCreated(c.cid(), document->_key, document->_rid);
   }
   else {
-    generateAccepted(c.cid(), document._key, document._rid);
+    generateAccepted(c.cid(), document->_key, document->_rid);
   }
 
   return true;
