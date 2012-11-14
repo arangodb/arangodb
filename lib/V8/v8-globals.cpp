@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief "safe" read transaction
+/// @brief V8 globals
 ///
 /// @file
 ///
@@ -22,81 +22,81 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012 triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_READ_TRANSACTION_H
-#define TRIAGENS_UTILS_READ_TRANSACTION_H 1
-
-#include "Logger/Logger.h"
-#include "Utils/CollectionAccessor.h"
-#include "Utils/Transaction.h"
-#include "VocBase/primary-collection.h"
-
-namespace triagens {
-  namespace arango {
+#include "v8-globals.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class ReadTransaction
+// --SECTION--                                                  GLOBAL FUNCTIONS
 // -----------------------------------------------------------------------------
-
-    class ReadTransaction : public Transaction {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
+/// @addtogroup V8Globals
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ReadTransaction
+/// @brief add a method to a prototype object
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-        ReadTransaction (const ReadTransaction&);
-        ReadTransaction& operator= (const ReadTransaction&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ReadTransaction (CollectionAccessor* collection) : 
-          Transaction(collection) {
-          _collection->beginRead();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~ReadTransaction () {
-          end();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-    };
-
+void TRI_AddProtoMethodVocbase (v8::Handle<v8::Template> tpl, 
+                                const char* const name, 
+                                v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+                                const bool isHidden) {
+  if (isHidden) {
+    // hidden method
+    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
+  }
+  else {
+    // normal method
+    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func));
   }
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a method to an object
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl, 
+                           const char* const name, 
+                           v8::Handle<v8::Value>(*func)(v8::Arguments const&), 
+                           const bool isHidden) {
+  if (isHidden) {
+    // hidden method
+    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
+  }
+  else {
+    // normal method
+    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a global function to the given context
+////////////////////////////////////////////////////////////////////////////////
+  
+void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
+                                   const char* const name, 
+                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&)) {
+  // all global functions are read-only
+  context->Global()->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func)->GetFunction(), v8::ReadOnly);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a global function to the given context
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context, 
+                                   const char* const name, 
+                                   v8::Handle<v8::Function> func) {
+  // all global functions are read-only
+  context->Global()->Set(TRI_V8_SYMBOL(name), func, v8::ReadOnly);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

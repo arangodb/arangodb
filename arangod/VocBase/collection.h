@@ -213,7 +213,7 @@ typedef struct TRI_col_info_s {
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
   bool _waitForSync;                 // if true, wait for msync
 
-  bool _deleted;                     // if true, collections has been deleted
+  bool _deleted;                     // if true, collection has been deleted
 }
 TRI_col_info_t;
 

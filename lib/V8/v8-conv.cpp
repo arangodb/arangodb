@@ -1663,30 +1663,9 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context> context) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (v8g == 0) {
-    v8g = new TRI_v8_global_t;
-    isolate->SetData(v8g);
-  }
+  assert(v8g != 0);
 
-  // .............................................................................
-  // keys
-  // .............................................................................
-
-  if (v8g->DidKey.IsEmpty()) {
-    v8g->DidKey = v8::Persistent<v8::String>::New(v8::String::New("_id"));
-  }
-
-  if (v8g->KeyKey.IsEmpty()) {
-    v8g->KeyKey = v8::Persistent<v8::String>::New(v8::String::New("_key"));
-  }
-
-  if (v8g->FromKey.IsEmpty()) {
-    v8g->FromKey = v8::Persistent<v8::String>::New(v8::String::New("_from"));
-  }
-
-  if (v8g->ToKey.IsEmpty()) {
-    v8g->ToKey = v8::Persistent<v8::String>::New(v8::String::New("_to"));
-  }
+  // nothing special to do here
 }
 
 ////////////////////////////////////////////////////////////////////////////////

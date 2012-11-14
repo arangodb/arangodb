@@ -931,7 +931,13 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   }
 
   shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
-  // TODO: memory allocation might fail
+  if (shaper == NULL) {
+    // out of memory
+    TRI_FreeShapeCollection(collection);
+
+    return NULL;
+  }
+
   TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);
 
