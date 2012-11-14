@@ -35,6 +35,7 @@
 #include "ShapedJson/shape-accessor.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
+#include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -1046,14 +1047,14 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
   size_t keySize;
   char* keyBody;
   TRI_voc_size_t keyBodySize; 
-  char ridBuffer[22]; // can hold even the biggest stringified uint64_t
-  char* keySource;
+  char keyBuffer[TRI_COLLECTION_KEY_MAX_LENGTH + 1]; 
   TRI_doc_mptr_t mptr;
 
   // initialise the result
   memset(&mptr, 0, sizeof(mptr));
   
   primary = context->_collection;
+  document = (TRI_document_collection_t*) primary;
   
   if (type != TRI_DOC_MARKER_KEY_DOCUMENT && 
       type != TRI_DOC_MARKER_KEY_EDGE) {
@@ -1063,43 +1064,36 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
 
     return mptr;
   }
+  
+  // type is valid
+  
+  if (type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    // create a document
+    TRI_doc_document_key_marker_t marker;
+    TRI_key_generator_t* keyGenerator;
+    int res;
 
+    memset(&marker, 0, sizeof(marker));
+    InitDocumentMarker(&marker, TRI_DOC_MARKER_KEY_DOCUMENT, json, true);
+   
+    // create key using key generator
+    keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
+    assert(keyGenerator != NULL);
 
-  if (key) {
-    document = (TRI_document_collection_t*) primary;
-
-    // check key
-    if (regexec(&document->DocumentKeyRegex, key, 0, NULL, 0) != 0 || strlen(key) > document->keyLength) {
+    res = keyGenerator->generate(keyGenerator, TRI_COLLECTION_KEY_MAX_LENGTH, &marker, key, (char*) &keyBuffer, &keySize);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // key generation failed
       Unlock(context);
       primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
 
       return mptr;
     }
-  }
-  
-  // type & key are valid
-  
-  if (type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    // create a document
-    TRI_doc_document_key_marker_t marker;
 
-    memset(&marker, 0, sizeof(marker));
-    InitDocumentMarker(&marker, TRI_DOC_MARKER_KEY_DOCUMENT, json, true);
-   
-    if (key) {
-      // we have a key!
-      keySize = strlen(key) + 1;
-      keySource = key;
-    }
-    else {
-      // create key from did      
-      keySize = TRI_StringUInt64InPlace(marker._rid, ridBuffer) + 1;
-      keySource = (char*) &ridBuffer;
-    }
+    keySize += 1;
 
     keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-    TRI_CopyString(keyBody, keySource, keySize);
+    TRI_CopyString(keyBody, (char*) &keyBuffer, keySize);
 
     marker._offsetKey = sizeof(marker);
     marker._offsetJson = sizeof(marker) + keyBodySize;
@@ -1121,8 +1115,10 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     // create an edge
     TRI_doc_edge_key_marker_t marker;
     TRI_document_edge_t const* edge;
+    TRI_key_generator_t* keyGenerator;
     size_t fromSize;
     size_t toSize;
+    int res;
 
     edge = data;
 
@@ -1136,20 +1132,24 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     fromSize = strlen(edge->_fromKey) + 1;    
     toSize = strlen(edge->_toKey) + 1;        
     
-    if (key) {
-      // we have a key!
-      keySize = strlen(key) + 1;
-      keySource = key;
+    // create key using key generator
+    keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
+    assert(keyGenerator != NULL);
+
+    res = keyGenerator->generate(keyGenerator, TRI_COLLECTION_KEY_MAX_LENGTH, &marker.base, key, (char*) &keyBuffer, &keySize);
+    if (res != TRI_ERROR_NO_ERROR) {
+      // key generation failed
+      Unlock(context);
+      primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+
+      return mptr;
     }
-    else {
-      // create key from did
-      keySize = TRI_StringUInt64InPlace(marker.base._rid, ridBuffer) + 1;
-      keySource = (char*) &ridBuffer;
-    }
+    
+    keySize += 1;
 
     keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-    TRI_CopyString(keyBody, keySource, keySize);      
+    TRI_CopyString(keyBody, &keyBuffer, keySize);      
 
     TRI_CopyString((keyBody + keySize),          edge->_toKey, toSize);      
     TRI_CopyString((keyBody + keySize + toSize), edge->_fromKey, fromSize);      
@@ -1738,9 +1738,14 @@ static bool OpenIndexIterator (char const* filename, void* data) {
 static bool InitDocumentCollection (TRI_document_collection_t* collection,
                                     TRI_shaper_t* shaper) {
   TRI_index_t* primary;
-  char* expr;
+  int res;
   
-  TRI_InitPrimaryCollection(&collection->base, shaper);
+  res = TRI_InitPrimaryCollection(&collection->base, shaper);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyPrimaryCollection(&collection->base);
+
+    return false;
+  }
  
   collection->_headers = TRI_CreateSimpleHeaders(sizeof(TRI_doc_mptr_t));
   if (collection->_headers == NULL) {
@@ -1780,16 +1785,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.update     = UpdateShapedJson;
   collection->base.updateJson = UpdateJson;
   collection->base.destroy    = DeleteShapedJson;
-  
-  expr = "^[0-9a-zA-Z][_0-9a-zA-Z]*$";
-  if (regcomp(&collection->DocumentKeyRegex, expr, REG_ICASE | REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
-  
-  collection->keyLength = 200;
-  
+
   return true;
 }
 
@@ -1908,8 +1904,6 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
   TRI_DestroyVectorPointer(&collection->_allIndexes);
 
   TRI_DestroyPrimaryCollection(&collection->base);
-  
-  regfree(&collection->DocumentKeyRegex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

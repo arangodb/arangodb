@@ -137,6 +137,9 @@ extern "C" {
 ///   Will be raised when an invalid collection type is used in a request.
 /// - 1219: @CODE{illegal document key}
 ///   Will be raised when a document key is corrupt.
+/// - 1220: @CODE{unexpected document key}
+///   Will be raised when a user-defined document key is supplied for
+///   collections with auto key generation.
 /// - 1300: @CODE{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @CODE{query killed}
@@ -909,6 +912,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD                                 (1219)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1220: ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED
+///
+/// unexpected document key
+///
+/// Will be raised when a user-defined document key is supplied for collections
+/// with auto key generation.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED                          (1220)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

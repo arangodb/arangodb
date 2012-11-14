@@ -459,6 +459,14 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collection,
       generateError(HttpResponse::BAD, res, "geo constraint violated");
       return;
     
+    case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
+      generateError(HttpResponse::BAD, res, "invalid document key");
+      return;
+    
+    case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
+      generateError(HttpResponse::BAD, res, "collection does not allow using user-defined keys");
+      return;
+    
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
       generateDocumentNotFound(cid, key);
       return;
