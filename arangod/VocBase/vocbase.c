@@ -673,11 +673,9 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
                                                  TRI_col_type_e type) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
   TRI_vocbase_col_t* collection;
-  TRI_col_parameter_t parameter;
   
   // check that the name does not contain any strange characters
-  parameter._isSystem = false;
-  if (! TRI_IsAllowedCollectionName(&parameter, name)) {
+  if (! TRI_IsAllowedCollectionName(false, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
 
     return NULL;
@@ -997,13 +995,13 @@ size_t PageSize;
 /// Returns true if the name is allowed and false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedCollectionName (TRI_col_parameter_t* paramater, char const* name) {
+bool TRI_IsAllowedCollectionName (bool isSystem, char const* name) {
   bool ok;
   char const* ptr;
   size_t length = 0;
 
   for (ptr = name;  *ptr;  ++ptr) {
-    if (name < ptr || paramater->_isSystem) {
+    if (name < ptr || isSystem) {
       ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
     else {
@@ -1421,7 +1419,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   name = parameter->_name;
 
   // check that the name does not contain any strange characters
-  if (! TRI_IsAllowedCollectionName(parameter, name)) {
+  if (! TRI_IsAllowedCollectionName(parameter->_isSystem, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
 
     return NULL;
@@ -1690,7 +1688,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collec
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection, char const* newName) {
   union { TRI_vocbase_col_t* v; TRI_vocbase_col_t const* c; } cnv;
   TRI_col_info_t info;
-  TRI_col_parameter_t parameter;
   void const* found;
   char const* oldName;
   int res;
@@ -1702,8 +1699,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_ERROR_NO_ERROR;
   }
 
-  parameter._isSystem = (*oldName == '_');
-  if (! TRI_IsAllowedCollectionName(&parameter, newName)) {
+  if (! TRI_IsAllowedCollectionName((*oldName == '_'), newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
