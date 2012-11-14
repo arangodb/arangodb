@@ -176,10 +176,39 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finish a transaction, based on the previous state
+////////////////////////////////////////////////////////////////////////////////
+
+        int finish (const int errorNumber) {
+          if (_trx == 0) {
+            // transaction already ended or not created
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (status() != TRI_TRANSACTION_RUNNING) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          int res;
+          if (errorNumber == TRI_ERROR_NO_ERROR) {
+            // there was no previous error, so we'll commit
+            res = commit();
+          }
+          else {
+            // there was a previous error, so we'll abort
+            abort();
+            // return original error number
+            res = errorNumber;
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t read (const string& key) {
+        int read (TRI_doc_mptr_t** mptr,const string& key) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
@@ -187,7 +216,7 @@ namespace triagens {
           
           CollectionReadLock lock(_collection);
 
-          return primary->read(&context, (TRI_voc_key_t) key.c_str());
+          return primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
         }
 
 ////////////////////////////////////////////////////////////////////////////////

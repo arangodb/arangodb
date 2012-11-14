@@ -261,8 +261,8 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_key_t k
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, string const& did) {
-  string location = DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + did;
+void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, TRI_voc_key_t key) {
+  string location = DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
 
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -273,10 +273,10 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (TRI_voc_cid_t cid, string
 /// @brief generates conflict message
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateConflict (string const& cid, string const& did) {
+void RestVocbaseBaseHandler::generateConflict (TRI_voc_cid_t cid, TRI_voc_key_t key) {
   generateError(HttpResponse::CONFLICT, 
                 TRI_ERROR_ARANGO_CONFLICT,
-                "document " + DOCUMENT_PATH + "/" + cid + "/" + did + " has been altered");
+                "document " + DOCUMENT_PATH + "/" + StringUtils::itoa(cid) + "/" + key + " has been altered");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,7 +443,7 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collection,
       }
       else {
         // collection name specified but collection not found
-        generateError(HttpResponse::NOT_FOUND, res, "collection " + COLLECTION_PATH + "/" + StringUtils::itoa(cid) + " not found");
+        generateError(HttpResponse::NOT_FOUND, res, "collection " + COLLECTION_PATH + "/" + collection + " not found");
       }
       return;
 
@@ -468,11 +468,11 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collection,
       return;
     
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-      generateDocumentNotFound(cid, key);
+      generateDocumentNotFound(cid, key ? key : (TRI_voc_key_t) "unknown");
       return;
     
     case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(cid, key, rid);
+      generatePreconditionFailed(cid, key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
 
     default:

@@ -99,8 +99,9 @@ namespace triagens {
 /// @brief create a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t createDocument (TRI_json_t const* json, 
-                                       bool forceSync) {
+        int createDocument (TRI_doc_mptr_t** mptr,
+                            TRI_json_t const* json, 
+                            bool forceSync) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
@@ -109,16 +110,17 @@ namespace triagens {
 
           CollectionWriteLock lock(_collection);
 
-          return primary->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, json, 0);
+          return primary->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single edge within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t createEdge (TRI_json_t const* json, 
-                                   bool forceSync, 
-                                   void const* data) {
+        int createEdge (TRI_doc_mptr_t** mptr,
+                        TRI_json_t const* json, 
+                        bool forceSync, 
+                        void const* data) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
@@ -127,19 +129,20 @@ namespace triagens {
 
           CollectionWriteLock lock(_collection);
 
-          return primary->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, json, data);
+          return primary->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t updateJson (const string& key, 
-                                   TRI_json_t* const json, 
-                                   const TRI_doc_update_policy_e policy, 
-                                   bool forceSync, 
-                                   const TRI_voc_rid_t expectedRevision, 
-                                   TRI_voc_rid_t* actualRevision) {
+        int updateJson (const string& key,
+                        TRI_doc_mptr_t** mptr, 
+                        TRI_json_t* const json, 
+                        const TRI_doc_update_policy_e policy, 
+                        bool forceSync, 
+                        const TRI_voc_rid_t expectedRevision, 
+                        TRI_voc_rid_t* actualRevision) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
@@ -150,7 +153,7 @@ namespace triagens {
 
           CollectionWriteLock lock(_collection);
 
-          return primary->updateJson(&context, json, (TRI_voc_key_t) key.c_str());
+          return primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
         }
 
 ////////////////////////////////////////////////////////////////////////////////

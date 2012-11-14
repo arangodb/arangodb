@@ -53,15 +53,16 @@ static int DeleteImmediateIndexes (TRI_document_collection_t*,
                                    TRI_doc_mptr_t const*,
                                    TRI_voc_tick_t);
 
-static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t*,
-                                      TRI_doc_mptr_t const*,
-                                      TRI_doc_document_key_marker_t*,
-                                      TRI_voc_size_t,
-                                      void const*,
-                                      TRI_voc_size_t,
-                                      void const*,
-                                      TRI_voc_size_t,
-                                      TRI_df_marker_t**);
+static int UpdateDocument (TRI_doc_operation_context_t*,
+                           TRI_doc_mptr_t const*,
+                           TRI_doc_document_key_marker_t*,
+                           TRI_voc_size_t,
+                           void const*,
+                           TRI_voc_size_t,
+                           void const*,
+                           TRI_voc_size_t,
+                           TRI_df_marker_t**,
+                           TRI_doc_mptr_t**);
 
 static int DeleteDocument (TRI_doc_operation_context_t*,
                            TRI_doc_deletion_key_marker_t*,
@@ -362,7 +363,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
                            TRI_voc_size_t bodySize,
                            TRI_df_marker_t** result,
                            void const* additional,
-                           TRI_doc_mptr_t* mptr) { 
+                           TRI_doc_mptr_t** mptr) { 
 
   TRI_datafile_t* journal;
   TRI_primary_collection_t* primary;
@@ -463,7 +464,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
   assert(res == TRI_ERROR_NO_ERROR);
 
-  *mptr = *header;
+  *mptr = header;
 
   // check cap constraint
   if (primary->_capConstraint != NULL) {
@@ -525,36 +526,32 @@ static void UpdateHeader (TRI_datafile_t* datafile,
 /// @brief rolls back an update
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t RollbackUpdate (TRI_primary_collection_t* primary,
-                                      TRI_doc_mptr_t const* header,
-                                      TRI_df_marker_t const* originalMarker,
-                                      TRI_df_marker_t** result) {
+static int RollbackUpdate (TRI_primary_collection_t* primary,
+                           TRI_doc_mptr_t const* header,
+                           TRI_df_marker_t const* originalMarker,
+                           TRI_df_marker_t** result) {
   TRI_doc_document_key_marker_t* marker;
   char* data;
   TRI_voc_size_t dataLength;
   TRI_voc_size_t markerLength;
   TRI_doc_operation_context_t rollbackContext;
-  char* keyData = NULL;
-  TRI_voc_size_t keyDataLength = 0;
-
+  char* keyData;
+  TRI_voc_size_t keyDataLength;
+  TRI_doc_document_key_marker_t documentUpdate;
+  TRI_doc_edge_key_marker_t edgeUpdate;
 
   if (originalMarker->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
       originalMarker->_type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
-    TRI_doc_mptr_t mptr;
-    
-    memset(&mptr, 0, sizeof(mptr));
-    TRI_set_errno(TRI_ERROR_INTERNAL);
     LOG_WARNING("rollback operation called for unexpected marker type");
 
-    return mptr;
+    return TRI_ERROR_INTERNAL;
   }
 
-
   if (originalMarker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    TRI_doc_document_key_marker_t documentUpdate;
+    // document is a document
     TRI_doc_document_key_marker_t* o = (TRI_doc_document_key_marker_t*) originalMarker;
-    
+  
     memcpy(&documentUpdate, originalMarker, sizeof(TRI_doc_document_key_marker_t));
     marker = &documentUpdate;
     markerLength = sizeof(TRI_doc_document_key_marker_t);
@@ -565,8 +562,8 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_primary_collection_t* primary,
     data = ((char*) originalMarker) + marker->_offsetJson;
     dataLength = originalMarker->_size - marker->_offsetJson;
   }
-  else if (originalMarker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t edgeUpdate;
+  else {
+    // document is an edge
     TRI_doc_edge_key_marker_t* o = (TRI_doc_edge_key_marker_t*) originalMarker;
 
     memcpy(&edgeUpdate, originalMarker, sizeof(TRI_doc_edge_key_marker_t));
@@ -593,37 +590,33 @@ static TRI_doc_mptr_t RollbackUpdate (TRI_primary_collection_t* primary,
                         keyDataLength,
                         data, 
                         dataLength,
-                        result);
+                        result,
+                        NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing document splitted into marker and body to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
-                                      TRI_doc_mptr_t const* header,
-                                      TRI_doc_document_key_marker_t* marker,
-                                      TRI_voc_size_t markerSize,
-                                      void const* keyBody,
-                                      TRI_voc_size_t keyBodySize,
-                                      void const* body,
-                                      TRI_voc_size_t bodySize,
-                                      TRI_df_marker_t** result) {
-  TRI_doc_mptr_t mptr;
+static int UpdateDocument (TRI_doc_operation_context_t* context,
+                           TRI_doc_mptr_t const* header,
+                           TRI_doc_document_key_marker_t* marker,
+                           TRI_voc_size_t markerSize,
+                           void const* keyBody,
+                           TRI_voc_size_t keyBodySize,
+                           void const* body,
+                           TRI_voc_size_t bodySize,
+                           TRI_df_marker_t** result,
+                           TRI_doc_mptr_t** mptr) {
   TRI_doc_mptr_t update;
   TRI_primary_collection_t* primary;
   TRI_document_collection_t* document;
   TRI_datafile_t* journal;
-  TRI_df_marker_t const* originalMarker;
   TRI_doc_datafile_info_t* dfi;
   TRI_voc_size_t total;
+  TRI_df_marker_t const* originalMarker;
+
   int res;
-
-  primary = context->_collection;
-  document = (TRI_document_collection_t*) primary;
-
-  originalMarker = header->_data;
-  memset(&mptr, 0, sizeof(mptr));
 
   // .............................................................................
   // check the revision
@@ -632,10 +625,12 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   res = TRI_RevisionCheck(context, header->_rid);
   if (res != TRI_ERROR_NO_ERROR) {
     Unlock(context);
-    TRI_set_errno(res);
-
-    return mptr;
+    
+    return res;
   }
+  
+  // save original version
+  originalMarker = header->_data;
 
   // .............................................................................
   // update header
@@ -645,14 +640,15 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   marker->_rid = marker->base._tick = TRI_NewTickVocBase();
 
   // find and select a journal
+  primary = context->_collection;
+  document = (TRI_document_collection_t*) primary;
   total = markerSize + keyBodySize + bodySize;
   journal = SelectJournal(document, total, result);
 
   if (journal == NULL) {
     Unlock(context);
-    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
 
-    return mptr;
+    return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
   // .............................................................................
@@ -670,7 +666,7 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
     Unlock(context);
     LOG_ERROR("cannot write element");
 
-    return mptr;
+    return res;
   }
 
   // .............................................................................
@@ -702,15 +698,14 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
 
   // check for constraint error
   if (context->_allowRollback && res != TRI_ERROR_NO_ERROR) {
-    TRI_doc_mptr_t resUpd;
-
+    int resUpd;
+    
     LOG_DEBUG("encountered index violating during update, rolling back");
 
     resUpd = RollbackUpdate(primary, header, originalMarker, result);
-    if (resUpd._key == 0) {
-      LOG_ERROR("encountered error '%s' during rollback of update", TRI_last_error());
+    if (resUpd != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("encountered error '%s' during rollback of update", TRI_errno_string(resUpd));
     }
-    TRI_set_errno(res);
   }
 
   // .............................................................................
@@ -718,7 +713,9 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
   // .............................................................................
 
   if (res == TRI_ERROR_NO_ERROR) {
-    mptr = *header;
+    if (mptr != NULL) {
+      *mptr = (TRI_doc_mptr_t*) header;
+    }
     
     Unlock(context);
 
@@ -726,18 +723,19 @@ static TRI_doc_mptr_t UpdateDocument (TRI_doc_operation_context_t* context,
     if (context->_sync) {
       WaitSync(document, journal, ((char const*) *result) + markerSize + bodySize);
     }
-      
-    // and return
-    return mptr;
+
+    return TRI_ERROR_NO_ERROR;
   }
 
   // error case
   assert(res != TRI_ERROR_NO_ERROR);
     
   Unlock(context);
-  mptr._key = 0;
+  if (mptr != NULL) {
+    *mptr = NULL;
+  }
 
-  return mptr;
+  return res;
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -765,7 +763,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   if (! IsVisible(header, context)) {
     Unlock(context);
 
-    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
   
   // .............................................................................
@@ -788,8 +786,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 
   if (journal == NULL) {
     Unlock(context);
-
-    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
 
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
@@ -844,25 +840,25 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 /// @brief creates a new document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateJson (TRI_doc_operation_context_t* context,
-                                  TRI_df_marker_type_e type,
-                                  TRI_json_t const* json,
-                                  void const* data) {
+static int CreateJson (TRI_doc_operation_context_t* context,
+                       TRI_df_marker_type_e type,
+                       TRI_doc_mptr_t** mptr,
+                       TRI_json_t const* json,
+                       void const* data) {
   TRI_shaped_json_t* shaped;
   TRI_primary_collection_t* primary;
-  TRI_doc_mptr_t result;
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key;
+  int res;
 
+  key = 0;
   primary = context->_collection;
 
   shaped = TRI_ShapedJsonJson(primary->_shaper, json);
 
   if (shaped == 0) {
     Unlock(context);
-    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    memset(&result, 0, sizeof(result));
 
-    return result;
+    return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
   
   if (json != NULL && json->_type == TRI_JSON_ARRAY) {
@@ -872,23 +868,24 @@ static TRI_doc_mptr_t CreateJson (TRI_doc_operation_context_t* context,
     }    
   }
   
-  result = primary->create(context, type, shaped, data, key);
+  res = primary->create(context, type, mptr, shaped, data, key);
 
   TRI_FreeShapedJson(primary->_shaper, shaped);
 
-  return result;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document in the collection from json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateJson (TRI_doc_operation_context_t* context,
-                                  TRI_json_t const* json,
-                                  TRI_voc_key_t key) {
+static int UpdateJson (TRI_doc_operation_context_t* context,
+                       TRI_doc_mptr_t** mptr,
+                       TRI_json_t const* json,
+                       TRI_voc_key_t key) {
   TRI_shaped_json_t* shaped;
-  TRI_doc_mptr_t result;
   TRI_primary_collection_t* primary;
+  int res;
 
   primary = context->_collection;
 
@@ -896,16 +893,15 @@ static TRI_doc_mptr_t UpdateJson (TRI_doc_operation_context_t* context,
 
   if (shaped == 0) {
     Unlock(context);
-    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
-    memset(&result, 0, sizeof(result));
 
-    return result;
+    return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
   
-  result = primary->update(context, shaped, key);
+  res = primary->update(context, mptr, shaped, key);
   
   TRI_FreeShapedJson(primary->_shaper, shaped);
-  return result;
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1036,23 +1032,21 @@ static void InitDocumentMarker (TRI_doc_document_key_marker_t* marker,
 /// @brief creates a new document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
-                                        TRI_df_marker_type_e type,
-                                        TRI_shaped_json_t const* json,
-                                        void const* data,
-                                        char* key) {
+static int CreateShapedJson (TRI_doc_operation_context_t* context,
+                             TRI_df_marker_type_e type,
+                             TRI_doc_mptr_t** mptr,
+                             TRI_shaped_json_t const* json,
+                             void const* data,
+                             char* key) {
   TRI_df_marker_t* result;
   TRI_primary_collection_t* primary;
   TRI_document_collection_t* document;
   size_t keySize;
   char* keyBody;
   TRI_voc_size_t keyBodySize; 
+  int res;
   char keyBuffer[TRI_COLLECTION_KEY_MAX_LENGTH + 1]; 
-  TRI_doc_mptr_t mptr;
 
-  // initialise the result
-  memset(&mptr, 0, sizeof(mptr));
-  
   primary = context->_collection;
   document = (TRI_document_collection_t*) primary;
   
@@ -1060,9 +1054,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
       type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
     Unlock(context);
-    primary->base._lastError = TRI_set_errno(TRI_ERROR_INTERNAL);
 
-    return mptr;
+    return TRI_ERROR_INTERNAL;
   }
   
   // type is valid
@@ -1071,7 +1064,6 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     // create a document
     TRI_doc_document_key_marker_t marker;
     TRI_key_generator_t* keyGenerator;
-    int res;
 
     memset(&marker, 0, sizeof(marker));
     InitDocumentMarker(&marker, TRI_DOC_MARKER_KEY_DOCUMENT, json, true);
@@ -1084,9 +1076,8 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     if (res != TRI_ERROR_NO_ERROR) {
       // key generation failed
       Unlock(context);
-      primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
 
-      return mptr;
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 
     keySize += 1;
@@ -1100,16 +1091,16 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     
     marker.base._size = sizeof(marker) + json->_data.length + keyBodySize;
 
-    CreateDocument(context,
-                   &marker, 
-                   sizeof(marker),
-                   keyBody, 
-                   keyBodySize, 
-                   json->_data.data, 
-                   json->_data.length,
-                   &result,
-                   data,
-                   &mptr);
+    res = CreateDocument(context,
+                         &marker, 
+                         sizeof(marker),
+                         keyBody, 
+                         keyBodySize, 
+                         json->_data.data, 
+                         json->_data.length,
+                         &result,
+                         data,
+                         mptr);
   }
   else {
     // create an edge
@@ -1118,7 +1109,6 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     TRI_key_generator_t* keyGenerator;
     size_t fromSize;
     size_t toSize;
-    int res;
 
     edge = data;
 
@@ -1140,16 +1130,15 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     if (res != TRI_ERROR_NO_ERROR) {
       // key generation failed
       Unlock(context);
-      primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
 
-      return mptr;
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
     
     keySize += 1;
 
     keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
-    TRI_CopyString(keyBody, &keyBuffer, keySize);      
+    TRI_CopyString(keyBody, (char*) &keyBuffer, keySize);      
 
     TRI_CopyString((keyBody + keySize),          edge->_toKey, toSize);      
     TRI_CopyString((keyBody + keySize + toSize), edge->_fromKey, fromSize);      
@@ -1161,29 +1150,30 @@ static TRI_doc_mptr_t CreateShapedJson (TRI_doc_operation_context_t* context,
     
     marker.base.base._size = sizeof(marker) + keyBodySize + json->_data.length;
     
-    CreateDocument(context,
-                   &marker.base, 
-                   sizeof(marker),
-                   keyBody, 
-                   keyBodySize, 
-                   json->_data.data, 
-                   json->_data.length,
-                   &result,
-                   data,
-                   &mptr);
+    res = CreateDocument(context,
+                         &marker.base, 
+                         sizeof(marker),
+                         keyBody, 
+                         keyBodySize, 
+                         json->_data.data, 
+                         json->_data.length,
+                         &result,
+                         data,
+                         mptr);
   }
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, keyBody);
   
-  return mptr;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t ReadShapedJson (TRI_doc_operation_context_t* context,
-                                      TRI_voc_key_t key) {
+static int ReadShapedJson (TRI_doc_operation_context_t* context,
+                           TRI_doc_mptr_t** mptr,
+                           TRI_voc_key_t key) {
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t const* header;
 
@@ -1192,34 +1182,29 @@ static TRI_doc_mptr_t ReadShapedJson (TRI_doc_operation_context_t* context,
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 
   if (! IsVisible(header, context)) {
-    TRI_doc_mptr_t result;
-
-    memset(&result, 0, sizeof(result));
-
-    return result;
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
-  return *header;
+  *mptr = (TRI_doc_mptr_t*) header;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_operation_context_t* context,
-                                        TRI_shaped_json_t const* json,
-                                        TRI_voc_key_t key) {
+static int UpdateShapedJson (TRI_doc_operation_context_t* context,
+                             TRI_doc_mptr_t** mptr,
+                             TRI_shaped_json_t const* json,
+                             TRI_voc_key_t key) {
   TRI_df_marker_t const* original;
   TRI_df_marker_t* result;
   TRI_primary_collection_t* primary;
-  TRI_doc_mptr_t mptr;
   TRI_doc_mptr_t const* header;
-  char* keyBody = NULL;
-  size_t keyBodyLength = 0;         
+  char* keyBody;
+  size_t keyBodyLength;         
   
-  // initialise the result
-  memset(&mptr, 0, sizeof(mptr));
-
   primary = context->_collection; 
 
   // get an existing header pointer
@@ -1227,9 +1212,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_operation_context_t* context,
 
   if (! IsVisible(header, context)) {
     Unlock(context);
-    TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 
-    return mptr;
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
   original = header->_data;
@@ -1238,9 +1222,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_operation_context_t* context,
       original->_type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
     Unlock(context);
-    primary->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-    
-    return mptr;
+
+    return TRI_ERROR_INTERNAL;
   }
 
 
@@ -1270,7 +1253,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_operation_context_t* context,
                           keyBodyLength,
                           json->_data.data, 
                           json->_data.length,
-                          &result);
+                          &result,
+                          mptr);
   }
 
   // the original is an edge
@@ -1306,7 +1290,8 @@ static TRI_doc_mptr_t UpdateShapedJson (TRI_doc_operation_context_t* context,
                           keyBodyLength,
                           json->_data.data, 
                           json->_data.length,
-                          &result);
+                          &result,
+                          mptr);
   }
 }
 
@@ -1780,11 +1765,12 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   collection->base.endWrite   = EndWrite;
 
   collection->base.create     = CreateShapedJson;
-  collection->base.createJson = CreateJson;
   collection->base.read       = ReadShapedJson;
   collection->base.update     = UpdateShapedJson;
-  collection->base.updateJson = UpdateJson;
   collection->base.destroy    = DeleteShapedJson;
+  
+  collection->base.createJson = CreateJson;
+  collection->base.updateJson = UpdateJson;
 
   return true;
 }
@@ -2384,7 +2370,7 @@ static int UpdateImmediateIndexes (TRI_document_collection_t* collection,
   }
 
   if (constraint) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   return result;
