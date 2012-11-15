@@ -43,17 +43,12 @@
 namespace triagens {
   namespace arango {
 
+    template<typename T>
+    class SingleCollectionTransaction : public Transaction<T> {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                 class SingleCollectionTransaction
 // -----------------------------------------------------------------------------
-
-    template<bool E>
-    class SingleCollectionTransaction : public Transaction<E> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -75,13 +70,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     TRI_transaction_t* previousTrx,
                                      const string& collectionName,
                                      const TRI_col_type_e collectionType,
                                      const bool createCollection, 
                                      const string& trxName,
                                      const TRI_transaction_type_e type) :
-          Transaction<E>(vocbase, previousTrx, trxName), 
+          Transaction<T>(vocbase, trxName), 
           _collectionName(collectionName),
           _collectionType(collectionType),
           _createCollection(createCollection),
@@ -295,14 +289,14 @@ namespace triagens {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
       private:
 

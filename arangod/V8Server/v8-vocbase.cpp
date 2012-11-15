@@ -43,7 +43,10 @@
 #include "Rest/JsonContainer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utils/SingleCollectionWriteTransaction.h"
+#include "Utils/StandaloneTransaction.h"
 #include "Utils/UserTransaction.h"
+#include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
@@ -1849,7 +1852,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
   
-  UserTransaction<false> trx(vocbase, 0, readCollections, writeCollections);
+  UserTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, readCollections, writeCollections);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4762,7 +4765,12 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
+/*
+  TRI_vocbase_col_t* colx = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
+  SingleCollectionWriteTransaction<true, 1> trx(colx->_vocbase, 0, colx->_name, (TRI_col_type_e) colx->_type, false, "SaveVocBaseTrx");
+
+*/
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 

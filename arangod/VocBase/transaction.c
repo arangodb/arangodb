@@ -898,8 +898,7 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const context,
-                                          const TRI_transaction_isolation_level_e isolationLevel,
-                                          const bool isSingleOperation) {
+                                          const TRI_transaction_isolation_level_e isolationLevel) {
   TRI_transaction_t* trx;
   
   trx = (TRI_transaction_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false);
@@ -914,7 +913,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const conte
   trx->_status            = TRI_TRANSACTION_CREATED;  
   trx->_type              = TRI_TRANSACTION_READ;
   trx->_isolationLevel    = isolationLevel;
-  trx->_isSingleOperation = isSingleOperation;
+  trx->_hints             = 0;
   
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
@@ -967,7 +966,7 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSingleOperationTransaction (const TRI_transaction_t* const trx) {
-  return trx->_isSingleOperation;
+  return (trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1151,7 +1150,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
 /// @brief start a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartTransaction (TRI_transaction_t* const trx) {
+int TRI_StartTransaction (TRI_transaction_t* const trx, TRI_transaction_hint_t hints) {
   int res;
   
   assert(trx->_status == TRI_TRANSACTION_CREATED);
@@ -1159,6 +1158,8 @@ int TRI_StartTransaction (TRI_transaction_t* const trx) {
   if (trx->_collections._length == 0) {
     return TRI_ERROR_TRANSACTION_INCOMPLETE;
   }
+
+  trx->_hints = hints;
 
   res = AcquireCollectionLocks(trx);
   if (res != TRI_ERROR_NO_ERROR) {

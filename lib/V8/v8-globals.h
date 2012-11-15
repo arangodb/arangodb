@@ -107,7 +107,8 @@ typedef struct TRI_v8_global_s {
       WaitForSyncKey(),
       DocumentIdRegex(),
       DocumentKeyRegex(),
-      IndexIdRegex() {
+      IndexIdRegex(),
+      _currentTransaction() {
   }
 
   ~TRI_v8_global_s () {
@@ -413,6 +414,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   regex_t IndexIdRegex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief currently running transaction
+////////////////////////////////////////////////////////////////////////////////
+
+  void* _currentTransaction;
 }
 TRI_v8_global_t;
 
