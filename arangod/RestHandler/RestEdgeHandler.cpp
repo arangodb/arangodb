@@ -191,8 +191,12 @@ bool RestEdgeHandler::createDocument () {
     if (edge._fromKey) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
-
-    generateError(HttpResponse::BAD, res, "'_from' is not a document handle");
+    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      generateError(HttpResponse::NOT_FOUND, res, "'from' does not point to a valid collection");
+    }
+    else {
+      generateError(HttpResponse::BAD, res, "'from' is not a document handle");
+    }
     return false;
   }
 
@@ -207,7 +211,12 @@ bool RestEdgeHandler::createDocument () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
 
-    generateError(HttpResponse::BAD, res, "'_to' is not a document handle");
+    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      generateError(HttpResponse::NOT_FOUND, res, "'to' does not point to a valid collection");
+    }
+    else {
+      generateError(HttpResponse::BAD, res, "'to' is not a document handle");
+    }
     return false;
   }
   
@@ -249,6 +258,52 @@ bool RestEdgeHandler::createDocument () {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a document handle
+////////////////////////////////////////////////////////////////////////////////
+
+int RestEdgeHandler::parseDocumentId (string const& handle,
+                                      TRI_voc_cid_t& cid,
+                                      TRI_voc_key_t& key) {
+  vector<string> split;
+  int res;
+
+  split = StringUtils::split(handle, '/');
+
+  if (split.size() != 2) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  cid = TRI_UInt64String(split[0].c_str());
+  res = TRI_errno();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // issue #277: non-numeric collection id, now try looking up by name
+    TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, split[0].c_str());
+    if (collection == 0) {
+      // collection not found
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+    // collection found by name
+    cid = collection->_cid;
+    // clear previous error
+    TRI_set_errno(TRI_ERROR_NO_ERROR);
+  }
+  else {
+    // validate whether collection exists
+    TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    if (collection == 0) {
+      // collection not found
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+  }
+
+  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
+
+  return TRI_errno();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

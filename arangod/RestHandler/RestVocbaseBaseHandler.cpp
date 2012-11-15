@@ -599,35 +599,6 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a document handle
-////////////////////////////////////////////////////////////////////////////////
-
-int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
-                                             TRI_voc_cid_t& cid,
-                                             TRI_voc_key_t& key) {
-  vector<string> split;
-  int res;
-
-  split = StringUtils::split(handle, '/');
-
-  if (split.size() != 2) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
-  cid = TRI_UInt64String(split[0].c_str());
-  res = TRI_errno();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  //did = TRI_UInt64String(split[1].c_str());
-  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
-
-  return TRI_errno();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

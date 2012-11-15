@@ -1,6 +1,7 @@
 # coding: utf-8
 
 require 'rspec'
+require 'uri'
 require './arangodb.rb'
 
 describe ArangoDB do
@@ -186,6 +187,110 @@ describe ArangoDB do
 	doc.code.should eq(200)
 	doc.parsed_response['edges'].should be_kind_of(Array)
 	doc.parsed_response['edges'].length.should be(2)
+      end
+
+      it "using collection names in from and to" do
+	cmd = "/_api/document?collection=#{@vid}"
+
+	# create a vertex
+	body = "{ \"a\" : 1 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id = doc.parsed_response['_id']
+        # replace collection id with collection name
+        translated = URI.escape(id.gsub /^\d+\//, 'UnitTestsCollectionVertex/')
+	
+        # create edge, using collection id
+	cmd = "/_api/edge?collection=#{@eid}&from=#{id}&to=#{id}"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        # create edge, using collection names
+	cmd = "/_api/edge?collection=#{@eid}&from=#{translated}&to=#{translated}"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        
+        # create edge, using mix of collection names and ids
+	cmd = "/_api/edge?collection=#{@eid}&from=#{translated}&to=#{id}"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	
+        # turn parameters around
+        cmd = "/_api/edge?collection=#{@eid}&from=#{id}&to=#{translated}"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+      
+      it "using invalid collection names" do
+	cmd = "/_api/document?collection=#{@vid}"
+
+	# create a vertex
+	body = "{ \"a\" : 1 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-name", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	from = URI.escape("thefox/12345")
+        to   = URI.escape("thefox/13443466")
+	
+        # create edge, using invalid collection names
+	cmd = "/_api/edge?collection=#{@eid}&from=#{from}&to=#{to}"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-name", cmd, :body => body)
+
+	doc.code.should eq(404)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1203)
+	doc.parsed_response['code'].should eq(404)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+
+      it "using invalid collection ids" do
+	cmd = "/_api/document?collection=#{@vid}"
+
+	# create a vertex
+	body = "{ \"a\" : 1 }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-cid", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	from = "2/12345"
+        to   = "3/13443466"
+	
+        # create edge, using invalid collection names
+	cmd = "/_api/edge?collection=#{@eid}&from=#{from}&to=#{to}"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-cid", cmd, :body => body)
+
+	doc.code.should eq(404)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1203)
+	doc.parsed_response['code'].should eq(404)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
     end
 
