@@ -35,6 +35,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
+#include "Utils/ImportTransaction.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -200,7 +202,7 @@ bool RestImportHandler::createByArray () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  SelfContainedWriteTransaction trx(&c); 
+  ImportTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
@@ -239,8 +241,10 @@ bool RestImportHandler::createByArray () {
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const document = trx.createDocument(values, forceSync);
-      if (document._key != 0) {
+      TRI_doc_mptr_t* document = 0;
+      
+      res = trx.createDocument(&document, values, forceSync);
+      if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
@@ -255,6 +259,7 @@ bool RestImportHandler::createByArray () {
     }
   }
 
+  // this will commit, even if previous errors occurred
   res = trx.commit();
 
   // .............................................................................
@@ -373,7 +378,7 @@ bool RestImportHandler::createByList () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  SelfContainedWriteTransaction trx(&c); 
+  ImportTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
@@ -427,8 +432,10 @@ bool RestImportHandler::createByList () {
       }
 
       // now save the document
-      TRI_doc_mptr_t const document = trx.createDocument(json, forceSync);
-      if (document._key != 0) {
+      TRI_doc_mptr_t* document = 0;
+      res = trx.createDocument(&document, json, forceSync);
+
+      if (res == TRI_ERROR_NO_ERROR) {
         ++numCreated;
       }
       else {
@@ -448,6 +455,7 @@ bool RestImportHandler::createByList () {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
   }
   
+  // we'll always commit, even if previous errors occurred
   res = trx.commit();
   
   // .............................................................................

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for single collection, single operation write transactions
+/// @brief wrapper for self-contained, single collection read transactions
 ///
 /// @file
 ///
@@ -25,20 +25,19 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H
-#define TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
+#define TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
 
-#include "Utils/CollectionWriteLock.h"
-#include "Utils/SingleCollectionWriteTransaction.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 ass SelfContainedWriteTransaction
+// --SECTION--                         class SingleCollectionReadOnlyTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedWriteTransaction : public SingleCollectionWriteTransaction<1> {
+    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -59,19 +58,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection object
 ///
-/// A self contained write transaction operates on a single collection and may 
-/// execute at most one write operation
+/// A self-contained read transaction is a transaction on a single collection
+/// that only allows read operations. Write operations are not supported.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedWriteTransaction (Collection* collection) :
-          SingleCollectionWriteTransaction<1>(collection, "SelfContainedWriteTransaction") { 
+        SingleCollectionReadOnlyTransaction (Collection* collection) :
+          SingleCollectionTransaction(collection, "SingleCollectionReadOnlyTransaction", TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SelfContainedWriteTransaction () {
+        ~SingleCollectionReadOnlyTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for self-contained, single collection read transactions
+/// @brief wrapper for Aql transactions
 ///
 /// @file
 ///
@@ -25,19 +25,17 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SELF_CONTAINED_READ_TRANSACTION_H
-#define TRIAGENS_UTILS_SELF_CONTAINED_READ_TRANSACTION_H 1
-
-#include "Utils/SelfContainedTransaction.h"
+#ifndef TRIAGENS_UTILS_AQL_TRANSACTION_H
+#define TRIAGENS_UTILS_AQL_TRANSACTION_H 1
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                class SelfContainedReadTransaction
+// --SECTION--                                              class AqlTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedReadTransaction : public SelfContainedTransaction {
+    class Transaction {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -56,42 +54,85 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction, using a collection object
+/// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedReadTransaction (Collection* collection) :
-          SelfContainedTransaction(collection) {
+        AqlTransaction (const TRI_vocbase_col_t* vocbase, const vector<string>& collectionNames) : 
+          Transaction(vocbase), _trx(0), _collectionNames(collectionNames) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SelfContainedReadTransaction () {
+        ~AqlTransaction () {
+          if (_trx != 0) {
+            if (_trx->_status == TRI_TRANSACTION_RUNNING) {
+              // auto abort
+              abort();
+            }
+
+            TRI_FreeTransaction(_trx);
+            _trx = 0;
+          }
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+      public:
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
-// -----------------------------------------------------------------------------
+        int begin () {
+          if (_trx != 0) {
+            // already started
+            return TRI_ERROR_TRANSACTION_INVALD_STATE;
+          }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, 0);
+          if (_trx == 0) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+  
+          for (size_t i = 0; i < _collectionNames.size(); ++i) {
+            if (! TRI_AddCollectionTransaction(_trx, _collectionNames[i].c_str(), TRI_TRANSACTION_READ)) {
+              return TRI_ERROR_INTERNAL;
+            }
+          }
 
-      protected:
+          if (_trx->_status != TRI_TRANSACTION_CREATED) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the transaction type
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_type_e type () const {
-          return TRI_TRANSACTION_READ;
+          int res = TRI_StartTransaction(_trx);
+          return res;
         }
+
+        int commit () {
+          if (_trx == 0 || _trx->_status != TRI_TRANSACTION_RUNNING) {
+            // not created or not running
+            return TRI_ERROR_TRANSACTION_INVALD_STATE;
+          }
+
+          int res = TRI_FinishTransaction(_trx);
+          
+          return res;
+        }
+
+        int abort () {
+          if (_trx == 0) {
+            // transaction already ended or not created
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (_trx->_status != TRI_TRANSACTION_RUNNING) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          int res = TRI_AbortTransaction(_trx);
+
+          return res;
+        }
+
+      private:
+
+        vector<string> _collectionNames;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for self-contained, single collection transactions
+/// @brief wrapper for single collection transactions
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SELF_CONTAINED_TRANSACTION_H
-#define TRIAGENS_UTILS_SELF_CONTAINED_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H
+#define TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "common.h"
 
@@ -41,10 +41,10 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                    class SelfContainedTransaction
+// --SECTION--                                 class SingleCollectionTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedTransaction : public Transaction {
+    class SingleCollectionTransaction : public Transaction {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -64,18 +64,25 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection object
+///
+/// A single collection transaction operates on a single collection (you guessed
+/// it), and may execute at most one write operation if it is a write 
+/// transaction. It may execute multiple reads, though.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedTransaction (Collection* collection) :
-          Transaction(collection->vocbase()), 
-          _collection(collection) {
+        SingleCollectionTransaction (Collection* collection, 
+                                     const string& name,
+                                     const TRI_transaction_type_e type) :
+          Transaction(collection->vocbase(), name), 
+          _collection(collection),
+          _type(type) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SelfContainedTransaction () {
+        ~SingleCollectionTransaction () {
           if (_trx != 0) {
             if (status() == TRI_TRANSACTION_RUNNING) {
               // auto abort
@@ -176,10 +183,39 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief finish a transaction, based on the previous state
+////////////////////////////////////////////////////////////////////////////////
+
+        int finish (const int errorNumber) {
+          if (_trx == 0) {
+            // transaction already ended or not created
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (status() != TRI_TRANSACTION_RUNNING) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          int res;
+          if (errorNumber == TRI_ERROR_NO_ERROR) {
+            // there was no previous error, so we'll commit
+            res = commit();
+          }
+          else {
+            // there was a previous error, so we'll abort
+            abort();
+            // return original error number
+            res = errorNumber;
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t read (const string& key) {
+        int read (TRI_doc_mptr_t** mptr,const string& key) {
           TRI_primary_collection_t* primary = _collection->primary();
           TRI_doc_operation_context_t context;
 
@@ -187,7 +223,7 @@ namespace triagens {
           
           CollectionReadLock lock(_collection);
 
-          return primary->read(&context, (TRI_voc_key_t) key.c_str());
+          return primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,25 +257,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the transaction type
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual TRI_transaction_type_e type () const = 0;
+        inline TRI_transaction_type_e type () const {
+          return _type;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -261,6 +284,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Collection* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transaction type (READ | WRITE)
+////////////////////////////////////////////////////////////////////////////////
+
+        const TRI_transaction_type_e _type;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

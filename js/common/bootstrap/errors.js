@@ -103,6 +103,7 @@
     "ERROR_TRANSACTION_INCOMPLETE" : { "code" : 1650, "message" : "transaction definition is incomplete" }, 
     "ERROR_TRANSACTION_INVALID_STATE" : { "code" : 1651, "message" : "invalid transaction state" }, 
     "ERROR_TRANSACTION_NESTED"     : { "code" : 1652, "message" : "nested write transaction detected" }, 
+    "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1653, "message" : "internal transaction error" }, 
     "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" }, 
     "ERROR_KEYVALUE_KEY_EXISTS"    : { "code" : 1801, "message" : "key already exists" }, 
     "ERROR_KEYVALUE_KEY_NOT_FOUND" : { "code" : 1802, "message" : "key not found" }, 
