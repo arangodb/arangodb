@@ -201,8 +201,7 @@ bool RestImportHandler::createByArray () {
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // find and load collection given by name or identifier
-  Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  ImportTransaction trx(&c); 
+  ImportTransaction<false> trx(_vocbase, 0, collection, TRI_COL_TYPE_DOCUMENT, create); 
   
   // .............................................................................
   // inside write transaction
@@ -377,8 +376,7 @@ bool RestImportHandler::createByList () {
   }        
   
   // find and load collection given by name or identifier
-  Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  ImportTransaction trx(&c); 
+  ImportTransaction<false> trx(_vocbase, 0, collection, TRI_COL_TYPE_DOCUMENT, create); 
   
   // .............................................................................
   // inside write transaction

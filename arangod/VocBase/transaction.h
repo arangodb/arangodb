@@ -298,7 +298,7 @@ typedef struct TRI_transaction_s {
   TRI_transaction_status_e          _status;         // current status
   TRI_transaction_isolation_level_e _isolationLevel; // isolation level
   TRI_vector_pointer_t              _collections;    // list of participating collections
-  void*                             _creator;        // creator pointer 
+  bool                              _isSingleOperation; // trx only consists of one write operation
 }
 TRI_transaction_t;
 
@@ -321,7 +321,7 @@ TRI_transaction_t;
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const,
                                           const TRI_transaction_isolation_level_e,
-                                          void*);
+                                          const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a transaction container
@@ -343,6 +343,18 @@ void TRI_FreeTransaction (TRI_transaction_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the transaction consists only of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSingleOperationTransaction (const TRI_transaction_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the transaction spans multiple write collections
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsMultiCollectionWriteTransaction (const TRI_transaction_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the local id of a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -355,13 +367,21 @@ TRI_transaction_local_id_t TRI_LocalIdTransaction (const TRI_transaction_t* cons
 void TRI_DumpTransaction (TRI_transaction_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a collection is contained in a transaction and return it
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_vocbase_col_s* TRI_CheckCollectionTransaction (TRI_transaction_t* const,
+                                                          const char* const,
+                                                          const TRI_transaction_type_e);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddCollectionTransaction (TRI_transaction_t* const,
-                                   const char* const, 
-                                   const TRI_transaction_type_e,
-                                   struct TRI_vocbase_col_s*);
+int TRI_AddCollectionTransaction (TRI_transaction_t* const,
+                                  const char* const, 
+                                  const TRI_transaction_type_e,
+                                  struct TRI_vocbase_col_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start a transaction

@@ -28,8 +28,12 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H 1
 
-#include "Utils/CollectionWriteLock.h"
 #include "Utils/SingleCollectionTransaction.h"
+
+#include "Utils/CollectionWriteLock.h"
+
+#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -38,8 +42,8 @@ namespace triagens {
 // --SECTION--                            class SingleCollectionWriteTransaction
 // -----------------------------------------------------------------------------
 
-    template<uint64_t M>
-    class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
+    template<bool E, uint64_t M>
+    class SingleCollectionWriteTransaction : public SingleCollectionTransaction<E> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -69,8 +73,13 @@ namespace triagens {
 /// operation on a single collection. 
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionWriteTransaction (Collection* collection, const string& name) :
-          SingleCollectionTransaction(collection, name, TRI_TRANSACTION_WRITE), 
+        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          TRI_transaction_t* previousTrx,
+                                          const string& collectionName, 
+                                          const TRI_col_type_e collectionType, 
+                                          const bool createCollection, 
+                                          const string& trxName) :
+          SingleCollectionTransaction<E>(vocbase, previousTrx, collectionName, collectionType, createCollection, trxName, TRI_TRANSACTION_WRITE), 
           _numWrites(0), 
           _synchronous(false) {
         }
@@ -79,7 +88,7 @@ namespace triagens {
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SingleCollectionWriteTransaction () {
+        virtual ~SingleCollectionWriteTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,13 +126,13 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_primary_collection_t* primary = this->primaryCollection();
           TRI_doc_operation_context_t context;
 
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
           _synchronous = context._sync;
 
-          CollectionWriteLock lock(_collection);
+          CollectionWriteLock lock(primary);
 
           return primary->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0);
         }
@@ -140,13 +149,13 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_primary_collection_t* primary = this->primaryCollection();
           TRI_doc_operation_context_t context;
 
           TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
           _synchronous = context._sync;
 
-          CollectionWriteLock lock(_collection);
+          CollectionWriteLock lock(primary);
 
           return primary->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data);
         }
@@ -166,7 +175,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_primary_collection_t* primary = this->primaryCollection();
           TRI_doc_operation_context_t context;
 
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
@@ -174,7 +183,7 @@ namespace triagens {
           context._previousRid = actualRevision;
           _synchronous = context._sync;
 
-          CollectionWriteLock lock(_collection);
+          CollectionWriteLock lock(primary);
 
           return primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
         }
@@ -192,7 +201,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_primary_collection_t* primary = this->primaryCollection();
           TRI_doc_operation_context_t context;
 
           TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
@@ -200,7 +209,7 @@ namespace triagens {
           context._previousRid = actualRevision;
           _synchronous = context._sync;
 
-          CollectionWriteLock lock(_collection);
+          CollectionWriteLock lock(primary);
 
           return primary->destroy(&context, (TRI_voc_key_t) key.c_str());
         }

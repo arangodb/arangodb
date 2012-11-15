@@ -30,6 +30,9 @@
 
 #include "Utils/SingleCollectionTransaction.h"
 
+#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
+
 namespace triagens {
   namespace arango {
 
@@ -37,7 +40,8 @@ namespace triagens {
 // --SECTION--                         class SingleCollectionReadOnlyTransaction
 // -----------------------------------------------------------------------------
 
-    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
+    template<bool E>
+    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction<E> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -62,8 +66,11 @@ namespace triagens {
 /// that only allows read operations. Write operations are not supported.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (Collection* collection) :
-          SingleCollectionTransaction(collection, "SingleCollectionReadOnlyTransaction", TRI_TRANSACTION_READ) {
+        SingleCollectionReadOnlyTransaction (TRI_vocbase_t* const vocbase,
+                                             TRI_transaction_t* previousTrx,
+                                             const string& collectionName, 
+                                             const TRI_col_type_e collectionType) :
+          SingleCollectionTransaction<E>(vocbase, previousTrx, collectionName, collectionType, false, "SingleCollectionReadOnlyTransaction", TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

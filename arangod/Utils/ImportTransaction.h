@@ -28,8 +28,10 @@
 #ifndef TRIAGENS_UTILS_IMPORT_TRANSACTION_H
 #define TRIAGENS_UTILS_IMPORT_TRANSACTION_H 1
 
-#include "Utils/CollectionWriteLock.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
+
+#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -38,7 +40,8 @@ namespace triagens {
 // --SECTION--                                           class ImportTransaction
 // -----------------------------------------------------------------------------
 
-    class ImportTransaction : public SingleCollectionWriteTransaction<UINT64_MAX> {
+    template<bool E>
+    class ImportTransaction : public SingleCollectionWriteTransaction<E, UINT64_MAX> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -63,8 +66,12 @@ namespace triagens {
 /// number of writes on it.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ImportTransaction (Collection* collection) :
-          SingleCollectionWriteTransaction<UINT64_MAX>(collection, "ImportTransaction") { 
+        ImportTransaction (TRI_vocbase_t* const vocbase,
+                           TRI_transaction_t* previousTrx,
+                           const string& collectionName, 
+                           const TRI_col_type_e collectionType, 
+                           const bool createCollection) :
+          SingleCollectionWriteTransaction<E, UINT64_MAX>(vocbase, previousTrx, collectionName, collectionType, createCollection, "ImportTransaction") { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////

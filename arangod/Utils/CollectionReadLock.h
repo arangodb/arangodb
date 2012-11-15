@@ -28,7 +28,6 @@
 #ifndef TRIAGENS_UTILS_COLLECTION_READ_LOCK_H
 #define TRIAGENS_UTILS_COLLECTION_READ_LOCK_H 1
 
-#include "Utils/Collection.h"
 #include "VocBase/primary-collection.h"
 
 using namespace std;
@@ -74,10 +73,8 @@ namespace triagens {
 /// @brief create the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionReadLock (Collection* collection) : _collection(collection) {
-          TRI_primary_collection_t* primary = _collection->primary();
-
-          primary->beginRead(primary);
+        CollectionReadLock (TRI_primary_collection_t* primary) : _primary(primary) {
+          _primary->beginRead(_primary);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,9 +82,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~CollectionReadLock () {
-          TRI_primary_collection_t* primary = _collection->primary();
-
-          primary->endRead(primary);
+          _primary->endRead(_primary);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +104,7 @@ namespace triagens {
 /// @brief the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        TRI_primary_collection_t* _primary;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

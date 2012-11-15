@@ -29,6 +29,7 @@
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
 #include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -37,6 +38,7 @@ namespace triagens {
 // --SECTION--                                                 class Transaction
 // -----------------------------------------------------------------------------
 
+    template<bool E>
     class Transaction {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,10 +73,13 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction (const TRI_vocbase_t* const vocbase, const string& name) : 
+        Transaction (TRI_vocbase_t* const vocbase, 
+                     TRI_transaction_t* previousTrx, 
+                     const string& trxName) : 
           _vocbase(vocbase), 
-          _name(name), 
-          _trx(0) {
+          _trx(previousTrx),
+          _embedded(previousTrx != 0),
+          _trxName(trxName) {
           assert(_vocbase != 0);
         }
 
@@ -83,7 +88,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~Transaction () {
-          if (_trx != 0) {
+          if (_trx != 0 && ! isEmbedded()) {
             TRI_FreeTransaction(_trx);
           }
         }
@@ -104,11 +109,19 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is embedded
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isEmbedded () const {
+          return _embedded;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
         inline string name () const {
-          return _name;
+          return _trxName;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +151,34 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
+// --SECTION--                                         virtual protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use all collection
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual int useCollections () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add all collections to the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual int addCollections () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            "final" public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,25 +192,119 @@ namespace triagens {
 /// @brief begin the transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual int begin () = 0;
+        int begin () {
+          int res;
+
+          if (isEmbedded()) {
+            if (! E) {
+              return TRI_ERROR_TRANSACTION_NESTED;
+            }
+
+            res = addCollections();
+            return res;
+          }
+
+          if (_trx != 0) {
+            // already started
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          // register usage of the underlying collections
+          res = useCollections();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, false); // TODO: fix this
+          if (_trx == 0) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          res = addCollections();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+  
+          if (status() != TRI_TRANSACTION_CREATED) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          return TRI_StartTransaction(_trx);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commit / finish the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int commit () = 0;
+        int commit () {
+          if (_trx == 0 || status() != TRI_TRANSACTION_RUNNING) {
+            // not created or not running
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+          
+          if (isEmbedded()) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          int res;
+
+          if (_trx->_type == TRI_TRANSACTION_READ) {
+            res = TRI_FinishTransaction(_trx);
+          }
+          else {
+            res = TRI_CommitTransaction(_trx);
+          }
+
+          return res;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abort the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int abort () = 0;
+        int abort () {
+          if (_trx == 0) {
+            // transaction already ended or not created
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (status() != TRI_TRANSACTION_RUNNING) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          int res = TRI_AbortTransaction(_trx);
+
+          return res;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finish the transaction, based on the previous state
+/// @brief finish a transaction, based on the previous state
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int finish (const int errorNumber) = 0;
+        int finish (const int errorNumber) {
+          if (_trx == 0) {
+            // transaction already ended or not created
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (status() != TRI_TRANSACTION_RUNNING) {
+            return TRI_ERROR_TRANSACTION_INVALID_STATE;
+          }
+
+          int res;
+          if (errorNumber == TRI_ERROR_NO_ERROR) {
+            // there was no previous error, so we'll commit
+            res = commit();
+          }
+          else {
+            // there was a previous error, so we'll abort
+            this->abort();
+            // return original error number
+            res = errorNumber;
+          }
+
+          return res;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -191,19 +325,40 @@ namespace triagens {
 /// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_t* const _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction name
-////////////////////////////////////////////////////////////////////////////////
-
-        string _name;
+        TRI_vocbase_t* const _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual transaction
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_transaction_t* _trx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+      
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the current transaction is embedded
+////////////////////////////////////////////////////////////////////////////////
+
+        const bool _embedded;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transaction name
+////////////////////////////////////////////////////////////////////////////////
+
+        string _trxName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
