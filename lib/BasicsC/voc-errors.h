@@ -219,6 +219,9 @@ extern "C" {
 /// - 1653: @CODE{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
+/// - 1654: @CODE{unregistered collection used in transaction}
+///   Will be raised when a collection is used in the middle of a transaction
+///   but was not registered at transaction start.
 /// - 1800: @CODE{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @CODE{key already exists}
@@ -1249,6 +1252,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_INTERNAL                                    (1653)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1654: ERROR_TRANSACTION_UNREGISTERED_COLLECTION
+///
+/// unregistered collection used in transaction
+///
+/// Will be raised when a collection is used in the middle of a transaction but
+/// was not registered at transaction start.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION                     (1654)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

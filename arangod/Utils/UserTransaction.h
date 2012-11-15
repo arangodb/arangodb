@@ -30,6 +30,9 @@
 
 #include "Utils/Transaction.h"
 
+#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
+
 namespace triagens {
   namespace arango {
 
@@ -37,7 +40,8 @@ namespace triagens {
 // --SECTION--                                             class UserTransaction
 // -----------------------------------------------------------------------------
 
-    class UserTransaction : public Transaction {
+    template<bool E>
+    class UserTransaction : public Transaction<E> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -59,8 +63,13 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        UserTransaction (const TRI_vocbase_col_t* vocbase, const vector<string>& readCollections, const vector<string>& writeCollections) : 
-          Transaction(vocbase), _readCollections(readCollections), _writeCollections(writeCollections) {
+        UserTransaction (TRI_vocbase_t* const vocbase, 
+                         TRI_transaction_t* previousTrx, 
+                         const vector<string>& readCollections, 
+                         const vector<string>& writeCollections) : 
+          Transaction<E>(vocbase, previousTrx, "UserTransaction"), 
+          _readCollections(readCollections), 
+          _writeCollections(writeCollections) { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,83 +77,89 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~UserTransaction () {
-          if (_trx != 0) {
-            if (_trx->_status == TRI_TRANSACTION_RUNNING) {
+          if (this->_trx != 0) {
+            if (this->status() == TRI_TRANSACTION_RUNNING) {
               // auto abort
               abort();
             }
           }
         }
 
-      public:
+// -----------------------------------------------------------------------------
+// --SECTION--                                       virtual protected functions
+// -----------------------------------------------------------------------------
 
-        int begin () {
-          if (_trx != 0) {
-            // already started
-            return TRI_ERROR_TRANSACTION_INVALD_STATE;
-          }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, 0);
-          if (_trx == 0) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
- 
-          for (size_t i = 0; i < _readCollections.size(); ++i) { 
-            if (! TRI_AddCollectionTransaction(_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ)) {
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use all collections 
+/// this is a no op, as using is done when trx is started
+////////////////////////////////////////////////////////////////////////////////
+
+        int useCollections () {
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release all collections in use
+/// this is a no op, as releasing is done when trx is finished
+////////////////////////////////////////////////////////////////////////////////
+
+        int releaseCollections () {
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add all collections to the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int addCollections () {
+          size_t i;
+
+          for (i = 0; i < _readCollections.size(); ++i) {
+            if (! TRI_AddCollectionTransaction(this->_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ, 0)) {
+              return TRI_ERROR_INTERNAL;
+            }
+          }    
+
+          for (i = 0; i < _writeCollections.size(); ++i) {
+            if (! TRI_AddCollectionTransaction(this->_trx, _writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0)) {
               return TRI_ERROR_INTERNAL;
             }
           }
-          
-          for (size_t i = 0; i < _writeCollections.size(); ++i) { 
-            if (! TRI_AddCollectionTransaction(_trx, _readCollections[i].c_str(), TRI_TRANSACTION_WRITE)) {
-              return TRI_ERROR_INTERNAL;
-            }
-          }
 
-          if (_trx->_status != TRI_TRANSACTION_CREATED) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res = TRI_StartTransaction(_trx);
-          return res;
+          return TRI_ERROR_NO_ERROR;
         }
 
-        int commit () {
-          if (_trx == 0 || _trx->_status != TRI_TRANSACTION_RUNNING) {
-            // not created or not running
-            return TRI_ERROR_TRANSACTION_INVALD_STATE;
-          }
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-          int res;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
-          if (_trx->_type == TRI_TRANSACTION_READ) {
-            res = TRI_FinishTransaction(_trx);
-          }
-          else {
-            res = TRI_Commitransaction(_trx);
-          }
-          
-          return res;
-        }
-
-        int abort () {
-          if (_trx == 0) {
-            // transaction already ended or not created
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (_trx->_status != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res = TRI_AbortTransaction(_trx);
-
-          return res;
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collections that are opened in read mode
+////////////////////////////////////////////////////////////////////////////////
+
         vector<string> _readCollections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collections that are opened in write mode
+////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _writeCollections;
 

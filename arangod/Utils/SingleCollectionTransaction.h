@@ -30,10 +30,14 @@
 
 #include "common.h"
 
-#include "BasicsC/voc-errors.h"
 #include "VocBase/primary-collection.h"
+#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
+#include "BasicsC/voc-errors.h"
 
-#include "Utils/Collection.h"
+#include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+
 #include "Utils/CollectionReadLock.h"
 #include "Utils/Transaction.h"
 
@@ -44,7 +48,8 @@ namespace triagens {
 // --SECTION--                                 class SingleCollectionTransaction
 // -----------------------------------------------------------------------------
 
-    class SingleCollectionTransaction : public Transaction {
+    template<bool E>
+    class SingleCollectionTransaction : public Transaction<E> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -70,145 +75,164 @@ namespace triagens {
 /// transaction. It may execute multiple reads, though.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (Collection* collection, 
-                                     const string& name,
+        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
+                                     TRI_transaction_t* previousTrx,
+                                     const string& collectionName,
+                                     const TRI_col_type_e collectionType,
+                                     const bool createCollection, 
+                                     const string& trxName,
                                      const TRI_transaction_type_e type) :
-          Transaction(collection->vocbase(), name), 
-          _collection(collection),
-          _type(type) {
+          Transaction<E>(vocbase, previousTrx, trxName), 
+          _collectionName(collectionName),
+          _collectionType(collectionType),
+          _createCollection(createCollection),
+          _type(type),
+          _collection(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SingleCollectionTransaction () {
-          if (_trx != 0) {
-            if (status() == TRI_TRANSACTION_RUNNING) {
-              // auto abort
-              abort();
+        virtual ~SingleCollectionTransaction () {
+          if (! this->isEmbedded()) {
+            if (this->_trx != 0) {
+              if (this->status() == TRI_TRANSACTION_RUNNING) {
+                // auto abort
+                this->abort();
+              }
             }
-          }
 
-          // unuse underlying collection
-          _collection->release();
+            releaseCollection();
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                       virtual protected functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int useCollections () {
+          if (_collection != 0) {
+            // we already used this collectino, nothing to do
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (_collectionName.empty()) {
+            // name is empty. cannot open the collection
+            return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+          }
+
+          // open or create the collection
+          if (isdigit(_collectionName[0])) {
+            TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(_collectionName);
+
+            _collection = TRI_LookupCollectionByIdVocBase(this->_vocbase, id);
+          }
+          else {
+            if (_collectionType == TRI_COL_TYPE_DOCUMENT) {
+              _collection = TRI_FindDocumentCollectionByNameVocBase(this->_vocbase, _collectionName.c_str(), _createCollection);
+            }
+            else if (_collectionType == TRI_COL_TYPE_EDGE) {
+              _collection = TRI_FindEdgeCollectionByNameVocBase(this->_vocbase, _collectionName.c_str(), _createCollection);
+            }
+          }
+ 
+          if (_collection == 0) {
+            // collection not found
+            return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+          }
+
+          int res = TRI_UseCollectionVocBase(this->_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            _collection = 0;
+
+            return res;
+          }
+
+          LOGGER_TRACE << "using collection " << _collectionName;
+          assert(_collection->_collection != 0);
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add all collections to the transaction (only one)
+////////////////////////////////////////////////////////////////////////////////
+
+        int addCollections () {
+          if (this->isEmbedded()) {
+            assert(_collection == 0);
+
+            _collection = TRI_CheckCollectionTransaction(this->_trx, _collectionName.c_str(), type());
+            if (_collection == 0) {
+              return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+            }
+
+            return TRI_ERROR_NO_ERROR;
+          }
+          else {
+            assert(_collection != 0);
+
+            int res = TRI_AddCollectionTransaction(this->_trx, _collectionName.c_str(), type(), _collection);
+            return res;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start a transaction
+/// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int begin () {
-          if (_trx != 0) {
-            // already started
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          // register usage of the underlying collection
-          int res = _collection->use();
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          _trx = TRI_CreateTransaction(_vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, 0);
-          if (_trx == 0) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-  
-          if (! TRI_AddCollectionTransaction(_trx, _collection->name().c_str(), type(), _collection->collection())) {
-            return TRI_ERROR_INTERNAL;
-          }
-
-          if (status() != TRI_TRANSACTION_CREATED) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          return TRI_StartTransaction(_trx);
+        inline TRI_primary_collection_t* primaryCollection () {
+          assert(_collection->_collection != 0);
+          return _collection->_collection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief commit a transaction
+/// @brief return the collection's shaper
 ////////////////////////////////////////////////////////////////////////////////
-
-        int commit () {
-          if (_trx == 0 || status() != TRI_TRANSACTION_RUNNING) {
-            // not created or not running
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res;
-
-          if (type() == TRI_TRANSACTION_READ) {
-            res = TRI_FinishTransaction(_trx);
-          }
-          else {
-            res = TRI_CommitTransaction(_trx);
-          }
-
-          return res;
+        
+        inline TRI_shaper_t* shaper () {
+          return primaryCollection()->_shaper;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief get the underlying collection's id
 ////////////////////////////////////////////////////////////////////////////////
 
-        int abort () {
-          if (_trx == 0) {
-            // transaction already ended or not created
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (status() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res = TRI_AbortTransaction(_trx);
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finish a transaction, based on the previous state
-////////////////////////////////////////////////////////////////////////////////
-
-        int finish (const int errorNumber) {
-          if (_trx == 0) {
-            // transaction already ended or not created
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (status() != TRI_TRANSACTION_RUNNING) {
-            return TRI_ERROR_TRANSACTION_INVALID_STATE;
-          }
-
-          int res;
-          if (errorNumber == TRI_ERROR_NO_ERROR) {
-            // there was no previous error, so we'll commit
-            res = commit();
-          }
-          else {
-            // there was a previous error, so we'll abort
-            abort();
-            // return original error number
-            res = errorNumber;
-          }
-
-          return res;
+        inline TRI_voc_cid_t cid () const {
+          assert(_collection != 0);
+          return _collection->_cid;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,12 +240,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (TRI_doc_mptr_t** mptr,const string& key) {
-          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_primary_collection_t* primary = primaryCollection();
           TRI_doc_operation_context_t context;
 
           TRI_InitReadContextPrimaryCollection(&context, primary);
           
-          CollectionReadLock lock(_collection);
+          CollectionReadLock lock(primary);
 
           return primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
         }
@@ -231,12 +255,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (vector<string>& ids) {
-          TRI_primary_collection_t* primary = _collection->primary();
+          TRI_primary_collection_t* primary = primaryCollection();
           TRI_doc_operation_context_t context;
 
           TRI_InitReadContextPrimaryCollection(&context, primary);
           
-          CollectionReadLock lock(_collection);
+          CollectionReadLock lock(primary);
 
           if (primary->_primaryIndex._nrUsed > 0) {
             void** ptr = primary->_primaryIndex._table;
@@ -251,6 +275,35 @@ namespace triagens {
                 }
               }
             }
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int releaseCollection () {
+          // unuse underlying collection
+          if (_collection != 0) {
+            TRI_ReleaseCollectionVocBase(this->_vocbase, _collection);
+            _collection = 0;
           }
 
           return TRI_ERROR_NO_ERROR;
@@ -274,22 +327,40 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-      protected:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the collection that is worked on
+/// @brief name of the collection that is worked on
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        const string _collectionName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the type of the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        const TRI_col_type_e _collectionType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to create the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        const bool _createCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction type (READ | WRITE)
 ////////////////////////////////////////////////////////////////////////////////
 
         const TRI_transaction_type_e _type;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief data structure for the single collection used
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_t* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

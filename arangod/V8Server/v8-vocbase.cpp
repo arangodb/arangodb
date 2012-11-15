@@ -33,6 +33,7 @@
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/json.h"
@@ -42,6 +43,7 @@
 #include "Rest/JsonContainer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utils/UserTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
@@ -51,11 +53,11 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/voc-shaper.h"
-#include "Basics/Utf8Helper.h"
 #include "v8.h"
 
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -1837,21 +1839,11 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+  
+  UserTransaction<false> trx(vocbase, 0, readCollections, writeCollections);
 
-  TRI_transaction_t* trx = TRI_CreateTransaction(vocbase->_transactionContext, TRI_TRANSACTION_READ_REPEATABLE, &current);
-
-  for (size_t i = 0; i < readCollections.size(); ++i) {
-    TRI_AddCollectionTransaction(trx, readCollections[i].c_str(), TRI_TRANSACTION_READ, 0);
-  }
-
-  for (size_t i = 0; i < writeCollections.size(); ++i) {
-    TRI_AddCollectionTransaction(trx, writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0);
-  }
-
-  int res = TRI_StartTransaction(trx);
+  int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeTransaction(trx);
-    
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));
   }
 
@@ -1860,21 +1852,18 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result = func->Call(current, 0, &args);
 
   if (tryCatch.HasCaught()) {
-    TRI_AbortTransaction(trx);
-    TRI_FreeTransaction(trx);
+    trx.abort();
 
     return scope.Close(v8::ThrowException(tryCatch.Exception()));
   }
 
   if (! TRI_ObjectToBoolean(result)) {
-    TRI_AbortTransaction(trx);
-    TRI_FreeTransaction(trx);
+    trx.abort();
     
     return scope.Close(v8::False());
   }
   
-  res = TRI_CommitTransaction(trx);
-  TRI_FreeTransaction(trx);
+  res = trx.commit();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res)));

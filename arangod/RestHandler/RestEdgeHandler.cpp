@@ -29,11 +29,11 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/strings.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/document-collection.h"
-#include "strings.h"
-#include "VocBase/edge-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -157,8 +157,7 @@ bool RestEdgeHandler::createDocument () {
   }
   
   // find and load collection given by name or identifier
-  Collection c(_vocbase, collection, getCollectionType(), create);
-  SelfContainedWriteTransaction trx(&c); 
+  SelfContainedWriteTransaction trx(_vocbase, collection, getCollectionType(), create); 
   
   // .............................................................................
   // inside write transaction
@@ -170,7 +169,7 @@ bool RestEdgeHandler::createDocument () {
     return true;
   }
 
-  TRI_voc_cid_t cid = c.cid();
+  TRI_voc_cid_t cid = trx.cid();
 
   // split document handle
   edge._fromCid = cid;
@@ -242,10 +241,10 @@ bool RestEdgeHandler::createDocument () {
 
   // generate result
   if (trx.synchronous()) {
-    generateCreated(c.cid(), document->_key, document->_rid);
+    generateCreated(trx.cid(), document->_key, document->_rid);
   }
   else {
-    generateAccepted(c.cid(), document->_key, document->_rid);
+    generateAccepted(trx.cid(), document->_key, document->_rid);
   }
 
   return true;

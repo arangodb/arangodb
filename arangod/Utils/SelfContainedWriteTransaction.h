@@ -28,8 +28,10 @@
 #ifndef TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H
 #define TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H 1
 
-#include "Utils/CollectionWriteLock.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
+
+#include "VocBase/transaction.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -38,7 +40,7 @@ namespace triagens {
 // --SECTION--                                 ass SelfContainedWriteTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedWriteTransaction : public SingleCollectionWriteTransaction<1> {
+    class SelfContainedWriteTransaction : public SingleCollectionWriteTransaction<false, 1> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -63,8 +65,11 @@ namespace triagens {
 /// execute at most one write operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedWriteTransaction (Collection* collection) :
-          SingleCollectionWriteTransaction<1>(collection, "SelfContainedWriteTransaction") { 
+        SelfContainedWriteTransaction (TRI_vocbase_t* const vocbase,
+                                       const string& collectionName,
+                                       const TRI_col_type_e collectionType,
+                                       const bool createCollection) :
+          SingleCollectionWriteTransaction<false, 1>(vocbase, 0, collectionName, collectionType, createCollection, "SelfContainedWriteTransaction") { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
