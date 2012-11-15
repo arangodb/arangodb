@@ -216,6 +216,9 @@ extern "C" {
 ///   an incompatible state.
 /// - 1652: @CODE{nested write transaction detected}
 ///   Will be raised when write transactions are nested.
+/// - 1653: @CODE{internal transaction error}
+///   Will be raised when a wrong usage of transactions is detected. this is an
+///   internal error and indicates a bug in ArangoDB.
 /// - 1800: @CODE{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @CODE{key already exists}
@@ -1235,6 +1238,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_NESTED                                      (1652)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1653: ERROR_TRANSACTION_INTERNAL
+///
+/// internal transaction error
+///
+/// Will be raised when a wrong usage of transactions is detected. this is an
+/// internal error and indicates a bug in ArangoDB.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_INTERNAL                                    (1653)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1800: ERROR_KEYVALUE_INVALID_KEY

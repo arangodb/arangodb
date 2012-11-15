@@ -404,7 +404,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), false);
-  SelfContainedReadTransaction trx(&c); 
+  SingleCollectionReadOnlyTransaction trx(&c); 
   
   // .............................................................................
   // inside read transaction
@@ -494,7 +494,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, getCollectionType(), false);
-  SelfContainedReadTransaction trx(&c); 
+  SingleCollectionReadOnlyTransaction trx(&c); 
   
   vector<string> ids;
   

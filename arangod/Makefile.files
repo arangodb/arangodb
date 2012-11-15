@@ -87,13 +87,9 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/shadow-data.c \
 	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
+	arangod/VocBase/transaction.c \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
-
-bin_arangod_SOURCES += \
-	arangod/VocBase/versioned-index.c \
-	arangod/VocBase/transaction.c
-
 
 if ENABLE_MRUBY
 

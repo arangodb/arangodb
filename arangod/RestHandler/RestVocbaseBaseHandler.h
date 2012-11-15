@@ -36,7 +36,7 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Utils/Collection.h"
-#include "Utils/SelfContainedReadTransaction.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SelfContainedWriteTransaction.h"
 
 // -----------------------------------------------------------------------------
