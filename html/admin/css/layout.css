@@ -229,7 +229,8 @@ html.busy, html.busy * {
 
 .hoverClass:hover {
   background-color: #696969 !important;
-  border-bottom: 1px solid #696969; 
+  border-bottom: 1px solid #696969;
+  margin-top: -1px;  
   color: white !important;
 }
 
@@ -636,6 +637,7 @@ form {
   height: 30px;
   background-color: white; 
   margin-right: 0.5%;
+  padding-left: 10px; 
 } 
 
 .avocshSuccess {
