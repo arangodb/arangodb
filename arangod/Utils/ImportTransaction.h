@@ -36,17 +36,12 @@
 namespace triagens {
   namespace arango {
 
+    template<typename T>
+    class ImportTransaction : public SingleCollectionWriteTransaction<T, UINT64_MAX> {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class ImportTransaction
 // -----------------------------------------------------------------------------
-
-    template<bool E>
-    class ImportTransaction : public SingleCollectionWriteTransaction<E, UINT64_MAX> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,11 +62,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ImportTransaction (TRI_vocbase_t* const vocbase,
-                           TRI_transaction_t* previousTrx,
                            const string& collectionName, 
                            const TRI_col_type_e collectionType, 
                            const bool createCollection) :
-          SingleCollectionWriteTransaction<E, UINT64_MAX>(vocbase, previousTrx, collectionName, collectionType, createCollection, "ImportTransaction") { 
+          SingleCollectionWriteTransaction<T, UINT64_MAX>(vocbase, collectionName, collectionType, createCollection, "ImportTransaction") { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////

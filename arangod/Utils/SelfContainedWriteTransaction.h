@@ -30,22 +30,20 @@
 
 #include "Utils/SingleCollectionWriteTransaction.h"
 
+#include "Utils/StandaloneTransaction.h"
+
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 ass SelfContainedWriteTransaction
-// -----------------------------------------------------------------------------
+    template<typename C>
+    class SelfContainedWriteTransaction : public SingleCollectionWriteTransaction<StandaloneTransaction<C>, 1> {
 
-    class SelfContainedWriteTransaction : public SingleCollectionWriteTransaction<false, 1> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                               class SelfContainedWriteTransaction
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -69,7 +67,7 @@ namespace triagens {
                                        const string& collectionName,
                                        const TRI_col_type_e collectionType,
                                        const bool createCollection) :
-          SingleCollectionWriteTransaction<false, 1>(vocbase, 0, collectionName, collectionType, createCollection, "SelfContainedWriteTransaction") { 
+          SingleCollectionWriteTransaction<StandaloneTransaction<C>, 1>(vocbase, collectionName, collectionType, createCollection, "SelfContainedWriteTransaction") { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////

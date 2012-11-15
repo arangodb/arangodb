@@ -35,8 +35,10 @@
 
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include "Utils/RestTransactionContext.h"
 #include "Utils/SelfContainedWriteTransaction.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include "Utils/StandaloneTransaction.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

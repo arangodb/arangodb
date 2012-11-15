@@ -36,17 +36,12 @@
 namespace triagens {
   namespace arango {
 
+    template<typename T>
+    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction<T> {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                         class SingleCollectionReadOnlyTransaction
 // -----------------------------------------------------------------------------
-
-    template<bool E>
-    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction<E> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,10 +62,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionReadOnlyTransaction (TRI_vocbase_t* const vocbase,
-                                             TRI_transaction_t* previousTrx,
                                              const string& collectionName, 
                                              const TRI_col_type_e collectionType) :
-          SingleCollectionTransaction<E>(vocbase, previousTrx, collectionName, collectionType, false, "SingleCollectionReadOnlyTransaction", TRI_TRANSACTION_READ) {
+          SingleCollectionTransaction<T>(vocbase, collectionName, collectionType, false, "SingleCollectionReadOnlyTransaction", TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

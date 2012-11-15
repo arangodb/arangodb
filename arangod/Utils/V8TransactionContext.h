@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for user transactions
+/// @brief V8 transaction context
 ///
 /// @file
 ///
@@ -25,28 +25,17 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_USER_TRANSACTION_H
-#define TRIAGENS_UTILS_USER_TRANSACTION_H 1
-
-#include "Utils/Transaction.h"
-
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+#ifndef TRIAGENS_UTILS_V8_TRANSACTION_CONTEXT_H
+#define TRIAGENS_UTILS_V8_TRANSACTION_CONTEXT_H
 
 namespace triagens {
   namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class UserTransaction
-// -----------------------------------------------------------------------------
+    class V8TransactionContext {
 
-    template<typename T>
-    class UserTransaction : public Transaction<T> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                        class V8TransactionContext
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -60,32 +49,32 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        UserTransaction (TRI_vocbase_t* const vocbase, 
-                         const vector<string>& readCollections, 
-                         const vector<string>& writeCollections) : 
-          Transaction<T>(vocbase, "UserTransaction"), 
-          _readCollections(readCollections), 
-          _writeCollections(writeCollections) { 
-        }
+        V8TransactionContext () : _previous(0) {
+          TRI_v8_global_t* v8g;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
+          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-        ~UserTransaction () {
-          if (this->_trx != 0) {
-            if (this->status() == TRI_TRANSACTION_RUNNING) {
-              // auto abort
-              this->abort();
-            }
+          if (v8g->_currentTransaction != 0) {
+            _previous = (TRI_transaction_t*) v8g->_currentTransaction;
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the context
+////////////////////////////////////////////////////////////////////////////////
+
+        ~V8TransactionContext () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
+// --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,42 +85,43 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use all collections 
-/// this is a no op, as using is done when trx is started
+/// @brief whether or not the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
-        int useCollections () {
+        inline bool isEmbedded () const {
+          return _previous != 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the parent transaction if any
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_transaction_t* getParent () const {
+          return _previous;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the transaction in the context
+////////////////////////////////////////////////////////////////////////////////
+
+        int registerTransaction (TRI_transaction_t* const trx) {
+          TRI_v8_global_t* v8g;
+          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+          v8g->_currentTransaction = trx;
+
           return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief release all collections in use
-/// this is a no op, as releasing is done when trx is finished
+/// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        int releaseCollections () {
-          return TRI_ERROR_NO_ERROR;
-        }
+        int unregisterTransaction () {
+          TRI_v8_global_t* v8g;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add all collections to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int addCollections () {
-          size_t i;
-
-          for (i = 0; i < _readCollections.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(this->_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ, 0)) {
-              return TRI_ERROR_INTERNAL;
-            }
-          }    
-
-          for (i = 0; i < _writeCollections.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(this->_trx, _writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0)) {
-              return TRI_ERROR_INTERNAL;
-            }
-          }
-
+          v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+          v8g->_currentTransaction = 0;
+          
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -151,16 +141,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collections that are opened in read mode
+/// @brief previous transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> _readCollections;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collections that are opened in write mode
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<string> _writeCollections;
+        TRI_transaction_t* _previous;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

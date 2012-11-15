@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for user transactions
+/// @brief rest transaction context
 ///
 /// @file
 ///
@@ -25,28 +25,19 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_USER_TRANSACTION_H
-#define TRIAGENS_UTILS_USER_TRANSACTION_H 1
-
-#include "Utils/Transaction.h"
+#ifndef TRIAGENS_UTILS_REST_TRANSACTION_CONTEXT_H
+#define TRIAGENS_UTILS_REST_TRANSACTION_CONTEXT_H
 
 #include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class UserTransaction
-// -----------------------------------------------------------------------------
+    class RestTransactionContext {
 
-    template<typename T>
-    class UserTransaction : public Transaction<T> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                      class RestTransactionContext
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -60,32 +51,25 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        UserTransaction (TRI_vocbase_t* const vocbase, 
-                         const vector<string>& readCollections, 
-                         const vector<string>& writeCollections) : 
-          Transaction<T>(vocbase, "UserTransaction"), 
-          _readCollections(readCollections), 
-          _writeCollections(writeCollections) { 
+        RestTransactionContext () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
+/// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~UserTransaction () {
-          if (this->_trx != 0) {
-            if (this->status() == TRI_TRANSACTION_RUNNING) {
-              // auto abort
-              this->abort();
-            }
-          }
+        ~RestTransactionContext () {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
+// --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,71 +80,37 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use all collections 
-/// this is a no op, as using is done when trx is started
+/// @brief whether or not the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
-        int useCollections () {
+        inline bool isEmbedded () const {
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the parent transaction if any
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_transaction_t* getParent () const {
+          assert(false);
+          return 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the transaction, does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+        inline int registerTransaction (TRI_transaction_t* const trx) const {
           return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief release all collections in use
-/// this is a no op, as releasing is done when trx is finished
+/// @brief unregister the transaction, does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-        int releaseCollections () {
+        inline int unregisterTransaction () const {
           return TRI_ERROR_NO_ERROR;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add all collections to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int addCollections () {
-          size_t i;
-
-          for (i = 0; i < _readCollections.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(this->_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ, 0)) {
-              return TRI_ERROR_INTERNAL;
-            }
-          }    
-
-          for (i = 0; i < _writeCollections.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(this->_trx, _writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0)) {
-              return TRI_ERROR_INTERNAL;
-            }
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collections that are opened in read mode
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<string> _readCollections;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collections that are opened in write mode
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<string> _writeCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

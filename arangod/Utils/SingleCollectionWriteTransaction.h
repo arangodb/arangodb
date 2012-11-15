@@ -38,17 +38,12 @@
 namespace triagens {
   namespace arango {
 
+    template<typename T, uint64_t N>
+    class SingleCollectionWriteTransaction : public SingleCollectionTransaction<T> {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                            class SingleCollectionWriteTransaction
 // -----------------------------------------------------------------------------
-
-    template<bool E, uint64_t M>
-    class SingleCollectionWriteTransaction : public SingleCollectionTransaction<E> {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -74,14 +69,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          TRI_transaction_t* previousTrx,
                                           const string& collectionName, 
                                           const TRI_col_type_e collectionType, 
                                           const bool createCollection, 
                                           const string& trxName) :
-          SingleCollectionTransaction<E>(vocbase, previousTrx, collectionName, collectionType, createCollection, trxName, TRI_TRANSACTION_WRITE), 
+          SingleCollectionTransaction<T>(vocbase, collectionName, collectionType, createCollection, trxName, TRI_TRANSACTION_WRITE),
           _numWrites(0), 
           _synchronous(false) {
+
+          if (N == 1) {
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +119,7 @@ namespace triagens {
         int createDocument (TRI_doc_mptr_t** mptr,
                             TRI_json_t const* json, 
                             const bool forceSync) {
-          if (_numWrites++ > M) {
+          if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
@@ -139,7 +137,7 @@ namespace triagens {
                         TRI_json_t const* json, 
                         bool forceSync, 
                         void const* data) {
-          if (_numWrites++ > M) {
+          if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
@@ -160,7 +158,7 @@ namespace triagens {
                         bool forceSync, 
                         const TRI_voc_rid_t expectedRevision, 
                         TRI_voc_rid_t* actualRevision) {
-          if (_numWrites++ > M) {
+          if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
@@ -179,7 +177,7 @@ namespace triagens {
                      bool forceSync, 
                      const TRI_voc_rid_t expectedRevision, 
                      TRI_voc_rid_t* actualRevision) {
-          if (_numWrites++ > M) {
+          if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
@@ -193,14 +191,14 @@ namespace triagens {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
       private:
 

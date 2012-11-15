@@ -288,6 +288,22 @@ typedef struct TRI_transaction_collection_s {
 TRI_transaction_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for transaction hints
+////////////////////////////////////////////////////////////////////////////////
+
+typedef uint32_t TRI_transaction_hint_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hints that can be used for transactions
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_TRANSACTION_HINT_NONE = 0,
+  TRI_TRANSACTION_HINT_SINGLE_OPERATION = 1
+}
+TRI_transaction_hint_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction typedef
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -298,7 +314,7 @@ typedef struct TRI_transaction_s {
   TRI_transaction_status_e          _status;         // current status
   TRI_transaction_isolation_level_e _isolationLevel; // isolation level
   TRI_vector_pointer_t              _collections;    // list of participating collections
-  bool                              _isSingleOperation; // trx only consists of one write operation
+  TRI_transaction_hint_t            _hints;          // hints;
 }
 TRI_transaction_t;
 
@@ -320,8 +336,7 @@ TRI_transaction_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_transaction_context_t* const,
-                                          const TRI_transaction_isolation_level_e,
-                                          const bool);
+                                          const TRI_transaction_isolation_level_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a transaction container
@@ -387,7 +402,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const,
 /// @brief start a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartTransaction (TRI_transaction_t* const);
+int TRI_StartTransaction (TRI_transaction_t* const, TRI_transaction_hint_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commit a transaction
