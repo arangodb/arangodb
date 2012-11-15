@@ -272,7 +272,10 @@ static inline TRI_vocbase_t* GetContextVocBase () {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_voc_key_t& key) {
+static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
+                              v8::Handle<v8::Value> arg, 
+                              TRI_voc_cid_t& cid, 
+                              TRI_voc_key_t& key) {
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -293,6 +296,19 @@ static bool IsDocumentHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI
   // "cid/key"
   if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+    return true;
+  }
+ 
+  // "cname/key"
+  if (regexec(&v8g->DocumentId2Regex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    const string name = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+    TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+    if (col == 0) {
+      // colleciton not found
+      return false;
+    }
+    cid = col->_cid;
     key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
     return true;
   }
@@ -5979,7 +5995,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
 
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
-    if (! IsDocumentHandle(val, cid, key)) {
+    if (! IsDocumentHandle(vocbase, val, cid, key)) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                            "<document-handle> must be a document-handle"));
     }
@@ -5990,7 +6006,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
 
-    if (! IsDocumentHandle(didVal, cid, key)) {
+    if (! IsDocumentHandle(vocbase, didVal, cid, key)) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "expecting a document-handle in _id"));
     }
@@ -6277,22 +6293,34 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     isolate->SetData(v8g);
   }
 
-  // create the regular expressions
-  string expr = "([0-9][0-9]*)" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "([0-9a-zA-Z][0-9a-zA-Z]*)";
+  const string colExpr = "[a-zA-Z][0-9a-zA-Z_-]*";
+  const string keyExpr = "[0-9a-zA-Z][0-9a-zA-Z]*";
+  const string idExpr  = "[0-9][0-9]*";
+  string expr;
 
+  // create the regular expressions
+  expr = "^(" + idExpr + ")" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "(" + keyExpr + ")$";
   if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
-
+  
+  expr = "^(" + colExpr + ")" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "(" + keyExpr + ")$";
+  if (regcomp(&v8g->DocumentId2Regex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
+    LOG_FATAL("cannot compile regular expression");
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  
+  expr = "^(" + idExpr + ")" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "(" + idExpr + ")$";
   if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
-  expr = "^[0-9a-zA-Z][_0-9a-zA-Z]*$";
+  expr = "^" + keyExpr + "$";
   if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();

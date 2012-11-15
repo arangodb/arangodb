@@ -106,6 +106,7 @@ typedef struct TRI_v8_global_s {
       UserKey(),
       WaitForSyncKey(),
       DocumentIdRegex(),
+      DocumentId2Regex(),
       DocumentKeyRegex(),
       IndexIdRegex(),
       _currentTransaction() {
@@ -113,6 +114,7 @@ typedef struct TRI_v8_global_s {
 
   ~TRI_v8_global_s () {
     regfree(&DocumentIdRegex);
+    regfree(&DocumentId2Regex);
     regfree(&DocumentKeyRegex);
     regfree(&IndexIdRegex);
   }
@@ -398,10 +400,16 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document identifier as collection-id:document-id
+/// @brief document identifier as collection-id/key
 ////////////////////////////////////////////////////////////////////////////////
 
   regex_t DocumentIdRegex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document identifier as collection-name/key
+////////////////////////////////////////////////////////////////////////////////
+
+  regex_t DocumentId2Regex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document identifier 
