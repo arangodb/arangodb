@@ -31,6 +31,9 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
+#include "Utils/CollectionReadLock.h"
+#include "Utils/CollectionWriteLock.h"
+
 namespace triagens {
   namespace arango {
 
@@ -144,6 +147,125 @@ namespace triagens {
           if (_trx != 0) {
             TRI_DumpTransaction(_trx);
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, identified by key
+////////////////////////////////////////////////////////////////////////////////
+        
+        int readCollectionDocument (TRI_primary_collection_t* const primary, 
+                                    TRI_doc_mptr_t** mptr,
+                                    const string& key) {
+          TRI_doc_operation_context_t context;
+          TRI_InitReadContextPrimaryCollection(&context, primary);
+          
+          CollectionReadLock lock(primary);
+
+          return primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all documents
+////////////////////////////////////////////////////////////////////////////////
+        
+        int readCollectionDocuments (TRI_primary_collection_t* const primary, 
+                                     vector<string>& ids) {
+          TRI_doc_operation_context_t context;
+          TRI_InitReadContextPrimaryCollection(&context, primary);
+          
+          CollectionReadLock lock(primary);
+          
+          if (primary->_primaryIndex._nrUsed > 0) {
+            void** ptr = primary->_primaryIndex._table;
+            void** end = ptr + primary->_primaryIndex._nrAlloc;
+
+            for (;  ptr < end;  ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+                if (d->_validTo == 0) {
+                  ids.push_back(d->_key);
+                }
+              }
+            }
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single document 
+////////////////////////////////////////////////////////////////////////////////
+
+        int createCollectionDocument (TRI_primary_collection_t* const primary,
+                                      const TRI_df_marker_type_e markerType,
+                                      TRI_doc_mptr_t** mptr,
+                                      TRI_json_t const* json, 
+                                      void const* data,
+                                      const bool forceSync) {
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+
+          CollectionWriteLock lock(primary);
+
+          return primary->createJson(&context, markerType, mptr, json, data);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document
+////////////////////////////////////////////////////////////////////////////////
+        
+        int updateCollectionDocument (TRI_primary_collection_t* const primary,
+                                      const string& key,
+                                      TRI_doc_mptr_t** mptr,
+                                      TRI_json_t* const json,
+                                      const TRI_doc_update_policy_e policy,
+                                      const TRI_voc_rid_t expectedRevision,
+                                      TRI_voc_rid_t* actualRevision,
+                                      const bool forceSync) {
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          context._expectedRid = expectedRevision;
+          context._previousRid = actualRevision;
+
+          CollectionWriteLock lock(primary);
+
+          return primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a single document
+////////////////////////////////////////////////////////////////////////////////
+
+        int deleteCollectionDocument (TRI_primary_collection_t* const primary,
+                                      const string& key,
+                                      const TRI_doc_update_policy_e policy,
+                                      const TRI_voc_rid_t expectedRevision,
+                                      TRI_voc_rid_t* actualRevision,
+                                      const bool forceSync) {
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          context._expectedRid = expectedRevision;
+          context._previousRid = actualRevision;
+
+          CollectionWriteLock lock(primary);
+
+          return primary->destroy(&context, (TRI_voc_key_t) key.c_str());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
