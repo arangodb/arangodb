@@ -1105,10 +1105,16 @@ function ArangoCollection (database, data) {
       client.checkRequestResult(requestResult);
     }
 
-    return { 
+    var result = { 
       waitForSync : requestResult.waitForSync,
       journalSize : requestResult.journalSize
     };
+    
+    if (requestResult.createOptions != undefined) {
+      result.createOptions = requestResult.createOptions;
+    }
+    
+    return result;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2184,6 +2190,10 @@ function ArangoDatabase (connection) {
 
       if (properties.hasOwnProperty("isSystem")) {
         body.isSystem = properties.isSystem;
+      }
+
+      if (properties.hasOwnProperty("createOptions")) {
+        body.createOptions = properties.createOptions;
       }
     }
 

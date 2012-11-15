@@ -476,7 +476,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
 
       if (oldest == NULL) {
         LOG_WARNING("cap collection is empty, but collection '%ld' contains elements", 
-            (unsigned long) primary->base._cid);
+            (unsigned long) primary->base._info._cid);
         break;
       }
 
@@ -1754,7 +1754,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     return false;
   }
 
-  if (collection->base.base._type == TRI_COL_TYPE_EDGE) {
+  if (collection->base.base._info._type == TRI_COL_TYPE_EDGE) {
     TRI_InitEdgesDocumentCollection(collection);
   }
 
@@ -1808,17 +1808,12 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
 
 TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
                                                          char const* path,
-                                                         TRI_col_parameter_t* parameter,
+                                                         TRI_col_info_t* parameter,
                                                          TRI_voc_cid_t cid) {
-  TRI_col_info_t info;
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
   bool waitForSync;
-
-  memset(&info, 0, sizeof(info));
-  info._version = TRI_COL_VERSION;
-  info._type = parameter->_type;
 
   if (cid > 0) {
     TRI_UpdateTickVocBase(cid);
@@ -1826,10 +1821,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   else {
     cid = TRI_NewTickVocBase();
   }
-  info._cid = cid;
-  TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
-  info._waitForSync = parameter->_waitForSync;
-  info._maximalSize = parameter->_maximalSize;
+  parameter->_cid = cid;
 
   // first create the document collection
   document = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
@@ -1839,7 +1831,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  collection = TRI_CreateCollection(vocbase, &document->base.base, path, &info);
+  collection = TRI_CreateCollection(vocbase, &document->base.base, path, parameter);
 
   if (collection == NULL) {
     LOG_ERROR("cannot create document collection");
@@ -1887,7 +1879,7 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
   TRI_DestroyCondition(&collection->_journalsCondition);
 
   // only required for edge collections
-  if (collection->base.base._type == TRI_COL_TYPE_EDGE) {
+  if (collection->base.base._info._type == TRI_COL_TYPE_EDGE) {
     TRI_FreeEdgesDocumentCollection(collection);
   }
 
@@ -2005,21 +1997,21 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, c
   assert(shaper);
   shapeCollection = TRI_CollectionVocShaper(shaper);
   if (shapeCollection != NULL) {
-    shapeCollection->base._waitForSync = (vocbase->_forceSyncShapes || collection->_waitForSync);
+    shapeCollection->base._info._waitForSync = (vocbase->_forceSyncShapes || collection->_info._waitForSync);
   }
 
 
   // read all documents and fill indexes
   TRI_IterateCollection(collection, OpenIterator, collection);
 
-  if (collection->_maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
+  if (collection->_info._maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
     LOG_WARNING("maximal size is %lu, but maximal marker size is %lu plus overhead %lu: adjusting maximal size to %lu",
-                (unsigned long) collection->_maximalSize,
+                (unsigned long) collection->_info._maximalSize,
                 (unsigned long) collection->_maximumMarkerSize,
                 (unsigned long) TRI_JOURNAL_OVERHEAD,
                 (unsigned long) (collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD));
 
-    collection->_maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
+    collection->_info._maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
   }
 
   TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
@@ -2270,7 +2262,7 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
   // .............................................................................
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    if (primary->base._type != TRI_COL_TYPE_EDGE) {
+    if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
       // operation is only permitted for edge collections
       return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     }
@@ -2431,7 +2423,7 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
   
   // delete edges
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    if (collection->base.base._type != TRI_COL_TYPE_EDGE) {
+    if (collection->base.base._info._type != TRI_COL_TYPE_EDGE) {
       // operation is only permitted for edge collections
       return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     }
@@ -2498,7 +2490,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%lu/%s' for index '%lu'",
-                    (unsigned long) primary->base._cid,
+                    (unsigned long) primary->base._info._cid,
                     (char*) mptr->_key,
                     (unsigned long) idx->_iid);
 
@@ -2508,7 +2500,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       ++inserted;
 
       if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) primary->base._cid);
+        LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) primary->base._info._cid);
       }
     }
   }

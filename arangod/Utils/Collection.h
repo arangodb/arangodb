@@ -211,7 +211,7 @@ namespace triagens {
 
         inline bool waitForSync () {
           assert(_collection->_collection != 0);
-          return primary()->base._waitForSync;
+          return primary()->base._info._waitForSync;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

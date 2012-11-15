@@ -52,7 +52,8 @@
       var properties = collection.properties();
 
       result.waitForSync = properties.waitForSync;
-      result.journalSize = properties.journalSize;
+      result.journalSize = properties.journalSize;      
+      result.createOptions = properties.createOptions;
     }
 
     if (showCount) {
@@ -113,6 +114,8 @@
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
 ///
+/// - @LIT{options} (optional) Additional collection options
+///
 /// - @LIT{type} (optional, default is @LIT{2}): the type of the collection to
 ///   create. The following values for @FA{type} are valid:
 ///   - @LIT{2}: document collections
@@ -161,6 +164,10 @@
       type = body.type;
     }
 
+    if (body.hasOwnProperty("createOptions")) {
+      parameter.createOptions = body.createOptions;
+    }
+    
     try {
       var collection;
 
@@ -179,6 +186,7 @@
       result.waitForSync = parameter.waitForSync;
       result.status = collection.status();
       result.type = collection.type();
+      result.createOptions = collection.createOptions;
 
       headers.location = "/" + API + "/" + collection._id;
 

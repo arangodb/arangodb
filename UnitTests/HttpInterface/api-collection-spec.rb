@@ -746,6 +746,35 @@ describe ArangoDB do
 
 	ArangoDB.drop_collection(cn)
       end
+
+      it "create collection with createOptions property" do
+        cn = "UnitTestsCollectionBasics"
+
+        cmd = "/_api/collection"
+        body = "{ \"name\" : \"#{cn}\", \"waitForSync\" : false, \"type\" : 2, \"createOptions\" : {\"opt1\" : 10, \"opt2\" : \"val2\" } }"
+        doc = ArangoDB.log_post("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        cid = doc.parsed_response['id']
+
+        cmd = api + "/" + String(cid) + "/properties"
+        body = "{ \"waitForSync\" : true }"
+        doc = ArangoDB.log_put("#{prefix}-with-create-options", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should eq(cid)
+        doc.parsed_response['name'].should eq(cn)
+        doc.parsed_response['status'].should eq(3)
+        doc.parsed_response['waitForSync'].should eq(true)
+        doc.parsed_response['createOptions']['opt1'].should eq(10)
+        doc.parsed_response['createOptions']['opt2'].should eq("val2")
+
+        ArangoDB.drop_collection(cn)
+      end
+
     end
 
   end
