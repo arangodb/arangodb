@@ -120,21 +120,15 @@ namespace triagens {
 
         int createDocument (TRI_doc_mptr_t** mptr,
                             TRI_json_t const* json, 
-                            bool forceSync) {
-
+                            const bool forceSync) {
           if (_numWrites++ > M) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
           TRI_primary_collection_t* primary = this->primaryCollection();
-          TRI_doc_operation_context_t context;
+          _synchronous = forceSync || primary->base._info._waitForSync;
 
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
-          _synchronous = context._sync;
-
-          CollectionWriteLock lock(primary);
-
-          return primary->createJson(&context, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0);
+          return this->createCollectionDocument(primary, TRI_DOC_MARKER_KEY_DOCUMENT, mptr, json, 0, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,14 +144,9 @@ namespace triagens {
           }
 
           TRI_primary_collection_t* primary = this->primaryCollection();
-          TRI_doc_operation_context_t context;
-
-          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
-          _synchronous = context._sync;
-
-          CollectionWriteLock lock(primary);
-
-          return primary->createJson(&context, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data);
+          _synchronous = forceSync || primary->base._info._waitForSync;
+          
+          return this->createCollectionDocument(primary, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,16 +165,9 @@ namespace triagens {
           }
 
           TRI_primary_collection_t* primary = this->primaryCollection();
-          TRI_doc_operation_context_t context;
+          _synchronous = forceSync || primary->base._info._waitForSync;
 
-          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
-          context._expectedRid = expectedRevision;
-          context._previousRid = actualRevision;
-          _synchronous = context._sync;
-
-          CollectionWriteLock lock(primary);
-
-          return primary->updateJson(&context, mptr, json, (TRI_voc_key_t) key.c_str());
+          return this->updateCollectionDocument(primary, key, mptr, json, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,16 +184,9 @@ namespace triagens {
           }
 
           TRI_primary_collection_t* primary = this->primaryCollection();
-          TRI_doc_operation_context_t context;
+          _synchronous = forceSync || primary->base._info._waitForSync;
 
-          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
-          context._expectedRid = expectedRevision;
-          context._previousRid = actualRevision;
-          _synchronous = context._sync;
-
-          CollectionWriteLock lock(primary);
-
-          return primary->destroy(&context, (TRI_voc_key_t) key.c_str());
+          return this->deleteCollectionDocument(primary, key, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

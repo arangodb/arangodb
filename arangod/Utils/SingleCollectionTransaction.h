@@ -38,7 +38,6 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
-#include "Utils/CollectionReadLock.h"
 #include "Utils/Transaction.h"
 
 namespace triagens {
@@ -239,15 +238,10 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (TRI_doc_mptr_t** mptr,const string& key) {
-          TRI_primary_collection_t* primary = primaryCollection();
-          TRI_doc_operation_context_t context;
+        int read (TRI_doc_mptr_t** mptr, const string& key) {
+          TRI_primary_collection_t* const primary = primaryCollection();
 
-          TRI_InitReadContextPrimaryCollection(&context, primary);
-          
-          CollectionReadLock lock(primary);
-
-          return primary->read(&context, mptr, (TRI_voc_key_t) key.c_str());
+          return this->readCollectionDocument(primary, mptr, key);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,28 +250,8 @@ namespace triagens {
 
         int read (vector<string>& ids) {
           TRI_primary_collection_t* primary = primaryCollection();
-          TRI_doc_operation_context_t context;
 
-          TRI_InitReadContextPrimaryCollection(&context, primary);
-          
-          CollectionReadLock lock(primary);
-
-          if (primary->_primaryIndex._nrUsed > 0) {
-            void** ptr = primary->_primaryIndex._table;
-            void** end = ptr + primary->_primaryIndex._nrAlloc;
-
-            for (;  ptr < end;  ++ptr) {
-              if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-                if (d->_validTo == 0) {
-                  ids.push_back(d->_key);
-                }
-              }
-            }
-          }
-
-          return TRI_ERROR_NO_ERROR;
+          return this->readCollectionDocuments(primary, ids);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
