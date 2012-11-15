@@ -389,7 +389,7 @@ void TRI_SynchroniserVocBase (void* data) {
       primary = collection->_collection;
 
       // for simple collection, first sync and then seal
-      type = primary->base._type;
+      type = primary->base._info._type;
 
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {
         result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);

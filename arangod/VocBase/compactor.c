@@ -529,7 +529,7 @@ void TRI_CompactorVocBase (void* data) {
         continue;
       }
 
-      type = primary->base._type;
+      type = primary->base._info._type;
 
       // for simple collection, compactify datafiles
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {

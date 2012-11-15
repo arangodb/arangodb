@@ -373,7 +373,7 @@ static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
   v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
 
   string iid = TRI_ObjectToString(rep->Get(v8::String::New("id")));
-  string id = StringUtils::itoa(col->_cid) + string(TRI_INDEX_HANDLE_SEPARATOR_STR) + iid;
+  string id = StringUtils::itoa(col->_info._cid) + string(TRI_INDEX_HANDLE_SEPARATOR_STR) + iid;
   rep->Set(v8::String::New("id"), v8::String::New(id.c_str()));
 
   return scope.Close(rep);
@@ -1332,7 +1332,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
                                                "usage: _create(<name>, <properties>)")));
   }
-
+  
   // set default journal size
   TRI_voc_size_t effectiveSize = vocbase->_defaultMaximalSize;
 
@@ -1340,7 +1340,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   string name = TRI_ObjectToString(argv[0]);
 
   // extract the parameters
-  TRI_col_parameter_t parameter;
+  TRI_col_info_t parameter;
   
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
@@ -1351,6 +1351,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
     v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
     v8::Handle<v8::String> isSystemKey = v8::String::New("isSystem");
+    v8::Handle<v8::String> createOptionsKey = v8::String::New("createOptions");
 
     if (p->Has(journalSizeKey)) {
       double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
@@ -1365,7 +1366,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       effectiveSize = (TRI_voc_size_t) s;
     }
 
-    TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), collectionType, effectiveSize);
+    // get optional options
+    TRI_json_t* options = 0;        
+    if (p->Has(createOptionsKey)) {
+      options = TRI_JsonObject(p->Get(createOptionsKey));
+    }
+
+    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, options);
 
     if (p->Has(waitForSyncKey)) {
       parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
@@ -1376,11 +1383,13 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     }
   }
   else {
-    TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), collectionType, effectiveSize);
+    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
   }
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
 
+  TRI_FreeCollectionInfoOptions(&parameter);
+  
   if (collection == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
   }
@@ -2774,8 +2783,8 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   }
 
   TRI_collection_t* col = &document->base.base;
-  const char* name = col->_name;
-  TRI_col_version_t version = col->_version;
+  const char* name = col->_info._name;
+  TRI_col_version_t version = col->_info._version;
 
   if (version >= 3) {
     LOG_ERROR("Cannot upgrade collection '%s' with version '%d' in directory '%s'", name, version, col->_directory);
@@ -4416,7 +4425,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   TRI_primary_collection_t* primary = collection->_collection;
   TRI_collection_t* base = &primary->base;
 
-  if (! TRI_IS_DOCUMENT_COLLECTION(base->_type)) {
+  if (! TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("unknown collection type")));
   }
@@ -4433,8 +4442,8 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       // get the old values
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-      bool waitForSync = base->_waitForSync;
-      size_t maximalSize = base->_maximalSize;
+      bool waitForSync = base->_info._waitForSync;
+      size_t maximalSize = base->_info._maximalSize;
       size_t maximumMarkerSize = base->_maximumMarkerSize;
 
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -4464,13 +4473,13 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       }
 
       // update collection
-      TRI_col_parameter_t newParameter;
+      TRI_col_info_t newParameter;
 
       newParameter._maximalSize = maximalSize;
       newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateParameterInfoCollection(base->_vocbase, base, &newParameter);
+      int res = TRI_UpdateCollectionInfo(base->_vocbase, base, &newParameter);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_ReleaseCollection(collection);
@@ -4482,12 +4491,17 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   // return the current parameter set
   v8::Handle<v8::Object> result = v8::Object::New();
 
-  if (TRI_IS_DOCUMENT_COLLECTION(base->_type)) {
-    TRI_voc_size_t maximalSize = base->_maximalSize;
-    bool waitForSync = base->_waitForSync;
+  if (TRI_IS_DOCUMENT_COLLECTION(base->_info._type)) {
+    TRI_voc_size_t maximalSize = base->_info._maximalSize;
+    bool waitForSync = base->_info._waitForSync;
 
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
+
+    if (base->_info._options) {
+      result->Set(v8g->CreateOptionsKey, TRI_ObjectJson(base->_info._options)->ToObject());
+    }
+    
   }
 
   TRI_ReleaseCollection(collection);
@@ -4795,7 +4809,7 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_col_info_t info;
-  res = TRI_LoadParameterInfoCollection(collection->_path, &info);
+  res = TRI_LoadCollectionInfo(collection->_path, &info);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (key == "type") {
@@ -4809,9 +4823,11 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_SaveParameterInfoCollection(collection->_path, &info);
+      res = TRI_SaveCollectionInfo(collection->_path, &info);
     }
   }
+  
+  TRI_FreeCollectionInfoOptions(&info);
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -5021,9 +5037,11 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_col_info_t info;
-  int res = TRI_LoadParameterInfoCollection(collection->_path, &info);
+  int res = TRI_LoadCollectionInfo(collection->_path, &info);
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
+  TRI_FreeCollectionInfoOptions(&info);
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch collection info", true)));
   }
@@ -6219,6 +6237,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
   v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
+  v8g->CreateOptionsKey = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
   
   if (v8g->BidirectionalKey.IsEmpty()) {
     v8g->BidirectionalKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_bidirectional"));
