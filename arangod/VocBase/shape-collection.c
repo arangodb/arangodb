@@ -66,7 +66,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   filename = TRI_Concatenate2File(collection->base._directory, jname);
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
-  journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
+  journal = TRI_CreateDatafile(filename, collection->base._info._maximalSize);
 
   // check that a journal was created
   if (journal == NULL) {
@@ -127,7 +127,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   cm.base._type = TRI_COL_MARKER_HEADER;
   cm.base._tick = TRI_NewTickVocBase();
 
-  cm._cid = collection->base._cid;
+  cm._cid = collection->base._info._cid;
 
   TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
 
@@ -286,7 +286,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
     // this is a shape. we will honor the collection's waitForSync attribute
     // which is determined by the global forceSyncShape flag and the actual collection's
     // waitForSync flag
-    waitForSync = collection->base._waitForSync;
+    waitForSync = collection->base._info._waitForSync;
   }
   else {
     // this is an attribute. we will not sync the data now, but when the shape information 
@@ -323,8 +323,7 @@ static int WriteElement (TRI_shape_collection_t* collection,
 
 TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
                                                    char const* path,
-                                                   TRI_col_parameter_t* parameter) {
-  TRI_col_info_t info;
+                                                   TRI_col_info_t* parameter) {
   TRI_shape_collection_t* shape;
   TRI_collection_t* collection;
 
@@ -334,15 +333,11 @@ TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  memset(&info, 0, sizeof(info));
-  info._version = TRI_COL_VERSION;
-  info._type = TRI_COL_TYPE_SHAPE;
-  info._cid = TRI_NewTickVocBase();
-  TRI_CopyString(info._name, parameter->_name, sizeof(info._name));
-  info._maximalSize = parameter->_maximalSize;
-  info._waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
+  parameter->_type = TRI_COL_TYPE_SHAPE;
+  parameter->_cid = TRI_NewTickVocBase();
+  parameter->_waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
 
-  collection = TRI_CreateCollection(vocbase, &shape->base, path, &info);
+  collection = TRI_CreateCollection(vocbase, &shape->base, path, parameter);
 
   if (collection == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);

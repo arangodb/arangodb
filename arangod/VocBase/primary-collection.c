@@ -137,7 +137,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   // create journal file
-  journal = TRI_CreateDatafile(filename, collection->_maximalSize);
+  journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
 
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
@@ -202,7 +202,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
   cm.base._type = TRI_COL_MARKER_HEADER;
   cm.base._tick = TRI_NewTickVocBase();
 
-  cm._cid = collection->_cid;
+  cm._cid = collection->_info._cid;
 
   TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
 
@@ -580,7 +580,7 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const contex
   context->_previousRid = NULL;
   context->_lock = false;
   context->_release = false;
-  context->_sync = forceSync || primary->base._waitForSync;
+  context->_sync = forceSync || primary->base._info._waitForSync;
   context->_allowRollback = true;
 }
 
