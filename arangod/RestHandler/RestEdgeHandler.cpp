@@ -180,18 +180,24 @@ bool RestEdgeHandler::createDocument () {
   res = parseDocumentId(from, edge._fromCid, edge._fromDid);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::BAD,
-                  res,
-                  "'from' is not a document handle");
+    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      generateError(HttpResponse::NOT_FOUND, res, "'from' does not point to a valid collection");
+    }
+    else {
+      generateError(HttpResponse::BAD, res, "'from' is not a document handle");
+    }
     return false;
   }
 
   res = parseDocumentId(to, edge._toCid, edge._toDid);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::BAD,
-                  res,
-                  "'to' is not a document handle");
+    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      generateError(HttpResponse::NOT_FOUND, res, "'to' does not point to a valid collection");
+    }
+    else {
+      generateError(HttpResponse::BAD, res, "'to' is not a document handle");
+    }
     return false;
   }
 
