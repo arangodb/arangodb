@@ -1050,7 +1050,8 @@ TRI_vocbase_col_t* TRI_CheckCollectionTransaction (TRI_transaction_t* const trx,
   TRI_transaction_collection_t* collection;
   size_t i, n;
 
-  assert(trx->_status == TRI_TRANSACTION_CREATED);
+  assert(trx->_status == TRI_TRANSACTION_CREATED || 
+         trx->_status == TRI_TRANSACTION_RUNNING);
   assert(name);
 
   // check if we already have got this collection in the _collections vector

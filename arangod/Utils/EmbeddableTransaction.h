@@ -65,7 +65,7 @@ namespace triagens {
           v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
           if (v8g->_currentTransaction == 0) {
-            _previous = v8g->_currentTransaction;
+            _previous = (TRI_transaction_t*) v8g->_currentTransaction;
           }
         }
 
@@ -104,7 +104,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int freeTransaction () {
-          if (isEmbedded()) {
+          if (this->isEmbedded()) {
             return TRI_ERROR_NO_ERROR;
           }
           
