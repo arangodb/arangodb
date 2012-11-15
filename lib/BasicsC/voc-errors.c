@@ -98,7 +98,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_TRANSACTION_INCOMPLETE, "transaction definition is incomplete");
   REG_ERROR(ERROR_TRANSACTION_INVALID_STATE, "invalid transaction state");
-  REG_ERROR(ERROR_TRANSACTION_NESTED, "nested write transaction detected");
+  REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");

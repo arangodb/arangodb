@@ -82,12 +82,18 @@ namespace triagens {
           T(), 
           _vocbase(vocbase), 
           _trxName(trxName),
-          _hints(0) {
+          _hints(0),
+          _setupError(TRI_ERROR_NO_ERROR) {
           assert(_vocbase != 0);
 
-          createTransaction();
+          int res = createTransaction();
+          if (res != TRI_ERROR_NO_ERROR) {
+            this->_setupError = res;
+          }
 
-          // LOGGER_INFO << "created transaction " << this->_trxName;
+#ifdef TRI_ENABLE_TRX
+          LOGGER_INFO << "created transaction " << this->_trxName;
+#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +103,9 @@ namespace triagens {
         virtual ~Transaction () {
           freeTransaction();
           
-          // LOGGER_INFO << "destroyed transaction " << this->_trxName;
+#ifdef TRI_ENABLE_TRX
+          LOGGER_INFO << "destroyed transaction " << this->_trxName;
+#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +128,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         int begin () {
+          if (this->_setupError != TRI_ERROR_NO_ERROR) {
+            return this->_setupError;
+          }
+
           if (this->_trx == 0) {
             return TRI_ERROR_TRANSACTION_INVALID_STATE;
           }
@@ -513,6 +525,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_transaction_hint_t _hints;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error that occurred on transaction initialisation (before begin())
+////////////////////////////////////////////////////////////////////////////////
+
+        int _setupError;
           
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
