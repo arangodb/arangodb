@@ -214,8 +214,8 @@ extern "C" {
 /// - 1651: @CODE{invalid transaction state}
 ///   Will be raised when an operation is requested on a transaction that has
 ///   an incompatible state.
-/// - 1652: @CODE{nested write transaction detected}
-///   Will be raised when write transactions are nested.
+/// - 1652: @CODE{nested transactions detected}
+///   Will be raised when transactions are nested.
 /// - 1653: @CODE{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
@@ -1235,9 +1235,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1652: ERROR_TRANSACTION_NESTED
 ///
-/// nested write transaction detected
+/// nested transactions detected
 ///
-/// Will be raised when write transactions are nested.
+/// Will be raised when transactions are nested.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_NESTED                                      (1652)

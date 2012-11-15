@@ -102,7 +102,7 @@
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" }, 
     "ERROR_TRANSACTION_INCOMPLETE" : { "code" : 1650, "message" : "transaction definition is incomplete" }, 
     "ERROR_TRANSACTION_INVALID_STATE" : { "code" : 1651, "message" : "invalid transaction state" }, 
-    "ERROR_TRANSACTION_NESTED"     : { "code" : 1652, "message" : "nested write transaction detected" }, 
+    "ERROR_TRANSACTION_NESTED"     : { "code" : 1652, "message" : "nested transactions detected" }, 
     "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1653, "message" : "internal transaction error" }, 
     "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1654, "message" : "unregistered collection used in transaction" }, 
     "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" }, 

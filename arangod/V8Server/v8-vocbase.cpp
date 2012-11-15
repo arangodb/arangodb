@@ -43,6 +43,7 @@
 #include "Rest/JsonContainer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utils/EmbeddableTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransaction.h"
 #include "Utils/UserTransaction.h"
@@ -806,7 +807,53 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (TRI_vocbase_t* vocbase,
 /// @verbinclude shell_create-document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection, 
+#ifdef TRI_ENABLE_TRX
+static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+                                             v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                               "usage: save(<data>, <waitForSync>)")));
+  }
+  
+  TRI_json_t* json = TRI_JsonObject(argv[0]);
+
+  bool forceSync = false;
+  if (2 == argv.Length()) {
+    forceSync = TRI_ObjectToBoolean(argv[1]);
+  }
+  
+  // the lock is freed in create
+  TRI_doc_mptr_t* document = 0;
+  int res = trx->createDocument(&document, json, forceSync);
+
+  res = trx->finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save document", true)));
+  }
+  
+  assert(document);
+  assert(document->_key);
+  
+  TRI_v8_global_t* v8g;
+  
+  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  string id = StringUtils::itoa(trx->cid()) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(document->_key);
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->RevKey, v8::Number::New(document->_rid));
+  result->Set(v8g->KeyKey, v8::String::New(document->_key));
+
+  return scope.Close(result);
+}
+#else
+
+static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection,
                                              v8::Arguments const& argv) {
   v8::HandleScope scope;
   TRI_v8_global_t* v8g;
@@ -888,6 +935,8 @@ static v8::Handle<v8::Value> SaveVocbaseCol (TRI_vocbase_col_t const* collection
 
   return scope.Close(result);
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new edge document
@@ -4765,12 +4814,23 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-/*
-  TRI_vocbase_col_t* colx = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  SingleCollectionWriteTransaction<true, 1> trx(colx->_vocbase, 0, colx->_name, (TRI_col_type_e) colx->_type, false, "SaveVocBaseTrx");
+#ifdef TRI_ENABLE_TRX
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-*/
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "SaveVocBase");
+  v8::Handle<v8::Value> result;
+  
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot save document", true)));
+  }
+  
+  if ((TRI_col_type_e) col->_type == TRI_COL_TYPE_DOCUMENT) {
+    result = SaveVocbaseCol(&trx, argv);
+  }
+
+#else
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
@@ -4788,6 +4848,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   }
 
   TRI_ReleaseCollection(collection);
+#endif
   return scope.Close(result);
 }
 
