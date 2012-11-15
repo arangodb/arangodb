@@ -106,7 +106,7 @@ bool RestEdgeHandler::createDocument () {
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+                  "superfluous suffix, expecting " + EDGE_PATH + "?collection=<identifier>");
     return false;
   }
 
