@@ -219,7 +219,7 @@ TRI_document_collection_t;
 
 TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t*,
                                                          char const*,
-                                                         TRI_col_parameter_t*,
+                                                         TRI_col_info_t*,
                                                          TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////

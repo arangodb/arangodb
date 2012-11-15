@@ -219,7 +219,7 @@ void TRI_CleanupVocBase (void* data) {
         continue;
       }
 
-      type = primary->base._type;
+      type = primary->base._info._type;
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 

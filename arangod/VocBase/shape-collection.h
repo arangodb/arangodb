@@ -85,7 +85,7 @@ TRI_shape_collection_t;
 
 TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t*,
                                                    char const* path,
-                                                   TRI_col_parameter_t* parameter);
+                                                   TRI_col_info_t* parameter);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

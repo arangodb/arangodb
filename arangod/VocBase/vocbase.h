@@ -46,7 +46,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 struct TRI_primary_collection_s;
-struct TRI_col_parameter_s;
+struct TRI_col_info_s;
 struct TRI_shadow_store_s;
 
 // -----------------------------------------------------------------------------
@@ -534,7 +534,7 @@ TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t*, char con
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*, 
-                                                struct TRI_col_parameter_s*,
+                                                struct TRI_col_info_s*,
                                                 TRI_voc_cid_t cid);
 
 ////////////////////////////////////////////////////////////////////////////////
