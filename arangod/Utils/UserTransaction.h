@@ -118,17 +118,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int addCollections () {
+          int res;
           size_t i;
 
           for (i = 0; i < _readCollections.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(this->_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ, 0)) {
-              return TRI_ERROR_INTERNAL;
+            res = TRI_AddCollectionTransaction(this->_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ, 0);
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
             }
           }    
 
           for (i = 0; i < _writeCollections.size(); ++i) {
-            if (! TRI_AddCollectionTransaction(this->_trx, _writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0)) {
-              return TRI_ERROR_INTERNAL;
+            res = TRI_AddCollectionTransaction(this->_trx, _writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0);
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
             }
           }
 
