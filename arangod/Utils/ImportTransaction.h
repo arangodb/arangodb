@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for self-contained, single collection read transactions
+/// @brief wrapper for single collection, multi-operation write transactions
 ///
 /// @file
 ///
@@ -25,19 +25,20 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SELF_CONTAINED_READ_TRANSACTION_H
-#define TRIAGENS_UTILS_SELF_CONTAINED_READ_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_IMPORT_TRANSACTION_H
+#define TRIAGENS_UTILS_IMPORT_TRANSACTION_H 1
 
-#include "Utils/SelfContainedTransaction.h"
+#include "Utils/CollectionWriteLock.h"
+#include "Utils/SingleCollectionWriteTransaction.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                class SelfContainedReadTransaction
+// --SECTION--                                           class ImportTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedReadTransaction : public SelfContainedTransaction {
+    class ImportTransaction : public SingleCollectionWriteTransaction<UINT64_MAX> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -57,40 +58,20 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection object
+///
+/// An import transaction operates on a single collection and may execute any
+/// number of writes on it.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedReadTransaction (Collection* collection) :
-          SelfContainedTransaction(collection) {
+        ImportTransaction (Collection* collection) :
+          SingleCollectionWriteTransaction<UINT64_MAX>(collection, "ImportTransaction") { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SelfContainedReadTransaction () {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the transaction type
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_transaction_type_e type () const {
-          return TRI_TRANSACTION_READ;
+        ~ImportTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

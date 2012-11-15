@@ -35,6 +35,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
+#include "Utils/ImportTransaction.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -200,7 +202,7 @@ bool RestImportHandler::createByArray () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  SelfContainedWriteTransaction trx(&c); 
+  ImportTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
@@ -376,7 +378,7 @@ bool RestImportHandler::createByList () {
   
   // find and load collection given by name or identifier
   Collection c(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
-  SelfContainedWriteTransaction trx(&c); 
+  ImportTransaction trx(&c); 
   
   // .............................................................................
   // inside write transaction
