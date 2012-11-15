@@ -636,6 +636,7 @@ form {
   height: 30px;
   background-color: white; 
   margin-right: 0.5%;
+  padding-left: 10px; 
 } 
 
 .avocshSuccess {
