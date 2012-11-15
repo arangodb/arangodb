@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for single collection, single operation write transactions
+/// @brief wrapper for single collection, multi-operation write transactions
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H
-#define TRIAGENS_UTILS_SELF_CONTAINED_WRITE_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_IMPORT_TRANSACTION_H
+#define TRIAGENS_UTILS_IMPORT_TRANSACTION_H 1
 
 #include "Utils/CollectionWriteLock.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
@@ -35,10 +35,10 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 ass SelfContainedWriteTransaction
+// --SECTION--                                           class ImportTransaction
 // -----------------------------------------------------------------------------
 
-    class SelfContainedWriteTransaction : public SingleCollectionWriteTransaction<1> {
+    class ImportTransaction : public SingleCollectionWriteTransaction<UINT64_MAX> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
@@ -59,19 +59,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction, using a collection object
 ///
-/// A self contained write transaction operates on a single collection and may 
-/// execute at most one write operation
+/// An import transaction operates on a single collection and may execute any
+/// number of writes on it.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SelfContainedWriteTransaction (Collection* collection) :
-          SingleCollectionWriteTransaction<1>(collection, "SelfContainedWriteTransaction") { 
+        ImportTransaction (Collection* collection) :
+          SingleCollectionWriteTransaction<UINT64_MAX>(collection, "ImportTransaction") { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SelfContainedWriteTransaction () {
+        ~ImportTransaction () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

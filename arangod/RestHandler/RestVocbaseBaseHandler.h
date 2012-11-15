@@ -30,15 +30,14 @@
 
 #include "Admin/RestBaseHandler.h"
 
+#include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
+
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Utils/Collection.h"
-#include "Utils/SelfContainedReadTransaction.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SelfContainedWriteTransaction.h"
-
-////#include "VocBase/primary-collection.h"
-#include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -197,13 +196,13 @@ namespace triagens {
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (TRI_voc_cid_t, string const&);
+        void generateDocumentNotFound (TRI_voc_cid_t, TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateConflict (string const&, string const&);
+        void generateConflict (TRI_voc_cid_t, TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
