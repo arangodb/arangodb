@@ -398,6 +398,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').show(); 
       createnav("Collections"); 
       highlightNav("#nav1");
+      highlightNavButton("#Collections"); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -620,6 +621,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#logView').show();
       createnav ("Logs"); 
+      highlightNavButton("#Logs"); 
       showCursor();
     }
 
@@ -634,6 +636,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#statusView').show();
       createnav ("Statistics"); 
+      highlightNavButton("#Status"); 
       makeDraggableAndResizable(); 
       //TODO
       createChartBoxes(); 
@@ -650,6 +653,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#configView').show();
       createnav ("Configuration"); 
+      highlightNavButton("#Config"); 
       var switcher = "primary";
       var insertType;  
 
@@ -771,6 +775,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#queryView').show();
       createnav ("Query"); 
+      highlightNavButton("#Query"); 
       $('#queryContent').focus();
     }
 
@@ -784,6 +789,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#avocshView').show();
       createnav ("ArangoDB Shell"); 
+      highlightNavButton("#AvocSH"); 
       $('#avocshContent').focus();
       if (printedHelp === false) {
         print(welcomeMSG + require("arangosh").HELP);
@@ -804,6 +810,7 @@ var logTable = $('#logTableID').dataTable({
       $('#nav1').text('Collections');
       $('#nav2').text('Create new collection');
       $('#nav1').attr('class', 'arrowbg'); 
+      highlightNavButton("#Collections"); 
 
       hideAllSubDivs();
       $('#collectionsView').hide();
@@ -1434,24 +1441,30 @@ var lastFormatQuestion = true;
       $('#subCenterView').hide();
       $('#collectionsView').show();
       window.location.href = "#";
+      highlightNavButton ("#Collections");
     }
-    if (this.id == "Logs") {
+    else if (this.id == "Logs") {
       window.location.href = "#logs";
+      highlightNavButton ("#Logs");
     }
-    if (this.id == "Status") {
+    else if (this.id == "Status") {
       window.location.href = "#status";
+      highlightNavButton ("#Status");
     }
-    if (this.id == "Configuration") {
+    else if (this.id == "Configuration") {
       window.location.href = "#config";
+      highlightNavButton ("#Configuration");
     }
-    if (this.id == "Documentation") {
+    else if (this.id == "Documentation") {
       return 0; 
     }
-    if (this.id == "Query") {
+    else if (this.id == "Query") {
       window.location.href = "#query";
+      highlightNavButton ("#Query");
     }
-    if (this.id == "AvocSH") {
+    else if (this.id == "AvocSH") {
       window.location.href = "#avocsh";
+      highlightNavButton ("#AvocSH");
     }
   });
 
@@ -2720,8 +2733,12 @@ function drawRequests (placeholder, granularity) {
 }
 
 function updateGraphs() {
+  if (location.hash == "#status") {
     updateChartBoxes(); 
     setTimeout(updateGraphs, 60000);
+  }
+  else {
+  }
 }
 
 $(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
@@ -2997,4 +3014,19 @@ function createSingleBox (id, val, question) {
   templeft = templeft + 10; 
   temptop = temptop + 10;
   stateSaving();  
+}
+
+function highlightNavButton (buttonID) {
+  $("#Collections").css('background-color', '#E3E3E3'); 
+  $("#Collections").css('color', '#333333'); 
+  $("#Query").css('background-color', '#E3E3E3'); 
+  $("#Query").css('color', '#333333'); 
+  $("#AvocSH").css('background-color', '#E3E3E3'); 
+  $("#AvocSH").css('color', '#333333'); 
+  $("#Logs").css('background-color', '#E3E3E3'); 
+  $("#Logs").css('color', '#333333'); 
+  $("#Status").css('background-color', '#E3E3E3'); 
+  $("#Status").css('color', '#333333'); 
+  $(buttonID).css('background-color', '#9EAF5A'); 
+  $(buttonID).css('color', 'white'); 
 }
