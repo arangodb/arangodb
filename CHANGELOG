@@ -1,3 +1,10 @@
+v1.0.5 (XXXX-XX-XX)
+-------------------
+
+* fixed AQL optimiser bug, related to OR-combined conditions that filtered on the
+  same attribute but with different conditions
+
+
 v1.0.4 (2012-11-12)
 -------------------
 
