@@ -488,7 +488,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   }
   else {
     collection->_path = TRI_DuplicateString(path);
-    if (!collection->_path) {
+    if (! collection->_path) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 

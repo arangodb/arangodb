@@ -31,11 +31,11 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/JsonContainer.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 #include "Utils/ImportTransaction.h"
+#include "Utilities/ResourceHolder.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -250,7 +250,6 @@ bool RestImportHandler::createByArray () {
         ++numError;
       }
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-      
     }
     else {
       LOGGER_WARNING << "no valid JSON data in line " << line;            
@@ -328,7 +327,8 @@ bool RestImportHandler::createByList () {
                   "no JSON list in second line found");
     return false;            
   }
-  
+ 
+  ResourceHolder holder;
   TRI_json_t* keys = 0;
     
   string line = body.substr(start, next);
@@ -336,10 +336,8 @@ bool RestImportHandler::createByList () {
 
   // get first line
   if (line != "") { 
-    
     keys = parseJsonLine(line);
-    
-    if (!keys) {
+    if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, keys)) {
       LOGGER_WARNING << "no JSON data in first line";
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -348,9 +346,8 @@ bool RestImportHandler::createByList () {
     }
     
     if (keys->_type == TRI_JSON_LIST) {
-      if (!checkKeys(keys)) {
+      if (! checkKeys(keys)) {
         LOGGER_WARNING << "no JSON string list in first line found";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
         generateError(HttpResponse::BAD,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       "no JSON string list in first line found");
@@ -360,7 +357,6 @@ bool RestImportHandler::createByList () {
     }
     else {
       LOGGER_WARNING << "no JSON string list in first line found";
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "no JSON string list in first line found");
@@ -384,9 +380,6 @@ bool RestImportHandler::createByList () {
  
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    if (keys) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
-    }
     generateTransactionError(collection, res);
     return true;
   }
@@ -424,7 +417,7 @@ bool RestImportHandler::createByList () {
       json = createJsonObject(keys, values, line);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
         
-      if (!json) {
+      if (! json) {
         ++numError;          
         continue;
       }
@@ -447,10 +440,6 @@ bool RestImportHandler::createByList () {
       ++numError;
     }
             
-  }
-  
-  if (keys) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
   }
   
   // we'll always commit, even if previous errors occurred
@@ -542,9 +531,8 @@ bool RestImportHandler::checkKeys (TRI_json_t* keys) {
   }
 
   for (size_t i = 0;  i < n;  ++i) {
+    TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&keys->_value._objects, i);
 
-    TRI_json_t* key   = (TRI_json_t*) TRI_AtVector(&keys->_value._objects, i);
-    
     if (key->_type != TRI_JSON_STRING) {
       return false;
     }
