@@ -92,7 +92,7 @@ namespace triagens {
           }
 
 #ifdef TRI_ENABLE_TRX
-          LOGGER_INFO << "created transaction " << this->_trxName;
+//          LOGGER_INFO << "created transaction " << this->_trxName;
 #endif
         }
 
@@ -104,7 +104,7 @@ namespace triagens {
           freeTransaction();
           
 #ifdef TRI_ENABLE_TRX
-          LOGGER_INFO << "destroyed transaction " << this->_trxName;
+//          LOGGER_INFO << "destroyed transaction " << this->_trxName;
 #endif
         }
 
