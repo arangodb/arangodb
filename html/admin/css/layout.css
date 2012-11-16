@@ -719,7 +719,7 @@ form {
 
 #menue-right {
   padding-top:11px;
-  padding-right:14px;   
+  padding-right:10px;   
   height:40px; 
   width:auto; 
   float:right;
@@ -866,29 +866,16 @@ form {
   background: #e3e3e3;
   padding: 9px 0 8px; 
   border: 1px solid #bbb;
-//  -webkit-box-shadow: inset 0 0 1px 1px #f6f6f6;
-//  -moz-box-shadow: inset 0 0 1px 1px #f6f6f6;
-//  box-shadow: inset 0 0 1px 1px #f6f6f6;
   color: #333;
   font: 0.7em Verdana,Arial,sans-serif;
   line-height: 1;
   text-align: center;
-  text-shadow: 0 1px 0 #fff;
   width: 90px;
 }
 #menue button.minimal:hover {
-    background: #d9d9d9;
-//    -webkit-box-shadow: inset 0 0 1px 1px #eaeaea;
-//    -moz-box-shadow: inset 0 0 1px 1px #eaeaea;
-//    box-shadow: inset 0 0 1px 1px #eaeaea;
-    color: #222;
+/*    background: #d9d9d9; */
+/*    color: #222; */
     cursor: pointer; }
-#menue  button.minimal:active {
-    background: #d0d0d0;
-//    -webkit-box-shadow: inset 0 0 1px 1px #e3e3e3;
-//    -moz-box-shadow: inset 0 0 1px 1px #e3e3e3;
-//    box-shadow: inset 0 0 1px 1px #e3e3e3;
-    color: #000; }
 /*
 ##############################################################################
 ### CollectionView subView Buttons
@@ -1012,10 +999,10 @@ form {
 }
 
 .leftCell {
-  border-left: 1px solid #AAAAAA !important;
+  border-left: 1px solid #D3D3D3 !important;
 }
 
 .rightCell {
-  border-right: 1px solid #AAAAAA !important;
+  border-right: 1px solid #D3D3D3 !important;
 }
 
