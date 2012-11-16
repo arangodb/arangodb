@@ -32,6 +32,7 @@
 
 #include "Utils/CollectionWriteLock.h"
 
+#include "ShapedJson/shaped-json.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -113,7 +114,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a single document within a transaction
+/// @brief create a single document within a transaction, using json
 ////////////////////////////////////////////////////////////////////////////////
 
         int createDocument (TRI_doc_mptr_t** mptr,
@@ -130,7 +131,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a single edge within a transaction
+/// @brief create a single edge within a transaction, using json
 ////////////////////////////////////////////////////////////////////////////////
 
         int createEdge (TRI_doc_mptr_t** mptr,
@@ -145,6 +146,43 @@ namespace triagens {
           _synchronous = forceSync || primary->base._info._waitForSync;
           
           return this->createCollectionDocument(primary, TRI_DOC_MARKER_KEY_EDGE, mptr, json, data, forceSync);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single edge within a transaction, using shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+        int createDocument (TRI_voc_key_t key,
+                            TRI_doc_mptr_t** mptr,
+                            TRI_shaped_json_t const* shaped, 
+                            bool forceSync) {
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+
+          TRI_primary_collection_t* primary = this->primaryCollection();
+          _synchronous = forceSync || primary->base._info._waitForSync;
+          
+          return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_DOCUMENT, key, mptr, shaped, 0, forceSync);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single edge within a transaction, using shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+        int createEdge (TRI_voc_key_t key,
+                        TRI_doc_mptr_t** mptr,
+                        TRI_shaped_json_t const* shaped, 
+                        bool forceSync, 
+                        void const* data) {
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+
+          TRI_primary_collection_t* primary = this->primaryCollection();
+          _synchronous = forceSync || primary->base._info._waitForSync;
+          
+          return this->createCollectionShaped(primary, TRI_DOC_MARKER_KEY_EDGE, key, mptr, shaped, data, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

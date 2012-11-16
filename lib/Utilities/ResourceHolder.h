@@ -30,6 +30,7 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
+#include "ShapedJson/json-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class ResourceHolder
@@ -58,7 +59,8 @@ class ResourceHolder {
 
   typedef enum {
     TYPE_STRING,
-    TYPE_JSON
+    TYPE_JSON,
+    TYPE_SHAPED_JSON
   } 
   resource_type_e;
 
@@ -68,29 +70,32 @@ class ResourceHolder {
 
   struct Resource {
     Resource (const resource_type_e type,
-              TRI_memory_zone_t* const memoryZone, 
+              void* const context,
               void* const value) : 
       _type(type),
-      _memoryZone(memoryZone),
+      _context(context),
       _value(value) {
     }
 
     ~Resource () {
       switch (_type) {
         case TYPE_STRING: 
-          TRI_FreeString(_memoryZone, (char*) _value);
+          TRI_FreeString((TRI_memory_zone_t*) _context, (char*) _value);
           break;
         case TYPE_JSON:
-          TRI_FreeJson(_memoryZone, (TRI_json_t*) _value);
+          TRI_FreeJson((TRI_memory_zone_t*) _context, (TRI_json_t*) _value);
+          break;
+        case TYPE_SHAPED_JSON:
+          TRI_FreeShapedJson((TRI_shaper_t*) _context, (TRI_shaped_json_t*) _value);
           break;
         default: {
         }
       }
     }
 
-    resource_type_e    _type;
-    TRI_memory_zone_t* _memoryZone;
-    void*              _value;
+    resource_type_e  _type;
+    void*            _context;
+    void*            _value;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,18 +155,27 @@ class ResourceHolder {
 /// @brief register a string object
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool registerString (TRI_memory_zone_t* memoryZone,
+    bool registerString (TRI_memory_zone_t* context,
                          char* const value) {
-      return registerResource(TYPE_STRING, memoryZone, (void*) value);
+      return registerResource(TYPE_STRING, (void*) context, (void*) value);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool registerJson (TRI_memory_zone_t* memoryZone,
+    bool registerJson (TRI_memory_zone_t* context,
                        TRI_json_t* const value) {
-      return registerResource(TYPE_JSON, memoryZone, (void*) value);
+      return registerResource(TYPE_JSON, (void*) context, (void*) value);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a shaped json object
+////////////////////////////////////////////////////////////////////////////////
+
+    bool registerShapedJson (TRI_shaper_t* context,
+                             TRI_shaped_json_t* const value) {
+      return registerResource(TYPE_SHAPED_JSON, (void*) context, (void*) value);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,13 +198,13 @@ class ResourceHolder {
 ////////////////////////////////////////////////////////////////////////////////
 
     bool registerResource (const resource_type_e type,
-                           TRI_memory_zone_t* memoryZone,
+                           void* const context,
                            void* const value) {
       if (value == 0) {
         return false;
       }
 
-      Resource* resource = new Resource(type, memoryZone, value);
+      Resource* resource = new Resource(type, context, value);
       _resources.push_back(resource);
 
       return true;
