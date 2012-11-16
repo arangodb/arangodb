@@ -30,10 +30,10 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/strings.h"
+#include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/JsonContainer.h"
+#include "Utilities/ResourceHolder.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -149,10 +149,10 @@ bool RestEdgeHandler::createDocument () {
   bool create = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  TRI_json_t* json = container.ptr();
+  ResourceHolder holder;
 
-  if (json == 0) {
+  TRI_json_t* json = parseJsonBody();
+  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
   
@@ -186,11 +186,9 @@ bool RestEdgeHandler::createDocument () {
   }
 
   res = parseDocumentId(from, edge._fromCid, edge._fromKey);
+  holder.registerString(TRI_CORE_MEM_ZONE, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (edge._fromKey) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    }
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       generateError(HttpResponse::NOT_FOUND, res, "'from' does not point to a valid collection");
     }
@@ -201,16 +199,9 @@ bool RestEdgeHandler::createDocument () {
   }
 
   res = parseDocumentId(to, edge._toCid, edge._toKey);
+  holder.registerString(TRI_CORE_MEM_ZONE, edge._toKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (edge._toKey) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
-    }
-
-    if (edge._fromKey) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    }
-
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       generateError(HttpResponse::NOT_FOUND, res, "'to' does not point to a valid collection");
     }
@@ -234,13 +225,6 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
   
   if (res != TRI_ERROR_NO_ERROR) {
-    if (edge._toKey) {
-     TRI_FreeString(TRI_CORE_MEM_ZONE, edge._toKey);
-    }
-    if (edge._fromKey) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, edge._fromKey);
-    }
-
     generateTransactionError(collection, res);
     return false;
   }
