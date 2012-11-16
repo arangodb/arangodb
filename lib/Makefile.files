@@ -78,7 +78,6 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp \
 	lib/Rest/InitialiseRest.cpp \
-	lib/Rest/JsonContainer.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Url.cpp \
 	lib/ShapedJson/json-shaper.c \
