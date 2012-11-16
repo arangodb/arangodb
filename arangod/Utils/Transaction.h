@@ -92,7 +92,7 @@ namespace triagens {
           }
 
 #ifdef TRI_ENABLE_TRX
-          LOGGER_INFO << "created transaction " << this->_trxName;
+//          LOGGER_INFO << "created transaction " << this->_trxName;
 #endif
         }
 
@@ -104,7 +104,7 @@ namespace triagens {
           freeTransaction();
           
 #ifdef TRI_ENABLE_TRX
-          LOGGER_INFO << "destroyed transaction " << this->_trxName;
+//          LOGGER_INFO << "destroyed transaction " << this->_trxName;
 #endif
         }
 
@@ -244,6 +244,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the "vocbase"
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_vocbase_t* vocbase () const {
+          return this->_vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the status of the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -333,7 +341,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a single document 
+/// @brief create a single document, using JSON 
 ////////////////////////////////////////////////////////////////////////////////
 
         int createCollectionDocument (TRI_primary_collection_t* const primary,
@@ -351,7 +359,26 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a single document
+/// @brief create a single document, using shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+        int createCollectionShaped (TRI_primary_collection_t* const primary,
+                                    const TRI_df_marker_type_e markerType,
+                                    TRI_voc_key_t key,
+                                    TRI_doc_mptr_t** mptr,
+                                    TRI_shaped_json_t const* shaped, 
+                                    void const* data,
+                                    const bool forceSync) {
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_ERROR, forceSync);
+
+          CollectionWriteLock lock(primary);
+
+          return primary->create(&context, markerType, mptr, shaped, data, key);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document, using JSON
 ////////////////////////////////////////////////////////////////////////////////
         
         int updateCollectionDocument (TRI_primary_collection_t* const primary,

@@ -315,24 +315,82 @@ describe ArangoDB do
       
       it "checks list of vertices" do
         cmd = "/_api/blueprints/vertex?graph=#{graph_name}"
-      	body = "{\"optional1\" : \"val1\", \"optional2\" : \"val2\"}"
+      	body = "{\"$id\" : \"id1\", \"optional1\" : \"val1\", \"optional2\" : 1}"
         ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	body = "{\"$id\" : \"id2\", \"optional1\" : \"val1\", \"optional2\" : 2}"
         ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	body = "{\"$id\" : \"id3\", \"optional1\" : \"val1\", \"optional2\" : 2}"
         ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	body = "{\"$id\" : \"id4\", \"optional1\" : \"val1\", \"optional2\" : 3}"
+        ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	body = "{\"$id\" : \"id5\", \"optional2\" : \"val2\"}"
         ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	body = "{\"$id\" : \"id1\", \"optional2\" : \"val2\"}"
-        ArangoDB.log_post("#{prefix}", cmd, :body => body)
-        ArangoDB.log_post("#{prefix}", cmd, :body => body)
-        ArangoDB.log_post("#{prefix}", cmd, :body => body)
-        ArangoDB.log_post("#{prefix}", cmd, :body => body)
+        cmd = "/_api/blueprints/edge?graph=#{graph_name}"
+      	body = "{\"$id\" : \"edge1\", \"_from\" : \"id1\", \"_to\" : \"id2\", \"$label\" : \"l1\"}"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	body = "{\"$id\" : \"edge2\", \"_from\" : \"id2\", \"_to\" : \"id3\", \"$label\" : \"l2\"}"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
         cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
-        doc = ArangoDB.log_get("#{prefix}", cmd)
-      	doc.code.should eq(200)
+      	body = "{\"batchSize\" : 100 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
       	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['vertices'].count.should eq(5)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(5)
+
+        cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"key\" : \"optional2\", \"value\" : 3 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+
+        cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"key\" : \"optional2\", \"value\" : 2 }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(2)
+
+        cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\" }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(2)
+
+        cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\", \"direction\" : \"in\" }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+	      doc.parsed_response['result'][0]['$id'].should eq("id1")
+
+        cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\", \"direction\" : \"out\" }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+	      doc.parsed_response['result'][0]['$id'].should eq("id3")
+
+        cmd = "/_api/blueprints/vertices?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\", \"labels\" : [\"l2\"] }"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+      	doc.code.should eq(201)
+      	doc.parsed_response['error'].should eq(false)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+	      doc.parsed_response['result'][0]['$id'].should eq("id3")
+
       end
 
     end
@@ -590,53 +648,58 @@ describe ArangoDB do
       
       it "checks list of all edges" do
         cmd = "/_api/blueprints/edges?graph=#{graph_name}"
-        doc = ArangoDB.log_get("#{prefix}", cmd)
+      	body = "{\"batchSize\" : 100}"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(200)
+      	doc.code.should eq(201)
       	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edges'].count.should eq(2)
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(2)
       end
 
       it "checks list of all edges of one vertex" do
-        cmd = "/_api/blueprints/edges?graph=#{graph_name}&vertex=id1"
-        doc = ArangoDB.log_get("#{prefix}", cmd)
+        cmd = "/_api/blueprints/edges?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id1\"}"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(200)
+      	doc.code.should eq(201)
       	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edges'].count.should eq(1)
-	      doc.parsed_response['edges'][0]['$id'].should eq("edge1")
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+	      doc.parsed_response['result'][0]['$id'].should eq("edge1")
 
-        cmd = "/_api/blueprints/edges?graph=#{graph_name}&vertex=id2"
-        doc2 = ArangoDB.log_get("#{prefix}", cmd)
+        cmd = "/_api/blueprints/edges?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\"}"
+        doc2 = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc2.code.should eq(200)
+      	doc2.code.should eq(201)
       	doc2.parsed_response['error'].should eq(false)
-	      doc2.parsed_response['code'].should eq(200)
-	      doc2.parsed_response['edges'].count.should eq(2)
+	      doc2.parsed_response['code'].should eq(201)
+	      doc2.parsed_response['result'].count.should eq(2)
       end
 
       it "checks list of all in edges of one vertex" do
-        cmd = "/_api/blueprints/edges?graph=#{graph_name}&vertex=id2&type=in"
-        doc = ArangoDB.log_get("#{prefix}", cmd)
+        cmd = "/_api/blueprints/edges?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\", \"direction\" : \"in\"}"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(200)
+      	doc.code.should eq(201)
       	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edges'].count.should eq(1)
-	      doc.parsed_response['edges'][0]['$id'].should eq("edge1")
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+	      doc.parsed_response['result'][0]['$id'].should eq("edge1")
       end
 
       it "checks list of all out edges of one vertex" do
-        cmd = "/_api/blueprints/edges?graph=#{graph_name}&vertex=id2&type=out"
-        doc = ArangoDB.log_get("#{prefix}", cmd)
+        cmd = "/_api/blueprints/edges?graph=#{graph_name}"
+      	body = "{\"batchSize\" : 100, \"vertex\" : \"id2\", \"direction\" : \"out\"}"
+        doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
-      	doc.code.should eq(200)
+      	doc.code.should eq(201)
       	doc.parsed_response['error'].should eq(false)
-	      doc.parsed_response['code'].should eq(200)
-	      doc.parsed_response['edges'].count.should eq(1)
-	      doc.parsed_response['edges'][0]['$id'].should eq("edge2")
+	      doc.parsed_response['code'].should eq(201)
+	      doc.parsed_response['result'].count.should eq(1)
+	      doc.parsed_response['result'][0]['$id'].should eq("edge2")
       end
 
     end

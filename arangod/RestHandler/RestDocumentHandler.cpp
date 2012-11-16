@@ -33,10 +33,10 @@
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/JsonContainer.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
+#include "Utilities/ResourceHolder.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -272,10 +272,10 @@ bool RestDocumentHandler::createDocument () {
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  TRI_json_t* json = container.ptr();
+  ResourceHolder holder;
 
-  if (json == 0) {
+  TRI_json_t* json = parseJsonBody();
+  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
 
@@ -752,13 +752,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   string key = suffix[1];
 
   // auto-ptr that will free JSON data when scope is left
-  JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  TRI_json_t* json = container.ptr();
-  
-  if (json == 0) {
+  ResourceHolder holder;
+
+  TRI_json_t* json = parseJsonBody();
+  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     return false;
   }
-
+  
   // extract the revision
   TRI_voc_rid_t revision = extractRevision("if-match", "rev");
 
@@ -812,14 +812,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     TRI_shaped_json_t shapedJson;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument->_data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
-  
-    if (old != 0) {
-      TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
-      TRI_FreeJson(shaper->_memoryZone, old);
 
-      if (patchedJson != 0) {
+    if (holder.registerJson(shaper->_memoryZone, old)) {
+      TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+
+      if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
         res = trx.updateJson(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
       }
     }
   }
