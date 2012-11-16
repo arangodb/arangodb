@@ -392,13 +392,25 @@ TRI_transaction_context_t* TRI_CreateTransactionContext (TRI_vocbase_t* const vo
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
+  uint32_t i, n;
+
   // destroy global transaction lists
   DestroyTransactionList(&context->_writeTransactions);
   DestroyTransactionList(&context->_readTransactions);
 
-  // destroy hashes
+  // destroy global instances of collections
+  n = context->_collections._nrAlloc;
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_global_t* globalInstance;
+
+    globalInstance = (TRI_transaction_collection_global_t*) context->_collections._table[i];
+    if (globalInstance != NULL) {
+      FreeCollectionGlobalInstance(globalInstance);
+    }
+  }
   TRI_DestroyAssociativePointer(&context->_collections);
 
+  // destroy mutexts
   TRI_DestroyMutex(&context->_lock);
   TRI_DestroyMutex(&context->_collectionLock);
 
