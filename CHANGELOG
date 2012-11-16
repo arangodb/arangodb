@@ -1,19 +1,16 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* fixed AQL optimiser bug, related to OR-combined conditions that filtered on the
+  same attribute but with different conditions
+
 * fixed issue #277: allow usage of collection names when creating edges
   the fix of this issue also implies validation of collection names / ids passed to
   the REST edge create method. edges with invalid collection ids or names in the
   "from" or "to" values will be rejected and not saved
-
 
 v1.1.beta2 (2012-11-13)
 -----------------------
-
-* fixed issue #277: allow usage of collection names when creating edges
-  the fix of this issue also implies validation of collection names / ids passed to
-  the REST edge create method. edges with invalid collection ids or names in the
-  "from" or "to" values will be rejected and not saved
 
 * fixed arangoirb compilation
 
