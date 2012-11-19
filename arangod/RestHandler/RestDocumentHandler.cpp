@@ -817,13 +817,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
 
       if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, patchedJson)) {
-        res = trx.updateJson(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid);
+        res = trx.updateDocument(key, &document, patchedJson, policy, extractWaitForSync(), revision, &rid);
       }
     }
   }
   else {
     // replacing an existing document
-    res = trx.updateJson(key, &document, json, policy, extractWaitForSync(), revision, &rid);
+    res = trx.updateDocument(key, &document, json, policy, extractWaitForSync(), revision, &rid);
   }
   
   res = trx.finish(res);

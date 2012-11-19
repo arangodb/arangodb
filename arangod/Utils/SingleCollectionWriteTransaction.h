@@ -186,16 +186,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a single document within a transaction
-////////////////////////////////////////////////////////////////////////////////
 
-        int updateJson (const string& key,
-                        TRI_doc_mptr_t** mptr, 
-                        TRI_json_t* const json, 
-                        const TRI_doc_update_policy_e policy, 
-                        bool forceSync, 
-                        const TRI_voc_rid_t expectedRevision, 
-                        TRI_voc_rid_t* actualRevision) {
+        int updateDocument (const string& key,
+                            TRI_doc_mptr_t** mptr, 
+                            TRI_json_t* const json, 
+                            const TRI_doc_update_policy_e policy, 
+                            bool forceSync, 
+                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
@@ -204,6 +202,28 @@ namespace triagens {
           _synchronous = forceSync || primary->base._info._waitForSync;
 
           return this->updateCollectionDocument(primary, key, mptr, json, policy, expectedRevision, actualRevision, forceSync);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update (replace!) a single document within a transaction, 
+/// using shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+        int updateDocument (const string& key,
+                            TRI_doc_mptr_t** mptr, 
+                            TRI_shaped_json_t* const shaped, 
+                            const TRI_doc_update_policy_e policy, 
+                            bool forceSync, 
+                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_voc_rid_t* actualRevision) {
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+
+          TRI_primary_collection_t* primary = this->primaryCollection();
+          _synchronous = forceSync || primary->base._info._waitForSync;
+
+          return this->updateCollectionShaped(primary, key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
