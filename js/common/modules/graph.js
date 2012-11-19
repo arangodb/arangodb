@@ -1216,10 +1216,11 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   }
 
   if (data === null || typeof data !== "object") {
-    data = {};
+    shallow = {};
   }
-
-  shallow = data.shallowCopy;
+  else {
+    shallow = data.shallowCopy;
+  }
 
   shallow.$id = id || null;
   shallow.$label = label || null;
@@ -1258,10 +1259,11 @@ Graph.prototype.addVertex = function (id, data) {
     shallow;
 
   if (data === null || typeof data !== "object") {
-    data = {};
+    shallow = {};
   }
-
-  shallow = data.shallowCopy;
+  else {
+    shallow = data.shallowCopy;
+  }
 
   shallow.$id = id || null;
 

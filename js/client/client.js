@@ -2437,11 +2437,11 @@ ArangoEdgesCollection.prototype = new ArangoCollection();
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoEdgesCollection.prototype.save = function (from, to, data) {    
-    if (from.hasOwnProperty("_id")) {
+    if (typeof(from) === 'object' && from.hasOwnProperty("_id")) {
       from = from._id;
     }
 
-    if (to.hasOwnProperty("_id")) {
+    if (typeof(to) === 'object' && to.hasOwnProperty("_id")) {
       to = to._id;
     }
 
