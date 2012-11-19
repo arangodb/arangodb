@@ -400,6 +400,28 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document, using shaped json
+////////////////////////////////////////////////////////////////////////////////
+        
+        int updateCollectionShaped (TRI_primary_collection_t* const primary,
+                                    const string& key,
+                                    TRI_doc_mptr_t** mptr,
+                                    TRI_shaped_json_t* const shaped,
+                                    const TRI_doc_update_policy_e policy,
+                                    const TRI_voc_rid_t expectedRevision,
+                                    TRI_voc_rid_t* actualRevision,
+                                    const bool forceSync) {
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          context._expectedRid = expectedRevision;
+          context._previousRid = actualRevision;
+
+          CollectionWriteLock lock(primary);
+
+          return primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a single document
 ////////////////////////////////////////////////////////////////////////////////
 
