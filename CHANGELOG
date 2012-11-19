@@ -1,6 +1,9 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #284: fixed Javascript errors when adding edges/vertices without own
+  attributes
+
 * fixed issue #283: AQL LENGTH() now works on documents, too
 
 * fixed issue #281: documentation for skip lists shows wrong example
