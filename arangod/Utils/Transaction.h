@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_UTILS_TRANSACTION_H
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
+#include "VocBase/barrier.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -335,6 +336,99 @@ namespace triagens {
                 }
               }
             }
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit
+////////////////////////////////////////////////////////////////////////////////
+        
+        int readCollectionPointers (TRI_primary_collection_t* const primary, 
+                                    vector<TRI_doc_mptr_t*>& docs,
+                                    TRI_barrier_t** barrier,
+                                    TRI_voc_ssize_t skip,
+                                    TRI_voc_size_t limit,
+                                    uint32_t* total) {
+          TRI_doc_operation_context_t context;
+          TRI_InitReadContextPrimaryCollection(&context, primary);
+
+          if (limit == 0) {
+            // nothing to do
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          CollectionReadLock lock(primary);
+          
+          if (primary->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            return TRI_ERROR_NO_ERROR;
+          }
+          
+          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          if (*barrier == 0) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = primary->_primaryIndex._table;
+          void** ptr = beg;
+          void** end = ptr + primary->_primaryIndex._nrAlloc;
+          uint32_t count = 0;
+          // TODO: this is not valid in MVCC context
+          *total = (uint32_t) primary->_primaryIndex._nrUsed;
+    
+          // apply skip
+          if (skip > 0) {
+            // skip from the beginning
+            for (;  ptr < end && 0 < skip;  ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+                if (d->_validTo == 0) {
+                  --skip;
+                }
+              }
+            }
+          }
+          else if (skip < 0) {
+            // skip from the end
+            ptr = end - 1;
+
+            for (; beg <= ptr; --ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+                if (d->_validTo == 0) {
+                  ++skip;
+
+                  if (skip == 0) {
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (ptr < beg) {
+              ptr = beg;
+            }
+          }
+
+          // fetch documents, taking limit into account
+          for (; ptr < end && count < limit; ++ptr) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (d->_validTo == 0) {
+                docs.push_back(d);
+                ++count;
+              }
+            }
+          }
+
+          if (docs.size() == 0) {
+            // barrier not needed, kill it
+            TRI_FreeBarrier(*barrier);
           }
 
           return TRI_ERROR_NO_ERROR;
