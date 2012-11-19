@@ -20,6 +20,7 @@ var totalCollectionCount;
 var collectionCurrentPage;  
 var globalCollectionName;  
 var globalCollectionID;
+var globalCollectionKey;
 var globalCollectionRev;
 var checkCollectionName; 
 var printedHelp = false; 
@@ -282,6 +283,7 @@ var documentsTable = $('#documentsTableID').dataTable({
     "aoColumns": [{ "sClass":"read_only leftCell", "bSortable": false, "sWidth":"80px"}, 
                  { "sClass":"read_only","bSortable": false, "sWidth": "200px"}, 
                  { "sClass":"read_only","bSortable": false, "sWidth": "100px"},  
+                 { "sClass":"read_only","bSortable": false, "sWidth": "100px"},  
                  { "bSortable": false, "sClass": "cuttedContent rightCell"}],
     "oLanguage": { "sEmptyTable": "No documents"}
   });
@@ -494,10 +496,13 @@ var logTable = $('#logTableID').dataTable({
             if (key == '_id') {
               documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
             }
+            else if (key == '_key') {
+              documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
+            }
             else if (key == '_rev') {
               documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
             }
-            else if (key != '_rev' && key != '_id') {
+            else if (key != '_rev' && key != '_id' && key != '_key') {
               documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
             }
           });
@@ -549,7 +554,7 @@ var logTable = $('#logTableID').dataTable({
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + "</pre>"]);  
+            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + "</pre>"]);  
           });
         $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
         showCursor();
@@ -1016,8 +1021,10 @@ var logTable = $('#logTableID').dataTable({
         }
         
         globalCollectionRev = result._rev; 
+        globalCollectionKey = result._key; 
         globalCollectionID = result._id; 
         delete result._id;
+        delete result._key;
         delete result._rev;
 
         var myFormattedString = FormatJSON(result);
@@ -1038,6 +1045,7 @@ var logTable = $('#logTableID').dataTable({
             documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
           });
             documentEditTable.fnAddData(['', "_id", globalCollectionID, JSON.stringify(globalCollectionID)]);
+            documentEditTable.fnAddData(['', "_key", globalCollectionKey, JSON.stringify(globalCollectionKey)]);
             documentEditTable.fnAddData(['', "_rev", globalCollectionRev, JSON.stringify(globalCollectionRev)]);
   
         documentTableMakeEditable ('#documentEditTableID'); 
@@ -1184,7 +1192,7 @@ var logTable = $('#logTableID').dataTable({
 
         newDocumentTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
-          if (key == '_id' || key == '_rev') {
+          if (key == '_id' || key == '_rev' || key == '_key') {
             newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
@@ -1764,7 +1772,7 @@ function documentTableMakeEditable (tableID) {
       $(this).removeClass('writeable');
       i = 0; 
     }
-    if (this.innerHTML == "_id" || this.innerHTML == "_rev") {
+    if (this.innerHTML == '_id' || this.innerHTML == '_rev' || this.innerHTML == '_key') {
       $(this).removeClass('writeable');
       i = 1; 
     }
@@ -2012,7 +2020,7 @@ function createPrevDocPagination() {
     contentType: "application/json",
     success: function(data) {
       $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
+        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     },
@@ -2039,7 +2047,7 @@ function createNextDocPagination () {
     contentType: "application/json",
     success: function(data) {
       $.each(data.result, function(k, v) {
-        $("#documentsTableID").dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
+        $("#documentsTableID").dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
     },
@@ -2130,7 +2138,7 @@ function createFirstPagination () {
     contentType: "application/json",
     success: function(data) {
       $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
       collectionCurrentPage = 1;
@@ -2183,7 +2191,7 @@ function createLastPagination () {
     contentType: "application/json",
     success: function(data) {
       $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
       collectionCurrentPage = totalCollectionCount;
@@ -2396,7 +2404,7 @@ $('#submitDocPageInput').live('click', function () {
         contentType: "application/json",
         success: function(data) {
           $.each(data.result, function(k, v) {
-            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
           });
           $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
           collectionCurrentPage = enteredPage;
