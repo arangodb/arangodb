@@ -834,7 +834,9 @@
 ///
 /// AQL supports the following functions to operate on list values:
 ///
-/// - @FN{LENGTH(@FA{list})}: returns the length (number of elements) of @FA{list}
+/// - @FN{LENGTH(@FA{list})}: returns the length (number of list elements) of @FA{list}. If 
+///   @FA{list} is a document, returns the number of attribute keys of the document, 
+///   regardless of their values.
 /// - @FN{MIN(@FA{list})}: returns the smallest element of @FA{list}. @LIT{null} values
 ///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
 ///   function will return @LIT{null}.

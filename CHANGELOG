@@ -1,6 +1,8 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #283: AQL LENGTH() now works on documents, too
+
 * fixed issue #281: documentation for skip lists shows wrong example
 
 * fixed AQL optimiser bug, related to OR-combined conditions that filtered on the

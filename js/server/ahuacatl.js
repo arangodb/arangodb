@@ -1735,9 +1735,15 @@ function AHUACATL_LIMIT (value, offset, count) {
 function AHUACATL_LENGTH () {
   var value = arguments[0];
 
-  AHUACATL_LIST(value);
-
-  return value.length;
+  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_LIST) {
+    return value.length;
+  }
+  else if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_DOCUMENT) {
+    return AHUACATL_KEYS(value, false).length;
+  }
+  else {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LENGTH");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
