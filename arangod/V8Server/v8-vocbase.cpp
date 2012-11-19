@@ -4005,13 +4005,11 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
-
-  primary->beginRead(primary);
   TRI_doc_collection_info_t* info = primary->figures(primary);
-  primary->endRead(primary);
+  
+  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   if (info == NULL) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
 
     return scope.Close(v8::ThrowException(errorObject));
@@ -4046,7 +4044,6 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   return scope.Close(result);
 }
 

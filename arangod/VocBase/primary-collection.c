@@ -341,6 +341,8 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
   if (info == NULL) {
     return NULL;
   }
+  
+  primary->beginRead(primary);
 
   for (i = 0;  i < primary->_datafileInfo._nrAlloc;  ++i) {
     TRI_doc_datafile_info_t* d = primary->_datafileInfo._table[i];
@@ -369,6 +371,8 @@ static TRI_doc_collection_info_t* Figures (TRI_primary_collection_t* primary) {
     info->_journalfileSize += df->_maximalSize;
     ++info->_numberJournalfiles;
   }
+  
+  primary->endRead(primary);
 
   return info;
 }
