@@ -230,11 +230,11 @@ namespace triagens {
 /// @brief delete a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int destroy (const string& key, 
-                     const TRI_doc_update_policy_e policy, 
-                     bool forceSync, 
-                     const TRI_voc_rid_t expectedRevision, 
-                     TRI_voc_rid_t* actualRevision) {
+        int deleteDocument (const string& key, 
+                            const TRI_doc_update_policy_e policy, 
+                            bool forceSync, 
+                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
