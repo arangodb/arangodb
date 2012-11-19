@@ -81,6 +81,7 @@
     }
 
     if (internal.COLOR_OUTPUT) {
+      internal.output(internal.COLOR_OUTPUT_DEFAULT);
       internal.output(internal.COLOR_OUTPUT_RESET);
     }
 
@@ -291,7 +292,7 @@
 
     internal.printIndent(level);
 
-    internal.output(" }");
+    internal.output("}");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
