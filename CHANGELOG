@@ -1,6 +1,8 @@
 v1.0.5 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #281: documentation for skip lists shows wrong example
+
 * fixed AQL optimiser bug, related to OR-combined conditions that filtered on the
   same attribute but with different conditions
 

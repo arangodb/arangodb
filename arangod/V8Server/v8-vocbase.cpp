@@ -3043,7 +3043,7 @@ static v8::Handle<v8::Value> JS_EnsurePriorityQueueIndexVocbaseCol (v8::Argument
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// @verbinclude fluent14
+/// @verbinclude unique-skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUniqueSkiplistVocbaseCol (v8::Arguments const& argv) {
@@ -3071,7 +3071,7 @@ static v8::Handle<v8::Value> JS_LookupUniqueSkiplistVocbaseCol (v8::Arguments co
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// @verbinclude fluent14
+/// @verbinclude multi-skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& argv) {
