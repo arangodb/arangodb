@@ -44,6 +44,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
 #include "Utils/EmbeddableTransaction.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
 #include "Utils/StandaloneTransaction.h"
 #include "Utils/UserTransaction.h"
@@ -580,10 +581,8 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 /// function if you're unsure about it!
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
-                                                 TRI_vocbase_col_t const* collection,
-                                                 v8::Arguments const& argv,
-                                                 const bool lock) {
+static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
+                                                 v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // first and only argument should be a document idenfifier
@@ -594,57 +593,61 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (TRI_vocbase_t* vocbase,
   }
 
   ResourceHolder holder;
-
+  
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
-  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, collection, key, rid, lock, argv[0]);
-  holder.registerString(TRI_CORE_MEM_ZONE, key);
+  TRI_vocbase_t* vocbase;
+  TRI_vocbase_col_t const* col = 0;
+
+  if (useCollection) {
+    // called as db.collection.replace()
+    col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+    if (col == 0) {
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
+    }
+
+    vocbase = col->_vocbase;
+  }
+  else {
+    // called as db._replace()
+    vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+  }
+
+  v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, col, key, rid, false, argv[0]);
+  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+  }
 
   if (! err.IsEmpty()) {
-    if (collection != 0 && lock) {
-      TRI_ReleaseCollection(collection);
-    }
     return scope.Close(v8::ThrowException(err));
   }
-
-  // .............................................................................
-  // get document
-  // .............................................................................
-
-  TRI_doc_mptr_t* document = 0;
-  v8::Handle<v8::Value> result;
-  TRI_primary_collection_t* primary = collection->_collection;
+ 
+  assert(col);
+  assert(key);
   
-  TRI_doc_operation_context_t readContext;
-  TRI_InitReadContextPrimaryCollection(&readContext, primary);
 
-  // .............................................................................
-  // inside a read transaction
-  // .............................................................................
-
-  if (lock) {
-    primary->beginRead(primary);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type);
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
   }
 
-  int res = primary->read(&readContext, &document, key);
-
+  v8::Handle<v8::Value> result;
+  TRI_doc_mptr_t* document = 0;
+  res = trx.read(&document, key);
+  
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_barrier_t* barrier;
-
-    barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-    result = TRI_WrapShapedJson(collection, document, barrier);
+    assert(document);
+  
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(trx.barrierList());
+    result = TRI_WrapShapedJson(col, document, barrier);
   }
 
-  if (lock) {
-    primary->endRead(primary);
-    TRI_ReleaseCollection(collection);
-  }
-
+  res = trx.finish(res);
+  
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "document not found", true)));
   }
-
-  assert(document);
 
   if (rid != 0 && document->_rid != rid) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CONFLICT, "revision not found")));
@@ -696,10 +699,16 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   assert(vocbase);
 
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, col, key, rid, false, argv[0]);
+  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+  }
+
   if (! err.IsEmpty()) {
     return scope.Close(v8::ThrowException(err));
   }
-  holder.registerString(TRI_CORE_MEM_ZONE, key);
+
+  assert(col);
+  assert(key);
 
   
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "ReplaceVocbase");
@@ -893,17 +902,17 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   edge._fromKey = 0;
   edge._isBidirectional = isBidirectional;
 
-  v8::Handle<v8::Value> errMsg;
+  v8::Handle<v8::Value> err;
 
   // extract from
   TRI_vocbase_col_t const* fromCollection = 0;
   TRI_voc_rid_t fromRid;
 
-  errMsg = TRI_ParseDocumentOrDocumentHandle(trx->vocbase(), fromCollection, edge._fromKey, fromRid, false, argv[0]);
+  err = TRI_ParseDocumentOrDocumentHandle(trx->vocbase(), fromCollection, edge._fromKey, fromRid, false, argv[0]);
   holder.registerString(TRI_CORE_MEM_ZONE, edge._fromKey);
 
-  if (! errMsg.IsEmpty()) {
-    return scope.Close(v8::ThrowException(errMsg));
+  if (! err.IsEmpty()) {
+    return scope.Close(v8::ThrowException(err));
   }
   edge._fromCid = fromCollection->_cid;
   
@@ -911,11 +920,11 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   TRI_vocbase_col_t const* toCollection = 0;
   TRI_voc_rid_t toRid;
 
-  errMsg = TRI_ParseDocumentOrDocumentHandle(trx->vocbase(), toCollection, edge._toKey, toRid, false, argv[1]);
+  err = TRI_ParseDocumentOrDocumentHandle(trx->vocbase(), toCollection, edge._toKey, toRid, false, argv[1]);
   holder.registerString(TRI_CORE_MEM_ZONE, edge._toKey);
 
-  if (! errMsg.IsEmpty()) {
-    return scope.Close(v8::ThrowException(errMsg));
+  if (! err.IsEmpty()) {
+    return scope.Close(v8::ThrowException(err));
   }
   edge._toCid = toCollection->_cid;
 
@@ -995,14 +1004,16 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   assert(vocbase);
 
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, col, key, rid, false, argv[0]);
+  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+  }
+  
   if (! err.IsEmpty()) {
     return scope.Close(v8::ThrowException(err));
   }
-
-  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    // TODO: fix error message
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "no valid key specified")));
-  }
+  
+  assert(col);
+  assert(key);
 
 
   TRI_json_t* json = TRI_JsonObject(argv[1]);
@@ -1101,14 +1112,16 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (const bool useCollection,
   assert(vocbase);
   
   v8::Handle<v8::Value> err = TRI_ParseDocumentOrDocumentHandle(vocbase, col, key, rid, false, argv[0]);
+  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD)));
+  }
+  
   if (! err.IsEmpty()) {
     return scope.Close(v8::ThrowException(err));
   }
-
-  if (! holder.registerString(TRI_CORE_MEM_ZONE, key)) {
-    // TODO: fix error message
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "no valid key specified")));
-  }
+  
+  assert(col);
+  assert(key);
 
   
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "DeleteVocbase");
@@ -3183,39 +3196,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the collection
-  v8::Handle<v8::Object> operand = argv.Holder();
-
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection = UseCollection(operand, &err);
-
-  if (collection == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  return DocumentVocbaseCol(collection->_vocbase, collection, argv, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
-///
-/// it is the caller's responsibility to acquire and release the required locks
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DocumentNLVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  // extract the collection
-  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (col == 0 || col->_collection == 0) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection")));
-  }
-
-  TRI_vocbase_col_t const* collection = col;
-
-  return DocumentVocbaseCol(collection->_vocbase, collection, argv, false);
+  return DocumentVocbaseCol(true, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5226,35 +5207,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-
-  if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-
-  return DocumentVocbaseCol(vocbase, 0, argv, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
-///
-/// it is the caller's responsibility to acquire and release the required locks
-/// the collection must also have the correct status already. don't use this
-/// function if you're unsure about it!
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DocumentNLVocbase (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-
-  if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-
-  return DocumentVocbaseCol(vocbase, 0, argv, false);
+  return DocumentVocbaseCol(false, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6092,7 +6045,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_createDocumentCollection", JS_CreateDocumentCollectionVocbase);
   TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(rt, "_document", JS_DocumentVocbase);
-  TRI_AddMethodVocbase(rt, "_document_nl", JS_DocumentNLVocbase, true);
   TRI_AddMethodVocbase(rt, "_remove", JS_RemoveVocbase);
   TRI_AddMethodVocbase(rt, "_replace", JS_ReplaceVocbase);
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
@@ -6137,7 +6089,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "datafiles", JS_DatafilesVocbaseCol);
   TRI_AddMethodVocbase(rt, "datafileScan", JS_DatafileScanVocbaseCol);
   TRI_AddMethodVocbase(rt, "document", JS_DocumentVocbaseCol);
-  TRI_AddMethodVocbase(rt, "document_nl", JS_DocumentNLVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "drop", JS_DropVocbaseCol);
   TRI_AddMethodVocbase(rt, "dropIndex", JS_DropIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureBitarray", JS_EnsureBitarrayVocbaseCol);

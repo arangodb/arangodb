@@ -407,7 +407,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 
 function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
   try {
-    return [ internal.db[collection].document_nl(id) ];
+    return [ internal.db[collection].document(id) ];
   }
   catch (e) {
     return [ ];
@@ -425,7 +425,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
   for (var i in values) {
     var id = values[i];
     try {
-      var d = internal.db[collection].document_nl(id);
+      var d = internal.db[collection].document(id);
       result.push(d);
     }
     catch (e) {
@@ -2123,7 +2123,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
       var clonedEdges = AHUACATL_CLONE(edges);
       var clonedVertices = AHUACATL_CLONE(vertices);
       try {
-        clonedVertices.push(internal.db._document_nl(targetId));
+        clonedVertices.push(internal.db._document(targetId));
         clonedEdges.push(subEdge);
       }
       catch (e) {

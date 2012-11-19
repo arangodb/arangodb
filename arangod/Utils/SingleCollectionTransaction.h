@@ -30,6 +30,7 @@
 
 #include "common.h"
 
+#include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -217,6 +218,14 @@ namespace triagens {
         
         inline TRI_shaper_t* shaper () {
           return primaryCollection()->_shaper;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection's barrier list
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline TRI_barrier_list_t* barrierList () {
+          return &primaryCollection()->_barrierList;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
