@@ -31,6 +31,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/json-shaper.h"
+#include "VocBase/barrier.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class ResourceHolder
@@ -60,7 +61,8 @@ class ResourceHolder {
   typedef enum {
     TYPE_STRING,
     TYPE_JSON,
-    TYPE_SHAPED_JSON
+    TYPE_SHAPED_JSON,
+    TYPE_BARRIER
   } 
   resource_type_e;
 
@@ -87,6 +89,10 @@ class ResourceHolder {
           break;
         case TYPE_SHAPED_JSON:
           TRI_FreeShapedJson((TRI_shaper_t*) _context, (TRI_shaped_json_t*) _value);
+          break;
+        case TYPE_BARRIER:
+        std::cout << "freeing barrier " << _value << "\n";
+          TRI_FreeBarrier((TRI_barrier_t*) _value);
           break;
         default: {
         }
@@ -179,6 +185,15 @@ class ResourceHolder {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief register a barrier object
+////////////////////////////////////////////////////////////////////////////////
+
+    bool registerBarrier (TRI_barrier_t* const value) {
+        std::cout << "registering barrier " << value << "\n";
+      return registerResource(TYPE_BARRIER, 0, (void*) value);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -229,7 +244,7 @@ class ResourceHolder {
 /// @brief resources managed
 ////////////////////////////////////////////////////////////////////////////////
 
-    vector<Resource*> _resources;
+    std::vector<Resource*> _resources;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

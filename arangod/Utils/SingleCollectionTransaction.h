@@ -30,6 +30,7 @@
 
 #include "common.h"
 
+#include "VocBase/barrier.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -220,6 +221,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection's barrier list
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline TRI_barrier_list_t* barrierList () {
+          return &primaryCollection()->_barrierList;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying collection's id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -239,13 +248,27 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read all documents within a transaction
+/// @brief read all document ids within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (vector<string>& ids) {
           TRI_primary_collection_t* primary = primaryCollection();
 
           return this->readCollectionDocuments(primary, ids);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all documents within a transaction, using skip and limit
+////////////////////////////////////////////////////////////////////////////////
+
+        int read (vector<TRI_doc_mptr_t*>& docs, 
+                  TRI_barrier_t** barrier,
+                  TRI_voc_ssize_t skip, 
+                  TRI_voc_size_t limit,
+                  uint32_t* total) {
+          TRI_primary_collection_t* primary = primaryCollection();
+
+          return this->readCollectionPointers(primary, docs, barrier, skip, limit, total);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
