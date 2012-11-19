@@ -442,6 +442,41 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int truncateCollection (TRI_primary_collection_t* const primary,
+                                const bool forceSync) {
+
+          vector<string> ids;
+
+          int res = readCollectionDocuments(primary, ids);
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+          
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, forceSync);
+          size_t n = ids.size();
+
+          res = TRI_ERROR_NO_ERROR;
+
+          CollectionWriteLock lock(primary);
+
+          for (size_t i = 0; i < n; ++i) {
+            const string& id = ids[i];
+
+            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str());
+            if (res != TRI_ERROR_NO_ERROR) {
+              // halt on first error
+              break;
+            }
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

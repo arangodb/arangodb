@@ -4656,64 +4656,25 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  bool forceSync = false;
-  if (1 == argv.Length()) {
-    forceSync = TRI_ObjectToBoolean(argv[0]);
-  }
-
-  // extract and use the simple collection
-  v8::Handle<v8::Object> err;
-  TRI_vocbase_col_t const* collection;
-  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
-
-  if (document == 0) {
-    return scope.Close(v8::ThrowException(err));
-  }
-
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_LAST_WRITE;
-  TRI_voc_rid_t oldRid = 0;
-
-  TRI_vector_pointer_t documents;
-  TRI_InitVectorPointer(&documents, TRI_UNKNOWN_MEM_ZONE);
+  const bool forceSync = ExtractForceSync(argv, 1);
   
-  TRI_doc_mptr_t const** ptr;
-  TRI_doc_mptr_t const** end;
-  
-  TRI_doc_operation_context_t context;
-  TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
-
-  primary->beginWrite(primary);
-  
-  ptr = (TRI_doc_mptr_t const**) (primary->_primaryIndex._table);
-  end = (TRI_doc_mptr_t const**) ptr + primary->_primaryIndex._nrAlloc;
-  
-  // first, collect all document pointers by traversing the primary index
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr && (*ptr)->_validTo == 0) {
-      TRI_PushBackVectorPointer(&documents, (void*) *ptr);
-    }
+  TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  if (col == 0) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
   
-  // now delete all documents. this will modify the index as well
-  for (size_t i = 0; i < documents._length; ++i) {
-    TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) documents._buffer[i];
-  
-    context._expectedRid = d->_rid;
-    context._previousRid = &oldRid;
-    
-    int res = primary->destroy(&context, d->_key);
-    if (res != TRI_ERROR_NO_ERROR) {
-      // an error occurred, but we simply go on because truncate should remove all documents
-    }
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "TruncateVocbase");
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));
   }
 
-  primary->endWrite(primary);
-  
-  TRI_ReleaseCollection(collection);
+  res = trx.truncate(forceSync);
+  res = trx.finish(res);
 
-  TRI_DestroyVectorPointer(&documents);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));
+  }
 
   return scope.Close(v8::Undefined());
 }
