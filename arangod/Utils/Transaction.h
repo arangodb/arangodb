@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_UTILS_TRANSACTION_H
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
+#include "VocBase/barrier.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -341,6 +342,99 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit
+////////////////////////////////////////////////////////////////////////////////
+        
+        int readCollectionPointers (TRI_primary_collection_t* const primary, 
+                                    vector<TRI_doc_mptr_t*>& docs,
+                                    TRI_barrier_t** barrier,
+                                    TRI_voc_ssize_t skip,
+                                    TRI_voc_size_t limit,
+                                    uint32_t* total) {
+          TRI_doc_operation_context_t context;
+          TRI_InitReadContextPrimaryCollection(&context, primary);
+
+          if (limit == 0) {
+            // nothing to do
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          CollectionReadLock lock(primary);
+          
+          if (primary->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            return TRI_ERROR_NO_ERROR;
+          }
+          
+          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          if (*barrier == 0) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = primary->_primaryIndex._table;
+          void** ptr = beg;
+          void** end = ptr + primary->_primaryIndex._nrAlloc;
+          uint32_t count = 0;
+          // TODO: this is not valid in MVCC context
+          *total = (uint32_t) primary->_primaryIndex._nrUsed;
+    
+          // apply skip
+          if (skip > 0) {
+            // skip from the beginning
+            for (;  ptr < end && 0 < skip;  ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+                if (d->_validTo == 0) {
+                  --skip;
+                }
+              }
+            }
+          }
+          else if (skip < 0) {
+            // skip from the end
+            ptr = end - 1;
+
+            for (; beg <= ptr; --ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+
+                if (d->_validTo == 0) {
+                  ++skip;
+
+                  if (skip == 0) {
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (ptr < beg) {
+              ptr = beg;
+            }
+          }
+
+          // fetch documents, taking limit into account
+          for (; ptr < end && count < limit; ++ptr) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (d->_validTo == 0) {
+                docs.push_back(d);
+                ++count;
+              }
+            }
+          }
+
+          if (docs.size() == 0) {
+            // barrier not needed, kill it
+            TRI_FreeBarrier(*barrier);
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document, using JSON 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -400,6 +494,28 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document, using shaped json
+////////////////////////////////////////////////////////////////////////////////
+        
+        int updateCollectionShaped (TRI_primary_collection_t* const primary,
+                                    const string& key,
+                                    TRI_doc_mptr_t** mptr,
+                                    TRI_shaped_json_t* const shaped,
+                                    const TRI_doc_update_policy_e policy,
+                                    const TRI_voc_rid_t expectedRevision,
+                                    TRI_voc_rid_t* actualRevision,
+                                    const bool forceSync) {
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, policy, forceSync);
+          context._expectedRid = expectedRevision;
+          context._previousRid = actualRevision;
+
+          CollectionWriteLock lock(primary);
+
+          return primary->update(&context, mptr, shaped, (TRI_voc_key_t) key.c_str());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a single document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -417,6 +533,41 @@ namespace triagens {
           CollectionWriteLock lock(primary);
 
           return primary->destroy(&context, (TRI_voc_key_t) key.c_str());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int truncateCollection (TRI_primary_collection_t* const primary,
+                                const bool forceSync) {
+
+          vector<string> ids;
+
+          int res = readCollectionDocuments(primary, ids);
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+          
+          TRI_doc_operation_context_t context;
+          TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, forceSync);
+          size_t n = ids.size();
+
+          res = TRI_ERROR_NO_ERROR;
+
+          CollectionWriteLock lock(primary);
+
+          for (size_t i = 0; i < n; ++i) {
+            const string& id = ids[i];
+
+            res = primary->destroy(&context, (TRI_voc_key_t) id.c_str());
+            if (res != TRI_ERROR_NO_ERROR) {
+              // halt on first error
+              break;
+            }
+          }
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

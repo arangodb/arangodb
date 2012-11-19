@@ -186,16 +186,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a single document within a transaction
-////////////////////////////////////////////////////////////////////////////////
 
-        int updateJson (const string& key,
-                        TRI_doc_mptr_t** mptr, 
-                        TRI_json_t* const json, 
-                        const TRI_doc_update_policy_e policy, 
-                        bool forceSync, 
-                        const TRI_voc_rid_t expectedRevision, 
-                        TRI_voc_rid_t* actualRevision) {
+        int updateDocument (const string& key,
+                            TRI_doc_mptr_t** mptr, 
+                            TRI_json_t* const json, 
+                            const TRI_doc_update_policy_e policy, 
+                            bool forceSync, 
+                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
@@ -207,14 +205,36 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update (replace!) a single document within a transaction, 
+/// using shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+        int updateDocument (const string& key,
+                            TRI_doc_mptr_t** mptr, 
+                            TRI_shaped_json_t* const shaped, 
+                            const TRI_doc_update_policy_e policy, 
+                            bool forceSync, 
+                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_voc_rid_t* actualRevision) {
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+
+          TRI_primary_collection_t* primary = this->primaryCollection();
+          _synchronous = forceSync || primary->base._info._waitForSync;
+
+          return this->updateCollectionShaped(primary, key, mptr, shaped, policy, expectedRevision, actualRevision, forceSync);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int destroy (const string& key, 
-                     const TRI_doc_update_policy_e policy, 
-                     bool forceSync, 
-                     const TRI_voc_rid_t expectedRevision, 
-                     TRI_voc_rid_t* actualRevision) {
+        int deleteDocument (const string& key, 
+                            const TRI_doc_update_policy_e policy, 
+                            bool forceSync, 
+                            const TRI_voc_rid_t expectedRevision, 
+                            TRI_voc_rid_t* actualRevision) {
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
@@ -223,6 +243,21 @@ namespace triagens {
           _synchronous = forceSync || primary->base._info._waitForSync;
 
           return this->deleteCollectionDocument(primary, key, policy, expectedRevision, actualRevision, forceSync);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate all documents within a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int truncate (bool forceSync) {
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+
+          TRI_primary_collection_t* primary = this->primaryCollection();
+          _synchronous = forceSync || primary->base._info._waitForSync;
+
+          return this->truncateCollection(primary, forceSync);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
