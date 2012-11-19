@@ -90,7 +90,28 @@ function GraphCreationSuite() {
       assertEqual(graph1._edges, graph2._edges);
 
       graph1.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Find Graph
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateGraph : function () {
+      var Graph = require("graph").Graph,
+        graph_name = "UnitTestsCollectionGraph",
+        vertex = "UnitTestsCollectionVertex",
+        edge = "UnitTestsCollectionEdge",
+        one = null,
+        two = null,
+        graph = null;
+
+      graph = new Graph(graph_name, vertex, edge);
+      one = graph.addVertex("one");
+      two = graph.addVertex("two");
+      graph.addEdge(one, two);
+      graph.drop();
     }
+
   };
 }
 
