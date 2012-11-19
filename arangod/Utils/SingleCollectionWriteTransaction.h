@@ -246,6 +246,21 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate all documents within a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int truncate (bool forceSync) {
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+
+          TRI_primary_collection_t* primary = this->primaryCollection();
+          _synchronous = forceSync || primary->base._info._waitForSync;
+
+          return this->truncateCollection(primary, forceSync);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
