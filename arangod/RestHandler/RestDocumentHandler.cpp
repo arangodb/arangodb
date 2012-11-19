@@ -940,7 +940,7 @@ bool RestDocumentHandler::deleteDocument () {
     return true;
   }
 
-  res = trx.destroy(key, policy, extractWaitForSync(), revision, &rid);
+  res = trx.deleteDocument(key, policy, extractWaitForSync(), revision, &rid);
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }
