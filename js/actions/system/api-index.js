@@ -482,13 +482,9 @@ function POST_api_index_skiplist (req, res, collection, body) {
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
 /// returned. It is possible to specify a name instead of an identifier.  
 ///
-/// If the collection already contains documents and you try to create a unique
-/// skip-list index in such a way that there are documents violating the
-/// uniqueness, then a @LIT{HTTP 400} is returned.
-///
 /// @EXAMPLES
 ///
-/// Creating a skiplist:
+/// Creating a bitarray index:
 ///
 /// @verbinclude api-index-create-new-bitarray
 ////////////////////////////////////////////////////////////////////////////////
