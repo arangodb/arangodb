@@ -336,7 +336,7 @@ void FreeCollectionGlobalInstance (TRI_transaction_collection_global_t* const gl
   DestroyTransactionList(&globalInstance->_writeTransactions);
   TRI_DestroyMutex(&globalInstance->_writeLock);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, globalInstance->_name);
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (char*) globalInstance->_name);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, globalInstance);
 }
