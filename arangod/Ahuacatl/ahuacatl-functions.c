@@ -432,7 +432,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // s = string
   // p = primitive
   // l = list
-  // a = array
+  // a = (hash) array/document
 
   // type check functions
   REGISTER_FUNCTION("IS_NULL", "IS_NULL", true, false, ".", NULL);
@@ -466,7 +466,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
 
   // list functions
   REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+", NULL);
-  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "l", NULL);
+  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "la", NULL);
   REGISTER_FUNCTION("MIN", "MIN", true, true, "l", NULL);
   REGISTER_FUNCTION("MAX", "MAX", true, true, "l", NULL);
   REGISTER_FUNCTION("SUM", "SUM", true, true, "l", NULL);
