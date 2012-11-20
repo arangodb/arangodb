@@ -27,6 +27,8 @@
 
 #include "v8-vocbase.h"
 
+#include "build.h"
+
 #include "Logger/Logger.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -5876,6 +5878,9 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context, TRI_vocba
                          v8::Boolean::New(false),
 #endif
                          v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);
+  context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
   
   // .............................................................................
   // create the global variables

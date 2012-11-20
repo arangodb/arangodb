@@ -88,6 +88,24 @@ void ScriptLoader::setDirectory (string const& directory) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief build a script from an array of strings
+////////////////////////////////////////////////////////////////////////////////
+
+string ScriptLoader::buildScript (const char** script) {
+  string scriptString;
+
+  while (true) {
+    string tempStr = string(*script);
+    if (tempStr == "//__end__") {
+      break;
+    }
+    scriptString += tempStr + "\n";
+    ++script;
+  }
+  return scriptString;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -98,18 +116,9 @@ void ScriptLoader::defineScript (string const& name, string const& script) {
 }
 
 void ScriptLoader::defineScript (const string& name, const char** script) {
-  string scriptString;
+  string scriptString = buildScript(script);
   
   MUTEX_LOCKER(_lock);
-  
-  while (true) {
-    string tempStr = string(*script);
-    if (tempStr == "//__end__") {
-      break;
-    }
-    scriptString += tempStr + "\n";
-    ++script;
-  }
   
   _scripts[name] = scriptString;
 }
