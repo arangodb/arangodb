@@ -426,7 +426,7 @@ namespace triagens {
             }
           }
 
-          if (docs.size() == 0) {
+          if (count == 0) {
             // barrier not needed, kill it
             TRI_FreeBarrier(*barrier);
           }

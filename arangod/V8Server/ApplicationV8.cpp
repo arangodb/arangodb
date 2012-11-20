@@ -44,6 +44,7 @@ using namespace triagens::arango;
 using namespace std;
 
 #include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-monkeypatches.h"
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-ahuacatl.h"
@@ -530,6 +531,7 @@ bool ApplicationV8::prepare () {
     LOGGER_INFO << "using built-in JavaScript startup files";
 
     _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    _startupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
     _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
     _startupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     _startupLoader.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
@@ -633,6 +635,7 @@ void ApplicationV8::stop () {
 
 bool ApplicationV8::prepareV8Instance (const size_t i) {
   static char const* files[] = { "common/bootstrap/modules.js",
+                                 "common/bootstrap/monkeypatches.js",
                                  "common/bootstrap/print.js",
                                  "common/bootstrap/errors.js",
                                  "server/ahuacatl.js",
