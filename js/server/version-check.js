@@ -74,7 +74,8 @@
 
   if (lastVersion != null && lastVersion > currentVersion) {
     // downgrade??
-    console.warn("Database directory version is higher than server version. This seems like you are running arangodb on a database directory that was created with a newer version. This is not supported.");
+    console.error("Database directory version is higher than server version.");
+    console.error("It seems like you are running arangodb on a database directory that was created with a newer version. This is not supported.");
     // still, allow the start
   }
 
