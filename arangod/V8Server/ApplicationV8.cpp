@@ -691,6 +691,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
 
   if (i == 0 && _runVersionCheck) {
+    LOGGER_DEBUG << "running database version check";
+
     const string script = _startupLoader.buildScript(JS_server_version_check);
 
     // special check script to be run just once in first thread (not in all)
@@ -709,6 +711,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
       return false;
     }
+    
+    LOGGER_DEBUG << "database version check passed";
   }
 
   // load all actions
