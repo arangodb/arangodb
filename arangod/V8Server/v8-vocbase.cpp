@@ -557,7 +557,7 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 
   TRI_json_t* json = idx->json(idx, primary);
 
-  if (!json) {
+  if (! json) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
@@ -1417,16 +1417,18 @@ static v8::Handle<v8::Value> EnsureGeoIndexVocbaseCol (v8::Arguments const& argv
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
+  v8::HandleScope scope;
+
   char* message = TRI_GetErrorMessageAql(error);
 
   if (message) {
     std::string str(message);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
 
-    return TRI_CreateErrorObject(TRI_GetErrorCodeAql(error), str);
+    return scope.Close(TRI_CreateErrorObject(TRI_GetErrorCodeAql(error), str));
   }
 
-  return TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
+  return scope.Close(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1853,11 +1855,7 @@ static v8::Handle<v8::Value> JS_DisposeGeneralCursor (v8::Arguments const& argv)
 
   bool found = TRI_DeleteDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
-  if (found) {
-    return scope.Close(v8::True());
-  }
-
-  return scope.Close(v8::False());
+  return scope.Close(found ? v8::True() : v8::False());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2633,6 +2631,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
   if (version >= 3) {
     LOG_ERROR("Cannot upgrade collection '%s' with version '%d' in directory '%s'", name, version, col->_directory);
+    TRI_ReleaseCollection(collection);
     return scope.Close(v8::False());
   }
   
@@ -3389,6 +3388,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
   TRI_json_t* json = idx->json(idx, primary);
   if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
+    TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
 
@@ -4853,7 +4853,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
       || key == "toJSON"
       || key == "hasOwnProperty" // this prevents calling the property getter again (i.e. recursion!)
       || key[0] == '_') { // hide system collections
-    return v8::Handle<v8::Value>();
+    return scope.Close(v8::Handle<v8::Value>());
   }
 
   // get the collection type (document/edge)
