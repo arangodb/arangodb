@@ -54,7 +54,14 @@
   var versionInfo = SYS_READ(versionFile);
   if (versionInfo != '') {
     var versionValues = JSON.parse(versionInfo);
-    lastVersion = parseFloat(versionValues.version);
+    if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
+      lastVersion = parseFloat(versionValues.version);
+    }
+  }
+  
+  if (lastVersion == null) {
+    console.error("No version information file found in database directory.");
+    return false;
   }
     
   var currentServerVersion = VERSION.match(/^(\d+\.\d+).*$/);
@@ -67,7 +74,8 @@
 
   if (lastVersion != null && lastVersion > currentVersion) {
     // downgrade??
-    console.warn("Database directory version is higher than server version. This seems like you are running arangodb on a database directory that was created with a newer version. This is not supported.");
+    console.error("Database directory version is higher than server version.");
+    console.error("It seems like you are running arangodb on a database directory that was created with a newer version. This is not supported.");
     // still, allow the start
   }
 
