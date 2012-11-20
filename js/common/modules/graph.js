@@ -712,6 +712,10 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   id_only = function (neighbor) {
     return neighbor.id;
   };
+  
+  if (typeof(target_vertex) != 'object') {
+    throw "<target_vertex> must be a vertex object";
+  }
 
   neighbor_set_one = this.getNeighbors(options).map(id_only);
   neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
@@ -772,6 +776,9 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
+  if (typeof(target_vertex) != 'object') {
+    throw "<target_vertex> must be an object";
+  }
   var predecessors = target_vertex.determinePredecessors(this.getId(), options || {});
   return target_vertex.pathesForTree(predecessors);
 };
@@ -893,8 +900,13 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 Vertex.prototype.getNeighbors = function (options) {
   var current_vertex,
     target_array = [],
-    addNeighborToList,
-    direction = options.direction || 'both',
+    addNeighborToList;
+
+  if (! options) {
+    options = { };
+  }
+  
+  var direction = options.direction || 'both',
     labels = options.labels,
     weight = options.weight,
     weight_function = options.weight_function,

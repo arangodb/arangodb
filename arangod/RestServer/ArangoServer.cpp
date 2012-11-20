@@ -87,6 +87,7 @@ using namespace triagens::admin;
 using namespace triagens::arango;
 
 #include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-monkeypatches.h"
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-ahuacatl.h"

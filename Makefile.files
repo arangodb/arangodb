@@ -12,6 +12,7 @@ JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
 	js/common/bootstrap/js-print.h \
+	js/common/bootstrap/js-monkeypatches.h \
 	js/client/js-client.h \
 	js/server/js-server.h \
 	js/server/js-ahuacatl.h
@@ -60,6 +61,7 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
+	Doxygen/js/common/bootstrap/monkeypatches.c \
 	Doxygen/js/common/bootstrap/print.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
