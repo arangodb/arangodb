@@ -6,11 +6,19 @@ ARANGOD="@SBINDIR@/arangod"
 DATABASE="@DATABASEDIR@"
 MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules"
 SCRIPT="@PKGDATADIR@/js/server/arango-upgrade.js"
+UIDOPTION=""
+UIDUSER=""
 
 while [ "$#" -gt 1 ];  do
   case "$1" in
     --database|--database.directory)
       DATABASE="$2"
+      shift
+      ;;
+
+    --uid)
+      UIDOPTION="--uid"
+      UIDUSER="$2"
       shift
       ;;
 
@@ -33,4 +41,6 @@ $ARANGOD \
     -c none \
     --database.directory "$DATABASE" \
     --javascript.script "$SCRIPT" \
-    --javascript.modules-path "$MODULESPATH" 
+    --javascript.modules-path "$MODULESPATH" \
+    $UIDOPTION $UIDUSER
+
