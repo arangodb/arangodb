@@ -656,7 +656,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
         
     context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
     context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
-    context->_context->Global()->Set(TRI_V8_SYMBOL("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
+    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
 
     ok = true;
 
