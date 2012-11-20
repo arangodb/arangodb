@@ -1,6 +1,21 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* made AQL function NOT_NULL take any number of arguments. Will now return its
+  first argument that is not null, or null if all arguments are null. This is downwards
+  compatible.
+
+* changed misleading AQL function name NOT_LIST() to FIRST_LIST() and slightly changed
+  the behavior. The function will now return its first argument that is a list, or null 
+  if none of the arguments are lists.
+  This is mostly downwards-compatible. The only change to the previous implementation in
+  1.1-beta will happen if two arguments were passed and the 1st and 2nd arguments were 
+  both no lists. In previous 1.1, the 2nd argument was returned as is, but now null 
+  will be returned.
+
+* add AQL function FIRST_DOCUMENT(), with same behavior as FIRST_LIST(), but working
+  with documents instead of lists.
+
 * added UPGRADING help text
 
 * WARNING:
