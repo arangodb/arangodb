@@ -259,19 +259,9 @@ namespace triagens {
         _writeBuffer.appendText("\r\n");
       }
 
-      if (method == HttpRequest::HTTP_REQUEST_GET ||
-          method == HttpRequest::HTTP_REQUEST_HEAD ||
-          method == HttpRequest::HTTP_REQUEST_DELETE) {
-        // don't use a content-length for these request types
-        _writeBuffer.appendText("\r\n");
-      }
-      else {
-        // use a content-length for these request types
-        _writeBuffer.appendText("Content-Length: ");
-        _writeBuffer.appendInteger(bodyLength);
-        _writeBuffer.appendText("\r\n\r\n");
-      }
-
+      _writeBuffer.appendText("Content-Length: ");
+      _writeBuffer.appendInteger(bodyLength);
+      _writeBuffer.appendText("\r\n\r\n");
       _writeBuffer.appendText(body, bodyLength);
 
       LOGGER_TRACE << "Request: " << _writeBuffer.c_str();
