@@ -1,6 +1,15 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* WARNING:
+  arangod now performs a database version check at startup. It will look for a file
+  named "VERSION" in its database directory. If the file is not present, arangod will
+  refuse to start and ask the user to run arango-upgrade first. If the VERSION file
+  is present but is from an older version of ArangoDB, arangod will also refuse to
+  start and ask the user to run the upgrade script first. This procedure shall ensure
+  that users have full control over when they perform any updates/upgrades of their
+  data, and do not risk running an incompatible server/database state tandem.
+
 * fixed issue #284: fixed Javascript errors when adding edges/vertices without own
   attributes
 
