@@ -54,7 +54,14 @@
   var versionInfo = SYS_READ(versionFile);
   if (versionInfo != '') {
     var versionValues = JSON.parse(versionInfo);
-    lastVersion = parseFloat(versionValues.version);
+    if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
+      lastVersion = parseFloat(versionValues.version);
+    }
+  }
+  
+  if (lastVersion == null) {
+    console.error("No version information file found in database directory.");
+    return false;
   }
     
   var currentServerVersion = VERSION.match(/^(\d+\.\d+).*$/);
