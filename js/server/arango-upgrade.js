@@ -49,27 +49,43 @@ function main (argv) {
   var allTasks = [ ];
   var activeTasks = [ ];
   
-  // assume we do not yet have a VERSION value
-  var currentVersion = 0;
+
+  var lastVersion = null;
+  var lastTasks   = { };
+
   if (FS_EXISTS(versionFile)) {
     // VERSION file exists, read its contents
-    currentVersion = parseInt(SYS_READ(versionFile));  
-  }
-
-  // helper function to define tasks
-  function addTask (description, maxVersion, code) {
-    // "description" is a textual description of the task that will be printed out on screen
-    // "maxVersion" is the maximum version number the task will be applied for
-    var task = { description: description, maxVersion: maxVersion, code: code };
-
-    allTasks.push(task);
-
-    // the maximum version number defined for the task is >= than the current VERSION number
-    // that means we will apply to task 
-    if (currentVersion < parseInt(maxVersion)) {
-      activeTasks.push(task);
+    var versionInfo = SYS_READ(versionFile);
+    if (versionInfo != '') {
+      var versionValues = JSON.parse(versionInfo);
+      if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
+        lastVersion = parseFloat(versionValues.version);
+      }
+      if (versionValues && versionValues.tasks && typeof(versionValues.tasks) === 'object') {
+        lastTasks   = versionValues.tasks;
+      }
     }
   }
+    
+  console.log("Upgrade script " + argv[0] + " started");
+  console.log("Server version: " + VERSION + ", database directory version: " + (lastVersion || "(not set)"));
+  
+  var currentServerVersion = VERSION.match(/^(\d+\.\d+).*$/);
+  if (! currentServerVersion) {
+    // server version is invalid for some reason
+    console.error("Unexpected arangodb server version found.");
+    console.error("Refusing to start.");
+    return 1;
+  }
+  var currentVersion = parseFloat(currentServerVersion[1]);
+
+  if (lastVersion != null && lastVersion > currentVersion) {
+    // downgrade??
+    console.error("Database directory version is higher than server version. This seems like a downgrade, which is not supported.");
+    console.error("Refusing to start.");
+    return 1;
+  }
+
 
   function getCollection (name) {
     return db._collection(name);
@@ -94,6 +110,20 @@ function main (argv) {
 
     return collectionExists(name);
   }
+  
+  // helper function to define tasks
+  function addTask (name, description, code) {
+    // "description" is a textual description of the task that will be printed out on screen
+    // "maxVersion" is the maximum version number the task will be applied for
+    var task = { name: name, description: description, code: code };
+
+    allTasks.push(task);
+
+    if (lastTasks[name] === undefined || lastTasks[name] === false) {
+      // task never executed or previous execution failed
+      activeTasks.push(task);
+    }
+  }
 
 
   // --------------------------------------------------------------------------
@@ -101,12 +131,12 @@ function main (argv) {
   // --------------------------------------------------------------------------
 
   // set up the collection _users 
-  addTask("setup _users collection", 1, function () {
+  addTask("setupUsers", "setup _users collection", function () {
     return createSystemCollection("_users", { waitForSync : true });
   });
 
   // create a unique index on username attribute in _users
-  addTask("create index on username attribute in _users collection", 1, function () {
+  addTask("createUsersIndex", "create index on username attribute in _users collection", function () {
     var users = getCollection("_users");
     if (! users) {
       return false;
@@ -118,7 +148,7 @@ function main (argv) {
   });
   
   // add a default root user with no passwd
-  addTask("add default root user", 1, function () {
+  addTask("addDefaultUser", "add default root user", function () {
     var users = getCollection("_users");
     if (! users) {
       return false;
@@ -133,12 +163,12 @@ function main (argv) {
   });
   
   // set up the collection _graphs
-  addTask("setup _graphs collection", 1, function () {
+  addTask("setupGraphs", "setup _graphs collection", function () {
     return createSystemCollection("_graphs", { waitForSync : true });
   });
   
   // create a unique index on name attribute in _graphs
-  addTask("create index on name attribute in _graphs collection", 1, function () {
+  addTask("createGraphsIndex", "create index on name attribute in _graphs collection", function () {
     var graphs = getCollection("_graphs");
 
     if (! graphs) {
@@ -151,7 +181,7 @@ function main (argv) {
   });
 
   // make distinction between document and edge collections
-  addTask("set new collection type for edge collections and update collection version", 1, function () {
+  addTask("addCollectionVersion", "set new collection type for edge collections and update collection version", function () {
     var collections = db._collections();
     
     for (var i in collections) {
@@ -201,25 +231,29 @@ function main (argv) {
   });
   
   // create the _modules collection
-  addTask("setup _modules collection", 1, function () {
+  addTask("createModules", "setup _modules collection", function () {
     return createSystemCollection("_modules");
   });
   
   // create the _routing collection
-  addTask("setup _routing collection", 1, function () {
+  addTask("createRouting", "setup _routing collection", function () {
     return createSystemCollection("_routing");
   });
   
-  // create the VERSION file
-  addTask("create VERSION file", 2, function () {
-    // save "1" into VERSION file
-    SYS_SAVE(versionFile, "2");
+  // insert default route for /
+  addTask("insertDefaultRoute", "insert default route for the admin interface", function () {
+    var routing = getCollection("_routing");
+    if (! routing) {
+      return false;
+    }
+
+    if (routing.count() == 0) {
+      // only add route if no other route has been defined
+      routing.save({ url: "/", action: { "do": "org/arangodb/actions/redirectRequest", options: { permanently: true, destination: "/_admin/html/index.html" } } });
+    }
     return true;
   });
-  
-  
-  console.log("Upgrade script " + argv[0] + " started");
-  console.log("Server VERSION is: " + currentVersion);
+
 
   // loop through all tasks and execute them
   console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
@@ -228,17 +262,28 @@ function main (argv) {
   for (var i in activeTasks) {
     var task = activeTasks[i];
 
-    console.log("Executing task #" + (++taskNumber) + ": " + task.description);
+    console.log("Executing task #" + (++taskNumber) + " (" + task.name + "): " + task.description);
 
-    var result = task.code();
+    // assume failure
+    var result = false;
+    try {
+      // execute task
+      result = task.code();
+    }
+    catch (e) {
+    }
 
-    if (! result) {
+    if (result) {
+      // success
+      lastTasks[task.name] = true;
+      // save/update version info
+      SYS_SAVE(versionFile, JSON.stringify({ version: currentVersion, tasks: lastTasks }));
+      console.log("Task successful");
+    }
+    else {
       console.error("Task failed. Aborting upgrade script.");
       console.error("Please fix the problem and try running the upgrade script again.");
       return 1;
-    }
-    else {
-      console.log("Task successful");
     }
   }
 

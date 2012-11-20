@@ -467,6 +467,8 @@ void ArangoServer::buildApplicationServer () {
   }
 #endif
 
+  // if we got here, then we are in server mode
+
   // .............................................................................
   // sanity checks
   // .............................................................................
@@ -515,6 +517,7 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
+  _applicationV8->enableVersionCheck();
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
@@ -646,6 +649,10 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
+        
+    context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+    context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
+    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
 
     ok = true;
 
@@ -666,8 +673,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           sysTestFiles->Set((uint32_t) i, v8::String::New(_unitTests[i].c_str()));
         }
 
-        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
@@ -701,8 +706,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           sysTestFiles->Set((uint32_t) i, v8::String::New(_jslint[i].c_str()));
         }
 
-        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
         context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
@@ -726,9 +729,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
       case OperationMode::MODE_SCRIPT: {
         v8::TryCatch tryCatch;
-
-        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
           bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
@@ -785,8 +785,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-        context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-        context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         V8LineEditor console(context->_context, ".arango");
 
         console.open(true);
