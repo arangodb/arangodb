@@ -380,38 +380,21 @@ static size_t GenerateMessage (char* buffer,
                                TRI_tid_t currentThreadId,
                                char const* fmt,
                                va_list ap) {
-  char s[32];
   int m;
   int n;
 
   char const* ll;
   bool sln;
 
-  time_t tt;
-  struct tm tb;
-
-  // .............................................................................
-  // generate time prefix
-  // .............................................................................
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-
-  strftime(s,  sizeof(s) - 1, "%Y-%m-%dT%H:%M:%SZ", &tb);
-
   // .............................................................................
   // append the time prefix and output prefix
   // .............................................................................
-
-  m = 0;
-
+  
+  n = 0;
   TRI_LockSpin(&OutputPrefixLock);
 
   if (OutputPrefix && *OutputPrefix) {
-    n = snprintf(buffer + m, size - m, "%s %s ", s, OutputPrefix);
-  }
-  else {
-    n = snprintf(buffer + m, size - m, "%s ", s);
+    n = snprintf(buffer, size, "%s ", OutputPrefix);
   }
 
   TRI_UnlockSpin(&OutputPrefixLock);
@@ -419,11 +402,11 @@ static size_t GenerateMessage (char* buffer,
   if (n < 0) {
     return n;
   }
-  else if ((int) size <= m + n) {
-    return m + n;
+  else if ((int) size <= n) {
+    return n;
   }
 
-  m += n;
+  m = n;
 
   // .............................................................................
   // append the process / thread identifier
@@ -689,52 +672,73 @@ static void LogThread (char const* func,
                        TRI_tid_t threadId,
                        char const* fmt,
                        va_list ap) {
-  static int maxSize = 100 * 1024;
-
+  static const int maxSize = 100 * 1024;
   va_list ap2;
-  char buffer[4096];   // try a static buffer first
+  char buffer[2048];   // try a static buffer first
+  time_t tt;
+  struct tm tb;
+  size_t len;
   int n;
+  
+  // .............................................................................
+  // generate time prefix
+  // .............................................................................
+  
+  tt = time(0);
+  TRI_gmtime(tt, &tb);
+  // write time in buffer
+  len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%SZ ", &tb);
 
   va_copy(ap2, ap);
-  n = GenerateMessage(buffer, sizeof(buffer), func, file, line, level, processId, threadId, fmt, ap2);
+  n = GenerateMessage(buffer + len, sizeof(buffer) - len, func, file, line, level, processId, threadId, fmt, ap2);
   va_end(ap2);
 
   if (n == -1) {
     TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");
+    return;
   }
-  else if (n < (int) sizeof(buffer)) {
-    OutputMessage(level, severity, buffer, n, true);
+  if (n < (int) (sizeof(buffer) - len)) {
+    // static buffer was big enough
+    OutputMessage(level, severity, buffer, n + len, true);
+    return;
   }
-  else {
-    while (n < maxSize) {
-      int m;
-      char* p;
 
-      p = TRI_Allocate(TRI_CORE_MEM_ZONE, n, false);
+  // static buffer was not big enough
+  while (n < maxSize) {
+    int m;
+    char* p;
+    
+    // allocate as much memory as we need
+    p = TRI_Allocate(TRI_CORE_MEM_ZONE, n + len + 1, false);
 
-      if (p == NULL) {
-        TRI_Log(func, file, line, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, "log message is too large (%d bytes)", n);
-        return;
-      }
-      else {
-        va_copy(ap2, ap);
-        m = GenerateMessage(p, n, func, file, line, level, processId, threadId, fmt, ap2);
-        va_end(ap2);
+    if (p == NULL) {
+      TRI_Log(func, file, line, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, "log message is too large (%d bytes)", n + len);
+      return;
+    }
 
-        if (m == -1) {
-          TRI_Free(TRI_CORE_MEM_ZONE, p);
-          TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");
-          return;
-        }
-        else if (m > n) {
-          free(p);
-          n = m;
-        }
-        else {
-          OutputMessage(level, severity, p, n, false);
-          return;
-        }
-      }
+    if (len > 0) {
+      // copy still existing and unchanged time prefix into dynamic buffer
+      memcpy(p, buffer, len);
+    }
+
+    va_copy(ap2, ap);
+    m = GenerateMessage(p + len, n, func, file, line, level, processId, threadId, fmt, ap2);
+    va_end(ap2);
+
+    if (m == -1) {
+      TRI_Free(TRI_CORE_MEM_ZONE, p);
+      TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");
+      return;
+    }
+    else if (m > n) {
+      TRI_Free(TRI_CORE_MEM_ZONE, p);
+      n = m;
+      // again
+    }
+    else {
+      // finally got a buffer big enough. p is freed in OutputMessage
+      OutputMessage(level, severity, p, m + len - 1, false);
+      return;
     }
   }
 }
