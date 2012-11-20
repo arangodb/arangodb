@@ -1,6 +1,8 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* added UPGRADING help text
+
 * WARNING:
   arangod now performs a database version check at startup. It will look for a file
   named "VERSION" in its database directory. If the file is not present, arangod will
