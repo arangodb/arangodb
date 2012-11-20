@@ -68,11 +68,12 @@ f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${proj
 %postinstall <<EOF
 sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc/arangodb%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
 launchctl unload /Library/LaunchDaemons/org.arangodb.plist
-launchctl load /Library/LaunchDaemons/org.arangodb.plist
 
-if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
-  ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
+if [ "`/usr/bin/find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
+  ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb"
 fi
+
+launchctl load /Library/LaunchDaemons/org.arangodb.plist
 
 EOF
 
