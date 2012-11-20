@@ -675,7 +675,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8Shell(context->_context);
 
   // load all init files
-  for (int j = 0;  j < sizeof(files) / sizeof(files[0]);  ++j) {
+  for (size_t j = 0;  j < sizeof(files) / sizeof(files[0]);  ++j) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
 
     if (! ok) {
