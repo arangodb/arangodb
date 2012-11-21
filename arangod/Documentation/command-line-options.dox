@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// @brief user guide guide
 ///
 /// @file
@@ -128,7 +128,7 @@
 /// @copydetails triagens::rest::ApplicationServer::_configFile
 ///
 /// @anchor CommandLineDaemon
-/// @CMDOPT{\-\-daemon}
+/// @CMDOPT{--daemon}
 ///
 /// Runs the server as a daemon (as a background process). This parameter can
 /// only be set if the pid (process id) file is specified. That is, unless a
@@ -136,7 +136,7 @@
 /// error and exit.
 ///
 /// @anchor CommandLineSupervisor
-/// @CMDOPT{\-\-supervisor}
+/// @CMDOPT{--supervisor}
 ///
 /// Executes the server in supervisor mode. In the event that the server
 /// unexpectedly terminates due to an internal error, the supervisor will
@@ -196,7 +196,7 @@
 /// @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
-/// @CMDOPT{\-\-disable-admin-interface @CA{value}}
+/// @CMDOPT{--disable-admin-interface @CA{value}}
 ///
 /// If this option is specified and @CA{value} is @LIT{true}, then the HTML
 /// administration interface at URL @LIT{http://server:port/} will be disabled
@@ -236,7 +236,7 @@
 /// @copydetails triagens::rest::ApplicationScheduler::_backend
 ///
 /// @anchor CommandLineSchedulerShowIoBackends
-/// @CMDOPT{\-\-show-io-backends}
+/// @CMDOPT{--show-io-backends}
 ///
 /// If this option is specified, then the server will list available backends
 /// and exit. This option is useful only when used in conjunction with the
