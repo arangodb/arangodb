@@ -37,8 +37,8 @@ if test "x$FULL_HTML" == "x0";  then
   HEADER=""
   FOOTER=""
 else
-  HEADER='<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/><title>ArangoDB: About ArangoDB</title><link rel="stylesheet" type="text/css" href="arangodb.css"></head><body><div>'
-  FOOTER='</body></html>'
+  HEADER='<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/><title>ArangoDB: About ArangoDB</title></head><body><div id="content"><div class="offlineview"><div>'
+  FOOTER='</div></div></body></html>'
 fi
 
 rm -f $OUTPUT.tmp
