@@ -1,22 +1,24 @@
-> curl -X GET --dump - http://localhost:8529/_api/blueprints/edges?graph=graph1&vertex=id2&type=out
+> curl --data @- -X POST --dump - http://localhost:8529/_api/blueprints/edges?graph=graph1
+{"batchSize" : 100, "vertex" : "id2", "direction" : "out"}
 
-HTTP/1.1 200 OK
+HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 {
-  "edges": [
+  "result": [
     {
-      "_id": "107533798/110810598",
-      "_rev": 110810598,
-      "_key": "110810598",
+      "_id": "102896575/106173375",
+      "_rev": 106173375,
+      "_key": "106173375",
       "_bidirectional": false,
-      "_from": "106747366/110089702",
-      "_to": "106747366/110155238",
+      "_from": "102110143/105452479",
+      "_to": "102110143/105518015",
       "$label": null,
       "$id": "edge2",
       "optional1": "val1b"
     }
   ],
+  "hasMore": false,
   "error": false,
-  "code": 200
+  "code": 201
 }

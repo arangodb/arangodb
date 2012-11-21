@@ -1,0 +1,22 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/blueprints/vertices?graph=graph1
+{"batchSize" : 100, "vertex" : "id2", "labels" : ["l2"] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{
+  "result": [
+    {
+      "_id": "44402657/47810529",
+      "_rev": 47810529,
+      "_key": "47810529",
+      "optional2": 2,
+      "$id": "id3",
+      "optional1": "val1"
+    }
+  ],
+  "hasMore": false,
+  "error": false,
+  "code": 201
+}
+
