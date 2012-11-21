@@ -107,7 +107,7 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -143,7 +143,7 @@ ApplicationServer::ApplicationServer (string const& name, string const& title, s
     _randomGenerator(5) {
 }
 #else
-ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
     _descriptionFile(),

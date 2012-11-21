@@ -43,7 +43,6 @@
 ///
 ///
 ///
-///
 /// @anchor A_JSF_POST_blueprints_vertex
 /// @copydetails JSF_POST_blueprints_vertex
 ///
@@ -59,8 +58,8 @@
 ///
 ///
 ///
-/// @anchor A_JSF_GET_blueprints_vertices
-/// @copydetails JSF_GET_blueprints_vertices
+/// @anchor A_JSF_POST_blueprints_vertices
+/// @copydetails JSF_POST_blueprints_vertices
 ///
 ///
 ///
@@ -80,8 +79,8 @@
 ///
 ///
 ///
-/// @anchor A_JSF_GET_blueprints_edges
-/// @copydetails JSF_GET_blueprints_edges
+/// @anchor A_JSF_POST_blueprints_edges
+/// @copydetails JSF_POST_blueprints_edges
 ///
 //////////////////////////////////////////////////////
 

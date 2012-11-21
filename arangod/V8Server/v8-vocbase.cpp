@@ -5056,7 +5056,7 @@ static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
 /// @FUN{db._createDocumentCollection(@FA{collection-name}, @FA{properties})}
 ///
 /// Creates a new document collection named @FA{collection-name}. 
-/// This is an alias for @ref JS_CreateVocBase, with the difference that the 
+/// This is an alias for @ref JS_CreateVocbase, with the difference that the 
 /// collection type is not automatically detected.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5087,7 +5087,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 ///
 /// @EXAMPLES
 ///
-/// See @ref JS_CreateVocBase for examples.
+/// See @ref JS_CreateVocbase for examples.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const& argv) {

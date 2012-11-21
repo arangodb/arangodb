@@ -440,7 +440,7 @@ Vertex.prototype.edges = function () {
 /// @FUN{@FA{vertex}.getId()}
 ///
 /// Returns the identifier of the @FA{vertex}. If the vertex was deleted, then
-/// @CODE{undefined} is returned.
+/// @LIT{undefined} is returned.
 ///
 /// @EXAMPLES
 ///
