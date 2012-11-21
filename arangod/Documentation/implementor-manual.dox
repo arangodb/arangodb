@@ -105,12 +105,12 @@
 ///      <li>@ref A_JSF_GET_blueprints_vertex    "GET /_api/blueprints/vertex"</li>
 ///      <li>@ref A_JSF_PUT_blueprints_vertex    "PUT /_api/blueprints/vertex"</li>
 ///      <li>@ref A_JSF_DELETE_blueprints_vertex "DELETE /_api/blueprints/vertex"</li>
-///      <li>@ref A_JSF_GET_blueprints_vertices  "GET /_api/blueprints/vertices"</li>
+///      <li>@ref A_JSF_POST_blueprints_vertices  "POST /_api/blueprints/vertices"</li>
 ///      <li>@ref A_JSF_POST_blueprints_edge   "POST /_api/blueprints/edge"</li>
 ///      <li>@ref A_JSF_GET_blueprints_edge    "GET /_api/blueprints/edge"</li>
 ///      <li>@ref A_JSF_PUT_blueprints_edge    "PUT /_api/blueprints/edge"</li>
 ///      <li>@ref A_JSF_DELETE_blueprints_edge "DELETE /_api/blueprints/edge"</li>
-///      <li>@ref A_JSF_GET_blueprints_edges   "GET /_api/blueprints/edges"</li>
+///      <li>@ref A_JSF_POST_blueprints_edges   "POST /_api/blueprints/edges"</li>
 ///     </ul>
 ///    </li>
 ///   </ul>
