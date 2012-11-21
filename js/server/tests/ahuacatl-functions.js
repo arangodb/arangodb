@@ -1257,62 +1257,252 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not_list
+/// @brief test not_null
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNotList1 : function () {
+    testNotNull6 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test not_null
+////////////////////////////////////////////////////////////////////////////////
+    
+    testNotNull7 : function () {
+      var expected = [ -6 ];
+      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, -6, -7)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test not_null
+////////////////////////////////////////////////////////////////////////////////
+    
+    testNotNull8 : function () {
+      var expected = [ 12 ];
+      var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, 12, null)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test not_null
+////////////////////////////////////////////////////////////////////////////////
+    
+    testNotNull9 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN NOT_NULL(null)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test not_null
+////////////////////////////////////////////////////////////////////////////////
+    
+    testNotNull10 : function () {
+      var expected = [ 23 ];
+      var actual = getQueryResults("RETURN NOT_NULL(23)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_list
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstList1 : function () {
       var expected = [ [ 1, 2 ] ];
-      var actual = getQueryResults("RETURN NOT_LIST(null, [ 1, 2 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST(null, [ 1, 2 ])", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not_list
+/// @brief test first_list
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNotList2 : function () {
-      var expected = [ "not a list!" ];
-      var actual = getQueryResults("RETURN NOT_LIST(null, \"not a list!\")", true);
+    testFirstList2 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_LIST(null, \"not a list!\")", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not_list
+/// @brief test first_list
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNotList3 : function () {
+    testFirstList3 : function () {
       var expected = [ [ 1, 4 ] ];
-      var actual = getQueryResults("RETURN NOT_LIST([ 1, 4 ], [ 1, 5 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ 1, 4 ], [ 1, 5 ])", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not_list
+/// @brief test first_list
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNotList4 : function () {
+    testFirstList4 : function () {
       var expected = [ [ ] ];
-      var actual = getQueryResults("RETURN NOT_LIST([ ], [ 1, 5 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ ], [ 1, 5 ])", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not_list
+/// @brief test first_list
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNotList5 : function () {
+    testFirstList5 : function () {
       var expected = [ [ false ] ];
-      var actual = getQueryResults("RETURN NOT_LIST([ false ], [ 1, 5 ])", true);
+      var actual = getQueryResults("RETURN FIRST_LIST([ false ], [ 1, 5 ])", true);
       assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not_list
+/// @brief test first_list
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNotList6 : function () {
-      var expected = [ 7 ];
-      var actual = getQueryResults("RETURN NOT_LIST(false, 7)", true);
+    testFirstList6 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_LIST(false, 7)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_list
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstList7 : function () {
+      var expected = [ [ 0 ] ];
+      var actual = getQueryResults("RETURN FIRST_LIST(1, 2, 3, 4, [ 0 ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_list
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstList8 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_LIST(1, 2, 3, 4, { })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_list
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstList9 : function () {
+      var expected = [ [ 7 ] ];
+      var actual = getQueryResults("RETURN FIRST_LIST([ 7 ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_list
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstList10 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_LIST(99)", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument1 : function () {
+      var expected = [ { a : 1 } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(null, { a : 1 })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument2 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(null, \"not a doc!\")", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument3 : function () {
+      var expected = [ { a : 1 } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ a : 1 }, { b : 2 })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument4 : function () {
+      var expected = [ { } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ }, { b : 2 })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument5 : function () {
+      var expected = [ { a : null, b : false } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ a : null, b : false }, { a : 1000, b : 1000 })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument6 : function () {
+      var expected = [ { czz : 7 } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(false, { czz : 7 })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument7 : function () {
+      var expected = [ { } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(1, 2, 3, 4, { })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument8 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(1, 2, 3, 4, [ ])", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument9 : function () {
+      var expected = [ { c : 4 } ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT({ c : 4 })", true);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first_document
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFirstDocument10 : function () {
+      var expected = [ null ];
+      var actual = getQueryResults("RETURN FIRST_DOCUMENT(false)", true);
       assertEqual(expected, actual);
     },
 

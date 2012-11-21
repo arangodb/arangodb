@@ -269,7 +269,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of scheduler threads
 ///
-/// @CMDOPT{\-\-scheduler.threads @CA{arg}}
+/// @CMDOPT{--scheduler.threads @CA{arg}}
 ///
 /// An integer argument which sets the number of threads to use in the IO
 /// scheduler. The default is 1.
@@ -280,7 +280,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler backend
 ///
-/// @CMDOPT{\-\-scheduler.backend @CA{arg}}
+/// @CMDOPT{--scheduler.backend @CA{arg}}
 ///
 /// The I/O method used by the event handler. The default (if this option is
 /// not specified) is to try all recommended backends. This is platform

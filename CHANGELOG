@@ -1,6 +1,32 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* made AQL function NOT_NULL take any number of arguments. Will now return its
+  first argument that is not null, or null if all arguments are null. This is downwards
+  compatible.
+
+* changed misleading AQL function name NOT_LIST() to FIRST_LIST() and slightly changed
+  the behavior. The function will now return its first argument that is a list, or null 
+  if none of the arguments are lists.
+  This is mostly downwards-compatible. The only change to the previous implementation in
+  1.1-beta will happen if two arguments were passed and the 1st and 2nd arguments were 
+  both no lists. In previous 1.1, the 2nd argument was returned as is, but now null 
+  will be returned.
+
+* add AQL function FIRST_DOCUMENT(), with same behavior as FIRST_LIST(), but working
+  with documents instead of lists.
+
+* added UPGRADING help text
+
+* WARNING:
+  arangod now performs a database version check at startup. It will look for a file
+  named "VERSION" in its database directory. If the file is not present, arangod will
+  refuse to start and ask the user to run arango-upgrade first. If the VERSION file
+  is present but is from an older version of ArangoDB, arangod will also refuse to
+  start and ask the user to run the upgrade script first. This procedure shall ensure
+  that users have full control over when they perform any updates/upgrades of their
+  data, and do not risk running an incompatible server/database state tandem.
+
 * fixed issue #284: fixed Javascript errors when adding edges/vertices without own
   attributes
 
