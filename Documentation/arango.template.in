@@ -225,7 +225,7 @@ ALIASES               += \
 
 # glossary
 ALIASES               += \
-  "GE{1}=@latexonly\glossaryentry{@endlatexonly@htmlonly<div class=\"glossaryentry\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
+  "GE{1}=@latexonly\glossaryentry{@endlatexonly@htmlonly<span class=\"glossaryentry\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
 
 # examples
 ALIASES               += \
