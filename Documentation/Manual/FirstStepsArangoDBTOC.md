@@ -7,3 +7,5 @@ TOC {#FirstStepsArangoDBTOC}
   - @ref FirstStepsArangoDBFirstSteps
     - @ref FirstStepsArangoDBConnecting
     - @ref FirstStepsArangoDBQuerying
+  - @ref FirstStepsServerStartStop
+    - @ref FirstStepsServerStartStopOptions
