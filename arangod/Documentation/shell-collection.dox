@@ -166,15 +166,15 @@
 ///////////////////////////////////////////////////////////////
 ///
 /// @anchor ShellCollectionRead
-/// @copydetails JS_CollectionVocBase
+/// @copydetails JS_CollectionVocbase
 ///
 /// @CLEARPAGE
 /// @anchor ShellCollectionCreate
-/// @copydetails JS_CreateVocBase
+/// @copydetails JS_CreateVocbase
 ///
 /// @CLEARPAGE
 /// @anchor ShellCollectionReadAll
-/// @copydetails JS_CollectionsVocBase
+/// @copydetails JS_CollectionsVocbase
 ///
 /// @CLEARPAGE
 /// @anchor ShellCollectionReadShortCut
