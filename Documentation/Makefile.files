@@ -34,6 +34,8 @@ DOXYGEN = \
 
 WIKI = \
 	ArangoErrors \
+        Aql \
+        AqlExamples \
 	CommandLine \
 	Compiling \
 	Communication \
@@ -87,12 +89,11 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
+	Upgrading \
 	UserManual \
 	UserManualBasics \
 	UserManualArangosh \
 	UserManualActions \
-        Aql \
-        AqlExamples \
 	jsUnity
 
 ## -----------------------------------------------------------------------------
