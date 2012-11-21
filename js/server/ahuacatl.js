@@ -2164,31 +2164,63 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return value if it's not null, otherwise return alternative
+/// @brief return the first alternative that's not null until there are no more 
+/// alternatives. if neither of the alternatives is a value other than null, 
+/// then null will be returned
 ///
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_NOT_NULL (value, alternative) {
-  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NULL) {
-    return alternative;
+function AHUACATL_NOT_NULL () {
+  for (var i in arguments) {
+    var element = arguments[i];
+  
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_NULL) {
+      return element;
+    }
   }
 
-  return value;
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return value if it's a list, otherwise return alternative
+/// @brief return the first alternative that's a list until there are no more
+/// alternatives. if neither of the alternatives is a list, then null will be
+/// returned
 ///
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_NOT_LIST (value, alternative) {
-  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_LIST) {
-    return value;
+function AHUACATL_FIRST_LIST () {
+  for (var i in arguments) {
+    var element = arguments[i];
+  
+    if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_LIST) {
+      return element;
+    }
   }
 
-  return alternative;
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first alternative that's a document until there are no 
+/// more alternatives. if neither of the alternatives is a document, then null 
+/// will be returned
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FIRST_DOCUMENT () {
+  for (var i in arguments) {
+    var element = arguments[i];
+  
+    if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      return element;
+    }
+  }
+
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

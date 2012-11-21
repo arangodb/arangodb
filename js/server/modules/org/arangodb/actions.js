@@ -152,7 +152,7 @@ function splitUrl (url) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lookupUrl (prefix, url) {
-  if (url === undefined) {
+  if (url === undefined || url === '') {
     return null;
   }
 
@@ -428,6 +428,10 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
   var ok;
 
   part = parts[pos];
+  if (part == undefined) {
+    // otherwise we'll get an exception below
+    part = '';
+  }
 
   if (typeof part === "string") {
     if (! subwhere.hasOwnProperty('exact')) {
@@ -438,7 +442,7 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
       subwhere.exact[part] = {};
     }
 
-    if (pos + 1< parts.length) {
+    if (pos + 1 < parts.length) {
       defineRoutePart(route, subwhere.exact[part], parts, pos + 1, constraint, callback);
     }
     else {

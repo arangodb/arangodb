@@ -11,9 +11,11 @@
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
+	js/common/bootstrap/js-monkeypatches.h \
 	js/common/bootstrap/js-print.h \
 	js/client/js-client.h \
 	js/server/js-server.h \
+	js/server/js-version-check.h \
 	js/server/js-ahuacatl.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)

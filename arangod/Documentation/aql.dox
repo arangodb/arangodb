@@ -962,10 +962,12 @@
 ///
 /// AQL offers the following functions to let the user control the flow of operations:
 ///
-/// - @FN{NOT_NULL(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is not
-///   @LIT{null}, and @FA{alternative} otherwise. 
-/// - @FN{NOT_LIST(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is a list,
-///   and @FA{alternative} otherwise. 
+/// - @FN{NOT_NULL(@FA{alternative}\, ...)}: returns the first alternative that is not @LIT{null}, 
+///   and @LIT{null} if all alternatives are @LIT{null} themselves.
+/// - @FN{FIRST_LIST(@FA{alternative}\, ...)}: returns the first alternative that is a list, and
+///   @LIT{null} if none of the alternatives is a list.
+/// - @FN{FIRST_DOCUMENT(@FA{alternative}\, ...)}: returns the first alternative that is a document,
+///   and @LIT{null} if none of the alternatives is a document.
 ///
 /// @subsubsection AqlFunctionsMisc Miscellaneous functions
 ///
