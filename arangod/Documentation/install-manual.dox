@@ -173,7 +173,7 @@
 /////////////////////////
 ///
 /// Please use the 
-/// @EXTRES{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
+/// @EXTREF_S{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
 /// provided by @@mgiken.
 ///
 /// @subsubsection InstallingOpenSUSE OpenSuSE
@@ -214,7 +214,7 @@
 /////////////////////////////////////////////////
 ///
 /// If you are using <a href="http://mxcl.github.com/homebrew/">homebrew</a>,
-/// then you can install the ArangoDB using @CODE{brew} as follows:
+/// then you can install the ArangoDB using @LIT{brew} as follows:
 ///
 /// @code
 /// brew install arangodb

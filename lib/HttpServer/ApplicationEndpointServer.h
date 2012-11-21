@@ -271,7 +271,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoints for client HTTP requests
 ///
-/// @CMDOPT{--server.endpoint @CA{endpoint}}
+/// @CMDOPT{\--server.endpoint @CA{endpoint}}
 ///
 /// Specifies an @CA{endpoint} for HTTP requests by clients. Endpoints have
 /// the following pattern:
@@ -299,7 +299,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable authentication for ALL client requests
 ///
-/// @CMDOPT{--server.disable-authentication @CA{value}}
+/// @CMDOPT{\--server.disable-authentication @CA{value}}
 ///
 /// Setting @CA{value} to true will turn off authentication on the server side
 /// so all clients can execute any action without authorisation and privilege
@@ -313,7 +313,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeout for HTTP keep-alive
 ///
-/// @CMDOPT{--server.keep-alive-timeout}
+/// @CMDOPT{\--server.keep-alive-timeout}
 ///
 /// Allows to specify the timeout for HTTP keep-alive connections. The timeout
 /// value must be specified in seconds.
@@ -327,7 +327,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief listen backlog size
 ///
-/// @CMDOPT{--server.backlog-size}
+/// @CMDOPT{\--server.backlog-size}
 ///
 /// Allows to specify the size of the backlog for the listen system call
 /// The default value is 10. The maximum value is platform-dependent.
@@ -338,7 +338,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keyfile containing server certificate
 ///
-/// @CMDOPT{--server.keyfile @CA{filename}}
+/// @CMDOPT{\--server.keyfile @CA{filename}}
 ///
 /// If SSL encryption is used, this option must be used to specify the filename
 /// of the server private key. The file must be PEM formatted and contain both 
@@ -367,7 +367,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CA file
 ///
-/// @CMDOPT{--server.cafile @CA{filename}}
+/// @CMDOPT{\--server.cafile @CA{filename}}
 ///
 /// This option can be used to specify a file with CA certificates that are sent
 /// to the client whenever the server requests a client certificate. If the
@@ -385,7 +385,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SSL protocol type to use
 ///
-/// @CMDOPT{--server.ssl-protocol @CA{value}}
+/// @CMDOPT{\--server.ssl-protocol @CA{value}}
 ///
 /// Use this option to specify the default encryption protocol to be used. 
 /// The following variants are available:
@@ -404,7 +404,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use SSL session caching
 ///
-/// @CMDOPT{--server.ssl-cache @CA{value}}
+/// @CMDOPT{\--server.ssl-cache @CA{value}}
 ///
 /// Set to true if SSL session caching should be used.
 ///
@@ -419,7 +419,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl options to use
 ///
-/// @CMDOPT{--server.ssl-options @CA{value}}
+/// @CMDOPT{\--server.ssl-options @CA{value}}
 ///
 /// This option can be used to set various SSL-related options. Individual 
 /// option values must be combined using bitwise OR.
@@ -441,7 +441,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ssl cipher list to use
 /// 
-/// @CMDOPT{--server.ssl-cipher-list @CA{cipher-list}}
+/// @CMDOPT{\--server.ssl-cipher-list @CA{cipher-list}}
 ///
 /// This option can be used to restrict the server to certain SSL ciphers only,
 /// and to define the relative usage preference of SSL ciphers.
