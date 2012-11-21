@@ -165,9 +165,7 @@
 /// The call expects a JSON hash array as body with the following attributes:
 ///
 /// - @LIT{name}: The identifier or name of the new graph.
-///
 /// - @LIT{verticesName}: The name of the vertices collection.
-///
 /// - @LIT{edgesName}: The name of the egge collection.
 ///
 /// Returns an object with an attribute @LIT{graph} containing a 
@@ -206,7 +204,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get blueprint graph properties
 ///
-/// @RESTHEADER{GET /_api/blueprints/graph/@FA{graph-identifier},get graph properties}
+/// @RESTHEADER{GET /_api/blueprints/graph,get graph properties}
 ///
 /// @REST{GET /_api/blueprints/graph/@FA{graph-identifier}}
 ///
@@ -245,7 +243,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a blueprint graph
 ///
-/// @RESTHEADER{DELETE /_api/blueprints/graph/@FA{graph-identifier},delete graph}
+/// @RESTHEADER{DELETE /_api/blueprints/graph},delete graph}
 ///
 /// @REST{DELETE /_api/blueprints/graph/@FA{graph-identifier}}
 ///
@@ -323,7 +321,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a blueprint graph vertex
 ///
-/// @RESTHEADER{POST /_api/blueprints/vertex?graph=@FA{graph-identifier},create vertex}
+/// @RESTHEADER{POST /_api/blueprints/vertex,create vertex}
 ///
 /// @REST{POST /_api/blueprints/vertex?graph=@FA{graph-identifier}}
 ///
@@ -334,7 +332,6 @@
 /// The call expects a JSON hash array as body with the vertex properties:
 ///
 /// - @LIT{$id}: The identifier or name of the vertex (optional).
-///
 /// - further optional attributes.
 ///
 /// Returns an object with an attribute @LIT{vertex} containing a
@@ -371,7 +368,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vertex properties
 ///
-/// @RESTHEADER{GET /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},get vertex}
+/// @RESTHEADER{GET /_api/blueprints/vertex,get vertex}
 ///
 /// @REST{GET /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -409,7 +406,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
 ///
-/// @RESTHEADER{DELETE /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},delete vertex}
+/// @RESTHEADER{DELETE /_api/blueprints/vertex,delete vertex}
 ///
 /// @REST{DELETE /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -442,7 +439,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PUT /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},update vertex}
+/// @RESTHEADER{PUT /_api/blueprints/vertex,update vertex}
 ///
 /// @REST{PUT /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -544,34 +541,134 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all graph vertices
+/// @brief get graph vertices
 ///
-/// @RESTHEADER{GET /_api/blueprints/vertices?graph=@FA{graph-identifier},get vertices}
+/// @RESTHEADER{POST /_api/blueprints/vertices,get vertices}
 ///
-/// @REST{GET /_api/blueprints/vertices?graph=@FA{graph-identifier}}
+/// @REST{POST /_api/blueprints/vertices?graph=@FA{graph-identifier}}
 ///
-/// Returns an object with an attribute @LIT{vertices} containing a
-/// list of all vertices.
+/// Returns a a cursor.
+///
+/// The call expects a JSON hash array as body to filter the edges:
+///
+/// - @LIT{vertex}: the identifier or name of a vertex. This selects inbound and 
+///   outbound neighbors of a vertex. If a vertex is given the edge direction
+///   can be filterd by @LIT{direction} and labels of edges can be filterd by 
+///   @LIT{labels}.
+/// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out") 
+///   neighbors. Default value is "any".
+/// - @LIT{key}: filter the result vertices by a key value pair
+/// - @LIT{value}: the value of the @LIT{key}
+/// - @LIT{labels}: filter by an array of edge labels
+/// - @LIT{batchSize}: the batch size of the returned cursor
 ///
 /// @EXAMPLES
 ///
+/// Select all vertices
+///
 /// @verbinclude api-blueprints-get-vertices
+///
+/// Select of all neighbors of a vertex.
+///
+/// @verbinclude api-blueprints-get-vertices2
+///
+/// Select of all outbound neighbors of a vertex.
+///
+/// @verbinclude api-blueprints-get-outbound-vertices
+//
+/// Select of all neighbors of a vertex by a edge label.
+///
+/// @verbinclude api-blueprints-get-vertices-label
+///
+/// Select of vertices by key value
+///
+/// @verbinclude api-blueprints-get-vertices-key
+///
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_blueprints_vertices (req, res) {
+  function POST_blueprints_vertices (req, res) {
+    if (req.suffix.length != 0) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+      return;
+    }    
+
+    var json = actions.getJsonBody(req, res);
+
+    if (json === undefined) {
+      json = {};
+    }
+    
+    
     try {    
       var g = blueprints_graph_by_request_parameter(req);
+      var selectEdge = "";
+      var vertexFilter = "";
+      var edgeFilter = "";
+      var bindVars = {"@vertexColl" : g._properties.verticesName };          
 
-      var result = {
-        "vertices" : []
+      if (json.vertex != undefined) {
+        // get neighbors
+        var v = g.getVertex(json.vertex);
+        
+        if (v == undefined || v._properties == undefined) {
+          actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+          return;          
+        }
+        selectEdge = "FOR e IN @@edgeColl";
+
+        // get inbound neighbors
+        if (json.direction == "in") {
+          edgeFilter = " FILTER e._to == @id";
+          vertexFilter = " FILTER e._from == v._id";
+        }
+        // get outbound neighbors
+        else if (json.direction == "out") {
+          edgeFilter = " FILTER e._from == @id";
+          vertexFilter = " FILTER e._to == v._id";
+        }
+        // get all neighbors
+        else {          
+          vertexFilter = " FILTER ((e._from == @id && e._to == v._id) || (e._to == @id && e._from == v._id))";
+        }
+
+        bindVars["@edgeColl"] = g._properties.edgesName;
+        bindVars["id"] = v._id;
+                  
+        // filter edge labels
+        if (json.labels != undefined && json.labels instanceof Array) {
+          if (edgeFilter == "") { edgeFilter = " FILTER"; } else { edgeFilter += " &&";}
+          edgeFilter += ' e["$label"] IN @labels';
+          bindVars["labels"] = json.labels;
+        }
+
       }
 
-      var v = g.getVertices();
-      while (v.hasNext()) {
-        result["vertices"].push(v.next()._properties);
+      // filter key/value pairs labels
+      if (json.key != undefined) {
+        // get all with key=value
+        if (vertexFilter == "") { vertexFilter = " FILTER"; } else { vertexFilter += " &&";}
+        vertexFilter += " v[@key] == @value";        
+        bindVars["key"] = json.key;
+        bindVars["value"] = json.value;
       }
 
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      // build aql query
+      var query = selectEdge + edgeFilter + " FOR v IN @@vertexColl" + vertexFilter + " RETURN v";
+
+      var cursor = AHUACATL_RUN(query, 
+                            bindVars, 
+                            (json.count != undefined ? json.count : false),
+                            json.batchSize, 
+                            (json.batchSize == undefined));  
+
+      // error occurred
+      if (cursor instanceof ArangoError) {
+        actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+        return;
+      }
+      
+      // this might dispose or persist the cursor
+      actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
     }
     catch (err) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
@@ -589,8 +686,8 @@
     callback : function (req, res) {
       try {
         switch (req.requestType) {
-          case (actions.GET) :
-            GET_blueprints_vertices(req, res); 
+          case (actions.POST) :
+            POST_blueprints_vertices(req, res); 
             break;
 
           default:
@@ -619,7 +716,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a blueprint graph edge
 ///
-/// @RESTHEADER{POST /_api/blueprints/edge?graph=@FA{graph-identifier},create edge}
+/// @RESTHEADER{POST /_api/blueprints/edge,create edge}
 ///
 /// @REST{POST /_api/blueprints/edge?graph=@FA{graph-identifier}}
 ///
@@ -677,7 +774,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge properties
 ///
-/// @RESTHEADER{GET /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},get edge}
+/// @RESTHEADER{GET /_api/blueprints/edge,get edge}
 ///
 /// @REST{GET /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -709,7 +806,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},delete edge}
+/// @RESTHEADER{DELETE /_api/blueprints/edge,delete edge}
 ///
 /// @REST{DELETE /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -742,7 +839,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PUT /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},update edge}
+/// @RESTHEADER{PUT /_api/blueprints/edge,update edge}
 ///
 /// @REST{PUT /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -841,92 +938,120 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all graph edges
+/// @brief get graph edges
 ///
-/// @RESTHEADER{GET /_api/blueprints/edges?graph=@FA{graph-identifier},get edges}
+/// @RESTHEADER{POST /_api/blueprints/edges,get edges}
 ///
-/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}}
+/// @REST{POST /_api/blueprints/edges?graph=@FA{graph-identifier}}
+/// 
+/// Returns a a cursor.
+/// 
+/// The call expects a JSON hash array as body to filter the edges:
 ///
-/// Returns an object with an attribute @LIT{edges} containing a
-/// list of all edges of the graph.
+/// - @LIT{vertex}: the identifier or name of a vertex. This selects inbound and 
+///   outbound edges of a vertex. If a vertex is given the edge direction
+///   can be filterd by @LIT{direction}.
+/// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out") 
+///   edges. Default value is "any".
+/// - @LIT{labels}: filter by an array of edge labels
+/// - @LIT{key}: filter the by a key value pair
+/// - @LIT{value}: the value of the @LIT{key}
+/// - @LIT{batchSize}: the batch size of the returned cursor
 ///
 /// @EXAMPLES
+///
+/// Select all edges
 ///
 /// @verbinclude api-blueprints-get-edges
-////////////////////////////////////////////////////////////////////////////////
 ///
-/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}}
-///
-/// Returns an object with an attribute @LIT{edges} containing a
-/// list of all inbound and outbound edges of a vertex.
-///
-/// @EXAMPLES
+/// Select of all inbound and outbound edges of a vertex.
 ///
 /// @verbinclude api-blueprints-get-edges-by-vertex
-////////////////////////////////////////////////////////////////////////////////
 ///
-/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}&type=out}
-///
-/// Returns an object with an attribute @LIT{edges} containing a
-/// list of all outbound edges of a vertex.
-///
-/// @EXAMPLES
+/// Select of all outbound edges of a vertex.
 ///
 /// @verbinclude api-blueprints-get-out-edges-by-vertex
-////////////////////////////////////////////////////////////////////////////////
 ///
-/// @REST{GET /_api/blueprints/edges?graph=@FA{graph-identifier}&vertex=@FA{vertex-identifier}&type=in}
-///
-/// Returns an object with an attribute @LIT{edges} containing a
-/// list of all inbound edges of a vertex.
-///
-/// @EXAMPLES
+/// Select of all edges of a vertex by a label.
 ///
 /// @verbinclude api-blueprints-get-in-edges-by-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_blueprints_edges(req, res) {
-    try {
+  function POST_blueprints_edges (req, res) {
+    if (req.suffix.length != 0) {
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "edges not found");
+      return;
+    }    
+
+    var json = actions.getJsonBody(req, res);
+
+    if (json === undefined) {
+      json = {};
+    }
+        
+    try {    
       var g = blueprints_graph_by_request_parameter(req);
-      
-      var result = {
-        "edges" : []
-      }
+      var filter = "";
+      var bindVars = {"@edgeColl" : g._properties.edgesName};
 
-      var vertex = req.parameters['vertex'];
-      if (vertex == undefined) {
-        var e = g.getEdges();
-
-        while (e.hasNext()) {
-          result.edges.push(e.next()._properties);
-        }    
-      }
-      else {
-        var v = g.getVertex(vertex);
-
+      if (json.vertex != undefined) {
+        // get edges of a vertex
+        var v = g.getVertex(json.vertex);
+        
         if (v == undefined || v._properties == undefined) {
-          throw "no vertex found for: " + vertex;
+          actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+          return;          
         }
 
-        var type = req.parameters['type'];
-        if (type === "in") {
-          result.edges = g._edges.inEdges(v._id);
+        if (json.direction == "in") {
+          filter = " FILTER e._to == @id ";
         }
-        else if (type === "out") {
-          result.edges = g._edges.outEdges(v._id);
+        else if (json.direction == "out") {
+          filter = " FILTER e._from == @id ";
         }
         else {
-          result.edges = g._edges.edges(v._id);
-        }      
+          filter = " FILTER (e._from == @id || e._to == @id)";
+        }
+
+        bindVars["id"] = v._id;
       }
 
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      if (json.key != undefined) {
+        // get all with key=value
+        if (filter == "") {filter = " FILTER";} else {filter += " &&";}
+        filter += " e[@key] == @value";
+        bindVars["key"] = json.key;
+        bindVars["value"] = json.value;
+      }
+
+      if (json.labels != undefined && json.labels instanceof Array) {
+        // get all with $lable=value
+        if (filter == "") {filter = " FILTER";} else {filter += " &&";}
+        filter += ' e["$label"] IN @labels';
+        bindVars["labels"] = json.labels;
+      }
+
+      var query = "FOR e IN @@edgeColl" + filter + " RETURN e";
+
+      var cursor = AHUACATL_RUN(query, 
+                            bindVars, 
+                            (json.count != undefined ? json.count : false),
+                            json.batchSize, 
+                            (json.batchSize == undefined));  
+
+      // error occurred
+      if (cursor instanceof ArangoError) {
+        actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+        return;
+      }
+      
+      // this might dispose or persist the cursor
+      actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
     }
     catch (err) {
       actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
     }
   }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
@@ -938,8 +1063,8 @@
     callback : function (req, res) {
       try {
         switch (req.requestType) {
-          case (actions.GET) :
-            GET_blueprints_edges(req, res); 
+          case (actions.POST) :
+            POST_blueprints_edges(req, res); 
             break;
 
           default:
