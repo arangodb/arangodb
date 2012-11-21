@@ -25,7 +25,8 @@ publish-wiki:
 publish-html: $(OUTPUT_FOLDER)
 	$(MAKE) doxygen
 	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
-	@for i in `ls Doxygen/doc/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images; done
+	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images; done
+	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
 
 publish-pdf: $(OUTPUT_FOLDER)
 	$(MAKE) latex

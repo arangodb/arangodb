@@ -44,7 +44,7 @@ For more in-depth information
 - @EXTREF_S{http://vimeo.com/36411892,watch the video} - Martin Schoenert, 
   architect of ArangoDB, gives an introduction of what the ArangoDB project 
   is about
-- or give it a @EXTRES{http://www.arangodb.org/try,try}
+- or give it a @EXTREF{http://www.arangodb.org/try,try}.
 
 Getting Familiar with ArangoDB {#FirstStepsArangoDBServerStart}
 ===============================================================
@@ -373,7 +373,7 @@ CommandLineArango "here".
 @copydetails triagens::rest::ApplicationServer::_options
 
 
-@CMDOPT{--log @CA{level}}
+@CMDOPT{\--log @CA{level}}
 
 Allows the user to choose the level of information which is logged by
 the server. The @CA{level} is specified as a string and can be one of
@@ -390,6 +390,6 @@ more information see @ref CommandLineLogging "here".
 @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
 
 
-@CMDOPT{--daemon}
+@CMDOPT{\--daemon}
 
 Runs the server as a daemon (as a background process).
