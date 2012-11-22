@@ -1764,6 +1764,7 @@ function escaped (value) {
 ///////////////////////////////////////////////////////////////////////////////
 
 function getTypedValue (value) {
+  value = value.replace(/(^\s+|\s+$)/g, '');
   if (value == 'true') {
     return true;
   }
@@ -1795,9 +1796,18 @@ function getTypedValue (value) {
 
   // fallback: value is a string
   value = value + '';
-  
-  if (value.substr(0, 1) == '"' && value.substr(-1) == '"' ) {
-    value = value.substr(1, value.length-2);
+
+  if (value !== '' && (value.substr(0, 1) != '"' || value.substr(-1) != '"')) {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw "error";
+  }
+
+  try {
+    value = JSON.parse(value);
+  }
+  catch (e) {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw e;
   }
   return value;
 }
