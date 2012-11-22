@@ -920,7 +920,7 @@ var logTable = $('#logTableID').dataTable({
       processData: false, 
       success: function(data) {
         tableView = true;
-        window.location.href = "#showCollection?" + collectionID + "=newDocument";  
+        window.location.href = "#showCollection?" + collectionID;  
       },
       error: function(data) {
         alert(getErrorMessage(data));
