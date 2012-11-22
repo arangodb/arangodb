@@ -1844,6 +1844,7 @@ function escaped (value) {
 ///////////////////////////////////////////////////////////////////////////////
 
 function getTypedValue (value) {
+  value = value.replace(/(^\s+|\s+$)/g, '');
   if (value == 'true') {
     return true;
   }
@@ -1877,7 +1878,33 @@ function getTypedValue (value) {
   value = value + '';
   
   if (value.substr(0, 1) == '"' && value.substr(-1) == '"' ) {
-    value = value.substr(1, value.length-2);
+    // remove quotes
+    value = value.substr(1, value.length - 2);
+
+    var replacements = { 'b' : '\b', 'f' : '\f', 'n' : '\n', 'r' : '\r', 't' : '\t', '\\' : '\\', '"' : '"' };
+    var sanitised = "";
+    var escaped = false;
+    for (var i = 0; i < value.length; ++i) {
+      var c = value.charAt(i); 
+      if (escaped) {
+        escaped = false;
+        if (replacements[c] != '') {
+          sanitised += replacements[c];
+        }
+        else {
+          // invalid escape sequence
+        }
+      }
+      else {
+        if (c === '\\') {
+          escaped = true;
+        }
+        else {
+          sanitised += c;
+        }
+      }
+    }
+    value = sanitised;
   }
   return value;
 }
