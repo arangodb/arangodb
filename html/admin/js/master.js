@@ -25,6 +25,9 @@ var open = false;
 var rowCounter = 0; 
 var shArray = []; 
 
+// a static cache
+var CollectionTypes = { };
+
 $(document).ready(function() {       
 showCursor();
 //hide incomplete functions 
@@ -710,24 +713,6 @@ var logTable = $('#logTableID').dataTable({
         error: function(data) {
         }
       });
-/* 
-      var content={"Menue":{"Haha":"wert1", "ahha":"wert2"}, "Favoriten":{"top10":"content"},"Test":{"testing":"hallo 123 test"}}; 
-      $("#configContent").empty();
-
-      $.each(content, function(data) {
-        $('#configContent').append('<div class="customToolbar">' + data + '</div>');
-        $.each(content[data], function(key, val) {
-          if (switcher == "primary") {
-            $('#configContent').append('<a class="toolbar_left toolbar_primary">' + key + '</a><a class="toolbar_right toolbar_primary">' + val + '</a><br>');
-          switcher = "secondary"; 
-          }
-          else if (switcher == "secondary") {
-            $('#configContent').append('<a class="toolbar_left toolbar_secondary">' + key + '</a><a class="toolbar_right toolbar_secondary">' + val + '</a><br>');
-          switcher = "primary"; 
-          }
-        });         
-      }); 
-*/
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -820,7 +805,7 @@ var logTable = $('#logTableID').dataTable({
           window.location.href = "#showCollection?" + collID[0];  
         },
         error: function(data) {
-          alert(JSON.stringify(data)); 
+          alert(getErrorMessage(data));
         }
       });
     }
@@ -845,7 +830,7 @@ var logTable = $('#logTableID').dataTable({
             window.location.href = "#showCollection?" + collID[0];  
           },
           error: function(data) {
-           alert(JSON.stringify(data)); 
+           alert(getErrorMessage(data));
           }
         });
       }
@@ -927,10 +912,10 @@ var logTable = $('#logTableID').dataTable({
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
-     
+
     $.ajax({
       type: "POST",
-      url: "/_api/document?collection=" + collectionID, 
+      url: "/_api/" + collectionApiType(collectionID) + "?collection=" + collectionID, 
       data: post,
       contentType: "application/json",
       processData: false, 
@@ -939,7 +924,7 @@ var logTable = $('#logTableID').dataTable({
         window.location.href = "#showCollection?" + collectionID + "=newDocument";  
       },
       error: function(data) {
-        alert(JSON.stringify(data)); 
+        alert(getErrorMessage(data));
       }
     });
   });
@@ -1456,8 +1441,7 @@ var lastFormatQuestion = true;
           drawCollectionsTable(); 
         },
         error: function(data) {
-          var temp = JSON.parse(data.responseText);
-          alert("Error: " + JSON.stringify(temp.errorMessage));  
+          alert(getErrorMessage(data));
         }
       });
   });
@@ -1508,13 +1492,7 @@ var lastFormatQuestion = true;
           drawCollectionsTable(); 
         },
         error: function(data) {
-          try {
-            var responseText = JSON.parse(data.responseText);
-            alert(responseText.errorMessage);
-          }
-          catch (e) {
-            alert(data.responseText);
-          }
+          alert(getErrorMessage(data));
         }
       });
   }); 
@@ -2894,6 +2872,25 @@ function highlightNavButton (buttonID) {
   $(buttonID).css('background-color', '#9EAF5A'); 
   $(buttonID).css('color', 'white'); 
 }
+
+function getCollectionInfo (identifier) {
+  var collectionInfo = { };
+
+  $.ajax({
+    type: "GET",
+    url: "/_api/collection/" + identifier,
+    contentType: "application/json",
+    processData: false,
+    async: false,  
+    success: function(data) {
+      collectionInfo = data;
+    },
+    error: function(data) {
+    }
+  });
+
+  return collectionInfo;
+}
   
 function loadDocuments (collectionName, currentPage) {
   var documentsPerPage = 10;
@@ -2969,6 +2966,17 @@ function isSystemCollection (val) {
   return val && val.name && val.name.substr(0, 1) === '_';
 }
 
+function collectionApiType (identifier) {
+  if (CollectionTypes[identifier] == undefined) {
+    CollectionTypes[identifier] = getCollectionInfo(identifier).type;
+  }
+
+  if (CollectionTypes[identifier] == 3) {
+    return "edge";
+  }
+  return "document";
+}
+
 function collectionType (val) {
   if (! val || val.name == '') {
     return "-";
@@ -2990,4 +2998,37 @@ function collectionType (val) {
   }
 
   return type;
+}
+
+function getErrorMessage (data) {
+  if (data && data.responseText) {
+    // HTTP error
+    try {
+      var json = JSON.parse(data.responseText);
+      if (json.errorMessage) {
+        return json.errorMessage;
+      }
+    }
+    catch (e) {
+    }
+
+    return data.responseText;
+  }
+    
+  if (data && data.responseText === '') {
+    return "Could not connect to server";
+  }
+
+  if (typeof data == 'string') {
+    // other string error
+    return data;
+  }
+
+  if (data != undefined) {
+    // some other data type
+    return JSON.stringify(data);
+  }
+
+  // fallback
+  return "an unknown error occurred";
 }
