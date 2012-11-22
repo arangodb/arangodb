@@ -165,9 +165,7 @@
 /// The call expects a JSON hash array as body with the following attributes:
 ///
 /// - @LIT{name}: The identifier or name of the new graph.
-///
 /// - @LIT{verticesName}: The name of the vertices collection.
-///
 /// - @LIT{edgesName}: The name of the egge collection.
 ///
 /// Returns an object with an attribute @LIT{graph} containing a 
@@ -206,7 +204,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get blueprint graph properties
 ///
-/// @RESTHEADER{GET /_api/blueprints/graph/@FA{graph-identifier},get graph properties}
+/// @RESTHEADER{GET /_api/blueprints/graph,get graph properties}
 ///
 /// @REST{GET /_api/blueprints/graph/@FA{graph-identifier}}
 ///
@@ -323,7 +321,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a blueprint graph vertex
 ///
-/// @RESTHEADER{POST /_api/blueprints/vertex?graph=@FA{graph-identifier},create vertex}
+/// @RESTHEADER{POST /_api/blueprints/vertex,create vertex}
 ///
 /// @REST{POST /_api/blueprints/vertex?graph=@FA{graph-identifier}}
 ///
@@ -334,7 +332,6 @@
 /// The call expects a JSON hash array as body with the vertex properties:
 ///
 /// - @LIT{$id}: The identifier or name of the vertex (optional).
-///
 /// - further optional attributes.
 ///
 /// Returns an object with an attribute @LIT{vertex} containing a
@@ -371,7 +368,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vertex properties
 ///
-/// @RESTHEADER{GET /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},get vertex}
+/// @RESTHEADER{GET /_api/blueprints/vertex,get vertex}
 ///
 /// @REST{GET /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -409,7 +406,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
 ///
-/// @RESTHEADER{DELETE /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},delete vertex}
+/// @RESTHEADER{DELETE /_api/blueprints/vertex,delete vertex}
 ///
 /// @REST{DELETE /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -442,7 +439,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PUT /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier},update vertex}
+/// @RESTHEADER{PUT /_api/blueprints/vertex,update vertex}
 ///
 /// @REST{PUT /_api/blueprints/vertex/@FA{vertex-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -546,7 +543,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph vertices
 ///
-/// @RESTHEADER{POST /_api/blueprints/vertices?graph=@FA{graph-identifier},get vertices}
+/// @RESTHEADER{POST /_api/blueprints/vertices,get vertices}
 ///
 /// @REST{POST /_api/blueprints/vertices?graph=@FA{graph-identifier}}
 ///
@@ -558,16 +555,11 @@
 ///   outbound neighbors of a vertex. If a vertex is given the edge direction
 ///   can be filterd by @LIT{direction} and labels of edges can be filterd by 
 ///   @LIT{labels}.
-///
 /// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out") 
 ///   neighbors. Default value is "any".
-///
 /// - @LIT{key}: filter the result vertices by a key value pair
-///
 /// - @LIT{value}: the value of the @LIT{key}
-///
 /// - @LIT{labels}: filter by an array of edge labels
-///
 /// - @LIT{batchSize}: the batch size of the returned cursor
 ///
 /// @EXAMPLES
@@ -724,7 +716,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a blueprint graph edge
 ///
-/// @RESTHEADER{POST /_api/blueprints/edge?graph=@FA{graph-identifier},create edge}
+/// @RESTHEADER{POST /_api/blueprints/edge,create edge}
 ///
 /// @REST{POST /_api/blueprints/edge?graph=@FA{graph-identifier}}
 ///
@@ -782,7 +774,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge properties
 ///
-/// @RESTHEADER{GET /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},get edge}
+/// @RESTHEADER{GET /_api/blueprints/edge,get edge}
 ///
 /// @REST{GET /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -814,7 +806,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},delete edge}
+/// @RESTHEADER{DELETE /_api/blueprints/edge,delete edge}
 ///
 /// @REST{DELETE /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -847,7 +839,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PUT /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier},update edge}
+/// @RESTHEADER{PUT /_api/blueprints/edge,update edge}
 ///
 /// @REST{PUT /_api/blueprints/edge/@FA{edge-identifier}?graph=@FA{graph-identifier}}
 ///
@@ -948,7 +940,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph edges
 ///
-/// @RESTHEADER{POST /_api/blueprints/edges?graph=@FA{graph-identifier},get edges}
+/// @RESTHEADER{POST /_api/blueprints/edges,get edges}
 ///
 /// @REST{POST /_api/blueprints/edges?graph=@FA{graph-identifier}}
 /// 
@@ -959,16 +951,11 @@
 /// - @LIT{vertex}: the identifier or name of a vertex. This selects inbound and 
 ///   outbound edges of a vertex. If a vertex is given the edge direction
 ///   can be filterd by @LIT{direction}.
-///
 /// - @LIT{direction}: Filter for inbound (value "in") or outbound (value "out") 
 ///   edges. Default value is "any".
-///
 /// - @LIT{labels}: filter by an array of edge labels
-///
 /// - @LIT{key}: filter the by a key value pair
-///
 /// - @LIT{value}: the value of the @LIT{key}
-///
 /// - @LIT{batchSize}: the batch size of the returned cursor
 ///
 /// @EXAMPLES
@@ -1062,7 +1049,7 @@
       actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
     }
     catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err + query);
+      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
     }
   }
 ////////////////////////////////////////////////////////////////////////////////
