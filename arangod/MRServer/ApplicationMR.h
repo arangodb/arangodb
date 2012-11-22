@@ -271,7 +271,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing alternate startup scripts
 ///
-/// @CMDOPT{--ruby.directory @CA{directory}}
+/// @CMDOPT{\--ruby.directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to alternate startup MRuby files.
 /// Normally, the server will start using built-in MRuby core functionality. To
@@ -284,7 +284,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of module directories
 ///
-/// @CMDOPT{--ruby.modules-path @CA{directory}}
+/// @CMDOPT{\--ruby.modules-path @CA{directory}}
 ///
 /// Specifies the @CA{directory} path with user defined MRuby modules.  Multiple
 /// paths can be specified separated with commas.
@@ -295,7 +295,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
-/// @CMDOPT{--ruby.action-directory @CA{directory}}
+/// @CMDOPT{\--ruby.action-directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} containg the system defined MRuby files that
 /// can be invoked as actions.
@@ -306,7 +306,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief MRuby garbage collection interval (each x requests)
 ///
-/// @CMDOPT{--ruby.gc-interval @CA{interval}}
+/// @CMDOPT{\--ruby.gc-interval @CA{interval}}
 ///
 /// Specifies the interval (approximately in number of requests) that the
 /// garbage collection for MRuby objects will be run in each thread.
@@ -317,7 +317,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief MRuby garbage collection frequency (each x seconds)
 ///
-/// @CMDOPT{--ruby.gc-frequency @CA{frequency}}
+/// @CMDOPT{\--ruby.gc-frequency @CA{frequency}}
 ///
 /// Specifies the frequency in seconds for the automatic garbage collection of
 /// MRuby objects. This setting is useful to have the garbage collection 

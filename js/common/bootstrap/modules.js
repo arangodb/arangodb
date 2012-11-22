@@ -222,11 +222,11 @@ module = ModuleCache["/"] = new Module("/");
 ///
 /// @FN{require} checks if the file specified by @FA{path} has already been
 /// loaded.  If not, the content of the file is executed in a new
-/// context. Within the context you can use the global variable @CODE{exports}
+/// context. Within the context you can use the global variable @LIT{exports}
 /// in order to export variables and functions. This variable is returned by
 /// @FN{require}.
 ///
-/// Assume that your module file is @CODE{test1.js} and contains
+/// Assume that your module file is @LIT{test1.js} and contains
 ///
 /// @verbinclude modules-require-1
 ///

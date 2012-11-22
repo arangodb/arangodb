@@ -4,14 +4,69 @@
 }
 
 /* ************************************************************************** */
+/* global                                                                     */
+/* ************************************************************************** */
+
+#content div.arangodb {
+  background: none repeat scroll 0 0 transparent;
+  border: 0 none;
+  color: #666666;
+  font-family: "Helvetica",sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.4em;
+  margin: 0;
+  padding: 0px;
+  vertical-align: baseline;
+}
+
+#content div.offlineview {
+  width: 980px;
+}
+
+#content div.arangodb p, #content div.arangodb ul, #content div.arangodb ol, #content div.arangodb dd, #content div.arangodb pre, #content div.arangodb hr {
+  margin-bottom: 24px;
+}
+
+/* ************************************************************************** */
+/* title                                                                      */
+/* ************************************************************************** */
+
+#content div.arangodb div.headertitle, #content div.arangodb h1, #content div.arangodb h2, #content div.arangodb h3, #content div.arangodb h4, #content div.arangodb h5, #content div.arangodb h6 {
+    color: #000000;
+    font-family: Helvetica;
+    font-weight: lighter;
+    line-height: 1em;
+    margin: 0 0 20px;
+    text-align: left;
+}
+
+#content div.arangodb div.headertitle {
+  border-bottom: 1px solid #EFECE9;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 2em;
+  margin-bottom: 38px;
+  padding: 14px 0 3px;
+}
+
+#content div.arangodb h2 {
+  border-bottom: 1px solid #EFECE9;
+  color: #404040;
+  font-family: Helvetica,Times New Roman;
+  font-size: 26px;
+  margin-bottom: 14px;
+  padding: 14px 0 3px;
+}
+
+/* ************************************************************************** */
 /* navigation bar                                                             */
 /* ************************************************************************** */
 
 #content div.arangodb div.navigate {
+  height: 0px;
   position: relative;
   text-align: right;
   top: -70px;
-  height: 0px;
 }
 
 /* ************************************************************************** */
@@ -26,7 +81,25 @@
 }
 
 #content div.arangodb div.toc ul {
+  margin-top: 0px;
   margin-bottom: 0px;
+}
+
+/* ************************************************************************** */
+/* pre                                                                        */
+/* ************************************************************************** */
+
+#content div.arangodb pre {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
 }
 
 /* ************************************************************************** */
@@ -46,6 +119,10 @@
 #content div.arangodb div.commandlineoption {
   font-family: monospace,fixed;
   margin-bottom: 14px;
+}
+
+#content div.arangodb span.commandlineargument {
+  font-style: italic;
 }
 
 /* ************************************************************************** */
