@@ -1856,34 +1856,17 @@ function getTypedValue (value) {
   // fallback: value is a string
   value = value + '';
   
-  if (value.substr(0, 1) == '"' && value.substr(-1) == '"' ) {
-    // remove quotes
-    value = value.substr(1, value.length - 2);
-
-    var replacements = { 'b' : '\b', 'f' : '\f', 'n' : '\n', 'r' : '\r', 't' : '\t', '\\' : '\\', '"' : '"' };
-    var sanitised = "";
-    var escaped = false;
-    for (var i = 0; i < value.length; ++i) {
-      var c = value.charAt(i); 
-      if (escaped) {
-        escaped = false;
-        if (replacements[c] != '') {
-          sanitised += replacements[c];
-        }
-        else {
-          // invalid escape sequence
-        }
-      }
-      else {
-        if (c === '\\') {
-          escaped = true;
-        }
-        else {
-          sanitised += c;
-        }
-      }
-    }
-    value = sanitised;
+  if (value.substr(0, 1) != '"' || value.substr(-1) != '"') {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw "error";
+  }
+   
+  try {
+    value = JSON.parse(value);
+  }
+  catch (e) {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw e;
   }
   return value;
 }
