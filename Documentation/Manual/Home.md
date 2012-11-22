@@ -23,6 +23,9 @@ The HTML and PDF versions of the manual can be found
 Please contact @EXTREF_S{http://www.arangodb.org/connect,us} if you
 have any questions.
 
+New Features in ArangoDB 1.1 {#NewFeatures11}
+=============================================
+
 Upgrading to ArangoDB 1.1 {#ArangoDBUpgrading}
 ==============================================
 
