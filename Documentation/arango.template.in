@@ -197,48 +197,56 @@ TAB_SIZE               = 8
 
 # function definition
 ALIASES                = \
-  "FUN{1}=@latexonly\functionsignature{\1}@endlatexonly@htmlonly<div class=\"functionsignature\">\1</div>@endhtmlonly" \
-  "FUN{2}=@latexonly\functionsignature{\1, \2}@endlatexonly@htmlonly<div class=\"functionsignature\">\1, \2</div>@endhtmlonly" \
-  "FUN{3}=@latexonly\functionsignature{\1, \2, \3}@endlatexonly@htmlonly<div class=\"functionsignature\">\1, \2, \3</div>@endhtmlonly" \
-  "FUN{4}=@latexonly\functionsignature{\1, \2, \3, \4}@endlatexonly@htmlonly<div class=\"functionsignature\">\1, \2, \3, \4</div>@endhtmlonly" \
-  "FUN{5}=@latexonly\functionsignature{\1, \2, \3, \4, \5}@endlatexonly@htmlonly<div class=\"functionsignature\">\1, \2, \3, \4, \5</div>@endhtmlonly" \
-  "FUN{6}=@latexonly\functionsignature{\1, \2, \3, \4, \5, \6}@endlatexonly@htmlonly<div class=\"functionsignature\">\1, \2, \3, \4, \5, \6</div>@endhtmlonly" \
-  "FUN{7}=@latexonly\functionsignature{\1, \2, \3, \4, \5, \6, \7}@endlatexonly@htmlonly<div class=\"functionsignature\">\1, \2, \3, \4, \5, \6, \7</div>@endhtmlonly" \
-  "FA{1}=<em>\1</em>" \
-  "FN{1}=<tt>\1</tt>"
+  "FUN{1}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FUN{2}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1, \2@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FUN{3}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1, \2, \3@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FUN{4}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1, \2, \3, \4@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FUN{5}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1, \2, \3, \4, \5@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FUN{6}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1, \2, \3, \4, \5, \6@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FUN{7}=@latexonly\functionsignature{@endlatexonly@htmlonly<div class=\"functionsignature\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1, \2, \3, \4, \5, \6, \7@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FA{1}=@latexonly\functionargument{@endlatexonly@htmlonly<span class=\"functionargument\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "FN{1}=@latexonly\functionname{@endlatexonly@htmlonly<span class=\"functionname\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
 
 # command line option 
 ALIASES               += \
-  "CMDOPT{1}=@latexonly\commandlineoption{\1}@endlatexonly@htmlonly<div class=\"commandlineoption\">\1</div>@endhtmlonly" \
-  "CA{1}=<em>\1</em>" \
-  "CO{1}=<tt>\1</tt>"
+  "CMDOPT{1}=@latexonly\commandlineoption{@endlatexonly@htmlonly<div class=\"commandlineoption\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "CA{1}=@latexonly\commandlineargument{@endlatexonly@htmlonly<span class=\"commandlineargument\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "CO{1}=@latexonly\commandoption{@endlatexon\@htmlonly<span class=\"commandoption\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
 
 # rest calls
 ALIASES               += \
-  "RESTHEADER{2}=@latexonly\restheader{1 (\2)}@endlatexonly@htmlonly<div class=\"restheader\">\1 <div class=\"restheaderremark\">(\2)</div></div>@endhtmlonly" \
-  "REST{1}=<tt><b>\1</b></tt>"
+  "RESTHEADER{2}=@latexonly\restheader{@endlatexonly@htmlonly<div class=\"restheader\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly,@endlatexonly@htmlonly<div class=\"restheaderremark\">(@endhtmlonly@xmlonly XMLMISSING @endxmlonly\2@latexonly}@endlatexonly@htmlonly)</div></div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
+  "REST{1}=@latexonly\restcall{@endlatexonly@htmlonly<div class=\"restcall\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
+
+# navigation
+ALIASES               += \
+  "NAVIGATE{3}=@htmlonly<div class=\"navigate\"><a href=\"\1.html\">prev</a> | <a href=\"\2.html\">home</a> | <a href=\"\3.html\">next</a></div>@endhtmlonly" \
+  "EMBEDTOC{1}=@if LATEX@else@htmlonly <div class=\"toc\">@endhtmlonly@copydoc \1\n@htmlonly</div>@endhtmlonly@endif"
+
+# glossary
+ALIASES               += \
+  "GE{1}=@latexonly\glossaryentry{@endlatexonly@htmlonly<span class=\"glossaryentry\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
+
+# examples
+ALIASES               += \
+  "EXAMPLES=@htmlonly<div class=\"example\">Examples</div>@endhtmlonly" \
+  "EXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly" \
+  "TINYEXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly"
+
+# references
+ALIASES               += \
+  "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href=\1>\2</a>@endif" \
+  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
+  "S_EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else <a href=\1>\2</a>@endif" \
+  "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif"
 
 # other aliases
 ALIASES               += \
-  "VAR{1}=<tt>\1</tt>" \
-  "LIT{1}=<tt>\1</tt>" \
-  "CODE{1}=<tt>\1</tt>" \
-  "CODE{2}=<tt>\1, \2</tt>" \
-  "CODE{3}=<tt>\1, \2, \3</tt>" \
-  "GE{1}=<b>\1</b>" \
-  "EXAMPLES=@htmlonly<div class=\"example\">Examples</div>@endhtmlonly" \
-  "EXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}@endlatexonly" \
-  "TINYEXAMPLE{2}=@latexonly\renewcommand{\examplecap}{\2}\setboolean{hascap}{true}\renewcommand{\examplesize}{\tiny}@endlatexonly@verbinclude \1@latexonly\setboolean{hascap}{false}\renewcommand{\examplesize}{\ttfamily}@endlatexonly" \
   "VERSION=@PACKAGE_VERSION@" \
-  "NAVIGATE{3}=@htmlonly <div class=\"navigate\"><a href=\"\1.html\">prev</a> | <a href=\"\2.html\">home</a> | <a href=\"\3.html\">next</a></div>@endhtmlonly" \
-  "EMBEDTOC{1}=@if LATEX@else@htmlonly <div class=\"toc\">@endhtmlonly@copydoc \1\n@htmlonly </div>@endhtmlonly@endif" \
+  "LIT{1}=<tt>\1</tt>" \
+  "LIT{2}=<tt>\1, \2</tt>" \
+  "LIT{3}=<tt>\1, \2, \3</tt>" \
   "LATEXBREAK=@latexonly\vskip -0.5em\hskip 1.0em@endlatexonly" \
-  "EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else<a href= \1>\2</a>@endif" \
-  "EXTREF_S{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else<a href=\1>\2</a> @endif" \
-  "S_EXTREF{2}=@if LATEX \2 (see @latexonly \url{\1} @endlatexonly)@else <a href=\1>\2</a>@endif" \
-  "EXTRES{2}=@if LATEX \2 (see @latexonly \url{\1}@endlatexonly)@else&nbsp;<a href= \1>\2</a>@endif" \
-  "INTREF{2}=@if LATEX \2@else@ref \1 \"\2\"@endif" \
-  "SPC=&nbsp;" \
   "CLEARPAGE=@if LATEX @latexonly\clearpage@endlatexonly@else\n@endif"
 
 # This tag can be used to specify a number of word-keyword mappings (TCL only).
