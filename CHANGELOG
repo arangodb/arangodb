@@ -1,6 +1,8 @@
 v1.0.5 (XXXX-XX-XX)
 -------------------
 
+* fixed some wrong printf() arguments
+
 * fixed issue #284: fixed Javascript errors when adding vertices/edges without 
   own attributes
 

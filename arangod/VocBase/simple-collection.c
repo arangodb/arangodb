@@ -2514,7 +2514,7 @@ static int FillIndex (TRI_sim_collection_t* collection, TRI_index_t* idx) {
       }
 
       if (scanned % 10000 == 0) {
-        LOG_INFO("indexed %ld of %ld documents", scanned, n);
+        LOG_INFO("indexed %lu of %lu documents", (unsigned long) scanned, (unsigned long) n);
       }
     }
   }
@@ -3446,14 +3446,14 @@ static TRI_index_t* CreateGeoIndexSimCollection (TRI_sim_collection_t* sim,
   if (location != NULL) {
     idx = TRI_CreateGeo1Index(&sim->base, location, loc, geoJson, constraint, ignoreNull);
 
-    LOG_TRACE("created geo-index for location '%s': %d",
+    LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
     idx = TRI_CreateGeo2Index(&sim->base, latitude, lat, longitude, lon, constraint, ignoreNull);
 
-    LOG_TRACE("created geo-index for location '%s': %d, %d",
+    LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
               (unsigned long) lat,
               (unsigned long) lon);

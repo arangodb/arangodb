@@ -353,7 +353,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // ..........................................................................  
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
-    LOG_ERROR("Invalid maximum height for skiplist", TRI_ERROR_INTERNAL);
+    LOG_ERROR("Invalid maximum height for skiplist");
     assert(false);
   }  
   
@@ -1412,7 +1412,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // ..........................................................................  
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
-    LOG_ERROR("Invalid maximum height for skiplist", TRI_ERROR_INTERNAL);
+    LOG_ERROR("Invalid maximum height for skiplist");
     assert(false);
   }  
   
