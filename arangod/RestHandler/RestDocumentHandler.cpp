@@ -447,10 +447,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     }
   }
   else if (ifNoneRid == rid) {
-    if (ifRid == 0) {
-      generateNotModified(StringUtils::itoa(rid));
-    }
-    else if (ifRid == rid) {
+    if (ifRid == 0 || ifRid == rid) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
