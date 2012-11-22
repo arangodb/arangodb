@@ -1,6 +1,8 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* added collection type label to web interface
+
 * fixed issue #289: tab-completion does not insert any spaces
 
 * fixed issue #282: fix escaping in web interface
