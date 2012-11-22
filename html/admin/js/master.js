@@ -1877,18 +1877,17 @@ function getTypedValue (value) {
   // fallback: value is a string
   value = value + '';
   
-  if (value.substr(0, 1) == '"') {
-    if (value.substr(-1) != '"') {
-      alert("You have entered an invalid string value. Please review and adjust it.");
-      throw "error";
-    }
-    try {
-      value = JSON.parse(value);
-    }
-    catch (e) {
-      alert("You have entered an invalid string value. Please review and adjust it.");
-      throw e;
-    }
+  if (value.substr(0, 1) != '"' || value.substr(-1) != '"') {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw "error";
+  }
+   
+  try {
+    value = JSON.parse(value);
+  }
+  catch (e) {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw e;
   }
   return value;
 }
