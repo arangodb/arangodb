@@ -169,7 +169,7 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t vocSize) {
   res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &(datafile->_fd), &(datafile->_mmHandle));
 
   if (res < 0) {
-    LOG_ERROR("munmap failed with: %s", res);
+    LOG_ERROR("munmap failed with: %d", res);
     return res;
   }
 
@@ -514,7 +514,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     close(fd);
-    LOG_ERROR("cannot memory map file '%s': '%s'", filename, res);
+    LOG_ERROR("cannot memory map file '%s': '%d'", filename, res);
     return NULL;
   }
 
@@ -626,7 +626,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot memory map file '%s': '%s'", filename, res);
+    LOG_ERROR("cannot memory map file '%s': '%d'", filename, res);
     return NULL;
   }
 
@@ -1049,7 +1049,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
     res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &(datafile->_fd), &(datafile->_mmHandle));
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("munmap failed with: %s", res);
+      LOG_ERROR("munmap failed with: %d", res);
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
       datafile->_lastError = res;
       return false;

@@ -126,7 +126,7 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
   }
 
   // check if memory was aligned on a cache line boundary
-  offset = ((uint64_t) data) % CACHE_LINE_SIZE;
+  offset = ((intptr_t) data) % CACHE_LINE_SIZE;
 
   if (offset == 0) {
     // we're already on a cache line boundary
@@ -136,7 +136,7 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
     // move to start of a cache line boundary
     table = data + (CACHE_LINE_SIZE - offset);
   }
-  assert(((uint64_t) table) % CACHE_LINE_SIZE == 0);
+  assert(((intptr_t) table) % CACHE_LINE_SIZE == 0);
 
   array->_data = data;
   array->_table = table;

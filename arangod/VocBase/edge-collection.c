@@ -372,15 +372,9 @@ void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t* collection,
   TRI_edge_header_t entry;
   TRI_edge_header_t* old;
   TRI_doc_edge_key_marker_t const* edge;
-  bool isReflexive;
-  bool isBidirectional;
   
   edge = header->_data;
   
-  // is the edge self-reflexive (_from & _to are identical)?
-  isReflexive = (edge->_toCid == edge->_fromCid && strcmp(((char*) edge) + edge->_offsetToKey, ((char*) edge) + edge->_offsetFromKey) == 0);
-  isBidirectional = edge->_isBidirectional;
-
   entry._mptr = header;
 
   // IN

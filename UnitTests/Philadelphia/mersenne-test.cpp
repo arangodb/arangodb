@@ -86,40 +86,40 @@ BOOST_AUTO_TEST_CASE (tst_mersenne_int31) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_mersenne_seed) {
-  TRI_SeedMersenneTwister((uint32_t) 0);
-  BOOST_CHECK_EQUAL((uint32_t) 2357136044, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2546248239, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 3071714933, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 0UL);
+  BOOST_CHECK_EQUAL((uint32_t) 2357136044UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2546248239UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 3071714933UL, TRI_Int32MersenneTwister());
 
-  TRI_SeedMersenneTwister((uint32_t) 1);
-  BOOST_CHECK_EQUAL((uint32_t) 1791095845, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4282876139, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 3093770124, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 1UL);
+  BOOST_CHECK_EQUAL((uint32_t) 1791095845UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4282876139UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 3093770124UL, TRI_Int32MersenneTwister());
 
-  TRI_SeedMersenneTwister((uint32_t) 2);
-  BOOST_CHECK_EQUAL((uint32_t) 1872583848, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 794921487, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 111352301, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 2UL);
+  BOOST_CHECK_EQUAL((uint32_t) 1872583848UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 794921487UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 111352301UL, TRI_Int32MersenneTwister());
 
-  TRI_SeedMersenneTwister((uint32_t) 23);
-  BOOST_CHECK_EQUAL((uint32_t) 2221777491, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2873750246, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4067173416, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 23UL);
+  BOOST_CHECK_EQUAL((uint32_t) 2221777491UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2873750246UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4067173416UL, TRI_Int32MersenneTwister());
 
-  TRI_SeedMersenneTwister((uint32_t) 42);
-  BOOST_CHECK_EQUAL((uint32_t) 1608637542, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 3421126067, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4083286876, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 42UL);
+  BOOST_CHECK_EQUAL((uint32_t) 1608637542UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 3421126067UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4083286876UL, TRI_Int32MersenneTwister());
 
-  TRI_SeedMersenneTwister((uint32_t) 458735);
-  BOOST_CHECK_EQUAL((uint32_t) 1537542272, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4131475792, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2280116031, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 458735UL);
+  BOOST_CHECK_EQUAL((uint32_t) 1537542272UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4131475792UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2280116031UL, TRI_Int32MersenneTwister());
 
-  TRI_SeedMersenneTwister((uint32_t) 395568682893);
-  BOOST_CHECK_EQUAL((uint32_t) 2297195664, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2381406737, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4184846092, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 395568682893UL);
+  BOOST_CHECK_EQUAL((uint32_t) 2297195664UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2381406737UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4184846092UL, TRI_Int32MersenneTwister());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,26 +127,26 @@ BOOST_AUTO_TEST_CASE (tst_mersenne_seed) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_mersenne_reseed) {
-  TRI_SeedMersenneTwister((uint32_t) 23);
-  BOOST_CHECK_EQUAL((uint32_t) 2221777491, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2873750246, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4067173416, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 23UL);
+  BOOST_CHECK_EQUAL((uint32_t) 2221777491UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2873750246UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4067173416UL, TRI_Int32MersenneTwister());
   
   // re-seed with same value and compare
-  TRI_SeedMersenneTwister((uint32_t) 23);
-  BOOST_CHECK_EQUAL((uint32_t) 2221777491, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2873750246, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4067173416, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 23UL);
+  BOOST_CHECK_EQUAL((uint32_t) 2221777491UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2873750246UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4067173416UL, TRI_Int32MersenneTwister());
  
   // seed with different value 
-  TRI_SeedMersenneTwister((uint32_t) 458735);
-  BOOST_CHECK_EQUAL((uint32_t) 1537542272, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 458735UL);
+  BOOST_CHECK_EQUAL((uint32_t) 1537542272UL, TRI_Int32MersenneTwister());
   
   // re-seed with original value and compare
-  TRI_SeedMersenneTwister((uint32_t) 23);
-  BOOST_CHECK_EQUAL((uint32_t) 2221777491, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 2873750246, TRI_Int32MersenneTwister());
-  BOOST_CHECK_EQUAL((uint32_t) 4067173416, TRI_Int32MersenneTwister());
+  TRI_SeedMersenneTwister((uint32_t) 23UL);
+  BOOST_CHECK_EQUAL((uint32_t) 2221777491UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 2873750246UL, TRI_Int32MersenneTwister());
+  BOOST_CHECK_EQUAL((uint32_t) 4067173416UL, TRI_Int32MersenneTwister());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

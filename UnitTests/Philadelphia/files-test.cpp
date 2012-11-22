@@ -65,11 +65,12 @@ struct CFilesSetup {
     filename->appendText("/tmp-");
     filename->appendInteger(++counter);
 
-    int fd = TRI_OPEN(filename->c_str(), O_RDWR | O_CREAT);
+    FILE* fd = fopen(filename->c_str(), "wb");
 
     if (fd) {
-      ::write(fd, blob, strlen(blob));
-      ::close(fd);
+      ssize_t numWritten = fwrite(blob, strlen(blob), 1, fd);
+      (void) numWritten;
+      fclose(fd);
     }
     else {
       BOOST_CHECK_EQUAL(false, true);

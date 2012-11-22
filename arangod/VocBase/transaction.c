@@ -686,10 +686,7 @@ static int CloneTransactionList (TRI_transaction_list_t* const dest,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CopyWriteTransactions (TRI_transaction_t* const trx) {
-  TRI_transaction_context_t* context;
   size_t i, n;
-
-  context = trx->_context;
 
   n = trx->_collections._length;
 
@@ -724,10 +721,7 @@ static int CopyWriteTransactions (TRI_transaction_t* const trx) {
 
 static int RemoveCollectionsWriteTransaction (TRI_transaction_t* const trx, 
                                               const TRI_transaction_local_id_t id) {
-  TRI_transaction_context_t* context;
   size_t i, n;
-
-  context = trx->_context;
 
   n = trx->_collections._length;
 
@@ -764,10 +758,7 @@ static int RemoveCollectionsWriteTransaction (TRI_transaction_t* const trx,
 static int UpdateCollectionsWriteTransaction (TRI_transaction_t* const trx, 
                                               const TRI_transaction_local_id_t id,
                                               const TRI_transaction_status_e status) {
-  TRI_transaction_context_t* context;
   size_t i, n;
-
-  context = trx->_context;
 
   n = trx->_collections._length;
 
