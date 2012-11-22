@@ -243,7 +243,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a blueprint graph
 ///
-/// @RESTHEADER{DELETE /_api/blueprints/graph},delete graph}
+/// @RESTHEADER{DELETE /_api/blueprints/graph,delete graph}
 ///
 /// @REST{DELETE /_api/blueprints/graph/@FA{graph-identifier}}
 ///
