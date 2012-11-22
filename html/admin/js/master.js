@@ -494,7 +494,7 @@ var logTable = $('#logTableID').dataTable({
           $('#documentEditSourceView').hide();
           $.each(data, function(key, val) {
             if (isSystemAttribute(key)) {
-              documentEditTable.fnAddData(["", key, val, JSON.stringify(val)]);
+              documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
             }
             else {
               documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
@@ -979,11 +979,11 @@ var logTable = $('#logTableID').dataTable({
         parsedContent = JSON.parse(boxContent); 
         documentEditTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
-          documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
+          documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>', key, value2html(val), JSON.stringify(val)]);
         });
 
         for (var a in systemAttributes()) {
-          documentEditTable.fnAddData(['', a, globalCollectionID, JSON.stringify(copies[a]) ]);
+          documentEditTable.fnAddData(['', a, value2html(copies[a]), JSON.stringify(copies[a]) ]);
         }
   
         documentTableMakeEditable ('#documentEditTableID'); 
@@ -1134,7 +1134,7 @@ var logTable = $('#logTableID').dataTable({
             newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
           }
           else {
-              newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
+            newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
         documentTableMakeEditable ('#NewDocumentTableID'); 
@@ -2948,12 +2948,14 @@ function loadDocuments (collectionName, currentPage) {
 
 function systemAttributes () {
   return {
-    '_id'   : true, 
-    '_rev'  : true, 
-    '_key'  : true, 
-    '_from' : true, 
-    '_to'   : true, 
-    '$id'   : true 
+    '_id'            : true, 
+    '_rev'           : true, 
+    '_key'           : true, 
+    '_from'          : true, 
+    '_to'            : true, 
+    '_bidirectional' : true,
+    '_vertices'      : true,
+    '$id'            : true 
   };
 }
 
