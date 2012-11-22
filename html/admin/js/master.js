@@ -494,7 +494,7 @@ var logTable = $('#logTableID').dataTable({
           $('#documentEditSourceView').hide();
           $.each(data, function(key, val) {
             if (isSystemAttribute(key)) {
-              documentEditTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
+              documentEditTable.fnAddData(["", key, value2html(val, true), JSON.stringify(val)]);
             }
             else {
               documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
@@ -983,7 +983,7 @@ var logTable = $('#logTableID').dataTable({
         });
 
         for (var a in systemAttributes()) {
-          documentEditTable.fnAddData(['', a, value2html(copies[a]), JSON.stringify(copies[a]) ]);
+          documentEditTable.fnAddData(['', a, value2html(copies[a], true), JSON.stringify(copies[a]) ]);
         }
   
         documentTableMakeEditable ('#documentEditTableID'); 
@@ -1131,7 +1131,7 @@ var logTable = $('#logTableID').dataTable({
         newDocumentTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
           if (isSystemAttribute(key)) {
-            newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
+            newDocumentTable.fnAddData(["", key, value2html(val, true), JSON.stringify(val)]);
           }
           else {
             newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
@@ -1348,29 +1348,28 @@ var lastFormatQuestion = true;
   });
 
 ///////////////////////////////////////////////////////////////////////////////
-/// delete a document
+/// edit / delete a document
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#documentsView tr td button').live('click', function () {
     var aPos = documentsTable.fnGetPosition(this.parentElement);
     var aData = documentsTable.fnGetData(aPos[0]);
-    var row = $(this).closest("tr").get(0);
     var documentID = aData[1];
    
     if (this.id == "deleteDoc") { 
-    try { 
-      $.ajax({ 
-        type: 'DELETE', 
-        contentType: "application/json",
-        url: "/_api/document/" + documentID 
-      });
-    }
-
-    catch(e) {
-      alert(e); 
-    }
-
-    documentsTable.fnDeleteRow(documentsTable.fnGetPosition(row));
+      try { 
+        $.ajax({ 
+          type: 'DELETE', 
+          contentType: "application/json",
+          url: "/_api/document/" + documentID 
+        });
+      }
+      catch(e) {
+        alert(e); 
+      }
+      var row = $(this).closest("tr").get(0);
+      documentsTable.fnDeleteRow(documentsTable.fnGetPosition(row));
+      loadDocuments(globalCollectionName, collectionCurrentPage);
     }
 
     if (this.id == "editDoc") {
@@ -1828,23 +1827,26 @@ function getTypedValue (value) {
 /// checks type fo typed cell value 
 ///////////////////////////////////////////////////////////////////////////////
 
-function value2html (value) {
-  var checked = typeof(value); 
-  switch(checked) { 
-    case 'number': 
-    return ("<a class=\"sh_number\">" + value + "</a>");
-    case 'string': 
-    return ("<a class=\"sh_string\">"  + escaped(value) + "</a>");
-    case 'boolean': 
-    return ("<a class=\"sh_keyword\">" + value + "</a>");
-    case 'object':
-    if (value instanceof Array) {
-      return ("<a class=\"sh_array\">" + escaped(JSON.stringify(value)) + "</a>");
+function value2html (value, isReadOnly) {
+  var typify = function (value) {
+    var checked = typeof(value); 
+    switch(checked) { 
+      case 'number': 
+        return ("<a class=\"sh_number\">" + value + "</a>");
+      case 'string': 
+        return ("<a class=\"sh_string\">"  + escaped(value) + "</a>");
+      case 'boolean': 
+        return ("<a class=\"sh_keyword\">" + value + "</a>");
+      case 'object':
+        if (value instanceof Array) {
+          return ("<a class=\"sh_array\">" + escaped(JSON.stringify(value)) + "</a>");
+        }
+        else {
+          return ("<a class=\"sh_object\">"+ escaped(JSON.stringify(value)) + "</a>");
+        }
     }
-    else {
-      return ("<a class=\"sh_object\">"+ escaped(JSON.stringify(value)) + "</a>");
-    }
-  }
+  };
+  return (isReadOnly ? "(read-only) " : "") + typify(value);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2938,7 +2940,7 @@ function loadDocuments (collectionName, currentPage) {
         $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._key, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
       });
       $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-      $('#documents_status').text(String(documentCount) + " documents, showing page " + currentPage + " of " + totalPages); 
+      $('#documents_status').text(String(documentCount) + " document(s), showing page " + currentPage + " of " + totalPages); 
     },
     error: function(data) {
       
