@@ -1523,11 +1523,12 @@ var lastFormatQuestion = true;
 
   $('#saveNewCollection').live('click', function () {
       var wfscheck = $('input:radio[name=waitForSync]:checked').val();
-      var systemcheck = $('input:radio[name=isSystem]:checked').val();
+      var type = $('input:radio[name=type]:checked').val(); // collection type
       var collName = $('#createCollName').val(); 
       var collSize = $('#createCollSize').val();
       var journalSizeString;
- 
+      var isSystem = (collName.substr(0, 1) === '_');
+
       if (collSize == '') { 
         journalSizeString = ''; 
       }
@@ -1543,7 +1544,7 @@ var lastFormatQuestion = true;
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+ journalSizeString + '}',
+        data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfscheck) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + type + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -3049,21 +3050,29 @@ function highlightNavButton (buttonID) {
   $(buttonID).css('color', 'white'); 
 }
 
+function isSystemCollection(val) {
+  return val && val.name && val.name.substr(0, 1) === '_';
+}
+
 function collectionType (val) {
   if (! val || val.name == '') {
     return "-";
   }
 
-  if (val.name.substr(0, 1) === '_') {
-    return "system";
-  }
-
+  var type;
   if (val.type == 2) {
-    return "document";
+    type = "document";
   }
   else if (val.type == 3) {
-    return "edge";
+    type = "edge";
+  }
+  else {
+    type = "unknown";
   }
 
-  return "unknown";
+  if (isSystemCollection(val)) {
+    type += " (system)";
+  }
+
+  return type;
 }
