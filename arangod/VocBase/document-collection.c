@@ -1040,16 +1040,12 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
                              char* key) {
   TRI_df_marker_t* result;
   TRI_primary_collection_t* primary;
-  TRI_document_collection_t* document;
   size_t keySize;
   char* keyBody;
   TRI_voc_size_t keyBodySize; 
   int res;
   char keyBuffer[TRI_COLLECTION_KEY_MAX_LENGTH + 1]; 
 
-  primary = context->_collection;
-  document = (TRI_document_collection_t*) primary;
-  
   if (type != TRI_DOC_MARKER_KEY_DOCUMENT && 
       type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
@@ -1059,6 +1055,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
   }
   
   // type is valid
+  primary = context->_collection;
   
   if (type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     // create a document
@@ -2451,7 +2448,6 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   TRI_doc_mptr_t const* mptr;
   TRI_primary_collection_t* primary;
   TRI_doc_operation_context_t context;
-  size_t n;
   size_t inserted;
   void** end;
   void** ptr;
@@ -2462,7 +2458,6 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
   TRI_InitContextPrimaryCollection(&context, primary, TRI_DOC_UPDATE_LAST_WRITE, false);
 
   // update index
-  n = primary->_primaryIndex._nrUsed;
   ptr = primary->_primaryIndex._table;
   end = ptr + primary->_primaryIndex._nrAlloc;
 
@@ -2486,7 +2481,7 @@ static int FillIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
       ++inserted;
 
       if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) primary->base._info._cid);
+        LOG_DEBUG("indexed %lu documents of collection %lu", (unsigned long) inserted, (unsigned long) primary->base._info._cid);
       }
     }
   }
@@ -2732,6 +2727,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   if (idx == NULL) {
     LOG_ERROR("cannot create bitarray index %lu", (unsigned long) iid);
     if (errorStr != NULL) {
+      // TODO: this is insecure if errorStr contains % characters!
       LOG_TRACE(errorStr);
       TRI_Free(TRI_CORE_MEM_ZONE, errorStr);  
     }  
@@ -3295,14 +3291,14 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   if (location != NULL) {
     idx = TRI_CreateGeo1Index(primary, location, loc, geoJson, constraint, ignoreNull);
 
-    LOG_TRACE("created geo-index for location '%s': %d",
+    LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
     idx = TRI_CreateGeo2Index(primary, latitude, lat, longitude, lon, constraint, ignoreNull);
 
-    LOG_TRACE("created geo-index for location '%s': %d, %d",
+    LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
               (unsigned long) lat,
               (unsigned long) lon);

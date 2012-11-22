@@ -2612,6 +2612,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
   }
   doc_deletion_marker_t_deprecated;
 
+  ssize_t writeResult;
 
   if (argv.Length() != 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: upgrade()")));
@@ -2663,7 +2664,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
     int64_t fileSize = TRI_SizeFile(df->_filename);
     int64_t writtenSize = 0;
     
-    LOG_INFO("convert file '%s' (size = %d)", df->_filename, fileSize);
+    LOG_INFO("convert file '%s' (size = %lld)", df->_filename, (long long) fileSize);
   
     fd = TRI_OPEN(df->_filename, O_RDONLY);
     if (fd < 0) {
@@ -2780,9 +2781,12 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._size = newMarkerSize + keyBodySize + bodySize;
             TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
-            write(fdout, &newMarker, sizeof(newMarker));
-            write(fdout, keyBody, keyBodySize);
-            write(fdout, body, bodySizePadded);
+            writeResult = write(fdout, &newMarker, sizeof(newMarker));
+            (void) writeResult;
+            writeResult = write(fdout, keyBody, keyBodySize);
+            (void) writeResult;
+            writeResult = write(fdout, body, bodySizePadded);
+            (void) writeResult;
 
             //LOG_INFO("found doc marker, type: '%d', did: '%d', rid: '%d', size: '%d', crc: '%d'", marker._type, oldMarker->_did, oldMarker->_rid,newMarker.base._size,newMarker.base._crc);
 
@@ -2847,9 +2851,12 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             TRI_FillCrcKeyMarkerDatafile(&newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
-            write(fdout, &newMarker, newMarkerSize);
-            write(fdout, keyBody, keyBodySize);
-            write(fdout, body, bodySizePadded);
+            writeResult = write(fdout, &newMarker, newMarkerSize);
+            (void) writeResult;
+            writeResult = write(fdout, keyBody, keyBodySize);
+            (void) writeResult;
+            writeResult = write(fdout, body, bodySizePadded);
+            (void) writeResult;
 
             //LOG_INFO("found edge marker, type: '%d', did: '%d', rid: '%d', size: '%d', crc: '%d'", marker._type, oldMarker->base._did, oldMarker->base._rid,newMarker.base.base._size,newMarker.base.base._crc);
 
@@ -2887,8 +2894,10 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
 
-            write(fdout, &newMarker, newMarkerSize);
-            write(fdout, (char*) keyBody, keyBodySize);
+            writeResult = write(fdout, &newMarker, newMarkerSize);
+            (void) writeResult;
+            writeResult = write(fdout, (char*) keyBody, keyBodySize);
+            (void) writeResult;
 
             //LOG_INFO("found deletion marker, type: '%d', did: '%d', rid: '%d'", marker._type, oldMarker->_did, oldMarker->_rid);
 
@@ -2900,8 +2909,8 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
           default: {
             // copy other types without modification
-            
-            write(fdout, &payload, sizeof(payload));
+            writeResult = write(fdout, &payload, sizeof(payload));
+            (void) writeResult;
             writtenSize += sizeof(payload);
             //LOG_INFO("found marker, type: '%d'", marker._type);
 
@@ -2933,12 +2942,14 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       memset(b, 0, max); 
       
       while (writtenSize + max < fileSize) {
-        write(fdout, b, max);
+        writeResult = write(fdout, b, max);
+        (void) writeResult;
         writtenSize += max;
       }
       
       if (writtenSize < fileSize) {
-        write(fdout, b, fileSize - writtenSize);
+        writeResult = write(fdout, b, fileSize - writtenSize);
+        (void) writeResult;
       }
     }
 
