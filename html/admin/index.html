@@ -131,13 +131,13 @@
           <td class="longTD">If true then the data is synchronised to disk before returning from a create or update of an document.
           </td>
           </tr>
-          <tr><td>isSystem:</td><td>
-            <form action="#" id="isSystemForm">
-              <input type="radio" name="isSystem" value=true>yes</input>
-              <input type="radio" name="isSystem" value=false checked>no</input>
+          <tr><td>type:</td><td>
+            <form action="#" id="typeForm">
+              <input type="radio" name="type" value="2" checked>document</input>
+              <input type="radio" name="type" value="3">edge</input>
             </form>
           </td> 
-          <td class="longTD">If true, create a system collection. In this case collection-name should start with an underscore.
+          <td class="longTD">The type of the collection to create.
           </td>
         </table>
 
