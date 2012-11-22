@@ -3,6 +3,8 @@ v1.1.beta3 (XXXX-XX-XX)
 
 * fixed issue #289: tab-completion does not insert any spaces
 
+* fixed issue #282: fix escaping in web interface
+
 * made AQL function NOT_NULL take any number of arguments. Will now return its
   first argument that is not null, or null if all arguments are null. This is downwards
   compatible.
