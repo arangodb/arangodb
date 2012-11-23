@@ -346,7 +346,7 @@ namespace triagens {
 /// @CMDOPT{-h}
 ///
 /// Prints a list of the most common options available and then
-/// exits. In order to see all options use @CODE{\-\-help-all}.
+/// exits. In order to see all options use @LIT{\-\-help-all}.
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::ProgramOptions _options;
@@ -428,16 +428,16 @@ namespace triagens {
 /// Specifies the name of the configuration file to use.
 ///
 /// If this command is not passed to the server, then by default, the server
-/// will attempt to first locate a file named @CODE{~/SERVER/SERVER.conf} in the
+/// will attempt to first locate a file named @LIT{~/SERVER/SERVER.conf} in the
 /// user's home directory, where @CA{SERVER} is the name of the corresponding
 /// server.
 ///
 /// If no such file is found, the server will proceed to look for a file
-/// @CODE{/etc/SERVER.conf} in the system configuration directory. The default
+/// @LIT{/etc/SERVER.conf} in the system configuration directory. The default
 /// installation specifies the system configuration directory as
 /// /etc. Therefore, in case that no configuration file is found in the user's
 /// home directory, the server will proceed to look for a file named
-/// @CODE{/etc/SERVER.conf}.
+/// @LIT{/etc/SERVER.conf}.
 ///
 /// Only command line options with a value should be set within the
 /// configuration file. Command line options which act as flags should be
@@ -473,7 +473,7 @@ namespace triagens {
 ///
 /// @verbinclude conf5
 ///
-/// when starting up the server. Note that, the word @CODE{none} is
+/// when starting up the server. Note that, the word @LIT{none} is
 /// case-insensitive.
 ////////////////////////////////////////////////////////////////////////////////
 

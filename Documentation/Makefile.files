@@ -9,8 +9,8 @@
 ################################################################################
 
 DOXYGEN = \
-	Doxygen/js/actions/system/api-blueprints.c \
 	Doxygen/js/actions/system/api-collection.c \
+	Doxygen/js/actions/system/api-blueprints.c \
 	Doxygen/js/actions/system/api-cursor.c \
 	Doxygen/js/actions/system/api-edges.c \
 	Doxygen/js/actions/system/api-explain.c \
@@ -37,7 +37,6 @@ WIKI = \
         Aql \
         AqlExamples \
 	CommandLine \
-	Communication \
 	Compiling \
 	Communication \
 	DbaManual \
@@ -81,6 +80,7 @@ WIKI = \
 	JSModules \
 	Key-Value \
 	NamingConventions \
+	NewFeatures11 \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -155,8 +155,9 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/images
+	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/website
 
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 

@@ -95,7 +95,7 @@
 /// defines a document and is managed by ArangoDB. All documents are
 /// found under the URI:
 ///
-/// @LIT{http://@FA{server}:@FA{port}/_api/document/@FA{document-handle}}
+/// @LIT{http://server:port/_api/document/document-handle}
 ///
 /// For example: Assume that the document handle, which is stored in
 /// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
