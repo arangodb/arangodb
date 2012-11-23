@@ -23,8 +23,10 @@ The HTML and PDF versions of the manual can be found
 Please contact @EXTREF_S{http://www.arangodb.org/connect,us} if you
 have any questions.
 
-New Features in ArangoDB 1.1 {#NewFeatures11}
-=============================================
+New Features in ArangoDB 1.1
+============================
+
+- @ref NewFeatures11
 
 Upgrading to ArangoDB 1.1 {#ArangoDBUpgrading}
 ==============================================
@@ -65,7 +67,7 @@ ArangoDB's Developer Manuals {#ArangoDBAPIManual}
 API aka Drivers {#HomeApi}
 ==========================
 
-Though arangoDB is yet a young project, a couple of people started to
+Though ArangoDB is yet a young project, a couple of people started to
 add APIs for different programming languages/frameworks. See
 @EXTREF{http://www.arangodb.org/api,http://www.arangodb.org/api}.
 

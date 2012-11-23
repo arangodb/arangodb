@@ -154,7 +154,7 @@ supplied. All other attributes will be removed. Replacing will also create a new
 
     arangosh> db.users.replace(user, { "active" : false });
 
-For more information, please check @ref JS_UpdateVocbaseCol and @ref JS_ReplaeVocbaseCol. 
+For more information, please check @ref JS_UpdateVocbaseCol and @ref JS_ReplaceVocbaseCol. 
 
 
 ## AQL
@@ -240,7 +240,7 @@ Blueprints is a property graph model interface with provided implementations.
 Databases that implement the Blueprints interfaces automatically support 
 Blueprints-enabled applications (@EXTREF{http://tinkerpop.com/,http://tinkerpop.com}).
 
-For more information please refer to @ref HttpBluePrints.
+For more information please refer to @ref HttpBlueprints.
 
 
 ## Server statistics
