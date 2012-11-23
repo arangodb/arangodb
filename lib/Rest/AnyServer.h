@@ -171,8 +171,8 @@ namespace triagens {
 /// @CMDOPT{\-\-pid-file @CA{filename}}
 ///
 /// The name of the process ID file to use when running the server as a
-/// daemon. This parameter must be specified if either the flag @CODE{daemon} or
-/// @CODE{supervisor} is set.
+/// daemon. This parameter must be specified if either the flag @LIT{daemon} or
+/// @LIT{supervisor} is set.
 ////////////////////////////////////////////////////////////////////////////////
 
         string _pidFile;

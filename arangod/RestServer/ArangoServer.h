@@ -270,7 +270,7 @@ namespace triagens {
 /// @CMDOPT{\-\-database.directory @CA{directory}}
 ///
 /// The directory containing the collections and data-files. Defaults
-/// to @CODE{/var/lib/arango}.
+/// to @LIT{/var/lib/arango}.
 ///
 /// @CMDOPT{@CA{directory}}
 ///

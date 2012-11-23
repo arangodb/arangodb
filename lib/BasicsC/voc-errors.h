@@ -11,314 +11,314 @@ extern "C" {
 ///
 /// The following errors might be raised when running ArangoDB:
 ///
-/// - 0: @CODE{no error}
+/// - 0: @LIT{no error}
 ///   No error has occurred.
-/// - 1: @CODE{failed}
+/// - 1: @LIT{failed}
 ///   Will be raised when a general error occurred.
-/// - 2: @CODE{system error}
+/// - 2: @LIT{system error}
 ///   Will be raised when operating system error occurred.
-/// - 3: @CODE{out of memory}
+/// - 3: @LIT{out of memory}
 ///   Will be raised when there is a memory shortage.
-/// - 4: @CODE{internal error}
+/// - 4: @LIT{internal error}
 ///   Will be raised when an internal error occurred.
-/// - 5: @CODE{illegal number}
+/// - 5: @LIT{illegal number}
 ///   Will be raised when an illegal representation of a number was given.
-/// - 6: @CODE{numeric overflow}
+/// - 6: @LIT{numeric overflow}
 ///   Will be raised when a numeric overflow occurred.
-/// - 7: @CODE{illegal option}
+/// - 7: @LIT{illegal option}
 ///   Will be raised when an unknown option was supplied by the user.
-/// - 8: @CODE{dead process identifier}
+/// - 8: @LIT{dead process identifier}
 ///   Will be raised when a PID without a living process was found.
-/// - 9: @CODE{not implemented}
+/// - 9: @LIT{not implemented}
 ///   Will be raised when hitting an unimplemented feature.
-/// - 10: @CODE{bad parameter}
+/// - 10: @LIT{bad parameter}
 ///   Will be raised when the parameter does not fulfill the requirements.
-/// - 11: @CODE{forbidden}
+/// - 11: @LIT{forbidden}
 ///   Will be raised when you are missing permission for the operation.
-/// - 12: @CODE{out of memory in mmap}
+/// - 12: @LIT{out of memory in mmap}
 ///   Will be raised when there is a memory shortage.
-/// - 13: @CODE{csv is corrupt}
+/// - 13: @LIT{csv is corrupt}
 ///   Will be raised when encountering a corrupt csv line.
-/// - 400: @CODE{bad parameter}
+/// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
-/// - 403: @CODE{forbidden}
+/// - 403: @LIT{forbidden}
 ///   Will be raised when the operation is forbidden.
-/// - 404: @CODE{not found}
+/// - 404: @LIT{not found}
 ///   Will be raised when an URI is unknown.
-/// - 405: @CODE{method not supported}
+/// - 405: @LIT{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
-/// - 500: @CODE{internal server error}
+/// - 500: @LIT{internal server error}
 ///   Will be raised when an internal server is encountered.
-/// - 600: @CODE{invalid JSON object}
+/// - 600: @LIT{invalid JSON object}
 ///   Will be raised when a string representation of a JSON object is corrupt.
-/// - 601: @CODE{superfluous URL suffices}
+/// - 601: @LIT{superfluous URL suffices}
 ///   Will be raised when the URL contains superfluous suffices.
-/// - 1000: @CODE{illegal state}
+/// - 1000: @LIT{illegal state}
 ///   Internal error that will be raised when the datafile is not in the
 ///   required state.
-/// - 1001: @CODE{illegal shaper}
+/// - 1001: @LIT{illegal shaper}
 ///   Internal error that will be raised when the shaper encountered a porblem.
-/// - 1002: @CODE{datafile sealed}
+/// - 1002: @LIT{datafile sealed}
 ///   Internal error that will be raised when trying to write to a datafile.
-/// - 1003: @CODE{unknown type}
+/// - 1003: @LIT{unknown type}
 ///   Internal error that will be raised when an unknown collection type is
 ///   encountered.
-/// - 1004: @CODE{ready only}
+/// - 1004: @LIT{ready only}
 ///   Internal error that will be raised when trying to write to a read-only
 ///   datafile or collection.
-/// - 1005: @CODE{duplicate identifier}
+/// - 1005: @LIT{duplicate identifier}
 ///   Internal error that will be raised when a identifier duplicate is
 ///   detected.
-/// - 1006: @CODE{datafile unreadable}
+/// - 1006: @LIT{datafile unreadable}
 ///   Internal error that will be raised when the datafile is unreadable.
-/// - 1100: @CODE{corrupted datafile}
+/// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
-/// - 1101: @CODE{illegal parameter file}
+/// - 1101: @LIT{illegal parameter file}
 ///   Will be raised if a parameter file is corrupted.
-/// - 1102: @CODE{corrupted collection}
+/// - 1102: @LIT{corrupted collection}
 ///   Will be raised when a collection contains one or more corrupted datafiles.
-/// - 1103: @CODE{mmap failed}
+/// - 1103: @LIT{mmap failed}
 ///   Will be raised when the system call mmap failed.
-/// - 1104: @CODE{filesystem full}
+/// - 1104: @LIT{filesystem full}
 ///   Will be raised when the filesystem is full.
-/// - 1105: @CODE{no journal}
+/// - 1105: @LIT{no journal}
 ///   Will be raised when a journal cannot be created.
-/// - 1106: @CODE{cannot create/rename datafile because it already exists}
+/// - 1106: @LIT{cannot create/rename datafile because it already exists}
 ///   Will be raised when the datafile cannot be created or renamed because a
 ///   file of the same name already exists.
-/// - 1107: @CODE{database is locked}
+/// - 1107: @LIT{database is locked}
 ///   Will be raised when the database is locked by a different process.
-/// - 1108: @CODE{cannot create/rename collection because directory already exists}
+/// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
-/// - 1200: @CODE{conflict}
+/// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
-/// - 1201: @CODE{wrong path for database}
+/// - 1201: @LIT{wrong path for database}
 ///   Will be raised when a non-existing directory was specified as path for
 ///   the database.
-/// - 1202: @CODE{document not found}
+/// - 1202: @LIT{document not found}
 ///   Will be raised when a document with a given identifier or handle is
 ///   unknown.
-/// - 1203: @CODE{collection not found}
+/// - 1203: @LIT{collection not found}
 ///   Will be raised when a collection with a given identifier or name is
 ///   unknown.
-/// - 1204: @CODE{parameter 'collection' not found}
+/// - 1204: @LIT{parameter 'collection' not found}
 ///   Will be raised when the collection parameter is missing.
-/// - 1205: @CODE{illegal document handle}
+/// - 1205: @LIT{illegal document handle}
 ///   Will be raised when a document handle is corrupt.
-/// - 1206: @CODE{maixmal size of journal too small}
+/// - 1206: @LIT{maixmal size of journal too small}
 ///   Will be raised when the maximal size of the journal is too small.
-/// - 1207: @CODE{duplicate name}
+/// - 1207: @LIT{duplicate name}
 ///   Will be raised when a name duplicate is detected.
-/// - 1208: @CODE{illegal name}
+/// - 1208: @LIT{illegal name}
 ///   Will be raised when an illegal name is detected.
-/// - 1209: @CODE{no suitable index known}
+/// - 1209: @LIT{no suitable index known}
 ///   Will be raised when no suitable index for the query is known.
-/// - 1210: @CODE{unique constraint violated}
+/// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
-/// - 1211: @CODE{geo index violated}
+/// - 1211: @LIT{geo index violated}
 ///   Will be raised when a illegale coordinate is used.
-/// - 1212: @CODE{index not found}
+/// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
-/// - 1213: @CODE{cross collection request not allowed}
+/// - 1213: @LIT{cross collection request not allowed}
 ///   Will be raised when a cross-collection is requested.
-/// - 1214: @CODE{illegal index handle}
+/// - 1214: @LIT{illegal index handle}
 ///   Will be raised when a index handle is corrupt.
-/// - 1215: @CODE{cap constraint already defined}
+/// - 1215: @LIT{cap constraint already defined}
 ///   Will be raised when a cap constraint was already defined.
-/// - 1216: @CODE{document too large}
+/// - 1216: @LIT{document too large}
 ///   Will be raised when the document cannot fit into any datafile because of
 ///   it is too large.
-/// - 1217: @CODE{collection must be unloaded}
+/// - 1217: @LIT{collection must be unloaded}
 ///   Will be raised when a collection should be unloaded, but has a different
 ///   status.
-/// - 1218: @CODE{collection type invalid}
+/// - 1218: @LIT{collection type invalid}
 ///   Will be raised when an invalid collection type is used in a request.
-/// - 1219: @CODE{illegal document key}
+/// - 1219: @LIT{illegal document key}
 ///   Will be raised when a document key is corrupt.
-/// - 1220: @CODE{unexpected document key}
+/// - 1220: @LIT{unexpected document key}
 ///   Will be raised when a user-defined document key is supplied for
 ///   collections with auto key generation.
-/// - 1300: @CODE{datafile full}
+/// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
-/// - 1500: @CODE{query killed}
+/// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
-/// - 1501: @CODE{\%s}
+/// - 1501: @LIT{\%s}
 ///   Will be raised when query is parsed and is found to be syntactially
 ///   invalid.
-/// - 1502: @CODE{query is empty}
+/// - 1502: @LIT{query is empty}
 ///   Will be raised when an empty query is specified.
-/// - 1503: @CODE{runtime error '\%s'}
+/// - 1503: @LIT{runtime error '\%s'}
 ///   Will be raised when a runtime error is caused by the query.
-/// - 1504: @CODE{number out of range}
+/// - 1504: @LIT{number out of range}
 ///   Will be raised when a number is outside the expected range.
-/// - 1510: @CODE{variable name '\%s' has an invalid format}
+/// - 1510: @LIT{variable name '\%s' has an invalid format}
 ///   Will be raised when an invalid variable name is used.
-/// - 1511: @CODE{variable '\%s' is assigned multiple times}
+/// - 1511: @LIT{variable '\%s' is assigned multiple times}
 ///   Will be raised when a variable gets re-assigned in a query.
-/// - 1512: @CODE{unknown variable '\%s'}
+/// - 1512: @LIT{unknown variable '\%s'}
 ///   Will be raised when an unknown variable is used or the variable is
 ///   undefined the context it is used.
-/// - 1520: @CODE{unable to open collection '\%s'}
+/// - 1520: @LIT{unable to open collection '\%s'}
 ///   Will be raised when one of the collections referenced in the query was
 ///   not found.
-/// - 1521: @CODE{unable to read-lock collection \%s}
+/// - 1521: @LIT{unable to read-lock collection \%s}
 ///   Will be raised when a read lock on the collection cannot be acquired.
-/// - 1522: @CODE{too many collections}
+/// - 1522: @LIT{too many collections}
 ///   Will be raised when the number of collections in a query is beyond the
 ///   allowed value.
-/// - 1530: @CODE{document attribute '\%s' is assigned multiple times}
+/// - 1530: @LIT{document attribute '\%s' is assigned multiple times}
 ///   Will be raised when a document attribute is re-assigned.
-/// - 1540: @CODE{usage of unknown function '\%s'}
+/// - 1540: @LIT{usage of unknown function '\%s'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @CODE{invalid number of arguments for function '\%s'}
+/// - 1541: @LIT{invalid number of arguments for function '\%s'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
-/// - 1542: @CODE{invalid argument type used in call to function '\%s()'}
+/// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
 ///   Will be raised when the type of an argument used in a function call does
 ///   not match the expected argument type.
-/// - 1550: @CODE{invalid structure of bind parameters}
+/// - 1550: @LIT{invalid structure of bind parameters}
 ///   Will be raised when the structure of bind parameters passed has an
 ///   unexpected format.
-/// - 1551: @CODE{no value specified for declared bind parameter '\%s'}
+/// - 1551: @LIT{no value specified for declared bind parameter '\%s'}
 ///   Will be raised when a bind parameter was declared in the query but the
 ///   query is being executed with no value for that parameter.
-/// - 1552: @CODE{bind parameter '\%s' was not declared in the query}
+/// - 1552: @LIT{bind parameter '\%s' was not declared in the query}
 ///   Will be raised when a value gets specified for an undeclared bind
 ///   parameter.
-/// - 1553: @CODE{bind parameter '\%s' has an invalid value or type}
+/// - 1553: @LIT{bind parameter '\%s' has an invalid value or type}
 ///   Will be raised when a bind parameter has an invalid value or type.
-/// - 1560: @CODE{invalid logical value}
+/// - 1560: @LIT{invalid logical value}
 ///   Will be raised when a non-boolean value is used in a logical operation.
-/// - 1561: @CODE{invalid arithmetic value}
+/// - 1561: @LIT{invalid arithmetic value}
 ///   Will be raised when a non-numeric value is used in an arithmetic
 ///   operation.
-/// - 1562: @CODE{division by zero}
+/// - 1562: @LIT{division by zero}
 ///   Will be raised when there is an attempt to divide by zero.
-/// - 1563: @CODE{list expected}
+/// - 1563: @LIT{list expected}
 ///   Will be raised when a non-list operand is used for an operation that
 ///   expects a list argument operand.
-/// - 1569: @CODE{FAIL(\%s) called}
+/// - 1569: @LIT{FAIL(\%s) called}
 ///   Will be raised when the function FAIL() is called from inside a query.
-/// - 1570: @CODE{no suitable geo index found for geo restriction on '\%s'}
+/// - 1570: @LIT{no suitable geo index found for geo restriction on '\%s'}
 ///   Will be raised when a geo restriction was specified but no suitable geo
 ///   index is found to resolve it.
-/// - 1600: @CODE{cursor not found}
+/// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
-/// - 1650: @CODE{transaction definition is incomplete}
+/// - 1650: @LIT{transaction definition is incomplete}
 ///   Will be raised when the transaction definition is incomplete (e.g. lacks
 ///   collections to use).
-/// - 1651: @CODE{invalid transaction state}
+/// - 1651: @LIT{invalid transaction state}
 ///   Will be raised when an operation is requested on a transaction that has
 ///   an incompatible state.
-/// - 1652: @CODE{nested transactions detected}
+/// - 1652: @LIT{nested transactions detected}
 ///   Will be raised when transactions are nested.
-/// - 1653: @CODE{internal transaction error}
+/// - 1653: @LIT{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
-/// - 1654: @CODE{unregistered collection used in transaction}
+/// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
-/// - 1800: @CODE{invalid key declaration}
+/// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
-/// - 1801: @CODE{key already exists}
+/// - 1801: @LIT{key already exists}
 ///   Will be raised when a key is to be created that already exists
-/// - 1802: @CODE{key not found}
+/// - 1802: @LIT{key not found}
 ///   Will be raised when the specified key is not found
-/// - 1803: @CODE{key is not unique}
+/// - 1803: @LIT{key is not unique}
 ///   Will be raised when the specified key is not unique
-/// - 1804: @CODE{key value not changed}
+/// - 1804: @LIT{key value not changed}
 ///   Will be raised when updating the value for a key does not work
-/// - 1805: @CODE{key value not removed}
+/// - 1805: @LIT{key value not removed}
 ///   Will be raised when deleting a key/value pair does not work
-/// - 1806: @CODE{missing value}
+/// - 1806: @LIT{missing value}
 ///   Will be raised when the value is missing
-/// - 1901: @CODE{invalid graph}
+/// - 1901: @LIT{invalid graph}
 ///   Will be raised when an invalid name is passed to the server
-/// - 1902: @CODE{could not create graph}
+/// - 1902: @LIT{could not create graph}
 ///   Will be raised when an invalid name, vertices or edges is passed to the
 ///   server
-/// - 1903: @CODE{invalid vertex}
+/// - 1903: @LIT{invalid vertex}
 ///   Will be raised when an invalid vertex id is passed to the server
-/// - 1904: @CODE{could not create vertex}
+/// - 1904: @LIT{could not create vertex}
 ///   Will be raised when the vertex could not be created
-/// - 1905: @CODE{could not change vertex}
+/// - 1905: @LIT{could not change vertex}
 ///   Will be raised when the vertex could not be changed
-/// - 1906: @CODE{invalid edge}
+/// - 1906: @LIT{invalid edge}
 ///   Will be raised when an invalid edge id is passed to the server
-/// - 1907: @CODE{could not create edge}
+/// - 1907: @LIT{could not create edge}
 ///   Will be raised when the edge could not be created
-/// - 1908: @CODE{could not change edge}
+/// - 1908: @LIT{could not change edge}
 ///   Will be raised when the edge could not be changed
-/// - 2000: @CODE{unknown client error}
+/// - 2000: @LIT{unknown client error}
 ///   This error should not happen.
-/// - 2001: @CODE{could not connect to server}
+/// - 2001: @LIT{could not connect to server}
 ///   Will be raised when the client could not connect to the server.
-/// - 2002: @CODE{could not write to server}
+/// - 2002: @LIT{could not write to server}
 ///   Will be raised when the client could not write data.
-/// - 2003: @CODE{could not read from server}
+/// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
-/// - 3100: @CODE{priority queue insert failure}
+/// - 3100: @LIT{priority queue insert failure}
 ///   Will be raised when an attempt to insert a document into a priority queue
 ///   index fails for some reason.
-/// - 3110: @CODE{priority queue remove failure}
+/// - 3110: @LIT{priority queue remove failure}
 ///   Will be raised when an attempt to remove a document from a priority queue
 ///   index fails for some reason.
-/// - 3111: @CODE{priority queue remove failure - item missing in index}
+/// - 3111: @LIT{priority queue remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a priority queue
 ///   index fails when document can not be located within the index.
-/// - 3312: @CODE{(non-unique) hash index insert failure - document duplicated in index}
+/// - 3312: @LIT{(non-unique) hash index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   hash index fails due to the fact that document is duplicated within that
 ///   index.
-/// - 3313: @CODE{(non-unique) skiplist index insert failure - document duplicated in index}
+/// - 3313: @LIT{(non-unique) skiplist index insert failure - document duplicated in index}
 ///   Will be raised when an attempt to insert a document into a non-unique
 ///   skiplist index fails due to the fact that document is duplicated within
 ///   that index.
-/// - 3200: @CODE{hash index insertion warning - attribute missing in document}
+/// - 3200: @LIT{hash index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a hash index is
 ///   caused by the document not having one or more attributes which are
 ///   required by the hash index.
-/// - 3202: @CODE{hash index update warning - attribute missing in revised document}
+/// - 3202: @LIT{hash index update warning - attribute missing in revised document}
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
 ///   the hash index.
-/// - 3211: @CODE{hash index remove failure - item missing in index}
+/// - 3211: @LIT{hash index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a hash index
 ///   fails when document can not be located within that index.
-/// - 3300: @CODE{skiplist index insertion warning - attribute missing in document}
+/// - 3300: @LIT{skiplist index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a skiplist index
 ///   is caused by in the document not having one or more attributes which are
 ///   required by the skiplist index.
-/// - 3302: @CODE{skiplist index update warning - attribute missing in revised document}
+/// - 3302: @LIT{skiplist index update warning - attribute missing in revised document}
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
 ///   the skiplist index.
-/// - 3311: @CODE{skiplist index remove failure - item missing in index}
+/// - 3311: @LIT{skiplist index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a skiplist index
 ///   fails when document can not be located within that index.
-/// - 3400: @CODE{bitarray index insertion warning - attribute missing in document}
+/// - 3400: @LIT{bitarray index insertion warning - attribute missing in document}
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   is caused by in the document not having one or more attributes which are
 ///   required by the bitarray index.
-/// - 3402: @CODE{bitarray index update warning - attribute missing in revised document}
+/// - 3402: @LIT{bitarray index update warning - attribute missing in revised document}
 ///   Will be raised when an attempt to update a document results in the
 ///   revised document not having one or more attributes which are required by
 ///   the bitarray index.
-/// - 3411: @CODE{bitarray index remove failure - item missing in index}
+/// - 3411: @LIT{bitarray index remove failure - item missing in index}
 ///   Will be raised when an attempt to remove a document from a bitarray index
 ///   fails when document can not be located within that index.
-/// - 3413: @CODE{bitarray index insert failure - document attribute value unsupported in index}
+/// - 3413: @LIT{bitarray index insert failure - document attribute value unsupported in index}
 ///   Will be raised when an attempt to insert a document into a bitarray index
 ///   fails due to the fact that one or more values for an index attribute is
 ///   not supported within that index.
-/// - 3415: @CODE{bitarray index creation failure - one or more index attributes are duplicated.}
+/// - 3415: @LIT{bitarray index creation failure - one or more index attributes are duplicated.}
 ///   Will be raised when an attempt to create an index with two or more index
 ///   attributes repeated.
-/// - 3417: @CODE{bitarray index creation failure - one or more index attribute values are duplicated.}
+/// - 3417: @LIT{bitarray index creation failure - one or more index attribute values are duplicated.}
 ///   Will be raised when an attempt to create an index with two or more index
 ///   attribute values repeated.
 ////////////////////////////////////////////////////////////////////////////////

@@ -343,10 +343,10 @@ typedef uint32_t TRI_col_type_t;
 ///
 /// There are the following locks:
 ///
-/// @CODE{TRI_vocbase_t._lock}: This lock protects the access to _collections,
+/// @LIT{TRI_vocbase_t._lock}: This lock protects the access to _collections,
 /// _collectionsByName, and _collectionsById.
 ///
-/// @CODE{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
+/// @LIT{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
 /// unloaded) of the collection. If you want to use a collection, you must call
 /// @ref TRI_UseCollectionVocBase, this will either load or manifest the
 /// collection and a read-lock is held when the functions returns.  You must
