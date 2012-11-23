@@ -56,26 +56,14 @@ In case you just want to experiment with ArangoDB you can use the
 @EXTREF_S{http://www.arangodb.org/try,on-line} demo without installing
 ArangoDB locally.
 
-The ArangoDB database package comes with the following programs:
-
-- `arangod`: The ArangoDB database daemon. This server program is
-  intended to run as daemon process and to server the various clients
-  connection to the server via TCP / HTTP. See @ref
-  UserManualServerStartStop.
-- `arango-update`: Used to initialize or update the database.
-- `arangosh`: The ArangoDB shell. A client that implements a
-  read-eval-print loop (REPL) and provides functions to access and
-  administrate the ArangoDB server. See @ref UserManualShellStartStop.
-- `arangoimp`: A bulk importer for the ArangoDB server.
-  See @ref ImpManual
-
 For Linux:
 
 - visit the official ArangoDB download page at 
   @EXTREF{http://www.arangodb.org/download,http://www.arangodb.org/download}
   and download the correct package for you Linux distribution
 - install the package using you favorite package manager
-- start up the database server, normally this is down by
+- initialise (or upgrade) the database `/usr/local/bin/arango-upgrade`
+- start up the database server, normally this is done by
   executing `/etc/init.d/arangod start`. The exact command
   depends on your Linux distribution
 
@@ -93,6 +81,23 @@ the ArangoDB database server.
 
 If there is no such process, check the log file
 `/var/log/arangodb/arangod.log` for errors.
+
+ArangoDB programs {#FirstStepsArangoDBBinaries}
+===============================================
+
+The ArangoDB database package comes with the following programs:
+
+- `arangod`: The ArangoDB database daemon. This server program is
+  intended to run as daemon process and to server the various clients
+  connection to the server via TCP / HTTP. See @ref
+  UserManualServerStartStop.
+- `arango-update`: Used to initialize or update the database.
+- `arangosh`: The ArangoDB shell. A client that implements a
+  read-eval-print loop (REPL) and provides functions to access and
+  administrate the ArangoDB server. See @ref UserManualShellStartStop.
+- `arangoimp`: A bulk importer for the ArangoDB server.
+  See @ref ImpManual
+
 
 Exploring Collections and Documents {#FirstStepsArangoDBFirstSteps}
 ===================================================================

@@ -24,8 +24,7 @@ batch requests may still be beneficial in many cases, but it should be obvious
 that they should be used only when they replace a considerable amount of
 individual requests.
 
-For more information see @ref HttpBatch.
-
+For more information see @ref HttpBatch and @EXTREF{http://www.arangodb.org/2012/10/04/gain-factor-of-5-using-batch-updates,this blog article}.
 
 ## More fine grained control of sync behavior
 
@@ -62,10 +61,10 @@ synchronisation behavior will be applied. Setting the parameter to `true`
 will force synchronisation.
 
 The following Javascript methods support forcing synchronisation, too:
-* save()
-* update()
-* relace()
-* delete()
+* `save()`
+* `update()`
+* `relace()`
+* `delete()`
 
 Force synchronisation of a save operation:
 
@@ -154,7 +153,7 @@ supplied. All other attributes will be removed. Replacing will also create a new
 
     arangosh> db.users.replace(user, { "active" : false });
 
-For more information, please check @ref JS_UpdateVocbaseCol and @ref JS_ReplaeVocbaseCol. 
+For more information, please check @ref JS_UpdateVocbaseCol and @ref JS_ReplaceVocbaseCol. 
 
 
 ## AQL
@@ -240,7 +239,7 @@ Blueprints is a property graph model interface with provided implementations.
 Databases that implement the Blueprints interfaces automatically support 
 Blueprints-enabled applications (@EXTREF{http://tinkerpop.com/,http://tinkerpop.com}).
 
-For more information please refer to @ref HttpBluePrints.
+For more information please refer to @ref HttpBlueprints.
 
 
 ## Server statistics
