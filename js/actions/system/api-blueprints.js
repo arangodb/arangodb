@@ -547,7 +547,7 @@
 ///
 /// @REST{POST /_api/blueprints/vertices?graph=@FA{graph-identifier}}
 ///
-/// Returns a a cursor.
+/// Returns a cursor.
 ///
 /// The call expects a JSON hash array as body to filter the edges:
 ///
@@ -727,13 +727,9 @@
 /// The call expects a JSON hash array as body with the edge properties:
 ///
 /// - @LIT{$id}: The identifier or name of the edge.
-///
 /// - @LIT{_from}: The identifier or name of the from vertex.
-///
 /// - @LIT{_to}: The identifier or name of the to vertex.
-///
 /// - @LIT{$label}: A label for the edge (optional).
-///
 /// - further optional attributes.
 ///
 /// Returns an object with an attribute @LIT{edge} containing the
@@ -944,7 +940,7 @@
 ///
 /// @REST{POST /_api/blueprints/edges?graph=@FA{graph-identifier}}
 /// 
-/// Returns a a cursor.
+/// Returns a cursor.
 /// 
 /// The call expects a JSON hash array as body to filter the edges:
 ///
