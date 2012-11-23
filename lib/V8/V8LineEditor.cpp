@@ -253,7 +253,25 @@ bool V8LineEditor::open (const bool autoComplete) {
   if (autoComplete) {
     // issue #289: do not append a space after completion
     rl_completion_append_character = '\0';
+
+    // enable this to turn on the visual bell - evil! 
+    // rl_variable_bind("prefer-visible-bell", "1");
     
+    // use this for single-line editing as in mongodb shell
+    // rl_variable_bind("horizontal-scroll-mode", "1");
+
+    // show matching parentheses
+    rl_set_paren_blink_timeout(1 * 1000 * 1000);
+    rl_variable_bind("blink-matching-paren", "1");
+
+    // show selection list when completion is ambiguous. not setting this
+    // variable will turn the selection list of at least on Ubuntu
+    rl_variable_bind("show-all-if-ambiguous", "1");
+    
+    // use readlines built-in page-wise completer
+    rl_variable_bind("page-completions", "1");
+
+
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
 
