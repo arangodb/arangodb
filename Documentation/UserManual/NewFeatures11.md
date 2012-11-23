@@ -1,7 +1,55 @@
 New Features in ArangoDB 1.1 {#NewFeatures11}
 =============================================
 
-## Batch requests
+- @ref NewFeatures11CollectionTypes
+- @ref NewFeatures11BatchRequests
+- @ref NewFeatures11PartialUpdates
+- @ref NewFeatures11BluePrintsAPI
+- @ref NewFeatures11AqlImprovements
+- @ref NewFeatures11DiskSynchronisation
+- @ref NewFeatures11ServerStatistics
+- @ref NewFeatures11Endpoints
+- @ref NewFeatures11RequestHandling
+- @ref NewFeatures11V8Options
+- @ref NewFeatures11Other
+
+
+# Features and Improvements {#NewFeatures11Introduction}
+
+The following list shows in detail which features have been added or improved in ArangoDB 1.1.
+Additionally, ArangoDB 1.1 contains a lot of bugfixes that are not listed separately.
+
+
+## Collection Types {#NewFeatures11CollectionTypes}
+
+In ArangoDB 1.1, collections are now explicitly typed:
+- regular documents go into _document_-only collections, 
+- and edges go into _edge_ collections. 
+
+In 1.0, collections were untyped, and edges and documents could be mixed in the same collection.
+Whether or not a collection was to be treated as an _edge_ or _document_ collection was
+decided at runtime by looking at the prefix used (e.g. `db.xxx` vs. `edges.xxx`).
+
+The explicit collection types used in ArangoDB allow users to query the collection type at
+runtime and make decisions based on the type:
+
+    arangosh> db.users.type();
+
+Extra Javascript functions have been introduced to create collections: 
+
+    arangosh> db._createDocumentCollection("users");
+    arangosh> db._createEdgeCollection("relationships");
+
+The "traditional" functions are still available:
+
+    arangosh> db._create("users");
+    arangosh> edges._create("relationships");
+
+The ArangoDB web interface also allows the explicit creation of _edge_
+collections.
+
+
+## Batch Requests {#NewFeatures11BatchRequests}
 
 ArangoDB 1.1 provides a new REST API for batch requests at `/_api/batch`.
 
@@ -26,7 +74,86 @@ individual requests.
 
 For more information see @ref HttpBatch and @EXTREF{http://www.arangodb.org/2012/10/04/gain-factor-of-5-using-batch-updates,this blog article}.
 
-## More fine grained control of sync behavior
+
+## Support for Partial Updates {#NewFeatures11PartialUpdates}
+  
+The REST API for documents now offers the HTTP PATCH method to partially update
+documents. A partial update allows specifying only the attributes the change instead
+of the full document. Internally, it will merge the supplied attributes into the
+existing document.
+
+Completely overwriting/replacing entire documents is still available via the HTTP PUT 
+method in ArangoDB 1.0.
+In _arangosh_, the partial update method is named _update_, and the previously existing
+_replace_ method still performs a replacement of the entire document as before.
+
+This call with replace just the `active` attribute of the document `user`. All other
+attributes will remain unmodified. The document revision number will of course be updated
+as updating creates a new revision:
+
+    arangosh> db.users.update(user, { "active" : false });
+    
+Contrary, the `replace` method will replace the entire existing document with the data
+supplied. All other attributes will be removed. Replacing will also create a new revision:
+
+    arangosh> db.users.replace(user, { "active" : false });
+
+For more information, please check @ref RestDocument.
+
+
+## Blueprints API {#NewFeatures11BluePrintsAPI}
+
+Blueprints is a property graph model interface with provided implementations. 
+Databases that implement the Blueprints interfaces automatically support 
+Blueprints-enabled applications (@EXTREF{http://tinkerpop.com/,http://tinkerpop.com}).
+
+For more information please refer to @ref HttpBlueprints.
+
+
+## AQL Improvements {#NewFeatures11AqlImprovements}
+
+The following functions have been added or extended in the ArangoDB Query Language
+(AQL) in ArangoDB 1.1:
+- `MERGE_RECURSIVE()`: new function that merges documents recursively. Especially, it will merge
+  sub-attributes, a functionality not provided by the previously existing `MERGE()` function.
+- `NOT_NULL()`: now works with any number of arguments and returns the first non-null argument.
+  If all arguments are `null`, the function will return `null`, too.
+- `FIRST_LIST()`: new function that returns the first argument that is a list, and `null`
+  if none of the arguments are lists.
+- `FIRST_DOCUMENT()`: new function that returns the first argument that is a document, and `null`
+  if none of the arguments are documents.
+- `TO_LIST()`: converts the argument into a list.
+
+
+## Disk Synchronisation Improvements {#NewFeatures11DiskSynchronisation}
+
+### Synchronisation of Shape Data
+
+ArangoDB 1.1 provides an option `--database.force-sync-shapes` that controls whether
+shape data (information about document attriubte names and attribute value types)
+should be synchronised to disk directly after each write, or if synchronisation is
+allowed to happen asynchronously.
+The latter options allows ArangoDB to return faster from operations that involve new
+document shapes.
+
+In ArangoDB 1.0, shape information was always synchronised to disk, and users did not
+have any options. The default value of `--database.force-sync-shapes` in ArangoDB 1.1
+is `true` so it is fully compatible with ArangoDB 1.0.
+However, in ArangoDB 1.1 the direct synchronisation can be turned off by setting the 
+value to `false`. Direct synchronisation of shape data will then be disabled for
+collections that have a `waitForSync` value of `false`. 
+Shape data will always be synchronised directly for collections that have a `waitForSync`
+value of `true`.
+
+Still, ArangoDB 1.1 may need to perform less synchronisation when it writes shape data 
+(attribute names and attribute value types of collection documents).
+
+Users may benefit if they save documents with many different structures (in terms of
+document attribute names and attribute value types) in the same collection. If only
+small amounts of distinct document shapes are used, the effect will not be noticable.
+
+
+### Finer Control of Disk Sync Behavior for CRUD operations
 
 ArangoDB stores all document data in memory-mapped files. When adding new documents,
 updating existing documents or deleting documents, these modifications are appended at
@@ -75,103 +202,27 @@ synchronisation behavior will be applied. Setting the parameter to `true`
 will force synchronisation.
 
 
-## Synchronisation of shape data
+## Server Statistics {#NewFeatures11ServerStatistics}
 
-ArangoDB 1.1 provides an option `--database.force-sync-shapes` that controls whether
-shape data (information about document attriubte names and attribute value types)
-should be synchronised to disk directly after each write, or if synchronisation is
-allowed to happen asynchronously.
-The latter options allows ArangoDB to return faster from operations that involve new
-document shapes.
+ArangoDB 1.1 allows querying the server status via REST API methods.
 
-In ArangoDB 1.0, shape information was always synchronised to disk, and users did not
-have any options. The default value of `--database.force-sync-shapes` in ArangoDB 1.1
-is `true` so it is fully compatible with ArangoDB 1.0.
-However, in ArangoDB 1.1 the direct synchronisation can be turned off by setting the 
-value to `false`. Direct synchronisation of shape data will then be disabled for
-collections that have a `waitForSync` value of `false`. 
-Shape data will always be synchronised directly for collections that have a `waitForSync`
-value of `true`.
+The following methods are available:
+- `GET /_admin/connection-statistics`: provides connection statistics
+- `GET /_admin/request-statistics`: provides request statistics
 
-Still, ArangoDB 1.1 may need to perform less synchronisation when it writes shape data 
-(attribute names and attribute value types of collection documents).
+Both methods return the current figures and historical values. The historical
+figures are aggregated. They can be used to monitor the current server status as
+well as to get an overview of how the figures developed over time and look for
+trends.
 
-Users may benefit if they save documents with many different structures (in terms of
-document attribute names and attribute value types) in the same collection. If only
-small amounts of distinct document shapes are used, the effect will not be noticable.
+The ArangoDB web interface is using these APIs to provide charts with the
+server connection statistics figures. It has a new tab "Statistics" for this purpose.
+
+For more information on the APIs, please refer to @ref HttpSystemConnectionStatistics
+and @ref HttpSystemRequestStatistics.
 
 
-## Collection types
-
-In ArangoDB 1.1, collections are now explicitly typed:
-- regular documents go into _document_-only collections, 
-- and edges go into _edge_ collections. 
-
-In 1.0, collections were untyped, and edges and documents could be mixed in the same collection.
-Whether or not a collection was to be treated as an _edge_ or _document_ collection was
-decided at runtime by looking at the prefix used (e.g. `db.xxx` vs. `edges.xxx`).
-
-The explicit collection types used in ArangoDB allow users to query the collection type at
-runtime and make decisions based on the type:
-
-    arangosh> db.users.type();
-
-Extra Javascript functions have been introduced to create collections: 
-
-    arangosh> db._createDocumentCollection("users");
-    arangosh> db._createEdgeCollection("relationships");
-
-The "traditional" functions are still available:
-
-    arangosh> db._create("users");
-    arangosh> edges._create("relationships");
-
-The ArangoDB web interface also allows the explicit creation of _edge_
-collections.
-
-
-## Support for partial updates
-  
-The REST API for documents now offers the HTTP PATCH method to partially update
-documents. A partial update allows specifying only the attributes the change instead
-of the full document. Internally, it will merge the supplied attributes into the
-existing document.
-
-Completely overwriting/replacing entire documents is still available via the HTTP PUT 
-method in ArangoDB 1.0.
-In _arangosh_, the partial update method is named _update_, and the previously existing
-_replace_ method still performs a replacement of the entire document as before.
-
-This call with replace just the `active` attribute of the document `user`. All other
-attributes will remain unmodified. The document revision number will of course be updated
-as updating creates a new revision:
-
-    arangosh> db.users.update(user, { "active" : false });
-    
-Contrary, the `replace` method will replace the entire existing document with the data
-supplied. All other attributes will be removed. Replacing will also create a new revision:
-
-    arangosh> db.users.replace(user, { "active" : false });
-
-For more information, please check @ref JS_UpdateVocbaseCol and @ref JS_ReplaceVocbaseCol. 
-
-
-## AQL
-
-The following functions have been added or extended in the ArangoDB Query Language
-(AQL) in ArangoDB 1.1:
-- `MERGE_RECURSIVE()`: new function that merges documents recursively. Especially, it will merge
-  sub-attributes, a functionality not provided by the previously existing `MERGE()` function.
-- `NOT_NULL()`: now works with any number of arguments and returns the first non-null argument.
-  If all arguments are `null`, the function will return `null`, too.
-- `FIRST_LIST()`: new function that returns the first argument that is a list, and `null`
-  if none of the arguments are lists.
-- `FIRST_DOCUMENT()`: new function that returns the first argument that is a document, and `null`
-  if none of the arguments are documents.
-- `TO_LIST()`: converts the argument into a list.
-
-
-## Endpoints
+## Endpoints and SSL support {#NewFeatures11Endpoints}
 
 ArangoDB can now listen to incoming connections on one or many "endpoint" of different
 types. In ArangoDB lingo, an endpoint is the combination of a protocol and some
@@ -233,38 +284,9 @@ To make the server use a Unix domain socket with filename `/var/run/arango.sock`
     > bin/arangod --server.endpoint unix:///var/run/arango.sock
 
 
-## Blueprints API
+## Improved HTTP Request Handling {#NewFeatures11RequestHandling}
 
-Blueprints is a property graph model interface with provided implementations. 
-Databases that implement the Blueprints interfaces automatically support 
-Blueprints-enabled applications (@EXTREF{http://tinkerpop.com/,http://tinkerpop.com}).
-
-For more information please refer to @ref HttpBlueprints.
-
-
-## Server statistics
-
-ArangoDB 1.1 allows querying the server status via REST API methods.
-
-The following methods are available:
-- `GET /_admin/connection-statistics`: provides connection statistics
-- `GET /_admin/request-statistics`: provides request statistics
-
-Both methods return the current figures and historical values. The historical
-figures are aggregated. They can be used to monitor the current server status as
-well as to get an overview of how the figures developed over time and look for
-trends.
-
-The ArangoDB web interface is using these APIs to provide charts with the
-server connection statistics figures. It has a new tab "Statistics" for this purpose.
-
-For more information on the APIs, please refer to @ref HttpSystemConnectionStatistics
-and @ref HttpSystemRequestStatistics.
-
-
-## Improved HTTP request handling
-
-### Error codes
+### Error Handling
 
 ArangoDB 1.1 better handles malformed HTTP requests than ArangoDB 1.0 did. 
 When it encounters an invalid HTTP request, it might answer with some HTTP status
@@ -296,7 +318,7 @@ In version 1.1, ArangoDB will behave as follows when it comes to HTTP keep-alive
   amount of seconds. To adjust the value, use the new server option `--server.keep-alive-timeout`.
 - Keep-alive can be turned off in ArangoDB by setting `--server.keep-alive-timeout` to a value of `0`.
 
-### Configurable backlog
+### Configurable Backlog
 
 ArangoDB 1.1 adds an option `--server.backlog-size` to configure the system backlog size.
 The backlog size controls the maximum number of queued connections and is used by the listen() 
@@ -305,7 +327,7 @@ system call.
 The default value in ArangoDB is 10, the maximum value is platform-dependent.
 
 
-## Using V8 options
+## Using V8 Options {#NewFeatures11V8Options}
 
 To use arbitrary options the V8 engine provides, ArangoDB 1.1 introduces a new startup
 option `--javascript.v8-options`. 
@@ -320,7 +342,9 @@ supports, you can use the value `--help`, which will just be passed through to V
     > bin/arangod --javascript.v8-options "--help" /tmp/voctest
 
 
-## Smaller hash indexes
+## Other Improvements {#NewFeatures11Other}
+
+### Smaller Hash Indexes
 
 Some internal structures have been adjusted in ArangoDB 1.1 so that hash index entries 
 consume considerably less memory.
@@ -328,7 +352,7 @@ consume considerably less memory.
 Installations may benefit if they use unique or non-unqiue hash indexes on collections.
 
 
-## arangoimp 
+### arangoimp 
 
 _arangoimp_ now allows specifiying the end-of-line (EOL) character of the input file.
 This allows better support for files created on Windows systems with `\r\n` EOLs.
