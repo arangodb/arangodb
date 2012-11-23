@@ -24,8 +24,7 @@ batch requests may still be beneficial in many cases, but it should be obvious
 that they should be used only when they replace a considerable amount of
 individual requests.
 
-For more information see @ref HttpBatch.
-
+For more information see @ref HttpBatch and @EXTREF{http://www.arangodb.org/2012/10/04/gain-factor-of-5-using-batch-updates,this blog article}.
 
 ## More fine grained control of sync behavior
 
@@ -62,10 +61,10 @@ synchronisation behavior will be applied. Setting the parameter to `true`
 will force synchronisation.
 
 The following Javascript methods support forcing synchronisation, too:
-* save()
-* update()
-* relace()
-* delete()
+* `save()`
+* `update()`
+* `relace()`
+* `delete()`
 
 Force synchronisation of a save operation:
 
