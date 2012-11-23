@@ -32,6 +32,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DbaManual ArangoDB's DBA Manual (@VERSION)
 ///
+/// @NAVIGATE{UserManual,Home,ImpManual}
+///
 /// @if LATEX
 /// <ul>
 ///  <li>@ref DbaManualBasics</li>
