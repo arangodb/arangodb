@@ -340,7 +340,7 @@ static void SetNameLength (TRI_aql_field_access_t* const fieldAccess) {
     fieldAccess->_variableNameLength = strlen(fieldAccess->_fullName);
   }
   else {
-    fieldAccess->_variableNameLength = dotPosition - fieldAccess->_fullName;
+    fieldAccess->_variableNameLength = (size_t) (dotPosition - fieldAccess->_fullName);
   }
 }
 

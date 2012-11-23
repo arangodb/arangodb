@@ -42,7 +42,6 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent);
 static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json);
 static TRI_json_t* JsonShapeData (TRI_shaper_t* shaper, TRI_shape_t const* shape, char const* data, uint64_t size);
 static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* buffer, TRI_shape_t const* shape, char const* data, uint64_t size);

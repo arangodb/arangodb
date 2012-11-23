@@ -179,7 +179,7 @@ char* TRI_GetContextErrorAql (const char* const query, const size_t line, const 
   // p is pointing at the position in the query the parse error occurred at
   assert(p >= query);
 
-  offset = p - query;
+  offset = (size_t) (p - query);
 
   if (strlen(query) < offset + SNIPPET_LENGTH) {
     return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, strlen(query) - offset);
