@@ -80,6 +80,7 @@ WIKI = \
 	JSModules \
 	Key-Value \
 	NamingConventions \
+	NewFeatures11 \
 	RefManual \
 	RestDocument \
 	RestEdge \

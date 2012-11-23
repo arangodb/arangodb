@@ -1,6 +1,16 @@
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
+* added collection type label to web interface
+
+* fixed issue #290: the web interface now disallows creating non-edges in edge collections
+  when creating collections via the web interface, the collection type must also be
+  specified (default is document collection)
+
+* fixed issue #289: tab-completion does not insert any spaces
+
+* fixed issue #282: fix escaping in web interface
+
 * made AQL function NOT_NULL take any number of arguments. Will now return its
   first argument that is not null, or null if all arguments are null. This is downwards
   compatible.

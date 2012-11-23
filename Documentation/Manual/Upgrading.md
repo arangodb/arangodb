@@ -10,6 +10,12 @@ The following list contains changes in ArangoDB 1.1 that are not 100% downwards-
 Existing users of ArangoDB 1.0 should read the list carefully and make sure they have undertaken all 
 necessary steps and precautions before upgrading from ArangoDB 1.0 to ArangoDB 1.1.
 
+## New dependencies
+
+As ArangoDB 1.1 supports SSL connections, ArangoDB can only be built on servers with the OpenSSL 
+library installed. The OpenSSL is not bundled with ArangoDB and must be installed separately. 
+
+
 ## Database directory version check and upgrade
 
 Starting with ArangoDB 1.1, _arangod_ will perform a database version check at startup. 
@@ -109,16 +115,24 @@ The following _arangod_ startup options have been removed in ArangoDB 1.1:
 - `--server.require-keep-alive`
 - `--server.secure-require-keep-alive`
 
-In version 1.1, The server will now behave as follows automatically which should be more 
+In version 1.1, the server will behave as follows automatically which should be more 
 conforming to the HTTP standard:
 - if a client sends a `Connection: close` HTTP header, the server will close the connection as 
   requested
 - if a client sends a `Connection: keep-alive` HTTP header, the server will not close the 
   connection but keep it alive as requested
 - if a client does not send any `Connection` HTTP header, the server will assume _keep-alive_ 
-  if the request was an HTTP/1.1 request, and "close" if the request was an HTTP/1.0 request
+  if the request was an HTTP/1.1 request, and _close_ if the request was an HTTP/1.0 request
 - dangling keep-alive connections will be closed automatically by the server after a configurable 
-  amount of seconds. To adjust the value, use the new server option `--server.keep-alive-timeout`
+  amount of seconds. To adjust the value, use the new server option `--server.keep-alive-timeout`.
+- Keep-alive can be turned off in ArangoDB by setting `--server.keep-alive-timeout` to a value of `0`.
+
+As ArangoDB 1.1 will use keep-alive by default for incoming HTTP/1.1 requests without a
+`Connection` header, using ArangoDB 1.1 from a browser will likely result in the same connection
+being re-used. This may be unintuitive because requests from a browser to ArangoDB will 
+effectively be serialised, not parallelised. To conduct parallel requests from a browser, you
+should either set `--server.keep-alive-timeout` to a value of `0`, or make your browser send 
+`Connection: close` HTTP headers with its requests.
 
 
 ## Start / stop scripts
@@ -163,9 +177,13 @@ If one of the documents contains either a `_from` or a `_to` attribute, the coll
 _edge_ collection. Otherwise, the collection is marked as a _document_ collection.
 
 This distinction is important because edges can only be created in _edge_ collections starting 
-with 1.1. Client code may need to be adjusted to work with ArangoDB 1.1 if it tries to insert
+with 1.1. User code may need to be adjusted to work with ArangoDB 1.1 if it tries to insert
 edges into _document_-only collections.
 
+User code must also be adjusted if it uses the `ArangoEdges` or `ArangoEdgesCollection` objects
+that were present in ArangoDB 1.0 on the server. This only affects user code that was intended
+to be run on the server, directly in ArangoDB. The `ArangoEdges` or `ArangoEdgesCollection`
+objects were not exposed to _arangosh_ or any other clients.
 
 ## arangoimp / arangosh
 
@@ -186,4 +204,10 @@ These options can be used to specify the username and password when connecting v
 to the _arangod_ server. If no password is given on the command line, _arangoimp_ and _arangosh_ 
 will interactively prompt for a password.
 If no username is specified on the command line, the default user _root_ will be used but there 
-will still be a password prompt. 
+will still be a password prompt.
+
+
+## Removed functionality
+
+In 1.0, there were unfinished REST APIs available at the `/_admin/config` URL suffix.
+These APIs were stubs only and have been removed in ArangoDB 1.1.
