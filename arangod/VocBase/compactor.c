@@ -248,7 +248,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     if (deleted) {
-      LOG_TRACE("found a stale document: %lu", d->_did);
+      LOG_TRACE("found a stale document: %llu", d->_did);
       return true;
     }
 
@@ -256,7 +256,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: ", TRI_last_error());
+      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
       return false;
     }
 
@@ -277,7 +277,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi->_numberDead += 1;
       dfi->_sizeDead += marker->_size - markerSize;
 
-      LOG_DEBUG("found a stale document after copying: %lu", d->_did);
+      LOG_DEBUG("found a stale document after copying: %llu", d->_did);
       TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
       return true;
@@ -302,7 +302,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: ", TRI_last_error());
+      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
       return false;
     }
 
