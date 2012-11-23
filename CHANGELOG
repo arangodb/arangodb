@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #292: use index when filtering on _key in AQL
+
 * allow user-definable document keys
   users can now define their own document keys by using the _key attribute
   The restrictions for key values are:
