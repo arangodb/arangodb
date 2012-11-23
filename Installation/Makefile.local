@@ -1,7 +1,6 @@
 # -*- mode: Makefile; -*-
 
 MANUAL_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals
-IMAGES_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals/images
 
 OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
 
@@ -22,14 +21,14 @@ publish-wiki:
 	$(MAKE) wiki
 	(cd Doxygen/wiki && git add *.md; git commit -m "`date`" -a; git push)
 
-publish-html: $(OUTPUT_FOLDER)
+publish-html:
 	$(MAKE) doxygen
+	mkdir -p $(OUTPUT_FOLDER)/images
 	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
-	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images; done
+	@for i in `ls Doxygen/website/images/*.png`; do cp $$i $(OUTPUT_FOLDER)/images/; done
 	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
 
 publish-pdf: $(OUTPUT_FOLDER)
-	$(MAKE) latex
 	$(MAKE) latex
 	cp Doxygen/latex/dba-manual.pdf $(OUTPUT_FOLDER)
 	cp Doxygen/latex/implementor-manual.pdf $(OUTPUT_FOLDER)
@@ -39,5 +38,3 @@ publish-pdf: $(OUTPUT_FOLDER)
 	cp Doxygen/latex/imp-manual.pdf $(OUTPUT_FOLDER)
 	cp arangod/Documentation/arangodb_1.0_shell_reference_card.pdf $(OUTPUT_FOLDER)
 
-$(OUTPUT_FOLDER):
-	mkdir -p $(OUTPUT_FOLDER)/images
