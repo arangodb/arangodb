@@ -1044,7 +1044,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
   char* keyBody;
   TRI_voc_size_t keyBodySize; 
   int res;
-  char keyBuffer[TRI_COLLECTION_KEY_MAX_LENGTH + 1]; 
+  char keyBuffer[TRI_VOC_KEY_MAX_LENGTH + 1]; 
 
   if (type != TRI_DOC_MARKER_KEY_DOCUMENT && 
       type != TRI_DOC_MARKER_KEY_EDGE) {
@@ -1069,7 +1069,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
     keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
     assert(keyGenerator != NULL);
 
-    res = keyGenerator->generate(keyGenerator, TRI_COLLECTION_KEY_MAX_LENGTH, &marker, key, (char*) &keyBuffer, &keySize);
+    res = keyGenerator->generate(keyGenerator, TRI_VOC_KEY_MAX_LENGTH, &marker, key, (char*) &keyBuffer, &keySize);
     if (res != TRI_ERROR_NO_ERROR) {
       // key generation failed
       Unlock(context);
@@ -1123,7 +1123,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
     keyGenerator = (TRI_key_generator_t*) primary->_keyGenerator;
     assert(keyGenerator != NULL);
 
-    res = keyGenerator->generate(keyGenerator, TRI_COLLECTION_KEY_MAX_LENGTH, &marker.base, key, (char*) &keyBuffer, &keySize);
+    res = keyGenerator->generate(keyGenerator, TRI_VOC_KEY_MAX_LENGTH, &marker.base, key, (char*) &keyBuffer, &keySize);
     if (res != TRI_ERROR_NO_ERROR) {
       // key generation failed
       Unlock(context);

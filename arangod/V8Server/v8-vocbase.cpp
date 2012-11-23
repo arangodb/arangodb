@@ -60,6 +60,7 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
 
@@ -272,19 +273,19 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
 
   regmatch_t matches[3];
 
-  // "cid/key"
+  // collection id / document key
   if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
     return true;
   }
  
-  // "cname/key"
+  // collection name / document key
   if (regexec(&v8g->DocumentId2Regex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     const string name = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
     if (col == 0) {
-      // colleciton not found
+      // collection not found
       return false;
     }
     cid = col->_cid;
@@ -292,7 +293,7 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
     return true;
   }
   
-  // "key"
+  // document key only
   if (regexec(&v8g->DocumentKeyRegex, s, 0, NULL, 0) == 0) {
     key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str, str.length());
     return true;
@@ -5928,35 +5929,33 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     isolate->SetData(v8g);
   }
 
-  const string colExpr = "[a-zA-Z][0-9a-zA-Z_-]*";
-  const string keyExpr = "[0-9a-zA-Z][0-9a-zA-Z]*";
-  const string idExpr  = "[0-9][0-9]*";
-  string expr;
-
   // create the regular expressions
-  expr = "^(" + idExpr + ")" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "(" + keyExpr + ")$";
-  if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
+  string expr;
   
-  expr = "^(" + colExpr + ")" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "(" + keyExpr + ")$";
-  if (regcomp(&v8g->DocumentId2Regex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
-  
-  expr = "^(" + idExpr + ")" + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + "(" + idExpr + ")$";
-  if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
+  expr = "^(" TRI_VOC_ID_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
+  if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
-  expr = "^" + keyExpr + "$";
-  if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_ICASE | REG_EXTENDED) != 0) {
+  // collection-id / document key
+  expr = "^(" TRI_VOC_ID_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
+  if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
+    LOG_FATAL("cannot compile regular expression");
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  
+  expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
+  if (regcomp(&v8g->DocumentId2Regex, expr.c_str(), REG_EXTENDED) != 0) {
+    LOG_FATAL("cannot compile regular expression");
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  
+  expr = "^" TRI_VOC_KEY_REGEX "$";
+  if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);

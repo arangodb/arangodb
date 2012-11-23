@@ -91,7 +91,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   files = TRI_FilesDirectory(path);
   n = files._length;
 
-  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_ICASE | REG_EXTENDED);
+  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
@@ -189,7 +189,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   files = TRI_FilesDirectory(collection->_directory);
   n = files._length;
 
-  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_ICASE | REG_EXTENDED);
+  regcomp(&re, "^(journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)$", REG_EXTENDED);
 
   TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
