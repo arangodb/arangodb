@@ -2705,7 +2705,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
       if (bytesRead < (ssize_t) sizeof(marker)) {
         // eof
-        LOG_WARNING("bytesRead = %d < sizeof(marker) = %d", bytesRead, sizeof(marker));
+        LOG_WARNING("bytesRead = %d < sizeof(marker) = %d", (int) bytesRead, (int) sizeof(marker));
         break;
       }
 
@@ -2719,7 +2719,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       
         if (marker._size < sizeof(marker)) {
           // eof
-          LOG_WARNING("marker._size = %d < sizeof(marker) = %d", marker._size, sizeof(marker));
+          LOG_WARNING("marker._size = %d < sizeof(marker) = %d", (int) marker._size, (int) sizeof(marker));
           break;
         }
         
