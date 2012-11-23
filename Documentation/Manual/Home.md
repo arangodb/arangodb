@@ -53,16 +53,12 @@ ArangoDB's Administrator Manuals {#ArangoDBAdminManual}
 
 - @ref InstallManual @ifnot XML @EXTREF{install-manual.pdf,pdf} @endif
 
-- @ref Glossary
-
 ArangoDB's Developer Manuals {#ArangoDBAPIManual}
 =================================================
 
 - @ref ImplementorManual @ifnot XML @EXTREF{implementor-manual.pdf,pdf} @endif
 
 - @ref RefManual @ifnot XML @EXTREF{ref-manual.pdf,pdf} @endif
-
-- @ref Glossary
 
 API aka Drivers {#HomeApi}
 ==========================

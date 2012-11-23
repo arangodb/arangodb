@@ -32,6 +32,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page InstallManual ArangoDB's Installation Manual (@VERSION)
 ///
+/// @NAVIGATE{Glossary,Home,ImplementorManual}
+///
 /// @if LATEX
 /// <ul>
 ///  <li>@ref Installing</li>
