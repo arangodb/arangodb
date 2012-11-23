@@ -2727,8 +2727,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   if (idx == NULL) {
     LOG_ERROR("cannot create bitarray index %lu", (unsigned long) iid);
     if (errorStr != NULL) {
-      // TODO: this is insecure if errorStr contains % characters!
-      LOG_TRACE(errorStr);
+      LOG_TRACE("%s", errorStr);
       TRI_Free(TRI_CORE_MEM_ZONE, errorStr);  
     }  
     return errorNum;
