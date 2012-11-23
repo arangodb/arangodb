@@ -243,7 +243,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
 
     if (deleted) {
-      LOG_TRACE("found a stale document: %llu", d->_did);
+      LOG_TRACE("found a stale document: %llu", (unsigned long long) d->_did);
       return true;
     }
 
@@ -272,7 +272,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
       dfi->_numberDead += 1;
       dfi->_sizeDead += marker->_size - markerSize;
 
-      LOG_DEBUG("found a stale document after copying: %llu", d->_did);
+      LOG_DEBUG("found a stale document after copying: %llu", (unsigned long long) d->_did);
       TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
 
       return true;
