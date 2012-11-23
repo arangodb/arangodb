@@ -27,8 +27,6 @@
 
 #include "key-generator.h" 
 
-#include <regex.h>
-
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
@@ -62,7 +60,6 @@ typedef struct revision_keygen_s {
   char*   _prefix;        // key prefix
   size_t  _prefixLength;  // length of key prefix
   size_t  _padLength;     // length of 0 bytes used for left padding
-  regex_t _regex;         // key validation regex
   bool    _allowUserKeys; // allow keys supplied by user?
 }
 revision_keygen_t;
@@ -71,14 +68,14 @@ revision_keygen_t;
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the revision key generator
@@ -99,13 +96,6 @@ static int RevisionInit (TRI_key_generator_t* const generator,
   data->_padLength     = 0;
   data->_allowUserKeys = true;
   
-  if (regcomp(&data->_regex, "^[0-9a-zA-Z][_0-9a-zA-Z]*$", REG_ICASE | REG_EXTENDED) != 0) {
-    // OOM
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
   if (options != NULL) {
     TRI_json_t* option;
     
@@ -151,8 +141,6 @@ static void RevisionFree (TRI_key_generator_t* const generator) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, data->_prefix);
     }
   
-    regfree(&data->_regex);
-
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
 }
@@ -192,7 +180,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
     
-    if (regexec(&data->_regex, userKey, 0, NULL, 0) != 0) {
+    if (! TRI_IsAllowedKey(userKey)) {
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 
@@ -399,6 +387,115 @@ void TRI_FreeKeyGenerator (TRI_key_generator_t* generator) {
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, generator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a key has an allowed pattern
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsAllowedKey (char const* key) {
+  size_t length;
+  char const* ptr;
+  unsigned char c;
+      
+  ptr = key;
+
+  c = (unsigned char) *ptr;
+  
+  if (c == '\0') {
+    // empty key
+    return false;
+  }
+  
+  if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f') {
+    // key starts with invalid character
+    return false;
+  }
+
+  length = 0;
+
+  for (; *ptr; ++ptr, ++length) {
+    c = (unsigned char) *ptr;
+
+    if (c & 0x80) {
+      // multibyte sequence
+      int seqLength = 0;
+      int i;
+
+      if ((c & 0xc0) == 0x80) {
+        // nothing
+      }
+      else if ((c & 0xe0) == 0xc0) {
+        seqLength = 1;
+      }
+      else if ((c & 0xf0) == 0xe0) {
+        seqLength = 2;
+      }
+      else if ((c & 0xf8) == 0xf0) {
+        seqLength = 3;
+      }
+      else if ((c & 0xfc) == 0xf8) {
+        seqLength = 4;
+      }
+      else if ((c & 0xfe) == 0xfc) {
+        seqLength = 5;
+      }
+
+      if (seqLength == 0) {
+        // invalid sequence
+        return false;
+      }
+
+      for (i = 0; i < seqLength; ++i) {
+        c = (unsigned char) *(++ptr);
+
+        if (c == '\0') {
+          // unexpected end of string
+          return false;
+        }
+
+        if ((c & 0xc0) != 0x80) {
+          // invalid sequence
+          return false;
+        }
+      }
+
+      length += seqLength;
+    }
+    else {
+      // single byte
+      if (c == '/') {
+        return false;
+      }
+    }
+  }
+
+  // key is at least one byte long, so this works
+  c = key[length - 1];
+
+  if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f') {
+    // key starts with invalid character
+    return false;
+  }
+
+  if (length > TRI_VOC_KEY_MAX_LENGTH) {
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

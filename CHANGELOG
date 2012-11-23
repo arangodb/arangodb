@@ -1,3 +1,45 @@
+v1.2.alpha (XXXX-XX-XX)
+-----------------------
+
+* allow user-definable document keys
+  users can now define their own document keys by using the _key attribute
+  The restrictions for key values are:
+  * the key must be at most 256 bytes long
+  * it must consist of valid UTF-8 characters only
+  * the key must not contain the forward slash (/)
+  * the key must not begin or end with a space, tab, newline, carriage return or 
+    form feed character
+
+  Specifiying a document key is optional when creating new documents. If no
+  document key is specified, ArangoDB will create a document key itself.
+  There are no guarantees about the format and pattern of auto-generated document
+  keys other than the above restrictions.
+  Clients should therefore treat auto-generated document keys as opaque values. 
+
+* allow collection names everywhere where a collection id can be used
+  This change allows using a collection name in place of a collection id at all places
+  where the end user deals with collections. Examples:
+  * creating edges: the _from and _to values can now contain collection names instead
+    of collection ids. Example: edges.relations.save("test/my-key1", "test/my-key2", { ... });
+  * looking up documents: db.users.document("fred") or db._document("users/fred")
+  * collection names can also be used instead of collection ids in REST API calls
+
+* edges in edge collections can optionally be undirected
+  Edges now have a @LIT{_bidirectional} attribute that determines whether the edge is to be
+  treated as directed (unidirectional) or undirected (bidirectional). The attribute
+  can be set when an edge is created. If ommitted, the default is to create unidirectional
+  edges (i.e. @LIT{_bidirectional: false}).
+  Unidirectional edges are handled as in previous versions of ArangoDB, that is they
+  have a @LIT{_from} and @LIT{_to} attribute that indicate the source and target vertices
+  of the edge. Additionally, they now return the @LIT{_bidirectional} attribute with a
+  value of @LIT{false}.
+  Bidirectional edges do not have unambigious sources and targets (the roles of the connected
+  vertices are unclear), so they return the connected vertices in a @LIT{_vertices} list.
+  This list contains the two vertices that the edge connects. It is up to the user to
+  figure out these edges' roles. Additionally, bidirectional edges return the 
+  @LIT{_bidirectional} attribute with a value of @LIT{true}.
+
+
 v1.1.beta3 (XXXX-XX-XX)
 -----------------------
 
