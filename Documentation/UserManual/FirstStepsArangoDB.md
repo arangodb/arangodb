@@ -12,7 +12,7 @@ model for documents, graphs, and key-values. You can easily build high
 performance applications using a convenient sql-like query language or
 JavaScript/Ruby extensions.
 
-The database server `arangod` stores all documents and serves them
+The database server _arangod_ stores all documents and serves them
 using a REST interface. There are driver for all major language like
 Ruby, Python, PHP, JavaScript, and Perl. In the following sections we
 will use the JavaScript shell to communicate with the database and
@@ -73,7 +73,7 @@ For MacOS X:
 - initialise (or upgrade) the database `/usr/local/bin/arango-upgrade`
 - and start the server using `/usr/local/sbin/arangod &`
 
-After these steps there should be a running instance of `arangod` -
+After these steps there should be a running instance of _arangod_ -
 the ArangoDB database server.
 
     unix> ps auxw | fgrep arangod
@@ -87,15 +87,15 @@ ArangoDB programs {#FirstStepsArangoDBBinaries}
 
 The ArangoDB database package comes with the following programs:
 
-- `arangod`: The ArangoDB database daemon. This server program is
+- _arangod_: The ArangoDB database daemon. This server program is
   intended to run as daemon process and to server the various clients
   connection to the server via TCP / HTTP. See @ref
   FirstStepsServerStartStop.
-- `arango-update`: Used to initialize or update the database.
-- `arangosh`: The ArangoDB shell. A client that implements a
+- _arango-update_: Used to initialize or update the database.
+- _arangosh_: The ArangoDB shell. A client that implements a
   read-eval-print loop (REPL) and provides functions to access and
   administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
-- `arangoimp`: A bulk importer for the ArangoDB server.
+- _arangoimp_: A bulk importer for the ArangoDB server.
   See @ref ImpManual
 
 
@@ -125,7 +125,7 @@ Starting the JavaScript shell {#FirstStepsArangoDBConnecting}
 -------------------------------------------------------------
 
 The easiest way to connect to the database is the JavaScript shell
-`arangosh`. You can either start it from the command-line or as an
+_arangosh_. You can either start it from the command-line or as an
 embedded version in the browser. Using the command-line tool has the
 advantage that you can use auto-completion.
 

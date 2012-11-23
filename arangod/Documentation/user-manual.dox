@@ -32,6 +32,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManual ArangoDB's User Manual (@VERSION)
 ///
+/// @NAVIGATE{Upgrading,Home,DbaManual}
+///
 /// @if LATEX
 /// <ul>
 ///  <li>@ref FirstStepsArangoDB</li>
