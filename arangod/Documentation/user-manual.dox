@@ -34,7 +34,6 @@
 ///
 /// @if LATEX
 /// <ul>
-///  <li>@ref UserManualBasics</li>
 ///  <li>@ref FirstStepsArangoDB</li>
 ///  <li>@ref UserManualArangosh</li>
 ///  <li>@ref ShellCollection</li>
@@ -49,7 +48,6 @@
 ///  <li>@ref Glossary</li>
 /// </ul>
 /// @else
-/// @copydetails UserManualBasicsTOC
 /// @copydetails FirstStepsArangoDBTOC
 /// @copydetails UserManualArangoshTOC
 /// @copydetails ShellCollectionTOC
@@ -60,95 +58,6 @@
 /// @copydetails UserManualActionsTOC
 /// @copydetails CommandLineTOC
 /// @endif
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                USER MANUAL BASICS
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualBasicsTOC
-///
-/// <ul>
-///  <li>@ref UserManualBasics
-///   <ul>
-///    <li>@ref UserManualServerStartStop
-///     <ul>
-///      <li>@ref UserManualServerStartStopOptions</li>
-///     </ul>
-///    </li>
-///    <li>@ref UserManualServerFE</li>
-///    <li>@ref UserManualShellStartStop
-///     <ul>
-///      <li>@ref UserManualShellStartStopOptions</li>
-///     </ul>
-///    </li>
-///    <li>@ref UserManualServerStartStopDebug
-///    </li>
-///   </ul>
-///  </li>
-/// </ul>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualBasics About ArangoDB
-///
-/// @EMBEDTOC{UserManualBasicsTOC}
-///
-/// @section UserManualServerFE ArangoDB's Front-End
-////////////////////////////////////////////////////
-///
-/// The ArangoDB server has a graphical front-end, which allows you to inspect
-/// the current state of the server from within your browser. You can use the 
-/// front-end using the following URL:
-///
-/// @LIT{http://localhost:8529/_admin}
-///
-/// Unless you have loaded an application into the ArangoDB server, which remaps
-/// the paths, the front-end will also be available under
-///
-/// @LIT{http://localhost:8529/}.
-///
-/// The front-end allows you to browse through the collections and
-/// documents. If you need to administrate the database, please use
-/// the ArangoDB shell described in the next section.
-///
-/// @section UserManualShellStartStop Starting the ArangoDB Shell
-/////////////////////////////////////////////////////////////////
-///
-/// After the server has been @ref UserManualServerStartStop "started",
-/// you can use the ArangoDB shell (arangosh) to administrate the server. Without
-/// any arguments, the ArangoDB shell will try to contact the server
-/// on port 8529 on the localhost. For more information see @ref
-/// UserManualArangosh.
-///
-/// @TINYEXAMPLE{arangosh-start,starting the shell}
-///
-/// You might need to set additional options (endpoint, username, and password)
-/// when connecting:
-///
-/// @verbinclude arangosh-start-full
-///
-/// The shell will print its own version number and, if successfully connected
-/// to a server, the version number of the ArangoDB server.
-///
-/// @subsection UserManualShellStartStopOptions Command-Line Options
-////////////////////////////////////////////////////////////////////
-///
-/// Use @LIT{\-\-help} to get a list of command-line options:
-///
-/// @TINYEXAMPLE{arangosh-options,shell options}
-///
-/// @section UserManualServerStartStopDebug Starting the ArangoDB Emergency Console
-///////////////////////////////////////////////////////////////////////////////////
-///
-/// The following command starts a emergency console. See below for a list of
-/// frequently used options, see @ref CommandLine "here" for a complete list.
-///
-/// @note Never start the emergency console for a database which also has a
-/// server attached to it. In general the ArangoDB shell is what you want.
-///
-/// @EXAMPLE{start-emergency-console,emergency console}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

@@ -37,6 +37,7 @@
 ///  <li>@ref DbaManualBasics</li>
 ///  <li>@ref DbaManualAuthentication</li>
 ///  <li>@ref DbaManualDatafileDebugger</li>
+///  <li>@ref DbaManualEmergencyConsole</li>
 ///  <li>@ref ShellCollection</li>
 ///  <li>@ref ShellIndex</li>
 ///  <li>@ref IndexCap</li>
@@ -51,6 +52,7 @@
 /// @copydetails DbaManualBasicsTOC
 /// @copydetails DbaManualAuthenticationTOC
 /// @copydetails DbaManualDatafileDebuggerTOC
+/// @copydetails DbaManualEmergencyConsoleTOC
 /// @copydetails ShellCollectionTOC
 /// @copydetails ShellIndexTOC
 /// @copydetails IndexesTOC
@@ -201,6 +203,33 @@
 /// @LIT{arango-dfdb}
 ///
 /// in order to check the consistency of the datafiles and journals.
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      DBA MANUAL EMERGENCY CONSOLE
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualEmergencyConsoleTOC
+///
+/// <ul>
+///  <li>@ref DbaManualEmergencyConsole
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualEmergencyConsole Emergency Console
+///
+/// @EMBEDTOC{DbaManualEmergencyConsoleTOC}
+///
+/// The following command starts a emergency console. See below for a list of
+/// frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @note Never start the emergency console for a database which also has a
+/// server attached to it. In general the ArangoDB shell is what you want.
+///
+/// @EXAMPLE{start-emergency-console,emergency console}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
