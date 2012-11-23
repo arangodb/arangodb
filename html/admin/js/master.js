@@ -17,8 +17,8 @@ var statDivCount;
 // documents global vars
 var collectionTotalPages;
 var collectionCurrentPage;  
+var globalDocumentCopy = { };
 var globalCollectionName;  
-var globalCollectionID;
 var checkCollectionName; 
 var printedHelp = false; 
 var open = false;
@@ -776,7 +776,6 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#saveEditedDocButton').live('click', function () {
-    
     if (tableView == true) {
       var data = documentEditTable.fnGetData();
       var result = {}; 
@@ -785,23 +784,22 @@ var logTable = $('#logTableID').dataTable({
       for (row in data) {
         var row_data = data[row];
         if ( row_data[1] == "_id" ) {
-          documentID = row_data[3]; 
+          documentID = JSON.parse(row_data[3]); 
         } 
         else {
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
-        
       }
 
       $.ajax({
         type: "PUT",
-        url: "/_api/document/" + JSON.parse(documentID),
+        url: "/_api/document/" + documentID,
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
         success: function(data) {
           tableView = true;
-          var collID = JSON.parse(documentID).split("/");  
+          var collID = documentID.split("/");  
           window.location.href = "#showCollection?" + collID[0];  
         },
         error: function(data) {
@@ -811,9 +809,8 @@ var logTable = $('#logTableID').dataTable({
     }
     else {
       try {
-        var documentID; 
+        var documentID = globalDocumentCopy._id;
         var boxContent = $('#documentEditSourceBox').val();
-        documentID = globalCollectionID;  
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
@@ -958,11 +955,12 @@ var logTable = $('#logTableID').dataTable({
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
 
-        var copies = { }; // copy systerm attributes
+        var copies = { }; // copy system attributes
         for (var a in systemAttributes()) {
           copies[a] = result[a];
           delete result[a];
         }
+        globalDocumentCopy = copies;
 
         var myFormattedString = FormatJSON(result);
         $('#documentEditSourceBox').val(myFormattedString); 
@@ -983,7 +981,9 @@ var logTable = $('#logTableID').dataTable({
         });
 
         for (var a in systemAttributes()) {
-          documentEditTable.fnAddData(['', a, value2html(copies[a], true), JSON.stringify(copies[a]) ]);
+          if (globalDocumentCopy[a] != undefined) {
+            documentEditTable.fnAddData(['', a, value2html(globalDocumentCopy[a], true), JSON.stringify(globalDocumentCopy[a]) ]);
+          }
         }
   
         documentTableMakeEditable ('#documentEditTableID'); 
