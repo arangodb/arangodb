@@ -1,7 +1,7 @@
 First Steps with ArangoDB {#FirstStepsArangoDB}
 ===============================================
 
-@NAVIGATE{UserManualBasics,UserManual,UserManualArangosh}
+@NAVIGATE_FIRST{UserManual,UserManualArangosh}
 @EMBEDTOC{FirstStepsArangoDBTOC}
 
 What is ArangoDB? {#FirstStepsArangoDBIntro}
@@ -90,11 +90,11 @@ The ArangoDB database package comes with the following programs:
 - `arangod`: The ArangoDB database daemon. This server program is
   intended to run as daemon process and to server the various clients
   connection to the server via TCP / HTTP. See @ref
-  UserManualServerStartStop.
+  FirstStepsServerStartStop.
 - `arango-update`: Used to initialize or update the database.
 - `arangosh`: The ArangoDB shell. A client that implements a
   read-eval-print loop (REPL) and provides functions to access and
-  administrate the ArangoDB server. See @ref UserManualShellStartStop.
+  administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
 - `arangoimp`: A bulk importer for the ArangoDB server.
   See @ref ImpManual
 
@@ -304,8 +304,26 @@ You can learn all about the query language @ref Aql "here". Note that
 `_query` is a short-cut for `_createStatement` and `execute`. We will
 come back to these functions when we talk about cursors.
 
-Details about Starting the ArangoDB Server {#FirstStepsServerStartStop}
-=======================================================================
+ArangoDB's Front-End {#FirstStepsArangoDBFE}
+--------------------------------------------
+
+The ArangoDB server has a graphical front-end, which allows you to
+inspect the current state of the server from within your browser. You
+can use the front-end using the following URL:
+
+    http://localhost:8529/_admin
+
+Unless you have loaded an application into the ArangoDB server, which remaps
+the paths, the front-end will also be available under
+
+    http://localhost:8529/
+
+The front-end allows you to browse through the collections and
+documents. If you need to administrate the database, please use
+the ArangoDB shell described in the next section.
+
+Details about the ArangoDB Server {#FirstStepsServerStartStop}
+==============================================================
 
 The ArangoDB database server has two modes of operation: as server, where it
 will answer to client requests, and an emergency console, in which you can
@@ -398,3 +416,44 @@ more information see @ref CommandLineLogging "here".
 @CMDOPT{\--daemon}
 
 Runs the server as a daemon (as a background process).
+
+Details about the ArangoDB Shell {#FirstStepsShellStartStop}
+============================================================
+
+After the server has been @ref FirstStepsServerStartStop "started",
+you can use the ArangoDB shell (arangosh) to administrate the
+server. Without any arguments, the ArangoDB shell will try to contact
+the server on port 8529 on the localhost. For more information see
+@ref UserManualArangosh. You might need to set additional options
+(endpoint, username, and password) when connecting:
+
+    unix> ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
+
+The shell will print its own version number and, if successfully connected
+to a server, the version number of the ArangoDB server.
+
+Command-Line Options {#FirstStepsShellStartStopOptions}
+-------------------------------------------------------
+
+Use @LIT{--help} to get a list of command-line options:
+
+    > ./arangosh --help
+    STANDARD options:
+      --help                                     help message
+      --javascript.modules-path <string>         one or more directories separated by cola (default: "...")
+      --javascript.startup-directory <string>    startup paths containing the JavaScript files; multiple directories can be separated by cola
+      --javascript.unit-tests <string>           do not start as shell, run unit tests instead
+      --jslint <string>                          do not start as shell, run jslint instead
+      --log.level <string>                       log level (default: "info")
+      --max-upload-size <uint64>                 maximum size of import chunks (in bytes) (default: 500000)
+      --no-auto-complete                         disable auto completion
+      --no-colors                                deactivate color support
+      --pager <string>                           output pager (default: "less -X -R -F -L")
+      --pretty-print                             pretty print values
+      --quiet                                    no banner
+      --server.connect-timeout <int64>           connect timeout in seconds (default: 3)
+      --server.endpoint <string>                 endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
+      --server.password <string>                 password to use when connecting (leave empty for prompt)
+      --server.request-timeout <int64>           request timeout in seconds (default: 300)
+      --server.username <string>                 username to use when connecting (default: "root")
+      --use-pager                                use pager
