@@ -283,6 +283,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       case TRI_IDX_TYPE_CAP_CONSTRAINT:
         // ignore all these index types for now
         continue;
+
       case TRI_IDX_TYPE_PRIMARY_INDEX:
       case TRI_IDX_TYPE_HASH_INDEX:
       case TRI_IDX_TYPE_SKIPLIST_INDEX:
@@ -316,8 +317,15 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           // wrong index type, doesn't help us at all
           continue;
         }
-        
-        if (! TRI_EqualString(indexedFieldName, candidate->_fullName + candidate->_variableNameLength + 1)) {
+
+        if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+          // primary index key names must be treated differently. _id and _key are the same
+          if (! TRI_EqualString("_id", candidate->_fullName + candidate->_variableNameLength + 1) &&
+              ! TRI_EqualString("_key", candidate->_fullName + candidate->_variableNameLength + 1)) {
+            continue;
+          }
+        }
+        else if (! TRI_EqualString(indexedFieldName, candidate->_fullName + candidate->_variableNameLength + 1)) {
           // different attribute, doesn't help
           continue;
         }
@@ -381,7 +389,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           candidateIsExact = IsExactCandidate(candidate);
 
           if ((candidateIsExact && ! lastTypeWasExact) ||
-              (!candidateIsExact && ! lastTypeWasExact)) {
+              (! candidateIsExact && ! lastTypeWasExact)) {
             // if we already had a range query, we cannot check for equality after that
             // if we already had a range query, we cannot check another range after that
             continue;
