@@ -223,6 +223,37 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check eligibility of an index for further inspection
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CanUseIndex (const TRI_index_t* const idx) {
+  if (idx->_fields._length == 0) {
+    // index should contain at least one field
+    return false;
+  }
+
+  // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
+  switch (idx->_type) {
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_CAP_CONSTRAINT:
+      // ignore all these index types for now
+      return false;
+
+    case TRI_IDX_TYPE_PRIMARY_INDEX:
+    case TRI_IDX_TYPE_HASH_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
+      // these indexes are valid candidates
+      break;
+  }
+
+  return true;
+}   
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,7 +287,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* const candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
-  size_t i, j, k, n; 
+  size_t i, n; 
 
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
@@ -267,43 +298,30 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   n = availableIndexes->_length;
   for (i = 0; i < n; ++i) {
     TRI_index_t* idx = (TRI_index_t*) availableIndexes->_buffer[i];
-    size_t numIndexFields = idx->_fields._length;
+    size_t numIndexFields;
     bool lastTypeWasExact;
-    
-    if (numIndexFields == 0) {
-      // index should contain at least one field
-      continue;
-    }
-
-    // we'll use a switch here so the compiler warns if new index types are added elsewhere but not here
-    switch (idx->_type) {
-      case TRI_IDX_TYPE_GEO1_INDEX:
-      case TRI_IDX_TYPE_GEO2_INDEX:
-      case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-      case TRI_IDX_TYPE_CAP_CONSTRAINT:
-        // ignore all these index types for now
-        continue;
-
-      case TRI_IDX_TYPE_PRIMARY_INDEX:
-      case TRI_IDX_TYPE_HASH_INDEX:
-      case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      case TRI_IDX_TYPE_BITARRAY_INDEX:
-        // these indexes are valid candidates
-        break;
-    }
+    size_t j;
    
+    if (! CanUseIndex(idx)) {
+      continue; 
+    }
+
     LogIndexString("checking", idx, collectionName);
 
     TRI_ClearVectorPointer(&matches);
 
     lastTypeWasExact = true;
+    numIndexFields = idx->_fields._length;
 
     // now loop over all index fields, from left to right
     // index field order is important because skiplists can be used with leftmost prefixes as well,
     // but not with rightmost prefixes
     for (j = 0; j < numIndexFields; ++j) {
-      char* indexedFieldName = idx->_fields._buffer[j];
+      char* indexedFieldName;
+      char* fieldName;
+      size_t k;
 
+      indexedFieldName = idx->_fields._buffer[j];
       if (indexedFieldName == NULL) {
         continue;
       }
@@ -318,21 +336,29 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           continue;
         }
 
+        fieldName = candidate->_fullName + candidate->_variableNameLength + 1;
+
         if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
           // primary index key names must be treated differently. _id and _key are the same
-          if (! TRI_EqualString("_id", candidate->_fullName + candidate->_variableNameLength + 1) &&
-              ! TRI_EqualString("_key", candidate->_fullName + candidate->_variableNameLength + 1)) {
+          if (! TRI_EqualString("_id", fieldName) && ! TRI_EqualString("_key", fieldName)) {
             continue;
           }
         }
-        else if (! TRI_EqualString(indexedFieldName, candidate->_fullName + candidate->_variableNameLength + 1)) {
+        else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+          // edge index key names must be treated differently. _from and _to can be used independently
+          if (! TRI_EqualString("_from", fieldName) && 
+              ! TRI_EqualString("_to", fieldName)) {
+            continue;
+          }
+        }
+        else if (! TRI_EqualString(indexedFieldName, fieldName)) {
           // different attribute, doesn't help
           continue;
         }
 
         // attribute is used in index
 
-        if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
           if (! IsExactCandidate(candidate)) {
             // wrong access type for primary index
             continue;

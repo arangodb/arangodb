@@ -995,6 +995,55 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for edge index access
+////////////////////////////////////////////////////////////////////////////////
+
+static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
+                                const TRI_aql_index_t* const idx,
+                                const TRI_aql_collection_t* const collection,
+                                const char* const collectionName) {
+  TRI_aql_field_access_t* fieldAccess;
+  size_t n;
+
+  n = idx->_fieldAccesses->_length;
+  assert(n == 1);
+
+  fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
+    
+  assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT || 
+         fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
+         (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE && 
+          fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ));
+
+  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
+    ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_EDGE_LIST('");
+  }
+  else {
+    ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_EDGE('");
+  }
+
+  ScopeOutput(generator, collectionName);
+  ScopeOutput(generator, "', ");
+  ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);   
+  ScopeOutput(generator, ", ");
+  if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
+    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
+
+    if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+      ScopeOutputRegister(generator, LookupSymbol(generator, fieldAccess->_value._reference._ref._name));
+    }
+    else {
+      ProcessAttributeAccess(generator, fieldAccess->_value._reference._ref._node);
+    }
+  }
+  else {
+    ScopeOutputJson(generator, fieldAccess->_value._value);
+  }
+  ScopeOutput(generator, ")");
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for skiplist access
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1384,6 +1433,10 @@ static void ProcessCollectionHinted (TRI_aql_codegen_js_t* const generator,
 
     case TRI_IDX_TYPE_HASH_INDEX: 
       GenerateHashAccess(generator, hint->_index, hint->_collection, collectionName); 
+      break;
+    
+    case TRI_IDX_TYPE_EDGE_INDEX: 
+      GenerateEdgeAccess(generator, hint->_index, hint->_collection, collectionName); 
       break;
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: 

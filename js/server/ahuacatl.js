@@ -109,7 +109,7 @@ function AHUACATL_NORMALIZE (value) {
   else {
     var attributes = [ ];
     for (var attribute in value) {
-      if (!value.hasOwnProperty(attribute)) {
+      if (! value.hasOwnProperty(attribute)) {
         continue;
       }
       attributes.push(attribute);
@@ -461,6 +461,62 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
     var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the edge index
+/// (single index value)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_EDGE (collection, att, id) {
+  try {
+    if (att === '_from') {
+      return internal.db[collection].outEdges(id);
+    }
+    else {
+      return internal.db[collection].inEdges(id);
+    }
+  }
+  catch (e) {
+  }
+
+  return [ ];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the edge index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
+  var docs = { };
+
+  for (var i in values) {
+    try {
+      var parts;
+      if (att === '_from') {
+        parts = internal.db[collection].outEdges(values[i]);
+      }
+      else {
+        parts = internal.db[collection].inEdges(values[i]);
+      }
+
+      for (var p in parts) {
+        docs[parts[p]._id] = parts[p];
+      }
+    }
+    catch (e) {
+    }
+  }
+
+  var result = [ ];
+  for (var p in docs) {
+    if (docs.hasOwnProperty(p)) {
+      result.push(docs[p]);
     }
   }
 
@@ -1829,7 +1885,7 @@ function AHUACATL_UNION () {
     }
 
     for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
+      if (! element.hasOwnProperty(k)) {
         continue;
       }
 

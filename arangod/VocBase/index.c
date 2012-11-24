@@ -37,6 +37,7 @@
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -74,6 +75,10 @@ void TRI_FreeIndex (TRI_index_t* const idx) {
     case TRI_IDX_TYPE_HASH_INDEX:
       TRI_FreeHashIndex(idx);
       break;
+    
+    case TRI_IDX_TYPE_EDGE_INDEX:
+      TRI_FreeEdgeIndex(idx);
+      break;
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       TRI_FreeSkiplistIndex(idx);
@@ -84,8 +89,7 @@ void TRI_FreeIndex (TRI_index_t* const idx) {
       break;
 
     case TRI_IDX_TYPE_PRIMARY_INDEX:
-      TRI_DestroyPrimaryIndex(idx);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx); 
+      TRI_FreePrimaryIndex(idx);
       break;
 
     default: 
@@ -228,6 +232,9 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
       
     case TRI_IDX_TYPE_HASH_INDEX: 
       return "hash";
+    
+    case TRI_IDX_TYPE_EDGE_INDEX: 
+      return "edge";
 
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
       return "priorityqueue";
@@ -268,6 +275,7 @@ bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX:
+    case TRI_IDX_TYPE_EDGE_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return true;
@@ -310,7 +318,7 @@ static int InsertPrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 /// @brief update methods does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-static int  UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+static int UpdatePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -323,7 +331,7 @@ static int RemovePrimary (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSON description of a geo index, location is a list
+/// @brief JSON description of a primary index
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonPrimary (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
@@ -402,6 +410,308 @@ void TRI_DestroyPrimaryIndex (TRI_index_t* idx) {
   LOG_TRACE("destroying primary index");
 
   TRI_DestroyVectorString(&idx->_fields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a primary index
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreePrimaryIndex (TRI_index_t* idx) {
+ TRI_DestroyPrimaryIndex(idx);
+ TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        EDGE INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes an edge header
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t HashElementEdge (TRI_multi_pointer_t* array, void const* data) {
+  TRI_edge_header_t const* h;
+  uint64_t hash[3];
+
+  h = data;
+
+  // only include directional bits for hashing, exclude special bits
+  hash[0] = (uint64_t) (h->_flags & TRI_EDGE_BITS_DIRECTION); 
+  hash[1] = h->_cid;
+  hash[2] = TRI_FnvHashString((char const*) h->_key); 
+
+  return TRI_FnvHashPointer(hash, sizeof(hash));  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if key and element match
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualKeyEdge (TRI_multi_pointer_t* array, 
+                            void const* left, 
+                            void const* right) {
+  TRI_edge_header_t const* l;
+  TRI_edge_header_t const* r;
+
+  l = left;
+  r = right;
+
+  // only include directional flags, exclude special bits
+  return ((l->_flags & TRI_EDGE_BITS_DIRECTION) == (r->_flags & TRI_EDGE_BITS_DIRECTION)) &&
+         (l->_cid == r->_cid) && 
+         (strcmp(l->_key, r->_key) == 0);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for elements are equal
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualElementEdge (TRI_multi_pointer_t* array, 
+                                void const* left, 
+                                void const* right) {
+  TRI_edge_header_t const* l;
+  TRI_edge_header_t const* r;
+
+  l = left;
+  r = right;
+
+  // only include directional flags, exclude special bits
+  return (l->_mptr == r->_mptr) && 
+         ((l->_flags & TRI_EDGE_BITS_DIRECTION) == (r->_flags & TRI_EDGE_BITS_DIRECTION)) && 
+         (l->_cid == r->_cid) && 
+         (strcmp(l->_key, r->_key) == 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert method for edges
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_edge_header_t* entryIn;
+  TRI_edge_header_t* entryOut;
+  TRI_doc_edge_key_marker_t const* edge;
+  bool isReflexive;
+  bool isBidirectional;
+  TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
+
+  edge = doc->_data;
+
+  // is the edge self-reflexive (_from & _to are identical)?
+  isReflexive = (edge->_toCid == edge->_fromCid && strcmp(((char*) edge) + edge->_offsetToKey, ((char*) edge) + edge->_offsetFromKey) == 0);
+  isBidirectional = edge->_isBidirectional;
+
+  // allocate all edge headers and return early if memory allocation fails
+
+  // IN
+  entryIn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
+  if (entryIn == NULL) {
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // OUT
+  entryOut = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
+  if (entryOut == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn);
+
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  // we have allocated all necessary memory by here
+
+  // IN
+  assert(entryIn);
+  entryIn->_mptr = doc;
+  entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive, isBidirectional);
+  entryIn->_cid = edge->_toCid;
+  entryIn->_key = ((char*) edge) + edge->_offsetToKey;
+  
+  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true);
+
+  // OUT
+  assert(entryOut);
+  entryOut->_mptr = doc;
+  entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive, isBidirectional);
+  entryOut->_cid = edge->_fromCid;
+  entryOut->_key = ((char*) edge) + edge->_offsetFromKey;
+
+  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update method does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int UpdateEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc, TRI_shaped_json_t const* old) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove an edge 
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemoveEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_edge_header_t entry;
+  TRI_edge_header_t* old;
+  TRI_doc_edge_key_marker_t const* edge;
+  TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
+  
+  edge = doc->_data;
+  
+  entry._mptr = doc;
+
+  // IN
+  entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_IN);
+  entry._cid = edge->_toCid;
+  entry._key = ((char*) edge) + edge->_offsetToKey;
+  old = TRI_RemoveElementMultiPointer(edgesIndex, &entry);
+
+  if (old != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+  }
+
+  // OUT
+  entry._flags = TRI_LookupFlagsEdge(TRI_EDGE_OUT);
+  entry._cid = edge->_fromCid;
+  entry._key = ((char*) edge) + edge->_offsetFromKey;
+  old = TRI_RemoveElementMultiPointer(edgesIndex, &entry);
+
+  if (old != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief JSON description of edge index
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
+  TRI_json_t* json;
+  TRI_json_t* fields;
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "_from"));
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "edge"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the edge index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
+  TRI_edge_index_t* idx;
+  char* id;
+
+  // create index
+  idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_index_t), false);
+  if (idx == NULL) {
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+  
+  id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_from");
+  if (id == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+
+    return NULL;
+  }
+  
+  TRI_InitVectorString(&idx->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorString(&idx->base._fields, id);
+  
+  idx->base._iid = 0;
+  idx->base._type = TRI_IDX_TYPE_EDGE_INDEX;
+  idx->base._unique = false;
+
+  idx->base.insert = InsertEdge;
+  idx->base.remove = RemoveEdge;
+  idx->base.update = UpdateEdge;
+  idx->base.json = JsonEdge;
+
+  TRI_InitMultiPointer(&idx->_edges,
+                       TRI_UNKNOWN_MEM_ZONE, 
+                       HashElementEdge,
+                       HashElementEdge,
+                       IsEqualKeyEdge,
+                       IsEqualElementEdge);
+
+  // TODO: this is redundant and should be removed
+  ((TRI_document_collection_t*) collection)->_edgesIndex = &idx->_edges;
+  return &idx->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the edge index, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
+  TRI_edge_index_t* edgesIndex;
+  size_t i, n;
+
+  edgesIndex = (TRI_edge_index_t*) idx;
+
+  LOG_TRACE("destroying edge index");
+
+  // free all elements in the edges index
+  n = edgesIndex->_edges._nrAlloc;
+
+  for (i = 0; i < n; ++i) {
+    void* element = edgesIndex->_edges._table[i];
+    if (element) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+    }
+  }
+
+  TRI_DestroyMultiPointer(&edgesIndex->_edges);
+  
+  TRI_DestroyVectorString(&idx->_fields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the edge index
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeEdgeIndex (TRI_index_t* idx) {
+  TRI_DestroyEdgeIndex(idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1721,7 +2031,7 @@ static int UpdateHashIndex (TRI_index_t* idx,
   union { void* p; void const* c; } cnv;
   HashIndexElement hashElement;
   TRI_hash_index_t* hashIndex;
-  int  res;  
+  int res;  
   
   // .............................................................................
   // Obtain the hash index structure
@@ -1939,7 +2249,6 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
     return NULL;
   }
     
-  
   return &hashIndex->base;
 }
 
@@ -2448,7 +2757,7 @@ static int UpdatePriorityQueueIndex (TRI_index_t* idx,
   union { void* p; void const* c; } cnv;
   PQIndexElement pqElement;
   TRI_priorityqueue_index_t* pqIndex;
-  int  res;  
+  int res;  
   
   // ............................................................................
   // Obtain the priority queue index structure
@@ -3369,7 +3678,7 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   union { void* p; void const* c; } cnv;
   SkiplistIndexElement skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
-  int  res;  
+  int res;  
 
   
   // ............................................................................
@@ -4327,7 +4636,7 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   
   BitarrayIndexElement element;
   TRI_bitarray_index_t* baIndex;
-  int  result;  
+  int result;  
 
   
   // ............................................................................

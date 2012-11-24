@@ -190,7 +190,8 @@ typedef struct TRI_document_collection_s {
   TRI_headers_t* _headers;
 
   TRI_vector_pointer_t _allIndexes;
-  TRI_multi_pointer_t _edgesIndex;
+
+  TRI_multi_pointer_t* _edgesIndex; // TODO: remove this
 
   // .............................................................................
   // this condition variable protects the _journalsCondition
