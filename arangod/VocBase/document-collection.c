@@ -1736,10 +1736,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     return false;
   }
 
-  if (collection->base.base._info._type == TRI_COL_TYPE_EDGE) {
-    TRI_InitEdgesDocumentCollection(collection);
-  }
-
   // create primary index 
   TRI_InitVectorPointer(&collection->_allIndexes, TRI_UNKNOWN_MEM_ZONE);
 
@@ -1751,7 +1747,23 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
     return false;
   }
   TRI_PushBackVectorPointer(&collection->_allIndexes, primary);
-  
+
+
+  // create edges index
+  if (collection->base.base._info._type == TRI_COL_TYPE_EDGE) {
+    TRI_index_t* edges;
+
+    edges = TRI_CreateEdgeIndex(&collection->base);
+    if (edges == NULL) {
+      TRI_DestroyVectorPointer(&collection->_allIndexes);
+      TRI_DestroyPrimaryCollection(&collection->base);
+
+      return false;
+    }
+
+    TRI_PushBackVectorPointer(&collection->_allIndexes, edges);
+  }
+
   TRI_InitCondition(&collection->_journalsCondition);
 
   // setup methods
@@ -1860,11 +1872,6 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* collection) {
   size_t n;
 
   TRI_DestroyCondition(&collection->_journalsCondition);
-
-  // only required for edge collections
-  if (collection->base.base._info._type == TRI_COL_TYPE_EDGE) {
-    TRI_FreeEdgesDocumentCollection(collection);
-  }
 
   TRI_FreeSimpleHeaders(collection->_headers);
 
@@ -2198,7 +2205,6 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t* jsonIndex, size_t* fieldCount
 
 static int CreateImmediateIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t* header) {
-  TRI_df_marker_t const* marker;
   TRI_primary_collection_t* primary;
   TRI_doc_mptr_t* found;
   size_t n;
@@ -2237,27 +2243,8 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
-  // check the document type
-  marker = header->_data;
-  
   // .............................................................................
-  // update edges index
-  // .............................................................................
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
-      // operation is only permitted for edge collections
-      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    }
-
-    result = TRI_InsertEdgeDocumentCollection(document, header);
-    if (result != TRI_ERROR_NO_ERROR) {
-      return result;
-    }
-  }
-
-  // .............................................................................
-  // update all the other indices
+  // update all indexes
   // .............................................................................
 
   n = document->_allIndexes._length;
@@ -2374,7 +2361,6 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
                                    TRI_voc_tick_t deletion) {
   union { TRI_doc_mptr_t const* c; TRI_doc_mptr_t* v; } change;
   TRI_primary_collection_t* primary;
-  TRI_df_marker_t const* marker;
   TRI_doc_mptr_t* found;
   size_t n;
   size_t i;
@@ -2397,25 +2383,8 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
-  // check the document type
-  marker = header->_data;
-  
   // .............................................................................
-  // update edges index
-  // .............................................................................
-  
-  // delete edges
-  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    if (collection->base.base._info._type != TRI_COL_TYPE_EDGE) {
-      // operation is only permitted for edge collections
-      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    }
-
-    TRI_DeleteEdgeDocumentCollection(collection, header);
-  }
-
-  // .............................................................................
-  // remove from all other indexes
+  // remove from all indexes
   // .............................................................................
 
   n = collection->_allIndexes._length;
