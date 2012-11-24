@@ -1786,8 +1786,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // collection is loaded
   // .............................................................................
 
-  // TODO: FIXME: this if condition is always true because the sub-parts are mutually exclusive
-  else if (collection->_status != TRI_VOC_COL_STATUS_LOADED || collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
+  else if (collection->_status != TRI_VOC_COL_STATUS_LOADED && collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 
     if (res != TRI_ERROR_NO_ERROR) {
