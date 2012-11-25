@@ -311,7 +311,7 @@ The ArangoDB server has a graphical front-end, which allows you to
 inspect the current state of the server from within your browser. You
 can use the front-end using the following URL:
 
-    http://localhost:8529/_admin
+    http://localhost:8529/_admin/html/index.html
 
 Unless you have loaded an application into the ArangoDB server, which remaps
 the paths, the front-end will also be available under
@@ -435,7 +435,7 @@ to a server, the version number of the ArangoDB server.
 Command-Line Options {#FirstStepsShellStartStopOptions}
 -------------------------------------------------------
 
-Use @LIT{--help} to get a list of command-line options:
+Use `--help` to get a list of command-line options:
 
     > ./arangosh --help
     STANDARD options:
