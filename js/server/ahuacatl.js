@@ -2062,7 +2062,7 @@ function AHUACATL_GRAPH_PATHS () {
   }
 
   var searchAttributes = { 
-    edgeCollection : internal.db[edgeCollection],
+    edgeCollection : AHUACATL_COLLECTION(edgeCollection),
     minLength : minLength, 
     maxLength : maxLength, 
     direction : searchDirection,
