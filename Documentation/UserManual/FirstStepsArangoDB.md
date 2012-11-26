@@ -80,7 +80,17 @@ the ArangoDB database server.
     arangodb 14536 0.1 0.6 5307264 23464 s002 S 1:21pm 0:00.18 /usr/local/sbin/arangod
 
 If there is no such process, check the log file
-`/var/log/arangodb/arangod.log` for errors.
+`/var/log/arangodb/arangod.log` for errors. If you see a log message
+like
+
+    2012-11-20T00:36:55Z [17253] ERROR No version information file found in database directory.
+    2012-11-20T00:36:55Z [17253] FATAL Database version check failed. Please run arango-upgrade --database.directory "/tmp/my-database-path"
+
+make sure that the program `arango-upgrade` has been used to initialse
+(or update) the database stored at `/tmp/my-database-path`. If not run
+
+    arango-upgrade --database.directory /tmp/my-database-path
+
 
 ArangoDB programs {#FirstStepsArangoDBBinaries}
 ===============================================
