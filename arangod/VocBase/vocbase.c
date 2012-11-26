@@ -357,7 +357,7 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (collection->_path != NULL) {
-    regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+    regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_EXTENDED);
 
     if (regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       char const* first = collection->_path + matches[1].rm_so;
@@ -548,7 +548,7 @@ static int ScanPath (TRI_vocbase_t* vocbase, char const* path) {
   files = TRI_FilesDirectory(path);
   n = files._length;
 
-  regcomp(&re, "^collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+  regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
   for (i = 0;  i < n;  ++i) {
     char* name;
@@ -995,17 +995,22 @@ size_t PageSize;
 /// Returns true if the name is allowed and false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedCollectionName (bool isSystem, char const* name) {
+bool TRI_IsAllowedCollectionName (bool allowSystem, char const* name) {
   bool ok;
   char const* ptr;
   size_t length = 0;
 
   for (ptr = name;  *ptr;  ++ptr) {
-    if (name < ptr || isSystem) {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+      else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
     }
     else {
-      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
 
     if (! ok) {
@@ -1115,8 +1120,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     LOG_FATAL("database is locked, please check the lock file '%s'", lockFile);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
-
     TRI_set_errno(TRI_ERROR_ARANGO_DATABASE_LOCKED);
+
     return NULL;
   }
 
@@ -1128,8 +1133,8 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL("cannot lock the database, please check the lock file '%s': %s", lockFile, TRI_last_error());
-
     TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
+
     return NULL;
   }
 
@@ -1138,6 +1143,12 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
   // .............................................................................
 
   vocbase = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t), false);
+  if (vocbase == NULL) {
+    LOG_FATAL("out of memory");
+    TRI_FreeString(TRI_CORE_MEM_ZONE, lockFile);
+
+    return NULL;
+  }
 
   vocbase->_cursors = TRI_CreateShadowsGeneralCursor();
 
@@ -1775,8 +1786,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // collection is loaded
   // .............................................................................
 
-  // TODO: FIXME: this if condition is always true because the sub-parts are mutually exclusive
-  else if (collection->_status != TRI_VOC_COL_STATUS_LOADED || collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
+  else if (collection->_status != TRI_VOC_COL_STATUS_LOADED && collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 
     if (res != TRI_ERROR_NO_ERROR) {
