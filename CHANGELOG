@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #296: system collections not usable from AQL
+
 * fixed issue #293: AQL queries should exploit edges index
 
 * fixed issue #292: use index when filtering on _key in AQL
