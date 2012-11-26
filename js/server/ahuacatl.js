@@ -84,6 +84,20 @@ function AHUACATL_INDEX (collection, indexTypes) {
 
   return null;
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get access to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_COLLECTION (name) {
+  if (name.substring(0, 1) === '_') {
+    // system collections need to be accessed slightly differently as they
+    // are not returned by the propertyGetter of db
+    return internal.db._collection(name);
+  }
+
+  return internal.db[name];
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a value for comparison, sorting etc.
@@ -109,7 +123,7 @@ function AHUACATL_NORMALIZE (value) {
   else {
     var attributes = [ ];
     for (var attribute in value) {
-      if (!value.hasOwnProperty(attribute)) {
+      if (! value.hasOwnProperty(attribute)) {
         continue;
       }
       attributes.push(attribute);
@@ -397,7 +411,7 @@ function AHUACATL_LIST (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS (collection) {
-  return internal.db[collection].ALL(0, null).documents;
+  return AHUACATL_COLLECTION(collection).ALL(0, null).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,7 +421,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 
 function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
   try {
-    return [ internal.db[collection].document(id) ];
+    return [ AHUACATL_COLLECTION(collection).document(id) ];
   }
   catch (e) {
     return [ ];
@@ -425,7 +439,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
   for (var i in values) {
     var id = values[i];
     try {
-      var d = internal.db[collection].document(id);
+      var d = AHUACATL_COLLECTION(collection).document(id);
       result.push(d);
     }
     catch (e) {
@@ -441,7 +455,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
-  return internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+  return AHUACATL_COLLECTION(collection).BY_EXAMPLE_HASH(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,9 +472,65 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_HASH(idx, example).documents;
+    var documents = AHUACATL_COLLECTION(collection).BY_EXAMPLE_HASH(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the edge index
+/// (single index value)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_EDGE (collection, att, id) {
+  try {
+    if (att === '_from') {
+      return AHUACATL_COLLECTION(collection).outEdges(id);
+    }
+    else {
+      return AHUACATL_COLLECTION(collection).inEdges(id);
+    }
+  }
+  catch (e) {
+  }
+
+  return [ ];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get documents from the specified collection using the edge index
+/// (multiple index values)
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
+  var docs = { };
+
+  for (var i in values) {
+    try {
+      var parts;
+      if (att === '_from') {
+        parts = AHUACATL_COLLECTION(collection).outEdges(values[i]);
+      }
+      else {
+        parts = AHUACATL_COLLECTION(collection).inEdges(values[i]);
+      }
+
+      for (var p in parts) {
+        docs[parts[p]._id] = parts[p];
+      }
+    }
+    catch (e) {
+    }
+  }
+
+  var result = [ ];
+  for (var p in docs) {
+    if (docs.hasOwnProperty(p)) {
+      result.push(docs[p]);
     }
   }
 
@@ -472,7 +542,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_BITARRAY (collection, idx, example) {
-  return internal.db[collection].BY_CONDITION_BITARRAY(idx, example).documents;
+  return AHUACATL_COLLECTION(collection).BY_CONDITION_BITARRAY(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,7 +559,7 @@ function AHUACATL_GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, value
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_BITARRAY(idx, example).documents;
+    var documents = AHUACATL_COLLECTION(collection).BY_EXAMPLE_BITARRAY(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -506,7 +576,7 @@ function AHUACATL_GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, value
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
-  return internal.db[collection].BY_CONDITION_SKIPLIST(idx, example).documents;
+  return AHUACATL_COLLECTION(collection).BY_CONDITION_SKIPLIST(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +593,7 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST(idx, example).documents;
+    var documents = AHUACATL_COLLECTION(collection).BY_EXAMPLE_SKIPLIST(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -1829,7 +1899,7 @@ function AHUACATL_UNION () {
     }
 
     for (var k in element) {
-      if (!element.hasOwnProperty(k)) {
+      if (! element.hasOwnProperty(k)) {
         continue;
       }
 
@@ -1946,12 +2016,12 @@ function AHUACATL_GEO_NEAR () {
   var limit = arguments[3];
   var distanceAttribute = arguments[4];
 
-  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  var idx = AHUACATL_INDEX(AHUACATL_COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx == null) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = internal.db[collection].NEAR(idx, latitude, longitude, limit);
+  var result = AHUACATL_COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
   if (distanceAttribute == null) {
     return result.documents;
   }
@@ -1978,12 +2048,12 @@ function AHUACATL_GEO_WITHIN () {
   var radius = arguments[3];
   var distanceAttribute = arguments[4];
 
-  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  var idx = AHUACATL_INDEX(AHUACATL_COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx == null) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = internal.db[collection].WITHIN(idx, latitude, longitude, radius);
+  var result = AHUACATL_COLLECTION(collection).WITHIN(idx, latitude, longitude, radius);
   if (distanceAttribute == null) {
     return result.documents;
   }
@@ -2048,7 +2118,7 @@ function AHUACATL_GRAPH_PATHS () {
   }
 
   var searchAttributes = { 
-    edgeCollection : internal.db[edgeCollection],
+    edgeCollection : AHUACATL_COLLECTION(edgeCollection),
     minLength : minLength, 
     maxLength : maxLength, 
     direction : searchDirection,

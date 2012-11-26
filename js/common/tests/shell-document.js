@@ -71,7 +71,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandle : function () {
       try {
-        collection.document("123~456");
+        collection.document("  123456");
         fail();
       }
       catch (err) {
@@ -85,7 +85,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleReplace : function () {
       try {
-        collection.replace("123~456", {});
+        collection.replace("123456  ", {});
         fail();
       }
       catch (err) {
@@ -99,7 +99,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleDelete : function () {
       try {
-        collection.remove("123~456");
+        collection.remove("123/45/6");
         fail();
       }
       catch (err) {
@@ -604,7 +604,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandle : function () {
       try {
-        internal.db._document("123~456");
+        internal.db._document("  123456");
         fail();
       }
       catch (err) {
@@ -618,7 +618,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleReplace : function () {
       try {
-        internal.db._replace("123~456", {});
+        internal.db._replace("123456  ", {});
         fail();
       }
       catch (err) {
@@ -632,7 +632,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleDelete : function () {
       try {
-        internal.db._remove("123~456");
+        internal.db._remove("123/45/6");
         fail();
       }
       catch (err) {

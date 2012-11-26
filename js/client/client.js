@@ -295,7 +295,7 @@ function stop_pretty_print () {
 
   if (internal.PRETTY_PRINT) {
     internal.PRETTY_PRINT = false;
-    internal.print("stop pretty printing");
+    internal.print("disabled pretty printing");
   }
 }
 
@@ -349,7 +349,7 @@ function start_color_print (color) {
 function stop_color_print () {
   var internal = require("internal");
 
-  internal.print("stop color printing");
+  internal.print("disabled color printing");
   internal.COLOR_OUTPUT = false;
 }
 

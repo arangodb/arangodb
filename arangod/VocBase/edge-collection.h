@@ -38,6 +38,53 @@ extern "C" {
 // --SECTION--                                                   EDGE COLLECTION
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief special bit that can be set within edge flags
+/// this bit will be set if the edge is an in-marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EDGE_BIT_DIRECTION_IN  ((TRI_edge_flags_t) (1 << 1))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief special bit that can be set within edge flags
+/// this bit will be set if the edge is an out-marker
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EDGE_BIT_DIRECTION_OUT ((TRI_edge_flags_t) (1 << 2))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief special bit that can be set within edge flags
+/// this bit will be set if the edge is self-reflexive (i.e. _from and _to are
+/// the same)
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EDGE_BIT_REFLEXIVE     ((TRI_edge_flags_t) (1 << 3))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief special bit that can be set within edge flags
+/// this bit will be set if the edge is bidirectional
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EDGE_BIT_BIDIRECTIONAL ((TRI_edge_flags_t) (1 << 4))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief combination of the two directional bits
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EDGE_BITS_DIRECTION    (TRI_EDGE_BIT_DIRECTION_IN | TRI_EDGE_BIT_DIRECTION_OUT)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -112,39 +159,27 @@ TRI_edge_header_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the edges index of a collection
+/// @brief compose edge flags aggregate out of only the direction
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitEdgesDocumentCollection (TRI_document_collection_t*);
+TRI_edge_flags_t TRI_LookupFlagsEdge (const TRI_edge_direction_e);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free all edges in the collection's edges index
+/// @brief compose edge flags aggregate out of multiple individual parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeEdgesDocumentCollection (TRI_document_collection_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert an edge into the edges index
-////////////////////////////////////////////////////////////////////////////////
-  
-int TRI_InsertEdgeDocumentCollection (TRI_document_collection_t*,
-                                      TRI_doc_mptr_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove an edge from the edges index
-////////////////////////////////////////////////////////////////////////////////
-  
-void TRI_DeleteEdgeDocumentCollection (TRI_document_collection_t*,
-                                       TRI_doc_mptr_t const*);
+TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e, 
+                                const bool, 
+                                const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* edges,
-                                                        TRI_edge_direction_e direction,
-                                                        TRI_voc_cid_t cid,
-                                                        TRI_voc_key_t key);
+TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t*,
+                                                        TRI_edge_direction_e,
+                                                        TRI_voc_cid_t,
+                                                        TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
