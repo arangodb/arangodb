@@ -9,7 +9,6 @@
 ################################################################################
 
 BUILT_SOURCES += @V8_LIBS@
-CLEANUP += @srcdir@/.v8-build-@TRI_BITS@
 
 @V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
 
@@ -34,7 +33,15 @@ CLEANUP += @srcdir@/.v8-build-@TRI_BITS@
 ### @brief additional files to remove
 ################################################################################
 
-CLEANUP += .v8-build-@TRI_BITS@
+CLEANUP += @srcdir@/.v8-build-@TRI_BITS@
+CLEANUP_3RD += clean-v8
+
+clean-v8:
+	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+	rm -rf @top_srcdir@/3rdParty/V8/out
+	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
+	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
+	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
