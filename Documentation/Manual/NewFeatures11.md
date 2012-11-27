@@ -103,16 +103,6 @@ removed. Replacing will also create a new revision:
 
 For more information, please check @ref RestDocument.
 
-Blueprints API {#NewFeatures11BluePrintsAPI}
---------------------------------------------
-
-Blueprints is a property graph model interface with provided
-implementations.  Databases that implement the Blueprints interfaces
-automatically support Blueprints-enabled applications
-(@EXTREF{http://tinkerpop.com/,http://tinkerpop.com}).
-
-For more information please refer to @ref HttpBlueprints.
-
 AQL Improvements {#NewFeatures11AqlImprovements}
 ------------------------------------------------
 

@@ -137,7 +137,6 @@ following command line option:
 
 Of course this option can also be stored in a configuration file.
 
-
 ### HTTP keep-alive
 
 The following _arangod_ startup options have been removed in ArangoDB
@@ -260,6 +259,15 @@ given on the command line, _arangoimp_ and _arangosh_ will
 interactively prompt for a password.  If no username is specified on
 the command line, the default user _root_ will be used but there will
 still be a password prompt.
+
+Change of syslog usage
+----------------------
+
+In 1.0, arangod always logged its output to the syslog, regardless of
+any other logging that was configured. In 1.1, this has changed. Log 
+messages will be sent to the syslog only if the server is started with
+the `--log.syslog` option and a non-empty string (the log facility) 
+is given to it.
 
 Removed functionality
 ---------------------
