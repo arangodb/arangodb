@@ -34,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "ResultGenerator/OutputGenerator.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utilities/ResourceHolder.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantBoolean.h"
 #include "Variant/VariantInt32.h"
@@ -353,6 +354,8 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
     return;
   }
 
+  ResourceHolder holder;
+
   // add document identifier to buffer
   TRI_string_buffer_t buffer;
 
@@ -362,20 +365,17 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
 
   TRI_json_t* _id = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str());
-
-  if (_id) {
+  if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, _id)) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_id", _id);
   }
 
   TRI_json_t* _rev = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, document->_rid);
-
-  if (_rev) {
+  if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, _rev)) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_rev", _rev);
   }
 
   TRI_json_t* _key = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, document->_key, strlen(document->_key));
-
-  if (_key) {
+  if (holder.registerJson(TRI_UNKNOWN_MEM_ZONE, _key)) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_key", _key);
   }
 
@@ -411,18 +411,6 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
-
-  if (_id) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _id);
-  }
-
-  if (_rev) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _rev);
-  }
-
-  if (_key) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _key);
-  }
 
   // and generate a response
   _response = createResponse(HttpResponse::OK);
