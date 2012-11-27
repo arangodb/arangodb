@@ -1436,6 +1436,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename) {
 
 typedef struct log_appender_syslog_s {
   TRI_log_appender_t base;
+  TRI_mutex_t _mutex;
 }
 log_appender_syslog_t;
 
@@ -1466,6 +1467,7 @@ static void LogAppenderSyslog_Log (TRI_log_appender_t* appender,
                                    char const* msg,
                                    size_t length) {
   int priority;
+  log_appender_syslog_t* self;
 
   switch (severity) {
     case TRI_LOG_SEVERITY_EXCEPTION: priority = LOG_CRIT;  break;
@@ -1485,8 +1487,12 @@ static void LogAppenderSyslog_Log (TRI_log_appender_t* appender,
       case TRI_LOG_LEVEL_TRACE: priority = LOG_DEBUG; break;
     }
   }
+  
+  self = (log_appender_syslog_t*) appender;
 
+  TRI_LockMutex(&self->_mutex);
   syslog(priority, "%s", msg);
+  TRI_UnlockMutex(&self->_mutex);
 }
 
 #endif
@@ -1522,9 +1528,14 @@ static void LogAppenderSyslog_Close (TRI_log_appender_t* appender) {
   }
 
   TRI_UnlockSpin(&AppendersLock);
-
+  
   self = (log_appender_syslog_t*) appender;
+  TRI_LockMutex(&self->_mutex);
   closelog();
+  TRI_UnlockMutex(&self->_mutex);
+
+  TRI_DestroyMutex(&self->_mutex);
+
   TRI_Free(TRI_CORE_MEM_ZONE, self);
 }
 
@@ -1553,9 +1564,12 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
   log_appender_syslog_t* appender;
   int value;
 
+  assert(facility);
+  assert(*facility != '\0');
+
   // no logging
   if (name == NULL || *name == '\0') {
-    name = "[voc]";
+    name = "[arangod]";
   }
 
   // allocate space
@@ -1565,6 +1579,8 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
   appender->base.log = LogAppenderSyslog_Log;
   appender->base.reopen = LogAppenderSyslog_Reopen;
   appender->base.close = LogAppenderSyslog_Close;
+
+  TRI_InitMutex(&appender->_mutex);
 
   // find facility
   value = LOG_LOCAL0;
@@ -1586,7 +1602,10 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
   }
 
   // and open logging
+  TRI_LockMutex(&appender->_mutex);
+  // openlog does not have a return value...
   openlog(name, LOG_CONS | LOG_PID, value);
+  TRI_UnlockMutex(&appender->_mutex);
 
   // and store it
   TRI_LockSpin(&AppendersLock);
