@@ -5,6 +5,7 @@ require './arangodb.rb'
 
 describe ArangoDB do
   prefix = "rest-create-document"
+  didRegex = /^([0-9a-zA-Z]+)\/([0-9a-zA-Z\-_]+)/
 
   context "creating a document:" do
 
@@ -119,7 +120,7 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
 	match[1].should eq("#{@cid}")
 
@@ -152,7 +153,7 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
 	match[1].should eq("#{@cid}")
 
@@ -192,7 +193,7 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
 	match[1].should eq("#{@cid}")
 
@@ -238,7 +239,7 @@ describe ArangoDB do
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
 
-        match = /([0-9]*)\/([0-9]*)/.match(did)
+        match = didRegex.match(did)
 
         match[1].should eq("#{@cid}")
 
@@ -290,7 +291,7 @@ describe ArangoDB do
         did.should be_kind_of(String)
         did.should eq("#{@cid}/#{@key}")
 	
-        match = /([0-9]*)\/([0-9a-zA-Z][0-9a-zA-Z_]+)/.match(did)
+        match = didRegex.match(did)
 
         match[1].should eq("#{@cid}")
 
@@ -356,7 +357,7 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
 	match[1].should eq("#{@cid}")
 
@@ -389,7 +390,7 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
 	match[1].should eq("#{@cid}")
 
@@ -422,7 +423,7 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
 	match[1].should eq("#{@cid}")
 
@@ -470,9 +471,9 @@ describe ArangoDB do
 	did = doc.parsed_response['_id']
 	did.should be_kind_of(String)
 	
-	match = /([0-9]*)\/([0-9]*)/.match(did)
+	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
