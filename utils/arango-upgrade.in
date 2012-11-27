@@ -8,6 +8,36 @@ MODULESPATH="@PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules"
 SCRIPT="@PKGDATADIR@/js/server/arango-upgrade.js"
 UIDOPTION=""
 UIDUSER=""
+WHOAMI=$(whoami)
+
+function print_help {
+  echo ""
+  echo "usage:"
+  echo "  $0 --database.directory <path to directory> [options]"
+  echo ""
+  echo "options:"
+  echo "  --uid <user>        change user to <user> for upgrading"
+  echo "  --help              this message"
+  echo ""
+  echo "options for developers:"
+  echo "  --relative          use arangod and javascript in current directory"
+  echo ""
+  exit 1
+}
+
+function checkOptions {
+  case "$1" in
+    --help)
+      print_help
+      ;;
+
+    *)
+      echo "unknown option: $1"
+      print_help
+      ;;
+
+  esac
+}
 
 while [ "$#" -gt 1 ];  do
   case "$1" in
@@ -27,13 +57,23 @@ while [ "$#" -gt 1 ];  do
       MODULESPATH="./js/server/modules;./js/common/modules"
       SCRIPT="./js/server/arango-upgrade.js"
       ;;
+
+    *)
+      checkOptions $1
+      ;;
+
   esac
 
   shift
 done
 
+if [ "$#" -gt 0 ]; then
+  checkOptions $1
+fi
+
 if test ! -d "$DATABASE";  then
   echo "$0: database directory '$DATABASE' does not exist"
+  print_help
   exit 1
 fi
 
@@ -44,3 +84,9 @@ $ARANGOD \
     --javascript.modules-path "$MODULESPATH" \
     $UIDOPTION $UIDUSER
 
+if [ "$WHOAMI" == "abrandt" ] && [ "$UIDUSER" == "" ] ; then
+  echo "Warning:"
+  echo "  $0 started without '--uid <user>' option."
+  echo "  Change owner of database files if needed!"
+  exit 1
+fi
