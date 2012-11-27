@@ -28,6 +28,11 @@
 
 #include "edge-collection.h"
 
+#include "BasicsC/logging.h"
+
+#include "VocBase/document-collection.h"
+#include "VocBase/index.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       EDGES INDEX
 // -----------------------------------------------------------------------------
@@ -40,6 +45,32 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the edges index of a document collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_multi_pointer_t* FindEdgesIndex (TRI_document_collection_t* const document) {
+  size_t i, n;
+
+  if (document->base.base._info._type != TRI_COL_TYPE_EDGE) {
+    // collection is not an edge collection... caller must handle that
+    return NULL;
+  }
+
+  n = document->_allIndexes._length;
+  for (i = 0; i < n; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) TRI_AtVectorPointer(&document->_allIndexes, i);
+    if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+      TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
+
+      return &edgesIndex->_edges;
+    }
+  }
+
+  // collection does not have an edges index... caller must handle that
+  return NULL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether an edge is bi-directional
@@ -187,12 +218,13 @@ TRI_edge_flags_t TRI_FlagsEdge (const TRI_edge_direction_e direction,
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* collection,
+TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_edge_direction_e direction,
                                                         TRI_voc_cid_t cid,
                                                         TRI_voc_key_t key) {
   TRI_vector_pointer_t result;
   TRI_edge_header_t entry;
+  TRI_multi_pointer_t* edgesIndex;
 
   // search criteria 
   entry._mptr = 0;
@@ -201,24 +233,30 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (TRI_document_collection_
 
   // initialise the result vector
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
+  
+  edgesIndex = FindEdgesIndex(document);
+  if (edgesIndex == NULL) {
+    LOG_ERROR("collection does not have an edges index");
+    return result;
+  }
 
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, collection->_edgesIndex, &result, &entry, 1);
+    FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 1);
     // add all bidirectional edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, collection->_edgesIndex, &result, &entry, 2);
+    FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 2);
   }
   else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, collection->_edgesIndex, &result, &entry, 1);
+    FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 1);
     // add all bidirectional edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, collection->_edgesIndex, &result, &entry, 2);
+    FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 2);
   }
   else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, collection->_edgesIndex, &result, &entry, 1);
+    FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 1);
     // add all non-reflexive edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, collection->_edgesIndex, &result, &entry, 3);
+    FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 3);
   }
 
   return result;

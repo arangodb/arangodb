@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_EDGE_COLLECTION_H
 #define TRIAGENS_DURHAM_VOC_BASE_EDGE_COLLECTION_H 1
 
-#include <VocBase/document-collection.h>
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {

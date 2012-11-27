@@ -673,8 +673,6 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
                        IsEqualKeyEdge,
                        IsEqualElementEdge);
 
-  // TODO: this is redundant and should be removed
-  ((TRI_document_collection_t*) collection)->_edgesIndex = &idx->_edges;
   return &idx->base;
 }
 
