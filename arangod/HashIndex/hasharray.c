@@ -125,7 +125,7 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
     return false;
   }
 
-  // check if memory was aligned on a cache line boundary
+  // position array directly on a cache line boundary
   offset = ((intptr_t) data) % CACHE_LINE_SIZE;
 
   if (offset == 0) {

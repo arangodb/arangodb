@@ -38,6 +38,7 @@
 /// <ul>
 ///  <li>@ref FirstStepsArangoDB</li>
 ///  <li>@ref UserManualArangosh</li>
+///  <li>@ref UserManualWebInterface</li>
 ///  <li>@ref ShellCollection</li>
 ///  <li>@ref ShellDocument</li>
 ///  <li>@ref ShellEdge</li>
@@ -52,6 +53,7 @@
 /// @else
 /// @copydetails FirstStepsArangoDBTOC
 /// @copydetails UserManualArangoshTOC
+/// @copydetails UserManualWebInterfaceTOC
 /// @copydetails ShellCollectionTOC
 /// @copydetails ShellDocumentTOC
 /// @copydetails ShellEdgeTOC

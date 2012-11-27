@@ -80,7 +80,34 @@ the ArangoDB database server.
     arangodb 14536 0.1 0.6 5307264 23464 s002 S 1:21pm 0:00.18 /usr/local/sbin/arangod
 
 If there is no such process, check the log file
-`/var/log/arangodb/arangod.log` for errors.
+`/var/log/arangodb/arangod.log` for errors. If you see a log message
+like
+
+    2012-11-20T00:36:55Z [17253] ERROR No version information file found in database directory.
+    2012-11-20T00:36:55Z [17253] FATAL Database version check failed. Please run arango-upgrade --database.directory "/tmp/my-database-path"
+
+make sure that the program `arango-upgrade` has been used to initialse
+(or update) the database stored at `/tmp/my-database-path`. If not run
+
+    arango-upgrade --database.directory /tmp/my-database-path
+
+
+ArangoDB programs {#FirstStepsArangoDBBinaries}
+===============================================
+
+The ArangoDB database package comes with the following programs:
+
+- _arangod_: The ArangoDB database daemon. This server program is
+  intended to run as daemon process and to server the various clients
+  connection to the server via TCP / HTTP. See @ref
+  FirstStepsServerStartStop.
+- _arango-update_: Used to initialize or update the database.
+- _arangosh_: The ArangoDB shell. A client that implements a
+  read-eval-print loop (REPL) and provides functions to access and
+  administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
+- _arangoimp_: A bulk importer for the ArangoDB server.
+  See @ref ImpManual
+
 
 ArangoDB programs {#FirstStepsArangoDBBinaries}
 ===============================================
@@ -311,7 +338,7 @@ The ArangoDB server has a graphical front-end, which allows you to
 inspect the current state of the server from within your browser. You
 can use the front-end using the following URL:
 
-    http://localhost:8529/_admin
+    http://localhost:8529/_admin/html/index.html
 
 Unless you have loaded an application into the ArangoDB server, which remaps
 the paths, the front-end will also be available under
@@ -435,7 +462,7 @@ to a server, the version number of the ArangoDB server.
 Command-Line Options {#FirstStepsShellStartStopOptions}
 -------------------------------------------------------
 
-Use @LIT{--help} to get a list of command-line options:
+Use `--help` to get a list of command-line options:
 
     > ./arangosh --help
     STANDARD options:
