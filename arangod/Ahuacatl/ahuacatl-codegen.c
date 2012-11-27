@@ -1006,7 +1006,7 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
   size_t n;
 
   n = idx->_fieldAccesses->_length;
-  assert(n == 1);
+  assert(n > 0);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
     
