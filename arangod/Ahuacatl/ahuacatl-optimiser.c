@@ -132,6 +132,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   TRI_aql_collection_hint_t* hint;
   TRI_aql_index_t* idx;
   TRI_aql_collection_t* collection;
+  TRI_primary_collection_t* primary;
   char* collectionName;
 
   collectionName = TRI_AQL_NODE_STRING(nameNode);
@@ -160,7 +161,9 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
   hint->_collection = collection;
 
-  availableIndexes = &(((TRI_document_collection_t*) collection->_collection->_collection)->_allIndexes);
+  primary = collection->_collection->_collection;
+
+  availableIndexes = &(((TRI_document_collection_t*) primary)->_allIndexes);
 
   if (availableIndexes == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -172,7 +175,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
                               availableIndexes, 
                               collectionName, 
                               hint->_ranges);
-
+  
   hint->_index = idx;
 }
 
