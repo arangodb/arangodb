@@ -9,7 +9,6 @@
 ################################################################################
 
 BUILT_SOURCES += @LIBEV_LIBS@
-CLEANUP += @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
 
 @LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 
@@ -36,7 +35,7 @@ CLEANUP += @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
 ### @brief additional files to remove
 ################################################################################
 
-CLEANUP += .libev-build-@TRI_BITS@
+CLEANUP += @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

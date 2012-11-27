@@ -46,8 +46,10 @@ v1.2.alpha (XXXX-XX-XX)
   `_bidirectional` attribute with a value of `true`.
 
 
-v1.1.beta3 (XXXX-XX-XX)
------------------------
+v1.1.0 (XXXX-XX-XX)
+-------------------
+
+# fixed issue #269: fix make distclean & clean
 
 * fixed issue #296: system collections not usable from AQL
 
