@@ -250,12 +250,7 @@ endif
 ################################################################################
 
 CLEANUP += \
-	$(DOXYGEN) \
-	Doxygen/doc \
-	Doxygen/latex \
-	Doxygen/website \
-	Doxygen/wiki \
-	Doxygen/xml
+	Doxygen/*
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
