@@ -1601,9 +1601,8 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name, char const* f
     }
   }
 
-  // and open logging
+  // and open logging, openlog does not have a return value...
   TRI_LockMutex(&appender->_mutex);
-  // openlog does not have a return value...
   openlog(name, LOG_CONS | LOG_PID, value);
   TRI_UnlockMutex(&appender->_mutex);
 

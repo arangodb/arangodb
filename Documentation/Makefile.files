@@ -92,7 +92,6 @@ WIKI = \
 	SimpleQueries \
 	Upgrading \
 	UserManual \
-	UserManualBasics \
 	UserManualArangosh \
 	UserManualWebInterface \
 	UserManualActions \
