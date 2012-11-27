@@ -78,6 +78,11 @@ and not yet executed tasks.
 _arango-upgrade_ needs exclusive access to the database, so it cannot
 be executed while an instance of _arangod_ is currently running.
 
+If ArangoDB normaly runs with a lower privileged UID than _arango-upgrade_ 
+requires the option `--uid username` to upgrade the database:
+
+    > bin/arango-upgrade --database.directory /tmp/voctest --uid arangodb
+
 Server startup options changes
 ------------------------------
 
