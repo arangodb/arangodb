@@ -103,16 +103,6 @@ removed. Replacing will also create a new revision:
 
 For more information, please check @ref RestDocument.
 
-Blueprints API {#NewFeatures11BluePrintsAPI}
---------------------------------------------
-
-Blueprints is a property graph model interface with provided
-implementations.  Databases that implement the Blueprints interfaces
-automatically support Blueprints-enabled applications
-(@EXTREF{http://tinkerpop.com/,http://tinkerpop.com}).
-
-For more information please refer to @ref HttpBlueprints.
-
 AQL Improvements {#NewFeatures11AqlImprovements}
 ------------------------------------------------
 
@@ -218,7 +208,9 @@ parameter to `true` will force synchronisation.
 Server Statistics {#NewFeatures11ServerStatistics}
 --------------------------------------------------
 
-ArangoDB 1.1 allows querying the server status via REST API methods.
+ArangoDB 1.1 allows querying the server status via the administration
+front-end (see @ref UserManualWebInterfaceStatistics) or via REST API
+methods.
 
 The following methods are available:
 - `GET /_admin/connection-statistics`: provides connection statistics

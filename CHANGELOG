@@ -13,14 +13,14 @@ v1.2.alpha (XXXX-XX-XX)
   * the key must be at most 256 bytes long
   * it must consist of valid UTF-8 characters only
   * the key must not contain the forward slash (/)
-  * the key must not begin or end with a space, tab, newline, carriage return or 
+  * the key must not begin or end with a space, tab, newline, carriage return or
     form feed character
 
   Specifiying a document key is optional when creating new documents. If no
   document key is specified, ArangoDB will create a document key itself.
   There are no guarantees about the format and pattern of auto-generated document
   keys other than the above restrictions.
-  Clients should therefore treat auto-generated document keys as opaque values. 
+  Clients should therefore treat auto-generated document keys as opaque values.
 
 * allow collection names everywhere where a collection id can be used
   This change allows using a collection name in place of a collection id at all places
@@ -31,23 +31,27 @@ v1.2.alpha (XXXX-XX-XX)
   * collection names can also be used instead of collection ids in REST API calls
 
 * edges in edge collections can optionally be undirected
-  Edges now have a @LIT{_bidirectional} attribute that determines whether the edge is to be
+  Edges now have a `_bidirectional` attribute that determines whether the edge is to be
   treated as directed (unidirectional) or undirected (bidirectional). The attribute
   can be set when an edge is created. If ommitted, the default is to create unidirectional
-  edges (i.e. @LIT{_bidirectional: false}).
+  edges (i.e. `_bidirectional: false`).
   Unidirectional edges are handled as in previous versions of ArangoDB, that is they
-  have a @LIT{_from} and @LIT{_to} attribute that indicate the source and target vertices
-  of the edge. Additionally, they now return the @LIT{_bidirectional} attribute with a
-  value of @LIT{false}.
+  have a `_from` and `_to` attribute that indicate the source and target vertices
+  of the edge. Additionally, they now return the `_bidirectional` attribute with a
+  value of `false`.
   Bidirectional edges do not have unambigious sources and targets (the roles of the connected
-  vertices are unclear), so they return the connected vertices in a @LIT{_vertices} list.
+  vertices are unclear), so they return the connected vertices in a `_vertices` list.
   This list contains the two vertices that the edge connects. It is up to the user to
-  figure out these edges' roles. Additionally, bidirectional edges return the 
-  @LIT{_bidirectional} attribute with a value of @LIT{true}.
+  figure out these edges' roles. Additionally, bidirectional edges return the
+  `_bidirectional` attribute with a value of `true`.
 
 
-v1.1.beta3 (XXXX-XX-XX)
------------------------
+v1.1.0 (XXXX-XX-XX)
+-------------------
+
+# fixed issue #269: fix make distclean & clean
+
+* fixed issue #296: system collections not usable from AQL
 
 * added collection type label to web interface
 
@@ -66,14 +70,15 @@ v1.1.beta3 (XXXX-XX-XX)
 * changed misleading AQL function name NOT_LIST() to FIRST_LIST() and slightly changed
   the behavior. The function will now return its first argument that is a list, or null 
   if none of the arguments are lists.
-  This is mostly downwards-compatible. The only change to 1.1 will happen if two
-  arguments were passed and the 1st and 2nd arguments were no lists. In 1.1, previously
-  the 2nd arguments was returned as is, but now null will be returned.
+  This is mostly downwards-compatible. The only change to the previous implementation in
+  1.1-beta will happen if two arguments were passed and the 1st and 2nd arguments were 
+  both no lists. In previous 1.1, the 2nd argument was returned as is, but now null 
+  will be returned.
 
 * add AQL function FIRST_DOCUMENT(), with same behavior as FIRST_LIST(), but working
   with documents instead of lists.
 
-* added UPGRADE file
+* added UPGRADING help text
 
 * WARNING:
   arangod now performs a database version check at startup. It will look for a file
@@ -83,6 +88,9 @@ v1.1.beta3 (XXXX-XX-XX)
   start and ask the user to run the upgrade script first. This procedure shall ensure
   that users have full control over when they perform any updates/upgrades of their
   data, and do not risk running an incompatible server/database state tandem.
+
+* fixed issue #284: fixed Javascript errors when adding edges/vertices without own
+  attributes
 
 * fixed issue #283: AQL LENGTH() now works on documents, too
 
@@ -95,9 +103,6 @@ v1.1.beta3 (XXXX-XX-XX)
   the fix of this issue also implies validation of collection names / ids passed to
   the REST edge create method. edges with invalid collection ids or names in the
   "from" or "to" values will be rejected and not saved
-  Also allow using collection names in document ids when creating edges from 
-  Javascript using the edges.<collection>.save(from, to, data) method
-
 
 v1.1.beta2 (2012-11-13)
 -----------------------
@@ -304,6 +309,18 @@ v1.0.4 (2012-11-12)
 -------------------
 
 * strange error message in arangosh 1.0.3 at startup
+
+
+v1.0.3 (2012-11-08)
+-------------------
+
+* fixed AQL optimiser bug
+
+* issue #273: fixed segfault in arangosh on HTTP 40x 
+
+* issue #265: allow optional base64 encoding/decoding of action response data
+
+* issue #252: _modules collection not created automatically
 
 
 v1.0.2 (2012-10-22)

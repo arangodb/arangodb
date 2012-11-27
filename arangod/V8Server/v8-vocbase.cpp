@@ -6176,6 +6176,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   
   context->Global()->Set(TRI_V8_SYMBOL("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);
   context->Global()->Set(TRI_V8_SYMBOL("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
+  
+  // .............................................................................
+  // create the global variables
+  // .............................................................................
 
   context->Global()->Set(TRI_V8_SYMBOL("db"),
                          TRI_WrapVocBase(vocbase, TRI_COL_TYPE_DOCUMENT),

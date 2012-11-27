@@ -251,6 +251,7 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 
 bool V8LineEditor::open (const bool autoComplete) {
   if (autoComplete) {
+
     // issue #289: do not append a space after completion
     rl_completion_append_character = '\0';
 
