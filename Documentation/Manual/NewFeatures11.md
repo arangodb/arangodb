@@ -218,7 +218,9 @@ parameter to `true` will force synchronisation.
 Server Statistics {#NewFeatures11ServerStatistics}
 --------------------------------------------------
 
-ArangoDB 1.1 allows querying the server status via REST API methods.
+ArangoDB 1.1 allows querying the server status via the administration
+front-end (see @ref UserManualWebInterfaceStatistics) or via REST API
+methods.
 
 The following methods are available:
 - `GET /_admin/connection-statistics`: provides connection statistics

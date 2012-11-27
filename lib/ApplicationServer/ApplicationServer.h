@@ -341,7 +341,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief program options
 ///
-/// @CMDOPT{\-\-help}
+/// @CMDOPT{\--help}
 ///
 /// @CMDOPT{-h}
 ///
@@ -409,7 +409,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version of the application
 ///
-/// @CMDOPT{\-\-version}
+/// @CMDOPT{\--version}
 ///
 /// @CMDOPT{-v}
 ///
@@ -421,7 +421,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief config file
 ///
-/// @CMDOPT{\-\-configuration @CA{filename}}
+/// @CMDOPT{\--configuration @CA{filename}}
 ///
 /// @CMDOPT{-c @CA{filename}}
 ///
@@ -500,7 +500,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the user id to use for the process
 ///
-/// @CMDOPT{\-\-uid @CA{uid}}
+/// @CMDOPT{\--uid @CA{uid}}
 ///
 /// The name (identity) of the user the server will run as. If this parameter is
 /// not specified, the server will not attempt to change its UID, so that the
@@ -534,7 +534,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the group id to use for the process
 ///
-/// @CMDOPT{\-\-gid @CA{gid}}
+/// @CMDOPT{\--gid @CA{gid}}
 ///
 /// The name (identity) of the group the server will run as. If this parameter
 /// is not specified, then the server will not attempt to change its GID, so
@@ -564,7 +564,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log application name
 ///
-/// @CMDOPT{\-\-log.application @CA{name}}
+/// @CMDOPT{\--log.application @CA{name}}
 ///
 /// Specifies the @CA{name} of the application which should be logged if this item of
 /// information is to be logged.
@@ -575,7 +575,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log host name
 ///
-/// @CMDOPT{\-\-log.hostname @CA{name}}
+/// @CMDOPT{\--log.hostname @CA{name}}
 ///
 /// Specifies the @CA{name} of the operating environment (the "hostname") which
 /// should be logged if this item of information is to be logged. Note that
@@ -587,7 +587,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log facility
 ///
-/// @CMDOPT{\-\-log.facility @CA{name}}
+/// @CMDOPT{\--log.facility @CA{name}}
 ///
 /// Specifies the name of the server instance which should be logged if this
 /// item of information is to be logged.
@@ -598,9 +598,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
 ///
-/// @CMDOPT{\-\-log.level @CA{level}}
+/// @CMDOPT{\--log.level @CA{level}}
 ///
-/// @CMDOPT{\-\-log @CA{level}}
+/// @CMDOPT{\--log @CA{level}}
 ///
 /// Allows the user to choose the level of information which is logged by the
 /// server. The argument @CA{level} is specified as a string and can be one of
@@ -670,7 +670,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log format
 ///
-/// @CMDOPT{\-\-log.format @CA{format}}
+/// @CMDOPT{\--log.format @CA{format}}
 ///
 /// @copydetails triagens::basics::Logger::setLogFormat
 ////////////////////////////////////////////////////////////////////////////////
@@ -680,7 +680,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log severity
 ///
-/// @CMDOPT{\-\-log.severity @CA{severity}}
+/// @CMDOPT{\--log.severity @CA{severity}}
 ///
 /// This parameter provides a set of standard log severities which can be
 /// used. The currently accepted @CA{severities} are:
@@ -701,7 +701,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
 ///
-/// @CMDOPT{\-\-log.file @CA{filename}}
+/// @CMDOPT{\--log.file @CA{filename}}
 ///
 /// This option allows the user to specify the name of a file to which
 /// information is logged. By default, if no log file is specified, the standard
@@ -719,7 +719,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log prefix
 ///
-/// @CMDOPT{\-\-log.prefix @CA{prefix}}
+/// @CMDOPT{\--log.prefix @CA{prefix}}
 ///
 /// This option is used specify an prefix to logged text.
 ////////////////////////////////////////////////////////////////////////////////
@@ -729,7 +729,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
 ///
-/// @CMDOPT{\-\-log.syslog @CA{arg}}
+/// @CMDOPT{\--log.syslog @CA{arg}}
 ///
 /// If this option is set, then in addition to output being directed to the
 /// standard output (or to a specified file, in the case that the command line
@@ -750,7 +750,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log thread identifier
 ///
-/// @CMDOPT{\-\-log.thread}
+/// @CMDOPT{\--log.thread}
 ///
 /// Whenever log output is generated, the process ID is written as part of the
 /// log information. Setting this option appends the thread id of the calling
@@ -770,7 +770,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log line number
 ///
-/// @CMDOPT{\-\-log.line-number}
+/// @CMDOPT{\--log.line-number}
 ///
 /// Normally, if an human readable fatal, error, warning or info message is
 /// logged, no information about the file and line number is provided. The file
@@ -783,7 +783,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log filter
 ///
-/// @CMDOPT{\-\-log.filter @CA{arg}}
+/// @CMDOPT{\--log.filter @CA{arg}}
 ///
 /// For debug and trace messages, only log those messages occurring in the
 /// file @CA{arg}.
@@ -794,7 +794,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random number generator to use
 ///
-/// @CMDOPT{\-\-random.generator @CA{arg}}
+/// @CMDOPT{\--random.generator @CA{arg}}
 ///
 /// The argument is an integer (1,2,3 or 4) which sets the manner in which
 /// random numbers are generated. The default method (3) is to use the a
@@ -805,7 +805,7 @@ namespace triagens {
 /// algorithm. Algorithm 4 is a combination of the blocking random number
 /// generator and the Mersenne Twister.
 ///
-/// @CMDOPT{\-\-random.no-seed}
+/// @CMDOPT{\--random.no-seed}
 ///
 /// By default, the random generator is seeded. Setting this option causes the
 /// random number generator not to be seeded. (Seeding the random number
