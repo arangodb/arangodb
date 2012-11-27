@@ -259,6 +259,8 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
 			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
 			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
+			@top_srcdir@/js/server/tests/ahuacatl-paths.js \
+			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
