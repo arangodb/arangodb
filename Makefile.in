@@ -278,32 +278,29 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_21 = @srcdir@/.libev-build-@TRI_BITS@ \
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@top_srcdir@/3rdParty/libev/BUILD \
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	.libev-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_21 = @srcdir@/.libev-build-@TRI_BITS@ @top_srcdir@/3rdParty/libev/BUILD
 @ENABLE_ALL_IN_ONE_V8_TRUE@am__append_22 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 =  \
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@srcdir@/.v8-build-@TRI_BITS@ \
-@ENABLE_ALL_IN_ONE_V8_TRUE@	.v8-build-@TRI_BITS@
-@ENABLE_MRUBY_TRUE@am__append_24 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 = @srcdir@/.v8-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_24 = clean-v8
+@ENABLE_MRUBY_TRUE@am__append_25 = @MRUBY_LIBS@
+
+################################################################################
+### @brief additional files to remove
+###
+### "clean" in mruby is broken
+################################################################################
+@ENABLE_MRUBY_TRUE@am__append_26 = @srcdir@/.mruby-build-@TRI_BITS@
+@ENABLE_MRUBY_TRUE@am__append_27 = clean-mruby
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_28 = @ICU_BUILT@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_25 = @srcdir@/.mruby-build-@TRI_BITS@ \
-@ENABLE_MRUBY_TRUE@	.mruby-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_26 = @ICU_BUILT@
-
-################################################################################
-### @brief additional files to remove
-################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_27 =  \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@srcdir@/.icu-build-@TRI_BITS@ \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	$(ICUDIR) .icu-build-@TRI_BITS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_29 = @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -994,7 +991,7 @@ BUILT_SOURCES = build.h $(JAVASCRIPT_HEADER) $(JAVASCRIPT_BROWSER) \
 	$(am__append_14) Doxygen/.setup-directories \
 	@builddir@/.setup-js-directories $(am__append_16) \
 	$(am__append_18) $(am__append_19) $(am__append_20) \
-	$(am__append_22) $(am__append_24) $(am__append_26)
+	$(am__append_22) $(am__append_25) $(am__append_28)
 
 ################################################################################
 ### @brief man pages to install
@@ -1022,10 +1019,14 @@ dist_man_MANS = Documentation/man/man1/arangoimp.1 \
 ################################################################################
 ### @brief cleanup
 ################################################################################
-CLEANUP = $(am__append_12) $(bin_SCRIPTS) $(DOXYGEN) Doxygen/doc \
-	Doxygen/latex Doxygen/website Doxygen/wiki Doxygen/xml \
+CLEANUP = $(am__append_12) $(bin_SCRIPTS) Doxygen/* \
 	$(JAVASCRIPT_HEADER) $(am__append_17) $(am__append_21) \
-	$(am__append_23) $(am__append_25) $(am__append_27)
+	$(am__append_23) $(am__append_26) $(am__append_29)
+
+################################################################################
+### @brief tragets for cleanup of 3rd party libraries
+################################################################################
+CLEANUP_3RD = $(am__append_24) $(am__append_27)
 
 ################################################################################
 ### @brief flex files
@@ -4870,7 +4871,7 @@ distclean: distclean-am
 	-rm -rf UnitTests/$(DEPDIR) UnitTests/Cambridge/$(DEPDIR) UnitTests/Jutland/$(DEPDIR) UnitTests/Philadelphia/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/BitIndexes/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexIterators/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/MRServer/$(DEPDIR) arangod/PriorityQueue/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/BasicsC/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/Logger/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/ResultGenerator/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Variant/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-hdr distclean-tags
+	distclean-hdr distclean-local distclean-tags
 
 dvi: dvi-am
 
@@ -4947,21 +4948,21 @@ uninstall-man: uninstall-man1 uninstall-man8
 	cscope cscopelist ctags dist dist-all dist-bzip2 dist-gzip \
 	dist-lzip dist-shar dist-tarZ dist-xz dist-zip distcheck \
 	distclean distclean-compile distclean-generic distclean-hdr \
-	distclean-tags distcleancheck distdir distuninstallcheck dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-arangosysconfDATA install-binPROGRAMS \
-	install-binSCRIPTS install-data install-data-am \
-	install-data-local install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-man1 install-man8 \
-	install-nobase_pkgdataDATA install-pdf install-pdf-am \
-	install-ps install-ps-am install-sbinPROGRAMS install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
-	uninstall-binSCRIPTS uninstall-man uninstall-man1 \
-	uninstall-man8 uninstall-nobase_pkgdataDATA \
+	distclean-local distclean-tags distcleancheck distdir \
+	distuninstallcheck dvi dvi-am html html-am info info-am \
+	install install-am install-arangosysconfDATA \
+	install-binPROGRAMS install-binSCRIPTS install-data \
+	install-data-am install-data-local install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-man1 \
+	install-man8 install-nobase_pkgdataDATA install-pdf \
+	install-pdf-am install-ps install-ps-am install-sbinPROGRAMS \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
+	tags uninstall uninstall-am uninstall-arangosysconfDATA \
+	uninstall-binPROGRAMS uninstall-binSCRIPTS uninstall-man \
+	uninstall-man1 uninstall-man8 uninstall-nobase_pkgdataDATA \
 	uninstall-sbinPROGRAMS
 
 
@@ -5343,6 +5344,9 @@ unittests-bitarray-index:
 ################################################################################
 ################################################################################
 
+distclean-local:
+	@for i in $(CLEANUP_3RD); do  $(MAKE) $$i;  done
+
 clean-local:
 	rm -rf $(CLEANUP)
 	rm -f $(BUILT_SOURCES)
@@ -5594,6 +5598,13 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
+@ENABLE_ALL_IN_ONE_V8_TRUE@clean-v8:
+@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/out
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
+@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
+
 @ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: @srcdir@/.mruby-build-@TRI_BITS@
 
 @ENABLE_MRUBY_TRUE@@srcdir@/.mruby-build-@TRI_BITS@:
@@ -5612,6 +5623,9 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_MRUBY_TRUE@	@echo "BUILD mruby FINISHED"
 @ENABLE_MRUBY_TRUE@	@echo "--------------------------------------------------------------------------------"
 @ENABLE_MRUBY_TRUE@	@echo
+
+@ENABLE_MRUBY_TRUE@clean-mruby:
+@ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/MRUBY && ( $(MAKE) -k clean || true )
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@@ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
 
