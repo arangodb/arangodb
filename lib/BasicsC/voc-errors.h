@@ -135,11 +135,14 @@ extern "C" {
 ///   status.
 /// - 1218: @LIT{collection type invalid}
 ///   Will be raised when an invalid collection type is used in a request.
+<<<<<<< HEAD
 /// - 1219: @LIT{illegal document key}
 ///   Will be raised when a document key is corrupt.
 /// - 1220: @LIT{unexpected document key}
 ///   Will be raised when a user-defined document key is supplied for
 ///   collections with auto key generation.
+=======
+>>>>>>> origin/1.1
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -208,6 +211,7 @@ extern "C" {
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
+<<<<<<< HEAD
 /// - 1650: @LIT{transaction definition is incomplete}
 ///   Will be raised when the transaction definition is incomplete (e.g. lacks
 ///   collections to use).
@@ -222,6 +226,8 @@ extern "C" {
 /// - 1654: @LIT{unregistered collection used in transaction}
 ///   Will be raised when a collection is used in the middle of a transaction
 ///   but was not registered at transaction start.
+=======
+>>>>>>> origin/1.1
 /// - 1800: @LIT{invalid key declaration}
 ///   Will be raised when an invalid key specification is passed to the server
 /// - 1801: @LIT{key already exists}

@@ -330,7 +330,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing alternate startup scripts
 ///
-/// @CMDOPT{\-\-javascript.directory @CA{directory}}
+/// @CMDOPT{\--javascript.directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to alternate startup JavaScript files.
 /// Normally, the server will start using built-in JavaScript core
@@ -343,7 +343,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of module directories
 ///
-/// @CMDOPT{\-\-javascript.modules-path @CA{directory}}
+/// @CMDOPT{\--javascript.modules-path @CA{directory}}
 ///
 /// Specifies the @CA{directory} path with user defined JavaScript modules.
 /// Multiple paths can be specified separated with commas.
@@ -354,7 +354,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
-/// @CMDOPT{\-\-javascript.action-directory @CA{directory}}
+/// @CMDOPT{\--javascript.action-directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} containg the system defined JavaScript files
 /// that can be invoked as actions.
@@ -377,7 +377,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript garbage collection interval (each x requests)
 ///
-/// @CMDOPT{\-\-javascript.gc-interval @CA{interval}}
+/// @CMDOPT{\--javascript.gc-interval @CA{interval}}
 ///
 /// Specifies the interval (approximately in number of requests) that the
 /// garbage collection for JavaScript objects will be run in each thread.
@@ -388,7 +388,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript garbage collection frequency (each x seconds)
 ///
-/// @CMDOPT{\-\-javascript.gc-frequency @CA{frequency}}
+/// @CMDOPT{\--javascript.gc-frequency @CA{frequency}}
 ///
 /// Specifies the frequency (in seconds) for the automatic garbage collection of
 /// JavaScript objects. This setting is useful to have the garbage collection 
@@ -400,7 +400,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optional arguments to pass to v8
 ///
-/// @CMDOPT{\-\-javascript.v8-options @CA{options}}
+/// @CMDOPT{\--javascript.v8-options @CA{options}}
 ///
 /// Optional arguments to pass to the V8 Javascript engine. The V8 engine will
 /// run with default settings unless explicit options are specified using this

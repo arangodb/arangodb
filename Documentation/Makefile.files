@@ -94,6 +94,7 @@ WIKI = \
 	UserManual \
 	UserManualBasics \
 	UserManualArangosh \
+	UserManualWebInterface \
 	UserManualActions \
 	jsUnity
 

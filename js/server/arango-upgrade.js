@@ -286,7 +286,6 @@ function main (argv) {
     return true;
   });
   
-
   // loop through all tasks and execute them
   console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
 

@@ -2957,6 +2957,8 @@ function systemAttributes () {
     '_to'            : true, 
     '_bidirectional' : true,
     '_vertices'      : true,
+    '_from'          : true, 
+    '_to'            : true, 
     '$id'            : true 
   };
 }
