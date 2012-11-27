@@ -163,6 +163,24 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+        inline string assembleDocumentId (const string& collectionName,
+                                          TRI_voc_key_t key) {
+          if (key == 0) {
+            return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "unknown";
+          }
+
+          return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a HTTP 201 or 202 response
+////////////////////////////////////////////////////////////////////////////////
+
+        void generate20x (const rest::HttpResponse::HttpResponseCode,
+                          const string&,
+                          TRI_voc_key_t,
+                          TRI_voc_rid_t);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates ok message without content
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,43 +191,43 @@ namespace triagens {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateCreated (const string&, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateAccepted (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateAccepted (const string&, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateDeleted (const string&, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateUpdated (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
+        void generateUpdated (const string&, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates document not found error message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (TRI_voc_cid_t, TRI_voc_key_t);
+        void generateDocumentNotFound (const string&, TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates conflict message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateConflict (TRI_voc_cid_t, TRI_voc_key_t);
+        void generateConflict (const string&, TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateNotImplemented (string const& path);
+        void generateNotImplemented (const string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates forbidden
@@ -221,20 +239,20 @@ namespace triagens {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (TRI_voc_cid_t, TRI_voc_key_t, TRI_voc_rid_t);
+        void generatePreconditionFailed (const string&, TRI_voc_key_t, TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateNotModified (string const&);
+        void generateNotModified (const string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateDocument (TRI_doc_mptr_t const*,
-                               const TRI_voc_cid_t,
+                               const string&,
                                TRI_shaper_t*,
                                const bool);
 
@@ -244,7 +262,6 @@ namespace triagens {
 
         void generateTransactionError (const string&, 
                                        const int,
-                                       TRI_voc_cid_t = 0,
                                        TRI_voc_key_t = 0,
                                        TRI_voc_rid_t = 0);
 

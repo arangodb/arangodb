@@ -301,7 +301,7 @@ bool RestDocumentHandler::createDocument () {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, trx.cid());
+    generateTransactionError(collection, res);
     return false;
   }
 
@@ -310,10 +310,10 @@ bool RestDocumentHandler::createDocument () {
 
   // generate result
   if (trx.synchronous()) {
-    generateCreated(trx.cid(), document->_key, document->_rid);
+    generateCreated(collection, document->_key, document->_rid);
   }
   else {
-    generateAccepted(trx.cid(), document->_key, document->_rid);
+    generateAccepted(collection, document->_key, document->_rid);
   }
 
   return true;
@@ -428,7 +428,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, trx.cid(), (TRI_voc_key_t) key.c_str());
+    generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
@@ -440,10 +440,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(document, trx.cid(), trx.shaper(), generateBody);
+      generateDocument(document, collection, trx.shaper(), generateBody);
     }
     else {
-      generatePreconditionFailed(trx.cid(), document->_key, rid);
+      generatePreconditionFailed(collection, document->_key, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -451,15 +451,15 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(StringUtils::itoa(rid));
     }
     else {
-      generatePreconditionFailed(trx.cid(), document->_key, rid);
+      generatePreconditionFailed(collection, document->_key, rid);
     }
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(document, trx.cid(), trx.shaper(), generateBody);
+      generateDocument(document, collection, trx.shaper(), generateBody);
     }
     else {
-      generatePreconditionFailed(trx.cid(), document->_key, rid);
+      generatePreconditionFailed(collection, document->_key, rid);
     }
   }
 
@@ -511,7 +511,7 @@ bool RestDocumentHandler::readAllDocuments () {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, trx.cid());
+    generateTransactionError(collection, res);
     return false;
   }
 
@@ -798,7 +798,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     res = trx.read(&oldDocument, key); 
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
-      generateTransactionError(collection, res, trx.cid(), (TRI_voc_key_t) key.c_str(), rid);
+      generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
 
       return false;
     }
@@ -830,7 +830,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, trx.cid(), (TRI_voc_key_t) key.c_str(), rid);
+    generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
 
     return false;
   }
@@ -839,7 +839,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   assert(document);
   assert(document->_key);
 
-  generateUpdated(trx.cid(), (TRI_voc_key_t) key.c_str(), document->_rid);
+  generateUpdated(collection, (TRI_voc_key_t) key.c_str(), document->_rid);
 
   return true;
 }
@@ -950,11 +950,11 @@ bool RestDocumentHandler::deleteDocument () {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, trx.cid(), (TRI_voc_key_t) key.c_str(), rid);
+    generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
     return false;
   }
   
-  generateDeleted(trx.cid(), (TRI_voc_key_t) key.c_str(), rid);
+  generateDeleted(collection, (TRI_voc_key_t) key.c_str(), rid);
   return true;
 }
 

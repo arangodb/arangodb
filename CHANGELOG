@@ -24,13 +24,13 @@ v1.2.alpha (XXXX-XX-XX)
   keys other than the above restrictions.
   Clients should therefore treat auto-generated document keys as opaque values.
 
-* allow collection names everywhere where a collection id can be used
-  This change allows using a collection name in place of a collection id at all places
+* allow collection names everywhere where a collection id was allowed in ArangoDB 1.1 & 1.0
+  This change request using a collection name in place of a collection id at all places
   where the end user deals with collections. Examples:
   * creating edges: the _from and _to values can now contain collection names instead
     of collection ids. Example: edges.relations.save("test/my-key1", "test/my-key2", { ... });
   * looking up documents: db.users.document("fred") or db._document("users/fred")
-  * collection names can also be used instead of collection ids in REST API calls
+  * collection names must be used instead of collection ids in REST API calls
 
 * edges in edge collections can optionally be undirected
   Edges now have a `_bidirectional` attribute that determines whether the edge is to be

@@ -234,10 +234,10 @@ bool RestEdgeHandler::createDocument () {
 
   // generate result
   if (trx.synchronous()) {
-    generateCreated(trx.cid(), document->_key, document->_rid);
+    generateCreated(collection, document->_key, document->_rid);
   }
   else {
-    generateAccepted(trx.cid(), document->_key, document->_rid);
+    generateAccepted(collection, document->_key, document->_rid);
   }
 
   return true;
