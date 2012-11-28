@@ -5,18 +5,11 @@ echo "#                     build.sh                         #"
 echo "########################################################"
 echo
 
-. config/detect_distro.sh
-
 OPTIONS="--disable-dependency-tracking --disable-relative"
 PREFIX="--prefix=/usr --localstatedir=/var --sysconfdir=/etc"
 RESULTS="arangod arangosh arangoimp"
 USE_ICECC="no"
 EXTRA_MAKE_OPTIONS=""
-
-export CPPFLAGS=""
-export LDFLAGS=""
-export MAKEJ=2
-export LDD_INFO="no"
 
 while [ 0 -lt "$#" ];  do
   opt="$1"
@@ -28,10 +21,22 @@ while [ 0 -lt "$#" ];  do
       ;;
     *)
       echo "$0: unknown option '$opt'"
+      echo "usage: "
+      echo "  $0 [option]        build project"
+      echo "options:"
+      echo "  --enable-icecc     using icecc for compiling"
+      echo ""
       exit 1
       ;;
   esac
 done
+
+. config/detect_distro.sh
+
+export CPPFLAGS=""
+export LDFLAGS=""
+export MAKEJ=2
+export LDD_INFO="no"
 
 HAS_ICECC=$(ps aux | grep -v "grep" | grep iceccd)
 
@@ -69,7 +74,7 @@ case $TRI_OS_LONG in
 
   Linux-openSUSE-12*)
     echo "Using configuration for openSuSE 12.X"
-    OPTIONS="$OPTIONS --enable-flex --enable-bison --disable-mruby "
+    OPTIONS="$OPTIONS --disable-mruby "
     LDD_INFO="yes"
     RESULTS="$RESULTS arangoirb"
     ;;
@@ -144,7 +149,6 @@ echo
 make setup || exit 1
 fi
 
-
 echo
 echo "########################################################"
 echo "CPPFLAGS: $CPPFLAGS"
@@ -187,3 +191,17 @@ for result in $RESULTS;  do
     echo
   fi
 done
+
+
+echo
+echo "########################################################"
+echo "create man pages:"
+echo "    make man "
+echo "########################################################"
+echo
+
+mkdir Doxygen/man
+mkdir Doxygen/man/man1
+mkdir Doxygen/man/man8
+
+make man
