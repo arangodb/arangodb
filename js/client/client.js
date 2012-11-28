@@ -538,6 +538,14 @@ function ArangoQueryCursor (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the baseurl for cursor usage
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoQueryCursor.prototype.baseurl = function () {
+    return "/_api/cursor/"+ encodeURIComponent(this.data.id);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether there are more results available in the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -569,9 +577,7 @@ function ArangoQueryCursor (database, data) {
         this._hasMore = false;
 
         // load more results      
-        var requestResult = this._database._connection.PUT(
-          "/_api/cursor/"+ encodeURIComponent(this.data.id),
-          "");
+        var requestResult = this._database._connection.PUT(this.baseurl(), "");
 
         client.checkRequestResult(requestResult);
 
@@ -624,9 +630,7 @@ function ArangoQueryCursor (database, data) {
       return;
     }
 
-    var requestResult = this._database._connection.DELETE(
-      "/_api/cursor/"+ encodeURIComponent(this.data.id),
-      "");
+    var requestResult = this._database._connection.DELETE(this.baseurl(), "");
 
     client.checkRequestResult(requestResult);
 
@@ -1071,15 +1075,34 @@ function ArangoCollection (database, data) {
     return this._type;
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for collection usage
+////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.baseurl = function (suffix) {
-    var url = "/_api/collection/" + encodeURIComponent(this.name());
+    var url = this._database._collectionurl(this.name());
     if (suffix) {
       url += "/" + suffix;
     }
     
     return url;
-  }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for document usage
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype._documenturl = function (id) {
+    return this._database._documenturl(id, this.name()); 
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for collection index usage
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype._indexurl = function (suffix) {
+    return "/_api/index?collection=" + encodeURIComponent(this.name());
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the properties of a collection
@@ -1170,8 +1193,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.getIndexes = function () {
-    var requestResult = this._database._connection.GET(
-      "/_api/index?collection=" + encodeURIComponent(this.name()));
+    var requestResult = this._database._connection.GET(this._indexurl());
 
     client.checkRequestResult(requestResult);
 
@@ -1187,28 +1209,7 @@ function ArangoCollection (database, data) {
       id = id.id;
     }
 
-    var requestResult;
-    var s = id.split("/");
-
-    if (s.length !== 2) {
-      requestResult = {
-        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
-        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
-      };
-
-      throw new ArangoError(requestResult);
-    }
-    else if (s[0] !== this.name()) {
-      requestResult = {
-        errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-        errorMessage: 
-          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
-      };
-
-      throw new ArangoError(requestResult);
-    }
-
-    requestResult = this._database._connection.GET("/_api/index/" + id);
+    var requestResult = this._database._connection.GET(this._database._indexurl(id, this.name()));
 
     client.checkRequestResult(requestResult);
 
@@ -1224,28 +1225,7 @@ function ArangoCollection (database, data) {
       id = id.id;
     }
 
-    var requestResult;
-    var s = id.split("/");
-
-    if (s.length !== 2) {
-      requestResult = {
-        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
-        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
-      };
-
-      throw new ArangoError(requestResult);
-    }
-    else if (s[0] !== this.name()) {
-      requestResult = {
-        errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-        errorMessage:
-          internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
-      };
-
-      throw new ArangoError(requestResult);
-    }
-
-    requestResult = this._database._connection.DELETE("/_api/index/" + id);
+    var requestResult = this._database._connection.DELETE(this._database._indexurl(id, this.name()));
 
     if (requestResult !== null
         && requestResult.error === true 
@@ -1275,8 +1255,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "bitarray", unique : false, fields : fields };
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1294,8 +1273,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "cap", size : size };
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1318,8 +1296,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "skiplist", unique : true, fields : fields };
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1342,8 +1319,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "skiplist", unique : false, fields : fields };
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1366,8 +1342,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "hash", unique : true, fields : fields };
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1390,8 +1365,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "hash", unique : false, fields : fields };
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1434,8 +1408,7 @@ function ArangoCollection (database, data) {
       };
     }
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()), 
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1489,8 +1462,7 @@ function ArangoCollection (database, data) {
       }
     }
 
-    var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this.name()),
+    var requestResult = this._database._connection.POST(this._indexurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1596,7 +1568,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.refresh = function () {
     var requestResult = this._database._connection.GET(
-      "/_api/collection/" + encodeURIComponent(this._id) + "?useId=true");
+      this._database._collectionurl(this._id) + "?useId=true");
 
     client.checkRequestResult(requestResult);
 
@@ -1647,26 +1619,16 @@ function ArangoCollection (database, data) {
     }
 
     if (rev === null) {
-      requestResult = this._database._connection.GET("/_api/document/" + id);
+      requestResult = this._database._connection.GET(this._documenturl(id));
     }
     else {
-      requestResult = this._database._connection.GET(
-        "/_api/document/" + id,
+      requestResult = this._database._connection.GET(this._documenturl(id),
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null
         && requestResult.error === true 
         && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-      else if (s[0] !== this.name()) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
-      }
-
       throw new ArangoError(requestResult);
     }
 
@@ -1744,24 +1706,14 @@ function ArangoCollection (database, data) {
     }
 
     if (rev === null) {
-      requestResult = this._database._connection.DELETE(
-        "/_api/document/" + id + policy);
+      requestResult = this._database._connection.DELETE(this._documenturl(id) + policy);
     }
     else {
-      requestResult = this._database._connection.DELETE(
-        "/_api/document/" + id + policy, {'if-match' : '"' + rev + '"' });
+      requestResult = this._database._connection.DELETE(this._documenturl(id) + policy,
+        {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null && requestResult.error === true) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-      else if (s[0] !== this.name()) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
-      }
-
       if (overwrite) {
         if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
           return false;
@@ -1799,26 +1751,16 @@ function ArangoCollection (database, data) {
     }
 
     if (rev === null) {
-      requestResult = this._database._connection.PUT(
-        "/_api/document/" + id + policy, 
+      requestResult = this._database._connection.PUT(this._documenturl(id) + policy,
         JSON.stringify(data));
     }
     else {
-      requestResult = this._database._connection.PUT(
-        "/_api/document/" + id + policy, JSON.stringify(data),
+      requestResult = this._database._connection.PUT(this._documenturl(id) + policy,
+        JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null && requestResult.error === true) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-      else if (s[0] !== this.name()) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
-      }
-
       throw new ArangoError(requestResult);
     }
 
@@ -1852,26 +1794,16 @@ function ArangoCollection (database, data) {
     }
 
     if (rev === null) {
-      requestResult = this._database._connection.PATCH(
-        "/_api/document/" + id + params, 
+      requestResult = this._database._connection.PATCH(this._documenturl(id) + params,
         JSON.stringify(data));
     }
     else {
-      requestResult = this._database._connection.PATCH(
-        "/_api/document/" + id + params, JSON.stringify(data),
+      requestResult = this._database._connection.PATCH(this._documenturl(id) + params,
+        JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null && requestResult.error === true) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-      else if (s[0] !== this.name()) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
-      }
-
       throw new ArangoError(requestResult);
     }
 
@@ -2059,11 +1991,79 @@ function ArangoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for collection usage
+////////////////////////////////////////////////////////////////////////////////
+  
+  ArangoDatabase.prototype._collectionurl = function (id) {
+    if (id == undefined) {
+      return "/_api/collection";
+    }
+
+    return "/_api/collection/" + encodeURIComponent(id);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for document usage
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._documenturl = function (id, expectedName) {
+    var s = id.split("/");
+
+    if (s.length !== 2) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+      });
+    }
+    else if (expectedName != undefined && expectedName != "" && s[0] !== expectedName) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorNum: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code,
+        errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+      });
+    }
+
+    return "/_api/document/" + encodeURIComponent(s[0]) + "/" + encodeURIComponent(s[1]);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for index usage
+////////////////////////////////////////////////////////////////////////////////
+  
+  ArangoDatabase.prototype._indexurl = function (id, expectedName) {
+    var s = id.split("/");
+
+    if (s.length !== 2) {
+      // invalid index handle
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorNum: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.code,
+        errorMessage: internal.errors.ERROR_ARANGO_INDEX_HANDLE_BAD.message
+      });
+    }
+    else if (expectedName != undefined && expectedName != "" && s[0] !== expectedName) {
+      // index handle does not match collection name
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorNum: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code,
+        errorMessage: internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.message
+      });
+    }
+
+    return "/_api/index/" + encodeURIComponent(s[0]) + "/" + encodeURIComponent(s[1]); 
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections from the database
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoDatabase.prototype._collections = function () {
-    var requestResult = this._connection.GET("/_api/collection");
+    var requestResult = this._connection.GET(this._collectionurl());
   
     client.checkRequestResult(requestResult);
 
@@ -2097,10 +2097,10 @@ function ArangoDatabase (connection) {
     var url;
 
     if (typeof id === "number") {
-      url = "/_api/collection/" + encodeURIComponent(id) + "?useId=true";
+      url = this._collectionurl(id) + "?useId=true";
     }
     else {
-      url = "/_api/collection/" + encodeURIComponent(id);
+      url = this._collectionurl(id);
     }
     
     var requestResult = this._connection.GET(url);
@@ -2159,8 +2159,7 @@ function ArangoDatabase (connection) {
       body.type = type;
     }
 
-    var requestResult = this._connection.POST(
-      "/_api/collection",
+    var requestResult = this._connection.POST(this._collectionurl(),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -2244,7 +2243,7 @@ function ArangoDatabase (connection) {
       id = id.id;
     }
 
-    var requestResult = this._connection.GET("/_api/index/" + id);
+    var requestResult = this._connection.GET(this._indexurl(id));
 
     client.checkRequestResult(requestResult);
 
@@ -2260,7 +2259,7 @@ function ArangoDatabase (connection) {
       id = id.id;
     }
 
-    var requestResult = this._connection.DELETE("/_api/index/" + id);
+    var requestResult = this._connection.DELETE(this._indexurl(id));
 
     if (requestResult !== null
         && requestResult.error === true 
@@ -2303,23 +2302,16 @@ function ArangoDatabase (connection) {
     }
 
     if (rev === null) {
-      requestResult = this._connection.GET("/_api/document/" + id);
+      requestResult = this._connection.GET(this._documenturl(id));
     }
     else {
-      requestResult = this._connection.GET(
-        "/_api/document/" + id,
+      requestResult = this._connection.GET(this._documenturl(id),
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null
         && requestResult.error === true 
         && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-
       throw new ArangoError(requestResult);
     }
 
@@ -2351,21 +2343,14 @@ function ArangoDatabase (connection) {
     }
 
     if (rev === null) {
-      requestResult = this._connection.DELETE("/_api/document/" + id + policy);
+      requestResult = this._connection.DELETE(this._documenturl(id) + policy);
     }
     else {
-      requestResult = this._connection.DELETE(
-        "/_api/document/" + id + policy,
+      requestResult = this._connection.DELETE(this._documenturl(id) + policy,
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null && requestResult.error === true) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-
       if (overwrite) {
         if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
           return false;
@@ -2403,24 +2388,16 @@ function ArangoDatabase (connection) {
     }
 
     if (rev === null) {
-      requestResult = this._connection.PUT(
-        "/_api/document/" + id + policy,
+      requestResult = this._connection.PUT(this._documenturl(id) + policy,
         JSON.stringify(data));
     }
     else {
-      requestResult = this._connection.PUT(
-        "/_api/document/" + id + policy,
+      requestResult = this._connection.PUT(this._documenturl(id) + policy,
         JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null && requestResult.error === true) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-
       throw new ArangoError(requestResult);
     }
 
@@ -2454,24 +2431,16 @@ function ArangoDatabase (connection) {
     }
 
     if (rev === null) {
-      requestResult = this._connection.PATCH(
-        "/_api/document/" + id + params,
+      requestResult = this._connection.PATCH(this._documenturl(id) + params,
         JSON.stringify(data));
     }
     else {
-      requestResult = this._connection.PATCH(
-        "/_api/document/" + id + params,
+      requestResult = this._connection.PATCH(this._documenturl(id) + params,
         JSON.stringify(data),
         {'if-match' : '"' + rev + '"' });
     }
 
     if (requestResult !== null && requestResult.error === true) {
-      var s = id.split("/");
-
-      if (s.length !== 2) {
-        requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
-      }
-
       throw new ArangoError(requestResult);
     }
 
