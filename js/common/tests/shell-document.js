@@ -113,7 +113,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingUnknownDocument: function () {
       try {
-        collection.document(collection._id + "/123456");
+        collection.document(collection.name() + "/123456");
         fail();
       }
       catch (err) {
@@ -127,7 +127,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingCrossCollection : function () {
       try {
-        collection.document("123456/123456");
+        collection.document("test123456/123456");
         fail();
       }
       catch (err) {
@@ -141,7 +141,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingCrossCollectionReplace : function () {
       try {
-        collection.replace("123456/123456", {});
+        collection.replace("test123456/123456", {});
         fail();
       }
       catch (err) {
@@ -155,7 +155,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingCrossCollectionDelete : function () {
       try {
-        collection.remove("123456/123456");
+        collection.remove("test123456/123456");
         fail();
       }
       catch (err) {
@@ -648,7 +648,7 @@ function DatabaseDocumentSuiteErrorHandling () {
       var collection = internal.db._create(cn, { waitForSync : false });
 
       try {
-        internal.db._document(collection._id + "/123456");
+        internal.db._document(collection.name() + "/123456");
         fail();
       }
       catch (err) {

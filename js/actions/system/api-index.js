@@ -71,8 +71,7 @@ var API = "_api/index";
 
 function GET_api_indexes (req, res) {
   var name = req.parameters.collection;
-  var id = parseInt(name) || name;
-  var collection = internal.db._collection(id);
+  var collection = internal.db._collection(name);
   
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -119,7 +118,7 @@ function GET_api_indexes (req, res) {
 function GET_api_index (req, res) {
 
   // .............................................................................
-  // /_api/indexes?collection=<collection-identifier>
+  // /_api/index?collection=<collection-identifier>
   // .............................................................................
 
   if (req.suffix.length === 0) {
@@ -127,13 +126,12 @@ function GET_api_index (req, res) {
   }
 
   // .............................................................................
-  // /_api/indexes/<collection-identifier>/<index-identifier>
+  // /_api/index/<collection-identifier>/<index-identifier>
   // .............................................................................
 
   else if (req.suffix.length === 2) {
     var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = internal.db._collection(id);
+    var collection = internal.db._collection(name);
     
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
@@ -141,7 +139,7 @@ function GET_api_index (req, res) {
     }
 
     var iid = decodeURIComponent(req.suffix[1]);
-    var index = collection.index(collection._id + "/" + iid);
+    var index = collection.index(name + "/" + iid);
 
     if (index === null) {
       actions.indexNotFound(req, res, collection, iid);
@@ -457,7 +455,6 @@ function POST_api_index_skiplist (req, res, collection, body) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a bitarray
 ///
@@ -514,7 +511,6 @@ function POST_api_index_bitarray (req, res, collection, body) {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
 ///
@@ -565,8 +561,7 @@ function POST_api_index (req, res) {
   }
 
   var name = req.parameters.collection;
-  var id = parseInt(name) || name;
-  var collection = internal.db._collection(id);
+  var collection = internal.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -622,8 +617,7 @@ function DELETE_api_index (req, res) {
   }
 
   var name = decodeURIComponent(req.suffix[0]);
-  var id = parseInt(name) || name;
-  var collection = internal.db._collection(id);
+  var collection = internal.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -631,13 +625,13 @@ function DELETE_api_index (req, res) {
   }
 
   var iid = parseInt(decodeURIComponent(req.suffix[1]));
-  var dropped = collection.dropIndex(collection._id + "/" + iid);
+  var dropped = collection.dropIndex(name + "/" + iid);
 
   if (dropped) {
-    actions.resultOk(req, res, actions.HTTP_OK, { id : collection._id + "/" + iid });
+    actions.resultOk(req, res, actions.HTTP_OK, { id : name + "/" + iid });
   }
   else {
-    actions.indexNotFound(req, res, collection, collection._id + "/" + iid);
+    actions.indexNotFound(req, res, collection, name + "/" + iid);
   }
 }
 

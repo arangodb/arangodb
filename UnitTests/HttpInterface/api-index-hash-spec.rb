@@ -26,21 +26,21 @@ describe ArangoDB do
       it "does not create the index in case of violation" do
 	
 	# create a document
-	cmd1 = "/_api/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cn}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
 	doc.code.should eq(201)
 
 	# create another document
-	cmd1 = "/_api/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cn}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
 	doc.code.should eq(201)
 
 	# try to create the index
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
 	doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
 
@@ -69,7 +69,7 @@ describe ArangoDB do
       end
       
       it "rolls back in case of violation" do
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
 	doc = ArangoDB.log_post("#{prefix}-create1", cmd, :body => body)
 
@@ -78,7 +78,7 @@ describe ArangoDB do
 	doc.parsed_response['unique'].should eq(true)
       
 	# create a document
-	cmd1 = "/_api/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cn}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
 
@@ -131,12 +131,12 @@ describe ArangoDB do
 	doc.parsed_response['_rev'].should eq(rev1)
 
 	# unload collection
-	cmd3 = "/_api/collection/#{@cid}/unload"
+	cmd3 = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.log_put("#{prefix}", cmd3)
 
 	doc.code.should eq(200)
 
-	cmd3 = "/_api/collection/#{@cid}"
+	cmd3 = "/_api/collection/#{@cn}"
 	doc = ArangoDB.log_get("#{prefix}", cmd3)
 	doc.code.should eq(200)
 
@@ -174,7 +174,7 @@ describe ArangoDB do
       end
       
       it "rolls back in case of violation" do
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"
 	doc = ArangoDB.log_post("#{prefix}-update1", cmd, :body => body)
 
@@ -183,7 +183,7 @@ describe ArangoDB do
 	doc.parsed_response['unique'].should eq(true)
       
 	# create a document
-	cmd1 = "/_api/document?collection=#{@cid}"
+	cmd1 = "/_api/document?collection=#{@cn}"
 	body = "{ \"a\" : 1, \"b\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-update2", cmd1, :body => body)
 
@@ -262,12 +262,12 @@ describe ArangoDB do
 	doc.parsed_response['_rev'].should_not eq(rev3)
 
 	# unload collection
-	cmd4 = "/_api/collection/#{@cid}/unload"
+	cmd4 = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.log_put("#{prefix}", cmd4)
 
 	doc.code.should eq(200)
 
-	cmd4 = "/_api/collection/#{@cid}"
+	cmd4 = "/_api/collection/#{@cn}"
 	doc = ArangoDB.log_get("#{prefix}", cmd4)
 	doc.code.should eq(200)
 

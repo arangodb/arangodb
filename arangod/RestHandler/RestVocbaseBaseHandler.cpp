@@ -34,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "ResultGenerator/OutputGenerator.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utils/DocumentHelper.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantBoolean.h"
 #include "Variant/VariantInt32.h"
@@ -161,8 +162,8 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
                                           const string& collectionName,
                                           TRI_voc_key_t key,
                                           TRI_voc_rid_t rid) {
-  string handle = assembleDocumentId(collectionName, key);
-  string ridStr = StringUtils::itoa(rid);
+  const string handle = DocumentHelper::assembleDocumentId(collectionName, key);
+  const string ridStr = StringUtils::itoa(rid);
 
   _response = createResponse(responseCode);
 
@@ -242,7 +243,7 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (const string& collectionN
                                                        TRI_voc_key_t key) {
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                "document " + DOCUMENT_PATH + "/" + assembleDocumentId(collectionName, key) + " not found");
+                "document " + DOCUMENT_PATH + "/" + DocumentHelper::assembleDocumentId(collectionName, key) + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +254,7 @@ void RestVocbaseBaseHandler::generateConflict (const string& collectionName,
                                                TRI_voc_key_t key) {
   generateError(HttpResponse::CONFLICT, 
                 TRI_ERROR_ARANGO_CONFLICT,
-                "document " + DOCUMENT_PATH + "/" + assembleDocumentId(collectionName, key) + " has been altered");
+                "document " + DOCUMENT_PATH + "/" + DocumentHelper::assembleDocumentId(collectionName, key) + " has been altered");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +291,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectio
   result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
   result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
   result->add("errorMessage", new VariantString("precondition failed"));
-  result->add("_id", new VariantString(assembleDocumentId(collectionName, key)));
+  result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(collectionName, key)));
   result->add("_rev", new VariantUInt64(rid));
   result->add("_key", new VariantString(key));
 
@@ -321,10 +322,11 @@ void RestVocbaseBaseHandler::generateNotModified (const string& etag) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
-                                               const string& collectionName,
+void RestVocbaseBaseHandler::generateDocument (const string& collectionName,
+                                               TRI_doc_mptr_t const* document,
+                                               TRI_vocbase_t* const vocbase, 
                                                TRI_shaper_t* shaper,
-                                               const bool generateDocument) {
+                                               const bool generateBody) {
   if (document == 0) {
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_INTERNAL,
@@ -335,7 +337,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   // add document identifier to buffer
   TRI_string_buffer_t buffer;
 
-  string id = assembleDocumentId(collectionName, document->_key);
+  string id = DocumentHelper::assembleDocumentId(collectionName, document->_key);
 
   TRI_json_t augmented;
   TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
@@ -362,8 +364,8 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-    string from = StringUtils::itoa(marker->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + string((char*) marker + marker->_offsetFromKey);
-    string to = StringUtils::itoa(marker->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + string((char*) marker +  marker->_offsetToKey);
+    const string from = DocumentHelper::assembleDocumentId(vocbase, marker->_fromCid, string((char*) marker + marker->_offsetFromKey));
+    const string to = DocumentHelper::assembleDocumentId(vocbase, marker->_toCid, string((char*) marker +  marker->_offsetToKey));
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_bidirectional", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, marker->_isBidirectional));
     if (marker->_isBidirectional) {
@@ -408,7 +410,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
 
-  if (generateDocument) {
+  if (generateBody) {
     _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
   }
   else {

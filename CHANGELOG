@@ -14,7 +14,8 @@ v1.2.alpha (XXXX-XX-XX)
   The restrictions for key values are:
   * the key must be at most 256 bytes long
   * it must consist of valid UTF-8 characters only
-  * the key must not contain the forward slash (/)
+  * the key must not contain the forward slash (/), the double quote (") or 
+    the backslash (\) characters
   * the key must not begin or end with a space, tab, newline, carriage return or
     form feed character
 

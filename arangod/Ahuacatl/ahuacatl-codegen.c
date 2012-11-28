@@ -305,10 +305,10 @@ static inline void ScopeOutputJson (TRI_aql_codegen_js_t* const generator,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void ScopeOutputIndexId (TRI_aql_codegen_js_t* const generator,
-                                       const TRI_aql_collection_t* const collection,
+                                       const char* collectionName,
                                        const TRI_aql_index_t* const idx) {
   ScopeOutput(generator, "\"");
-  ScopeOutputUInt(generator, collection->_collection->_cid);
+  ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "/");
   ScopeOutputUInt(generator, idx->_idx->_iid);
   ScopeOutput(generator, "\"");
@@ -906,7 +906,7 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
 
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
-  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutputIndexId(generator, collectionName, idx);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
     assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ);
@@ -945,7 +945,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_HASH_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
-      ScopeOutputIndexId(generator, collection, idx);
+      ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
       ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1); 
       ScopeOutput(generator, ", ");
@@ -959,7 +959,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_HASH('");
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
-  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutputIndexId(generator, collectionName, idx);
   ScopeOutput(generator, ", { ");
 
   // write the example document
@@ -1064,7 +1064,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
-      ScopeOutputIndexId(generator, collection, idx);
+      ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
       ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);   
       ScopeOutput(generator, ", ");
@@ -1078,7 +1078,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_SKIPLIST('");
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
-  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutputIndexId(generator, collectionName, idx);
   ScopeOutput(generator, ", { ");
 
   // write the example document
@@ -1166,7 +1166,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_BITARRAY_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
-      ScopeOutputIndexId(generator, collection, idx);
+      ScopeOutputIndexId(generator, collectionName, idx);
       ScopeOutput(generator, ", ");
       ScopeOutputQuoted2(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);   
       ScopeOutput(generator, ", ");
@@ -1180,7 +1180,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS_BITARRAY('");
   ScopeOutput(generator, collectionName);
   ScopeOutput(generator, "', ");
-  ScopeOutputIndexId(generator, collection, idx);
+  ScopeOutputIndexId(generator, collectionName, idx);
   ScopeOutput(generator, ", { \"==\" : {"); // only support the equality operator for now
 
   

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resource holder for AQL queries with auto-free functionality
+/// @brief document utilitiy functions 
 ///
 /// @file
 ///
@@ -25,26 +25,24 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ARANGOD_UTILS_AHUACATL_GUARD_H
-#define TRIAGENS_ARANGOD_UTILS_AHUACATL_GUARD_H 1
+#ifndef TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H
+#define TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H 1
 
-#include "Ahuacatl/ahuacatl-context.h"
 #include "VocBase/vocbase.h"
-
-#include "Logger/Logger.h"
+//#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class AhuacatlGuard
+// --SECTION--                                              class DocumentHelper
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scope guard for a TRI_aql_context_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-    class AhuacatlGuard {
+    class DocumentHelper {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -55,35 +53,18 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
   
-      public:
+      private:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the guard
-////////////////////////////////////////////////////////////////////////////////
+        DocumentHelper ();
 
-        AhuacatlGuard (TRI_vocbase_t* vocbase, const string& query) : 
-          _context(0) {
-            _context = TRI_CreateContextAql(vocbase, query.c_str());
-
-            if (_context == 0) {
-              LOGGER_DEBUG << "failed to create context for query %s" << query;
-            }
-          }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the guard
-////////////////////////////////////////////////////////////////////////////////
-
-        ~AhuacatlGuard () {
-          this->free();
-        }
+        ~DocumentHelper ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,52 +75,63 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free the context
+/// @brief assemble a document id from a string and a string 
 ////////////////////////////////////////////////////////////////////////////////
 
-        void free () {
-          if (_context != 0) {
-            TRI_FreeContextAql(_context);
-            _context = 0;
+        static inline string assembleDocumentId (const string& collectionName,
+                                                 const string& key) {
+          return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assemble a document id from a string and a char* key 
+////////////////////////////////////////////////////////////////////////////////
+
+        static inline string assembleDocumentId (const string& collectionName,
+                                                 const TRI_voc_key_t key) {
+          static const string UnknownKey = "_deleted";
+
+          if (key == 0) {
+            return assembleDocumentId(collectionName, UnknownKey);
           }
+
+          return assembleDocumentId(collectionName, string(key));
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief access the context
+/// @brief assemble a document id from a collection id and a string key
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_aql_context_t* ptr () const {
-          return _context;
+        static string assembleDocumentId (TRI_vocbase_t* const vocbase,
+                                          const TRI_voc_cid_t cid,  
+                                          const string& key) {
+          static const string UnknownCollection = "_unknown";
+
+          TRI_vocbase_col_t const* collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
+          if (collection == 0) {
+            // TODO: use a better name
+            return assembleDocumentId(UnknownCollection, key);
+          }
+
+          // TODO: can the name be deleted while we're using it?
+          return assembleDocumentId(collection->_name, key);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether context is valid
+/// @brief assemble a document id from a collection id and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline const bool valid () const {
-          return _context != 0;
+        static string assembleDocumentId (TRI_vocbase_t* const vocbase,
+                                          const TRI_voc_cid_t cid,  
+                                          const TRI_voc_key_t key) {
+          static const string UnknownKey = "_deleted";
+
+          if (key == 0) {
+            return assembleDocumentId(vocbase, cid, UnknownKey); 
+          }
+
+          return assembleDocumentId(vocbase, cid, string(key));
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the AQL context C struct
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_aql_context_t* _context;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

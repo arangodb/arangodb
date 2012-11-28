@@ -95,6 +95,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      internal.db._drop(cn);
       users = internal.db._create(cn);
       users.save({ "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" });
       users.save({ "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" });

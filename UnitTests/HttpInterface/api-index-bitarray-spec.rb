@@ -33,7 +33,7 @@ describe ArangoDB do
         # try to create the index
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"a\", [0,1,2], \"b\"  ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(400)
@@ -48,7 +48,7 @@ describe ArangoDB do
         # try to create the index
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"a\", [0,1,2], \"a\", [\"a\",\"b\",\"c\"]  ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)        
         doc.code.should eq(400)
@@ -63,7 +63,7 @@ describe ArangoDB do
         # try to create the index
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"a\", [0,1,2,2], \"b\", [\"x\",\"y\",\"z\"] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(400)
@@ -87,15 +87,13 @@ describe ArangoDB do
         ## attempt to insert some documents 
         ## .........................................................................
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"male\"}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"female\"}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"unknown\"}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
@@ -110,7 +108,7 @@ describe ArangoDB do
         ## try to create the index
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"gender\",[\"male\", \"female\"] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(400)
@@ -123,7 +121,7 @@ describe ArangoDB do
         ## try to create the index
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"gender\", [\"male\", \"female\", \"unknown\"] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
@@ -152,21 +150,21 @@ describe ArangoDB do
         ## create the index first
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"x\", [0,1,2,3,4,5,6,7,8,9] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"male\", \"x\": 0}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"female\", \"x\": 1}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"unknown\", \"x\": 10}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(500)
@@ -180,25 +178,22 @@ describe ArangoDB do
         ## create the index first
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"x\", [0,1,2,3,4,5,6,7,8,9], \"gender\", [\"male\", \"female\"] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"male\", \"x\": 0}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"female\", \"x\": 1}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"female\", \"x\": 10}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(500)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"unknown\", \"x\": 0}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(500)
@@ -211,21 +206,19 @@ describe ArangoDB do
         ## create the index first
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"x\", [0,1,2,3,4,5,6,7,8,9] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"male\", \"x\": 0}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"female\", \"x\": 1}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"unknown\", \"x\": 2}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
@@ -238,21 +231,19 @@ describe ArangoDB do
         ## create the index first
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [\"gender\", [\"male\", \"female\", \"unknown\"],  \"x\", [0,1,2,3,4,5,6,7,8,9] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"male\", \"x\": 0}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"female\", \"x\": 1}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"unknown\", \"x\": 2}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
@@ -265,25 +256,22 @@ describe ArangoDB do
         ## create the index first
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [\"gender\", [\"male\", \"female\", \"unknown\"],  \"x\", [0,1,2,3,4,5,6,7,8,9, []] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"gender\" : \"male\", \"x\": 0}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"female\", \"x\": 1}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"unknown\", \"x\": 2}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
-        cmd = "/_api/document?collection=#{@cid}"
         body = "{ \"gender\" : \"unknown\", \"x\": \"hi there, I'm Marvin\"}"
         doc = ArangoDB.log_post("#{prefix}-document-insertion", cmd, :body => body)
         doc.code.should eq(201)
@@ -314,7 +302,7 @@ describe ArangoDB do
         ## create the index 
         ## .........................................................................
         
-        cmd = "/_api/index?collection=#{@cid}"
+        cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"bitarray\", \"unique\" : false, \"fields\" : [  \"x\", [0,1,2,3,4,5,6,7,8,9] ] }"
         doc = ArangoDB.log_post("#{prefix}-fail", cmd, :body => body)
         doc.code.should eq(201)
@@ -324,7 +312,7 @@ describe ArangoDB do
         ## now insert documents and test roll back 
         ## .........................................................................
         
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         ok = true
         theDoc = ""
         

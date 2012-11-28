@@ -45,6 +45,7 @@
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
+#include "Utils/DocumentHelper.h"
 #include "Utils/EmbeddableTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
@@ -55,7 +56,6 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
-#include "V8Server/v8-objects.h"
 #include "VocBase/datafile.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
@@ -158,6 +158,37 @@ static int32_t const WRP_TRANSACTION_TYPE = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document id from the parameters
+////////////////////////////////////////////////////////////////////////////////
+
+static inline v8::Handle<v8::Value> DocumentId (const string& collectionName,
+                                                const string& key) {
+  v8::HandleScope scope;
+
+  const string id = DocumentHelper::assembleDocumentId(collectionName, key);
+
+  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
+
+  return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document id from the parameters
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> DocumentId (TRI_vocbase_t* const vocbase,
+                                         const TRI_voc_cid_t cid,
+                                         const string& key) {
+  v8::HandleScope scope;
+
+  const string id = DocumentHelper::assembleDocumentId(vocbase, cid, key);
+
+  v8::Handle<v8::Value> result = v8::String::New(id.c_str(), id.size());
+
+  return scope.Close(result); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the forceSync flag from the arguments
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,12 +285,8 @@ static inline TRI_vocbase_t* GetContextVocBase () {
 
 static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
                               v8::Handle<v8::Value> arg, 
-                              TRI_voc_cid_t& cid, 
+                              string& collectionName,
                               TRI_voc_key_t& key) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
   if (! arg->IsString()) {
     return false;
   }
@@ -271,24 +298,13 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
     return false;
   }
 
+  
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   regmatch_t matches[3];
 
-  // collection id / document key
-  if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-    cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
-    return true;
-  }
- 
   // collection name / document key
-  if (regexec(&v8g->DocumentId2Regex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-    const string name = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-    TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
-    if (col == 0) {
-      // collection not found
-      return false;
-    }
-    cid = col->_cid;
+  if (regexec(&v8g->DocumentIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    collectionName = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
     return true;
   }
@@ -306,7 +322,9 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsIndexHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_idx_iid_t& iid) {
+static bool IsIndexHandle (v8::Handle<v8::Value> arg, 
+                           string& collectionName, 
+                           TRI_idx_iid_t& iid) {
   TRI_v8_global_t* v8g;
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -330,7 +348,7 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg, TRI_voc_cid_t& cid, TRI_id
   regmatch_t matches[3];
 
   if (regexec(&v8g->IndexIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-    cid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
+    collectionName = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     iid = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
     return true;
   }
@@ -370,11 +388,14 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
 static v8::Handle<v8::Value> IndexRep (TRI_collection_t* col, TRI_json_t* idx) {
   v8::HandleScope scope;
 
+  assert(idx);
+  assert(col);
+
   v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
 
-  string iid = TRI_ObjectToString(rep->Get(v8::String::New("id")));
-  string id = StringUtils::itoa(col->_info._cid) + string(TRI_INDEX_HANDLE_SEPARATOR_STR) + iid;
-  rep->Set(v8::String::New("id"), v8::String::New(id.c_str()));
+  string iid = TRI_ObjectToString(rep->Get(TRI_V8_SYMBOL("id")));
+  const string id = string(col->_info._name) + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+  rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), id.size()));
 
   return scope.Close(rep);
 }
@@ -739,10 +760,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   assert(document->_key);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  string id = StringUtils::itoa(trx.cid()) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(document->_key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->DidKey, DocumentId(trx.collectionName(), document->_key));
   result->Set(v8g->RevKey, v8::Number::New(document->_rid));
   result->Set(v8g->OldRevKey, v8::Number::New(actualRevision));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
@@ -785,7 +805,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
                                              v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   
   if (argv.Length() < 1 || argv.Length() > 2) {
     return scope.Close(v8::ThrowException(
@@ -793,6 +812,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
                                                "usage: save(<data>, <waitForSync>)")));
   }
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   ResourceHolder holder;
   
   // set document key
@@ -829,10 +849,8 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
   assert(document);
   assert(document->_key);
   
-  string id = StringUtils::itoa(trx->cid()) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(document->_key);
-
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->DidKey, DocumentId(trx->collectionName(), document->_key));
   result->Set(v8g->RevKey, v8::Number::New(document->_rid));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
@@ -951,10 +969,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   assert(document);
   assert(document->_key);
   
-  string id = StringUtils::itoa(trx->cid()) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(document->_key);
-
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->DidKey, DocumentId(trx->collectionName(), document->_key));
   result->Set(v8g->RevKey, v8::Number::New(document->_rid));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
 
@@ -1063,10 +1079,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   assert(document->_key);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  string id = StringUtils::itoa(trx.cid()) + string(TRI_DOCUMENT_HANDLE_SEPARATOR_STR) + string(document->_key);
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->DidKey, v8::String::New(id.c_str()));
+  result->Set(v8g->DidKey, DocumentId(trx.collectionName(), document->_key));
   result->Set(v8g->RevKey, v8::Number::New(document->_rid));
   result->Set(v8g->OldRevKey, v8::Number::New(actualRevision));
   result->Set(v8g->KeyKey, v8::String::New(document->_key));
@@ -1227,46 +1242,6 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   
   if (collection == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
-  }
-
-  return scope.Close(TRI_WrapCollection(collection));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a single collection or null
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> CollectionVocBase (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
-
-  if (vocbase == 0) {
-    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
-  }
-
-  // expecting one argument
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(v8::String::New("usage: _collection(<name>|<identifier>)")));
-  }
-
-  v8::Handle<v8::Value> val = argv[0];
-  TRI_vocbase_col_t const* collection = 0;
-
-  // number
-  if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t id = (uint64_t) TRI_ObjectToDouble(val);
-
-    collection = TRI_LookupCollectionByIdVocBase(vocbase, id);
-  }
-  else {
-    string name = TRI_ObjectToString(val);
-
-    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
-  }
-
-  if (collection == 0) {
-    return scope.Close(v8::Null());
   }
 
   return scope.Close(TRI_WrapCollection(collection));
@@ -4108,7 +4083,7 @@ static v8::Handle<v8::Value> GetIndexesVocbaseCol (v8::Arguments const& argv,
     TRI_ReleaseCollection(collection);
   }
 
-  if (!indexes) {
+  if (! indexes) {
     return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
   }
 
@@ -4935,7 +4910,39 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
-  return CollectionVocBase(argv);
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  // expecting one argument
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: _collection(<name>|<identifier>)")));
+  }
+
+  v8::Handle<v8::Value> val = argv[0];
+  TRI_vocbase_col_t const* collection = 0;
+
+  // number
+  if (val->IsNumber() || val->IsNumberObject()) {
+    uint64_t cid = (uint64_t) TRI_ObjectToDouble(val);
+
+    collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
+  }
+  else {
+    string name = TRI_ObjectToString(val);
+
+    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
+  }
+
+  if (collection == 0) {
+    return scope.Close(v8::Null());
+  }
+
+  return scope.Close(TRI_WrapCollection(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5617,12 +5624,12 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // reset the collection identifier and the revision
-  TRI_voc_cid_t cid = 0;
+  string collectionName = "";
   rid = 0;
 
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
-    if (! IsDocumentHandle(vocbase, val, cid, key)) {
+    if (! IsDocumentHandle(vocbase, val, collectionName, key)) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                            "<document-handle> must be a document-handle"));
     }
@@ -5633,7 +5640,7 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
 
-    if (! IsDocumentHandle(vocbase, didVal, cid, key)) {
+    if (! IsDocumentHandle(vocbase, didVal, collectionName, key)) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                                                "expecting a document-handle in _id"));
     }
@@ -5652,49 +5659,62 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                              "<document-handle> must be a document-handle"));
   }
 
-  // lookup the collection
-  if (collection == 0) {
-    TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
+  if (collectionName == "") {
+    // only a document id without collection name was passed
+    if (collection == 0) {
+      // we do not know the collection
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                               "collection of <document-handle> is unknown"));
+    }
 
-    if (vc == 0) {
+    // we use the current collection
+    collectionName = collection->_name;
+  }
+  else {
+    // we read a collection name from the document id
+    // check cross-collection requests
+    if (collection != 0 && collectionName != collection->_name) {
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
+                                               "cannot execute cross collection query"));
+    }
+  }
+
+  assert(collectionName != "");
+
+  if (collection == 0) {
+    // no collection object was passed, now check the user-supplied collection name
+    TRI_vocbase_col_t* const col = TRI_LookupCollectionByNameVocBase(vocbase, collectionName.c_str());
+    if (col == 0) {
+      // collection not found
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                                "collection of <document-handle> is unknown"));;
     }
 
     if (lock) {
       // use the collection
-      int res = TRI_UseCollectionVocBase(vocbase, vc);
+      int res = TRI_UseCollectionVocBase(vocbase, col);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return scope.Close(TRI_CreateErrorObject(res, "cannot use/load collection", true));
       }
     }
 
-    collection = vc;
-
-    if (collection->_collection == 0) {
+    if (col->_collection == 0) {
       return scope.Close(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection"));
     }
+    
+    collection = col;
   }
-
-  // check cross collection requests
-  if (cid != collection->_cid) {
-    if (cid == 0) {
-      //return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-      //                                         "collection of <document-handle> unknown"));
-    }
-    else {
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
-                                               "cannot execute cross collection query"));
-    }
-  }
+  
+  assert(collection);
+  assert(collection->_collection);
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a index identifier
+/// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
@@ -5702,69 +5722,45 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
                                       v8::Handle<v8::Value> val,
                                       bool ignoreNotFound,
                                       v8::Handle<v8::Object>* err) {
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
   // reset the collection identifier and the revision
-  TRI_voc_cid_t cid = 0;
+  string collectionName = "";
   TRI_idx_iid_t iid = 0;
 
   // extract the document identifier and revision from a string
   if (val->IsString() || val->IsStringObject()) {
-    if (! IsIndexHandle(val, cid, iid)) {
+    if (! IsIndexHandle(val, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-                                   "<index-handle> must be a index-handle");
+                                   "<index-handle> must be an index-handle");
       return 0;
     }
   }
 
   // extract the document identifier and revision from a string
   else if (val->IsObject()) {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> iidVal = obj->Get(v8g->IidKey);
 
-    if (! IsIndexHandle(iidVal, cid, iid)) {
+    if (! IsIndexHandle(iidVal, collectionName, iid)) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-                                   "expecting a index-handle in id");
+                                   "expecting an index-handle in id");
       return 0;
     }
   }
 
-  // lookup the collection
-  if (collection == 0) {
-    TRI_vocbase_col_t* vc = TRI_LookupCollectionByIdVocBase(vocbase, cid);
-
-    if (vc == 0) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                   "collection of <index-handle> is unknown");
-      return 0;
-    }
-
-    // use the collection
-    int res = TRI_UseCollectionVocBase(vocbase, vc);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
-      return 0;
-    }
-
-    collection = vc;
-
-    if (collection->_collection == 0) {
-      *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection");
-      return 0;
-    }
-  }
-
-  // check cross collection requests
-  if (cid != collection->_cid) {
-    if (cid == 0) {
+  if (collectionName == "") {
+    // no collection name passed by user
+    if (collection == 0) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                    "collection of <index-handle> unknown");
       return 0;
     }
-    else {
+
+    collectionName = collection->_name;
+  }
+  else {
+    if (collection != 0 && collectionName != collection->_name) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
@@ -5773,14 +5769,43 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_t* vocbase,
     }
   }
 
+  assert(collectionName != "");
+
+  // lookup the collection
+  if (collection == 0) {
+    TRI_vocbase_col_t* const col = TRI_LookupCollectionByNameVocBase(vocbase, collectionName.c_str());
+
+    if (col == 0) {
+      *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                   "collection of <index-handle> is unknown");
+      return 0;
+    }
+
+    // use the collection
+    int res = TRI_UseCollectionVocBase(vocbase, col);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      *err = TRI_CreateErrorObject(res, "cannot use/load collection", true);
+      return 0;
+    }
+
+    if (col->_collection == 0) {
+      *err = TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "cannot use/load collection");
+      return 0;
+    }
+    
+    collection = col;
+  }
+
+  assert(collection);
+  assert(collection->_collection);
+
   TRI_index_t* idx = TRI_LookupIndex(collection->_collection, iid);
 
   if (idx == 0) {
     if (! ignoreNotFound) {
       *err = TRI_CreateErrorObject(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, "index is unknown");
     }
-
-    return 0;
   }
 
   return idx;
@@ -5866,7 +5891,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
-  result->Set(v8g->DidKey, TRI_ObjectReference(collection->_cid, document->_key), v8::ReadOnly);
+  result->Set(v8g->DidKey, DocumentId(collection->_name, document->_key), v8::ReadOnly);
   result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
   result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
 
@@ -5874,6 +5899,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+    TRI_vocbase_t* const vocbase = collection->_vocbase;
 
     if (marker->_isBidirectional) {
       // bdirectional edge
@@ -5881,16 +5907,16 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
       
       // create _vertices array
       v8::Handle<v8::Array> vertices = v8::Array::New();
-      vertices->Set(0, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      vertices->Set(1, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      vertices->Set(0, DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      vertices->Set(1, DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
       result->Set(v8g->VerticesKey, vertices);
     }
     else {
       // unidirectional edge
       result->Set(v8g->BidirectionalKey, v8::False());
 
-      result->Set(v8g->FromKey, TRI_ObjectReference(marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
-      result->Set(v8g->ToKey, TRI_ObjectReference(marker->_toCid, ((char*) marker) + marker->_offsetToKey));
+      result->Set(v8g->FromKey, DocumentId(vocbase, marker->_fromCid, ((char*) marker) + marker->_offsetFromKey));
+      result->Set(v8g->ToKey, DocumentId(vocbase, marker->_toCid, ((char*) marker) + marker->_offsetToKey));
     }
   }
   
@@ -5905,7 +5931,6 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
 const int32_t TRI_GetVocBaseColType () {
   return WRP_VOCBASE_COL_TYPE;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
@@ -5932,23 +5957,16 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create the regular expressions
   string expr;
   
-  expr = "^(" TRI_VOC_ID_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
+  expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
   if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
-  // collection-id / document key
-  expr = "^(" TRI_VOC_ID_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
-  if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
-    LOG_FATAL("cannot compile regular expression");
-    TRI_FlushLogging();
-    exit(EXIT_FAILURE);
-  }
-  
+  // collection name / document key
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
-  if (regcomp(&v8g->DocumentId2Regex, expr.c_str(), REG_EXTENDED) != 0) {
+  if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);

@@ -36,7 +36,7 @@ describe ArangoDB do
       end
 
       it "returns an error if index identifier is unknown" do
-	cmd = api + "/#{@cid}/123456"
+	cmd = api + "/#{@cn}/123456"
         doc = ArangoDB.log_get("#{prefix}-bad-index-identifier", cmd)
 
 	doc.code.should eq(404)
@@ -63,7 +63,7 @@ describe ArangoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"cap\", \"size\" : 10 }"
         doc = ArangoDB.log_post("#{prefix}-create-new-cap-constraint", cmd, :body => body)
 	
@@ -103,7 +103,7 @@ describe ArangoDB do
     end
 
       it "survives unload" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"cap\", \"size\" : 10 }"
         doc = ArangoDB.post(cmd, :body => body)
 	
@@ -115,12 +115,12 @@ describe ArangoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = "/_api/collection/#{@cid}/unload"
+	cmd = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.put(cmd)
 
 	doc.code.should eq(200)
 
-	cmd = "/_api/collection/#{@cid}"
+	cmd = "/_api/collection/#{@cn}"
 	doc = ArangoDB.get(cmd)
 	doc.code.should eq(200)
 
@@ -158,7 +158,7 @@ describe ArangoDB do
       end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-new-geo", cmd, :body => body)
 	
@@ -186,7 +186,7 @@ describe ArangoDB do
       end
 
       it "creating geo index with location" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"b\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location", cmd, :body => body)
 	
@@ -202,7 +202,7 @@ describe ArangoDB do
       end
 
       it "creating geo index with location and geo-json = true" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\" ], \"geoJson\" : true }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-geo-json", cmd, :body => body)
 	
@@ -218,7 +218,7 @@ describe ArangoDB do
       end
 
       it "creating geo index with location and geo-json = false" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"d\" ], \"geoJson\" : false }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-no-geo-json", cmd, :body => body)
 	
@@ -234,7 +234,7 @@ describe ArangoDB do
       end
 
       it "creating geo index with latitude and longitude" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"e\", \"f\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-latitude-longitude", cmd, :body => body)
 	
@@ -265,7 +265,7 @@ describe ArangoDB do
     end
 
       it "survives unload" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"a\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 	
@@ -277,12 +277,12 @@ describe ArangoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = "/_api/collection/#{@cid}/unload"
+	cmd = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.put(cmd)
 
 	doc.code.should eq(200)
 
-	cmd = "/_api/collection/#{@cid}"
+	cmd = "/_api/collection/#{@cn}"
 	doc = ArangoDB.get(cmd)
 	doc.code.should eq(200)
 
@@ -321,7 +321,7 @@ describe ArangoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-new-unique-constraint", cmd, :body => body)
 	
@@ -365,7 +365,7 @@ describe ArangoDB do
     end
 
       it "survives unload" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 	
@@ -377,12 +377,12 @@ describe ArangoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = "/_api/collection/#{@cid}/unload"
+	cmd = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.put(cmd)
 
 	doc.code.should eq(200)
 
-	cmd = "/_api/collection/#{@cid}"
+	cmd = "/_api/collection/#{@cn}"
 	doc = ArangoDB.get(cmd)
 	doc.code.should eq(200)
 
@@ -421,7 +421,7 @@ describe ArangoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-new-hash-index", cmd, :body => body)
 	
@@ -465,7 +465,7 @@ describe ArangoDB do
     end
 
       it "survives unload" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 	
@@ -477,12 +477,12 @@ describe ArangoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = "/_api/collection/#{@cid}/unload"
+	cmd = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.put(cmd)
 
 	doc.code.should eq(200)
 
-	cmd = "/_api/collection/#{@cid}"
+	cmd = "/_api/collection/#{@cn}"
 	doc = ArangoDB.get(cmd)
 	doc.code.should eq(200)
 
@@ -521,7 +521,7 @@ describe ArangoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-new-skiplist", cmd, :body => body)
 	
@@ -565,7 +565,7 @@ describe ArangoDB do
     end
 
       it "survives unload" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 	
@@ -577,12 +577,12 @@ describe ArangoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = "/_api/collection/#{@cid}/unload"
+	cmd = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.put(cmd)
 
 	doc.code.should eq(200)
 
-	cmd = "/_api/collection/#{@cid}"
+	cmd = "/_api/collection/#{@cn}"
 	doc = ArangoDB.get(cmd)
 	doc.code.should eq(200)
 
@@ -621,7 +621,7 @@ describe ArangoDB do
     end
 
       it "returns either 201 for new or 200 for old indexes" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.log_post("#{prefix}-create-new-unique-skiplist", cmd, :body => body)
 	
@@ -665,7 +665,7 @@ describe ArangoDB do
     end
 
       it "survives unload" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 	
@@ -677,12 +677,12 @@ describe ArangoDB do
 
 	iid = doc.parsed_response['id']
 
-	cmd = "/_api/collection/#{@cid}/unload"
+	cmd = "/_api/collection/#{@cn}/unload"
 	doc = ArangoDB.put(cmd)
 
 	doc.code.should eq(200)
 
-	cmd = "/_api/collection/#{@cid}"
+	cmd = "/_api/collection/#{@cn}"
 	doc = ArangoDB.get(cmd)
 	doc.code.should eq(200)
 
@@ -721,7 +721,7 @@ describe ArangoDB do
       end
 
       it "returns all index for an collection identifier" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
         doc = ArangoDB.log_get("#{prefix}-all-indexes", cmd)
 
 	doc.code.should eq(200)
@@ -771,14 +771,14 @@ describe ArangoDB do
       end
 
       it "returns primary index for an collection identifier" do
-	cmd = api + "/#{@cid}/0"
+	cmd = api + "/#{@cn}/0"
         doc = ArangoDB.log_get("#{prefix}-primary-index", cmd)
 
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['id'].should eq("#{@cid}/0")
+	doc.parsed_response['id'].should eq("#{@cn}/0")
 	doc.parsed_response['type'].should eq("primary")
       end
 
@@ -790,7 +790,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
 	doc.parsed_response['code'].should eq(200)
-	doc.parsed_response['id'].should eq("#{@cid}/0")
+	doc.parsed_response['id'].should eq("#{@cn}/0")
 	doc.parsed_response['type'].should eq("primary")
       end
     end
@@ -811,7 +811,7 @@ describe ArangoDB do
     end
 
       it "deleting an index" do
-	cmd = api + "?collection=#{@cid}"
+	cmd = api + "?collection=#{@cn}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 	

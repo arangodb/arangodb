@@ -56,7 +56,7 @@ SQ.SimpleQueryAll.prototype.execute = function (batchSize) {
     }
 
     var data = {
-      collection : this._collection._id
+      collection : this._collection.name()
     }  
 
     if (this._limit !== null) {
@@ -113,7 +113,7 @@ SQ.SimpleQueryByExample.prototype.execute = function (batchSize) {
     }  
 
     var data = {
-      collection : this._collection._id,
+      collection : this._collection.name(),
       example : this._example
     }  
 
@@ -176,7 +176,7 @@ ArangoCollection.prototype.firstExample = function () {
   }
 
   var data = {
-    collection : this._id,
+    collection : this.name(),
     example : example
   }  
 
@@ -223,7 +223,7 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
     }
 
     var data = {
-      collection : this._collection._id,
+      collection : this._collection.name(),
       attribute : this._attribute,
       right : this._right,
       left : this._left,
@@ -284,7 +284,7 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
     }
 
     var data = {
-      collection : this._collection._id,
+      collection : this._collection.name(),
       latitude : this._latitude,
       longitude : this._longitude
     }  
@@ -351,7 +351,7 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
     }
 
     var data = {
-      collection : this._collection._id,
+      collection : this._collection.name(),
       latitude : this._latitude,
       longitude : this._longitude,
       radius : this._radius

@@ -77,7 +77,7 @@ describe ArangoDB do
       end
 
       it "creating an edge" do
-	cmd = "/_api/document?collection=#{@vid}"
+	cmd = "/_api/document?collection=#{@cv}"
 
 	# create first vertex
 	body = "{ \"a\" : 1 }"
@@ -100,7 +100,7 @@ describe ArangoDB do
 	id2 = doc.parsed_response['_id']
 
 	# create edge
-	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -121,7 +121,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	
 	# create another edge
-	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
 	body = "{ \"e\" : 1 }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -143,7 +143,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# create third edge
-	cmd = "/_api/edge?collection=#{@eid}&from=#{id2}&to=#{id1}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id2}&to=#{id1}"
 	body = "{ \"e\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -165,7 +165,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# check ANY edges
-	cmd = "/_api/edges/#{@eid}?vertex=#{id1}"
+	cmd = "/_api/edges/#{@ce}?vertex=#{id1}"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-any", cmd);
 
 	doc.code.should eq(200)
@@ -173,7 +173,7 @@ describe ArangoDB do
 	doc.parsed_response['edges'].length.should be(3)
 
 	# check IN edges
-	cmd = "/_api/edges/#{@eid}?vertex=#{id1}&direction=in"
+	cmd = "/_api/edges/#{@ce}?vertex=#{id1}&direction=in"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-in", cmd);
 
 	doc.code.should eq(200)
@@ -181,7 +181,7 @@ describe ArangoDB do
 	doc.parsed_response['edges'].length.should be(1)
 
 	# check OUT edges
-	cmd = "/_api/edges/#{@eid}?vertex=#{id1}&direction=out"
+	cmd = "/_api/edges/#{@ce}?vertex=#{id1}&direction=out"
 	doc = ArangoDB.log_get("#{prefix}-read-edges-out", cmd);
 
 	doc.code.should eq(200)
@@ -190,7 +190,7 @@ describe ArangoDB do
       end
 
       it "using collection names in from and to" do
-	cmd = "/_api/document?collection=#{@vid}"
+	cmd = "/_api/document?collection=#{@cv}"
 
 	# create a vertex
 	body = "{ \"a\" : 1 }"
@@ -205,7 +205,7 @@ describe ArangoDB do
         translated = URI.escape(id.gsub /^\d+\//, 'UnitTestsCollectionVertex/')
 	
         # create edge, using collection id
-	cmd = "/_api/edge?collection=#{@eid}&from=#{id}&to=#{id}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id}&to=#{id}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
@@ -214,7 +214,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         # create edge, using collection names
-	cmd = "/_api/edge?collection=#{@eid}&from=#{translated}&to=#{translated}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{translated}&to=#{translated}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
@@ -223,7 +223,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
         
         # create edge, using mix of collection names and ids
-	cmd = "/_api/edge?collection=#{@eid}&from=#{translated}&to=#{id}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{translated}&to=#{id}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
@@ -232,7 +232,7 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	
         # turn parameters around
-        cmd = "/_api/edge?collection=#{@eid}&from=#{id}&to=#{translated}"
+        cmd = "/_api/edge?collection=#{@ce}&from=#{id}&to=#{translated}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
@@ -242,7 +242,7 @@ describe ArangoDB do
       end
       
       it "using invalid collection names" do
-	cmd = "/_api/document?collection=#{@vid}"
+	cmd = "/_api/document?collection=#{@cv}"
 
 	# create a vertex
 	body = "{ \"a\" : 1 }"
@@ -256,7 +256,7 @@ describe ArangoDB do
         to   = URI.escape("thefox/13443466")
 	
         # create edge, using invalid collection names
-	cmd = "/_api/edge?collection=#{@eid}&from=#{from}&to=#{to}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{from}&to=#{to}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-name", cmd, :body => body)
 
@@ -268,7 +268,7 @@ describe ArangoDB do
       end
 
       it "using invalid collection ids" do
-	cmd = "/_api/document?collection=#{@vid}"
+	cmd = "/_api/document?collection=#{@cv}"
 
 	# create a vertex
 	body = "{ \"a\" : 1 }"
@@ -282,7 +282,7 @@ describe ArangoDB do
         to   = "3/13443466"
 	
         # create edge, using invalid collection names
-	cmd = "/_api/edge?collection=#{@eid}&from=#{from}&to=#{to}"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{from}&to=#{to}"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-cid", cmd, :body => body)
 
@@ -313,7 +313,7 @@ describe ArangoDB do
       
       it "creating an edge, waitForSync URL param=false" do
 	# create first vertex
-	cmd = "/_api/document?collection=#{@vid}"
+	cmd = "/_api/document?collection=#{@cv}"
 	body = "{ \"a\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -334,7 +334,7 @@ describe ArangoDB do
 	id2 = doc.parsed_response['_id']
 
         # create edge
-	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}&waitForSync=false"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}&waitForSync=false"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -357,7 +357,7 @@ describe ArangoDB do
       
       it "creating an edge, waitForSync URL param=true" do
 	# create first vertex
-	cmd = "/_api/document?collection=#{@vid}"
+	cmd = "/_api/document?collection=#{@cv}"
 	body = "{ \"a\" : 1 }"
 	doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
@@ -378,7 +378,7 @@ describe ArangoDB do
 	id2 = doc.parsed_response['_id']
 
         # create edge
-	cmd = "/_api/edge?collection=#{@eid}&from=#{id1}&to=#{id2}&waitForSync=true"
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}&waitForSync=true"
 	body = "{}"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 

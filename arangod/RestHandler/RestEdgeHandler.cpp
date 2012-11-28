@@ -251,7 +251,6 @@ int RestEdgeHandler::parseDocumentId (string const& handle,
                                       TRI_voc_cid_t& cid,
                                       TRI_voc_key_t& key) {
   vector<string> split;
-  int res;
 
   split = StringUtils::split(handle, '/');
 
@@ -259,35 +258,20 @@ int RestEdgeHandler::parseDocumentId (string const& handle,
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  cid = TRI_UInt64String(split[0].c_str());
-  res = TRI_errno();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // issue #277: non-numeric collection id, now try looking up by name
-    TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, split[0].c_str());
-    if (collection == 0) {
-      // collection not found
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-    // collection found by name
-    cid = collection->_cid;
-    // clear previous error
-    TRI_set_errno(TRI_ERROR_NO_ERROR);
+  TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, split[0].c_str());
+  if (collection == 0) {
+    // collection not found
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  else {
-    // validate whether collection exists
-    TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-    if (collection == 0) {
-      // collection not found
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-  }
+  
+  // collection found by name
+  cid = collection->_cid;
+  // clear previous error
 
   key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
 
-  return TRI_errno();
+  return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

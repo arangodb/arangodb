@@ -126,7 +126,7 @@ describe ArangoDB do
 
       it "returns an error for near without index" do
 	cmd = api + "/near"
-	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
 	doc = ArangoDB.log_put("#{prefix}-near-missing", cmd, :body => body)
 
 	doc.code.should eq(400)
@@ -137,12 +137,12 @@ describe ArangoDB do
       end
 
       it "returns documents near a point" do
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"loc\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/near"
-	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
 	doc = ArangoDB.log_put("#{prefix}-near", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -155,12 +155,12 @@ describe ArangoDB do
       end
 
       it "returns documents and distance near a point" do
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"loc\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/near"
-	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"limit\" : 5, \"distance\" : \"distance\" }"
+	body = "{ \"collection\" : \"#{@cn}\", \"latitude\" : 0, \"longitude\" : 0, \"limit\" : 5, \"distance\" : \"distance\" }"
 	doc = ArangoDB.log_put("#{prefix}-near-distance", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -202,7 +202,7 @@ describe ArangoDB do
 
       it "returns an error for within without index" do
 	cmd = api + "/within"
-	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"limit\" : 5 }"
 	doc = ArangoDB.log_put("#{prefix}-within-missing", cmd, :body => body)
 
 	doc.code.should eq(400)
@@ -213,12 +213,12 @@ describe ArangoDB do
       end
 
       it "returns documents within a radius" do
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"loc\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/within"
-	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"radius\" : 1111950 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"latitude\" : 0, \"longitude\" : 0, \"skip\" : 1, \"radius\" : 1111950 }"
 	doc = ArangoDB.log_put("#{prefix}-within", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -231,12 +231,12 @@ describe ArangoDB do
       end
 
       it "returns documents and distance within a radius" do
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"geo\", \"fields\" : [ \"loc\" ] }"
         doc = ArangoDB.post(cmd, :body => body)
 
 	cmd = api + "/within"
-	body = "{ \"collection\" : \"#{@cid}\", \"latitude\" : 0, \"longitude\" : 0, \"distance\" : \"distance\", \"radius\" : 1111950 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"latitude\" : 0, \"longitude\" : 0, \"distance\" : \"distance\", \"radius\" : 1111950 }"
 	doc = ArangoDB.log_put("#{prefix}-within-distance", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -268,42 +268,42 @@ describe ArangoDB do
 
       it "finds the examples" do
 	body = "{ \"i\" : 1 }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d1 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 1, \"a\" : { \"j\" : 1 } }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d2 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 1, \"a\" : { \"j\" : 1, \"k\" : 1 } }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d3 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 1, \"a\" : { \"j\" : 2, \"k\" : 2 } }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d4 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 2 }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d5 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 2, \"a\" : 2 }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d6 = doc.parsed_response['_id']
 
 	body = "{ \"i\" : 2, \"a\" : { \"j\" : 2, \"k\" : 2 } }"
-	doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	doc.code.should eq(202)
 	d7 = doc.parsed_response['_id']
 
 	cmd = api + "/by-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"i\" : 1 } }"
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"i\" : 1 } }"
 	doc = ArangoDB.log_put("#{prefix}-by-example1", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -316,7 +316,7 @@ describe ArangoDB do
 	doc.parsed_response['result'].map{|i| i['_id']}.should =~ [d1,d2,d3,d4]
 
 	cmd = api + "/by-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a\" : { \"j\" : 1 } } }"
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"a\" : { \"j\" : 1 } } }"
 	doc = ArangoDB.log_put("#{prefix}-by-example2", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -329,7 +329,7 @@ describe ArangoDB do
 	doc.parsed_response['result'].map{|i| i['_id']}.should =~ [d2]
 
 	cmd = api + "/by-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a.j\" : 1 } }"
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"a.j\" : 1 } }"
 	doc = ArangoDB.log_put("#{prefix}-by-example3", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -342,7 +342,7 @@ describe ArangoDB do
 	doc.parsed_response['result'].map{|i| i['_id']}.should =~ [d2,d3]
 
 	cmd = api + "/first-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a.j\" : 1, \"a.k\" : 1 } }"
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"a.j\" : 1, \"a.k\" : 1 } }"
 	doc = ArangoDB.log_put("#{prefix}-first-example", cmd, :body => body)
 
 	doc.code.should eq(200)
@@ -352,7 +352,7 @@ describe ArangoDB do
 	doc.parsed_response['document']['_id'].should eq(d3)
 
 	cmd = api + "/first-example"
-	body = "{ \"collection\" : \"#{@cid}\", \"example\" : { \"a.j\" : 1, \"a.k\" : 2 } }"
+	body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"a.j\" : 1, \"a.k\" : 2 } }"
 	doc = ArangoDB.log_put("#{prefix}-first-example-not-found", cmd, :body => body)
 
 	doc.code.should eq(404)
@@ -382,12 +382,12 @@ describe ArangoDB do
 	# create data
 	for i in [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 	  body = "{ \"i\" : #{i} }"
-	  doc = ArangoDB.post("/_api/document?collection=#{@cid}", :body => body)
+	  doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
 	  doc.code.should eq(202)
 	end
 
 	# create index
-	cmd = "/_api/index?collection=#{@cid}"
+	cmd = "/_api/index?collection=#{@cn}"
 	body = "{ \"type\" : \"skiplist\", \"unique\" : true, \"fields\" : [ \"i\" ] }"
 	doc = ArangoDB.log_post("#{prefix}-skiplist-index", cmd, :body => body)
 
@@ -397,7 +397,7 @@ describe ArangoDB do
       
 	# range
 	cmd = api + "/range"
-	body = "{ \"collection\" : \"#{@cid}\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4 }"
 	doc = ArangoDB.log_put("#{prefix}-range", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -411,7 +411,7 @@ describe ArangoDB do
 
 	# closed range
 	cmd = api + "/range"
-	body = "{ \"collection\" : \"#{@cid}\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4, \"closed\" : true }"
+	body = "{ \"collection\" : \"#{@cn}\", \"attribute\" : \"i\", \"left\" : 2, \"right\" : 4, \"closed\" : true }"
 	doc = ArangoDB.log_put("#{prefix}-range", cmd, :body => body)
 
 	doc.code.should eq(201)
