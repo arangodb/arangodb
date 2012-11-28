@@ -521,7 +521,7 @@ bool RestDocumentHandler::readAllDocuments () {
   TRI_AppendStringStringBuffer(&buffer, "{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = "\"" + DOCUMENT_PATH + "/" + StringUtils::itoa(trx.cid()) + "/";
+  string prefix = "\"" + DOCUMENT_PATH + "/" + trx.collectionName() + "/";
 
   for (vector<string>::iterator i = ids.begin();  i != ids.end();  ++i) {
     TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
