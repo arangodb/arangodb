@@ -1071,6 +1071,16 @@ function ArangoCollection (database, data) {
     return this._type;
   };
 
+
+  ArangoCollection.prototype.baseurl = function (suffix) {
+    var url = "/_api/collection/" + encodeURIComponent(this.name());
+    if (suffix) {
+      url += "/" + suffix;
+    }
+    
+    return url;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -1079,8 +1089,7 @@ function ArangoCollection (database, data) {
     var requestResult;
 
     if (properties === undefined) {
-      requestResult = this._database._connection.GET(
-        "/_api/collection/" + encodeURIComponent(this.name()) + "/properties");
+      requestResult = this._database._connection.GET(this.baseurl("properties"));
 
       client.checkRequestResult(requestResult);
     }
@@ -1091,8 +1100,7 @@ function ArangoCollection (database, data) {
         body.waitForSync = properties.waitForSync;
       }
 
-      requestResult = this._database._connection.PUT(
-        "/_api/collection/" + encodeURIComponent(this.name()) + "/properties",
+      requestResult = this._database._connection.PUT(this.baseurl("properties"),
         JSON.stringify(body));
 
       client.checkRequestResult(requestResult);
@@ -1115,8 +1123,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.figures = function () {
-    var requestResult = this._database._connection.GET(
-      "/_api/collection/" + encodeURIComponent(this.name()) + "/figures");
+    var requestResult = this._database._connection.GET(this.baseurl("figures"));
 
     client.checkRequestResult(requestResult);
 
@@ -1128,8 +1135,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.drop = function () {
-    var requestResult = this._database._connection.DELETE(
-      "/_api/collection/" + encodeURIComponent(this.name()));
+    var requestResult = this._database._connection.DELETE(this.baseurl());
 
     client.checkRequestResult(requestResult);
 
@@ -1535,8 +1541,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.truncate = function () {
-    var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this.name()) + "/truncate", "");
+    var requestResult = this._database._connection.PUT(this.baseurl("truncate"), "");
 
     client.checkRequestResult(requestResult);
 
@@ -1548,9 +1553,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.load = function () {
-    var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this.name()) + "/load",
-      "");
+    var requestResult = this._database._connection.PUT(this.baseurl("load"), "");
 
     client.checkRequestResult(requestResult);
 
@@ -1562,9 +1565,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.unload = function () {
-    var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this.name()) + "/unload",
-      "");
+    var requestResult = this._database._connection.PUT(this.baseurl("unload"), "");
 
     client.checkRequestResult(requestResult);
 
@@ -1577,8 +1578,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.rename = function (name) {
     var body = { name : name };
-    var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this.name()) + "/rename",
+    var requestResult = this._database._connection.PUT(this.baseurl("rename"),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1623,8 +1623,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.count = function () {
-    var requestResult = this._database._connection.GET(
-      "/_api/collection/" + encodeURIComponent(this.name()) + "/count");
+    var requestResult = this._database._connection.GET(this.baseurl("count"));
 
     client.checkRequestResult(requestResult);
 
@@ -1882,17 +1881,17 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the edges starting or ending in a vertex
+/// @brief executes an edge query
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.edges = function (vertex) {
+  ArangoCollection.prototype.edgesQuery = function (vertex, direction) {
     // if vertex is a list, iterator and concat
     if (vertex instanceof Array) {
       var edges = [];
       var i;
 
       for (i = 0;  i < vertex.length;  ++i) {
-        var e = this.edges(vertex[i]);
+        var e = this.edgesQuery(vertex[i], direction);
 
         edges.push.apply(edges, e);
       }
@@ -1906,11 +1905,19 @@ function ArangoCollection (database, data) {
 
     // get the edges
     var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this.name()) + "?vertex=" + encodeURIComponent(vertex));
+      "/_api/edges/" + encodeURIComponent(this.name()) + "?vertex=" + encodeURIComponent(vertex) + (direction ? "&direction=" + direction : ""));
 
     client.checkRequestResult(requestResult);
 
     return requestResult['edges'];
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the edges starting or ending in a vertex
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.edges = function (vertex) {
+    return this.edgesQuery(vertex);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1918,32 +1925,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.inEdges = function (vertex) {
-    // if vertex is a list, iterator and concat
-    if (vertex instanceof Array) {
-      var edges = [];
-      var i;
-
-      for (i = 0;  i < vertex.length;  ++i) {
-        var e = this.inEdges(vertex[i]);
-
-        edges.push.apply(edges, e);
-      }
-
-      return edges;
-    }
-
-    if (vertex.hasOwnProperty("_id")) {
-      vertex = vertex._id;
-    }
-
-    // get the edges
-    var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this.name())
-      + "?direction=in&vertex=" + encodeURIComponent(vertex));
-
-    client.checkRequestResult(requestResult);
-
-    return requestResult['edges'];
+    return this.edgesQuery(vertex, "in");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1951,32 +1933,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.outEdges = function (vertex) {
-    // if vertex is a list, iterator and concat
-    if (vertex instanceof Array) {
-      var edges = [];
-      var i;
-
-      for (i = 0;  i < vertex.length;  ++i) {
-        var e = this.outEdges(vertex[i]);
-
-        edges.push.apply(edges, e);
-      }
-
-      return edges;
-    }
-
-    if (vertex.hasOwnProperty("_id")) {
-      vertex = vertex._id;
-    }
-
-    // get the edges
-    var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this.name())
-      + "?direction=out&vertex=" + encodeURIComponent(vertex));
-
-    client.checkRequestResult(requestResult);
-
-    return requestResult['edges'];
+    return this.edgesQuery(vertex, "out");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
