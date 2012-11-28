@@ -52,6 +52,10 @@ d 0755 ${susr} ${sgrp} /var/run/arangodb -
 # logfile directory
 d 0755 ${susr} ${sgrp} /var/log/arangodb -
 
+d 0755 ${rusr} ${rgrp} ${mandir} -
+d 0755 ${rusr} ${rgrp} ${mandir}/man1 -
+d 0755 ${rusr} ${rgrp} ${mandir}/man8 -
+
 %include ${project_dir}/Installation/epm/arangodb.sublist
 
 ################################################################################
@@ -107,6 +111,8 @@ if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
 fi
 
+echo "${install_message}"
+
 exit 0
 EOF
 
@@ -129,6 +135,8 @@ test -x /sbin/insserv && /sbin/insserv /etc/init.d/arangodb 2&>1 > /dev/null
 if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
 fi
+
+echo "${install_message}"
 
 exit 0
 EOF
@@ -153,6 +161,8 @@ f 0544 ${rusr} ${rgrp} ${systemddir}/arangodb.service ${project_dir}/etc/systemd
 if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
 fi
+
+echo "${install_message}"
 
 exit 0
 EOF
@@ -189,6 +199,8 @@ EOF
 
 %system linux
 i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
+
+echo "${install_message}"
 
 %endif
 
