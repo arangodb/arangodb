@@ -29,7 +29,6 @@
 #define TRIAGENS_ARANGOD_UTILS_DOCUMENT_HELPER_H 1
 
 #include "VocBase/vocbase.h"
-//#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -37,10 +36,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class DocumentHelper
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scope guard for a TRI_aql_context_t*
-////////////////////////////////////////////////////////////////////////////////
 
     class DocumentHelper {
 
@@ -109,7 +104,6 @@ namespace triagens {
 
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByIdVocBase(vocbase, cid);
           if (collection == 0) {
-            // TODO: use a better name
             return assembleDocumentId(UnknownCollection, key);
           }
 
