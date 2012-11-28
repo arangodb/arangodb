@@ -41,6 +41,7 @@ data_dir=/var/lib
 static_dir=${prefix}/share
 vers_dir=arangodb-${arangodb_version}
 docdir=${prefix}/share/doc/${vers_dir}
+mandir=${prefix}/share/man
 
 echo
 echo "########################################################"
@@ -168,8 +169,11 @@ echo
 echo "########################################################"
 echo "Call mkepmlist to create a sublist"
 
+  mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man1 ${sfolder_name}/Doxygen/man/man1/*.1 >> ${SUBLIST}
+  mkepmlist -u ${susr} -g ${sgrp} --prefix ${mandir}/man8 ${sfolder_name}/Doxygen/man/man8/*.8 >> ${SUBLIST}
+
   for dir in `find js -type d`; do
-    echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
+    # echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}"
     mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/${dir} ${sfolder_name}/${dir}/*.js >> ${SUBLIST}
   done
 
@@ -178,7 +182,7 @@ echo "Call mkepmlist to create a sublist"
       FILES=${sfolder_name}/html/admin/${dir}/*.${typ}
 
       if test "${FILES}" != "${sfolder_name}/html/admin/${dir}/\*.${typ}";  then
-        echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}"
+        # echo "    mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}"
         mkepmlist -u ${susr} -g ${sgrp} --prefix ${share_base}/html/admin/${dir} ${sfolder_name}/html/admin/${dir}/*.${typ} >> ${SUBLIST}
       fi
     done
@@ -186,6 +190,30 @@ echo "Call mkepmlist to create a sublist"
 
 echo "########################################################"
 echo 
+
+##
+## build install/help message
+##
+
+install_message="
+
+ArangoDB (http://www.arangodb.org)
+  A universal open-source database with a flexible data model for documents, 
+  graphs, and key-values.
+
+First Steps with ArangoDB:
+  http:/www.arangodb.org/quickstart
+
+Upgrading ArangoDB:
+  http://www.arangodb.org/manuals/1.1/Upgrading.html
+
+Configuration file:
+  /etc/arangodb/arangod.conf
+
+Start ArangoDB shell client:
+  > ${bindir}/arangosh
+
+"
 
 cd ${hudson_base}
 sudo -E rm -rf ${hudson_base}/${archfolder}
@@ -213,6 +241,7 @@ echo "   export rusr=$rusr"
 echo "   export sbindir=$sbindir"
 echo "   export sgrp=$sgrp"
 echo "   export static_dir=$static_dir"
+echo "   export mandir=$mandir"
 echo "   export susr=$susr"
 echo "   export vers_dir=$vers_dir"
 echo "   export START_SCRIPT=$START_SCRIPT"
@@ -237,6 +266,8 @@ export static_dir
 export susr
 export vers_dir
 export START_SCRIPT
+export install_message
+export mandir
 
 echo 
 echo "########################################################"
