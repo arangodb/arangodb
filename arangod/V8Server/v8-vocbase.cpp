@@ -287,6 +287,8 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
                               v8::Handle<v8::Value> arg, 
                               string& collectionName,
                               TRI_voc_key_t& key) {
+  assert(collectionName == "");
+
   if (! arg->IsString()) {
     return false;
   }
@@ -325,9 +327,9 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
 static bool IsIndexHandle (v8::Handle<v8::Value> arg, 
                            string& collectionName, 
                            TRI_idx_iid_t& iid) {
-  TRI_v8_global_t* v8g;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  assert(collectionName == "");
+  assert(iid == 0);
 
   if (arg->IsNumber()) {
     iid = (TRI_idx_iid_t) arg->ToNumber()->Value();
@@ -345,11 +347,17 @@ static bool IsIndexHandle (v8::Handle<v8::Value> arg,
     return false;
   }
 
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   regmatch_t matches[3];
 
   if (regexec(&v8g->IndexIdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
     collectionName = string(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     iid = TRI_UInt64String2(s + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
+    return true;
+  }
+  
+  if (regexec(&v8g->IdRegex, s, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    iid = TRI_UInt64String2(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
     return true;
   }
 
@@ -919,8 +927,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (SingleCollectionWriteTransaction<Embed
   TRI_document_edge_t edge;
   edge._fromCid = trx->cid();
   edge._toCid = trx->cid();
-  edge._toKey = 0;
   edge._fromKey = 0;
+  edge._toKey = 0;
   edge._isBidirectional = isBidirectional;
 
   v8::Handle<v8::Value> err;
@@ -5619,9 +5627,8 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                          const bool lock,
                                                          v8::Handle<v8::Value> val) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  assert(key == 0);
 
   // reset the collection identifier and the revision
   string collectionName = "";
@@ -5637,6 +5644,8 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
 
   // extract the document identifier and revision from a string
   else if (val->IsObject()) {
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> didVal = obj->Get(v8g->DidKey);
 
@@ -5957,14 +5966,23 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // create the regular expressions
   string expr;
   
+  // collection name / id (used for indexes)
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_ID_REGEX ")$";
   if (regcomp(&v8g->IndexIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
+  
+  // id only
+  expr = "^(" TRI_VOC_ID_REGEX ")$";
+  if (regcomp(&v8g->IdRegex, expr.c_str(), REG_EXTENDED) != 0) {
+    LOG_FATAL("cannot compile regular expression");
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
 
-  // collection name / document key
+  // collection name / document key (used for documents)
   expr = "^(" TRI_COL_NAME_REGEX ")" TRI_DOCUMENT_HANDLE_SEPARATOR_STR "(" TRI_VOC_KEY_REGEX ")$";
   if (regcomp(&v8g->DocumentIdRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
@@ -5972,6 +5990,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
     exit(EXIT_FAILURE);
   }
   
+  // key only
   expr = "^" TRI_VOC_KEY_REGEX "$";
   if (regcomp(&v8g->DocumentKeyRegex, expr.c_str(), REG_EXTENDED) != 0) {
     LOG_FATAL("cannot compile regular expression");
