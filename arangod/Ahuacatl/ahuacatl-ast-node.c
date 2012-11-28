@@ -410,7 +410,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
     ADD_MEMBER(nameNode)
   }
  
-  if (!TRI_AddCollectionAql(context, name)) {
+  if (! TRI_AddCollectionAql(context, name)) {
     return NULL;
   }
 
@@ -877,7 +877,7 @@ TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_context_t* const context,
                                               const char* const value) { 
   CREATE_NODE(TRI_AQL_NODE_VALUE)
 
-  if (!value) {
+  if (! value) {
     ABORT_OOM
   }
   

@@ -161,9 +161,9 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.headers['location'].should eq(api + "/" + String(@cid))
+	doc.headers['location'].should eq(api + "/" + @cn)
 
-	cmd2 = api + "/" + String(@cid) + "/unload"
+	cmd2 = api + "/" + @cn + "/unload"
         doc = ArangoDB.put(cmd2)
 
         doc = ArangoDB.log_get("#{prefix}-get-collection-identifier", cmd)
@@ -175,12 +175,12 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	[2,4].include?(doc.parsed_response['status']).should be_true
-	doc.headers['location'].should eq(api + "/" + String(@cid))
+	doc.headers['location'].should eq(api + "/" + @cn)
       end
 
       # get
       it "finds the collection by name" do
-	cmd = api + "/" + String(@cn)
+	cmd = api + "/" + @cn
         doc = ArangoDB.log_get("#{prefix}-get-collection-name", cmd)
 
 	doc.code.should eq(200)
@@ -190,9 +190,9 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.headers['location'].should eq(api + "/" + String(@cid))
+	doc.headers['location'].should eq(api + "/" + @cn)
 
-	cmd2 = api + "/" + String(@cid) + "/unload"
+	cmd2 = api + "/" + @cn + "/unload"
         doc = ArangoDB.put(cmd2)
 
         doc = ArangoDB.log_get("#{prefix}-get-collection-name", cmd)
@@ -204,12 +204,12 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	[2,4].include?(doc.parsed_response['status']).should be_true
-	doc.headers['location'].should eq(api + "/" + String(@cid))
+	doc.headers['location'].should eq(api + "/" + @cn)
       end
 
       # get count
       it "checks the size of a collection" do
-	cmd = api + "/" + String(@cid) + "/count"
+	cmd = api + "/" + @cn + "/count"
         doc = ArangoDB.log_get("#{prefix}-get-collection-count", cmd)
 
 	doc.code.should eq(200)
@@ -220,12 +220,12 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + String(@cid) + "/count")
+	doc.headers['location'].should eq(api + "/" + @cn + "/count")
       end
 
       # get count
       it "checks the properties of a collection" do
-	cmd = api + "/" + String(@cid) + "/properties"
+	cmd = api + "/" + @cn + "/properties"
         doc = ArangoDB.log_get("#{prefix}-get-collection-properties", cmd)
 
 	doc.code.should eq(200)
@@ -237,12 +237,12 @@ describe ArangoDB do
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + String(@cid) + "/properties")
+	doc.headers['location'].should eq(api + "/" + @cn + "/properties")
       end
 
       # get figures
       it "extracting the figures for a collection" do
-	cmd = api + "/" + String(@cid) + "/figures"
+	cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
 
 	doc.code.should eq(200)
@@ -256,7 +256,7 @@ describe ArangoDB do
 	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
 	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + String(@cid) + "/figures")
+	doc.headers['location'].should eq(api + "/" + @cn + "/figures")
       end
     end
 
@@ -271,7 +271,7 @@ describe ArangoDB do
 
       it "delete an existing collection by identifier" do
 	cid = ArangoDB.create_collection(@cn)
-	cmd = api + "/" + String(cid)
+	cmd = api + "/" + @cn
         doc = ArangoDB.log_delete("#{prefix}-delete-collection-identifier", cmd)
 
 	doc.code.should eq(200)
@@ -280,7 +280,7 @@ describe ArangoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(cid)
 
-	cmd = api + "/" + String(cid)
+	cmd = api + "/" + @cn
 	doc = ArangoDB.get(cmd)
 
 	doc.parsed_response['error'].should eq(true)
@@ -298,7 +298,7 @@ describe ArangoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should eq(cid)
 
-	cmd = api + "/" + String(cid)
+	cmd = api + "/" + @cn
 	doc = ArangoDB.get(cmd)
 
 	doc.parsed_response['error'].should eq(true)
@@ -328,7 +328,7 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['waitForSync'].should == false
 
-	cmd = api + "/" + String(@cn) + "/figures"
+	cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
 
 	doc.parsed_response['waitForSync'].should == false
@@ -349,7 +349,7 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['waitForSync'].should == true
 
-	cmd = api + "/" + String(@cn) + "/figures"
+	cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
 
 	doc.parsed_response['waitForSync'].should == true
@@ -405,7 +405,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(@cn)
 	cid = ArangoDB.create_collection(@cn)
 
-	cmd = api + "/" + String(cid) + "/load"
+	cmd = api + "/" + @cn + "/load"
         doc = ArangoDB.log_put("#{prefix}-identifier-load", cmd)
 
 	doc.code.should eq(200)
@@ -453,7 +453,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(@cn)
 	cid = ArangoDB.create_collection(@cn)
 
-	cmd = api + "/" + String(cid) + "/unload"
+	cmd = api + "/" + @cn + "/unload"
         doc = ArangoDB.log_put("#{prefix}-identifier-unload", cmd)
 
 	doc.code.should eq(200)
@@ -510,7 +510,7 @@ describe ArangoDB do
 
 	ArangoDB.size_collection(@cid).should eq(10)
 
-	cmd = api + "/" + String(@cid) + "/truncate"
+	cmd = api + "/" + @cn + "/truncate"
         doc = ArangoDB.log_put("#{prefix}-identifier-truncate", cmd)
 
 	doc.code.should eq(200)
@@ -537,7 +537,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn)
 	cid = ArangoDB.create_collection(cn)
 
-	cmd = "/_api/document?collection=#{cid}"
+	cmd = "/_api/document?collection=#{cn}"
 	body = "{ \"Hallo\" : \"World\" }"
 
 	for i in ( 1 .. 10 )
@@ -551,7 +551,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn2)
 
 	body = "{ \"name\" : \"#{cn2}\" }"
-	cmd = api + "/" + String(cid) + "/rename"
+	cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename", cmd, :body => body)
 
 	doc.code.should eq(200)
@@ -565,14 +565,14 @@ describe ArangoDB do
 	ArangoDB.size_collection(cid).should eq(10)
 	ArangoDB.size_collection(cn2).should eq(10)
 
-	cmd = api + "/" + String(cn)
+	cmd = api + "/" + cn
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 
-	cmd = api + "/" + String(cn2)
+	cmd = api + "/" + cn2
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -595,7 +595,7 @@ describe ArangoDB do
 
 	body = "{ \"Hallo\" : \"World\" }"
 
-	cmd = "/_api/document?collection=#{cid}"
+	cmd = "/_api/document?collection=#{cn}"
 
 	for i in ( 1 .. 10 )
 	  doc = ArangoDB.post(cmd, :body => body)
@@ -604,7 +604,7 @@ describe ArangoDB do
 	ArangoDB.size_collection(cid).should eq(10)
 	ArangoDB.size_collection(cn).should eq(10)
 
-	cmd = "/_api/document?collection=#{cid2}"
+	cmd = "/_api/document?collection=#{cn2}"
 
 	for i in ( 1 .. 20 )
 	  doc = ArangoDB.post(cmd, :body => body)
@@ -614,7 +614,7 @@ describe ArangoDB do
 	ArangoDB.size_collection(cn2).should eq(20)
 
 	body = "{ \"name\" : \"#{cn2}\" }"
-	cmd = api + "/" + String(cid) + "/rename"
+	cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-conflict", cmd, :body => body)
 
 	doc.code.should eq(400)
@@ -642,7 +642,7 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn2)
 
 	body = "{ \"name\" : \"#{cn2}\" }"
-	cmd = api + "/" + String(cid) + "/rename"
+	cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-new-born", cmd, :body => body)
 
 	doc.code.should eq(200)
@@ -653,14 +653,14 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(cn2)
 	doc.parsed_response['status'].should eq(3)
 
-	cmd = api + "/" + String(cn)
+	cmd = api + "/" + cn
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(404)
 	doc.parsed_response['error'].should eq(true)
 	doc.parsed_response['errorNum'].should eq(1203)
 
-	cmd = api + "/" + String(cn2)
+	cmd = api + "/" + cn2
         doc = ArangoDB.get(cmd)
 
 	doc.code.should eq(200)
@@ -681,10 +681,10 @@ describe ArangoDB do
 	ArangoDB.drop_collection(cn2)
 	cid2 = ArangoDB.create_collection(cn2)
 
-	cmd = "/_api/document?collection=#{cid2}"
+	cmd = "/_api/document?collection=#{cn2}"
 
 	body = "{ \"name\" : \"#{cn2}\" }"
-	cmd = api + "/" + String(cid) + "/rename"
+	cmd = api + "/" + cn + "/rename"
         doc = ArangoDB.log_put("#{prefix}-identifier-rename-conflict", cmd, :body => body)
 
 	doc.code.should eq(400)
@@ -718,7 +718,7 @@ describe ArangoDB do
 	ArangoDB.size_collection(cid).should eq(10)
 	ArangoDB.size_collection(cn).should eq(10)
 
-	cmd = api + "/" + String(cid) + "/properties"
+	cmd = api + "/" + cn + "/properties"
 	body = "{ \"waitForSync\" : true }"
         doc = ArangoDB.log_put("#{prefix}-identifier-properties-sync", cmd, :body => body)
 
@@ -731,7 +731,7 @@ describe ArangoDB do
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
 
-	cmd = api + "/" + String(cid) + "/properties"
+	cmd = api + "/" + cn + "/properties"
 	body = "{ \"waitForSync\" : false }"
         doc = ArangoDB.log_put("#{prefix}-identifier-properties-no-sync", cmd, :body => body)
 
@@ -757,7 +757,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         cid = doc.parsed_response['id']
 
-        cmd = api + "/" + String(cid) + "/properties"
+        cmd = api + "/" + cn + "/properties"
         body = "{ \"waitForSync\" : true }"
         doc = ArangoDB.log_put("#{prefix}-with-create-options", cmd, :body => body)
 
@@ -785,7 +785,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         cid = doc.parsed_response['id']
 
-        cmd = api + "/" + String(cid) + "/properties"
+        cmd = api + "/" + cn + "/properties"
         body = "{ \"waitForSync\" : true }"
         doc = ArangoDB.log_put("#{prefix}-with-empty-create-options", cmd, :body => body)
 

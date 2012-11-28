@@ -321,8 +321,7 @@
       id = id.id;
     }
 
-    var re = /^([0-9]+)\/([0-9]+)/;
-    var pa = re.exec(id);
+    var pa = ArangoDatabase.indexRegex.exec(id);
     var err;
 
     if (pa === null) {
@@ -332,7 +331,7 @@
       throw err;
     }
 
-    var col = this._collection(parseInt(pa[1]));
+    var col = this._collection(pa[1]);
 
     if (col === null) {
       err = new ArangoError();
@@ -378,8 +377,7 @@
       id = id.id;
     }
 
-    var re = /^([0-9]+)\/([0-9]+)/;
-    var pa = re.exec(id);
+    var pa = ArangoDatabase.indexRegex.exec(id);
     var err;
 
     if (pa === null) {
@@ -389,7 +387,7 @@
       throw err;
     }
 
-    var col = this._collection(parseInt(pa[1]));
+    var col = this._collection(pa[1]);
 
     if (col === null) {
       err = new ArangoError();
@@ -416,6 +414,12 @@
     ArangoDatabase.prototype.toString = function(seen, path, names, level) {
       return "[ArangoDatabase \"" + this._path + "\"]";
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index id regex
+////////////////////////////////////////////////////////////////////////////////
+
+    ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -479,12 +483,6 @@
   ArangoCollection.TYPE_EDGE = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attachment collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.TYPE_ATTACHMENT = 4;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
 ///
 /// @FUN{@FA{collection}.toArray()}
@@ -533,11 +531,10 @@
     var i;
 
     if (typeof id === "string") {
-      var re = /^([0-9]+)\/([0-9]+)/;
-      var pa = re.exec(id);
+      var pa = ArangoDatabase.indexRegex.exec(id);
 
       if (pa === null) {
-        id = this._id + "/" + id;
+        id = this.name() + "/" + id;
       }
     }
     else if (id.hasOwnProperty("id")) {
@@ -574,7 +571,6 @@
     switch (this.type()) {
       case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
       case ArangoCollection.TYPE_EDGE: type = "edge"; break;
-      case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
     }
 
     internal.output("[ArangoCollection ",

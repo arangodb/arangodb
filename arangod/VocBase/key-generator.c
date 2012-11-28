@@ -477,7 +477,7 @@ bool TRI_IsAllowedKey (char const* key) {
     }
     else {
       // single byte
-      if (c == '/') {
+      if (c == '/' || c == '"' || c == '\\') {
         return false;
       }
     }

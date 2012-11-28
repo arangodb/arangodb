@@ -68,7 +68,6 @@ bin_arangod_SOURCES = \
 	arangod/SkipLists/skiplistIndex.c \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/v8-actions.cpp \
-	arangod/V8Server/v8-objects.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/VocBase/auth.c \

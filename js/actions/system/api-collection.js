@@ -188,7 +188,7 @@
       result.type = collection.type();
       result.createOptions = collection.createOptions;
 
-      headers.location = "/" + API + "/" + collection._id;
+      headers.location = "/" + API + "/" + encodeURIComponent(collection.name());
 
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -341,24 +341,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   function GET_api_collection (req, res) {
-
     // .............................................................................
     // /_api/collection
     // .............................................................................
-
-    if (req.suffix.length === 0) {
+    
+    if (req.suffix.length === 0 && req.parameters.id == undefined) {
       GET_api_collections(req, res);
       return;
     }
+    
+    // .............................................................................
+    // /_api/collection/<identifier>
+    // /_api/collection/<identifier>?useId
+    // .............................................................................
 
-    var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = internal.db._collection(id);
+    var name;
+
+    if (req.parameters.useId || parseInt(req.suffix[0])) {
+      name = parseInt(req.suffix[0]);
+    }
+    else {
+      name = decodeURIComponent(req.suffix[0]);
+    }
+    
+    var collection = internal.db._collection(name);
 
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
       return;
     }
+      
 
     // .............................................................................
     // /_api/collection/<identifier>
@@ -366,7 +378,7 @@
 
     if (req.suffix.length === 1) {
       var result = CollectionRepresentation(collection, false, false, false);
-      var headers = { location : "/" + API + "/" + collection._id };
+      var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) };
 
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -380,7 +392,7 @@
 
       if (sub === "figures") {
         var result = CollectionRepresentation(collection, true, true, true);
-        var headers = { location : "/" + API + "/" + collection._id + "/figures" };
+        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/figures" };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
       }
@@ -391,7 +403,7 @@
 
       else if (sub === "count") {
         var result = CollectionRepresentation(collection, true, true, false);
-        var headers = { location : "/" + API + "/" + collection._id + "/count" };
+        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/count" };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
       }
@@ -402,7 +414,7 @@
 
       else if (sub === "properties") {
         var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + collection._id + "/properties" };
+        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/properties" };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
       }
@@ -413,7 +425,7 @@
 
       else if (sub === "parameter") {
         var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
+        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/parameter" };
 
         actions.resultOk(req, res, actions.HTTP_OK, result, headers);
       }
@@ -424,7 +436,7 @@
     }
     else {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expect GET /" + API + "/<collection-identifer>/<method>");
+                        "expect GET /" + API + "/<collection-identifier>/<method>");
     }
   }
 
@@ -636,13 +648,12 @@
   function PUT_api_collection (req, res) {
     if (req.suffix.length != 2) {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expected PUT /" + API + "/<collection-identifer>/<action>");
+                        "expected PUT /" + API + "/<collection-identifier>/<action>");
       return;
     }
 
     var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = internal.db._collection(id);
+    var collection = internal.db._collection(name);
 
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
@@ -707,12 +718,11 @@
   function DELETE_api_collection (req, res) {
     if (req.suffix.length != 1) {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expected DELETE /" + API + "/<collection-identifer>");
+                        "expected DELETE /" + API + "/<collection-identifier>");
     }
     else {
       var name = decodeURIComponent(req.suffix[0]);
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
+      var collection = internal.db._collection(name);
 
       if (collection === null) {
         actions.collectionNotFound(req, res, name);

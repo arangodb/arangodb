@@ -440,7 +440,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(document, collection, trx.shaper(), generateBody);
+      generateDocument(collection, document, trx.vocbase(), trx.shaper(), generateBody);
     }
     else {
       generatePreconditionFailed(collection, document->_key, rid);
@@ -456,7 +456,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(document, collection, trx.shaper(), generateBody);
+      generateDocument(collection, document, trx.vocbase(), trx.shaper(), generateBody);
     }
     else {
       generatePreconditionFailed(collection, document->_key, rid);

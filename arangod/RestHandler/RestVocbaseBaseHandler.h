@@ -163,15 +163,6 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline string assembleDocumentId (const string& collectionName,
-                                          TRI_voc_key_t key) {
-          if (key == 0) {
-            return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "unknown";
-          }
-
-          return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +230,9 @@ namespace triagens {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (const string&, TRI_voc_key_t, TRI_voc_rid_t);
+        void generatePreconditionFailed (const string&, 
+                                         TRI_voc_key_t, 
+                                         TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
@@ -251,8 +244,9 @@ namespace triagens {
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocument (TRI_doc_mptr_t const*,
-                               const string&,
+        void generateDocument (const string&,
+                               TRI_doc_mptr_t const*,
+                               TRI_vocbase_t* const,
                                TRI_shaper_t*,
                                const bool);
 

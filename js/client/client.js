@@ -914,12 +914,6 @@ function ArangoCollection (database, data) {
   ArangoCollection.TYPE_EDGE = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attachment collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.TYPE_ATTACHMENT = 4;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -995,7 +989,6 @@ function ArangoCollection (database, data) {
     switch (this.type()) {
       case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
       case ArangoCollection.TYPE_EDGE: type = "edge"; break;
-      case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
     }
 
     internal.output("[ArangoCollection ",
@@ -1087,7 +1080,7 @@ function ArangoCollection (database, data) {
 
     if (properties === undefined) {
       requestResult = this._database._connection.GET(
-        "/_api/collection/" + encodeURIComponent(this._id) + "/properties");
+        "/_api/collection/" + encodeURIComponent(this.name()) + "/properties");
 
       client.checkRequestResult(requestResult);
     }
@@ -1099,7 +1092,7 @@ function ArangoCollection (database, data) {
       }
 
       requestResult = this._database._connection.PUT(
-        "/_api/collection/" + encodeURIComponent(this._id) + "/properties",
+        "/_api/collection/" + encodeURIComponent(this.name()) + "/properties",
         JSON.stringify(body));
 
       client.checkRequestResult(requestResult);
@@ -1123,7 +1116,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.figures = function () {
     var requestResult = this._database._connection.GET(
-      "/_api/collection/" + encodeURIComponent(this._id) + "/figures");
+      "/_api/collection/" + encodeURIComponent(this.name()) + "/figures");
 
     client.checkRequestResult(requestResult);
 
@@ -1136,7 +1129,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.drop = function () {
     var requestResult = this._database._connection.DELETE(
-      "/_api/collection/" + encodeURIComponent(this._id));
+      "/_api/collection/" + encodeURIComponent(this.name()));
 
     client.checkRequestResult(requestResult);
 
@@ -1150,7 +1143,7 @@ function ArangoCollection (database, data) {
         var collection = database[name];
 
         if (collection instanceof ArangoCollection) {
-          if (collection._id === this._id) {
+          if (collection.name() === this.name()) {
             delete database[name];
           }
         }
@@ -1172,7 +1165,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.getIndexes = function () {
     var requestResult = this._database._connection.GET(
-      "/_api/index?collection=" + encodeURIComponent(this._id));
+      "/_api/index?collection=" + encodeURIComponent(this.name()));
 
     client.checkRequestResult(requestResult);
 
@@ -1199,7 +1192,7 @@ function ArangoCollection (database, data) {
 
       throw new ArangoError(requestResult);
     }
-    else if (parseInt(s[0]) !== this._id) {
+    else if (s[0] !== this.name()) {
       requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
         errorMessage: 
@@ -1236,7 +1229,7 @@ function ArangoCollection (database, data) {
 
       throw new ArangoError(requestResult);
     }
-    else if (parseInt(s[0]) !== this._id) {
+    else if (s[0] !== this.name()) {
       requestResult = {
         errorNum: internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
         errorMessage:
@@ -1277,7 +1270,7 @@ function ArangoCollection (database, data) {
     body = { type : "bitarray", unique : false, fields : fields };
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1296,7 +1289,7 @@ function ArangoCollection (database, data) {
     body = { type : "cap", size : size };
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1320,7 +1313,7 @@ function ArangoCollection (database, data) {
     body = { type : "skiplist", unique : true, fields : fields };
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1344,7 +1337,7 @@ function ArangoCollection (database, data) {
     body = { type : "skiplist", unique : false, fields : fields };
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1368,7 +1361,7 @@ function ArangoCollection (database, data) {
     body = { type : "hash", unique : true, fields : fields };
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1392,7 +1385,7 @@ function ArangoCollection (database, data) {
     body = { type : "hash", unique : false, fields : fields };
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1436,7 +1429,7 @@ function ArangoCollection (database, data) {
     }
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id), 
+      "/_api/index?collection=" + encodeURIComponent(this.name()), 
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1491,7 +1484,7 @@ function ArangoCollection (database, data) {
     }
 
     var requestResult = this._database._connection.POST(
-      "/_api/index?collection=" + encodeURIComponent(this._id),
+      "/_api/index?collection=" + encodeURIComponent(this.name()),
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1515,7 +1508,7 @@ function ArangoCollection (database, data) {
     }
 
     body = {
-      collection : this._id,
+      collection : this.name(),
       index : index,
       skip : skip,
       limit : limit,
@@ -1543,7 +1536,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.truncate = function () {
     var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this._id) + "/truncate", "");
+      "/_api/collection/" + encodeURIComponent(this.name()) + "/truncate", "");
 
     client.checkRequestResult(requestResult);
 
@@ -1556,7 +1549,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.load = function () {
     var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this._id) + "/load",
+      "/_api/collection/" + encodeURIComponent(this.name()) + "/load",
       "");
 
     client.checkRequestResult(requestResult);
@@ -1570,7 +1563,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.unload = function () {
     var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this._id) + "/unload",
+      "/_api/collection/" + encodeURIComponent(this.name()) + "/unload",
       "");
 
     client.checkRequestResult(requestResult);
@@ -1585,7 +1578,7 @@ function ArangoCollection (database, data) {
   ArangoCollection.prototype.rename = function (name) {
     var body = { name : name };
     var requestResult = this._database._connection.PUT(
-      "/_api/collection/" + encodeURIComponent(this._id) + "/rename",
+      "/_api/collection/" + encodeURIComponent(this.name()) + "/rename",
       JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
@@ -1603,7 +1596,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.refresh = function () {
     var requestResult = this._database._connection.GET(
-      "/_api/collection/" + encodeURIComponent(this._id));
+      "/_api/collection/" + encodeURIComponent(this._id) + "?useId=true");
 
     client.checkRequestResult(requestResult);
 
@@ -1631,7 +1624,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.count = function () {
     var requestResult = this._database._connection.GET(
-      "/_api/collection/" + encodeURIComponent(this._id) + "/count");
+      "/_api/collection/" + encodeURIComponent(this.name()) + "/count");
 
     client.checkRequestResult(requestResult);
 
@@ -1671,7 +1664,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (parseInt(s[0]) !== this._id) {
+      else if (s[0] !== this.name()) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
@@ -1699,7 +1692,7 @@ function ArangoCollection (database, data) {
       var data = arguments[0];
 
       requestResult = this._database._connection.POST(
-        "/_api/document?collection=" + encodeURIComponent(this._id),
+        "/_api/document?collection=" + encodeURIComponent(this.name()),
         JSON.stringify(data));
     }
     else if (type == ArangoCollection.TYPE_EDGE) {
@@ -1715,7 +1708,7 @@ function ArangoCollection (database, data) {
         to = to._id;
       }
 
-      var url = "/_api/edge?collection=" + encodeURIComponent(this._id)
+      var url = "/_api/edge?collection=" + encodeURIComponent(this.name())
               + "&from=" + encodeURIComponent(from)
               + "&to=" + encodeURIComponent(to);
 
@@ -1766,7 +1759,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (parseInt(s[0]) !== this._id) {
+      else if (s[0] !== this.name()) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
@@ -1823,7 +1816,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (parseInt(s[0]) !== this._id) {
+      else if (s[0] !== this.name()) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
@@ -1876,7 +1869,7 @@ function ArangoCollection (database, data) {
       if (s.length !== 2) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
       }
-      else if (parseInt(s[0]) !== this._id) {
+      else if (s[0] !== this.name()) {
         requestResult.errorNum = internal.errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code;
       }
 
@@ -1913,7 +1906,7 @@ function ArangoCollection (database, data) {
 
     // get the edges
     var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id) + "?vertex=" + encodeURIComponent(vertex));
+      "/_api/edges/" + encodeURIComponent(this.name()) + "?vertex=" + encodeURIComponent(vertex));
 
     client.checkRequestResult(requestResult);
 
@@ -1945,7 +1938,7 @@ function ArangoCollection (database, data) {
 
     // get the edges
     var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id)
+      "/_api/edges/" + encodeURIComponent(this.name())
       + "?direction=in&vertex=" + encodeURIComponent(vertex));
 
     client.checkRequestResult(requestResult);
@@ -1978,7 +1971,7 @@ function ArangoCollection (database, data) {
 
     // get the edges
     var requestResult = this._database._connection.GET(
-      "/_api/edges/" + encodeURIComponent(this._id)
+      "/_api/edges/" + encodeURIComponent(this.name())
       + "?direction=out&vertex=" + encodeURIComponent(vertex));
 
     client.checkRequestResult(requestResult);
@@ -2144,8 +2137,16 @@ function ArangoDatabase (connection) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoDatabase.prototype._collection = function (id) {
-    var requestResult = this._connection.GET(
-      "/_api/collection/" + encodeURIComponent(id));
+    var url;
+
+    if (typeof id === "number") {
+      url = "/_api/collection/" + encodeURIComponent(id) + "?useId=true";
+    }
+    else {
+      url = "/_api/collection/" + encodeURIComponent(id);
+    }
+    
+    var requestResult = this._connection.GET(url);
   
     // return null in case of not found
     if (requestResult !== null
