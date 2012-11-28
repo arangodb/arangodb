@@ -52,6 +52,10 @@ d 0755 ${susr} ${sgrp} /var/run/arangodb -
 # logfile directory
 d 0755 ${susr} ${sgrp} /var/log/arangodb -
 
+d 0755 ${rusr} ${rgrp} ${mandir} -
+d 0755 ${rusr} ${rgrp} ${mandir}/man1 -
+d 0755 ${rusr} ${rgrp} ${mandir}/man8 -
+
 %include ${project_dir}/Installation/epm/arangodb.sublist
 
 ################################################################################
@@ -107,6 +111,8 @@ if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
 fi
 
+echo "${install_message}"
+
 exit 0
 EOF
 
@@ -130,6 +136,8 @@ if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
 fi
 
+echo "${install_message}"
+
 exit 0
 EOF
 
@@ -140,6 +148,50 @@ exit 0
 EOF
 
 ## -----------------------------------------------------------------------------
+## use_systemd
+## -----------------------------------------------------------------------------
+
+%elseifdef use_systemd
+f 0544 ${rusr} ${rgrp} ${systemddir}/arangodb.service ${project_dir}/etc/systemd/arangodb.service
+
+%postinstall <<EOF
+/bin/systemctl daemon-reload > /dev/null 2>&1
+/bin/systemctl preset arangodb.service > /dev/null 2>&1
+
+if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
+  ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
+fi
+
+echo "${install_message}"
+
+exit 0
+EOF
+
+%preremove <<EOF
+test -n "$FIRST_ARG" || FIRST_ARG=$1
+if [ $FIRST_ARG -eq 0 ]; then
+# Package removal, not upgrade                                                          
+ /bin/systemctl --no-reload disable arangodb.service > /dev/null 2>&1 || :
+ /bin/systemctl stop arangodb.service > /dev/null 2>&1 || :
+fi
+exit 0
+EOF
+
+%postremove <<EOF
+test -n "$FIRST_ARG" || FIRST_ARG=$1
+if [ $FIRST_ARG -ge 1 ]; then
+# Package upgrade, not uninstall                                                        
+  /bin/systemctl try-restart arangodb.service >/dev/null 2>&1 || :
+else # package uninstall                                                                
+  for service in arangodb.service ; do
+    sysv_service=${service%.*}
+    rm -f "/var/lib/systemd/migrated/$sysv_service" 2> /dev/null || :
+  done
+  /bin/systemctl daemon-reload >/dev/null 2>&1 || :
+fi
+EOF
+
+## -----------------------------------------------------------------------------
 ## EPM
 ## -----------------------------------------------------------------------------
 
@@ -147,6 +199,8 @@ EOF
 
 %system linux
 i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
+
+echo "${install_message}"
 
 %endif
 
