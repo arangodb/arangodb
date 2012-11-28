@@ -37,6 +37,7 @@
 ///      <li>@ref CommandLineVersion "version"</li>
 ///      <li>@ref CommandLineConfiguration "configuration"</li>
 ///      <li>@ref CommandLineDaemon "daemon"</li>
+///      <li>@ref CommandLineDefaultLanguage "default-language"</li>
 ///      <li>@ref CommandLineSupervisor "supervisor"</li>
 ///      <li>@ref CommandLineUid "uid"</li>
 ///      <li>@ref CommandLineGid "gid"</li>
@@ -134,6 +135,9 @@
 /// only be set if the pid (process id) file is specified. That is, unless a
 /// value to the parameter pid-file is given, then the server will report an
 /// error and exit.
+///
+/// @anchor CommandLineDefaultLanguage
+/// @copydetails triagens::arango::ArangoServer::_defaultLanguage
 ///
 /// @anchor CommandLineSupervisor
 /// @CMDOPT{\--supervisor}
