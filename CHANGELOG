@@ -1,6 +1,8 @@
 v1.1.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #301: PATCH does not work in web interface
+
 # fixed issue #269: fix make distclean & clean
 
 * fixed issue #296: system collections not usable from AQL
