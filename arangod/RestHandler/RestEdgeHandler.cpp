@@ -85,7 +85,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 /// The document handle of the start point must be passed in @FA{from-handle}. 
 /// The document handle of the end point must be passed in @FA{to-handle}.
 ///
-/// @LIT{from-handle} and @{to-handle} are immutable once the edge has been
+/// @LIT{from-handle} and @LIT{to-handle} are immutable once the edge has been
 /// created.
 ///
 /// In all other respects the method works like @LIT{POST /document}, see
