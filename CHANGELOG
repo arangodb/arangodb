@@ -11,27 +11,57 @@ v1.2.alpha (XXXX-XX-XX)
 
 * allow user-definable document keys
   users can now define their own document keys by using the _key attribute
-  The restrictions for key values are:
+  when creating new documents or edges. Once specified, the value of _key is
+  immutable.
+  The restrictions for user-defined key values are:
   * the key must be at most 256 bytes long
-  * it must consist of valid UTF-8 characters only
-  * the key must not contain the forward slash (/), the double quote (") or 
-    the backslash (\) characters
-  * the key must not begin or end with a space, tab, newline, carriage return or
-    form feed character
+  * it must consist of the letters a-z (lower or upper case), the digits 0-9,
+    the underscore (_) or dash (-) characters only
+  * any other characters, especially multi-byte sequences, whitespace or
+    punctuation characters cannot be used inside key values
 
   Specifiying a document key is optional when creating new documents. If no
   document key is specified, ArangoDB will create a document key itself.
   There are no guarantees about the format and pattern of auto-generated document
   keys other than the above restrictions.
   Clients should therefore treat auto-generated document keys as opaque values.
+  Keys can be used to look up and reference documents, e.g.:
+  * saving a document: `db.users.save({ "_key": "fred", ... })`
+  * looking up a document: `db.users.document("fred")`
+  * referencing other documents: `edges.relations.save("users/fred", "users/john", ...)`
 
-* allow collection names everywhere where a collection id was allowed in ArangoDB 1.1 & 1.0
-  This change request using a collection name in place of a collection id at all places
-  where the end user deals with collections. Examples:
-  * creating edges: the _from and _to values can now contain collection names instead
-    of collection ids. Example: edges.relations.save("test/my-key1", "test/my-key2", { ... });
+  This change is downwards-compatible to ArangoDB 1.1 because in ArangoDB 1.1 
+  users were not able to define their own keys. If the user does not supply a _key
+  attribute when creating a document, ArangoDB 1.2 will still generate a key of
+  its own as ArangoDB 1.1 did. However, all documents returned by ArangoDB 1.2 will 
+  include a _key attribute and clients should be able to handle that (e.g. by
+  ignoring it if not needed). Documents returned will still include the _id attribute
+  as in ArangoDB 1.1.
+
+* require collection names everywhere where a collection id was allowed in 
+  ArangoDB 1.1 & 1.0
+  This change requires clients to use a collection name in place of a collection id 
+  at all places the client deals with collections.
+  Examples:
+  * creating edges: the _from and _to attributes must now contain collection names instead
+    of collection ids: `edges.relations.save("test/my-key1", "test/my-key2", ...)`
+  * retrieving edges: the returned _from and _to attributes now will contain collection
+    names instead of ids, too: _from: `test/fred` instead of `1234/3455`
   * looking up documents: db.users.document("fred") or db._document("users/fred")
-  * collection names must be used instead of collection ids in REST API calls
+  
+  Collection names must be used in REST API calls instead of collection ids, too.
+  This change is thus not completely downwards-compatible to ArangoDB 1.1. ArangoDB 1.1
+  required users to use collection ids in many places instead of collection names.
+  This was unintuitive and caused overhead in cases when just the collection name was
+  known on client-side but not its id. This overhead can now be avoided so clients can
+  work with the collection names directly. There is no need to work with collection ids
+  on the client side anymore. 
+  This change will likely require adjustments to API calls issued by clients, and also
+  requires a change in how clients handle the _id value of returned documents. Previously,
+  the _id value of returned documents contained the collection id, a slash separator and
+  the document number. Since 1.2, _id will contain the collection name, a slash separator
+  and the document key. The same applies to the _from and _to attribute values of edges
+  that are returned by ArangoDB.
 
 * edges in edge collections can optionally be undirected
   Edges now have a `_bidirectional` attribute that determines whether the edge is to be

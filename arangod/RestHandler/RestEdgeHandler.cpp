@@ -166,12 +166,11 @@ bool RestEdgeHandler::createDocument () {
   int res = trx.begin(); 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
 
-  TRI_voc_cid_t cid = trx.cid();
+  const TRI_voc_cid_t cid = trx.cid();
 
-  // split document handle
   edge._fromCid = cid;
   edge._toCid = cid;
   edge._fromKey = 0;
@@ -266,7 +265,6 @@ int RestEdgeHandler::parseDocumentId (string const& handle,
   
   // collection found by name
   cid = collection->_cid;
-  // clear previous error
 
   key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
 
