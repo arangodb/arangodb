@@ -210,7 +210,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  if (!TRI_InitParserAql(context)) {
+  if (! TRI_InitParserAql(context)) {
     // could not initialise the lexer
     TRI_FreeContextAql(context);
 
@@ -290,7 +290,7 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const context) {
   }
 
   // parse the query
-  if (!TRI_ParseAql(context)) {
+  if (! TRI_ParseAql(context)) {
     // lexing/parsing failed
     return false;
   }
@@ -310,19 +310,19 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
                               const TRI_json_t* const parameters) {
 
   // add the bind parameters
-  if (!TRI_AddParameterValuesAql(context, parameters)) {
+  if (! TRI_AddParameterValuesAql(context, parameters)) {
     // adding parameters failed
     return false;
   }
   
   // validate the bind parameters used/passed
-  if (!TRI_ValidateBindParametersAql(context)) {
+  if (! TRI_ValidateBindParametersAql(context)) {
     // invalid bind parameters
     return false;
   }
 
   // inject the bind parameter values into the query AST
-  if (!TRI_InjectBindParametersAql(context)) {
+  if (! TRI_InjectBindParametersAql(context)) {
     // bind parameter injection failed
     return false;
   }
@@ -341,7 +341,7 @@ bool TRI_BindQueryContextAql (TRI_aql_context_t* const context,
 bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
 
   // do some basic optimisations in the AST
-  if (!TRI_OptimiseAql(context)) {
+  if (! TRI_OptimiseAql(context)) {
     // constant folding failed
     return false;
   }
@@ -364,17 +364,17 @@ bool TRI_OptimiseQueryContextAql (TRI_aql_context_t* const context) {
 
 bool TRI_LockQueryContextAql (TRI_aql_context_t* const context) {
   // mark all used collections as being used
-  if (!TRI_LockCollectionsAql(context)) {
+  if (! TRI_LockCollectionsAql(context)) {
     return false;
   }
 
   // acquire read locks on all collections used
-  if (!TRI_ReadLockCollectionsAql(context)) {
+  if (! TRI_ReadLockCollectionsAql(context)) {
     return false;
   }
   
   // add barriers for all collections used
-  if (!TRI_AddBarrierCollectionsAql(context)) {
+  if (! TRI_AddBarrierCollectionsAql(context)) {
     return false;
   }
   
@@ -421,7 +421,7 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const context,
     copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, value);
   }
 
-  if (!copy) {
+  if (! copy) {
     ABORT_OOM
   }
 

@@ -81,7 +81,7 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* const name) 
   assert(name);
 
   collection = (TRI_aql_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false);
-  if (!collection) {
+  if (collection == NULL) {
     return NULL;
   }
 
@@ -109,12 +109,12 @@ bool SetupCollections (TRI_aql_context_t* const context) {
     char* name = context->_collectionNames._table[i];
     TRI_aql_collection_t* collection;
 
-    if (!name) {
+    if (! name) {
       continue;
     }
 
     collection = CreateCollectionContainer(name);
-    if (!collection) {
+    if (! collection) {
       result = false;
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
@@ -149,9 +149,9 @@ bool OpenCollections (TRI_aql_context_t* const context) {
 
     assert(collection);
     assert(collection->_name);
-    assert(!collection->_collection);
-    assert(!collection->_barrier);
-    assert(!collection->_readLocked);
+    assert(! collection->_collection);
+    assert(! collection->_barrier);
+    assert(! collection->_readLocked);
 
     LOG_TRACE("locking collection '%s'", collection->_name);
     collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, collection->_name);
@@ -357,11 +357,11 @@ void TRI_UnlockCollectionsAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LockCollectionsAql (TRI_aql_context_t* const context) {
-  if (!SetupCollections(context)) {
+  if (! SetupCollections(context)) {
     return false;
   }
 
-  if (!OpenCollections(context)) {
+  if (! OpenCollections(context)) {
     TRI_UnlockCollectionsAql(context);
     return false;
   }
@@ -390,8 +390,8 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection->_name);
     assert(collection->_collection);
     assert(collection->_collection->_collection);
-    assert(!collection->_readLocked);
-    assert(!collection->_barrier);
+    assert(! collection->_readLocked);
+    assert(! collection->_barrier);
 
     primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
@@ -431,18 +431,18 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection);
     assert(collection->_name);
 
-    if (!collection->_collection) {
+    if (! collection->_collection) {
       // don't unlock collections we weren't able to lock at all
       continue;
     }
 
-    if (!collection->_readLocked) {
+    if (! collection->_readLocked) {
       // don't unlock non-read-locked collections
       continue;
     }
     
     assert(collection->_collection->_collection);
-    assert(!collection->_barrier);
+    assert(! collection->_barrier);
 
     primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
