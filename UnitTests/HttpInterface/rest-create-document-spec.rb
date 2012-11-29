@@ -100,7 +100,7 @@ describe ArangoDB do
       end
 
       it "creating a new document" do
-	cmd = "/_api/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
@@ -122,18 +122,18 @@ describe ArangoDB do
 	
 	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
       
       it "creating a new document complex body" do
-	cmd = "/_api/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"Wo\\\"rld\" }"
 	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 
@@ -155,7 +155,7 @@ describe ArangoDB do
 	
 	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
@@ -169,11 +169,11 @@ describe ArangoDB do
 
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
 
       it "creating a new umlaut document" do
-	cmd = "/_api/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"öäüÖÄÜßあ寿司\" }"
 	doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
 
@@ -195,7 +195,7 @@ describe ArangoDB do
 	
 	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
@@ -215,11 +215,11 @@ describe ArangoDB do
 	
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
 
       it "creating a new not normalized umlaut document" do
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"Hallo\" : \"Gru\\u0308\\u00DF Gott.\" }"
         doc = ArangoDB.log_post("#{prefix}-umlaut", cmd, :body => body)
 
@@ -241,7 +241,7 @@ describe ArangoDB do
 
         match = didRegex.match(did)
 
-        match[1].should eq("#{@cid}")
+        match[1].should eq("#{@cn}")
 
         etag.should eq("\"#{rev}\"")
         location.should eq("/_api/document/#{did}")
@@ -261,16 +261,16 @@ describe ArangoDB do
 
         ArangoDB.delete(location)
 
-        ArangoDB.size_collection(@cid).should eq(0)
+        ArangoDB.size_collection(@cn).should eq(0)
       end
 
       
       it "creating a document with an existing id" do
         @key = "a_new_key"
 
-        ArangoDB.delete("/_api/document/#{@cid}/#{@key}")
+        ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
 
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"some stuff\" : \"goes here\", \"_key\" : \"#{@key}\" }"
         doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
 
@@ -289,23 +289,23 @@ describe ArangoDB do
 
         did = doc.parsed_response['_id']
         did.should be_kind_of(String)
-        did.should eq("#{@cid}/#{@key}")
+        did.should eq("#{@cn}/#{@key}")
 	
         match = didRegex.match(did)
 
-        match[1].should eq("#{@cid}")
+        match[1].should eq("#{@cn}")
 
         location.should eq("/_api/document/#{did}")
 
-        ArangoDB.delete("/_api/document/#{@cid}/#{@key}")
+        ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
       
       it "creating a document with a duplicate existing id" do
         @key = "a_new_key"
 
-        ArangoDB.delete("/_api/document/#{@cid}/#{@key}")
+        ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
 
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{@cn}"
         body = "{ \"some stuff\" : \"goes here\", \"_key\" : \"#{@key}\" }"
         doc = ArangoDB.log_post("#{prefix}-existing-id", cmd, :body => body)
 
@@ -318,7 +318,7 @@ describe ArangoDB do
       	doc.parsed_response['code'].should eq(409)
       	doc.parsed_response['errorNum'].should eq(1210)
 
-	      ArangoDB.delete("/_api/document/#{@cid}/#{@did}")
+	      ArangoDB.delete("/_api/document/#{@cn}/#{@did}")
       end
     end
 
@@ -337,7 +337,7 @@ describe ArangoDB do
       end
 
       it "creating a new document" do
-	cmd = "/_api/document?collection=#{@cid}"
+	cmd = "/_api/document?collection=#{@cn}"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body)
 
@@ -359,18 +359,18 @@ describe ArangoDB do
 	
 	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
       
       it "creating a new document, waitForSync URL param = false" do
-	cmd = "/_api/document?collection=#{@cid}&waitForSync=false"
+	cmd = "/_api/document?collection=#{@cn}&waitForSync=false"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-accept-sync-false", cmd, :body => body)
 
@@ -392,18 +392,18 @@ describe ArangoDB do
 	
 	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
       
       it "creating a new document, waitForSync URL param = true" do
-	cmd = "/_api/document?collection=#{@cid}&waitForSync=true"
+	cmd = "/_api/document?collection=#{@cn}&waitForSync=true"
 	body = "{ \"Hallo\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}-accept-sync-true", cmd, :body => body)
 
@@ -425,14 +425,14 @@ describe ArangoDB do
 	
 	match = didRegex.match(did)
 
-	match[1].should eq("#{@cid}")
+	match[1].should eq("#{@cn}")
 
 	etag.should eq("\"#{rev}\"")
 	location.should eq("/_api/document/#{did}")
 
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
     end
 
@@ -480,7 +480,7 @@ describe ArangoDB do
 
 	ArangoDB.delete(location)
 
-	ArangoDB.size_collection(@cid).should eq(0)
+	ArangoDB.size_collection(@cn).should eq(0)
       end
     end
 
