@@ -582,8 +582,6 @@ void TRI_InitContextPrimaryCollection (TRI_doc_operation_context_t* const contex
   context->_policy = policy;
   context->_expectedRid = 0;
   context->_previousRid = NULL;
-  context->_lock = false;
-  context->_release = false;
   context->_sync = forceSync || primary->base._info._waitForSync;
   context->_allowRollback = true;
 }
@@ -598,8 +596,6 @@ void TRI_InitReadContextPrimaryCollection (TRI_doc_operation_context_t* const co
   context->_policy = TRI_DOC_UPDATE_LAST_WRITE;
   context->_expectedRid = 0;
   context->_previousRid = NULL;
-  context->_lock = false;
-  context->_release = false;
   context->_sync = false; 
   context->_allowRollback = false;
 }

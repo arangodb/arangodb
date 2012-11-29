@@ -317,18 +317,6 @@ static int WriteElement (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief write-unlock the collection if it was write-locked
-////////////////////////////////////////////////////////////////////////////////
-
-static void Unlock (const TRI_doc_operation_context_t* const context) {
-  if (context->_release) {
-    TRI_primary_collection_t* primary = context->_collection;
-
-    primary->endWrite(primary);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new header
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -383,8 +371,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   // get a new header pointer
   header = document->_headers->request(document->_headers);
   if (header == NULL) {
-    Unlock(context);
-    
     return TRI_ERROR_INTERNAL;
   }
 
@@ -393,8 +379,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   journal = SelectJournal(document, total, result);
 
   if (journal == NULL) {
-    Unlock(context);
-
     return TRI_ERROR_INTERNAL;
   }
 
@@ -412,8 +396,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   res = WriteElement(document, journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize, *result);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    Unlock(context);
-
     LOG_ERROR("cannot write element: %s", TRI_last_error());
 
     return res;
@@ -452,7 +434,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
       LOG_ERROR("encountered error '%s' during rollback of create", TRI_last_error());
     }
 
-    Unlock(context);
     TRI_set_errno(res);
 
     return res;
@@ -493,8 +474,6 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
     }
   }
   
-  Unlock(context);
-
   // wait for sync
   if (context->_sync) {
     WaitSync(document, journal, ((char const*) *result) + markerSize + keyBodySize + bodySize);
@@ -624,8 +603,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
 
   res = TRI_RevisionCheck(context, header->_rid);
   if (res != TRI_ERROR_NO_ERROR) {
-    Unlock(context);
-    
     return res;
   }
   
@@ -646,8 +623,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   journal = SelectJournal(document, total, result);
 
   if (journal == NULL) {
-    Unlock(context);
-
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
@@ -663,7 +638,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   res = WriteElement(document, journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize, *result);
   
   if (res != TRI_ERROR_NO_ERROR) {
-    Unlock(context);
     LOG_ERROR("cannot write element");
 
     return res;
@@ -717,8 +691,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
       *mptr = (TRI_doc_mptr_t*) header;
     }
     
-    Unlock(context);
-
     // wait for sync
     if (context->_sync) {
       WaitSync(document, journal, ((char const*) *result) + markerSize + bodySize);
@@ -730,7 +702,6 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // error case
   assert(res != TRI_ERROR_NO_ERROR);
     
-  Unlock(context);
   if (mptr != NULL) {
     *mptr = NULL;
   }
@@ -761,8 +732,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   // get an existing header pointer
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, keyBody);
   if (! IsVisible(header, context)) {
-    Unlock(context);
-
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
   
@@ -772,8 +741,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 
   res = TRI_RevisionCheck(context, header->_rid);
   if (res != TRI_ERROR_NO_ERROR) {
-    Unlock(context);
-
     return res;
   }
 
@@ -785,8 +752,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   journal = SelectJournal(document, total, &result);
 
   if (journal == NULL) {
-    Unlock(context);
-
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
@@ -797,8 +762,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   res = WriteElement(document, journal, &marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0, result);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    Unlock(context);
-
     LOG_ERROR("cannot delete element");
   
     return res;
@@ -825,8 +788,6 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
 
   // update immediate indexes
   DeleteImmediateIndexes(document, header, marker->base._tick);
-
-  Unlock(context);
 
   // wait for sync
   if (context->_sync) {
@@ -856,8 +817,6 @@ static int CreateJson (TRI_doc_operation_context_t* context,
   shaped = TRI_ShapedJsonJson(primary->_shaper, json);
 
   if (shaped == 0) {
-    Unlock(context);
-
     return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
   
@@ -871,7 +830,6 @@ static int CreateJson (TRI_doc_operation_context_t* context,
       }
       else {
         // _key is there but not a string
-        Unlock(context);
         TRI_FreeShapedJson(primary->_shaper, shaped);
         return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
       }
@@ -902,8 +860,6 @@ static int UpdateJson (TRI_doc_operation_context_t* context,
   shaped = TRI_ShapedJsonJson(primary->_shaper, json);
 
   if (shaped == 0) {
-    Unlock(context);
-
     return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
   
@@ -1059,8 +1015,6 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
   if (type != TRI_DOC_MARKER_KEY_DOCUMENT && 
       type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
-    Unlock(context);
-
     return TRI_ERROR_INTERNAL;
   }
   
@@ -1082,8 +1036,6 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
     res = keyGenerator->generate(keyGenerator, TRI_VOC_KEY_MAX_LENGTH, &marker, key, (char*) &keyBuffer, &keySize);
     if (res != TRI_ERROR_NO_ERROR) {
       // key generation failed
-      Unlock(context);
-
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
 
@@ -1136,8 +1088,6 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
     res = keyGenerator->generate(keyGenerator, TRI_VOC_KEY_MAX_LENGTH, &marker.base, key, (char*) &keyBuffer, &keySize);
     if (res != TRI_ERROR_NO_ERROR) {
       // key generation failed
-      Unlock(context);
-
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
     
@@ -1218,8 +1168,6 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
   header = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key);
 
   if (! IsVisible(header, context)) {
-    Unlock(context);
-
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
@@ -1228,8 +1176,6 @@ static int UpdateShapedJson (TRI_doc_operation_context_t* context,
   if (original->_type != TRI_DOC_MARKER_KEY_DOCUMENT &&
       original->_type != TRI_DOC_MARKER_KEY_EDGE) {
     // invalid marker type
-    Unlock(context);
-
     return TRI_ERROR_INTERNAL;
   }
 
