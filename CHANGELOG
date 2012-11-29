@@ -1,6 +1,9 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* fixed issue #297 (partly): added whitespace between command line and
+  command result in arangosh, added shell colors for better usability
+
 * fixed issue #296: system collections not usable from AQL
 
 * fixed issue #295: deadlock on shutdown
