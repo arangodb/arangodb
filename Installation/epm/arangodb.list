@@ -200,7 +200,15 @@ EOF
 %system linux
 i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
 
+%postinstall <<EOF
+if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then
+  ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
+fi
+
 echo "${install_message}"
+
+exit 0
+EOF
 
 %endif
 
