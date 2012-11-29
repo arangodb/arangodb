@@ -521,7 +521,7 @@ void ArangoClient::printWelcomeInfo () {
   }
 
   if (_prettyPrint) {
-    cout << "Pretty print values." << endl;    
+    cout << "Pretty printing values." << endl;    
   }
 }
 

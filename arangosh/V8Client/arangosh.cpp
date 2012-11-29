@@ -810,15 +810,20 @@ static void RunShell (v8::Handle<v8::Context> context) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
+  cout << endl;
   V8LineEditor console(context, ".arangosh");
 
   console.open(BaseClient.autoComplete());
+
+  const string goodPrompt = ArangoClient::COLOR_GREEN + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
+  const string badPrompt  = ArangoClient::COLOR_RED   + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
+  bool ok = true;  
 
   while (true) {
     while (! v8::V8::IdleNotification()) {
     }
 
-    char* input = console.prompt("arangosh> ");
+    char* input = console.prompt(ok ? goodPrompt.c_str() : badPrompt.c_str());
 
     if (input == 0) {
       break;
@@ -847,14 +852,19 @@ static void RunShell (v8::Handle<v8::Context> context) {
     
     BaseClient.startPager();
 
+    // assume the command succeeds
+    ok = true;
     TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
+      // command failed
       cout << TRI_StringifyV8Exception(&tryCatch);
+      ok = false;
     }
 
     BaseClient.stopPager();
+    cout << endl;
   }
 
   console.close();
@@ -1182,30 +1192,30 @@ int main (int argc, char* argv[]) {
 
     cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
+    ostringstream info;
+
 #ifdef TRI_V8_VERSION
-    cout << "Using Google V8 " << TRI_V8_VERSION << " JavaScript engine." << endl;
+    info << "Google V8 " << TRI_V8_VERSION << " JavaScript engine";
 #else
-    cout << "Using Google V8 JavaScript engine." << endl << endl;
+    info << "Google V8 JavaScript engine";
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    cout << "Using READLINE " << TRI_READLINE_VERSION << "." << endl;
+    info << ", READLINE " << TRI_READLINE_VERSION;
 #endif
 
 #ifdef TRI_ICU_VERSION
-    cout << "Using ICU " << TRI_ICU_VERSION << " - International Components for Unicode." << endl;
+    info << ", ICU " << TRI_ICU_VERSION;
 #endif
     
-    cout << endl;
+    cout << "Using " << info.str() << endl << endl;
 
     BaseClient.printWelcomeInfo();
 
     if (useServer) {
       if (ClientConnection->isConnected()) {
-        if (! BaseClient.quiet()) {
-          cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-               << "' Version " << ClientConnection->getVersion() << endl; 
-        }
+        cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+             << "' version " << ClientConnection->getVersion() << endl; 
       }
       else {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "'" << endl;
@@ -1213,6 +1223,8 @@ int main (int argc, char* argv[]) {
           cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
         }
       }
+    
+      cout << endl;
     }
   }
 
@@ -1272,12 +1284,12 @@ int main (int argc, char* argv[]) {
   else {
     bool ok;
    
-    if (!UnitTests.empty()) {
+    if (! UnitTests.empty()) {
       // we have unit tests
       ok = RunUnitTests(context);
     }
     else {
-      assert(!JsLint.empty());
+      assert(! JsLint.empty());
 
       // we don't have unittests, but we have files to jslint
       ok = RunJsLint(context);
