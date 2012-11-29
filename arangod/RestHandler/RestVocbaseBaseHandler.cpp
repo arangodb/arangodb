@@ -163,19 +163,19 @@ void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode r
                                           TRI_voc_key_t key,
                                           TRI_voc_rid_t rid) {
   const string handle = DocumentHelper::assembleDocumentId(collectionName, key);
-  const string ridStr = StringUtils::itoa(rid);
 
   _response = createResponse(responseCode);
-
   _response->setContentType("application/json; charset=utf-8");
 
   if (responseCode != HttpResponse::OK) {
     // 200 OK is sent is case of delete or update. 
     // in these cases we do not return etag nor location
-    _response->setHeader("ETag", "\"" + ridStr + "\"");
+    _response->setHeader("ETag", "\"" + StringUtils::itoa(rid) + "\"");
+    // handle does not need to be RFC 2047-encoded
     _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
   }
 
+  // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
@@ -243,7 +243,8 @@ void RestVocbaseBaseHandler::generateDocumentNotFound (const string& collectionN
                                                        TRI_voc_key_t key) {
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                "document " + DOCUMENT_PATH + "/" + DocumentHelper::assembleDocumentId(collectionName, key) + " not found");
+                "document " + DOCUMENT_PATH + "/" + 
+                DocumentHelper::assembleDocumentId(collectionName, key) + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +255,8 @@ void RestVocbaseBaseHandler::generateConflict (const string& collectionName,
                                                TRI_voc_key_t key) {
   generateError(HttpResponse::CONFLICT, 
                 TRI_ERROR_ARANGO_CONFLICT,
-                "document " + DOCUMENT_PATH + "/" + DocumentHelper::assembleDocumentId(collectionName, key) + " has been altered");
+                "document " + DOCUMENT_PATH + "/" + 
+                DocumentHelper::assembleDocumentId(collectionName, key) + " has been altered");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,8 +293,10 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectio
   result->add("code", new VariantInt32((int32_t) HttpResponse::PRECONDITION_FAILED));
   result->add("errorNum", new VariantInt32((int32_t) TRI_ERROR_ARANGO_CONFLICT));
   result->add("errorMessage", new VariantString("precondition failed"));
+  // _id is safe and does not need to be JSON-encoded
   result->add("_id", new VariantString(DocumentHelper::assembleDocumentId(collectionName, key)));
   result->add("_rev", new VariantUInt64(rid));
+  // _key is safe and does not need to be JSON-encoded
   result->add("_key", new VariantString(key));
 
   string contentType;
@@ -314,7 +318,6 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (const string& collectio
 
 void RestVocbaseBaseHandler::generateNotModified (const string& etag) {
   _response = createResponse(HttpResponse::NOT_MODIFIED);
-
   _response->setHeader("ETag", "\"" + etag + "\"");
 }
 

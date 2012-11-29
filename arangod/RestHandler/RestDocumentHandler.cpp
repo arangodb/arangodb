@@ -123,7 +123,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 
   _timing << *task;
 #ifdef TRI_ENABLE_LOGGER
-  // if ifdef is not used, the compiler will complain
+  // if logger is not activated, the compiler will complain, so enclose it in ifdef
   LOGGER_REQUEST_IN_START_I(_timing);
 #endif
 
@@ -289,7 +289,7 @@ bool RestDocumentHandler::createDocument () {
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
   
   TRI_doc_mptr_t* document = 0;
@@ -411,7 +411,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   int res = trx.begin(); 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
 
   TRI_doc_mptr_t* document = 0;
@@ -499,7 +499,7 @@ bool RestDocumentHandler::readAllDocuments () {
   int res = trx.begin(); 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
 
   res = trx.read(ids);
@@ -516,17 +516,15 @@ bool RestDocumentHandler::readAllDocuments () {
   }
 
   // generate result
-  TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
-  TRI_AppendStringStringBuffer(&buffer, "{ \"documents\" : [\n");
+  string result("{ \"documents\" : [\n");
 
   bool first = true;
-  string prefix = "\"" + DOCUMENT_PATH + "/" + trx.collectionName() + "/";
+  string prefix = '"' + DOCUMENT_PATH + '/' + trx.collectionName() + '/';
 
   for (vector<string>::iterator i = ids.begin();  i != ids.end();  ++i) {
-    TRI_AppendString2StringBuffer(&buffer, prefix.c_str(), prefix.size());
-    TRI_AppendString2StringBuffer(&buffer, (*i).c_str(), (*i).size());
-    TRI_AppendCharStringBuffer(&buffer, '"');
+    // collection names do not need to be JSON-escaped
+    // keys do not need to be JSON-escaped
+    result += prefix + (*i) + '"';
 
     if (first) {
       prefix = ",\n" + prefix;
@@ -534,15 +532,13 @@ bool RestDocumentHandler::readAllDocuments () {
     }
   }
 
-  TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
+  result += "\n] }";
 
   // and generate a response
   _response = createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
 
-  _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
-
-  TRI_AnnihilateStringBuffer(&buffer);
+  _response->body().appendText(result);
 
   return true;
 }
@@ -775,7 +771,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
 
   if (isPatch) {
@@ -934,7 +930,7 @@ bool RestDocumentHandler::deleteDocument () {
   int res = trx.begin(); 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
 
   res = trx.deleteDocument(key, policy, extractWaitForSync(), revision, &rid);
