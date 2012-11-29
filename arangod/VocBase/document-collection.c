@@ -862,9 +862,19 @@ static int CreateJson (TRI_doc_operation_context_t* context,
   }
   
   if (json != NULL && json->_type == TRI_JSON_ARRAY) {
+    // _key is there
     TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, "_key");
-    if (k != NULL && k->_type == TRI_JSON_STRING) {
-      key = k->_value._string.data;
+    if (k != NULL) {
+      if (k->_type == TRI_JSON_STRING) {
+        // _key is there and a string
+        key = k->_value._string.data;
+      }
+      else {
+        // _key is there but not a string
+        Unlock(context);
+        TRI_FreeShapedJson(primary->_shaper, shaped);
+        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      }
     }    
   }
   
