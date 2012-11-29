@@ -4892,15 +4892,16 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a single collection or null
 ///
-/// @FUN{db._collection(@FA{collection-identifier})}
-///
-/// Returns the collection with the given identifier or null if no such
-/// collection exists.
-///
 /// @FUN{db._collection(@FA{collection-name})}
 ///
 /// Returns the collection with the given name or null if no such collection
 /// exists.
+///
+/// @FUN{db._collection(@FA{collection-identifier})}
+///
+/// Returns the collection with the given identifier or null if no such
+/// collection exists. Accessing collections by identifier is discouraged for
+/// end users. End users should access collections using the collection name.
 ///
 /// @EXAMPLES
 ///

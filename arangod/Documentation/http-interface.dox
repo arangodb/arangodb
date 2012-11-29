@@ -35,17 +35,16 @@
 /// Each resource has an identifier, which allows to access the given resource.
 ///
 /// - collection:
-///     A collection can be referenced using the collection identifier or the
-///     collection name.
+///     A collection can be referenced using the collection name
 /// - document:
-///     A document can be referenced using the collection identifier and the
-///     document identifier. Alternativly you can use a document reference which
-///     is a string of the form "collection-identifier:document-identifier".
+///     A document can be referenced using the combination of the collection 
+///     name and the unique document key. Alternativly you can use a document 
+///     handle which is a string of the form "collection-name/document-key".
 /// - index:
 ///     An index can be referenced using the index identifier.
 /// - revision:
-///     Each document has a unique document identifier. However, it is possible
-///     to update documents. In this case the document identifier stays the
+///     Each document has a unique document key. However, it is possible
+///     to update documents. In this case the document key stays the
 ///     same. Each new revision of such a document gets a new revision number.
 /// - etag:
 ///     A revision of a document has an etag.

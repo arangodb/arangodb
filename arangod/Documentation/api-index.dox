@@ -46,7 +46,7 @@
 ///
 /// <ul>
 ///  <li>@ref HttpIndexRead "GET /_api/index/index-handle"</li>
-///  <li>@ref HttpIndexCreate "POST /_api/index?collection=collection-identifier"</li>
+///  <li>@ref HttpIndexCreate "POST /_api/index?collection=collection-name"</li>
 ///  <li>@ref HttpIndexDelete "DELETE /_api/index/index-handle"</li>
 ///  <li>@ref HttpIndexReadAll "GET /_api/index?collection=index-handle"</li>
 /// </ul>
@@ -86,10 +86,10 @@
 ///
 /// @LIT{http://server:port/_api/index/index-handle}
 ///
-/// For example: Assume that the index handle is @LIT{7254820/63563528} then
+/// For example: Assume that the index handle is @LIT{demo/63563528} then
 /// the URL of that index is:
 ///
-/// @LIT{http://localhost:8529/_api/index/7254820/63563528}
+/// @LIT{http://localhost:8529/_api/index/demo/63563528}
 ///
 /// @section HttpIndexHttp Working with Indexes using HTTP
 //////////////////////////////////////////////////////////

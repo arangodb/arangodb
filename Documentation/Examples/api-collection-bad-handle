@@ -4,7 +4,7 @@ HTTP/1.1 400 Bad Request
 content-type: application/json
 
 {
-  "errorMessage": "expect GET /_api/collection/<collection-identifer>",
+  "errorMessage": "expected GET /_api/collection/<collection-name>",
   "errorNum": 400,
   "code": 400,
   "error": true
