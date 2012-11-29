@@ -125,8 +125,6 @@ typedef struct TRI_doc_operation_context_s {
   TRI_doc_update_policy_e          _policy;            // the update policy
   bool                             _sync : 1;          // force syncing to disk after successful operation
   bool                             _allowRollback : 1; // allow rollback of operation. this is normally true except for contexts created by rollback operations
-  bool                             _lock : 1;          // currently unused
-  bool                             _release : 1;       // release the write lock after the operation
 }
 TRI_doc_operation_context_t;
 
