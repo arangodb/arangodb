@@ -15,7 +15,7 @@ Glossary {#Glossary}
 
 @copydoc GlossaryDocumentHandle
 
-@copydoc GlossaryDocumentIdentifier
+@copydoc GlossaryDocumentKey
 
 @copydoc GlossaryDocumentRevision
 

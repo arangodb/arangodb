@@ -14,7 +14,7 @@ v1.2.alpha (XXXX-XX-XX)
   when creating new documents or edges. Once specified, the value of _key is
   immutable.
   The restrictions for user-defined key values are:
-  * the key must be at most 256 bytes long
+  * the key must be at most 254 bytes long
   * it must consist of the letters a-z (lower or upper case), the digits 0-9,
     the underscore (_) or dash (-) characters only
   * any other characters, especially multi-byte sequences, whitespace or

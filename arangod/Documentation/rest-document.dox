@@ -71,12 +71,16 @@
 ///
 /// @verbinclude document1
 ///
-/// All documents contain two special fields, the document handle in @LIT{_id}
-/// and the etag aka document revision in @LIT{_rev}.
+/// All documents contain special attributes: the document handle in @LIT{_id},
+/// the document's unique key in @LIT{_key} and and the etag aka document 
+/// revision in @LIT{_rev}. The value of the @LIT{_key} attribute can be 
+/// specified by the user when creating a document.
+/// @LIT{_id} and @LIT{_key} values are immutable once the document has been
+/// created. The @LIT{_rev} value is maintained by ArangoDB autonomously.
 ///
 /// @copydoc GlossaryDocumentHandle
 ///
-/// @copydoc GlossaryDocumentIdentifier
+/// @copydoc GlossaryDocumentKey
 ///
 /// @copydoc GlossaryDocumentRevision
 ///
@@ -98,10 +102,10 @@
 /// @LIT{http://server:port/_api/document/document-handle}
 ///
 /// For example: Assume that the document handle, which is stored in
-/// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
+/// the @LIT{_id} attribute of the document, is @LIT{demo/362549736},
 /// then the URL of that document is:
 ///
-/// @LIT{http://localhost:8529/_api/document/7254820/362549736}
+/// @LIT{http://localhost:8529/_api/document/demo/362549736}
 ///
 /// Each document also has a document revision or etag with is returned
 /// in the "ETag" header field when requesting a document.
