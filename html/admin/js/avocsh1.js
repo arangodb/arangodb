@@ -217,7 +217,7 @@ function ArangoConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a get request
+/// @brief executes a get request
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.get = function (url) {
@@ -249,7 +249,7 @@ ArangoConnection.prototype.get = function (url) {
 ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a delete request
+/// @brief executes a delete request
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.delete = function (url) {
@@ -282,7 +282,7 @@ ArangoConnection.prototype.delete = function (url) {
 ArangoConnection.prototype.DELETE = ArangoConnection.prototype.delete;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a post request
+/// @brief executes a post request
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.post = function (url, body) {
@@ -315,7 +315,7 @@ ArangoConnection.prototype.post = function (url, body) {
 ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a put request
+/// @brief executes a put request
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.put = function (url, body) {
@@ -346,6 +346,43 @@ ArangoConnection.prototype.put = function (url, body) {
 };
 
 ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a patch request
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoConnection.prototype.patch = function (url, body) {
+  var msg = null; 
+
+  $.ajax({
+    async: false, 
+    type: "PATCH",
+    url: url, 
+    data: body, 
+    contentType: "application/json",
+    dataType: "json",
+    processData: false, 
+    success: function(data) {
+      msg = data;
+    },
+    error: function(data) {
+      try {
+        msg = JSON.parse(data.responseText);
+      }
+      catch (err) {
+        msg = data.responseText;
+      }
+    }
+  });
+
+  return msg;  
+};
+
+ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
