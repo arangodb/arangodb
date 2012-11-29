@@ -5,7 +5,6 @@ rspec --format d \
 	api-http-spec.rb \
 	api-admin-spec.rb \
 	api-batch-spec.rb \
-	api-blueprints-spec.rb \
 	api-collection-spec.rb \
 	rest-create-document-spec.rb \
 	rest-read-document-spec.rb \
@@ -17,6 +16,7 @@ rspec --format d \
 	api-index-bitarray-spec.rb \
 	api-index-hash-spec.rb \
 	api-index-skiplist-spec.rb \
+	api-blueprints-spec.rb \
 	api-explain-spec.rb \
 	api-cursor-spec.rb \
 	api-statistics-spec.rb \

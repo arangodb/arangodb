@@ -43,19 +43,79 @@ describe ArangoDB do
 
 	ArangoDB.drop_collection(cn)
       end
-
-      it "returns an error if vertex-handle is missing" do
+      
+      it "returns an error if from/to are incomplete" do
 	cn = "UnitTestsCollectionEdge"
-	cmd = "/_api/edges/#{@cid}?vertex="
-        doc = ArangoDB.log_get("#{prefix}-missing-handle", cmd)
+	cmd = "/_api/edge?collection=#{cn}&createCollection=true&from=test&to=test"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-incomplete-from-to", cmd, :body => body)
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(400)
+	doc.parsed_response['errorNum'].should eq(1205)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	ArangoDB.drop_collection(cn)
+      end
+      
+      it "returns an error if vertex-handle is missing" do
+	cn = "UnitTestsCollectionEdge"
+	ArangoDB.drop_collection(cn)
+	ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
+	cmd = "/_api/edges/#{cn}"
+        doc = ArangoDB.log_get("#{prefix}-missing-handle", cmd)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1205)
+	doc.parsed_response['code'].should eq(400)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	ArangoDB.drop_collection(cn)
+      end
+
+      it "returns an error if vertex-handle is empty" do
+	cn = "UnitTestsCollectionEdge"
+	ArangoDB.drop_collection(cn)
+	ArangoDB.create_collection(cn, true, 3) # type 3 = edge collection
+	cmd = "/_api/edges/#{cn}?vertex="
+        doc = ArangoDB.log_get("#{prefix}-empty-handle", cmd)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1205)
+	doc.parsed_response['code'].should eq(400)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	ArangoDB.drop_collection(cn)
+      end
+      
+      it "returns an error if collection does not exist" do
+	cn = "UnitTestsCollectionEdge"
+	ArangoDB.drop_collection(cn)
+	cmd = "/_api/edge?collection=#{cn}&from=test&to=test"
+	body = "{}"
+        doc = ArangoDB.log_post("#{prefix}-no-collection", cmd, :body => body)
+
+	doc.code.should eq(404)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1203)
+	doc.parsed_response['code'].should eq(404)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+      
+      it "returns an error if collection does not exist" do
+	cn = "UnitTestsCollectionEdge"
+	ArangoDB.drop_collection(cn)
+	cmd = "/_api/edges/#{cn}?vertex=test"
+        doc = ArangoDB.log_get("#{prefix}-no-collection-query", cmd)
+
+	doc.code.should eq(404)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1203)
+	doc.parsed_response['code'].should eq(404)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
     end
 
@@ -118,6 +178,7 @@ describe ArangoDB do
 	doc.parsed_response['_id'].should eq(id3)
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
+	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	
 	# create another edge
@@ -140,6 +201,7 @@ describe ArangoDB do
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
 	doc.parsed_response['e'].should eq(1)
+	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# create third edge
@@ -162,6 +224,7 @@ describe ArangoDB do
 	doc.parsed_response['_from'].should eq(id2)
 	doc.parsed_response['_to'].should eq(id1)
 	doc.parsed_response['e'].should eq(2)
+	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	# check ANY edges
@@ -267,31 +330,181 @@ describe ArangoDB do
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "using invalid collection ids" do
+################################################################################
+## create an edge using keys
+################################################################################
+
+      it "creating an edge using keys" do
 	cmd = "/_api/document?collection=#{@cv}"
 
-	# create a vertex
-	body = "{ \"a\" : 1 }"
-	doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-cid", cmd, :body => body)
+	# create first vertex
+	body = "{ \"name\" : \"Fred\", \"_key\" : \"fred\" }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-key", cmd, :body => body)
 
 	doc.code.should eq(201)
 	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq("#{@cv}/fred")
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("fred")
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-	from = "2/12345"
-        to   = "3/13443466"
-	
-        # create edge, using invalid collection names
-	cmd = "/_api/edge?collection=#{@ce}&from=#{from}&to=#{to}"
-	body = "{}"
-        doc = ArangoDB.log_post("#{prefix}-create-edge-invalid-cid", cmd, :body => body)
+	id1 = doc.parsed_response['_id']
 
-	doc.code.should eq(404)
-	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(1203)
-	doc.parsed_response['code'].should eq(404)
+	# create second vertex
+	body = "{ \"name\" : \"John\", \"_key\" : \"john\" }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-key", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq("#{@cv}/john")
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("john")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id2 = doc.parsed_response['_id']
+
+	# create edge
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
+	body = "{ \"what\" : \"fred->john\", \"_key\" : \"edge1\" }"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-key", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq("#{@ce}/edge1")
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("edge1")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id3 = doc.parsed_response['_id']
+
+	# check edge
+	cmd = "/_api/edge/#{id3}"
+        doc = ArangoDB.log_get("#{prefix}-create-edge-key", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq(id3)
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("edge1")
+	doc.parsed_response['_from'].should eq(id1)
+	doc.parsed_response['_to'].should eq(id2)
+	doc.parsed_response['_bidirectional'].should eq(false)
+	doc.parsed_response['what'].should eq("fred->john")
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
+
+################################################################################
+## create a bidirectional edge
+################################################################################
+      
+      it "creating bidirectional edge" do
+	cmd = "/_api/document?collection=#{@cv}"
+
+	# create first vertex
+	body = "{ \"name\" : \"Fred\", \"_key\" : \"fred\" }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-bi", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq("#{@cv}/fred")
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("fred")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id1 = doc.parsed_response['_id']
+
+	# create second vertex
+	body = "{ \"name\" : \"John\", \"_key\" : \"john\" }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-bi", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq("#{@cv}/john")
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("john")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id2 = doc.parsed_response['_id']
+
+	# create edge
+	cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
+	body = "{ \"what\" : \"fred->john\", \"_key\" : \"edge1\", \"_bidirectional\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-bi", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq("#{@ce}/edge1")
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("edge1")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id3 = doc.parsed_response['_id']
+
+	# check edge
+	cmd = "/_api/edge/#{id3}"
+        doc = ArangoDB.log_get("#{prefix}-create-edge-bi", cmd)
+
+	doc.code.should eq(200)
+	doc.parsed_response['_id'].should be_kind_of(String)
+	doc.parsed_response['_id'].should eq(id3)
+	doc.parsed_response['_key'].should be_kind_of(String)
+	doc.parsed_response['_key'].should eq("edge1")
+	doc.parsed_response['_vertices'].should be_kind_of(Array)
+	doc.parsed_response['_vertices'][0].should eq(id1)
+	doc.parsed_response['_vertices'][1].should eq(id2)
+	doc.parsed_response['_bidirectional'].should eq(true)
+	doc.parsed_response['what'].should eq("fred->john")
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+
+################################################################################
+## create using invalid keys
+################################################################################
+
+      it "creating an edge using invalid keys" do
+	cmd = "/_api/document?collection=#{@cv}"
+
+	# create first vertex
+	body = "{ \"name\" : \"Fred\", \"_key\" : \"fred\" }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-key-invalid", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id1 = doc.parsed_response['_id']
+
+	# create second vertex
+	body = "{ \"name\" : \"John\", \"_key\" : \"john\" }"
+	doc = ArangoDB.log_post("#{prefix}-create-edge-key-invalid", cmd, :body => body)
+
+	doc.code.should eq(201)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	id2 = doc.parsed_response['_id']
+
+	# create edge, 1st try
+	cmd = "/_api/edge?collection=#{@ce}&from=#{@cv}/rak/ov&to=#{@cv}/pj/otr"
+	body = "{ }"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-key-invalid", cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1205)
+	doc.parsed_response['code'].should eq(400)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	
+        # create edge, 2nd try
+	cmd = "/_api/edge?collection=#{@ce}&from=#{@cv}/rakov&to=#{@cv}/pjotr"
+	body = "{ \"_key\" : \"the fox\" }"
+        doc = ArangoDB.log_post("#{prefix}-create-edge-key-invalid", cmd, :body => body)
+
+	doc.code.should eq(400)
+	doc.parsed_response['error'].should eq(true)
+	doc.parsed_response['errorNum'].should eq(1219)
+	doc.parsed_response['code'].should eq(400)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      end
+
     end
 
 ################################################################################
@@ -352,6 +565,7 @@ describe ArangoDB do
 	doc.parsed_response['_id'].should eq(id3)
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
+	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
       
@@ -396,6 +610,7 @@ describe ArangoDB do
 	doc.parsed_response['_id'].should eq(id3)
 	doc.parsed_response['_from'].should eq(id1)
 	doc.parsed_response['_to'].should eq(id2)
+	doc.parsed_response['_bidirectional'].should eq(false)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
     end
