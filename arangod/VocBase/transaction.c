@@ -412,7 +412,7 @@ void TRI_FreeTransactionContext (TRI_transaction_context_t* const context) {
   }
   TRI_DestroyAssociativePointer(&context->_collections);
 
-  // destroy mutexts
+  // destroy mutexes
   TRI_DestroyMutex(&context->_lock);
   TRI_DestroyMutex(&context->_collectionLock);
 
@@ -590,7 +590,6 @@ static int AcquireCollectionLocks (TRI_transaction_t* const trx) {
   context = trx->_context;
 
   n = trx->_collections._length;
-  assert(n > 0);
 
   // process collections in forward order
   for (i = 0; i < n; ++i) {
@@ -852,7 +851,6 @@ static int RegisterTransaction (TRI_transaction_t* const trx) {
   int res;
 
   assert(trx->_status == TRI_TRANSACTION_CREATED);
-  assert(trx->_collections._length > 0);
 
   context = trx->_context;
 
@@ -1160,10 +1158,6 @@ int TRI_StartTransaction (TRI_transaction_t* const trx, TRI_transaction_hint_t h
   int res;
   
   assert(trx->_status == TRI_TRANSACTION_CREATED);
-
-  if (trx->_collections._length == 0) {
-    return TRI_ERROR_TRANSACTION_INCOMPLETE;
-  }
 
   trx->_hints = hints;
 
