@@ -94,16 +94,16 @@
 /// @LIT{db.@FA{collection}.index(@FA{index-handle})}
 ///
 /// For example: Assume that the index handle, which is stored in
-/// the @LIT{_id} field of the index, is @LIT{7254820/362549736}
+/// the @LIT{_id} attribute of the index, is @LIT{demo/362549736}
 /// and the index lives in a collection named @FA{demo}, then
 /// that index can be accessed as:
 ///
-/// @LIT{db.demo.index("7254820/362549736")}
+/// @LIT{db.demo.index("demo/362549736")}
 ///
 /// Because the index handle is unique within the database, you
 /// can leave out the @FA{collection} and use the shortcut:
 ///
-/// @LIT{db._index("7254820/362549736")}
+/// @LIT{db._index("demo/362549736")}
 ///
 /// @section ShellIndexShell Working with Indexes
 /////////////////////////////////////////////////

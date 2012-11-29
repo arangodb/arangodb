@@ -100,10 +100,10 @@
 /// @LIT{http://server:port/_api/edge/document-handle}
 ///
 /// For example: Assume that the document handle, which is stored in
-/// the @LIT{_id} field of the edge, is @LIT{7254820/362549736},
+/// the @LIT{_id} attribute of the edge, is @LIT{demo/362549736},
 /// then the URL of that edge is:
 ///
-/// @LIT{http://localhost:8529/_api/edge/7254820/362549736}
+/// @LIT{http://localhost:8529/_api/edge/demo/362549736}
 ///
 /// @section RestEdgeHttp Working with Edges using REST
 ///////////////////////////////////////////////////////

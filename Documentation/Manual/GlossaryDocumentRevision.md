@@ -12,6 +12,6 @@ revision of a document, you need the document handle and the document
 revision.
 
 ArangoDB currently uses 64bit unsigned integer values for document
-revisions.  As this datatype is not portable to all client languages,
-clients should rather use strings to store document revision ids
-locally.
+revisions. As this datatype is not portable to all client languages,
+clients should rather treat the revision as an opaque string when they
+store or use document revision values locally.

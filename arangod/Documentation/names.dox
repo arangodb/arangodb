@@ -41,9 +41,9 @@
 ///   the underscore (@LIT{_}), or the dash (@LIT{-}) symbol. This also means that
 ///   any non-ASCII collection names are not allowed.
 ///
-/// - Regular collection names must start with a letter, not a number, the 
-///   underscore or the dash symbol. Collection names starting with an underscore
-///   or considered to be system collections that are for ArangoDB's internal use only. 
+/// - Collection names must start with a letter (not a number, the underscore or the 
+///   dash character). Collection names starting with an underscore are considered to 
+///   be system collections that are for ArangoDB's internal use only. 
 ///   System collection names should not be used by end users for their own collections.
 ///
 /// - The maximum allowed length of a collection name is 64 bytes.
@@ -55,18 +55,18 @@
 /// Users can define their own keys for documents they save. The document key will be
 /// saved along with a document in the @LIT{_key} attribute. Users can pick key values as
 /// required, provided that the values conform to the following restrictions:
-/// * the key must be at most 256 bytes (not characters) long
-/// * it must consist of valid UTF-8 characters only
-/// * the key must not contain the forward slash (/) at any position
-/// * the key must not begin or end with a space, tab, newline, carriage return or 
-///   form feed character
+/// * the key must be at most 254 bytes long
+/// * it must consist of the letters a-z (lower or upper case), the digits 0-9,
+///   the underscore (_) or dash (-) characters only
+///  * any other characters, especially multi-byte sequences, whitespace or
+///    punctuation characters cannot be used inside key values
 /// * the key must be unique within the collection it is used
 ///
 /// Keys are case-sensitive, i.e. @LIT{myKey} and @LIT{MyKEY} are considered different
 /// keys.
 ///
 /// Specifiying a document key is optional when creating new documents. If no document
-/// key is specified by a user, ArangoDB will create the document key itself as each
+/// key is specified by the user, ArangoDB will create the document key itself as each
 /// document is required to have a key.
 ///
 /// There are no guarantees about the format and pattern of auto-generated document
@@ -81,10 +81,11 @@
 /// - Attribute names starting with an underscore are considered to be system
 ///   attributes for ArangoDB's internal use. Such attribute names are already used
 ///   by ArangoDB for special purposes, e.g. @LIT{_id} is used to contain a
-///   document's id, @LIT{_rev} is used to contain the revision number, and the
-///   @LIT{_from} and @LIT{_to} attributes are used within edge collections to
-///   reference other documents. Additionally, the @LIT{_key} attribute contains
-///   a documents user-defined key.
+///   document's handle, @LIT{_key} is used to contain a document's user-defined key, 
+///   and @LIT{_rev} is used to contain the document's revision number. In edge
+///   collections, the @LIT{_from} and @LIT{_to} attributes are used to
+///   reference other documents. Edges may also have other attributes such as 
+///   @LIT{_bidirectional} or @LIT{_vertices}.
 ///
 ///   More system attributes may be added in the future without further notice
 ///   so end users should not use attribute names starting with an underscore
