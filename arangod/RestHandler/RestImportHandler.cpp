@@ -161,13 +161,13 @@ HttpHandler::status_e RestImportHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?type=documents&collection=@FA{collection-identifier}}
+/// @REST{POST /_api/import?type=documents&collection=@FA{collection-name}}
 ///
-/// Creates documents in the collection identified by the
-/// @FA{collection-identifier}.  The JSON representations of the documents must 
-/// be passed as the body of the POST request.
+/// Creates documents in the collection identified by @FA{collection-name}.  
+/// The JSON representations of the documents must be passed as the body of the 
+/// POST request.
 ///
-/// If the document was created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByArray () {
@@ -278,13 +278,13 @@ bool RestImportHandler::createByArray () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
-/// @REST{POST /_api/import?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/import?collection=@FA{collection-name}}
 ///
-/// Creates documents in the collection identified by the
-/// @FA{collection-identifier}.  The JSON representations of the documents must 
-/// be passed as the body of the POST request.
+/// Creates documents in the collection identified by @FA{collection-name}. 
+/// The JSON representations of the documents must be passed as the body of the 
+/// POST request.
 ///
-/// If the document was created successfully, then a @LIT{HTTP 201} is returned.
+/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createByList () {
@@ -460,6 +460,9 @@ bool RestImportHandler::createByList () {
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create response for number of documents created / failed
+////////////////////////////////////////////////////////////////////////////////
 
 void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError, size_t numEmpty) {
   _response = createResponse(HttpResponse::CREATED);
@@ -475,6 +478,10 @@ void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numE
     .appendText("}");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a single document line
+////////////////////////////////////////////////////////////////////////////////
+
 TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
   char* errmsg = 0;
   TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, line.c_str(), &errmsg);
@@ -485,6 +492,10 @@ TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
   }
   return json;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a JSON object from a line containing a document
+////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line) {
   
@@ -519,12 +530,16 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* v
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate keys
+////////////////////////////////////////////////////////////////////////////////
+
 bool RestImportHandler::checkKeys (TRI_json_t* keys) {
   if (keys->_type != TRI_JSON_LIST) {
     return false;
   }
   
-  size_t n = keys->_value._objects._length;
+  const size_t n = keys->_value._objects._length;
   
   if (n == 0) {
     return false;

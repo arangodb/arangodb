@@ -167,11 +167,11 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @RESTHEADER{POST /_api/document,creates a document}
 ///
-/// @REST{POST /_api/document?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/document?collection=@FA{collection-name}}
 ///
-/// Creates a new document in the collection identified by the
-/// @FA{collection-identifier}.  A JSON representation of the document must be
-/// passed as the body of the POST request.
+/// Creates a new document in the collection identified by @FA{collection-name}.
+/// A JSON representation of the document must be passed as the body of the POST 
+/// request.
 ///
 /// If the document was created successfully, then a @LIT{HTTP 201} is returned
 /// and the "Location" header contains the path to the newly created
@@ -196,8 +196,9 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned and the body of the response contains an error document.
+/// If the collection specified by @FA{collection-name} is unknown, then a 
+/// @LIT{HTTP 404} is returned and the body of the response contains an error 
+/// document.
 ///
 /// If the body does not contain a valid JSON representation of a document,
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
@@ -205,8 +206,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @REST{POST /_api/document?collection=@FA{collection-name}@LATEXBREAK&createCollection=@FA{create-flag}}
 ///
-/// Instead of a @FA{collection-identifier}, a @FA{collection-name} can be
-/// used. If @FA{create-flag} has a value of @LIT{true} or @LIT{yes}, then the 
+/// If @FA{create-flag} has a value of @LIT{true} or @LIT{yes}, then the 
 /// collection is created if it does not yet exist. Other values for @FA{create-flag}
 /// will be ignored so the collection must be present for the operation to succeed.
 ///
@@ -344,7 +344,7 @@ bool RestDocumentHandler::readDocument () {
     default:
       generateError(HttpResponse::BAD, 
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /_api/document/<document-handle> or GET /_api/document?collection=<collection-identifier>");
+                    "expecting GET /_api/document/<document-handle> or GET /_api/document?collection=<collection-name>");
       return false;
   }
 }
@@ -471,12 +471,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ///
 /// @RESTHEADER{GET /_api/document,reads all document}
 ///
-/// @REST{GET /_api/document?collection=@FA{collection-identifier}}
+/// @REST{GET /_api/document?collection=@FA{collection-name}}
 ///
 /// Returns a list of all URI for all documents from the collection identified
-/// by @FA{collection-identifier}.
-///
-/// Instead of a @FA{collection-identifier}, a collection name can be given.
+/// by @FA{collection-name}.
 ///
 /// @EXAMPLES
 ///
@@ -623,7 +621,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you the following request:
-/// @REST{PUT /_api/document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
+/// @REST{PUT /_api/document/@FA{document-handle}?rev=@FA{etag}}
 ///
 /// If a target revision id is provided in the request (e.g. via the @FA{etag} value
 /// in the @LIT{rev} URL parameter above), ArangoDB will check that

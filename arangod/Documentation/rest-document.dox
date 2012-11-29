@@ -46,12 +46,12 @@
 ///
 /// <ul>
 ///  <li>@ref RestDocumentRead "GET /_api/document/document-handle"</li>
-///  <li>@ref RestDocumentCreate "POST /_api/document?collection=collection-identifier"</li>
+///  <li>@ref RestDocumentCreate "POST /_api/document?collection=collection-name"</li>
 ///  <li>@ref RestDocumentReplace "PUT /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentUpdate "PATCH /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentDelete "DELETE /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentHead "HEAD /_api/document/document-handle"</li>
-///  <li>@ref RestDocumentReadAll "GET /_api/document?collection=collection-identifier"</li>
+///  <li>@ref RestDocumentReadAll "GET /_api/document?collection=collection-name"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -46,11 +46,11 @@
 ///
 /// <ul>
 ///  <li>@ref RestEdgeRead "GET /_api/edge/document-handle"</li>
-///  <li>@ref RestEdgeCreate "POST /_api/edge?collection=collection-identifier&from=from-handle&to=to-handle"</li>
+///  <li>@ref RestEdgeCreate "POST /_api/edge?collection=collection-name&from=from-handle&to=to-handle"</li>
 ///  <li>@ref RestEdgeUpdate "PUT /_api/edge/document-handle"</li>
 ///  <li>@ref RestEdgeDelete "DELETE /_api/edge/document-handle"</li>
 ///  <li>@ref RestEdgeHead "HEAD /_api/edge/document-handle"</li>
-///  <li>@ref RestEdgeEdges "GET /_api/edges/collection-identifier?vertex=vertex-handle&directory=direction"</li>
+///  <li>@ref RestEdgeEdges "GET /_api/edges/collection-name?vertex=vertex-handle&directory=direction"</li>
 /// </ul>
 ////////////////////////////////////////////////////////////////////////////////
 

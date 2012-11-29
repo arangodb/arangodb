@@ -48,26 +48,26 @@
 ///  <li>@ref HttpCollectionConstructor
 ///   <ul>
 ///    <li>@ref HttpCollectionCreate "POST /_api/collection"</li>
-///    <li>@ref HttpCollectionDelete "DELETE /_api/collection/collection-identifier"</li>
-///    <li>@ref HttpCollectionTruncate "PUT /_api/collection/collection-identifier/truncate"</li>
+///    <li>@ref HttpCollectionDelete "DELETE /_api/collection/collection-name"</li>
+///    <li>@ref HttpCollectionTruncate "PUT /_api/collection/collection-name/truncate"</li>
 ///   </ul>
 ///  </li>
 ///  <li>@ref HttpCollectionReading
 ///   <ul>
-///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier"</li>
-///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/properties"</li>
-///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/count"</li>
-///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier/figures"</li>
-///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-identifier"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/properties"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/count"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name/figures"</li>
+///    <li>@ref HttpCollectionRead "GET /_api/collection/collection-name"</li>
 ///    <li>@ref HttpCollectionReadAll "GET /_api/collection/"</li>
 ///   </ul>
 ///  </li>
 ///  <li>@ref HttpCollectionChanging
 ///   <ul>
-///    <li>@ref HttpCollectionLoad "PUT /_api/collection/collection-identifier/load"</li>
-///    <li>@ref HttpCollectionUnload "PUT /_api/collection/collection-identifier/unload"</li>
-///    <li>@ref HttpCollectionProperties "PUT /_api/collection/collection-identifier/properties"</li>
-///    <li>@ref HttpCollectionRename "PUT /_api/collection/collection-identifier/rename"</li>
+///    <li>@ref HttpCollectionLoad "PUT /_api/collection/collection-name/load"</li>
+///    <li>@ref HttpCollectionUnload "PUT /_api/collection/collection-name/unload"</li>
+///    <li>@ref HttpCollectionProperties "PUT /_api/collection/collection-name/properties"</li>
+///    <li>@ref HttpCollectionRename "PUT /_api/collection/collection-name/rename"</li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -95,16 +95,22 @@
 /// @section HttpCollectionResource Address of a Collection
 ////////////////////////////////////////////////////////////
 ///
-/// All collections in ArangoDB have an unique identifier. This collection
-/// identifier identifies a collection and is managed by ArangoDB. All
-/// collections are found under the URI
+/// All collections in ArangoDB have an unique identifier and
+/// a unique name. ArangoDB internally uses the collection's unique 
+/// identifier to look up collections. This identifier however is
+/// managed by ArangoDB and the user has no control over it. In
+/// order to allow users use their own names, each collection also
+/// has a unique name, which is specified by the user.
+/// To access a collection from the user perspective, the 
+/// collection name should be used, i.e.:
 ///
-/// @LIT{http://server:port/_api/collection/collection-identifier}
+/// @LIT{http://server:port/_api/collection/collection-name}
 ///
-/// For example: Assume that the collection identifier is @LIT{7254820},
-/// then the URL of that collection is:
+/// For example: Assume that the collection identifier is @LIT{7254820}
+/// and the collection name is @LIT{demo}, then the URL of that 
+/// collection is:
 ///
-/// @LIT{http://localhost:8529/_api/collection/7254820}
+/// @LIT{http://localhost:8529/_api/collection/demo}
 ///
 /// @section HttpCollectionHttp Working with Collections using HTTP
 ///////////////////////////////////////////////////////////////////

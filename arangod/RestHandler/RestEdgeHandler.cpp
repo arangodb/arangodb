@@ -75,19 +75,25 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ///
 /// @RESTHEADER{POST /_api/edge,creates an edge}
 ///
-/// @REST{POST /_api/edge?collection=@FA{collection-identifier}&from=@FA{from-handle}&to=@FA{to-handle}}
+/// @REST{POST /_api/edge?collection=@FA{collection-name}&from=@FA{from-handle}&to=@FA{to-handle}}
 ///
-/// Creates a new edge in the collection identified by the
-/// @FA{collection-identifier}.  A JSON representation of the document must be
-/// passed as the body of the POST request. The object handle of the start point
-/// must be passed in @FA{from-handle}. The object handle of the end point must
-/// be passed in @FA{to-handle}.
+/// Creates a new edge in the collection identified by @FA{collection-name}.  
+/// A JSON representation of the edge document must be passed as the body of 
+/// the POST request. This JSON object may contain the edge's document key in
+/// the @LIT{_key} attribute if needed. It may also contain the boolean 
+/// @LIT{_bidirectional} attribute.
+/// The document handle of the start point must be passed in @FA{from-handle}. 
+/// The document handle of the end point must be passed in @FA{to-handle}.
+///
+/// @LIT{from-handle} and @{to-handle} are immutable once the edge has been
+/// created.
 ///
 /// In all other respects the method works like @LIT{POST /document}, see
 /// @ref RestDocument for details.
 ///
 /// If you request such an edge, the returned document will also contain the
-/// attributes @LIT{_from} and @LIT{_to}.
+/// attributes @LIT{_bidirectional} and either @LIT{_vertices} or 
+/// @LIT{_from} and @LIT{_to}.
 ///
 /// @EXAMPLES
 ///
