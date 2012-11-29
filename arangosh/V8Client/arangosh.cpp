@@ -196,7 +196,7 @@ static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
   else {
     BaseClient.internalPrint("Pager not running.\n");    
   }
-
+  
   BaseClient.setUsePager(false);
 
   return v8::Undefined();
@@ -806,24 +806,34 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RunShell (v8::Handle<v8::Context> context) {
+static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  cout << endl;
   V8LineEditor console(context, ".arangosh");
 
   console.open(BaseClient.autoComplete());
 
-  const string goodPrompt = ArangoClient::COLOR_GREEN + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
-  const string badPrompt  = ArangoClient::COLOR_RED   + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
-  bool ok = true;  
+  // set up prompts
+  string goodPrompt;
+  string badPrompt;
+  
+  if (BaseClient.colors()) {
+    goodPrompt = ArangoClient::COLOR_BOLD_GREEN + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
+    badPrompt  = ArangoClient::COLOR_BOLD_RED   + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
+  }
+  else {
+    goodPrompt = badPrompt = string("arangosh> ");
+  }
+  
+  cout << endl;
 
   while (true) {
+    // gc
     while (! v8::V8::IdleNotification()) {
     }
-
-    char* input = console.prompt(ok ? goodPrompt.c_str() : badPrompt.c_str());
+  
+    char* input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
     if (input == 0) {
       break;
@@ -853,14 +863,16 @@ static void RunShell (v8::Handle<v8::Context> context) {
     BaseClient.startPager();
 
     // assume the command succeeds
-    ok = true;
+    promptError = false;
     TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
       // command failed
       cout << TRI_StringifyV8Exception(&tryCatch);
-      ok = false;
+
+      // this will change the prompt for the next round
+      promptError = true;
     }
 
     BaseClient.stopPager();
@@ -1101,6 +1113,9 @@ int main (int argc, char* argv[]) {
   // add colors for print.js
   AddColors(context);
 
+  // reset the prompt error flag (will determine prompt colors)
+  bool promptError = false;  
+
   // .............................................................................
   // define ArangoConnection class
   // .............................................................................  
@@ -1164,7 +1179,7 @@ int main (int argc, char* argv[]) {
                          v8::Boolean::New(false),
 #endif
                          v8::ReadOnly);
-  
+
   // .............................................................................
   // banner
   // .............................................................................  
@@ -1222,6 +1237,7 @@ int main (int argc, char* argv[]) {
         if (ClientConnection->getErrorMessage() != "") {
           cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
         }
+        promptError = true;
       }
     
       cout << endl;
@@ -1274,7 +1290,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   if (UnitTests.empty() && JsLint.empty()) {
-    RunShell(context);
+    RunShell(context, promptError);
   }
 
   // .............................................................................
