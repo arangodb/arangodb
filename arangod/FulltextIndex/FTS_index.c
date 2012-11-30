@@ -986,6 +986,7 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
             ZStrCxClear(&zcdoc, &ctxa2);
             ZStrClear(zstra2);
             lasthan=0;
+            ndocs=0;
             if(queryterm==0)
             {
                 for(i=0;i<odocs;i++)
@@ -997,6 +998,7 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
                     {
                         ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
                         lasthan=newhan;
+                        ndocs++;
                     }
                 }
             }
