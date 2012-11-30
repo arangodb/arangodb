@@ -849,7 +849,7 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
 /* TBD obtain read lock */
 
     ix=(FTS_real_index *) ftx;
-    dc=malloc(sizeof(FTS_document_ids_t *));
+    dc=malloc(sizeof(FTS_document_ids_t));
     dc->_len=0;     /* no docids so far  */
     dc->_docs=NULL;
     zstr2=ZStrCons(10);  /* from index-2 tuber */
