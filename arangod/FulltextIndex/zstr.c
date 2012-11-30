@@ -128,7 +128,7 @@ uint64_t ZStrBitsPeek(ZSTR * z, long bits)
         s<<=z->dlen[firstix];
         s+=z->dat[firstix];
         slen+=z->dlen[firstix];
-        if(firstix==z->lastix);
+        if(firstix==z->lastix)
             return s<<(bits-slen);
         firstix++; 
     }
