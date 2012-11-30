@@ -432,6 +432,8 @@ temp=queryres->_docs[i];
 /* end of queries */
     FTS_FreeIndex(ftx2);
     FTS_FreeIndex(ftx);
+    free(query._localOptions);  
+    free(query._texts);        
     printf("First simple test completed - free'd the index again\n");
     return 0;
 }

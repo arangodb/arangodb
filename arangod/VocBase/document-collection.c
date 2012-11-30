@@ -92,6 +92,10 @@ static int SkiplistIndexFromJson (TRI_document_collection_t*,
                                   TRI_json_t*,
                                   TRI_idx_iid_t);
 
+static int FulltextIndexFromJson (TRI_document_collection_t*,
+                                  TRI_json_t*,
+                                  TRI_idx_iid_t);
+
 static int PriorityQueueFromJson (TRI_document_collection_t*,
                                   TRI_json_t*,
                                   TRI_idx_iid_t);
@@ -1643,6 +1647,17 @@ static bool OpenIndexIterator (char const* filename, void* data) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return res == TRI_ERROR_NO_ERROR;
   }
+  
+  // ...........................................................................
+  // FULLTEXT INDEX
+  // ...........................................................................
+
+  else if (TRI_EqualString(typeStr, "fulltext")) {
+    res = FulltextIndexFromJson(document, json, iid);
+
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    return res == TRI_ERROR_NO_ERROR;
+  }
 
   // ...........................................................................
   // PRIORITY QUEUE
@@ -2692,7 +2707,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   // extract the list of fields
   if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %lu, need at least von attribute path",(unsigned long) iid);
+    LOG_ERROR("ignoring index %lu, need at least one attribute path",(unsigned long) iid);
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -2733,8 +2748,6 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares pid and name
@@ -3931,6 +3944,222 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
   idx = CreateSkiplistIndexDocumentCollection(document, attributes, 0, unique, created);
+  
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+  
+  if (idx == NULL) {
+    return NULL;
+  }
+
+  if (created) {
+    res = TRI_SaveIndex(primary, idx);
+  
+    return res == TRI_ERROR_NO_ERROR ? idx : NULL;
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}                                                
+                                                
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    FULLTEXT INDEX
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+  
+static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                           const char* attributeName) {
+  size_t i;
+
+  for (i = 0; i < document->_allIndexes._length; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
+
+    if (idx->_type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      TRI_fulltext_index_t* fulltext = (TRI_fulltext_index_t*) idx;
+
+      if (fulltext->_attributeName != 0 && TRI_EqualString(fulltext->_attributeName, attributeName)) {
+        return idx;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a fulltext index to the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                           const char* attributeName,
+                                                           TRI_idx_iid_t iid,
+                                                           bool* created) {
+  TRI_index_t* idx;
+  int res;
+
+  // ...........................................................................
+  // Attempt to find an existing index with the same attribute
+  // If a suitable index is found, return that one otherwise we need to create
+  // a new one.
+  // ...........................................................................
+
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName);
+  if (idx != NULL) {
+    LOG_TRACE("fulltext-index already created");
+
+    if (created != NULL) {
+      *created = false;
+    }
+    return idx;
+  }
+
+  // Create the fulltext index
+  idx = TRI_CreateFulltextIndex(&document->base, attributeName);
+
+  // If index id given, use it otherwise use the default.
+  if (iid) {
+    idx->_iid = iid;
+  }
+  
+  // initialises the index with all existing documents
+  res = FillIndex(document, idx);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeFulltextIndex(idx);
+    return NULL;
+  }
+  
+  // store index and return
+  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  
+  if (created != NULL) {
+    *created = true;
+  }
+  
+  return idx;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restores an index
+////////////////////////////////////////////////////////////////////////////////
+
+static int FulltextIndexFromJson (TRI_document_collection_t* document,
+                                  TRI_json_t* definition,
+                                  TRI_idx_iid_t iid) {
+  TRI_index_t* idx;
+  TRI_json_t* attribute;
+  TRI_json_t* fld;
+  char* attributeName;
+  size_t fieldCount;
+  
+  // extract fields
+  fld = ExtractFields(definition, &fieldCount, iid);
+
+  if (fld == NULL) {
+    return TRI_errno();
+  }
+
+  // extract the list of fields
+  if (fieldCount != 1) {
+    LOG_ERROR("ignoring index %lu, has an invalid number of attributes",(unsigned long) iid);
+
+    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  attribute = TRI_AtVector(&fld->_value._objects, 0);
+  attributeName = attribute->_value._string.data;
+
+  // create the index
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName);
+  
+  if (idx == NULL) {
+    bool created;
+    idx = CreateFulltextIndexDocumentCollection(document, attributeName, iid, &created);
+  }
+
+  if (idx == NULL) {
+    LOG_ERROR("cannot create fulltext index %lu", (unsigned long) iid);
+    return TRI_errno();
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+                                                  
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a fulltext index (unique or non-unique)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        const char* attributeName) {
+  TRI_index_t* idx;
+  TRI_primary_collection_t* primary;
+  
+  primary = &document->base;
+  
+  // .............................................................................
+  // inside write-lock
+  // .............................................................................
+
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName);
+  
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+
+  // .............................................................................
+  // outside write-lock
+  // .............................................................................
+
+  return idx;  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a fulltext index exists
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+                                                        const char* attributeName,
+                                                        bool* created) {
+  TRI_index_t* idx;
+  TRI_primary_collection_t* primary;
+  int res;
+  
+  primary = &document->base;
+
+  // .............................................................................
+  // inside write-lock the collection
+  // .............................................................................
+
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  
+  idx = CreateFulltextIndexDocumentCollection(document, attributeName, 0, created);
   
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
