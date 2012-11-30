@@ -66,6 +66,16 @@ v1.2.alpha (XXXX-XX-XX)
   and the document key. The same applies to the _from and _to attribute values of edges
   that are returned by ArangoDB.
 
+  Also removed (now unnecessary) location header in responses of the collections REST API.
+  The location header was previously returned because it was necessary for clients.
+  When clients created a collection, they specified the collection name. The collection
+  id was generated on the server, but the client needed to use the server-generated
+  collection id for further API calls, e.g. when creating edges etc. Therefore, the
+  full collection URL, also containing the collection id, was returned by the server in
+  responses to the collection API, in the HTTP location header.
+  Returning the location header has become unnecessary in ArangoDB 1.2 because users
+  can access collections by name and do not need to care about collection ids.
+
 * edges in edge collections can optionally be undirected
   Edges now have a `_bidirectional` attribute that determines whether the edge is to be
   treated as directed (unidirectional) or undirected (bidirectional). The attribute
