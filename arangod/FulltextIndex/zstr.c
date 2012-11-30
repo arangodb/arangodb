@@ -1206,6 +1206,7 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
     movebits(z1,bitlen,&cur);
     ZStrClear(z1);
     movebits(z1,sparebits,&cur);
+    ZStrDest(z1);
     return 0;
 }
 

@@ -228,7 +228,7 @@ TRI_skiplist_index_t;
 typedef struct TRI_fulltext_index_s {
   TRI_index_t base;
 
-  // TODO
+  char* _attributeName;
 }
 TRI_fulltext_index_t;
 
@@ -673,7 +673,8 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query
 /// @brief creates a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*);
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
+                                      const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

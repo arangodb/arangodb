@@ -851,6 +851,8 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
     uint8_t * utf;
     uint64_t unicode;
     uint16_t *docpt;
+
+    ndocs = 1;
 /* TBD obtain read lock */
 
     ix=(FTS_real_index *) ftx;
@@ -1057,7 +1059,8 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
             ZStrNormalize(zstra2);
             ztemp=zstra1;
             zstra1=zstra2;
-            zstra2=ztemp;         
+            zstra2=ztemp; 
+            ZStrSTDest(dochan); 
         }   /* end of match-prefix code  */
     }
     ZStrCxClear(&zcdoc, &ctxa1);
@@ -1075,6 +1078,9 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
     dc->_len=ndocs;
     ZStrDest(zstra1);
     ZStrDest(zstra2);
+    ZStrDest(zstr); 
+    ZStrDest(zstr2); 
+    ZStrDest(zstr3);  
 /* TBD relinquish read lock  */
     return dc;
 }

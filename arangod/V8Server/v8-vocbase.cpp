@@ -606,6 +606,100 @@ static v8::Handle<v8::Value> EnsurePathIndex (string const& cmd,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
+                                                  const bool create) {
+  v8::HandleScope scope;
+  
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>)")));
+  }
+  
+  string attributeName = TRI_ObjectToString(argv[0]);
+  if (attributeName.empty()) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "expecting non-empty <attribute>")));
+  }
+
+  // .............................................................................
+  // Check that we have a valid collection
+  // .............................................................................
+
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  // .............................................................................
+  // Check collection type
+  // .............................................................................
+
+  TRI_primary_collection_t* primary = collection->_collection;
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+
+  // .............................................................................
+  // Actually create the index here
+  // .............................................................................
+
+  int res = TRI_ERROR_NO_ERROR;
+  bool created;
+  TRI_index_t* idx;
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+
+  if (create) {
+    idx = TRI_EnsureFulltextIndexDocumentCollection(document, attributeName.c_str(), &created);
+
+    if (idx == 0) {
+      res = TRI_errno();
+    }
+  }
+  else {
+    idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str());
+  }
+
+  if (idx == 0) {
+    TRI_ReleaseCollection(collection);
+    if (create) {
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "index could not be created", true)));
+    }
+    else {
+      return scope.Close(v8::Null());
+    }
+  }
+
+  // .............................................................................
+  // return the newly assigned index identifier
+  // .............................................................................
+
+  TRI_json_t* json = idx->json(idx, primary);
+
+  if (! json) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(v8::String::New("out of memory")));
+  }
+
+  v8::Handle<v8::Value> index = IndexRep(&primary->base, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  if (create) {
+    if (index->IsObject()) {
+      index->ToObject()->Set(v8::String::New("isNewlyCreated"), created ? v8::True() : v8::False());
+    }
+  }
+
+  TRI_ReleaseCollection(collection);
+  return scope.Close(index);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
 ///
 /// it is the caller's responsibility to acquire and release the required locks
@@ -3779,7 +3873,7 @@ static v8::Handle<v8::Value> JS_LookupHashIndexVocbaseCol (v8::Arguments const& 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a priority queue index exists
 ///
-/// @FUN{ensureSLIndex(@FA{field1})}
+/// @FUN{ensurePQIndex(@FA{field1})}
 ///
 /// Creates a priority queue index on all documents using attributes as paths to
 /// the fields. Currently only supports one attribute of the type double.
@@ -3950,6 +4044,37 @@ static v8::Handle<v8::Value> JS_EnsureSkiplistVocbaseCol (v8::Arguments const& a
 
 static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& argv) {
   return EnsurePathIndex("lookupSkiplist", argv, false, false, TRI_IDX_TYPE_SKIPLIST_INDEX);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a fulltext index exists
+///
+/// @FUN{ensureFulltextIndex(@FA{field}}
+///
+/// Creates a fulltext index on all documents on attribute @FA{field}.
+/// All documents, which do not have the attribute or with a non-textual value
+/// inside the attribute are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fulltext
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnsureFulltextIndexVocbaseCol (v8::Arguments const& argv) {
+  return EnsureFulltextIndex(argv, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a fulltext index
+///
+/// @FUN{lookupFulltextIndex(@FA{field}}
+///
+/// Checks whether a fulltext index on the give attribute @FA{field} exists.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_LookupFulltextIndexVocbaseCol (v8::Arguments const& argv) {
+  return EnsureFulltextIndex(argv, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6111,6 +6236,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureBitarray", JS_EnsureBitarrayVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureUndefBitarray", JS_EnsureUndefBitarrayVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureCapConstraint", JS_EnsureCapConstraintVocbaseCol);
+  TRI_AddMethodVocbase(rt, "ensureFulltextIndex", JS_EnsureFulltextIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureGeoConstraint", JS_EnsureGeoConstraintVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureGeoIndex", JS_EnsureGeoIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureHashIndex", JS_EnsureHashIndexVocbaseCol);
@@ -6122,6 +6248,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexesNL", JS_GetIndexesNLVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
+  TRI_AddMethodVocbase(rt, "lookupFulltextIndex", JS_LookupFulltextIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupHashIndex", JS_LookupHashIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupSkiplist", JS_LookupSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupUniqueConstraint", JS_LookupUniqueConstraintVocbaseCol);

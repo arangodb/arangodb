@@ -4158,11 +4158,26 @@ static int UpdateFulltextIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
 /// @brief creates a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collection) {
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collection,
+                                      const char* attributeName) {
   TRI_fulltext_index_t* fulltextIndex;
+  char* copy;
+  char* copy2;
+
+  copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, attributeName);
+  if (copy == NULL) {
+    return NULL;
+  }
+  copy2 = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, attributeName);
+  if (copy2 == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+    return NULL;
+  }
 
   fulltextIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_index_t), false);
   if (! fulltextIndex) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
     return NULL;
   }
   
@@ -4178,7 +4193,11 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   fulltextIndex->base.remove = RemoveFulltextIndex;
   fulltextIndex->base.update = UpdateFulltextIndex;
   
-  // TODO
+  fulltextIndex->_attributeName = copy2;
+  
+  TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 
+
   return &fulltextIndex->base;
 }
 
@@ -4187,16 +4206,18 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
-  TRI_fulltext_index_t* ft;
+  TRI_fulltext_index_t* fulltextIndex;
 
   if (idx == NULL) {
     return;
   }
+      
+  TRI_DestroyVectorString(&idx->_fields);
   
   LOG_TRACE("destroying fulltext index");
 
-  ft = (TRI_fulltext_index_t*) idx;
-  // TODO
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_attributeName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
