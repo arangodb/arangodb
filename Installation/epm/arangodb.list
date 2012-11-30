@@ -13,9 +13,9 @@ $release=${arangodb_release}
 %product ArangoDB
 %copyright 2012 by triAGENS GmbH
 %vendor triAGENS GmbH
-%license COPYING
-%readme README
-%description ArangoDB Software
+%license ${project_dir}/LICENSE
+%readme ${project_dir}/README
+%description ArangoDB is a durable, reliable, transactional multi-model database. It's key-features are: Schema-free schemata, an integrated application server, flexible data modelling, free index choice, and configurable durability.
 %version ${version}
 %release ${release}
 
