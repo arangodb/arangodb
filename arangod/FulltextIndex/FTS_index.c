@@ -697,9 +697,9 @@ uint64_t findkkey2(FTS_real_index * ix, uint64_t * word)
         {
 /*     skip over the B-key into index 3  */
             docb=ZStrDec(zstr,&zcbky);
-        }
 /* silly use of docb to get rid of compiler warning  */
-        if(docb==0xffffff) printf("impossible\n");
+          if(docb==0xffffff) printf("impossible\n");
+        }
         ZStrCxClear(&zcdelt, &ctx);
         newlet=0;
         while(1)
