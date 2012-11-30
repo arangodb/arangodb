@@ -407,13 +407,13 @@ var logTable = $('#logTableID').dataTable({
 /// new document table view (collection) 
 ///////////////////////////////////////////////////////////////////////////////
 
-    else if (location.hash.substr(0, 12) == "#collection?" ) {
+    else if (location.hash.substr(0, 12) == "#collection," ) {
       $("#addNewDocButton").removeAttr("disabled");
       tableView = true; 
       $('#toggleNewDocButtonText').text('Edit Source'); 
       
       var collectionID = location.hash.substr(12, location.hash.length); 
-      var collID = collectionID.split("=");
+      var collID = collectionID.split(",");
       
       $.ajax({
         type: "GET",
@@ -423,7 +423,7 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           collectionName = data.name;
           $('#nav2').text(collectionName);
-          $('#nav2').attr('href', '#showCollection?' +collID[0]);
+          $('#nav2').attr('href', '#showCollection,' +collID[0]);
           $('#nav1').attr('class', 'arrowbg');
         },
         error: function(data) {
@@ -449,7 +449,7 @@ var logTable = $('#logTableID').dataTable({
 ///  showe edit documents view  
 ///////////////////////////////////////////////////////////////////////////////
 
-    else if (location.hash.substr(0, 14) == "#editDocument?") {
+    else if (location.hash.substr(0, 14) == "#editDocument,") {
       tableView = true; 
       $("#addEditedDocRowButton").removeAttr("disabled");
       $('#toggleEditedDocButton').val('Edit Source'); 
@@ -468,7 +468,7 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           collectionName = data.name;
           $('#nav2').text(collectionName);
-          $('#nav2').attr('href', '#showCollection?' +collectionID[0]);
+          $('#nav2').attr('href', '#showCollection,' +collectionID[0]);
         },
         error: function(data) {
         }
@@ -512,9 +512,9 @@ var logTable = $('#logTableID').dataTable({
 ///  show colletions documents view 
 ///////////////////////////////////////////////////////////////////////////////
 
-    else if (location.hash.substr(0, 16) == "#showCollection?") {
+    else if (location.hash.substr(0, 16) == "#showCollection,") {
       $('#nav1').removeClass('highlighted'); 
-      var found = location.hash.match(/\?(\d+)(=.+)?$/);
+      var found = location.hash.match(/,([a-zA-Z0-9\-_]+)(,.+)?$/);
       if (! found) {
         throw "invalid URL";
       }
@@ -539,7 +539,7 @@ var logTable = $('#logTableID').dataTable({
 ///  shows edit collection view  
 ///////////////////////////////////////////////////////////////////////////////
 
-    else if (location.hash.substr(0, 16)  == "#editCollection?") {
+    else if (location.hash.substr(0, 16)  == "#editCollection,") {
       var collectionID = location.hash.substr(16, location.hash.length); 
       var collectionName;
       var tmpStatus; 
@@ -799,7 +799,7 @@ var logTable = $('#logTableID').dataTable({
         success: function(data) {
           tableView = true;
           var collID = documentID.split("/");  
-          window.location.href = "#showCollection?" + collID[0];  
+          window.location.href = "#showCollection," + collID[0];  
         },
         error: function(data) {
           alert(getErrorMessage(data));
@@ -823,7 +823,7 @@ var logTable = $('#logTableID').dataTable({
             tableView = true;
             $('#toggleEditedDocButton').val('Edit Source'); 
             var collID = documentID.split("/");  
-            window.location.href = "#showCollection?" + collID[0];  
+            window.location.href = "#showCollection," + collID[0];  
           },
           error: function(data) {
            alert(getErrorMessage(data));
@@ -874,7 +874,7 @@ var logTable = $('#logTableID').dataTable({
   $('#saveNewDocButton').live('click', function () {
     var post;
 
-    var found = location.hash.match(/\?(\d+)=.+$/);
+    var found = location.hash.match(/,([a-zA-Z0-9\-_]+),.+$/);
     if (! found) {
       throw "invalid URL";
     }
@@ -917,7 +917,7 @@ var logTable = $('#logTableID').dataTable({
       processData: false, 
       success: function(data) {
         tableView = true;
-        window.location.href = "#showCollection?" + collectionID;  
+        window.location.href = "#showCollection," + collectionID;  
       },
       error: function(data) {
         alert(getErrorMessage(data));
@@ -1005,10 +1005,10 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#cancelEditedDocument').live('click', function () {
-    var start = window.location.hash.indexOf('?'); 
+    var start = window.location.hash.indexOf(','); 
     var end = window.location.hash.indexOf('/'); 
     var collectionID = window.location.hash.substring(start + 1, end); 
-    window.location.href = "#showCollection?" + collectionID; 
+    window.location.href = "#showCollection," + collectionID; 
     $('#nav1').removeClass('highlighted'); 
   });
 
@@ -1156,10 +1156,10 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#cancelNewDocument').live('click', function () {
-    var start = window.location.hash.indexOf('?'); 
+    var start = window.location.hash.indexOf(','); 
     var end = window.location.hash.indexOf('=');  
     var collectionID = window.location.hash.substring(start + 1, end); 
-    window.location.href = "#showCollection?" + collectionID; 
+    window.location.href = "#showCollection," + collectionID; 
     $('#nav1').removeClass('highlighted'); 
   });
 
@@ -1342,8 +1342,8 @@ var lastFormatQuestion = true;
 
   $('#addDocumentButton').live('click', function () {
     toSplit = window.location.hash;
-    var collID = toSplit.split("?");
-    window.location.href = "#collection?" + collID[1] + "=newDocument";  
+    var collID = toSplit.split(",");
+    window.location.href = "#collection," + collID[1] + ",newDocument";  
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1372,7 +1372,7 @@ var lastFormatQuestion = true;
     }
 
     if (this.id == "editDoc") {
-      window.location.href = "#editDocument?" + documentID; 
+      window.location.href = "#editDocument," + documentID; 
     }
   });
 
@@ -1463,6 +1463,7 @@ var lastFormatQuestion = true;
       var collSize = $('#createCollSize').val();
       var journalSizeString;
       var isSystem = (collName.substr(0, 1) === '_');
+      var wfs = (wfscheck == "true");
 
       if (collSize == '') { 
         journalSizeString = ''; 
@@ -1475,11 +1476,11 @@ var lastFormatQuestion = true;
         alert("No collection name entered. Aborting..."); 
         return 0; 
       } 
-      
+
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfscheck) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + type + '}',
+        data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfs) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + type + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -1517,7 +1518,7 @@ var lastFormatQuestion = true;
     var collectionsTable = $('#collectionsTableID').dataTable();
     var aPos = collectionsTable.fnGetPosition(this.parentElement);
     var aData = collectionsTable.fnGetData(aPos[0]);
-    var collectionID = aData[1];
+    var collectionID = aData[2];
     var collectionName = aData[2]; 
      
 ///////////////////////////////////////////////////////////////////////////////
@@ -1558,7 +1559,7 @@ var lastFormatQuestion = true;
 ///////////////////////////////////////////////////////////////////////////////
 
     if (this.id == "edit") {
-      window.location.href = "#editCollection?" + collectionID;
+      window.location.href = "#editCollection," + collectionID;
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1566,7 +1567,7 @@ var lastFormatQuestion = true;
 ///////////////////////////////////////////////////////////////////////////////
 
     if (this.id == "showdocs" ) {
-      window.location.href = "#showCollection?" + collectionID; 
+      window.location.href = "#showCollection," + collectionID; 
       $('#nav1').removeClass('highlighted'); 
     }
 
@@ -1656,12 +1657,12 @@ function drawCollectionsTable () {
       
         $.ajax({
           type: "GET",
-          url: "/_api/collection/" + val.id + "/figures",
+          url: "/_api/collection/" + encodeURIComponent(val.name) + "/figures",
           contentType: "application/json",
           processData: false,
           async: false,   
           success: function(data) {
-            size = data.figures.journals.fileSize + data.figures.datafiles.fileSize; 
+            size = data.figures.journals.fileSize + data.figures.datafiles.fileSize;
             alive = data.figures.alive.count; 
           },
           error: function(data) {

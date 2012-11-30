@@ -187,10 +187,7 @@
       result.status = collection.status();
       result.type = collection.type();
       result.createOptions = collection.createOptions;
-
-      headers.location = "/" + API + "/" + encodeURIComponent(collection.name());
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
       actions.resultException(req, res, err);
@@ -374,9 +371,7 @@
 
     if (req.suffix.length === 1) {
       var result = CollectionRepresentation(collection, false, false, false);
-      var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) };
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
 
     else if (req.suffix.length === 2) {
@@ -388,9 +383,7 @@
 
       if (sub === "figures") {
         var result = CollectionRepresentation(collection, true, true, true);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/figures" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       // .............................................................................
@@ -399,9 +392,7 @@
 
       else if (sub === "count") {
         var result = CollectionRepresentation(collection, true, true, false);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/count" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       // .............................................................................
@@ -410,9 +401,7 @@
 
       else if (sub === "properties") {
         var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/properties" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       // .............................................................................
@@ -421,9 +410,7 @@
 
       else if (sub === "parameter") {
         var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/parameter" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       else {
