@@ -4,9 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "avodoc.h"
-#include "zstr.h"
-#include "FTS_index.h"
+
+#include "FulltextIndex/avodoc.h"
+#include "FulltextIndex/zstr.h"
+#include "FulltextIndex/FTS_index.h"
 
 /* codes - in zcode.c so need externs here  */
 extern ZCOD zcutf;
@@ -121,6 +122,8 @@ void FTS_FreeIndex ( FTS_index_t * ftx)
     free(ix->handles);
     free(ix);
 }
+
+#if 0
 int xxlet[100];
 void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
 {
@@ -230,7 +233,7 @@ temp=ix->handles[i];
     kroot=ZStrTuberK(ix->index2,0,0,0);
     index2dump(ix,kroot,1);
 }
-
+#endif
 void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 {
     FTS_real_index * ix;
@@ -245,14 +248,15 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
     int ixlen;
     uint16_t * wpt;
     uint64_t handle, newhan, oldhan;
-    uint64_t kroot,kroot1;
+    uint64_t kroot;
+    uint64_t kroot1 = 0; /* initialise even if unused. this will prevent compiler warnings */
     int nowords,wdx;
     int i,j,len,j1,j2;
     uint8_t * utf;
     uint64_t unicode;
     uint64_t tran,x64,oldlet, newlet, bkey;
     uint64_t docb,dock;
-   
+
     ix = (FTS_real_index *)ftx;
     kroot=ZStrTuberK(ix->index2,0,0,0);
     if(ix->options==FTS_INDEX_SUBSTRINGS)
