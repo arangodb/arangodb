@@ -73,6 +73,11 @@ f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${proj
 sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc/arangodb%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
 launchctl unload /Library/LaunchDaemons/org.arangodb.plist
 
+# change user of 1.0 version
+/usr/sbin/chown -R ${susr}:${sgrp} /var/run/arangodb
+/usr/sbin/chown -R ${susr}:${sgrp} /var/log/arangodb
+/usr/sbin/chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
 if [ "`/usr/bin/find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb"
 fi
@@ -107,6 +112,11 @@ f 0755 ${rusr} ${rgrp} ${initdir}/arangodb ${project_dir}/Installation/Linux/${S
 %postinstall <<EOF
 chkconfig --level ${runlevels} arangodb on
 
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
 if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
 fi
@@ -131,6 +141,11 @@ f 0755 ${rusr} ${rgrp} ${initdir}/arangodb ${project_dir}/Installation/Linux/${S
 
 %postinstall <<EOF
 test -x /sbin/insserv && /sbin/insserv /etc/init.d/arangodb 2&>1 > /dev/null
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
 
 if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
@@ -157,6 +172,11 @@ f 0544 ${rusr} ${rgrp} ${systemddir}/arangodb.service ${project_dir}/etc/systemd
 %postinstall <<EOF
 /bin/systemctl daemon-reload > /dev/null 2>&1
 /bin/systemctl preset arangodb.service > /dev/null 2>&1
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
 
 if [ "`find ${data_dir}/arangodb -type d -name 'collection-*'`" == "" ] ; then 
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
@@ -201,6 +221,12 @@ EOF
 i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
 
 %postinstall <<EOF
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
 if [ ! "`find ${data_dir}/arangodb -type d -name 'collection-*'`" ] ; then 
   /etc/init.d/arangodb stop
   ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
