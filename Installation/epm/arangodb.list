@@ -13,9 +13,9 @@ $release=${arangodb_release}
 %product ArangoDB
 %copyright 2012 by triAGENS GmbH
 %vendor triAGENS GmbH
-%license COPYING
-%readme README
-%description ArangoDB Software
+%license ${project_dir}/LICENSE
+%readme ${project_dir}/README
+%description ArangoDB is a durable, reliable, transactional multi-model database. It's key-features are: Schema-free schemata, an integrated application server, flexible data modelling, free index choice, and configurable durability.
 %version ${version}
 %release ${release}
 
@@ -200,7 +200,17 @@ EOF
 %system linux
 i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
 
+%postinstall <<EOF
+if [ ! "`find ${data_dir}/arangodb -type d -name 'collection-*'`" ] ; then 
+  /etc/init.d/arangodb stop
+  ${bindir}/arango-upgrade --database.directory "${data_dir}/arangodb" --uid ${susr}
+  /etc/init.d/arangodb start
+fi
+
 echo "${install_message}"
+
+exit 0
+EOF
 
 %endif
 
