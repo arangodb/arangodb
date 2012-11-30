@@ -200,8 +200,8 @@ echo "    make man "
 echo "########################################################"
 echo
 
-mkdir Doxygen/man
-mkdir Doxygen/man/man1
-mkdir Doxygen/man/man8
+mkdir Doxygen/man      > /dev/null 2>&1
+mkdir Doxygen/man/man1 > /dev/null 2>&1
+mkdir Doxygen/man/man8 > /dev/null 2>&1
 
 make man
