@@ -83,6 +83,10 @@ void TRI_FreeIndex (TRI_index_t* const idx) {
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       TRI_FreeSkiplistIndex(idx);
       break;
+    
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      TRI_FreeFulltextIndex(idx);
+      break;
 
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       TRI_FreeCapConstraint(idx);
@@ -241,6 +245,9 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
+    
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      return "fulltext";
 
     case TRI_IDX_TYPE_GEO1_INDEX:
       return "geo1";
@@ -276,12 +283,12 @@ bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return true;
     case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      return false;
       return false;
   }
 
@@ -978,7 +985,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     // longitude
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 1, &entry);
 
-    if (!ok || entry._sid != shaper->_sidNumber) {
+    if (! ok || entry._sid != shaper->_sidNumber) {
       return false;
     }
 
@@ -2934,7 +2941,7 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
     TRI_PushBackVectorString(&pqIndex->base._fields, copy);
   }
 
-  if (!unique) {
+  if (! unique) {
     pqIndex->_pqIndex = PQueueIndex_new();
   }
   else {
@@ -3585,7 +3592,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // ............................................................................
   skiplistIndex = (TRI_skiplist_index_t*) idx;
   if (idx == NULL) {
-    LOG_WARNING("internal error in RemoveHashIndex");
+    LOG_WARNING("internal error in RemoveSkiplistIndex");
     return TRI_ERROR_INTERNAL;
   }
 
@@ -3886,7 +3893,6 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   return res;
 }
   
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
@@ -3900,7 +3906,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
   size_t j;
 
   skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
-  if (!skiplistIndex) {
+  if (! skiplistIndex) {
     return NULL;
   }
   
@@ -3979,7 +3985,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
     
-  
   return &skiplistIndex->base;
 }
 
@@ -4019,8 +4024,197 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    FULLTEXT INDEX
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a document into the fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;
+  
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in InsertFulltextIndex");
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+  
+  // TODO
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief describes a fulltext index as a json object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
+  TRI_json_t* json;
+  TRI_json_t* fields;
+  TRI_fulltext_index_t* fulltextIndex;
+  size_t i;
+   
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (fulltextIndex == NULL) {
+    return NULL;
+  }
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (json == NULL) {
+    return NULL;
+  }
+
+  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+
+  for (i = 0; i < idx->_fields._length; ++i) {
+    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idx->_fields._buffer[i]));
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, idx->_unique));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
+    
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a fulltext index from collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void RemoveIndexFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a document from a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;
+
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in RemovefulltextIndex");
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR; 
+  // TODO
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int UpdateFulltextIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc, 
+                                const TRI_shaped_json_t* oldDoc) {
+                             
+  // TODO union { void* p; void const* c; } cnv;
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;  
+
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in UpdateFulltextIndex");
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+  // TODO
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collection) {
+  TRI_fulltext_index_t* fulltextIndex;
+
+  fulltextIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_index_t), false);
+  if (! fulltextIndex) {
+    return NULL;
+  }
+  
+  fulltextIndex->base._iid = TRI_NewTickVocBase();
+  fulltextIndex->base._type = TRI_IDX_TYPE_FULLTEXT_INDEX;
+  fulltextIndex->base._collection = collection;
+  fulltextIndex->base._unique = false;
+
+  fulltextIndex->base.json = JsonFulltextIndex;
+  fulltextIndex->base.removeIndex = RemoveIndexFulltextIndex;
+
+  fulltextIndex->base.insert = InsertFulltextIndex;
+  fulltextIndex->base.remove = RemoveFulltextIndex;
+  fulltextIndex->base.update = UpdateFulltextIndex;
+  
+  // TODO
+  return &fulltextIndex->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
+  TRI_fulltext_index_t* ft;
+
+  if (idx == NULL) {
+    return;
+  }
+  
+  LOG_TRACE("destroying fulltext index");
+
+  ft = (TRI_fulltext_index_t*) idx;
+  // TODO
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeFulltextIndex (TRI_index_t* idx) {
+  if (idx == NULL) {
+    return;
+  } 
+   
+  TRI_DestroyFulltextIndex(idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    BITARRAY INDEX
@@ -4034,7 +4228,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // .............................................................................
 // Helper function for TRI_LookupBitarrayIndex
@@ -4336,7 +4529,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // ..........................................................................
     
     if (result == TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) { 
-      if (!baIndex->_supportUndef) {
+      if (! baIndex->_supportUndef) {
         return TRI_ERROR_NO_ERROR;
       }  
 
@@ -4426,7 +4619,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
   // ..........................................................................  
   
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (!json) {
+  if (! json) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
     return NULL;
   }
@@ -4444,7 +4637,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
   // ..........................................................................  
   
   keyValues = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-  if (!keyValues) {
+  if (! keyValues) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
     return NULL;
   }
@@ -4723,7 +4916,7 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     // ..........................................................................
     
     if (result == TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) { 
-      if (!baIndex->_supportUndef) {
+      if (! baIndex->_supportUndef) {
         return TRI_ERROR_NO_ERROR;
       }  
       result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);

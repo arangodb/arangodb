@@ -254,7 +254,8 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
     int i,j,len,j1,j2;
     uint8_t * utf;
     uint64_t unicode;
-    uint64_t tran,x64,oldlet, newlet, bkey;
+    uint64_t tran,x64,oldlet, newlet;
+    uint64_t bkey = 0;
     uint64_t docb,dock;
 
     ix = (FTS_real_index *)ftx;
@@ -579,7 +580,7 @@ void RealDeleteDocument(FTS_index_t * ftx, FTS_document_id_t docid)
     FTS_real_index * ix;
     FTS_document_id_t i;
     ix=(FTS_real_index *) ftx;
-    for(i=0;i<=ix->lastslot;i++)
+    for(i=1;i<=ix->lastslot;i++)
     {
         if(ix->handsfree[i]==1) continue;
         if(ix->handles[i]==docid) break;
@@ -702,7 +703,7 @@ uint64_t findkkey2(FTS_real_index * ix, uint64_t * word)
 /*     skip over the B-key into index 3  */
             docb=ZStrDec(zstr,&zcbky);
 /* silly use of docb to get rid of compiler warning  */
-          if(docb==0xffffff) printf("impossible\n");
+            if(docb==0xffffff) printf("impossible\n");
         }
         ZStrCxClear(&zcdelt, &ctx);
         newlet=0;
@@ -1016,6 +1017,7 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
                 ZStrInsert(zstr,docpt,2);
                 newhan=ZStrDec(zstr,&zcdh);
                 docpt+=ZStrExtLen(docpt,2);
+                odocs--;
 /*     zstra1 = zstra1 & zstra2  */
                 while(1)
                 {

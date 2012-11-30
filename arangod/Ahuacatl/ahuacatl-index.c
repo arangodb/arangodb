@@ -238,6 +238,7 @@ static bool CanUseIndex (const TRI_index_t* const idx) {
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
       // ignore all these index types for now
       return false;
 
