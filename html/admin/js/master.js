@@ -720,7 +720,6 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash == "#query") {
       hideAllSubDivs(); 
-      $('#queryContent').val('');
       $('#collectionsView').hide();
       $('#queryView').show();
       createnav ("Query"); 
