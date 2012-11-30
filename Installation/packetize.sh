@@ -354,7 +354,7 @@ case $TRI_OS_LONG in
     stop_server="sudo launchctl unload /Library/LaunchDaemons/org.arangodb.plist"
 
     install_package="sudo installer -pkg /Volumes/${product_name}/${product_name}.pkg -target / "
-    remove_package=""
+    remove_package="sudo rm /Library/LaunchDaemons/org.arangodb.plist*"
 
     mount_install_package="hdiutil attach ${sfolder_name}/${package_name}"
     unmount_install_package="hdiutil detach /Volumes/${product_name}"
