@@ -12,7 +12,6 @@ var welcomeMSG = ""
 + "                                               \n"
 + "Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.";
 
-
 var existingCharts; 
 var statDivCount;  
 // documents global vars
