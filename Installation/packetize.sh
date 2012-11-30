@@ -427,7 +427,7 @@ if [ "x$answer" == "x$expect" ]; then
   echo "ok: $answer"
 else
   echo "error: $answer != $expect"
-  exit 1
+  sudo tail -50 /var/log/rangodb/arangod.log
 fi
 echo "########################################################"
 echo 
@@ -452,4 +452,10 @@ echo
 
 if [ "${unmount_install_package}x" != "x" ]; then 
   $unmount_install_package > /dev/null 2>&1 
+fi
+
+if [ "x$answer" == "x$expect" ]; then 
+  exit 0
+else
+  exit 1
 fi
