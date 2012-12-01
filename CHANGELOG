@@ -3,6 +3,8 @@ v1.1.0 (XXXX-XX-XX)
 
 * fixed issue #309: renamed stub "import" button from web interface
 
+* fixed issue #307: added WaitForSync column in collections list in in web interface 
+
 * fixed issue #306: naming in web interface 
 
 * fixed issue #304: do not clear AQL query text input when switching tabs in
