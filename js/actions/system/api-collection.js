@@ -541,6 +541,9 @@
 /// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
+/// - @LIT{journalSize}: Size (in bytes) for new journal files that are
+///   created for the collection.
+///
 /// If returns an object with the attributes
 ///
 /// - @LIT{id}: The identifier of the collection.
@@ -548,6 +551,8 @@
 /// - @LIT{name}: The name of the collection.
 ///
 /// - @LIT{waitForSync}: The new value.
+///
+/// - @LIT{journalSize}: The new value.
 ///
 /// @EXAMPLES
 ///
