@@ -4,10 +4,6 @@
 /* bugfixed in tuber - wraparound */
 /* bugfix shift of 64 not happening */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 #include "zstr.h"
 
 ZSTR * ZStrCons(int elts)

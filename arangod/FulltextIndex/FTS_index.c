@@ -1,13 +1,14 @@
 /*   ftsindex.c - The Full Text Search */
 /*   R. A. Parker    24.10.2012  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include "FTS_index.h"
 
-#include "FulltextIndex/avodoc.h"
+#include "BasicsC/locks.h"
 #include "FulltextIndex/zstr.h"
-#include "FulltextIndex/FTS_index.h"
+
+/* not a valid kkey - 52 bits long!*/
+#define NOTFOUND 0xF777777777777
+
 
 /* codes - in zcode.c so need externs here  */
 extern ZCOD zcutf;
@@ -19,8 +20,9 @@ extern ZCOD zcdh;
 
 typedef struct 
 {
-/* first the read/write lock for the index - needs to go here  */
-    int readwritelock;     /* certainly NOT an int!  */
+    TRI_read_write_lock_t _lock;
+    void* _context; // arbitrary context info the index passed to getTexts
+
     FTS_collection_id_t colid;   /* collection ID for this index  */
     FTS_document_id_t *handles;    /* array converting handles to docid */
     uint8_t * handsfree;
@@ -30,11 +32,13 @@ typedef struct
     TUBER * index1;
     TUBER * index2;
     TUBER * index3;
+
+    FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
 } FTS_real_index;
 
 /* Get a unicode character from utf-8  */
 
-uint64_t getunicode(uint8_t ** ptr)
+static uint64_t getunicode(uint8_t ** ptr)
 {
     uint64_t c1;
     c1=**ptr;
@@ -67,21 +71,27 @@ uint64_t getunicode(uint8_t ** ptr)
     return 0;
 }
 
-FTS_index_t * FTS_CreateIndex(FTS_collection_id_t coll,
-    uint64_t options, uint64_t sizes[10])
+FTS_index_t * FTS_CreateIndex (FTS_collection_id_t coll,
+                               void* context,
+                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
+                               uint64_t options, 
+                               uint64_t sizes[10]) {
 /* sizes[0] = size of handles table to start with  */
 /* sizes[1] = number of bytes for index 1 */
 /* sizes[2] = number of bytes for index 2 */
 /* sizes[3] = number of bytes for index 3 */
-
-{
     FTS_real_index * ix;
     uint64_t bk;
     int i;
     ix=malloc(sizeof(FTS_real_index));
     if(ix==NULL) return NULL;
     ix->colid=coll;
-/* TBD initialize readwritelock */
+
+    ix->_context = context;
+    ix->getTexts = getTexts;
+
+    TRI_InitReadWriteLock(&ix->_lock);
+
     ix->handles=malloc((sizes[0]+2)*sizeof(FTS_document_id_t));
     ix->handsfree=malloc((sizes[0]+2)*sizeof(uint8_t));
 /* set up free chain of document handles  */
@@ -115,9 +125,13 @@ void FTS_FreeIndex ( FTS_index_t * ftx)
 {
     FTS_real_index * ix;
     ix = (FTS_real_index *) ftx;
+
+    TRI_DestroyReadWriteLock(&ix->_lock);
+
     if(ix->options==FTS_INDEX_SUBSTRINGS) ZStrTuberDest(ix->index1);
     ZStrTuberDest(ix->index2);
     ZStrTuberDest(ix->index3);
+
     free(ix->handsfree);
     free(ix->handles);
     free(ix);
@@ -277,7 +291,11 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
     ix->handsfree[handle]=0;
     
 /*     Get the actual words from the caller  */
-    rawwords = FTS_GetTexts(ix->colid, docid);
+    rawwords = ix->getTexts(ix->colid, docid, ix->_context); //FTS_GetTexts(ix->colid, docid);
+    if (rawwords == NULL) {
+      return;
+    }
+
     nowords=rawwords->_len;
 /*     Put the words into a STEX */
 
@@ -600,24 +618,30 @@ void RealDeleteDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 
 void FTS_AddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 {
-/* TBD obtain write lock  */
+    FTS_real_index * ix = (FTS_real_index *) ftx;
+
+    TRI_WriteLockReadWriteLock(&ix->_lock);
     RealAddDocument(ftx,docid);
-/* TBD release write lock */
+    TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
 void FTS_DeleteDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 {
-/* TBD obtain write lock  */
+    FTS_real_index * ix = (FTS_real_index *) ftx;
+
+    TRI_WriteLockReadWriteLock(&ix->_lock);
     RealDeleteDocument(ftx,docid);
-/* TBD release write lock */
+    TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
 void FTS_UpdateDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 {
-/* TBD obtain write lock  */
+    FTS_real_index * ix = (FTS_real_index *) ftx;
+
+    TRI_WriteLockReadWriteLock(&ix->_lock);
     RealDeleteDocument(ftx,docid);
     RealAddDocument(ftx,docid);
-/* TBD release write lock */
+    TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
 void FTS_BackgroundTask(FTS_index_t * ftx)
@@ -626,9 +650,6 @@ void FTS_BackgroundTask(FTS_index_t * ftx)
 /* remove deleted handles from index3 not done QQQ  */
 /* release LOCKMAIN */
 }
-/* not a valid kkey - 52 bits long!*/
-#define NOTFOUND 0xF777777777777
-
 
 uint64_t findkkey1(FTS_real_index * ix, uint64_t * word)
 {

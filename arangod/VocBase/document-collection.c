@@ -3982,16 +3982,30 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 ////////////////////////////////////////////////////////////////////////////////
   
 static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                           const char* attributeName) {
+                                                           const char* attributeName,
+                                                           const bool indexSubstrings) {
   size_t i;
+
+  assert(attributeName);
 
   for (i = 0; i < document->_allIndexes._length; ++i) {
     TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
     if (idx->_type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
       TRI_fulltext_index_t* fulltext = (TRI_fulltext_index_t*) idx;
+      char* fieldName;
 
-      if (fulltext->_attributeName != 0 && TRI_EqualString(fulltext->_attributeName, attributeName)) {
+      if (fulltext->_indexSubstrings != indexSubstrings) {
+        continue;
+      }
+
+      if (fulltext->base._fields._length != 1) {
+        continue;
+      }
+
+      fieldName = (char*) fulltext->base._fields._buffer[0];
+
+      if (fieldName != 0 && TRI_EqualString(fieldName, attributeName)) {
         return idx;
       }
     }
@@ -4006,6 +4020,7 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
 
 static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                            const char* attributeName,
+                                                           const bool indexSubstrings,
                                                            TRI_idx_iid_t iid,
                                                            bool* created) {
   TRI_index_t* idx;
@@ -4017,7 +4032,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName);
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings);
   if (idx != NULL) {
     LOG_TRACE("fulltext-index already created");
 
@@ -4028,7 +4043,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the fulltext index
-  idx = TRI_CreateFulltextIndex(&document->base, attributeName);
+  idx = TRI_CreateFulltextIndex(&document->base, attributeName, indexSubstrings);
 
   // If index id given, use it otherwise use the default.
   if (iid) {
@@ -4063,8 +4078,10 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   TRI_index_t* idx;
   TRI_json_t* attribute;
   TRI_json_t* fld;
+  TRI_json_t* indexSubstrings;
   char* attributeName;
   size_t fieldCount;
+  bool doIndexSubstrings;
   
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
@@ -4082,13 +4099,20 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
   attribute = TRI_AtVector(&fld->_value._objects, 0);
   attributeName = attribute->_value._string.data;
+  
+  indexSubstrings = TRI_LookupArrayJson(definition, "indexSubstrings");
+
+  doIndexSubstrings = false;
+  if (indexSubstrings != NULL && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
+    doIndexSubstrings = indexSubstrings->_value._boolean;
+  }
 
   // create the index
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName);
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings);
   
   if (idx == NULL) {
     bool created;
-    idx = CreateFulltextIndexDocumentCollection(document, attributeName, iid, &created);
+    idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, iid, &created);
   }
 
   if (idx == NULL) {
@@ -4117,7 +4141,8 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        const char* attributeName) {
+                                                        const char* attributeName,
+                                                        const bool indexSubstrings) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
   
@@ -4129,7 +4154,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName);
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings);
   
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
@@ -4146,6 +4171,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 
 TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                         const char* attributeName,
+                                                        const bool indexSubstrings,
                                                         bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
@@ -4159,7 +4185,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = CreateFulltextIndexDocumentCollection(document, attributeName, 0, created);
+  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, 0, created);
   
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   

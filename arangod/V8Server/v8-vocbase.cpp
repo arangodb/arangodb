@@ -613,13 +613,18 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
                                                   const bool create) {
   v8::HandleScope scope;
   
-  if (argv.Length() != 1) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>)")));
+  if (argv.Length() != 1 && argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>)")));
   }
   
   string attributeName = TRI_ObjectToString(argv[0]);
   if (attributeName.empty()) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "expecting non-empty <attribute>")));
+  }
+
+  bool indexSubstrings = false;
+  if (argv.Length() == 2) {
+    indexSubstrings = TRI_ObjectToBoolean(argv[1]);
   }
 
   // .............................................................................
@@ -655,14 +660,14 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (create) {
-    idx = TRI_EnsureFulltextIndexDocumentCollection(document, attributeName.c_str(), &created);
+    idx = TRI_EnsureFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, &created);
 
     if (idx == 0) {
       res = TRI_errno();
     }
   }
   else {
-    idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str());
+    idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings);
   }
 
   if (idx == 0) {

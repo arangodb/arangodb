@@ -1,6 +1,11 @@
 /* zstr.h - header file for the z-string module  */
 /*   R. A. Parker    3.5.2012  */
 
+#ifndef TRIAGENS_FULLTEXT_ZSTR_H
+#define TRIAGENS_FULLTEXT_ZSTR_H 1
+
+#include "BasicsC/common.h"
+
 typedef struct
 {
     uint64_t * dat;
@@ -102,6 +107,5 @@ uint64_t ZStrTuberIns(TUBER * t, uint64_t d1, uint64_t d2);
 uint64_t ZStrTuberK(TUBER * t,  uint64_t d1,
                                 uint64_t d2, uint64_t keyb);
 
-/* end of zstr.h */
-
+#endif
 

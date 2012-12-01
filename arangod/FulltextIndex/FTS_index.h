@@ -1,6 +1,11 @@
 /*   ftsindex.h - The Full Text Search header file  */
 /*   R. A. Parker    6.6.2012  */
 
+#ifndef TRIAGENS_FULLTEXT_FTS_INDEX_H
+#define TRIAGENS_FULLTEXT_FTS_INDEX_H 1
+
+#include "BasicsC/common.h"
+
 typedef struct FTS_REAL_index FTS_index_t;
 
 typedef struct
@@ -18,16 +23,29 @@ typedef struct
 #define FTS_MATCH_SUBSTRING 4
 #define FTS_INDEX_SUBSTRINGS 1
 
+typedef uint64_t FTS_collection_id_t;
+typedef uint64_t FTS_document_id_t;
+
 typedef struct
 {
     size_t _len;
     FTS_document_id_t * _docs;
 }  FTS_document_ids_t;
 
+typedef struct
+{
+    size_t _len;
+    uint8_t * * _texts;
+    void (*free)(void *);
+}   FTS_texts_t;
+
 #define FTS_SIZES_DEFAULT {10,1000,57,100,0,0,0,0,0,0}
 
-FTS_index_t * FTS_CreateIndex(FTS_collection_id_t coll,
-    uint64_t options, uint64_t sizes[10]);
+FTS_index_t * FTS_CreateIndex (FTS_collection_id_t coll,
+                               void*,
+                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
+                               uint64_t options, 
+                               uint64_t sizes[10]);
 
 void FTS_FreeIndex ( FTS_index_t * ftx);
 
@@ -44,8 +62,9 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
 
 void FTS_Free_Documents(FTS_document_ids_t *);
 
+#if 0
 void indexd(FTS_index_t * ftx);
+#endif
 
-/* end of ftsindex.h */
-
+#endif
 
