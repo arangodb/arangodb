@@ -73,9 +73,23 @@
 /// This import method allows uploading self-contained JSON documents. The
 /// documents must be uploaded in the body of the HTTP POST request. Each line
 /// of the body will be interpreted as one stand-alone document. Empty lines
-/// in the body are allowed and will be skipped.
+/// in the body are allowed but will be skipped. Using this format, the documents
+/// are imported line-wise.
 /// 
 /// To use this method, the @LIT{type} URL parameter should be set to @LIT{documents}.
+///
+/// It is also possible to upload self-contained JSON documents that are 
+/// embedded into a JSON list. Each element from the list will be treated as a 
+/// document and be imported.
+/// 
+/// This format does not require each document to be on a separate line, and any 
+/// whitespace in the JSON data is allowed. It can be used to import a JSON-formatted
+/// result list (e.g. from arangosh) back into ArangoDB.
+/// Using this format requires ArangoDB to parse the complete list and keep it in
+/// memory for the duration of the import. This might be more resource-intensive than
+/// the line-wise processing. 
+/// 
+/// To use this method, the @LIT{type} URL parameter should be set to @LIT{array}.
 ///
 /// @EXAMPLES
 ///
