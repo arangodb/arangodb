@@ -222,8 +222,8 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"150px", "bSortable":false, "sClass":"leftCell"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "150px"}, null, {"sWidth": "200px"}, {"sWidth": "200px", "sClass":"rightCell"} ],
-    "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 5, 6 ] }],
+    "aoColumns": [{"sWidth":"150px", "bSortable":false, "sClass":"leftCell"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "150px"}, null, {"sWidth": "100px"}, {"sWidth": "200px"}, {"sWidth": "200px", "sClass":"rightCell"} ],
+    "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 6, 7 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
@@ -1647,12 +1647,13 @@ function drawCollectionsTable () {
       else if (tempStatus == 2) {
         tempStatus = "unloaded";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
-        val.id, val.name, collectionType(val), tempStatus, "-", "-"]);
+        val.id, val.name, collectionType(val), tempStatus, "", "-", "-"]);
        }
       else if (tempStatus == 3) {
         tempStatus = "<font color=\"green\">loaded</font>";
         var alive; 
         var size; 
+        var waitForSync;
       
         $.ajax({
           type: "GET",
@@ -1663,22 +1664,23 @@ function drawCollectionsTable () {
           success: function(data) {
             size = data.figures.journals.fileSize + data.figures.datafiles.fileSize; 
             alive = data.figures.alive.count; 
+            waitForSync = data.waitForSync;
           },
           error: function(data) {
           }
         });
         
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, collectionType(val), tempStatus,  bytesToSize(size), alive]);
+        val.id, val.name, collectionType(val), tempStatus,  waitForSync ? "yes" : "no", bytesToSize(size), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
         items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16_nofunction.png" class="nofunction" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
-        val.id, val.name, collectionType(val), tempStatus, "-", "-"]);
+        val.id, val.name, collectionType(val), tempStatus, "", "-", "-"]);
       }
       else if (tempStatus == 5) {
         tempStatus = "deleted"; 
-        items.push(["", val.id, val.name, collectionType(val), tempStatus, "-", "-"]);
+        items.push(["", val.id, val.name, collectionType(val), tempStatus, "", "-", "-"]);
       }
 /*      else {
         tempStatus = "corrupted"; 
