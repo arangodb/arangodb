@@ -2516,7 +2516,12 @@ function ArangoDatabase (connection) {
   ' > help                                  show help pages            ' + "\n" +
   ' > exit                                                             ' + "\n" +
   'Note: collection names may be cached in arangosh. To refresh them, issue: ' + "\n" +
-  ' > db._collections();                                               ';
+  ' > db._collections();                                               ' + "\n" +
+  (internal.printBrowser ?
+  '                                                                          ' + "\n" +
+  'Please note that all variables defined with the var keyword will disappear' + "\n" +
+  'when the command is finished. To introduce variables that are persisted   ' + "\n" +
+  'until the next command, you should omit the var keyword.                  ' + "\n" : '');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query help
