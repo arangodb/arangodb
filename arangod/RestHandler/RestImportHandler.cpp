@@ -31,11 +31,10 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/vocbase.h"
-
 #include "Utils/ImportTransaction.h"
 #include "Utilities/ResourceHolder.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -116,7 +115,6 @@ HttpHandler::status_e RestImportHandler::execute () {
   LOGGER_REQUEST_IN_START_I(_timing);
 #endif
 
-  // execute one of the CRUD methods
   bool res = false;
 
   switch (type) {
@@ -126,10 +124,16 @@ HttpHandler::status_e RestImportHandler::execute () {
         string documentType = _request->value("type", found);
         
         if (found && documentType == "documents") {
-          res = createByArray();  
+          // lines with individual JSON documents
+          res = createByDocumentsLines();  
+        }
+        else if (found && documentType == "array") {
+          // one JSON array
+          res = createByDocumentsList();  
         }
         else {
-          res = createByList();           
+          // CSV
+          res = createByKeyValueList(); 
         }      
       }
       break;
@@ -170,7 +174,7 @@ HttpHandler::status_e RestImportHandler::execute () {
 /// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createByArray () {
+bool RestImportHandler::createByDocumentsLines () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
@@ -210,7 +214,7 @@ bool RestImportHandler::createByArray () {
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
 
   size_t start = 0;
@@ -278,6 +282,128 @@ bool RestImportHandler::createByArray () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
+/// @REST{POST /_api/import?type=array&collection=@FA{collection-name}}
+///
+/// Creates documents in the collection identified by @FA{collection-name}.  
+/// The JSON representations of the documents must be passed as the body of the 
+/// POST request.
+///
+/// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestImportHandler::createByDocumentsList () {
+  size_t numCreated = 0;
+  size_t numError = 0;
+  size_t numEmpty = 0;
+  const bool forceSync = false;
+  
+  vector<string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=array&collection=<identifier>");
+    return false;
+  }
+
+  // extract the collection name
+  bool found;
+  string collection = _request->value("collection", found);
+
+  if (! found || collection.empty()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+    return false;
+  }
+
+
+  ResourceHolder holder;
+  
+  char* errmsg = 0;
+  TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), &errmsg);
+
+  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, documents)) {
+    if (errmsg == 0) {
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    "cannot parse json object");
+    }
+    else {
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    errmsg);
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
+    }
+    return false;
+  }
+
+  if (documents->_type != TRI_JSON_LIST) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON array in the request");
+    return false;
+  }
+  
+  // shall we create the collection?
+  char const* valueStr = _request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+  
+  // find and load collection given by name or identifier
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create); 
+  
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
+ 
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+    return false;
+  }
+
+  for (size_t i = 0; i < documents->_value._objects._length; ++i) {
+    TRI_json_t* values = (TRI_json_t*) TRI_AtVector(&documents->_value._objects, i);
+
+    if (values == 0 || values->_type != TRI_JSON_ARRAY) {
+      ++numError;
+    }
+    else {
+      // now save the document
+      TRI_doc_mptr_t* document = 0;
+      
+      res = trx.createDocument(&document, values, forceSync);
+      if (res == TRI_ERROR_NO_ERROR) {
+        ++numCreated;
+      }
+      else {
+        ++numError;
+      }
+    }
+  }
+
+  // this will commit, even if previous errors occurred
+  res = trx.commit();
+
+  // .............................................................................
+  // outside write transaction
+  // .............................................................................
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res);
+  }
+  else {
+    // generate result
+    generateDocumentsCreated(numCreated, numError, numEmpty);
+  }
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates documents
+///
 /// @REST{POST /_api/import?collection=@FA{collection-name}}
 ///
 /// Creates documents in the collection identified by @FA{collection-name}. 
@@ -287,7 +413,7 @@ bool RestImportHandler::createByArray () {
 /// If the documents were created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createByList () {
+bool RestImportHandler::createByKeyValueList () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
@@ -381,7 +507,7 @@ bool RestImportHandler::createByList () {
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    return true;
+    return false;
   }
       
   // .............................................................................

@@ -1,6 +1,28 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* changed print output in arangosh and the web interface for JSON objects.
+  Previously, printing a JSON object in arangosh resulted in the attribute values
+  being printed as proper JSON, but attribute names were printed unquoted and
+  unescaped. This was fine for the purpose of arangosh, but lead to invalid
+  JSON being produced. Now, arangosh will produce valid JSON that can be used
+  to send it back to ArangoDB or use it with arangoimp etc.
+
+* fixed issue #300: allow importing documents via the REST /_api/import API 
+  from a JSON list, too.
+  So far, the API only supported importing from a format that had one JSON object
+  on each line. This is sometimes inconvenient, e.g. when the result of an AQL
+  query or any other list is to be imported. This list is a JSON list and does not
+  necessary have a document per line if pretty-printed.
+  arangoimp now supports the JSON list format, too. However, the format requires
+  arangoimp and the server to read the entire dataset at once. If the dataset is
+  too big (bigger than --max-upload-size) then the import will be rejected. Even if
+  increased, the entire list must fit in memory on both the client and the server,
+  and this may be more resource-intensive than importing individual lines in chunks.
+
+* removed unused parameter --reuse-ids for arangoimp. This parameter did not have
+  any effect in 1.2, was never publicly announced and did evil (TM) things.
+
 * fixed issue #297 (partly): added whitespace between command line and
   command result in arangosh, added shell colors for better usability
 

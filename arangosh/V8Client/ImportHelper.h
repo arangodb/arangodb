@@ -104,16 +104,12 @@ namespace triagens {
                             const DelimitedImportType typeImport);
       
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief imports a  file with JSON objects
-      ///
-      /// @param string collectionName                name of the collection
-      /// @param string fileName                      name of the file
-      ///
-      /// @return bool                                return true, if data was imported
+      /// @brief imports a file with JSON objects
+      /// each line must contain a complete JSON object
       ////////////////////////////////////////////////////////////////////////////////
 
       bool importJson (const string& collectionName, const string& fileName);
-
+      
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief sets the quote character
       ///
@@ -150,16 +146,6 @@ namespace triagens {
         _createCollection = value;
       }
       
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets the useIds flag
-      ///
-      /// @param bool value         reuse the _id and _rev values from the import data
-      ////////////////////////////////////////////////////////////////////////////////
-
-      void setUseIds (const bool value) {
-        _useIds = value;
-      }
-
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief get the number of read lines
       ///
@@ -211,7 +197,7 @@ namespace triagens {
       void addLastField (char const* field, size_t row, size_t column, bool escaped);      
       
       void sendCsvBuffer ();
-      void sendJsonBuffer (char const* str, size_t len);
+      void sendJsonBuffer (char const* str, size_t len, bool isArray);
       void handleResult (httpclient::SimpleHttpResult* result);
             
     private:      
