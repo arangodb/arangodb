@@ -1,10 +1,6 @@
 /* avodoc.c - My imitation of Avocado  */
 /*   R. A. Parker    26.11.2012  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 #include "avodoc.h"
 
 #include "FulltextIndex/FTS_index.h"

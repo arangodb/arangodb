@@ -32,10 +32,11 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/linked-list.h"
-#include "ShapedJson/shaped-json.h"
+#include "FulltextIndex/FTS_index.h"
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
 #include "PriorityQueue/pqueueindex.h"
+#include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
@@ -155,7 +156,6 @@ typedef struct TRI_index_s {
 }
 TRI_index_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,8 +227,11 @@ TRI_skiplist_index_t;
 
 typedef struct TRI_fulltext_index_s {
   TRI_index_t base;
+  
+  FTS_index_t* _fulltextIndex;
+  TRI_shape_pid_t _attribute;
 
-  char* _attributeName;
+  bool _indexSubstrings;
 }
 TRI_fulltext_index_t;
 
@@ -674,7 +677,8 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
-                                      const char*);
+                                      const char*,
+                                      const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
