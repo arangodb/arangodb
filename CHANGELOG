@@ -97,6 +97,9 @@ v1.1.0 (XXXX-XX-XX)
 
 * fixed issue #309: renamed stub "import" button from web interface
 
+* fixed issue #307: show waitForSync in collections overview in web interface,
+  make waitForSync and journalSize editable in web interface 
+
 * fixed issue #306: naming in web interface 
 
 * fixed issue #304: do not clear AQL query text input when switching tabs in
