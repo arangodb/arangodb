@@ -4194,6 +4194,7 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_collection_id_t collection,
   char* text;
   size_t textLength;
   TRI_vector_string_t* words;
+  size_t i;
   bool ok;
   
   LOG_TRACE("fulltext callback was called");
@@ -4228,6 +4229,12 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_collection_id_t collection,
       TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
     }
     return NULL;
+  }
+
+  for (i = 0; i < words->_length; ++i) {
+    char* word = words->_buffer[i];
+
+    LOG_DEBUG("indexing word '%s' for document %p", word, doc);
   }
 
   // register the word list in the result
@@ -4370,7 +4377,7 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

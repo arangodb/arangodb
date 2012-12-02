@@ -18,8 +18,7 @@ extern ZCOD zcdoc;
 extern ZCOD zckk;
 extern ZCOD zcdh;
 
-typedef struct 
-{
+typedef struct { 
     TRI_read_write_lock_t _lock;
     void* _context; // arbitrary context info the index passed to getTexts
 
@@ -34,7 +33,8 @@ typedef struct
     TUBER * index3;
 
     FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
-} FTS_real_index;
+} 
+FTS_real_index;
 
 /* Get a unicode character from utf-8  */
 
