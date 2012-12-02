@@ -6,14 +6,27 @@
 
 #include "BasicsC/common.h"
 
-typedef struct
-{
-    uint64_t * dat;
-    long * dlen;
-    int alloc;
-    int firstix;
-    int lastix;
-}   ZSTR;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               public declarations
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  uint64_t * dat;
+  long * dlen;
+  int alloc;
+  int firstix;
+  int lastix;
+}
+ZSTR;
 
 ZSTR * ZStrCons(int elts);
 void ZStrDest(ZSTR * z);
@@ -24,8 +37,7 @@ uint64_t ZStrBitsPeek(ZSTR * z, long bits);
 long ZStrLen(ZSTR * z);
 void ZStrNormalize(ZSTR * z); 
 
-typedef struct
-{
+typedef struct {
     int t;          /* code type            */
     int s;          /* segments             */
     int tmax;       /* Top to translate     */
@@ -36,7 +48,8 @@ typedef struct
     uint8_t * SG;   /* segment for top bits */
     uint8_t * TX;   /* translate table      */
     uint8_t * UX;   /* untranslate table    */
-}   ZCOD;
+}
+ZCOD;
 
 void ZStrEnc(ZSTR * z, ZCOD * zc, uint64_t a);
 uint64_t ZStrDec(ZSTR * z, ZCOD * zc);
@@ -45,10 +58,10 @@ uint64_t ZStrUnXl(ZCOD * zc, uint64_t a);
 void ZStrLastEnc(ZSTR * z, uint64_t a);
 uint64_t ZStrLastDec(ZSTR * z);
 
-typedef struct
-{
-    uint64_t x1;
-}   CTX;
+typedef struct {
+  uint64_t x1;
+} 
+CTX;
 
 void ZStrCxClear(ZCOD * zc, CTX * ctx);
 void ZStrCxEnc(ZSTR * z, ZCOD * zc, CTX * ctx, uint64_t a);
@@ -61,18 +74,18 @@ void ZStrInsert(ZSTR * z, void * x, int fmt);
 int ZStrExtCompare(void * x, void * y, int fmt);
 int ZStrExtLen(void * x, int fmt);
 
-typedef struct
-{
-    uint16_t ** pst;    /* 1281 pointers to start          */
-    uint16_t ** ptp;    /* 1281 pointers to top            */
-    uint64_t * mal;     /* 1281 number of bytes allocated  */
-    uint64_t * stcnt;   /* 1281 number of strings in clump */
-    uint16_t inuse[6];
-    uint16_t * list;    /* final list                      */
-    uint64_t listw;     /* number of uint16s in final list */
-    uint64_t listm;     /* number of uint16's malloc'd     */
-    uint64_t cnt;       /* number if strings in list       */
-}   STEX;
+typedef struct {
+  uint16_t ** pst;    /* 1281 pointers to start          */
+  uint16_t ** ptp;    /* 1281 pointers to top            */
+  uint64_t * mal;     /* 1281 number of bytes allocated  */
+  uint64_t * stcnt;   /* 1281 number of strings in clump */
+  uint16_t inuse[6];
+  uint16_t * list;    /* final list                      */
+  uint64_t listw;     /* number of uint16s in final list */
+  uint64_t listm;     /* number of uint16's malloc'd     */
+  uint64_t cnt;       /* number if strings in list       */
+} 
+STEX;
 
 STEX * ZStrSTCons(int fmt);
 void ZStrSTDest(STEX * st);
@@ -80,16 +93,16 @@ void ZStrSTAppend(STEX * st, ZSTR * z);
 void ZStrSTSort(STEX * st);
 void * ZStrSTFind(STEX * st, void * x);
 
-typedef struct
-{
-    uint64_t kperw;  /* K keys per word */
-    uint64_t kmax;   /* (prime) number of keys */
-    uint64_t tiptop; /* number of spaces in tuber  */
-    uint64_t wct;    /* number of 64-bit words */
-    long lenlen;     /* length of length string */
-    uint64_t mult;   /* length bits per initial 1-bit */
-    uint64_t * tub;  /* tuber data pointer */
-}   TUBER;
+typedef struct {
+  uint64_t kperw;  /* K keys per word */
+  uint64_t kmax;   /* (prime) number of keys */
+  uint64_t tiptop; /* number of spaces in tuber  */
+  uint64_t wct;    /* number of 64-bit words */
+  long lenlen;     /* length of length string */
+  uint64_t mult;   /* length bits per initial 1-bit */
+  uint64_t * tub;  /* tuber data pointer */
+} 
+TUBER;
 
 #define TUBER_BITS_8  1
 #define TUBER_BITS_16 2
@@ -107,5 +120,17 @@ uint64_t ZStrTuberIns(TUBER * t, uint64_t d1, uint64_t d2);
 uint64_t ZStrTuberK(TUBER * t,  uint64_t d1,
                                 uint64_t d2, uint64_t keyb);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
 #endif
 
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

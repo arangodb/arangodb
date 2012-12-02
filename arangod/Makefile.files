@@ -81,6 +81,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
 	arangod/VocBase/edge-collection.c \
+	arangod/VocBase/fulltext-query.c \
 	arangod/VocBase/general-cursor.c \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \
