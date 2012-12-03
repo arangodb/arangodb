@@ -889,6 +889,10 @@ SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 /// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
 /// not as attribute.
 ///
+/// For range queries it is required that a skiplist index is present for the
+/// queried attribute. If no skiplist index is present on the attribute, an
+/// error will be thrown.
+///
 /// @EXAMPLES
 ///
 /// Use @FN{toArray} to get all documents at once:
