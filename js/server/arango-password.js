@@ -50,7 +50,7 @@ function main (argv) {
   users = db._collection("_users");
 
   if (users == null) {
-    console.error("users collection '_users' not available. please run arango-upgrade.");
+    console.error("users collection '_users' not available.");
     return 2;
   }
 
