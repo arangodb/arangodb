@@ -1,6 +1,14 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* removed arango-password script and added Javascript functionality to add/delete
+  users instead. The functionality is contained in module `users` and can be invoked
+  as follows from arangosh and arangod:
+  * require("users").saveUser("name", "passwd");
+  * require("users").replaceUser("name", "newPasswd");
+  * require("users").removeUser("name");
+  These functions are intentionally not offered via the web interface.
+
 * changed print output in arangosh and the web interface for JSON objects.
   Previously, printing a JSON object in arangosh resulted in the attribute values
   being printed as proper JSON, but attribute names were printed unquoted and
