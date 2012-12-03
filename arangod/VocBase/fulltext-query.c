@@ -28,6 +28,7 @@
 #include "fulltext-query.h"
 
 #include "BasicsC/common.h"
+#include "BasicsC/utf8-helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -37,6 +38,29 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalise a word for a fulltext search query
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_NormaliseWordFulltextIndex (const char* word, const size_t wordLength) {
+  char* copy;
+  char* copy2;
+  size_t outLength;
+  int32_t outLength2;
+
+  // normalise string
+  copy = TR_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
+  if (copy == NULL) {
+    return NULL;
+  }
+
+  // lower case string
+  copy2 = TR_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+
+ return copy2; 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free fulltext search query options

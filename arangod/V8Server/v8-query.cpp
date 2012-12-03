@@ -2133,7 +2133,6 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief build the fulltext search query options from a query string 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2180,7 +2179,7 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString) {
     vector<string> parts = StringUtils::split(words[i], ':');
     if (parts.size() == 1) {
       // no, just a single word
-      query->_texts[i] = (uint8_t*) TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, parts[0].c_str(), parts[0].size());
+      query->_texts[i] = (uint8_t*) TRI_NormaliseWordFulltextIndex(parts[0].c_str(), parts[0].size());
       if (query->_texts[i] == 0) {
         TRI_FreeQueryFulltextIndex(query);
         return 0;
@@ -2198,9 +2197,7 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString) {
         query->_localOptions[i] = FTS_MATCH_SUBSTRING;
       }
       
-      string word = parts[1];
-      StringUtils::tolowerInPlace(&word);
-      query->_texts[i] = (uint8_t*) TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, parts[1].c_str(), parts[1].size());
+      query->_texts[i] = (uint8_t*) TRI_NormaliseWordFulltextIndex(parts[1].c_str(), parts[1].size());
       if (query->_texts[i] == 0) {
         TRI_FreeQueryFulltextIndex(query);
         return 0; 

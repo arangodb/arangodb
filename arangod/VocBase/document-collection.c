@@ -4112,7 +4112,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   
   if (idx == NULL) {
     bool created;
-    idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, iid, &created);
+    idx = CreateFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, iid, &created);
   }
 
   if (idx == NULL) {
