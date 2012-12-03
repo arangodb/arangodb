@@ -4365,9 +4365,7 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 
   res = TRI_ERROR_NO_ERROR;
  
-  FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
-  // TODO: change FTS to return a status code
-  FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+  FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
 
   return res;
 }
@@ -4397,7 +4395,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   TRI_shaper_t* shaper;
   char* copy;
   TRI_shape_pid_t attribute;
-  uint64_t options;
+  int options;
   // default sizes for index. TODO: adjust these
   uint64_t sizes[10] = { 1000, 100000, 5700, 10000, 0, 0, 0, 0, 0, 0 }; 
     
