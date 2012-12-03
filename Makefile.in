@@ -1682,6 +1682,7 @@ WIKI = \
 	ImplementorManual \
 	ImpManual \
 	ImpManualBasics \
+	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
 	IndexGeo \

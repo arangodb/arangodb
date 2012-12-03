@@ -46,6 +46,7 @@
 ///  <li>@ref IndexGeo</li>
 ///  <li>@ref IndexHash</li>
 ///  <li>@ref IndexSkiplist</li>
+///  <li>@ref IndexBitArray</li>
 ///
 ///  @latexonly\appendix@endlatexonly
 ///  <li>@ref Glossary</li>
