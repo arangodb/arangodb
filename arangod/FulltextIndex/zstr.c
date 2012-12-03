@@ -1,8 +1,11 @@
 /* zstr.c - the Z-string module   */
-/*   R. A. Parker    14.11.2012   */
+/*   R. A. Parker    3.12.2012   */
 /* bugfixed in merge - adjtop call added  */
 /* bugfixed in tuber - wraparound */
 /* bugfix shift of 64 not happening */
+/* bugfix peeking after last word  */
+/* bugfix use firstix not z->firstix  */
+/* bugfix page turn */
 
 #include "zstr.h"
 
@@ -125,6 +128,7 @@ uint64_t ZStrBitsPeek(ZSTR * z, long bits)
         s<<=z->dlen[firstix];
         s+=z->dat[firstix];
         slen+=z->dlen[firstix];
+/* bugfix peeking after last word  */
         if(firstix==z->lastix)
             return s<<(bits-slen);
         firstix++; 
@@ -132,7 +136,8 @@ uint64_t ZStrBitsPeek(ZSTR * z, long bits)
     wlen=bits-slen;
     if(wlen==0) return s;
     s<<=wlen;
-    s+=z->dat[z->firstix]>>(z->dlen[z->firstix]-wlen);
+/* bugfix use firstix not z->firstix  */
+    s+=z->dat[firstix]>>(z->dlen[firstix]-wlen);
     return s;
 }
 
@@ -1032,6 +1037,14 @@ long grabrest(CuR * cur, BlK * blk, uint64_t kkeys, ZSTR * z)
             ZStrBitsIn(b,j,z);
         };
     }
+/* bugfix page turn  */
+    if(cur->curb==0)
+    {
+        cur->curb=63;
+        if(cur->curw!=0) cur->curw--;
+              else       cur->curw = t->wct-1;
+    }
+/* end of bugfix page turn */
     freeb=63-cur->curb;
     while(cur->curw!=blk->last)
     {
