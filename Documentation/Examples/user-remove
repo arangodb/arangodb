@@ -1,1 +1,2 @@
-arangosh> require("users").removeUser("my-user");
+arangosh> require("users").remove("my-user");
+arangosh> require("users").reload();
