@@ -20,7 +20,7 @@ describe ArangoDB do
 	@cid = ArangoDB.create_collection(@cn, false)
 
 	(0...1500).each{|i|
-	  ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"n\" : #{i} }")
+	  ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"n\" : #{i} }")
 	}
       end
 
@@ -30,7 +30,7 @@ describe ArangoDB do
 
       it "get all documents" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\" }"
+	body = "{ \"collection\" : \"#{@cn}\" }"
 	doc = ArangoDB.log_put("#{prefix}-all", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -44,7 +44,7 @@ describe ArangoDB do
 
       it "get all documents with limit" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"limit\" : 100 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"limit\" : 100 }"
 	doc = ArangoDB.log_put("#{prefix}-all-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -58,7 +58,7 @@ describe ArangoDB do
 
       it "get all documents with negative skip" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : -100 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"skip\" : -100 }"
 	doc = ArangoDB.log_put("#{prefix}-all-negative-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -72,7 +72,7 @@ describe ArangoDB do
 
       it "get all documents with skip" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : 1400 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"skip\" : 1400 }"
 	doc = ArangoDB.log_put("#{prefix}-all-skip", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -86,7 +86,7 @@ describe ArangoDB do
 
       it "get all documents with skip and limit" do
 	cmd = api + "/all"
-	body = "{ \"collection\" : \"#{@cid}\", \"skip\" : 1400, \"limit\" : 2 }"
+	body = "{ \"collection\" : \"#{@cn}\", \"skip\" : 1400, \"limit\" : 2 }"
 	doc = ArangoDB.log_put("#{prefix}-all-skip-limit", cmd, :body => body)
 
 	doc.code.should eq(201)
@@ -115,7 +115,7 @@ describe ArangoDB do
 	  (0..10).each{|j|
 	    lon = 10 * (j - 5)
 	    
-	    ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
+	    ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
 	  }
 	}
       end
@@ -191,7 +191,7 @@ describe ArangoDB do
 	  (0..10).each{|j|
 	    lon = 10 * (j - 5)
 	    
-	    ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
+	    ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"loc\" : [ #{lat}, #{lon} ] }")
 	  }
 	}
       end

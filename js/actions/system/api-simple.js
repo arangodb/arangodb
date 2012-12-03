@@ -87,10 +87,8 @@ actions.defineHttp({
       else {
         var limit = body.limit;
         var skip = body.skip;
-
         var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -189,9 +187,7 @@ actions.defineHttp({
         var name = body.collection;
         var geo = body.geo;
 
-        var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -305,10 +301,8 @@ actions.defineHttp({
         var distance = body.distance;
         var radius = body.radius;
         var geo = body.geo;
-
         var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -406,12 +400,9 @@ actions.defineHttp({
       else {
         var limit = body.limit;
         var skip = body.skip;
-        var name = body.collection;
         var example = body.example;
-
         var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -487,10 +478,8 @@ actions.defineHttp({
       }
       else {
         var example = body.example;
-
         var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -541,10 +530,7 @@ actions.defineHttp({
         var name = body.collection;
         var example = body.example;
         var index = body.index;
-
-        var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -623,10 +609,7 @@ actions.defineHttp({
         var left = body.left;
         var right = body.right;
         var closed = body.closed;
-
-        var name = body.collection;
-        var id = parseInt(name) || name;
-        var collection = internal.db._collection(id);
+        var collection = internal.db._collection(name);
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
