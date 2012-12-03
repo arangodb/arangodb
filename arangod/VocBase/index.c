@@ -38,6 +38,7 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/fulltext-query.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -4055,37 +4056,43 @@ static bool AddWord (TRI_vector_string_t* const words,
                      const size_t wordLength,
                      const bool containsUtf8) {
   char* copy;
-  char* src;
-  char* end;
-  char* dst;
-          
-  copy = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (wordLength + 1) * sizeof(char), false);
-  if (copy == NULL) {
-    return false;
+
+  if (containsUtf8) {
+    // UTF-8 string
+    copy = TRI_NormaliseWordFulltextIndex(wordStart, wordLength);
+  }
+  else {
+    // ASCII string 
+    char* src;
+    char* end;
+    char* dst;
+
+    copy = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (wordLength + 1) * sizeof(char), false);
+    if (copy == NULL) {
+      return false;
+    }
+
+    src = (char*) wordStart;
+    end = src + wordLength;
+    dst = copy;
+
+    for (; src < end; ++src, ++dst) {
+      char c = *src;
+
+      // lower case the text so it is normalised in the index
+      if (c >= 'A' && c <= 'Z') {
+        *dst = (char) (((unsigned char) c) + 32);
+      }
+      else {
+        *dst = c;
+      }
+    }
+
+    *dst = '\0';
   }
 
-  src = (char*) wordStart;
-  end = src + wordLength;
-  dst = copy;
-
-  for (; src < end; ++src, ++dst) {
-    char c = *src;
-
-    // lower case the text so it is normalised in the index
-    if (c >= 'A' && c <= 'Z') {
-      *dst = (char) (((unsigned char) c) + 32);
-    }
-    else {
-      *dst = c;
-    }
-  }
-
-  *dst = '\0';
-          
   TRI_PushBackVectorString(words, copy);
-  // TODO: handle unicode lower-casing, unicode normalisation, exclusion of unicode punctuation
-          
-  LOG_TRACE("found word '%s'", copy);
+  LOG_DEBUG("found word '%s'", copy);
 
   return true;
 }
