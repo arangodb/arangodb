@@ -187,7 +187,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _runningOnValgrind(false),
-    _performUpgrade(false),
     _binaryPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
