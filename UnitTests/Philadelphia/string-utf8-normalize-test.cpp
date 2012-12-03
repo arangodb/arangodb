@@ -29,6 +29,7 @@
 
 #include "BasicsC/utf8-helper.h"
 #include "BasicsC/strings.h"
+#include "Basics/Utf8Helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -112,6 +113,53 @@ BOOST_AUTO_TEST_CASE (tst_1) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_2) {
+
+  /* "Grüß Gott. Здравствуйте! x=(-b±sqrt(b²-4ac))/(2a)  日本語,中文,한글" */
+  static const unsigned char gruessgott1[] =
+    { 'G', 'r', 0xC3, 0xBC, 0xC3, 0x9F, ' ', 'G', 'o', 't', 't', '.', 0
+    };
+  
+  static const unsigned char gruessgott2[] =
+    { 'G', 'R', 0xC3, 0x9C, 0xC3, 0x9F, ' ', 'G', 'O', 'T', 't', '.', 0
+    };    
+  
+  static const unsigned char lower[] =
+    { 'g', 'r', 0xC3, 0xBC, 0xC3, 0x9F, ' ', 'g', 'o', 't', 't', '.', 0
+    };    
+  
+  int32_t len = 0;
+  char* result = TR_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott1, strlen((const char*) gruessgott1), &len);
+
+
+  //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
+  BOOST_CHECK_EQUAL((const char*) lower, (const char*) result);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, result);  
+
+  std::string testString((const char*) gruessgott1);
+  std::string expectString((const char*) lower);
+  std::string resultString = triagens::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
+  BOOST_CHECK_EQUAL(expectString, resultString);
+  
+  len = 0;
+  result = TR_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott2, strlen((const char*) gruessgott2), &len);
+  //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott2, result, len);
+  BOOST_CHECK_EQUAL((const char*) lower, (const char*) result);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, result);    
+}
+
+BOOST_AUTO_TEST_CASE (tst_3) {
+  std::string testString   = "aäoöuüAÄOÖUÜ";
+  std::string expectString = "aäoöuüaäoöuü";
+  std::string resultString = triagens::basics::Utf8Helper::DefaultUtf8Helper.toLowerCase(testString);
+  BOOST_CHECK_EQUAL(expectString, resultString);
+
+  testString   = "aäoöuüAÄOÖUÜ";
+  expectString = "AÄOÖUÜAÄOÖUÜ";
+  resultString = triagens::basics::Utf8Helper::DefaultUtf8Helper.toUpperCase(testString);
+  BOOST_CHECK_EQUAL(expectString, resultString);
+}
 
 #endif
 

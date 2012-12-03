@@ -30,11 +30,13 @@
 
 #ifdef TRI_HAVE_ICU
 #include "unicode/normalizer2.h"
+#include "unicode/ucasemap.h"
 #else
 #include "string.h"
 #endif
 
 #include "Logger/Logger.h"
+#include "BasicsC/strings.h"
 
 using namespace triagens::basics;
 using namespace std;
@@ -234,6 +236,155 @@ string Utf8Helper::getCollatorCountry () {
   return "";
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lowercase the characters in a UTF-8 string. 
+////////////////////////////////////////////////////////////////////////////////
+
+string Utf8Helper::toLowerCase (const string& src) {
+  int32_t utf8len = 0;
+  char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), src.length(), utf8len);
+  
+  string result(utf8, utf8len);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lowercase the characters in a UTF-8 string.
+////////////////////////////////////////////////////////////////////////////////
+
+char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength) {
+  char* utf8_dest = 0;
+  
+  if (src == 0 || srcLength == 0) {
+    utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
+    utf8_dest[0] = '\0';
+    dstLength = 0;
+    return utf8_dest;
+  }
+
+#ifdef TRI_HAVE_ICU  
+  uint32_t options = U_FOLD_CASE_DEFAULT;
+  UErrorCode status = U_ZERO_ERROR;
+  
+  string locale = getCollatorLanguage();
+  LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
+  
+  if (U_FAILURE(status)) {
+    LOGGER_ERROR << "error in ucasemap_open(...): " << u_errorName(status);
+  }
+  else {    
+    utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
+      
+    dstLength = ucasemap_utf8ToLower(csm.getAlias(),
+                    utf8_dest, 
+                    srcLength + 1,
+                    src, 
+                    srcLength, 
+                    &status);
+    
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+        TRI_Free(zone, utf8_dest);
+        utf8_dest = (char*) TRI_Allocate(zone, (dstLength+1) * sizeof(char), false);
+      
+        dstLength = ucasemap_utf8ToLower(csm.getAlias(),
+                    utf8_dest, 
+                    dstLength + 1,
+                    src, 
+                    srcLength, 
+                    &status);        
+    }
+
+    if (U_FAILURE(status)) {
+      LOGGER_ERROR << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
+      TRI_Free(zone, utf8_dest);
+    }
+    else {
+      return utf8_dest;
+    }    
+  }
+#endif
+
+  utf8_dest = TRI_LowerAsciiStringZ(zone, src);
+  dstLength = strlen(utf8_dest);
+  return utf8_dest;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Uppercase the characters in a UTF-8 string. 
+////////////////////////////////////////////////////////////////////////////////
+
+string Utf8Helper::toUpperCase (const string& src) {
+  int32_t utf8len = 0;
+  char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), src.length(), utf8len);
+  
+  string result(utf8, utf8len);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lowercase the characters in a UTF-8 string.
+////////////////////////////////////////////////////////////////////////////////
+
+char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength) {
+  char* utf8_dest = 0;
+  
+  if (src == 0 || srcLength == 0) {
+    utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
+    utf8_dest[0] = '\0';
+    dstLength = 0;
+    return utf8_dest;
+  }
+
+#ifdef TRI_HAVE_ICU  
+  uint32_t options = U_FOLD_CASE_DEFAULT;
+  UErrorCode status = U_ZERO_ERROR;
+  
+  string locale = getCollatorLanguage();
+  LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
+  
+  if (U_FAILURE(status)) {
+    LOGGER_ERROR << "error in ucasemap_open(...): " << u_errorName(status);
+  }
+  else {    
+    utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
+      
+    dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
+                    utf8_dest, 
+                    srcLength,
+                    src, 
+                    srcLength, 
+                    &status);
+    
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+        TRI_Free(zone, utf8_dest);
+        dstLength = dstLength+1;
+        utf8_dest = (char*) TRI_Allocate(zone, dstLength * sizeof(char), false);
+      
+        dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
+                    utf8_dest, 
+                    dstLength,
+                    src, 
+                    srcLength, 
+                    &status);        
+    }
+
+    if (U_FAILURE(status)) {
+      LOGGER_ERROR << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
+      TRI_Free(zone, utf8_dest);
+    }
+    else {
+      return utf8_dest;
+    }    
+  }
+#endif
+
+  utf8_dest = TRI_LowerAsciiStringZ(zone, src);
+  dstLength = strlen(utf8_dest);
+  return utf8_dest;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -252,6 +403,22 @@ int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* r
 
 int TR_compare_utf8 (const char* left, const char* right) {  
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lowercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
+////////////////////////////////////////////////////////////////////////////////
+
+char* TR_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
+  return Utf8Helper::DefaultUtf8Helper.tolower(zone, src, srcLength, *dstLength);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Uppercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
+////////////////////////////////////////////////////////////////////////////////
+
+char* TR_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
+  return Utf8Helper::DefaultUtf8Helper.toupper(zone, src, srcLength, *dstLength);  
 }
 
 #ifdef __cplusplus
