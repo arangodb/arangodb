@@ -48,6 +48,9 @@
 /// users programmatically. The following functionality is provided by the 
 /// @LIT{users} module and can be used from inside arangosh and arangod.
 ///
+/// Please note that this functionality is not available from within the web
+/// interface.
+///
 /// @CLEARPAGE
 /// @anchor UserManagementSave
 /// @copydetails JSF_saveUser

@@ -54,6 +54,8 @@
   var internal = require("internal");
   var console = require("console");
 
+  internal.reloadAuth = RELOAD_AUTH;
+
   internal.db = db;
   internal.edges = db;
   internal.ArangoCollection = ArangoCollection;

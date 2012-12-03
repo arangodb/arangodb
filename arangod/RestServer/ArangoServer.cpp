@@ -625,6 +625,9 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(1);
+  if (_applicationServer->programOptions().has("upgrade")) {
+    _applicationV8->performUpgrade();
+  }
   _applicationV8->disableActions();
 
   ok = _applicationV8->prepare();

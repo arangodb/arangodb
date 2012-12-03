@@ -90,6 +90,9 @@ var getStorage = function () {
 /// specified or given in a wrong format, or there already exists a user with 
 /// the specified name.
 ///
+/// The new user account can only be used after the server is either restarted
+/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
@@ -101,13 +104,13 @@ saveUser = function (username, passwd) {
   // validate input
   validateName(username);
   validatePassword(passwd);
-
+    
   var users = getStorage();
   var user = users.firstExample({ user: username });
 
   if (user == null) {
     var hash = internal.encodePassword(passwd);
-    return users.save({ user: username, _key: username, password: hash, active: true });
+    return users.save({ user: username, password: hash, active: true });
   }
   else {
     throw "cannot create user: user already exists.";
@@ -131,6 +134,9 @@ saveUser = function (username, passwd) {
 /// This method will fail if either the username or the passwords are not
 /// specified or given in a wrong format, or if the specified user cannot be
 /// found in the database.
+///
+/// The update is effective only after the server is either restarted
+/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
 ///
 /// Note: this function will not work from within the web interface
 ///
@@ -170,6 +176,9 @@ replaceUser = function (username, passwd) {
 ///
 /// This method will fail if the user cannot be found in the database.
 ///
+/// The deletion is effective only after the server is either restarted
+/// or the server authentication cache is reloaded (see @ref JSF_reloadUsers).
+///
 /// Note: this function will not work from within the web interface
 ///
 /// @EXAMPLES
@@ -188,7 +197,25 @@ removeUser = function (username) {
     throw "cannot delete: user does not exist.";
   }
 
-  return users.remove(user);
+  return users.remove(user._id);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the user authentication data
+///
+/// @FUN{@FA{users}.reload()}
+///
+/// Reloads the user authentication data on the server
+///
+/// All user authentication data is loaded by the server once on startup only
+/// and is cached after that. When users get added or deleted, a cache flush is
+/// required, and this can be performed by called this method.
+///
+/// Note: this function will not work from within the web interface
+////////////////////////////////////////////////////////////////////////////////
+  
+reloadUsers = function () {
+  return internal.reloadAuth();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +235,7 @@ exports.save = saveUser;
 exports.replace = replaceUser;
 exports.update = replaceUser;
 exports.remove = removeUser;
+exports.reload = reloadUsers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

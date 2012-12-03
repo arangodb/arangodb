@@ -305,7 +305,6 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.sha256 = SYS_SHA256;
   internal.wait = SYS_WAIT;
 
-
   // password interface
   internal.encodePassword = function (password) {
     var salt;

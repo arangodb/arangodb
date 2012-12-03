@@ -264,6 +264,8 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     LOG_FATAL("collection '_users' has an unknown collection type");
     return;
   }
+  
+  TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
   // .............................................................................
   // inside a read transaction
@@ -303,8 +305,10 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   collection->_collection->endRead(collection->_collection);
 
   // .............................................................................
-  // outside a write transaction
+  // outside a read transaction
   // .............................................................................
+  
+  TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
 }
@@ -318,17 +322,24 @@ void TRI_DefaultAuthInfo (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reload the authentication info
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
+  TRI_DestroyAuthInfo(vocbase);
+  TRI_LoadAuthInfo(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the default authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyAuthInfo (struct TRI_vocbase_s* vocbase) {
+void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
   void** beg;
   void** end;
   void** ptr;
 
-  if (vocbase == DefaultAuthInfo) {
-    DefaultAuthInfo = 0;
-  }
+  TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
 
   beg = vocbase->_authInfo._table;
   end = vocbase->_authInfo._table + vocbase->_authInfo._nrAlloc;
@@ -339,8 +350,13 @@ void TRI_DestroyAuthInfo (struct TRI_vocbase_s* vocbase) {
       TRI_vocbase_auth_t* auth = *ptr;
 
       FreeAuthInfo(auth);
+      *ptr = NULL;
     }
   }
+
+  vocbase->_authInfo._nrUsed = 0;
+  
+  TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,10 +374,7 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
   size_t len;
   size_t sha256Len;
 
-  // no authentication info available, always authenticate
-  if (DefaultAuthInfo == 0) {
-    return true;
-  }
+  assert(DefaultAuthInfo);
 
   // lockup username
   TRI_ReadLockReadWriteLock(&DefaultAuthInfo->_authInfoLock);

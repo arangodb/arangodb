@@ -1,1 +1,2 @@
-arangosh> require("users").replaceUser("my-user", "my-changed-password");
+arangosh> require("users").replace("my-user", "my-changed-password");
+arangosh> require("users").reload();

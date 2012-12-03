@@ -56,6 +56,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
+#include "VocBase/auth.h"
 #include "VocBase/datafile.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
@@ -1834,6 +1835,30 @@ static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
   
   return scope.Close(v8::Integer::New(result));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the authentication info from collection _users
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
+  }
+
+  if (argv.Length() != 0) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: RELOAD_AUTH()")));
+  }
+
+  TRI_ReloadAuthInfo(vocbase);
+
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6329,6 +6354,8 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(context, "COMPARE_STRING", JS_compare_string);
   TRI_AddGlobalFunctionVocbase(context, "NORMALIZE_STRING", JS_normalize_string);
+  
+  TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth);
   
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction);
   
