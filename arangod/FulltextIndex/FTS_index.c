@@ -153,8 +153,8 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
   ZStrTuberDest(ix->index2);
   ZStrTuberDest(ix->index3);
 
-  free(ix->handsfree);
-  free(ix->handles);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handsfree);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
   
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
 }

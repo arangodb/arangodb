@@ -2155,7 +2155,7 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString) {
   query->_texts = 0;
 
   // allocate memory for search options
-  query->_localOptions = (uint64_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, words.size() * sizeof(uint64_t), false);
+  query->_localOptions = (int*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, words.size() * sizeof(uint64_t), false);
   if (query->_localOptions == 0) {
     TRI_FreeQueryFulltextIndex(query);
     return 0;
