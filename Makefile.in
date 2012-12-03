@@ -5536,7 +5536,11 @@ js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
 @ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
 
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@README: README.md
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	fgrep -v "[Build Status]" $< \
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| @MARKDOWN_EXEC@ \
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| @HTML2TEXT_EXEC@ -style pretty -nobs \
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| sed -e 's:&gt;:>:g' \
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		> $@.tmp
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	mv $@.tmp $@
 
 ################################################################################
