@@ -10,8 +10,7 @@
 
 bin_SCRIPTS += \
         bin/arango-password \
-	bin/arango-dfdb \
-        bin/arango-upgrade 
+	bin/arango-dfdb 
 
 CLEANUP += $(bin_SCRIPTS)
 
@@ -20,18 +19,6 @@ CLEANUP += $(bin_SCRIPTS)
 ################################################################################
 
 bin/arango-password: utils/arango-password.in
-	sed \
-		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
-		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \
-		-e 's%@PKGDATADIR@%${TRI_PKGDATADIR}%g' \
-		$< > $@
-	chmod 755 $@
-
-################################################################################
-### @brief arango upgrade
-################################################################################
-
-bin/arango-upgrade: utils/arango-upgrade.in
 	sed \
 		-e 's%@SBINDIR@%${TRI_SBINDIR}%g' \
 		-e 's%@DATABASEDIR@%${TRI_DATABASEDIR}%g' \

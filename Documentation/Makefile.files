@@ -235,8 +235,7 @@ dist_man_MANS += \
         Documentation/man/man8/rcarangod.8 \
         Documentation/man/man8/arangod.8 \
         Documentation/man/man8/arango-dfdb.8 \
-        Documentation/man/man8/arango-password.8 \
-        Documentation/man/man8/arango-upgrade.8 
+        Documentation/man/man8/arango-password.8 
 
 
 if ENABLE_ARANGOB        

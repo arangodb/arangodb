@@ -35,57 +35,42 @@ check at startup.
 
 It will look for a file named _VERSION_ in its database directory. If
 the file is not present (it will not be present in an ArangoDB 1.0
-database), _arangod_ in version 1.1 will refuse to start and ask the
-user to run the script _arango-upgrade_ first.
+database), _arangod_ in version 1.1 will perform an auto-upgrade.
+This auto-upgrade will create the system collections necessary to run
+ArangoDB 1.1, and it will also create the VERSION file.
 
 If the _VERSION_ file is present but is from a non-matching version of
-ArangoDB, _arangod_ will also refuse to start and ask the user to run
-the upgrade script first.  This procedure shall ensure that users have
-full control over when they perform any updates/upgrades of their
-data, and do not risk running an incompatible tandem of server and
-database.
+ArangoDB, _arangod_ will also refuse to start and ask the user to start
+the server with the option `--upgrade`.  
 
-ArangoDB users are asked to run _arango-upgrade_ when upgrading from
-one version of ArangoDB to a higher version (e.g. from 1.0 to 1.1 in
-this case), but also after pulling the latest ArangoDB source code
-while staying in the same minor version (e.g. when updating from
+This procedure shall ensure that users in the future will have full 
+control over when they perform any updates/upgrades of their data, and 
+do not risk running an incompatible tandem of server and database.
+
+ArangoDB users are asked to start the server with the `--upgrade` option
+when upgrading from one version of ArangoDB to a higher version (e.g. 
+from 1.0 to 1.1 in this case), but also after pulling the latest ArangoDB 
+source code while staying in the same minor version (e.g. when updating from
 1.1-beta1 to 1.1-beta2).
 
-When installing ArangoDB from scratch, users should also run
-_arango-upgrade_ once to initialise their database directory with some
-system collections that ArangoDB requires. When not run, _arangod_
-will refuse to start as mentioned before.
+The upgrade procedure is started when the server is started with the 
+additional command line option `--upgrade` as follows:
 
-_arango-upgrade_ can be invoked from the command-line, and takes the
-database directory as its only argument:
-
-    > bin/arango-upgrade --database.directory /tmp/voctest
+    > bin/arangod --server.endpoint tcp://127.0.0.1:8529 --database.directory /tmp/voctest --upgrade
 
     ...
-    2012-11-21T18:00:38Z [2411] INFO Upgrade script ./js/server/arango-upgrade.js started
-    2012-11-21T18:00:38Z [2411] INFO Server version: 1.1.beta2, database directory version: (not set)
-    2012-11-21T18:00:38Z [2411] INFO Found 9 defined task(s), 9 task(s) to run
-    2012-11-21T18:00:38Z [2411] INFO Executing task #1 (setupUsers): setup _users collection
-    2012-11-21T18:00:38Z [2411] INFO Task successful
+    2012-12-03T11:22:08Z [11573] INFO Starting upgrade from version 1.0 to 1.1.beta2
+    2012-12-03T11:22:08Z [11573] INFO Found 9 defined task(s), 9 task(s) to run
     ...
-    2012-11-21T18:00:40Z [2411] INFO Upgrade script successfully finished
-    2012-11-21T18:00:42Z [2411] INFO ArangoDB has been shut down
+    2012-12-03T11:22:08Z [11573] INFO Upgrade successfully finished
 
-The _arango-upgrade_ will execute the defined tasks to run _arangod_
+The upgrade procecure will execute the defined tasks to run _arangod_
 with all new features and data formats. It should normally run without
 problems and indicate success at script end. If it detects a problem
 that it cannot fix, it will halt on the first error and warn the user.
 
-Re-executing _arango-upgrade_ will execute only the previously failed
-and not yet executed tasks.
-
-_arango-upgrade_ needs exclusive access to the database, so it cannot
-be executed while an instance of _arangod_ is currently running.
-
-If ArangoDB normaly runs with a lower privileged UID than _arango-upgrade_ 
-requires the option `--uid username` to upgrade the database:
-
-    > bin/arango-upgrade --database.directory /tmp/voctest --uid arangodb
+Re-starting arangod with the `--upgrade` option will execute only the 
+previously failed and not yet executed tasks.
 
 Server Startup Options Changes {#UpgradingServerOptions}
 --------------------------------------------------------
@@ -136,8 +121,8 @@ Clients sending requests without HTTP autorization headers or with
 invalid usernames/passwords will be rejected by arangod with an HTTP
 401 error.
 
-_arango-upgrade_ will create a default user _root_ with an empty
-password when run initially.
+The upgrade procedure for ArangoDB 1.1 will create a default user _root_ 
+with an empty password when run initially.
 
 To turn authorization off, the server can be started with the
 following command line option:
@@ -222,8 +207,8 @@ Collections in 1.1 are now either _document_-only or _edge_
 collections, but the two concepts cannot be mixed in the same
 collection.
 
-_arango-upgrade_ will determine the types of existing collections from
-1.0 once on upgrade, based on the inspection of the first 50 documents
+The upgrade procedure for ArangoDB 1.1 will determine the types of existing 
+collections from 1.0 once, based on the inspection of the first 50 documents
 in the collection.
 
 If one of the documents contains either a `_from` or a `_to`

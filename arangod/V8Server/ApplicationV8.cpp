@@ -179,7 +179,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _startupModules(),
     _actionPath(),
     _useActions(true),
-    _runVersionCheck(false),
+    _performUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -232,11 +232,11 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enable the database version check
+/// @brief perform a database upgrade
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::enableVersionCheck () {
-  _runVersionCheck = true;
+void ApplicationV8::performUpgrade () {
+  _performUpgrade = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -693,20 +693,26 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
 
-  if (i == 0 && _runVersionCheck) {
+  if (i == 0) {
     LOGGER_DEBUG << "running database version check";
 
     const string script = _startupLoader.buildScript(JS_server_version_check);
 
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
+    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
     v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context->_context,
                                                                v8::String::New(script.c_str()),
                                                                v8::String::New("version-check.js"),
                                                                false);
   
     if (! TRI_ObjectToBoolean(result)) {
-      LOGGER_FATAL << "Database version check failed. Please run arango-upgrade --database.directory \"" << _vocbase->_path << "\"";
+      if (_performUpgrade) {
+        LOGGER_FATAL << "Database upgrade failed. Please inspect the logs from the upgrade procedure";
+      }
+      else {
+        LOGGER_FATAL << "Database version check failed. Please start the server with the --upgrade option";
+      }
 
       context->_context->Exit();
       context->_isolate->Exit();

@@ -61,8 +61,7 @@ For Linux:
 - visit the official ArangoDB download page at 
   @EXTREF{http://www.arangodb.org/download,http://www.arangodb.org/download}
   and download the correct package for you Linux distribution
-- install the package using you favorite package manager
-- initialise (or upgrade) the database `/usr/local/bin/arango-upgrade`
+- install the package using your favorite package manager
 - start up the database server, normally this is done by
   executing `/etc/init.d/arangod start`. The exact command
   depends on your Linux distribution
@@ -70,7 +69,6 @@ For Linux:
 For MacOS X:
 
 - execute `brew install arangodb`
-- initialise (or upgrade) the database `/usr/local/bin/arango-upgrade`
 - and start the server using `/usr/local/sbin/arangod &`
 
 After these steps there should be a running instance of _arangod_ -
@@ -82,14 +80,11 @@ the ArangoDB database server.
 If there is no such process, check the log file
 `/var/log/arangodb/arangod.log` for errors. If you see a log message
 like
+    2012-12-03T11:35:29Z [12882] ERROR Database directory version (1) is lower than server version (1.2).
+    2012-12-03T11:35:29Z [12882] ERROR It seems like you have upgraded the ArangoDB binary. If this is what you wanted to do, please restart with the --upgrade option to upgrade the data in the database directory.
+    2012-12-03T11:35:29Z [12882] FATAL Database version check failed. Please start the server with the --upgrade option
 
-    2012-11-20T00:36:55Z [17253] ERROR No version information file found in database directory.
-    2012-11-20T00:36:55Z [17253] FATAL Database version check failed. Please run arango-upgrade --database.directory "/tmp/my-database-path"
-
-make sure that the program `arango-upgrade` has been used to initialse
-(or update) the database stored at `/tmp/my-database-path`. If not run
-
-    arango-upgrade --database.directory /tmp/my-database-path
+make sure to start the server once with the `--upgrade` option.
 
 
 ArangoDB programs {#FirstStepsArangoDBBinaries}
@@ -101,7 +96,22 @@ The ArangoDB database package comes with the following programs:
   intended to run as daemon process and to server the various clients
   connection to the server via TCP / HTTP. See @ref
   FirstStepsServerStartStop.
-- _arango-update_: Used to initialize or update the database.
+- _arangosh_: The ArangoDB shell. A client that implements a
+  read-eval-print loop (REPL) and provides functions to access and
+  administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
+- _arangoimp_: A bulk importer for the ArangoDB server.
+  See @ref ImpManual
+
+
+ArangoDB programs {#FirstStepsArangoDBBinaries}
+===============================================
+
+The ArangoDB database package comes with the following programs:
+
+- _arangod_: The ArangoDB database daemon. This server program is
+  intended to run as daemon process and to server the various clients
+  connection to the server via TCP / HTTP. See @ref
+  FirstStepsServerStartStop.
 - _arangosh_: The ArangoDB shell. A client that implements a
   read-eval-print loop (REPL) and provides functions to access and
   administrate the ArangoDB server. See @ref FirstStepsShellStartStop.
