@@ -243,7 +243,10 @@ string Utf8Helper::getCollatorCountry () {
 string Utf8Helper::toLowerCase (const string& src) {
   int32_t utf8len = 0;
   char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), src.length(), utf8len);
-  
+  if (utf8 == 0) {
+    return string("");
+  }
+
   string result(utf8, utf8len);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
   return result;
@@ -258,7 +261,9 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
   
   if (src == 0 || srcLength == 0) {
     utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
-    utf8_dest[0] = '\0';
+    if (utf8_dest != 0) {
+      utf8_dest[0] = '\0';
+    }
     dstLength = 0;
     return utf8_dest;
   }
@@ -287,6 +292,9 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
       status = U_ZERO_ERROR;
       TRI_Free(zone, utf8_dest);
       utf8_dest = (char*) TRI_Allocate(zone, (dstLength + 1) * sizeof(char), false);
+      if (utf8_dest == 0) {
+        return 0;
+      }
       
       dstLength = ucasemap_utf8ToLower(csm.getAlias(),
                     utf8_dest, 
@@ -318,6 +326,9 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
 string Utf8Helper::toUpperCase (const string& src) {
   int32_t utf8len = 0;
   char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), src.length(), utf8len);
+  if (utf8 == 0) {
+    return string("");
+  }
   
   string result(utf8, utf8len);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
@@ -333,7 +344,9 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   
   if (src == 0 || srcLength == 0) {
     utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
-    utf8_dest[0] = '\0';
+    if (utf8_dest != 0) {
+      utf8_dest[0] = '\0';
+    }
     dstLength = 0;
     return utf8_dest;
   }
@@ -350,6 +363,9 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
   else {    
     utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
+    if (utf8_dest == 0) {
+      return 0;
+    }
       
     dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
                     utf8_dest, 
@@ -362,6 +378,9 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
       status = U_ZERO_ERROR;
       TRI_Free(zone, utf8_dest);
       utf8_dest = (char*) TRI_Allocate(zone, (dstLength + 1) * sizeof(char), false);
+      if (utf8_dest == 0) {
+        return 0;
+      }
       
       dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
                     utf8_dest, 

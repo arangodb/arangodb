@@ -56,7 +56,9 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
   
   if (inLength == 0) {
     utf8_dest = TRI_Allocate(zone, sizeof(char), false);
-    utf8_dest[0] = '\0';
+    if (utf8_dest != 0) {
+      utf8_dest[0] = '\0';
+    }
     return utf8_dest;
   }
   
@@ -65,22 +67,18 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
   // calculate utf16 string length
   u_strFromUTF8(NULL, 0, &utf16_length, utf8, inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
-    printf("error in u_strFromUTF8 1: %s\n", u_errorName(status));
     return 0;
   }
   
   status = U_ZERO_ERROR;
   utf16 = (UChar *) malloc((utf16_length+1) * sizeof(UChar));  
   if (utf16 == NULL) {
-    printf("malloc error\r");
     return 0;
   }
   
   // now convert
   u_strFromUTF8(utf16, utf16_length+1, NULL, utf8, inLength, &status);  
   if (status != U_ZERO_ERROR) {
-    printf("error in u_strFromUTF8 2: %s\n", u_errorName(status));
-    
     free(utf16);
     return 0;
   }
@@ -107,14 +105,15 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   
   if (inLength == 0) {
     utf8_dest = TRI_Allocate(zone, sizeof(char), false);
-    utf8_dest[0] = '\0';
+    if (utf8_dest != 0) {
+      utf8_dest[0] = '\0';
+    }
     return utf8_dest;
   }
   
   norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE ,&status);
 
   if (status != U_ZERO_ERROR) {
-    printf("error in unorm2_getInstance: %s\n", u_errorName(status));
     return 0;
   }
 
@@ -122,15 +121,11 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
 
   utf16_dest = (UChar *) malloc((inLength+1) * sizeof(UChar));  
   if (utf16_dest == NULL) {
-    printf("malloc error\n");
-    
     return 0;
   }
   
   utf16_dest_length = unorm2_normalize(norm2, (UChar*) utf16, inLength, utf16_dest, inLength+1, &status);
   if (status != U_ZERO_ERROR) {
-    printf("error in unorm2_normalize: %s\n", u_errorName(status));
-    
     free(utf16_dest);    
     return 0;
   }
@@ -140,8 +135,6 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   // calculate utf8 string length
   u_strToUTF8(NULL, 0, &out_length, utf16_dest, utf16_dest_length+1, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
-    printf("error in u_strToUTF8 1 %s\n", u_errorName(status));
-    
     free(utf16_dest);    
     return 0;
   }
@@ -150,8 +143,6 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   // utf8_dest = (char *) malloc((out_length+1) * sizeof(char));  
   utf8_dest = TRI_Allocate(zone, (out_length+1) * sizeof(char), false);
   if (utf8_dest == NULL) {
-    printf("malloc error\n");
-    
     free(utf16_dest);    
     return 0;
   }
@@ -159,8 +150,6 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   // convert to utf8  
   u_strToUTF8(utf8_dest, out_length+1, NULL, utf16_dest, utf16_dest_length+1, &status);
   if (status != U_ZERO_ERROR) {
-    printf("error in u_strToUTF8 2 %s\n", u_errorName(status));
-    
     free(utf16_dest);
     TRI_Free(zone, utf8_dest);    
     return 0;
