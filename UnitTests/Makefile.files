@@ -111,7 +111,6 @@ start-server:
 
 	@test -d "$(VOCDIR)"
 
-	@builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
 
 	@test "$(PROTO)" == "unix" || (rm -f "$(STARTFILE)"; while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done)
@@ -234,7 +233,6 @@ unittests-shell-server:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
@@ -304,7 +302,6 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@test "x$(SKIP_AHUACATL)" == "x1" || @builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
 	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
 
@@ -441,7 +438,6 @@ unittests-bitarray-index:
 	@rm -rf "$(VOCDIR)"
 	@mkdir "$(VOCDIR)"
 
-	@builddir@/bin/arango-upgrade --relative --database.directory "$(VOCDIR)" 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) $(UNITTESTS_SERVER_BITARRAY) || test "x$(FORCE)" == "x1"
 
 	@ rm -rf "$(VOCDIR)"
