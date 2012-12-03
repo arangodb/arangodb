@@ -175,7 +175,7 @@ function UsersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReload : function () {
-      assertEqual(true, users.reload());
+      users.reload();
     }
 
   };
