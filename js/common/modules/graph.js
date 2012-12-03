@@ -1093,7 +1093,7 @@ function Graph(name, vertices, edges) {
     graphPropertiesId;
 
   if (gdb === null) {
-    throw "_graphs collection does not exist. please run arango-upgrade";
+    throw "_graphs collection does not exist.";
   }
 
   if (typeof name !== "string" || name === "") {
