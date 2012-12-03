@@ -1,14 +1,49 @@
-/*   ftsindex.c - The Full Text Search */
-/*   R. A. Parker    24.10.2012  */
+////////////////////////////////////////////////////////////////////////////////
+/// @brief full text search
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author R. A. Parker  
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
 
 #include "FTS_index.h"
 
 #include "BasicsC/locks.h"
 #include "FulltextIndex/zstr.h"
 
-/* not a valid kkey - 52 bits long!*/
-#define NOTFOUND 0xF777777777777
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief not a valid kkey - 52 bits long!
+////////////////////////////////////////////////////////////////////////////////
+
+#define NOTFOUND 0xF777777777777
 
 /* codes - in zcode.c so need externs here  */
 extern ZCOD zcutf;
@@ -17,6 +52,10 @@ extern ZCOD zcdelt;
 extern ZCOD zcdoc;
 extern ZCOD zckk;
 extern ZCOD zcdh;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual index struct used
+////////////////////////////////////////////////////////////////////////////////
 
 typedef struct { 
   TRI_read_write_lock_t _lock;
@@ -36,9 +75,24 @@ typedef struct {
 } 
 FTS_real_index;
 
-/* Get a unicode character from utf-8  */
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t getunicode (uint8_t** ptr) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a unicode character from UTF-8
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetUnicode (uint8_t** ptr) {
   uint64_t c1;
 
   c1 = **ptr;
@@ -68,211 +122,11 @@ static uint64_t getunicode (uint8_t** ptr) {
   return 0;
 }
 
-FTS_index_t * FTS_CreateIndex (FTS_collection_id_t coll,
-                               void* context,
-                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
-                               int options, 
-                               uint64_t sizes[10]) {
-/* sizes[0] = size of handles table to start with  */
-/* sizes[1] = number of bytes for index 1 */
-/* sizes[2] = number of bytes for index 2 */
-/* sizes[3] = number of bytes for index 3 */
-  FTS_real_index* ix;
-  uint64_t bk;
-  int i;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a document to the index
+////////////////////////////////////////////////////////////////////////////////
 
-  ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
-  if (ix == NULL) {
-    return NULL;
-  }
-
-  ix->handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(FTS_document_id_t), false);
-  if (ix->handles == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
-    return NULL;
-  }
-
-  ix->handsfree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
-  if (ix->handsfree == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
-    return NULL;
-  }
-  
-  ix->colid = coll;
-
-  ix->_context = context;
-  ix->getTexts = getTexts;
-
-/* set up free chain of document handles  */
-  for (i = 1; i < sizes[0]; i++) {
-    ix->handles[i]   = i+1;
-    ix->handsfree[i] = 1;
-  }
-
-  ix->handles[sizes[0]] = 0;  /* end of free chain  */
-  ix->handsfree[sizes[0]] = 1;
-  ix->firstfree = 1;
-  ix->lastslot = sizes[0];
-
-/*     create index 2 */
-  ix->index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
-  bk = ZStrTuberIns(ix->index2, 0, 0);
-  if (bk != 0) {
-    printf("Help - Can't insert root of index 2\n");
-  }
-
-/*     create index 3 */
-  ix->index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
-  ix->_options = options;
-/*     create index 1 if needed */
-  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
-    ix->index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
-    bk = ZStrTuberIns(ix->index1,0,0);
-    if (bk != 0) {
-      printf("Help - Can't insert root of index 1\n");
-    }
-  }
-  
-  TRI_InitReadWriteLock(&ix->_lock);
-
-  return (FTS_index_t*) ix;
-}
-
-void FTS_FreeIndex (FTS_index_t* ftx) {
-  FTS_real_index* ix;
-
-  ix = (FTS_real_index*) ftx;
-
-  TRI_DestroyReadWriteLock(&ix->_lock);
-
-  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
-    ZStrTuberDest(ix->index1);
-  }
-
-  ZStrTuberDest(ix->index2);
-  ZStrTuberDest(ix->index3);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handsfree);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
-  
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
-}
-
-#if 0
-int xxlet[100];
-void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
-{
-    CTX ctx, dctx,x3ctx;
-    ZSTR *zstr, *x3zstr;
-    int i,temp,md;
-    uint64_t x64,oldlet,newlet,bkey,newkkey;
-    uint64_t docb,dock,han,oldhan;
-    zstr=ZStrCons(30);
-    x3zstr=ZStrCons(35);
-    ZStrCxClear(&zcutf,&ctx);
-    ZStrCxClear(&zcdelt,&dctx);
-    ZStrCxClear(&zcdoc,&x3ctx);
-    for(i=1;i<lev;i++) printf(" %c",xxlet[i]);
-    i=ZStrTuberRead(ix->index2,kkey,zstr);
-    temp=kkey;
-    if(i!=0)
-    {
-        printf("cannot read kkey = %d from TUBER\n",temp);
-        return;
-    }
-    md=ZStrBitsOut(zstr,1);
-    temp=kkey;
-    printf("...kkey %d ",temp);
-    temp=md;
-    printf("Md=%d ",temp);
-    temp=zstr->dat[0];
-    printf(" zstr %x",temp);
-    if(md==1)
-    {
-        docb=ZStrCxDec(zstr,&zcbky,&ctx);
-        temp=docb;
-        printf(" doc-b = %d",temp);
-        dock=ZStrTuberK(ix->index3,kkey,0,docb);
-        temp=dock;
-        printf(" doc-k = %d",temp);
-    }
-    oldlet=0;
-
-    while(1)
-    {
-        newlet=ZStrCxDec(zstr,&zcdelt,&dctx);
-        if(newlet==oldlet) break;
-        bkey=ZStrCxDec(zstr,&zcbky,&ctx);
-        x64=ZStrUnXl(&zcutf,newlet);
-        temp=x64;
-        if(temp<128)
-            printf(" %c",temp);
-        else
-            printf(" %x",temp);
-        temp=bkey;
-        printf(" %d",temp);
-        oldlet=newlet;
-    }
-    if(md==1)
-    {
-        printf("\n --- Docs ---");
-        i=ZStrTuberRead(ix->index3,dock,x3zstr);
-        oldhan=0;
-        while(1)
-        {
-            han=ZStrCxDec(x3zstr,&zcdoc,&x3ctx);
-            if(han==oldhan) break;
-            temp=han;
-            printf("h= %d ",temp);
-            temp=ix->handles[han];
-            printf("id= %d; ",temp);
-            oldhan=han;
-        }
-    }
-    printf("\n");
-    i=ZStrTuberRead(ix->index2,kkey,zstr);
-    x64=ZStrBitsOut(zstr,1);
-    if(x64==1)
-        bkey=ZStrCxDec(zstr,&zcbky,&ctx);
-    oldlet=0;
-    ZStrCxClear(&zcdelt,&dctx);
-    while(1)
-    {
-        newlet=ZStrCxDec(zstr,&zcdelt,&dctx);
-        if(newlet==oldlet) return;
-        bkey=ZStrCxDec(zstr,&zcbky,&ctx);
-        newkkey=ZStrTuberK(ix->index2,kkey,newlet,bkey);
-        xxlet[lev]=ZStrUnXl(&zcutf,newlet);
-        index2dump(ix,newkkey,lev+1);
-        oldlet=newlet;
-    }
-}
-
-void indexd(FTS_index_t * ftx)
-{
-    FTS_real_index * ix;
-    int i;
-    uint64_t kroot;
-int temp;
-    ix = (FTS_real_index *)ftx;
-    printf("\n\nDump of Index\n");
-temp=ix->firstfree;
-    printf("Free-chain starts at handle %d\n",temp);
-    printf("======= First ten handles======\n");
-    for(i=1;i<11;i++)
-    {
-temp=ix->handles[i];
-        printf("Handle %d is docid %d\n", i,temp);
-    }
-    printf("======= Index 2 ===============\n");
-    kroot=ZStrTuberK(ix->index2,0,0,0);
-    index2dump(ix,kroot,1);
-}
-#endif
-
-void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
-{
+static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     FTS_real_index * ix;
     FTS_texts_t *rawwords;
     CTX ctx2a, ctx2b, x3ctx, x3ctxb;
@@ -333,11 +187,11 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
         utf=rawwords->_texts[i];
         j=0;
         ZStrClear(zstrwl);
-        unicode=getunicode(&utf);
+        unicode=GetUnicode(&utf);
         while(unicode!=0)
         {
             ZStrEnc(zstrwl,&zcutf,unicode);
-            unicode=getunicode(&utf);
+            unicode=GetUnicode(&utf);
             j++;
             if(j>40) break;
         }
@@ -616,7 +470,11 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
     ZStrDest(x3zstrb);
 }
 
-void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document from the index
+////////////////////////////////////////////////////////////////////////////////
+
+static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix;
   FTS_document_id_t i;
 
@@ -639,10 +497,121 @@ void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   ix->handsfree[i] = 1;
 }
 
-/* now the customer-facing routines                     */
-/* These are needed so that the lock is held in Update  */
-/* preventing a query getting a result with neither the */
-/* old version nor the new one                          */
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
+                              void* context,
+                              FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
+                              int options, 
+                              uint64_t sizes[10]) {
+/* sizes[0] = size of handles table to start with  */
+/* sizes[1] = number of bytes for index 1 */
+/* sizes[2] = number of bytes for index 2 */
+/* sizes[3] = number of bytes for index 3 */
+  FTS_real_index* ix;
+  uint64_t bk;
+  int i;
+
+  ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
+  if (ix == NULL) {
+    return NULL;
+  }
+
+  ix->handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(FTS_document_id_t), false);
+  if (ix->handles == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+    return NULL;
+  }
+
+  ix->handsfree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
+  if (ix->handsfree == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+    return NULL;
+  }
+  
+  ix->colid = coll;
+
+  ix->_context = context;
+  ix->getTexts = getTexts;
+
+/* set up free chain of document handles  */
+  for (i = 1; i < sizes[0]; i++) {
+    ix->handles[i]   = i+1;
+    ix->handsfree[i] = 1;
+  }
+
+  ix->handles[sizes[0]] = 0;  /* end of free chain  */
+  ix->handsfree[sizes[0]] = 1;
+  ix->firstfree = 1;
+  ix->lastslot = sizes[0];
+
+/*     create index 2 */
+  ix->index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
+  bk = ZStrTuberIns(ix->index2, 0, 0);
+  if (bk != 0) {
+    printf("Help - Can't insert root of index 2\n");
+  }
+
+/*     create index 3 */
+  ix->index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
+  ix->_options = options;
+/*     create index 1 if needed */
+  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+    ix->index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
+    bk = ZStrTuberIns(ix->index1,0,0);
+    if (bk != 0) {
+      printf("Help - Can't insert root of index 1\n");
+    }
+  }
+  
+  TRI_InitReadWriteLock(&ix->_lock);
+
+  return (FTS_index_t*) ix;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an existing fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+void FTS_FreeIndex (FTS_index_t* ftx) {
+  FTS_real_index* ix;
+
+  ix = (FTS_real_index*) ftx;
+
+  TRI_DestroyReadWriteLock(&ix->_lock);
+
+  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+    ZStrTuberDest(ix->index1);
+  }
+
+  ZStrTuberDest(ix->index2);
+  ZStrTuberDest(ix->index3);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handsfree);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a document to the index
+////////////////////////////////////////////////////////////////////////////////
 
 void FTS_AddDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
@@ -652,6 +621,10 @@ void FTS_AddDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document from the index
+////////////////////////////////////////////////////////////////////////////////
+
 void FTS_DeleteDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
 
@@ -659,6 +632,10 @@ void FTS_DeleteDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
   RealDeleteDocument(ftx,docid);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update an existing document in the index
+////////////////////////////////////////////////////////////////////////////////
 
 void FTS_UpdateDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
@@ -668,6 +645,10 @@ void FTS_UpdateDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
   RealAddDocument(ftx,docid);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current not called. TODO: find out what its intention is
+////////////////////////////////////////////////////////////////////////////////
 
 void FTS_BackgroundTask(FTS_index_t* ftx) {
   /* obtain LOCKMAIN */
@@ -876,6 +857,10 @@ void ix1recurs(STEX * dochan, FTS_real_index * ix, uint64_t kk1, uint64_t * wd)
     return;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform a search in the index
+////////////////////////////////////////////////////////////////////////////////
+
 FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                                        FTS_query_t* query) {
     FTS_document_ids_t* dc;
@@ -896,7 +881,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     uint64_t unicode;
     uint16_t *docpt;
 
-/* TBD obtain read lock */
+    ix = (FTS_real_index*) ftx;
 
     dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
     if (dc == NULL) {
@@ -914,7 +899,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     zstr   = ZStrCons(4);  /* work zstr from stex  */
     
     ndocs = 1;
-    ix = (FTS_real_index*) ftx;
+    
+    TRI_ReadLockReadWriteLock(&ix->_lock);
 
 /*     - for each term in the query */
     for (queryterm = 0; queryterm < query->_len; queryterm++) {
@@ -922,14 +908,14 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 /*  populate or "and" zstra1 with the sorted list      */
 /*  of document handles that match that term           */
 /*  TBD - what to do if it is not a legal option?  */
-/* TBD combine this with otheer options - no need to use zstring  */
+/* TBD combine this with other options - no need to use zstring  */
         if(query->_localOptions[queryterm] == FTS_MATCH_COMPLETE)
         {
             j=0;
             utf= query->_texts[queryterm];
             while(1)
             {
-                unicode=getunicode(&utf);
+                unicode=GetUnicode(&utf);
                 word1[j++]=ZStrXlate(&zcutf,unicode);
                 if(unicode==0) break;
             }
@@ -1020,7 +1006,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 /* TBD protect against query string greater than 40?  */
             while(1)
             {
-                unicode=getunicode(&utf);
+                unicode=GetUnicode(&utf);
                 word1[j++]=ZStrXlate(&zcutf,unicode);
                 if(unicode==0) break;
             }
@@ -1120,6 +1106,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
     if (dc->_docs == NULL) {
       // out of memory
+      TRI_ReadUnlockReadWriteLock(&ix->_lock);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
       return NULL;
     }
@@ -1132,6 +1119,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         if(ix->handsfree[newhan]==0)
             dc->_docs[ndocs++]=ix->handles[newhan];
     }
+    
+    TRI_ReadUnlockReadWriteLock(&ix->_lock);
 
     dc->_len=ndocs;
     ZStrDest(zstra1);
@@ -1139,9 +1128,13 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     ZStrDest(zstr); 
     ZStrDest(zstr2); 
     ZStrDest(zstr3);  
-/* TBD relinquish read lock  */
+
     return dc;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free results of a search
+////////////////////////////////////////////////////////////////////////////////
 
 void FTS_Free_Documents (FTS_document_ids_t* doclist) {
   if (doclist->_docs != NULL) {
@@ -1151,4 +1144,123 @@ void FTS_Free_Documents (FTS_document_ids_t* doclist) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, doclist);
 }
 
-/* end of ftsindex.c */
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+int xxlet[100];
+void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
+{
+    CTX ctx, dctx,x3ctx;
+    ZSTR *zstr, *x3zstr;
+    int i,temp,md;
+    uint64_t x64,oldlet,newlet,bkey,newkkey;
+    uint64_t docb,dock,han,oldhan;
+    zstr=ZStrCons(30);
+    x3zstr=ZStrCons(35);
+    ZStrCxClear(&zcutf,&ctx);
+    ZStrCxClear(&zcdelt,&dctx);
+    ZStrCxClear(&zcdoc,&x3ctx);
+    for(i=1;i<lev;i++) printf(" %c",xxlet[i]);
+    i=ZStrTuberRead(ix->index2,kkey,zstr);
+    temp=kkey;
+    if(i!=0)
+    {
+        printf("cannot read kkey = %d from TUBER\n",temp);
+        return;
+    }
+    md=ZStrBitsOut(zstr,1);
+    temp=kkey;
+    printf("...kkey %d ",temp);
+    temp=md;
+    printf("Md=%d ",temp);
+    temp=zstr->dat[0];
+    printf(" zstr %x",temp);
+    if(md==1)
+    {
+        docb=ZStrCxDec(zstr,&zcbky,&ctx);
+        temp=docb;
+        printf(" doc-b = %d",temp);
+        dock=ZStrTuberK(ix->index3,kkey,0,docb);
+        temp=dock;
+        printf(" doc-k = %d",temp);
+    }
+    oldlet=0;
+
+    while(1)
+    {
+        newlet=ZStrCxDec(zstr,&zcdelt,&dctx);
+        if(newlet==oldlet) break;
+        bkey=ZStrCxDec(zstr,&zcbky,&ctx);
+        x64=ZStrUnXl(&zcutf,newlet);
+        temp=x64;
+        if(temp<128)
+            printf(" %c",temp);
+        else
+            printf(" %x",temp);
+        temp=bkey;
+        printf(" %d",temp);
+        oldlet=newlet;
+    }
+    if(md==1)
+    {
+        printf("\n --- Docs ---");
+        i=ZStrTuberRead(ix->index3,dock,x3zstr);
+        oldhan=0;
+        while(1)
+        {
+            han=ZStrCxDec(x3zstr,&zcdoc,&x3ctx);
+            if(han==oldhan) break;
+            temp=han;
+            printf("h= %d ",temp);
+            temp=ix->handles[han];
+            printf("id= %d; ",temp);
+            oldhan=han;
+        }
+    }
+    printf("\n");
+    i=ZStrTuberRead(ix->index2,kkey,zstr);
+    x64=ZStrBitsOut(zstr,1);
+    if(x64==1)
+        bkey=ZStrCxDec(zstr,&zcbky,&ctx);
+    oldlet=0;
+    ZStrCxClear(&zcdelt,&dctx);
+    while(1)
+    {
+        newlet=ZStrCxDec(zstr,&zcdelt,&dctx);
+        if(newlet==oldlet) return;
+        bkey=ZStrCxDec(zstr,&zcbky,&ctx);
+        newkkey=ZStrTuberK(ix->index2,kkey,newlet,bkey);
+        xxlet[lev]=ZStrUnXl(&zcutf,newlet);
+        index2dump(ix,newkkey,lev+1);
+        oldlet=newlet;
+    }
+}
+
+void indexd(FTS_index_t * ftx)
+{
+    FTS_real_index * ix;
+    int i;
+    uint64_t kroot;
+int temp;
+    ix = (FTS_real_index *)ftx;
+    printf("\n\nDump of Index\n");
+temp=ix->firstfree;
+    printf("Free-chain starts at handle %d\n",temp);
+    printf("======= First ten handles======\n");
+    for(i=1;i<11;i++)
+    {
+temp=ix->handles[i];
+        printf("Handle %d is docid %d\n", i,temp);
+    }
+    printf("======= Index 2 ===============\n");
+    kroot=ZStrTuberK(ix->index2,0,0,0);
+    index2dump(ix,kroot,1);
+}
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:

@@ -1,5 +1,29 @@
-/*   ftsindex.h - The Full Text Search header file  */
-/*   R. A. Parker    6.6.2012  */
+////////////////////////////////////////////////////////////////////////////////
+/// @brief full text search
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author R. A. Parker  
+/// @author Copyright 2012, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_FULLTEXT_FTS_INDEX_H
 #define TRIAGENS_FULLTEXT_FTS_INDEX_H 1
@@ -105,7 +129,7 @@ FTS_texts_t;
 /// @brief create a new fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
+FTS_index_t* FTS_CreateIndex (FTS_collection_id_t,
                               void*,
                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
                               int options, 
@@ -115,40 +139,34 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
 /// @brief free an existing fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_FreeIndex (FTS_index_t* ftx);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current not called. TODO: find out what its intention is
-////////////////////////////////////////////////////////////////////////////////
-
-void FTS_BackgroundTask (FTS_index_t* ftx);
+void FTS_FreeIndex (FTS_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a document to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid);
+void FTS_AddDocument (FTS_index_t*, FTS_document_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid);
+void FTS_DeleteDocument (FTS_index_t*, FTS_document_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update an existing document in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid);
+void FTS_UpdateDocument (FTS_index_t*, FTS_document_id_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform a search in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx, FTS_query_t* query);
+FTS_document_ids_t* FTS_FindDocuments (FTS_index_t*, FTS_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free results of a search}
+/// @brief free results of a search
 ////////////////////////////////////////////////////////////////////////////////
 
 void FTS_Free_Documents (FTS_document_ids_t*);
