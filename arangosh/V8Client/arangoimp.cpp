@@ -125,12 +125,6 @@ static string TypeImport = "json";
 static bool CreateCollection = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief also import identifiers
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UseIds = false;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -154,7 +148,6 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("file", &FileName, "file name (\"-\" for STDIN)")
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
-    ("use-ids", &UseIds, "re-use _id and _rev values found in document data")
     ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
     ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
     ("quote", &Quote, "quote character(s)")
@@ -240,12 +233,11 @@ int main (int argc, char* argv[]) {
   cout << "----------------------------------------" << endl;
   cout << "collection:       " << CollectionName << endl;
   cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
-  cout << "reusing ids:      " << (UseIds ? "yes" : "no") << endl;
   cout << "file:             " << FileName << endl;
   cout << "type:             " << TypeImport << endl;
   cout << "eol:              " << Eol << endl;
 
-  if (TypeImport != "tsv") {
+  if (TypeImport == "csv") {
     cout << "quote:            " << Quote << endl;
     cout << "separator:        " << Separator << endl;
   }
@@ -259,11 +251,6 @@ int main (int argc, char* argv[]) {
   // create colletion
   if (CreateCollection) {
     ih.setCreateCollection(true);
-  }
-
-  // use given identifiers
-  if (UseIds) {
-    ih.setUseIds(true);
   }
 
   // quote
@@ -329,7 +316,7 @@ int main (int argc, char* argv[]) {
     cout << "Starting JSON import..." << endl;
     ok = ih.importJson(CollectionName, FileName);
   }
-
+  
   else {
     cerr << "Wrong type '" << TypeImport << "'." << endl;
     return EXIT_FAILURE;      

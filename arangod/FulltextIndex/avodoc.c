@@ -1,14 +1,12 @@
 /* avodoc.c - My imitation of Avocado  */
 /*   R. A. Parker    26.11.2012  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include "avodoc.h"
-#include "FTS_index.h"
+
+#include "FulltextIndex/FTS_index.h"
 
 
-FTS_texts_t * cons()
+static FTS_texts_t * cons(void)
 {
     FTS_texts_t * tx;
     tx=malloc(sizeof(FTS_texts_t));
@@ -162,6 +160,7 @@ FTS_texts_t * FTS_GetTexts
     return tx;
 }
 
+#if 0
 int main(int argc, char ** argv)
 {
     long long x1;
@@ -429,9 +428,12 @@ temp=queryres->_docs[i];
 /* end of queries */
     FTS_FreeIndex(ftx2);
     FTS_FreeIndex(ftx);
+    free(query._localOptions);  
+    free(query._texts);        
     printf("First simple test completed - free'd the index again\n");
     return 0;
 }
+#endif
 
 /* end of avodoc.c */
 

@@ -161,7 +161,6 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.headers['location'].should eq(api + "/" + @cn)
 
 	cmd2 = api + "/" + @cn + "/unload"
         doc = ArangoDB.put(cmd2)
@@ -175,7 +174,6 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	[2,4].include?(doc.parsed_response['status']).should be_true
-	doc.headers['location'].should eq(api + "/" + @cn)
       end
 
       # get
@@ -190,7 +188,6 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
-	doc.headers['location'].should eq(api + "/" + @cn)
 
 	cmd2 = api + "/" + @cn + "/unload"
         doc = ArangoDB.put(cmd2)
@@ -204,7 +201,6 @@ describe ArangoDB do
 	doc.parsed_response['id'].should eq(@cid)
 	doc.parsed_response['name'].should eq(@cn)
 	[2,4].include?(doc.parsed_response['status']).should be_true
-	doc.headers['location'].should eq(api + "/" + @cn)
       end
 
       # get count
@@ -220,7 +216,6 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + @cn + "/count")
       end
 
       # get count
@@ -237,7 +232,6 @@ describe ArangoDB do
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + @cn + "/properties")
       end
 
       # get figures
@@ -256,7 +250,6 @@ describe ArangoDB do
 	doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
 	doc.parsed_response['count'].should eq(doc.parsed_response['figures']['alive']['count'])
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
-	doc.headers['location'].should eq(api + "/" + @cn + "/figures")
       end
     end
 

@@ -1,0 +1,2 @@
+arangod> db.emails.ensureFulltextIndex("body");
+{ "id" : "emails/42725508", "unique" : false, "type" : "fulltext", "fields" : ["body"], "isNewlyCreated" : true }

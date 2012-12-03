@@ -4,9 +4,6 @@
 /* bugfixed in tuber - wraparound */
 /* bugfix shift of 64 not happening */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include "zstr.h"
 
 ZSTR * ZStrCons(int elts)
@@ -1205,6 +1202,7 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
     movebits(z1,bitlen,&cur);
     ZStrClear(z1);
     movebits(z1,sparebits,&cur);
+    ZStrDest(z1);
     return 0;
 }
 

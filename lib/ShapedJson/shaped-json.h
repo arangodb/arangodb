@@ -1061,6 +1061,17 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 void TRI_PrintShape (struct TRI_shaper_s* shaper, TRI_shape_t const* shape, int indent);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string value encoded in a shaped json
+/// this will return the pointer to the string and the string length in the
+/// variables passed by reference
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringValueShapedJson (const TRI_shape_t* const,
+                                const TRI_shaped_json_t* const,
+                                char**,
+                                size_t*); 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

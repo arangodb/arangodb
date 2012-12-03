@@ -32,10 +32,11 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/linked-list.h"
-#include "ShapedJson/shaped-json.h"
+#include "FulltextIndex/FTS_index.h"
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
 #include "PriorityQueue/pqueueindex.h"
+#include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
@@ -79,6 +80,7 @@ typedef enum {
   TRI_IDX_TYPE_GEO2_INDEX,
   TRI_IDX_TYPE_HASH_INDEX,
   TRI_IDX_TYPE_EDGE_INDEX,
+  TRI_IDX_TYPE_FULLTEXT_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,
   TRI_IDX_TYPE_SKIPLIST_INDEX,
   TRI_IDX_TYPE_BITARRAY_INDEX,
@@ -154,7 +156,6 @@ typedef struct TRI_index_s {
 }
 TRI_index_t;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +220,20 @@ typedef struct TRI_skiplist_index_s {
   TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
 }
 TRI_skiplist_index_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_fulltext_index_s {
+  TRI_index_t base;
+  
+  FTS_index_t* _fulltextIndex;
+  TRI_shape_pid_t _attribute;
+
+  bool _indexSubstrings;
+}
+TRI_fulltext_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cap constraint
@@ -602,7 +617,6 @@ void TRI_FreePriorityQueueIndex (TRI_index_t*);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
 // -----------------------------------------------------------------------------
@@ -610,7 +624,6 @@ void TRI_FreePriorityQueueIndex (TRI_index_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
@@ -644,7 +657,44 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    FULLTEXT INDEX
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
+                                      const char*,
+                                      const bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyFulltextIndex (TRI_index_t* idx);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeFulltextIndex (TRI_index_t* idx);
+                                  
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    BITARRAY INDEX
@@ -654,12 +704,10 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an iterator for a lookup query
