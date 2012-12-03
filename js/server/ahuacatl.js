@@ -192,7 +192,7 @@ function AHUACATL_FCALL (name, parameters) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_NUMERIC_VALUE (value) {
-  if (isNaN(value) || !isFinite(value)) {
+  if (isNaN(value) || ! isFinite(value)) {
     return null;
   }
 
@@ -250,7 +250,7 @@ function AHUACATL_TYPEWEIGHT (value) {
     case 'boolean':
       return AHUACATL_TYPEWEIGHT_BOOL;
     case 'number':
-      if (isNaN(value) || !isFinite(value)) {
+      if (isNaN(value) || ! isFinite(value)) {
         // not a number => undefined
         return AHUACATL_TYPEWEIGHT_NULL; 
       }
@@ -661,7 +661,7 @@ function AHUACATL_LOGICAL_AND (lhs, rhs) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
-  if (!lhs) {
+  if (! lhs) {
     return false;
   }
 
@@ -699,7 +699,7 @@ function AHUACATL_LOGICAL_NOT (lhs) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
 
-  return !lhs;
+  return ! lhs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1645,7 +1645,7 @@ function AHUACATL_IS_DOCUMENT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_NUMBER_FLOOR (value) {
-  if (!AHUACATL_IS_NUMBER(value)) {
+  if (! AHUACATL_IS_NUMBER(value)) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
   
@@ -1657,7 +1657,7 @@ function AHUACATL_NUMBER_FLOOR (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_NUMBER_CEIL (value) {
-  if (!AHUACATL_IS_NUMBER(value)) {
+  if (! AHUACATL_IS_NUMBER(value)) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
   
@@ -1669,7 +1669,7 @@ function AHUACATL_NUMBER_CEIL (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_NUMBER_ROUND (value) {
-  if (!AHUACATL_IS_NUMBER(value)) {
+  if (! AHUACATL_IS_NUMBER(value)) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
   
@@ -1681,7 +1681,7 @@ function AHUACATL_NUMBER_ROUND (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_NUMBER_ABS (value) {
-  if (!AHUACATL_IS_NUMBER(value)) {
+  if (! AHUACATL_IS_NUMBER(value)) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
   
