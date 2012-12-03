@@ -55,7 +55,7 @@ var API = "_api/index";
 ///
 /// @RESTHEADER{GET /_api/index,reads all indexes of a collection}
 ///
-/// @REST{GET /_api/index?collection=@FA{collection-identifier}}
+/// @REST{GET /_api/index?collection=@FA{collection-name}}
 ///
 /// Returns an object with an attribute @LIT{indexes} containing a list of all
 /// index descriptions for the given collection. The same information is also
@@ -104,7 +104,7 @@ function GET_api_indexes (req, res) {
 /// The result is an objects describing the index. It has at least the following
 /// attributes:
 ///
-/// - @LIT{id}: The identifier of the collection.
+/// - @LIT{id}: The identifier of the index.
 ///
 /// - @LIT{type}: The type of the collection.
 ///
@@ -118,7 +118,7 @@ function GET_api_indexes (req, res) {
 function GET_api_index (req, res) {
 
   // .............................................................................
-  // /_api/index?collection=<collection-identifier>
+  // /_api/index?collection=<collection-name>
   // .............................................................................
 
   if (req.suffix.length === 0) {
@@ -126,7 +126,7 @@ function GET_api_index (req, res) {
   }
 
   // .............................................................................
-  // /_api/index/<collection-identifier>/<index-identifier>
+  // /_api/index/<collection-name>/<index-identifier>
   // .............................................................................
 
   else if (req.suffix.length === 2) {
@@ -159,21 +159,20 @@ function GET_api_index (req, res) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a cap constraint}
 ///
-/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a cap constraint for the collection @FA{collection-identifier}, if
+/// Creates a cap constraint for the collection @FA{collection-name}, if
 /// it does not already exist. Expects an object containing the index details.
 ///
 /// - @LIT{type}: must be equal to @LIT{"cap"}.
 ///
 /// - @LIT{size}: The maximal size of documents.
 ///
-/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
 ///
 /// @EXAMPLES
 ///
@@ -204,9 +203,9 @@ function POST_api_index_cap (req, res, collection, body) {
 ///
 /// @RESTHEADER{GET /_api/index,creates a geo-spatial index}
 ///
-/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a geo-spatial index in the collection @FA{collection-identifier}, if
+/// Creates a geo-spatial index in the collection @FA{collection-name}, if
 /// it does not already exist. Expects an object containing the index details.
 ///
 /// - @LIT{type}: must be equal to @LIT{"geo"}.
@@ -240,12 +239,11 @@ function POST_api_index_cap (req, res, collection, body) {
 ///   @FA{ignoreNull} is true, then documents with a null in @FA{location} or at
 ///   least one null in @FA{latitude} or @FA{longitude} are ignored.
 ///
-/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
 ///
 /// @EXAMPLES
 ///
@@ -336,9 +334,9 @@ function POST_api_index_geo (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a hash index}
 ///
-/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a hash index for the collection @FA{collection-identifier}, if it
+/// Creates a hash index for the collection @FA{collection-name}, if it
 /// does not already exist. The call expects an object containing the index
 /// details.
 ///
@@ -348,12 +346,11 @@ function POST_api_index_geo (req, res, collection, body) {
 ///
 /// - @LIT{unique}: If @LIT{true}, then create a unique index.
 ///
-/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
 ///
 /// If the collection already contains documents and you try to create a unique
 /// hash index in such a way that there are documents violating the uniqueness,
@@ -400,9 +397,9 @@ function POST_api_index_hash (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates a hash index}
 ///
-/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a skip-list index for the collection @FA{collection-identifier}, if
+/// Creates a skip-list index for the collection @FA{collection-name}, if
 /// it does not already exist. The call expects an object containing the index
 /// details.
 ///
@@ -412,12 +409,11 @@ function POST_api_index_hash (req, res, collection, body) {
 ///
 /// - @LIT{unique}: If @LIT{true}, then create a unique index.
 ///
-/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
 ///
 /// If the collection already contains documents and you try to create a unique
 /// skip-list index in such a way that there are documents violating the
@@ -456,13 +452,69 @@ function POST_api_index_skiplist (req, res, collection, body) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a fulltext index
+///
+/// @RESTHEADER{POST /_api/index,creates a fulltext index}
+///
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
+///
+/// Creates a fulltext index for the collection @FA{collection-name}, if
+/// it does not already exist. The call expects an object containing the index
+/// details.
+///
+/// - @LIT{type}: must be equal to @LIT{"fulltext"}.
+///
+/// - @LIT{fields}: A list of attribute names. Currently, the list is limited 
+///   to exactly one attribute.
+///
+/// - @LIT{indexSubstrings}: If @LIT{true}, then substrings are also indexes. 
+///   This will enable substring searching via the index but will make the index
+///   consume more memory.
+///
+/// If the index does not already exist and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
+///
+/// @EXAMPLES
+///
+/// Creating a fulltext index:
+///
+/// @verbinclude api-index-create-new-fulltext
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_fulltext (req, res, collection, body) {
+  var fields = body.fields;
+
+  if (! (fields instanceof Array)) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute names: " + fields);
+  }
+
+  if (fields.length != 1 || typeof fields[0] !== 'string') {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must contain exactly one attribute name");
+  }
+
+  var index = collection.ensureFulltextIndex.call(collection, fields, body.indexSubstrings || false);
+
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
+  }
+  else {
+    actions.resultOk(req, res, actions.HTTP_OK, index);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a bitarray
 ///
 /// @RESTHEADER{POST /_api/index,creates a bitarray index}
 ///
-/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a bitarray index for the collection @FA{collection-identifier}, if
+/// Creates a bitarray index for the collection @FA{collection-name}, if
 /// it does not already exist. The call expects an object containing the index
 /// details.
 ///
@@ -472,12 +524,11 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ///
 /// - @LIT{unique}: Must always be set to @LIT{false}.
 ///
-/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
 ///
 /// @EXAMPLES
 ///
@@ -516,9 +567,9 @@ function POST_api_index_bitarray (req, res, collection, body) {
 ///
 /// @RESTHEADER{POST /_api/index,creates an index}
 ///
-/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+/// @REST{POST /_api/index?collection=@FA{collection-name}}
 ///
-/// Creates a new index in the collection @FA{collection-identifier}. Expects
+/// Creates a new index in the collection @FA{collection-name}. Expects
 /// an object containing the index details.
 ///
 /// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, and
@@ -526,16 +577,15 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// be created. To change this, use the @LIT{unique} attribute in the index details
 /// and set its value to @LIT{true}.
 ///
-/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier. 
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is returned.
 ///
 /// @EXAMPLES
 ///
-/// Creating an unique constraint:
+/// Creating a unique constraint:
 ///
 /// @verbinclude api-index-create-new-unique-constraint
 ///
@@ -550,13 +600,17 @@ function POST_api_index_bitarray (req, res, collection, body) {
 /// Creating a unique skip-list:
 ///
 /// @verbinclude api-index-create-new-unique-skiplist
+///
+/// Creating a fulltext index:
+///
+/// @verbinclude api-index-create-new-fulltext
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
 
   if (req.suffix.length !== 0) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "expect POST /" + API + "?collection=<collection-identifer>");
+                      "expect POST /" + API + "?collection=<collection-name>");
     return;
   }
 
@@ -585,6 +639,9 @@ function POST_api_index (req, res) {
   }
   else if (body.type === "skiplist") {
     POST_api_index_skiplist(req, res, collection, body);
+  }
+  else if (body.type === "fulltext") {
+    POST_api_index_fulltext(req, res, collection, body);
   }
   else if (body.type === "bitarray") {
     POST_api_index_bitarray(req, res, collection, body);

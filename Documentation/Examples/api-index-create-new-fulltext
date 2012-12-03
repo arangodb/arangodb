@@ -1,0 +1,17 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/index?collection=109061392
+{ "type" : "fulltext", "indexSubstrings" : false, "fields" : [ "text" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "code": 201,
+  "fields": [
+    "text"
+  ],
+  "id": "109061392/1748352392",
+  "type": "fulltext",
+  "isNewlyCreated": true,
+  "indexSubstrings": false,
+  "error": false
+}
