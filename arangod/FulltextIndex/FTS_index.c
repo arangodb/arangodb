@@ -59,17 +59,17 @@ extern ZCOD zcdh;
 
 typedef struct { 
   TRI_read_write_lock_t _lock;
-  void* _context; // arbitrary context info the index passed to getTexts
-  int _options;
+  void*                 _context; // arbitrary context info the index passed to getTexts
+  int                   _options;
 
-  FTS_collection_id_t colid;   /* collection ID for this index  */
-  FTS_document_id_t *handles;    /* array converting handles to docid */
-  uint8_t* handsfree;
-  FTS_document_id_t firstfree;   /* Start of handle free chain.  */
-  FTS_document_id_t lastslot;
-  TUBER* index1;
-  TUBER* index2;
-  TUBER* index3;
+  FTS_collection_id_t   _colid;   /* collection ID for this index  */
+  FTS_document_id_t*    _handles;    /* array converting handles to docid */
+  uint8_t*              _handsfree;
+  FTS_document_id_t     _firstfree;   /* Start of handle free chain.  */
+  FTS_document_id_t     _lastslot;
+  TUBER*                _index1;
+  TUBER*                _index2;
+  TUBER*                _index3;
 
   FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
 } 
@@ -150,25 +150,25 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     uint64_t docb,dock;
 
     ix = (FTS_real_index *)ftx;
-    kroot=ZStrTuberK(ix->index2,0,0,0);
+    kroot=ZStrTuberK(ix->_index2,0,0,0);
     if(ix->_options == FTS_INDEX_SUBSTRINGS)
-        kroot1=ZStrTuberK(ix->index1,0,0,0);
+        kroot1=ZStrTuberK(ix->_index1,0,0,0);
     kkey[0]=kroot;     /* origin of index 2 */
 
 /*     allocate the document handle  */
-    handle = ix->firstfree;
+    handle = ix->_firstfree;
 /* TBD what to do if no more handles  */
     if(handle==0)
     {
         printf("Run out of document handles!\n");
         return;
     }
-    ix->firstfree = ix->handles[handle];
-    ix->handles[handle]=docid;
-    ix->handsfree[handle]=0;
+    ix->_firstfree = ix->_handles[handle];
+    ix->_handles[handle]=docid;
+    ix->_handsfree[handle]=0;
     
 /*     Get the actual words from the caller  */
-    rawwords = ix->getTexts(ix->colid, docid, ix->_context); //FTS_GetTexts(ix->colid, docid);
+    rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
     if (rawwords == NULL) {
       return;
     }
@@ -231,7 +231,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 /*     obtain the translation of the letter  */
             tran=ZStrXlate(&zcutf,letters[j]);
 /*     Get the Z-string for the index-2 entry before this letter */
-            i=ZStrTuberRead(ix->index2,kkey[j],zstr2a);
+            i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
             if(i==1)
             {
                 printf("Kkey not found - we're buggered\n");
@@ -257,12 +257,12 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
             if(newlet != tran)
             {
 /*       if not there, create a new index-2 entry for it  */
-                bkey=ZStrTuberIns(ix->index2,kkey[j],tran);
-                kkey[j+1]=ZStrTuberK(ix->index2,kkey[j],tran,bkey); 
+                bkey=ZStrTuberIns(ix->_index2,kkey[j],tran);
+                kkey[j+1]=ZStrTuberK(ix->_index2,kkey[j],tran,bkey); 
 /*     update old index-2 entry to insert new letter  */
                 ZStrCxClear(&zcdelt, &ctx2a);
                 ZStrCxClear(&zcdelt, &ctx2b);
-                i=ZStrTuberRead(ix->index2,kkey[j],zstr2a);
+                i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
                 ZStrClear(zstr2b);
                 x64=ZStrBitsOut(zstr2a,1);
                 ZStrBitsIn(x64,1,zstr2b);
@@ -302,18 +302,18 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
                     ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
                 }
                 ZStrNormalize(zstr2b);
-                ZStrTuberUpdate(ix->index2,kkey[j],zstr2b);
+                ZStrTuberUpdate(ix->_index2,kkey[j],zstr2b);
             }
             else
             {
 /*     - if it is, get its KKey and put in (next) slot */
-                kkey[j+1]=ZStrTuberK(ix->index2,kkey[j],tran,bkey);
+                kkey[j+1]=ZStrTuberK(ix->_index2,kkey[j],tran,bkey);
             }
             j++;
         }
 /*      kkey[j] is kkey of whole word.     */
 /*      so read the zstr from index2       */
-        i=ZStrTuberRead(ix->index2,kkey[j],zstr2a);
+        i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
         if(i==1)
         {
             printf("Kkey not found - we're running for cover\n");
@@ -327,11 +327,11 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
         }
         else
         {
-            docb=ZStrTuberIns(ix->index3,kkey[j],0);
+            docb=ZStrTuberIns(ix->_index3,kkey[j],0);
 /*     put it into index 2 */
             ZStrCxClear(&zcdelt, &ctx2a);
             ZStrCxClear(&zcdelt, &ctx2b);
-            i=ZStrTuberRead(ix->index2,kkey[j],zstr2a);
+            i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
             ZStrClear(zstr2b);
             x64=ZStrBitsOut(zstr2a,1);
             ZStrBitsIn(1,1,zstr2b);
@@ -347,11 +347,11 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
                 ZStrEnc(zstr2b,&zcbky,x64);
             }
             ZStrNormalize(zstr2b);
-            ZStrTuberUpdate(ix->index2,kkey[j],zstr2b); 
+            ZStrTuberUpdate(ix->_index2,kkey[j],zstr2b); 
         }
-        dock=ZStrTuberK(ix->index3,kkey[j],0,docb);
+        dock=ZStrTuberK(ix->_index3,kkey[j],0,docb);
 /*     insert doc handle into index 3      */
-        i=ZStrTuberRead(ix->index3,dock,x3zstr);
+        i=ZStrTuberRead(ix->_index3,dock,x3zstr);
         ZStrClear(x3zstrb);
         if(i==1)
         {
@@ -382,7 +382,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
             }
         }
         ZStrNormalize(x3zstrb);
-        ZStrTuberUpdate(ix->index3,dock,x3zstrb); 
+        ZStrTuberUpdate(ix->_index3,dock,x3zstrb); 
 /*      copy the word into ix                */
         ixlen=len;
         for(j=0;j<len;j++) ixlet[j]=letters[j];
@@ -395,7 +395,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
                 for(j2=j1;j2>=0;j2--)
                 {
                     tran=ZStrXlate(&zcutf,ixlet[j2]);
-                    i=ZStrTuberRead(ix->index1,kkey1[j2+1],zstr2a);
+                    i=ZStrTuberRead(ix->_index1,kkey1[j2+1],zstr2a);
                     if(i==1)
                     {
           printf("Kkey not found - we're in trouble!\n");
@@ -415,12 +415,12 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
                     {
 
 /*       if not there, create a new index-1 entry for it  */
-                        bkey=ZStrTuberIns(ix->index1,kkey1[j2+1],tran);
-                        kkey1[j2]=ZStrTuberK(ix->index1,kkey1[j2+1],tran,bkey); 
+                        bkey=ZStrTuberIns(ix->_index1,kkey1[j2+1],tran);
+                        kkey1[j2]=ZStrTuberK(ix->_index1,kkey1[j2+1],tran,bkey); 
 /*     update old index-1 entry to insert new letter  */
                         ZStrCxClear(&zcdelt, &ctx2a);
                         ZStrCxClear(&zcdelt, &ctx2b);
-                        i=ZStrTuberRead(ix->index1,kkey1[j2+1],zstr2a);
+                        i=ZStrTuberRead(ix->_index1,kkey1[j2+1],zstr2a);
                         ZStrClear(zstr2b);
                         newlet=0;
                         while(1)
@@ -452,11 +452,11 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
                             ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
                         }
                         ZStrNormalize(zstr2b);
-                        ZStrTuberUpdate(ix->index1,kkey1[j2+1],zstr2b);
+                        ZStrTuberUpdate(ix->_index1,kkey1[j2+1],zstr2b);
                     }
                     else
                     {
-                        kkey1[j2]=ZStrTuberK(ix->index1,kkey1[j2+1],tran,bkey);
+                        kkey1[j2]=ZStrTuberK(ix->_index1,kkey1[j2+1],tran,bkey);
                     }
                 }
             }
@@ -479,22 +479,290 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_document_id_t i;
 
   ix = (FTS_real_index*) ftx;
-  for (i = 1; i <= ix->lastslot; i++) {
-    if (ix->handsfree[i] == 1) {
+  for (i = 1; i <= ix->_lastslot; i++) {
+    if (ix->_handsfree[i] == 1) {
       continue;
     }
 
-    if (ix->handles[i] == docid) {
+    if (ix->_handles[i] == docid) {
       break;
     }
   }
 
-  if (i > ix->lastslot) {
+  if (i > ix->_lastslot) {
     /* TBD - what to do if a document is deleted that isn't there?  */
     printf("tried to delete nonexistent document\n");
   }
 
-  ix->handsfree[i] = 1;
+  ix->_handsfree[i] = 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TODO
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
+  ZSTR* zstr;
+  CTX ctx;
+  uint64_t* wd;
+  uint64_t tran, newlet, oldlet, bkey, kk1;
+  int j;
+
+  zstr = ZStrCons(10);
+  wd = word;
+
+  while (*wd != 0) {
+    wd++;
+  }
+  kk1 = ZStrTuberK(ix->_index2, 0, 0, 0);
+
+  while(1) {
+    if (wd == word) {
+      break;
+    }
+
+    tran = *(--wd);
+/*     Get the Z-string for the index-1 entry of this key */
+    j = ZStrTuberRead(ix->_index1, kk1, zstr);
+    if (j == 1) {
+      kk1 = NOTFOUND;
+      break;
+    }
+
+    ZStrCxClear(&zcdelt, &ctx);
+    newlet = 0;
+    while (1) {
+      oldlet = newlet;
+      newlet = ZStrCxDec(zstr, &zcdelt, &ctx);
+      if (newlet == oldlet) {
+        kk1 = NOTFOUND;
+        break;
+      }
+
+      bkey = ZStrDec(zstr, &zcbky);
+      if (newlet > tran) {
+        kk1 = NOTFOUND;
+        break;
+      }
+      if (newlet == tran) {
+        break;
+      }
+    }
+    if (kk1 == NOTFOUND) {
+      break;
+    }
+
+    kk1 = ZStrTuberK(ix->_index1, kk1, tran, bkey);
+  }
+
+  ZStrDest(zstr);
+  return kk1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TODO
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
+  ZSTR* zstr;
+  CTX ctx;
+  uint64_t kk2;
+  int j;
+
+  zstr = ZStrCons(10);
+  kk2 = ZStrTuberK(ix->_index2, 0, 0, 0);
+
+  while (1) {
+    uint64_t tran;
+    uint64_t x64;
+    uint64_t newlet;
+    uint64_t bkey;
+
+    tran = *(word++);
+    if (tran==0) {
+      break;
+    }
+/*     Get the Z-string for the index-2 entry of this key */
+    j = ZStrTuberRead(ix->_index2, kk2, zstr);
+    if (j == 1) {
+      kk2=NOTFOUND;
+      break;
+    }
+
+    x64=ZStrBitsOut(zstr, 1);
+    if (x64 == 1) {
+      uint64_t docb;
+
+/*     skip over the B-key into index 3  */
+      docb = ZStrDec(zstr, &zcbky);
+/* silly use of docb to get rid of compiler warning  */
+      if (docb == 0xffffff) {
+        printf("impossible\n");
+      }
+    }
+    ZStrCxClear(&zcdelt, &ctx);
+    
+    newlet = 0;
+    while (1) {
+      uint64_t oldlet;
+
+      oldlet = newlet;
+      newlet = ZStrCxDec(zstr, &zcdelt, &ctx);
+      if (newlet == oldlet) {
+        kk2 = NOTFOUND;
+        break;
+      }
+
+      bkey = ZStrDec(zstr, &zcbky);
+      if (newlet > tran) {
+        kk2 = NOTFOUND;
+        break;
+      }
+      if (newlet == tran) {
+        break;
+      }
+    }
+
+    if (kk2 == NOTFOUND) {
+      break;
+    }
+
+    kk2 = ZStrTuberK(ix->_index2, kk2, tran, bkey);
+  }
+
+  ZStrDest(zstr);
+  return kk2;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TODO
+/// for each query term, update zstra2 to only contain handles matching that
+/// also recursive index 2 handles kk2 to dochan STEX using zcdh 
+////////////////////////////////////////////////////////////////////////////////
+
+static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
+  ZSTR* zstr2;
+  ZSTR* zstr3;
+  ZSTR* zstr;
+  CTX ctx2, ctx3;
+  uint64_t newlet;
+  uint64_t x64; 
+  int j;
+
+  zstr2 = ZStrCons(10);  /* index 2 entry for this prefix */
+  zstr3 = ZStrCons(10);  /* index 3 entry for this prefix */
+                               /* if any  */
+  zstr = ZStrCons(2);  /* single doc handle work area */
+
+  j = ZStrTuberRead(ix->_index2, kk2, zstr2);
+  if (j == 1) {
+    // TODO: change to return code
+    printf("recursion failed to read kk2\n");
+    exit(1);
+  }
+
+  x64 = ZStrBitsOut(zstr2, 1);
+  if (x64 == 1) {
+/* process the documents into the STEX  */
+/* uses zcdh not LastEnc because it must sort into */
+/* numerical order                                 */
+    uint64_t docb;
+    uint64_t dock;
+    uint64_t newhan;
+    int i;
+
+    docb = ZStrDec(zstr2, &zcbky);
+    dock = ZStrTuberK(ix->_index3, kk2, 0, docb);
+    i = ZStrTuberRead(ix->_index3, dock, zstr3);
+    if (i == 1) {
+      printf("Kkey not in ix3 - we're doomed\n");
+    }
+    ZStrCxClear(&zcdoc, &ctx3);
+
+    newhan = 0;
+    while (1) {
+      uint64_t oldhan;
+
+      oldhan = newhan;
+      newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
+      if (newhan == oldhan) {
+        break;
+      }
+
+      if (ix->_handsfree[newhan] == 0) {
+        ZStrClear(zstr);
+        ZStrEnc(zstr, &zcdh, newhan);
+        ZStrSTAppend(dochan, zstr);
+      }
+    }
+  }
+  ZStrCxClear(&zcdelt, &ctx2);
+
+  newlet = 0;
+  while (1) {
+    uint64_t oldlet;
+    uint64_t newkk2;
+    uint64_t bkey;
+
+    oldlet = newlet;
+    newlet = ZStrCxDec(zstr2, &zcdelt, &ctx2);
+    if (newlet == oldlet) {
+      break;
+    }
+    bkey = ZStrDec(zstr2, &zcbky);
+    newkk2 = ZStrTuberK(ix->_index2, kk2, newlet, bkey);
+    Ix2Recurs(dochan, ix, newkk2);
+  }
+
+  ZStrDest(zstr2);
+  ZStrDest(zstr3);
+  ZStrDest(zstr);    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TODO
+////////////////////////////////////////////////////////////////////////////////
+
+static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t* wd) {
+  ZSTR* zstr;
+  CTX ctx;
+  int j;
+  uint64_t newlet, kk2;
+
+  kk2 = FindKKey2(ix,wd);
+
+  if (kk2 != NOTFOUND) {
+    Ix2Recurs(dochan,ix,kk2);
+  }
+
+  zstr = ZStrCons(10);  /* index 1 entry for this prefix */
+  j = ZStrTuberRead(ix->_index1, kk1, zstr);
+  if (j == 1) {
+    printf("recursion failed to read kk1\n");
+    // TODO: change to error code
+    exit(1);
+  }
+
+  ZStrCxClear(&zcdelt, &ctx);
+  newlet = 0;
+
+  while (1) {
+    uint64_t oldlet;
+    uint64_t bkey;
+    uint64_t newkk1;
+
+    oldlet = newlet;
+    newlet = ZStrCxDec(zstr, &zcdelt, &ctx);
+    if (newlet == oldlet) {
+      break;
+    }
+    bkey = ZStrDec(zstr, &zcbky);
+    newkk1 = ZStrTuberK(ix->_index1, kk1, newlet, bkey);
+    *(wd - 1) = newlet;
+    Ix1Recurs(dochan, ix, newkk1, wd - 1);
+  }
+
+  ZStrDest(zstr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,49 +800,48 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
     return NULL;
   }
 
-  ix->handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(FTS_document_id_t), false);
-  if (ix->handles == NULL) {
+  ix->_handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(FTS_document_id_t), false);
+  if (ix->_handles == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
     return NULL;
   }
 
-  ix->handsfree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
-  if (ix->handsfree == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
+  ix->_handsfree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
+  if (ix->_handsfree == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
     return NULL;
   }
   
-  ix->colid = coll;
-
+  ix->_colid = coll;
   ix->_context = context;
   ix->getTexts = getTexts;
 
 /* set up free chain of document handles  */
   for (i = 1; i < sizes[0]; i++) {
-    ix->handles[i]   = i+1;
-    ix->handsfree[i] = 1;
+    ix->_handles[i]   = i+1;
+    ix->_handsfree[i] = 1;
   }
 
-  ix->handles[sizes[0]] = 0;  /* end of free chain  */
-  ix->handsfree[sizes[0]] = 1;
-  ix->firstfree = 1;
-  ix->lastslot = sizes[0];
+  ix->_handles[sizes[0]] = 0;  /* end of free chain  */
+  ix->_handsfree[sizes[0]] = 1;
+  ix->_firstfree = 1;
+  ix->_lastslot = sizes[0];
 
 /*     create index 2 */
-  ix->index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
-  bk = ZStrTuberIns(ix->index2, 0, 0);
+  ix->_index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
+  bk = ZStrTuberIns(ix->_index2, 0, 0);
   if (bk != 0) {
     printf("Help - Can't insert root of index 2\n");
   }
 
 /*     create index 3 */
-  ix->index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
+  ix->_index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
   ix->_options = options;
 /*     create index 1 if needed */
   if (ix->_options == FTS_INDEX_SUBSTRINGS) {
-    ix->index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
-    bk = ZStrTuberIns(ix->index1,0,0);
+    ix->_index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
+    bk = ZStrTuberIns(ix->_index1,0,0);
     if (bk != 0) {
       printf("Help - Can't insert root of index 1\n");
     }
@@ -597,14 +864,14 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
   TRI_DestroyReadWriteLock(&ix->_lock);
 
   if (ix->_options == FTS_INDEX_SUBSTRINGS) {
-    ZStrTuberDest(ix->index1);
+    ZStrTuberDest(ix->_index1);
   }
 
-  ZStrTuberDest(ix->index2);
-  ZStrTuberDest(ix->index3);
+  ZStrTuberDest(ix->_index2);
+  ZStrTuberDest(ix->_index3);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handsfree);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handsfree);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
   
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
 }
@@ -654,207 +921,6 @@ void FTS_BackgroundTask(FTS_index_t* ftx) {
   /* obtain LOCKMAIN */
   /* remove deleted handles from index3 not done QQQ  */
   /* release LOCKMAIN */
-}
-
-uint64_t findkkey1(FTS_real_index * ix, uint64_t * word)
-{
-    ZSTR *zstr;
-    CTX ctx;
-    uint64_t * wd;
-    uint64_t tran,newlet,oldlet,bkey,kk1;
-    int j;
-    zstr = ZStrCons(10);
-    wd=word;
-    while(*wd != 0) wd++;
-    kk1=ZStrTuberK(ix->index2,0,0,0);
-    while(1)
-    {
-        if(wd==word) break;
-        tran=*(--wd);
-/*     Get the Z-string for the index-1 entry of this key */
-        j=ZStrTuberRead(ix->index1,kk1,zstr);
-        if(j==1)
-        {
-            kk1=NOTFOUND;
-            break;
-        }
-        ZStrCxClear(&zcdelt, &ctx);
-        newlet=0;
-        while(1)
-        {
-            oldlet=newlet;
-            newlet=ZStrCxDec(zstr,&zcdelt,&ctx);
-            if(newlet==oldlet)
-            {
-                kk1=NOTFOUND;
-                break;
-            }
-            bkey=ZStrDec(zstr,&zcbky);
-            if(newlet>tran)
-            {
-                kk1=NOTFOUND;
-                break;
-            }
-            if(newlet==tran) break;
-        }
-        if(kk1==NOTFOUND) break;
-        kk1=ZStrTuberK(ix->index1,kk1,tran,bkey);
-    }
-    ZStrDest(zstr);
-    return kk1;
-}
-
-uint64_t findkkey2(FTS_real_index * ix, uint64_t * word)
-{
-    ZSTR *zstr;
-    CTX ctx;
-    uint64_t tran,x64,docb,newlet,oldlet,bkey,kk2;
-    int j;
-    zstr = ZStrCons(10);
-    kk2=ZStrTuberK(ix->index2,0,0,0);
-    while(1)
-    {
-        tran=*(word++);
-        if(tran==0) break;
-/*     Get the Z-string for the index-2 entry of this key */
-        j=ZStrTuberRead(ix->index2,kk2,zstr);
-        if(j==1)
-        {
-            kk2=NOTFOUND;
-            break;
-        }
-        x64=ZStrBitsOut(zstr,1);
-        if(x64==1) 
-        {
-/*     skip over the B-key into index 3  */
-            docb=ZStrDec(zstr,&zcbky);
-/* silly use of docb to get rid of compiler warning  */
-            if(docb==0xffffff) printf("impossible\n");
-        }
-        ZStrCxClear(&zcdelt, &ctx);
-        newlet=0;
-        while(1)
-        {
-            oldlet=newlet;
-            newlet=ZStrCxDec(zstr,&zcdelt,&ctx);
-            if(newlet==oldlet)
-            {
-                kk2=NOTFOUND;
-                break;
-            }
-            bkey=ZStrDec(zstr,&zcbky);
-            if(newlet>tran)
-            {
-                kk2=NOTFOUND;
-                break;
-            }
-            if(newlet==tran) break;
-        }
-        if(kk2==NOTFOUND) break;
-        kk2=ZStrTuberK(ix->index2,kk2,tran,bkey);
-    }
-    ZStrDest(zstr);
-    return kk2;
-}
-/*  QUERY  */
-/* for each query term  */
-/*  update zstra2 to only contain handles matching that also */
-
-
-/* recursive index 2 handles kk2 to dochan STEX using zcdh */
-
-void ix2recurs(STEX * dochan, FTS_real_index * ix, uint64_t kk2)
-{
-    ZSTR *zstr2, *zstr3, *zstr;
-    CTX ctx2, ctx3;
-    uint64_t docb,newlet,oldlet,newkk2,bkey;
-    uint64_t x64, dock, oldhan,newhan; 
-    int i,j;
-    zstr2=ZStrCons(10);  /* index 2 entry for this prefix */
-    zstr3=ZStrCons(10);  /* index 3 entry for this prefix */
-                               /* if any  */
-    zstr = ZStrCons(2);  /* single doc handle work area */
-    j=ZStrTuberRead(ix->index2,kk2,zstr2);
-    if(j==1)
-    {
-        printf("recursion failed to read kk2\n");
-        exit(1);
-    }
-    x64=ZStrBitsOut(zstr2,1);
-    if(x64==1) 
-    {
-/* process the documents into the STEX  */
-/* uses zcdh not LastEnc because it must sort into */
-/* numerical order                                 */
-        docb=ZStrDec(zstr2,&zcbky);
-        dock=ZStrTuberK(ix->index3,kk2,0,docb);
-        i=ZStrTuberRead(ix->index3,dock,zstr3);
-        if(i==1)
-        {
-            printf("Kkey not in ix3 - we're doomed\n");
-        }
-        ZStrCxClear(&zcdoc, &ctx3);
-        newhan=0;
-        while(1)
-        {
-            oldhan=newhan;
-            newhan=ZStrCxDec(zstr3,&zcdoc,&ctx3);
-            if(newhan==oldhan) break;
-            if(ix->handsfree[newhan]==0)
-            {
-                ZStrClear(zstr);
-                ZStrEnc(zstr,&zcdh,newhan);
-                ZStrSTAppend(dochan,zstr);
-            }
-        }
-    }
-    ZStrCxClear(&zcdelt, &ctx2);
-    newlet=0;
-    while(1)
-    {
-        oldlet=newlet;
-        newlet=ZStrCxDec(zstr2,&zcdelt,&ctx2);
-        if(newlet==oldlet) break;
-        bkey=ZStrDec(zstr2,&zcbky);
-        newkk2=ZStrTuberK(ix->index2,kk2,newlet,bkey);
-        ix2recurs(dochan,ix,newkk2);
-    }
-    ZStrDest(zstr2);
-    ZStrDest(zstr3);
-    ZStrDest(zstr);    
-    return;
-}
-
-void ix1recurs(STEX * dochan, FTS_real_index * ix, uint64_t kk1, uint64_t * wd)
-{
-
-    ZSTR *zstr;
-    CTX ctx;
-    int j;
-    uint64_t newlet,oldlet,bkey,newkk1,kk2;
-    kk2=findkkey2(ix,wd);
-    if(kk2!=NOTFOUND) ix2recurs(dochan,ix,kk2);
-    zstr=ZStrCons(10);  /* index 1 entry for this prefix */
-    j=ZStrTuberRead(ix->index1,kk1,zstr);
-    if(j==1)
-    {
-        printf("recursion failed to read kk1\n");
-        exit(1);
-    }
-    ZStrCxClear(&zcdelt, &ctx);
-    newlet=0;
-    while(1)
-    {
-        oldlet=newlet;
-        newlet=ZStrCxDec(zstr,&zcdelt,&ctx);
-        if(newlet==oldlet) break;
-        bkey=ZStrDec(zstr,&zcbky);
-        newkk1=ZStrTuberK(ix->index1,kk1,newlet,bkey);
-        *(wd-1)=newlet;
-        ix1recurs(dochan,ix,newkk1,wd-1);
-    }
-    ZStrDest(zstr);
-    return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -919,14 +985,14 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                 word1[j++]=ZStrXlate(&zcutf,unicode);
                 if(unicode==0) break;
             }
-            kk2=findkkey2(ix,word1);
+            kk2=FindKKey2(ix,word1);
             if(kk2==NOTFOUND) break;
-            j=ZStrTuberRead(ix->index2,kk2,zstr2);
+            j=ZStrTuberRead(ix->_index2,kk2,zstr2);
             x64=ZStrBitsOut(zstr2,1);
             if(x64!=1) break;
             docb=ZStrDec(zstr2,&zcbky);
-            dock=ZStrTuberK(ix->index3,kk2,0,docb);
-            i=ZStrTuberRead(ix->index3,dock,zstr3);
+            dock=ZStrTuberK(ix->_index3,kk2,0,docb);
+            i=ZStrTuberRead(ix->_index3,dock,zstr3);
             if(i==1)
             {
                 printf("Kkey not in ix3 - we're terrified\n");
@@ -944,7 +1010,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                     oldhan=newhan;
                     newhan=ZStrCxDec(zstr3,&zcdoc,&ctx3);
                     if(newhan==oldhan) break;
-                    if(ix->handsfree[newhan]==0)
+                    if(ix->_handsfree[newhan]==0)
                     {
                         ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
                         lasthan=newhan;
@@ -967,7 +1033,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                     if(oldhan==newhan) break;
                     if(newhan==nhand1)
                     {
-                        if(ix->handsfree[newhan]==0)
+                        if(ix->_handsfree[newhan]==0)
                         {
                             ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
                             lasthan=newhan;
@@ -1012,17 +1078,17 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             }
             if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX)
             {
-                kk2=findkkey2(ix,word1+50);
+                kk2=FindKKey2(ix,word1+50);
                 if(kk2==NOTFOUND) break;
 /*  call routine to recursively put handles to STEX  */
-                ix2recurs(dochan,ix,kk2);
+                Ix2Recurs(dochan,ix,kk2);
             }
             if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)
             {
-                kk1=findkkey1(ix,word1+50);
+                kk1=FindKKey1(ix,word1+50);
                 if(kk1==NOTFOUND) break;
 /*  call routine to recursively put handles to STEX  */
-                ix1recurs(dochan,ix,kk1,word1+50);
+                Ix1Recurs(dochan,ix,kk1,word1+50);
             }
             ZStrSTSort(dochan);
             odocs=dochan->cnt;
@@ -1038,7 +1104,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                     ZStrInsert(zstr,docpt,2);
                     newhan=ZStrDec(zstr,&zcdh);
                     docpt+=ZStrExtLen(docpt,2);
-                    if(ix->handsfree[newhan]==0)
+                    if(ix->_handsfree[newhan]==0)
                     {
                         ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
                         lasthan=newhan;
@@ -1063,7 +1129,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                     if(nhand1==ohand1) break;
                     if(newhan==nhand1)
                     {
-                        if(ix->handsfree[newhan]==0)
+                        if(ix->_handsfree[newhan]==0)
                         {
                             ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
                             lasthan=newhan;
@@ -1116,8 +1182,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         oldhan=newhan;
         newhan=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
         if(newhan==oldhan) break;
-        if(ix->handsfree[newhan]==0)
-            dc->_docs[ndocs++]=ix->handles[newhan];
+        if(ix->_handsfree[newhan]==0)
+            dc->_docs[ndocs++]=ix->_handles[newhan];
     }
     
     TRI_ReadUnlockReadWriteLock(&ix->_lock);
@@ -1163,7 +1229,7 @@ void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
     ZStrCxClear(&zcdelt,&dctx);
     ZStrCxClear(&zcdoc,&x3ctx);
     for(i=1;i<lev;i++) printf(" %c",xxlet[i]);
-    i=ZStrTuberRead(ix->index2,kkey,zstr);
+    i=ZStrTuberRead(ix->_index2,kkey,zstr);
     temp=kkey;
     if(i!=0)
     {
@@ -1182,7 +1248,7 @@ void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
         docb=ZStrCxDec(zstr,&zcbky,&ctx);
         temp=docb;
         printf(" doc-b = %d",temp);
-        dock=ZStrTuberK(ix->index3,kkey,0,docb);
+        dock=ZStrTuberK(ix->_index3,kkey,0,docb);
         temp=dock;
         printf(" doc-k = %d",temp);
     }
@@ -1206,7 +1272,7 @@ void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
     if(md==1)
     {
         printf("\n --- Docs ---");
-        i=ZStrTuberRead(ix->index3,dock,x3zstr);
+        i=ZStrTuberRead(ix->_index3,dock,x3zstr);
         oldhan=0;
         while(1)
         {
@@ -1214,13 +1280,13 @@ void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
             if(han==oldhan) break;
             temp=han;
             printf("h= %d ",temp);
-            temp=ix->handles[han];
+            temp=ix->_handles[han];
             printf("id= %d; ",temp);
             oldhan=han;
         }
     }
     printf("\n");
-    i=ZStrTuberRead(ix->index2,kkey,zstr);
+    i=ZStrTuberRead(ix->_index2,kkey,zstr);
     x64=ZStrBitsOut(zstr,1);
     if(x64==1)
         bkey=ZStrCxDec(zstr,&zcbky,&ctx);
@@ -1231,7 +1297,7 @@ void index2dump(FTS_real_index * ix, uint64_t kkey, int lev)
         newlet=ZStrCxDec(zstr,&zcdelt,&dctx);
         if(newlet==oldlet) return;
         bkey=ZStrCxDec(zstr,&zcbky,&ctx);
-        newkkey=ZStrTuberK(ix->index2,kkey,newlet,bkey);
+        newkkey=ZStrTuberK(ix->_index2,kkey,newlet,bkey);
         xxlet[lev]=ZStrUnXl(&zcutf,newlet);
         index2dump(ix,newkkey,lev+1);
         oldlet=newlet;
@@ -1246,16 +1312,16 @@ void indexd(FTS_index_t * ftx)
 int temp;
     ix = (FTS_real_index *)ftx;
     printf("\n\nDump of Index\n");
-temp=ix->firstfree;
+temp=ix->_firstfree;
     printf("Free-chain starts at handle %d\n",temp);
     printf("======= First ten handles======\n");
     for(i=1;i<11;i++)
     {
-temp=ix->handles[i];
+temp=ix->_handles[i];
         printf("Handle %d is docid %d\n", i,temp);
     }
     printf("======= Index 2 ===============\n");
-    kroot=ZStrTuberK(ix->index2,0,0,0);
+    kroot=ZStrTuberK(ix->_index2,0,0,0);
     index2dump(ix,kroot,1);
 }
 #endif
