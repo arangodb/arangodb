@@ -457,7 +457,7 @@ Command-Line Options {#FirstStepsShellStartStopOptions}
 
 Use `--help` to get a list of command-line options:
 
-    > ./arangosh --help
+    unix> ./arangosh --help
     STANDARD options:
       --help                                     help message
       --javascript.modules-path <string>         one or more directories separated by cola (default: "...")
