@@ -187,10 +187,7 @@
       result.status = collection.status();
       result.type = collection.type();
       result.createOptions = collection.createOptions;
-
-      headers.location = "/" + API + "/" + encodeURIComponent(collection.name());
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     catch (err) {
       actions.resultException(req, res, err);
@@ -239,7 +236,7 @@
 ///
 /// @RESTHEADER{GET /_api/collection,reads a collection}
 ///
-/// @REST{GET /_api/collection/@FA{collection-identifier}}
+/// @REST{GET /_api/collection/@FA{collection-name}}
 //////////////////////////////////////////////////////////
 ///
 /// The result is an objects describing the collection with the following
@@ -262,14 +259,10 @@
 ///   - 2: document collection (normal case)
 ///   - 3: edges collection
 ///
-/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// If the @FA{collection-name} is unknown, then a @LIT{HTTP 404} is
 /// returned.
 ///
-/// It is possible to specify a name instead of an identifier.  In this case the
-/// response will contain a field "Location" which contains the correct
-/// location.
-///
-/// @REST{GET /_api/collection/@FA{collection-identifier}/properties}
+/// @REST{GET /_api/collection/@FA{collection-name}/properties}
 ////////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result will always contain the
@@ -281,7 +274,7 @@
 ///
 /// - @LIT{journalSize}: The maximal size of a journal / datafile.
 ///
-/// @REST{GET /_api/collection/@FA{collection-identifier}/count}
+/// @REST{GET /_api/collection/@FA{collection-name}/count}
 ////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result also contains the number of documents.
@@ -289,7 +282,7 @@
 ///
 /// - @LIT{count}: The number of documents inside the collection.
 ///
-/// @REST{GET /_api/collection/@FA{collection-identifier}/figures}
+/// @REST{GET /_api/collection/@FA{collection-name}/figures}
 //////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result also contains the number of documents
@@ -351,7 +344,7 @@
     }
     
     // .............................................................................
-    // /_api/collection/<identifier>
+    // /_api/collection/<name>
     // /_api/collection/<identifier>?useId
     // .............................................................................
 
@@ -373,14 +366,12 @@
       
 
     // .............................................................................
-    // /_api/collection/<identifier>
+    // /_api/collection/<name>
     // .............................................................................
 
     if (req.suffix.length === 1) {
       var result = CollectionRepresentation(collection, false, false, false);
-      var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) };
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
 
     else if (req.suffix.length === 2) {
@@ -392,9 +383,7 @@
 
       if (sub === "figures") {
         var result = CollectionRepresentation(collection, true, true, true);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/figures" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       // .............................................................................
@@ -403,9 +392,7 @@
 
       else if (sub === "count") {
         var result = CollectionRepresentation(collection, true, true, false);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/count" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       // .............................................................................
@@ -414,9 +401,7 @@
 
       else if (sub === "properties") {
         var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/properties" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       // .............................................................................
@@ -425,9 +410,7 @@
 
       else if (sub === "parameter") {
         var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + encodeURIComponent(collection.name()) + "/parameter" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+        actions.resultOk(req, res, actions.HTTP_OK, result);
       }
 
       else {
@@ -436,7 +419,7 @@
     }
     else {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expect GET /" + API + "/<collection-identifier>/<method>");
+                        "expect GET /" + API + "/<collection-name>/<method>");
     }
   }
 
@@ -445,7 +428,7 @@
 ///
 /// @RESTHEADER{PUT /_api/collection/.../load,loads a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-identifier}/load}
+/// @REST{PUT /_api/collection/@FA{collection-name}/load}
 ///
 /// Loads a collection into memory.  On success an object with the following
 ///
@@ -457,11 +440,9 @@
 ///
 /// - @LIT{status}: The status of the collection as number.
 ///
-/// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
+/// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
+/// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
 /// 404} is returned.
-///
-/// It is possible to specify a name instead of an identifier.
 ///
 /// @EXAMPLES
 ///
@@ -486,7 +467,7 @@
 ///
 /// @RESTHEADER{PUT /_api/collection/.../unload,unloads a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-identifier}/unload}
+/// @REST{PUT /_api/collection/@FA{collection-name}/unload}
 ///
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
@@ -498,8 +479,8 @@
 ///
 /// - @LIT{status}: The status of the collection as number.
 ///
-/// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
+/// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
+/// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
 /// 404} is returned.
 ///
 /// @EXAMPLES
@@ -525,7 +506,7 @@
 ///
 /// @RESTHEADER{PUT /_api/collection/.../truncate,truncates a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-identifier}/truncate}
+/// @REST{PUT /_api/collection/@FA{collection-name}/truncate}
 ///
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
@@ -552,13 +533,16 @@
 ///
 /// @RESTHEADER{PUT /_api/collection/.../properties,changes the properties of a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-identifier}/properties}
+/// @REST{PUT /_api/collection/@FA{collection-name}/properties}
 ///
 /// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
 ///
 /// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
+///
+/// - @LIT{journalSize}: Size (in bytes) for new journal files that are
+///   created for the collection.
 ///
 /// If returns an object with the attributes
 ///
@@ -567,6 +551,8 @@
 /// - @LIT{name}: The name of the collection.
 ///
 /// - @LIT{waitForSync}: The new value.
+///
+/// - @LIT{journalSize}: The new value.
 ///
 /// @EXAMPLES
 ///
@@ -597,7 +583,7 @@
 ///
 /// @RESTHEADER{PUT /_api/collection/.../rename,renames a collection}
 ///
-/// @REST{PUT /_api/collection/@FA{collection-identifier}/rename}
+/// @REST{PUT /_api/collection/@FA{collection-name}/rename}
 ///
 /// Renames a collection. Expects an object with the attribute(s)
 ///
@@ -648,7 +634,7 @@
   function PUT_api_collection (req, res) {
     if (req.suffix.length != 2) {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expected PUT /" + API + "/<collection-identifier>/<action>");
+                        "expected PUT /" + API + "/<collection-name>/<action>");
       return;
     }
 
@@ -687,9 +673,9 @@
 ///
 /// @RESTHEADER{DELETE /_api/collection,deletes a collection}
 ///
-/// @REST{DELETE /_api/collection/@FA{collection-identifier}}
+/// @REST{DELETE /_api/collection/@FA{collection-name}}
 ///
-/// Deletes a collection identified by @FA{collection-identified}.
+/// Deletes a collection identified by @FA{collection-name}.
 ///
 /// If the collection was successfully deleted then, an object is returned with
 /// the following attributes:
@@ -698,11 +684,9 @@
 ///
 /// - @LIT{id}: The identifier of the deleted collection.
 ///
-/// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
-/// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
+/// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
+/// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
 /// 404} is returned.
-///
-/// It is possible to specify a name instead of an identifier. 
 ///
 /// @EXAMPLES
 ///
@@ -718,7 +702,7 @@
   function DELETE_api_collection (req, res) {
     if (req.suffix.length != 1) {
       actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expected DELETE /" + API + "/<collection-identifier>");
+                        "expected DELETE /" + API + "/<collection-name>");
     }
     else {
       var name = decodeURIComponent(req.suffix[0]);

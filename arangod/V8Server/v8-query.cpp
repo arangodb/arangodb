@@ -30,6 +30,7 @@
 #include "v8-query.h"
 
 #include "BasicsC/logging.h"
+#include "FulltextIndex/FTS_index.h"
 #include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utilities/ResourceHolder.h"
@@ -40,6 +41,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/fulltext-query.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -2131,6 +2133,187 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build the fulltext search query options from a query string 
+////////////////////////////////////////////////////////////////////////////////
+  
+static FTS_query_t* BuildQueryFulltext (const string& queryString) {
+  vector<string> words = StringUtils::split(queryString, ',');
+
+  if (words.size() == 0) {
+    return 0;
+  }
+
+  FTS_query_t* query = (FTS_query_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_query_t), false);
+  if (query == 0) {
+    return 0;
+  }
+
+  // init
+  query->_len = 0;
+  query->_localOptions = 0;
+  query->_texts = 0;
+
+  // allocate memory for search options
+  query->_localOptions = (uint64_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, words.size() * sizeof(uint64_t), false);
+  if (query->_localOptions == 0) {
+    TRI_FreeQueryFulltextIndex(query);
+    return 0;
+  }
+
+  // allocate memory for search texts
+  query->_texts = (uint8_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, words.size() * sizeof(uint8_t*), false);
+  if (query->_texts == 0) {
+    TRI_FreeQueryFulltextIndex(query);
+    return 0;
+  }
+
+  for (size_t i = 0; i < words.size(); ++i) {
+    StringUtils::trimInPlace(words[i], "\t\r\n\b\f ");
+
+    // default search option
+    query->_localOptions[i] = FTS_MATCH_COMPLETE;
+    query->_texts[i] = 0;
+
+    // check if there is a search instruction contained
+    vector<string> parts = StringUtils::split(words[i], ':');
+    if (parts.size() == 1) {
+      // no, just a single word
+      query->_texts[i] = (uint8_t*) TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, parts[0].c_str(), parts[0].size());
+      if (query->_texts[i] == 0) {
+        TRI_FreeQueryFulltextIndex(query);
+        return 0;
+      }
+    }
+    else {
+      // search mode : search term
+      string command = parts[0];
+      StringUtils::trimInPlace(command, "\t\r\n\b\f ");
+      StringUtils::tolowerInPlace(&command);
+      if (command == "prefix") {
+        query->_localOptions[i] = FTS_MATCH_PREFIX;
+      }
+      else if (command == "substring") {
+        query->_localOptions[i] = FTS_MATCH_SUBSTRING;
+      }
+      
+      string word = parts[1];
+      StringUtils::tolowerInPlace(&word);
+      query->_texts[i] = (uint8_t*) TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, parts[1].c_str(), parts[1].size());
+      if (query->_texts[i] == 0) {
+        TRI_FreeQueryFulltextIndex(query);
+        return 0; 
+      }
+    }
+
+    query->_len++;
+  }
+
+  return query;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief queries the fulltext index
+///
+/// the caller must ensure all relevant locks are acquired and freed
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
+                                            TRI_vocbase_col_t const* collection,
+                                            v8::Handle<v8::Object>* err,
+                                            v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // expect: FULLTEXT(<index-id>, <query>)
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                               "usage: FULLTEXT(<index-handle>, <query>)")));
+  }
+
+  // extract the index
+  TRI_index_t* idx = TRI_LookupIndexByHandle(document->base.base._vocbase, collection, argv[0], false, err);
+
+  if (idx == 0) {
+    return scope.Close(v8::ThrowException(*err));
+  }
+
+  if (idx->_type != TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index must be a fulltext index")));
+  }
+
+  const string queryString = TRI_ObjectToString(argv[1]);
+
+  FTS_query_t* query = BuildQueryFulltext(queryString);
+  if (! query) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "invalid value for <query>")));
+  }
+ 
+  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx; 
+  FTS_document_ids_t* queryResult = TRI_FindDocumentsFulltextIndex(fulltextIndex->_fulltextIndex, query);
+
+  TRI_FreeQueryFulltextIndex(query);
+
+  if (! queryResult) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "internal error in fulltext index query")));
+  }
+  
+  TRI_barrier_t* barrier = 0;
+  if (queryResult->_len > 0) {
+    barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
+  }
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  v8::Handle<v8::Array> documents = v8::Array::New();
+  result->Set(v8::String::New("documents"), documents);
+
+  for (uint32_t i = 0; i < queryResult->_len; ++i) {
+    documents->Set(i, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) queryResult->_docs[i], barrier));
+  }
+
+  TRI_FreeResultsFulltextIndex(queryResult);
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief queries the fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_document_collection_t* document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+  if (document == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+  
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+
+  TRI_primary_collection_t* primary = &document->base;
+
+  primary->beginRead(primary);
+  v8::Handle<v8::Value> result = FulltextQuery(document, collection, &err, argv);
+  primary->endRead(primary);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  TRI_ReleaseCollection(collection);
+
+  return scope.Close(result);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects points near a given coordinate
 ///
@@ -2386,6 +2569,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_HASH", JS_ByExampleHashIndex);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE_SKIPLIST", JS_ByExampleSkiplist);
   TRI_AddMethodVocbase(rt, "edges", JS_EdgesQuery);
+  TRI_AddMethodVocbase(rt, "FULLTEXT", JS_FulltextQuery);
   TRI_AddMethodVocbase(rt, "inEdges", JS_InEdgesQuery);
   TRI_AddMethodVocbase(rt, "NEAR", JS_NearQuery);
   TRI_AddMethodVocbase(rt, "outEdges", JS_OutEdgesQuery);

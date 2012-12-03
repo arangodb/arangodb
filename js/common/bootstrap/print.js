@@ -273,7 +273,7 @@
 
         if (internal.COLOR_OUTPUT) {
           internal.output(internal.COLOR_OUTPUT_DEFAULT,
-                          k,
+                          internal.quoteJsonString(k),
                           internal.COLOR_OUTPUT_RESET, 
                           " : ");
         }

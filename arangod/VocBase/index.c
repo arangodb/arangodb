@@ -83,6 +83,10 @@ void TRI_FreeIndex (TRI_index_t* const idx) {
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       TRI_FreeSkiplistIndex(idx);
       break;
+    
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      TRI_FreeFulltextIndex(idx);
+      break;
 
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       TRI_FreeCapConstraint(idx);
@@ -241,6 +245,9 @@ char const* TRI_TypeNameIndex (const TRI_index_t* const idx) {
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
+    
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+      return "fulltext";
 
     case TRI_IDX_TYPE_GEO1_INDEX:
       return "geo1";
@@ -276,12 +283,12 @@ bool TRI_NeedsFullCoverageIndex (const TRI_index_t* const idx) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return true;
     case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      return false;
       return false;
   }
 
@@ -978,7 +985,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     // longitude
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 1, &entry);
 
-    if (!ok || entry._sid != shaper->_sidNumber) {
+    if (! ok || entry._sid != shaper->_sidNumber) {
       return false;
     }
 
@@ -2934,7 +2941,7 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
     TRI_PushBackVectorString(&pqIndex->base._fields, copy);
   }
 
-  if (!unique) {
+  if (! unique) {
     pqIndex->_pqIndex = PQueueIndex_new();
   }
   else {
@@ -3585,7 +3592,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // ............................................................................
   skiplistIndex = (TRI_skiplist_index_t*) idx;
   if (idx == NULL) {
-    LOG_WARNING("internal error in RemoveHashIndex");
+    LOG_WARNING("internal error in RemoveSkiplistIndex");
     return TRI_ERROR_INTERNAL;
   }
 
@@ -3886,7 +3893,6 @@ static int UpdateSkiplistIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
   return res;
 }
   
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
@@ -3900,7 +3906,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
   size_t j;
 
   skiplistIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_index_t), false);
-  if (!skiplistIndex) {
+  if (! skiplistIndex) {
     return NULL;
   }
   
@@ -3979,7 +3985,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
     
-  
   return &skiplistIndex->base;
 }
 
@@ -4019,8 +4024,471 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    FULLTEXT INDEX
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback function called by the fulltext index to free the word list
+/// that was determined for a document (i.e. by GetDocumentFulltextIndex)
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeDocumentFulltextIndex (void* doc) {
+  // TODO: this function is currently not called
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add an identified word to the word vector 
+////////////////////////////////////////////////////////////////////////////////
+
+static bool AddWord (TRI_vector_string_t* const words,
+                     const char* const wordStart,
+                     const size_t wordLength,
+                     const bool containsUtf8) {
+  char* copy;
+  char* src;
+  char* end;
+  char* dst;
+          
+  copy = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (wordLength + 1) * sizeof(char), false);
+  if (copy == NULL) {
+    return false;
+  }
+
+  src = (char*) wordStart;
+  end = src + wordLength;
+  dst = copy;
+
+  for (; src < end; ++src, ++dst) {
+    char c = *src;
+
+    // lower case the text so it is normalised in the index
+    if (c >= 'A' && c <= 'Z') {
+      *dst = (char) (((unsigned char) c) + 32);
+    }
+    else {
+      *dst = c;
+    }
+  }
+
+  *dst = '\0';
+          
+  TRI_PushBackVectorString(words, copy);
+  // TODO: handle unicode lower-casing, unicode normalisation, exclusion of unicode punctuation
+          
+  LOG_TRACE("found word '%s'", copy);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a document string value into the individual words that should
+/// be indexed
+/// words returned are all lower cased
+///
+/// This function is very naive and currently does not handle lower-casing of 
+/// unicode characters, normalisation of unicode characters, and exclusion of
+/// unicode punctuation characters
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_vector_string_t* ParseWordsFulltextIndex (const char* const text, 
+                                                     const size_t textLength) {
+  TRI_vector_string_t* words;
+  char* ptr;
+  char* end;
+  char* wordStart;
+  bool containsUtf8;
+
+  words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
+  if (words == NULL) {
+    return NULL;
+  }
+
+  TRI_InitVectorString(words, TRI_UNKNOWN_MEM_ZONE);
+
+  ptr = (char*) text;
+  end = ptr + textLength;
+  wordStart = NULL;
+  containsUtf8 = false;
+
+  while (ptr < end) {
+    char c = *ptr;
+
+    if ((c >= 'A' && c <= 'Z') ||
+        (c >= 'a' && c <= 'z')) {
+      if (wordStart == NULL) {
+        wordStart = ptr;
+      }
+    }
+    else if ((unsigned char) c >= 128) {
+      // UTF-8
+      if (wordStart == NULL) {
+        wordStart = ptr;
+        containsUtf8 = true;
+      }
+    }
+    else {
+      if (wordStart != NULL) {
+        size_t wordLength = ptr - wordStart;
+
+        // check the length of the word
+        if (wordLength >= 2) {
+          if (! AddWord(words, wordStart, wordLength, containsUtf8)) {
+            TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+            return NULL;
+          }
+        }
+        wordStart = NULL;
+        containsUtf8 = false;
+      }
+    }
+
+    ++ptr;
+  }
+
+  // check if we have something left to index
+  if (wordStart != NULL) {
+    size_t wordLength = ptr - wordStart;
+
+    // check the length of the word
+    if (wordLength >= 2) {
+      if (! AddWord(words, wordStart, wordLength, containsUtf8)) {
+        TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+        return NULL;
+      }
+    }
+  }
+
+  if (words->_length == 0) {
+    // no words found
+    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+    return NULL;
+  }
+
+  return words;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback function called by the fulltext index to determine the
+/// words to index for a specific document
+////////////////////////////////////////////////////////////////////////////////
+  
+static FTS_texts_t* GetTextsFulltextIndex (FTS_collection_id_t collection, 
+                                           FTS_document_id_t document,
+                                           void* context) {
+  FTS_texts_t* result;
+  TRI_fulltext_index_t* fulltextIndex;
+  TRI_shaped_json_t shaped;
+  TRI_shaped_json_t json;
+  TRI_shape_t const* shape;
+  TRI_doc_mptr_t* doc;
+  char* text;
+  size_t textLength;
+  TRI_vector_string_t* words;
+  size_t i;
+  bool ok;
+  
+  LOG_TRACE("fulltext callback was called");
+
+  // unpack the context
+  fulltextIndex = (TRI_fulltext_index_t*) context;
+  doc = (TRI_doc_mptr_t*) ((intptr_t) document);
+
+  // extract the shape
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, doc->_data);
+  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->_shaper, &shaped, 0, fulltextIndex->_attribute, &json, &shape);
+
+  if (! ok || shape == NULL) {
+    return NULL;
+  }
+
+  // extract the string value for the indexed attribute
+  ok = TRI_StringValueShapedJson(shape, &json, &text, &textLength);
+  if (! ok) {
+    return NULL;
+  } 
+
+  // parse the document text
+  words = ParseWordsFulltextIndex(text, textLength);
+  if (words == NULL) {
+    return NULL;
+  }
+
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_texts_t), false);
+  if (result == NULL) {
+    if (words != NULL) {
+      TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+    }
+    return NULL;
+  }
+
+  for (i = 0; i < words->_length; ++i) {
+    char* word = words->_buffer[i];
+
+    LOG_DEBUG("indexing word '%s' for document %p", word, doc);
+  }
+
+  // register the word list in the result
+  result->_len = words->_length;
+  result->_texts = (uint8_t**) words->_buffer;
+
+  result->free = &FreeDocumentFulltextIndex;
+
+  // this really is a hack:
+  // make the word list vector think it's empty and free it
+  // this does not free the word list, that we have already over the result
+  words->_length = 0;
+  words->_buffer = NULL;
+  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+
+  return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a document into the fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;
+  
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in InsertFulltextIndex");
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+ 
+  // TODO: change FTS to return a status code
+  FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief describes a fulltext index as a json object
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t const* collection) {
+  TRI_json_t* json;
+  TRI_json_t* fields;
+  TRI_fulltext_index_t* fulltextIndex;
+  TRI_shape_path_t const* path;
+  char const* attributeName;
+   
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (fulltextIndex == NULL) {
+    return NULL;
+  }
+  
+  // convert location to string
+  path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, fulltextIndex->_attribute);
+  if (path == 0) {
+    return NULL;
+  }
+  
+  attributeName = ((char const*) path) + sizeof(TRI_shape_path_t) + (path->_aidLength * sizeof(TRI_shape_aid_t));
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (json == NULL) {
+    return NULL;
+  }
+
+  fields = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, attributeName));
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, idx->_iid));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, idx->_unique));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
+    
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a fulltext index from collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void RemoveIndexFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t* collection) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a document from a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;
+
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in RemovefulltextIndex");
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR; 
+  // TODO: change FTS to return a status code
+  FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static int UpdateFulltextIndex (TRI_index_t* idx, 
+                                const TRI_doc_mptr_t* newDoc, 
+                                const TRI_shaped_json_t* oldDoc) {
+                             
+  // TODO union { void* p; void const* c; } cnv;
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;  
+
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  if (idx == NULL) {
+    LOG_WARNING("internal error in UpdateFulltextIndex");
+    return TRI_ERROR_INTERNAL;
+  }
+
+  res = TRI_ERROR_NO_ERROR;
+  
+  // TODO: check how we can get the doc ptr from olddoc
+  // FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id) oldDoc);
+  // TODO: change FTS to return a status code
+  FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collection,
+                                      const char* attributeName,
+                                      const bool indexSubstrings) {
+  TRI_fulltext_index_t* fulltextIndex;
+  FTS_index_t* fts;
+  TRI_shaper_t* shaper;
+  char* copy;
+  TRI_shape_pid_t attribute;
+  uint64_t options;
+  // default sizes for index. TODO: adjust these
+  uint64_t sizes[10] = { 1000, 100000, 5700, 10000, 0, 0, 0, 0, 0, 0 }; 
+    
+  // look up the attribute
+  shaper = collection->_shaper;
+  attribute = shaper->findAttributePathByName(shaper, attributeName);
+
+  if (attribute == 0) {
+    return NULL;
+  }
+
+  options = 0;
+  if (indexSubstrings) {
+    options = FTS_INDEX_SUBSTRINGS;
+  } 
+                               
+  copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, attributeName);
+  if (copy == NULL) {
+    return NULL;
+  }
+
+  fulltextIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_index_t), false);
+  if (! fulltextIndex) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+    return NULL;
+  }
+  
+  fts = FTS_CreateIndex(collection->base._info._cid, (void*) fulltextIndex, &GetTextsFulltextIndex, options, sizes);
+  if (fts == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);
+    return NULL;
+  }
+
+  fulltextIndex->base._iid = TRI_NewTickVocBase();
+  fulltextIndex->base._type = TRI_IDX_TYPE_FULLTEXT_INDEX;
+  fulltextIndex->base._collection = collection;
+  fulltextIndex->base._unique = false;
+
+  fulltextIndex->base.json = JsonFulltextIndex;
+  fulltextIndex->base.removeIndex = RemoveIndexFulltextIndex;
+
+  fulltextIndex->base.insert = InsertFulltextIndex;
+  fulltextIndex->base.remove = RemoveFulltextIndex;
+  fulltextIndex->base.update = UpdateFulltextIndex;
+ 
+  fulltextIndex->_fulltextIndex = fts;
+  fulltextIndex->_indexSubstrings = indexSubstrings;
+  fulltextIndex->_attribute = attribute;
+  
+  TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 
+
+  return &fulltextIndex->base;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
+  TRI_fulltext_index_t* fulltextIndex;
+
+  if (idx == NULL) {
+    return;
+  }
+      
+  TRI_DestroyVectorString(&idx->_fields);
+  
+  LOG_TRACE("destroying fulltext index");
+
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+
+  FTS_FreeIndex(fulltextIndex->_fulltextIndex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory allocated and frees the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeFulltextIndex (TRI_index_t* idx) {
+  if (idx == NULL) {
+    return;
+  } 
+   
+  TRI_DestroyFulltextIndex(idx);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    BITARRAY INDEX
@@ -4034,7 +4502,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
 
 // .............................................................................
 // Helper function for TRI_LookupBitarrayIndex
@@ -4336,7 +4803,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     // ..........................................................................
     
     if (result == TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) { 
-      if (!baIndex->_supportUndef) {
+      if (! baIndex->_supportUndef) {
         return TRI_ERROR_NO_ERROR;
       }  
 
@@ -4426,7 +4893,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
   // ..........................................................................  
   
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (!json) {
+  if (! json) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
     return NULL;
   }
@@ -4444,7 +4911,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t* idx, TRI_primary_collection_t
   // ..........................................................................  
   
   keyValues = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-  if (!keyValues) {
+  if (! keyValues) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fieldList);
     return NULL;
   }
@@ -4723,7 +5190,7 @@ static int UpdateBitarrayIndex (TRI_index_t* idx, const TRI_doc_mptr_t* newDoc,
     // ..........................................................................
     
     if (result == TRI_WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING) { 
-      if (!baIndex->_supportUndef) {
+      if (! baIndex->_supportUndef) {
         return TRI_ERROR_NO_ERROR;
       }  
       result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);

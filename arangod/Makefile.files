@@ -48,6 +48,9 @@ bin_arangod_SOURCES = \
 	arangod/BitIndexes/bitarray.c \
 	arangod/BitIndexes/bitarrayIndex.c \
 	arangod/GeoIndex/GeoIndex.c \
+	arangod/FulltextIndex/FTS_index.c \
+	arangod/FulltextIndex/zcode.c \
+	arangod/FulltextIndex/zstr.c \
 	arangod/HashIndex/hasharray.c \
 	arangod/HashIndex/hashindex.c \
 	arangod/IndexIterators/index-iterator.c \
@@ -78,6 +81,7 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
 	arangod/VocBase/edge-collection.c \
+	arangod/VocBase/fulltext-query.c \
 	arangod/VocBase/general-cursor.c \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \

@@ -2390,6 +2390,48 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string value encoded in a shaped json
+/// this will return the pointer to the string and the string length in the
+/// variables passed by reference
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_StringValueShapedJson (const TRI_shape_t* const shape,
+                                const TRI_shaped_json_t* const shapedJson, 
+                                char** value,
+                                size_t* length) {
+  if (shape->_type == TRI_SHAPE_SHORT_STRING) {
+    TRI_shape_length_short_string_t l;
+    char* data;
+   
+    data = shapedJson->_data.data;
+    l = * (TRI_shape_length_short_string_t const*) data;
+    data += sizeof(TRI_shape_length_short_string_t);
+    *length = l - 1;
+    *value = data;
+
+    return true;
+  }
+  else if (shape->_type == TRI_SHAPE_LONG_STRING) {
+    TRI_shape_length_long_string_t l;
+    char* data;
+
+    data = shapedJson->_data.data;
+    l = * (TRI_shape_length_long_string_t const*) data;
+    data += sizeof(TRI_shape_length_long_string_t);
+    *length = l - 1;
+    *value = data;
+
+    return true;
+  }
+ 
+  // no string type  
+  *value = NULL;
+  *length = 0;
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
