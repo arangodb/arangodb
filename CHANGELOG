@@ -50,11 +50,17 @@ v1.1.0 (XXXX-XX-XX)
 * WARNING:
   arangod now performs a database version check at startup. It will look for a file
   named "VERSION" in its database directory. If the file is not present, arangod will
-  refuse to start and ask the user to run arango-upgrade first. If the VERSION file
-  is present but is from an older version of ArangoDB, arangod will also refuse to
-  start and ask the user to run the upgrade script first. This procedure shall ensure
-  that users have full control over when they perform any updates/upgrades of their
-  data, and do not risk running an incompatible server/database state tandem.
+  perform an automatic upgrade of the database directory. This should be the normal
+  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
+
+  If the VERSION file is present but is from an older version of ArangoDB, arangod 
+  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
+  can be performed by starting arangod with the option `--upgrade`. 
+
+  This upgrade procedure shall ensure that users have full control over when they 
+  perform any updates/upgrades of their data, and can plan backups accordingly. The
+  procedure also guarantees that the server is not run without any required system
+  collections or with in incompatible data state.
 
 * fixed issue #284: fixed Javascript errors when adding edges/vertices without own
   attributes
@@ -123,7 +129,8 @@ v1.1.beta1 (2012-10-24)
 
 * issue #265: allow optional base64 encoding/decoding of action response data
 
-* issue #252: create _modules collection using arango-upgrade
+* issue #252: create _modules collection using arango-upgrade (note: arango-upgrade was
+  finally replaced by the `--upgrade` option for arangod)
 
 * issue #251: allow passing arbitrary options to V8 engine using new command line option:
   --javascript.v8-options. Using this option, the Harmony features or other settings in
@@ -202,7 +209,8 @@ v1.1.beta1 (2012-10-24)
 
 * issue #189: key store should use ISO datetime format bug 
 
-* issue #187: run arango-upgrade on server start 
+* issue #187: run arango-upgrade on server start (note: arango-upgrade was finally
+  replaced by the `--upgrade` option for arangod)n
 
 * fixed issue #183: strange unittest error
 
@@ -235,6 +243,7 @@ v1.1.beta1 (2012-10-24)
   and after upgrading from a previous version of ArangoDB. The arango-upgrade script
   will ensure all system collections are created and present in the correct state.
   It will also perform any necessary data updates.
+  Note: arango-upgrade was finally replaced by the `--upgrade` option for arangod.
 
 * issue #153: edge collection should be a flag for a collection
   collections now have a type so that the distinction between document and edge 
@@ -255,9 +264,9 @@ v1.1.beta1 (2012-10-24)
   INCOMPATIBLE CHANGE: Client code might still need to be changed in the following aspect:
   Previously, collections did not have a type so documents and edges could be inserted
   in the same collection. This is now disallowed. Edges can only be inserted into
-  edge collections now. As there were no collection types in 1.0, the upgrade script
-  arango-upgrade must be run when migrating to 1.1. This script will check every 
-  collection and determine its type as follows:
+  edge collections now. As there were no collection types in 1.0, ArangoDB will perform
+  an automatic upgrade when migrating from 1.0 to 1.1.
+  The automatic upgrade will check every collection and determine its type as follows:
   - if among the first 50 documents in the collection there are documents with
     attributes "_from" and "_to", the collection is typed as an edge collection
   - if among the first 50 documents in the collection there are no documents with

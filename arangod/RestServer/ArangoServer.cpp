@@ -301,6 +301,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
+    ("upgrade", "perform a database upgrade")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -517,7 +518,11 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(_dispatcherThreads);
-  _applicationV8->enableVersionCheck();
+
+  if (_applicationServer->programOptions().has("upgrade")) {
+    _applicationV8->performUpgrade();
+  }
+
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
