@@ -1265,8 +1265,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "bitarray", unique : false, fields : fields };
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1283,8 +1282,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "cap", size : size };
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1306,8 +1304,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "skiplist", unique : true, fields : fields };
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1329,8 +1326,24 @@ function ArangoCollection (database, data) {
 
     body = { type : "skiplist", unique : false, fields : fields };
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.ensureFulltextIndex = function (attribute, indexSubstrings) {
+    var doIndexSubstrings = indexSubstrings || false;
+    var body;
+
+    body = { type : "fulltext", indexSubstrings : doIndexSubstrings, fields : [ attribute ] };
+
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1352,8 +1365,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "hash", unique : true, fields : fields };
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1375,8 +1387,7 @@ function ArangoCollection (database, data) {
 
     body = { type : "hash", unique : false, fields : fields };
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1418,8 +1429,7 @@ function ArangoCollection (database, data) {
       };
     }
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1472,8 +1482,7 @@ function ArangoCollection (database, data) {
       }
     }
 
-    var requestResult = this._database._connection.POST(this._indexurl(),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1560,8 +1569,7 @@ function ArangoCollection (database, data) {
 
   ArangoCollection.prototype.rename = function (name) {
     var body = { name : name };
-    var requestResult = this._database._connection.PUT(this._baseurl("rename"),
-      JSON.stringify(body));
+    var requestResult = this._database._connection.PUT(this._baseurl("rename"), JSON.stringify(body));
 
     client.checkRequestResult(requestResult);
 
@@ -1577,8 +1585,7 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.refresh = function () {
-    var requestResult = this._database._connection.GET(
-      this._database._collectionurl(this._id) + "?useId=true");
+    var requestResult = this._database._connection.GET( this._database._collectionurl(this._id) + "?useId=true");
 
     client.checkRequestResult(requestResult);
 

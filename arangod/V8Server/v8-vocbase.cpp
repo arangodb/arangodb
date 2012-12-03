@@ -4079,11 +4079,15 @@ static v8::Handle<v8::Value> JS_LookupSkiplistVocbaseCol (v8::Arguments const& a
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}}
+/// @FUN{ensureFulltextIndex(@FA{field}, @FA{indexSubstrings}}
 ///
 /// Creates a fulltext index on all documents on attribute @FA{field}.
 /// All documents, which do not have the attribute or with a non-textual value
 /// inside the attribute are ignored.
+///
+/// IF @FA{indexSubstrings} is set to @LIT{true}, then substrings are also
+/// indexed. This allows search substring search queries, but will make the
+/// index consume more memory.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
