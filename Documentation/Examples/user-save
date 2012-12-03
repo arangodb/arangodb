@@ -1,0 +1,1 @@
+arangosh> require("users").saveUser("my-user", "my-secret-password");

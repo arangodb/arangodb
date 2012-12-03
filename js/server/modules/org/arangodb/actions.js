@@ -881,12 +881,6 @@ function reloadRouting () {
   // .............................................................................
 
   routing = internal.db._collection("_routing");
-
-  if (routing === null) {
-    // TODO: remove this auto-creation. this should be done by arango-upgrade
-    routing = internal.db._create("_routing", { isSystem: true });
-  }
-
   routes = routing.all();
 
   // .............................................................................
