@@ -284,10 +284,11 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
                     &status);
     
     if (status == U_BUFFER_OVERFLOW_ERROR) {
-        TRI_Free(zone, utf8_dest);
-        utf8_dest = (char*) TRI_Allocate(zone, (dstLength+1) * sizeof(char), false);
+      status = U_ZERO_ERROR;
+      TRI_Free(zone, utf8_dest);
+      utf8_dest = (char*) TRI_Allocate(zone, (dstLength + 1) * sizeof(char), false);
       
-        dstLength = ucasemap_utf8ToLower(csm.getAlias(),
+      dstLength = ucasemap_utf8ToLower(csm.getAlias(),
                     utf8_dest, 
                     dstLength + 1,
                     src, 
@@ -358,13 +359,13 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
                     &status);
     
     if (status == U_BUFFER_OVERFLOW_ERROR) {
-        TRI_Free(zone, utf8_dest);
-        dstLength = dstLength+1;
-        utf8_dest = (char*) TRI_Allocate(zone, dstLength * sizeof(char), false);
+      status = U_ZERO_ERROR;
+      TRI_Free(zone, utf8_dest);
+      utf8_dest = (char*) TRI_Allocate(zone, (dstLength + 1) * sizeof(char), false);
       
-        dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
+      dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
                     utf8_dest, 
-                    dstLength,
+                    dstLength + 1,
                     src, 
                     srcLength, 
                     &status);        
@@ -380,7 +381,7 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
 #endif
 
-  utf8_dest = TRI_LowerAsciiStringZ(zone, src);
+  utf8_dest = TRI_UpperAsciiStringZ(zone, src);
   dstLength = strlen(utf8_dest);
   return utf8_dest;
 }
