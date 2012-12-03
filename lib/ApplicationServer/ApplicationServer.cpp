@@ -282,7 +282,7 @@ void ApplicationServer::setupLogging () {
   if (NULL == TRI_CreateLogAppenderFile(_logFile.c_str())) {
     if (_logFile.length() > 0) {
       // the user specified a log file to use but it could not be created. bail out
-      std::cerr << "failed to create logfile " << _logFile << std::endl;
+      std::cerr << "failed to create logfile '" << _logFile << "'. Please check the path and permissions." << std::endl;
       exit(EXIT_FAILURE);      
 
     }
