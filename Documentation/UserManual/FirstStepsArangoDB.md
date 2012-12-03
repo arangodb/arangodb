@@ -1,7 +1,7 @@
 First Steps with ArangoDB {#FirstStepsArangoDB}
 ===============================================
 
-@NAVIGATE_FIRST{UserManual,UserManualArangosh}
+@NAVIGATE_FirstStepsArangoDB
 @EMBEDTOC{FirstStepsArangoDBTOC}
 
 What is ArangoDB? {#FirstStepsArangoDBIntro}

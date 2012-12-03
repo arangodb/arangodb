@@ -1,7 +1,7 @@
 ArangoDB's Web-Interface {#UserManualWebInterface}
 ==================================================
 
-@NAVIGATE{PREV,UserManual,NEXT}
+@NAVIGATE_UserManualWebInterface
 @EMBEDTOC{UserManualWebInterfaceTOC}
 
 Accessing the Web-Interface {#UserManualWebInterfaceAccess}

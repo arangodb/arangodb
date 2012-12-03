@@ -72,6 +72,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellDocument Handling Documents
 ///
+/// @NAVIGATE_ShellDocument
+///
 /// This is an introduction to ArangoDB's interface for documents and how handle
 /// documents from the JavaScript shell @LIT{arangosh}. For other languages see
 /// the corresponding language API.

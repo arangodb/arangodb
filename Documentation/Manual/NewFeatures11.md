@@ -1,7 +1,7 @@
 New Features in ArangoDB 1.1 {#NewFeatures11}
 =============================================
 
-@NAVIGATE_FIRST{Home,Upgrading}
+@NAVIGATE_NewFeatures11
 @EMBEDTOC{NewFeatures11TOC}
 
 Features and Improvements {#NewFeatures11Introduction}
