@@ -32,7 +32,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DbaManual ArangoDB's DBA Manual (@VERSION)
 ///
-/// @NAVIGATE{UserManual,Home,ImpManual}
+/// @NAVIGATE_DbaManual
 ///
 /// @if LATEX
 /// <ul>

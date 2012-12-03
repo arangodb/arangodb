@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ImpManual ArangoDB's Importer Manual (@VERSION)
 ///
-/// @NAVIGATE{DbaManual,Home,Glossary}
+/// @NAVIGATE_ImpManual
 ///
 /// @if LATEX
 /// <ul>

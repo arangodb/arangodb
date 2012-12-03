@@ -1,7 +1,7 @@
 Upgrading to ArangoDB 1.1 {#Upgrading}
 ======================================
 
-@NAVIGATE{NewFeatures11,Home,UserManual}
+@NAVIGATE_Upgrading
 @EMBEDTOC{UpgradingTOC}
 
 Upgrading {#UpgradingIntroduction}

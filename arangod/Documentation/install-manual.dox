@@ -32,7 +32,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page InstallManual ArangoDB's Installation Manual (@VERSION)
 ///
-/// @NAVIGATE{Glossary,Home,ImplementorManual}
+/// @NAVIGATE_InstallManual
 ///
 /// @if LATEX
 /// <ul>
