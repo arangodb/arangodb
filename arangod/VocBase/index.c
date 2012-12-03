@@ -4338,11 +4338,8 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_fulltext_index_t* fulltextIndex;
   int res;
 
+  assert(idx);
   fulltextIndex = (TRI_fulltext_index_t*) idx;
-  if (idx == NULL) {
-    LOG_WARNING("internal error in RemovefulltextIndex");
-    return TRI_ERROR_INTERNAL;
-  }
 
   res = TRI_ERROR_NO_ERROR; 
   // TODO: change FTS to return a status code
@@ -4363,16 +4360,12 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
   TRI_fulltext_index_t* fulltextIndex;
   int res;  
 
+  assert(idx);
   fulltextIndex = (TRI_fulltext_index_t*) idx;
-  if (idx == NULL) {
-    LOG_WARNING("internal error in UpdateFulltextIndex");
-    return TRI_ERROR_INTERNAL;
-  }
 
   res = TRI_ERROR_NO_ERROR;
-  
-  // TODO: check how we can get the doc ptr from olddoc
-  // FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id) oldDoc);
+ 
+  FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
   // TODO: change FTS to return a status code
   FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
 
