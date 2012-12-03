@@ -87,7 +87,6 @@ char* TR_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLeng
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifdef __cplusplus
 }
 #endif
