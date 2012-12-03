@@ -2969,18 +2969,6 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
-///
-/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
-///
-/// Creates a bitarray index on all documents using attributes as paths to
-/// the fields. At least one attribute and one set of possible values must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude fluent14
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
@@ -3204,9 +3192,119 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   return scope.Close(theIndex);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on documents using attributes as paths to the
+/// fields (@FA{field1},..., @FA{fieldn}). A value (@FA{value1},...,@FA{valuen})
+/// consists of an array of possible values that the field can take. At least
+/// one field and one set of possible values must be given.
+///
+/// All documents, which do not have the attribute path or with one or more
+/// values that are not suitable, are ignored (that is, are not part of the
+/// bitarray index).
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either `0` or `1`. Any document which has the
+/// attribute `x` defined and does not have a value of `0` or `1` will be
+/// rejected and therefore not inserted within the collection. Documents without
+/// the attribute `x` defined will not take part in the index.
+/// 
+/// @code
+/// arango> arangod> db.example.ensureBitarray("x", [0,1]);
+/// { 
+///   "id" : "2755894/3607862", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : true 
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either `0`, `1` or *other* (indicated by
+/// `[]`). Any document which has the attribute `x` defined will take part in
+/// the index. Documents without the attribute `x` defined will not take part in
+/// the index.
+/// 
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1,[]]);
+/// { 
+///   "id" : "2755894/4263222", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1, [ ]]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with two fields. Field `x`
+/// can have the values of either `0` or `1`; while field `y` can have the values
+/// of `2` or `"a"`. A document which does not have *both* attributes `x` and `y`
+/// will not take part within the index.  A document which does have both attributes
+/// `x` and `y` defined must have the values `0` or `1` for attribute `x` and
+/// `2` or `a` for attribute `y`, otherwise the document will not be inserted
+/// within the collection.
+/// 
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
+/// { 
+///   "id" : "2755894/5246262", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1]], ["y", [0, 1]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : false 
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with two fields. Field `x`
+/// can have the values of either `0` or `1`; while field `y` can have the
+/// values of `2`, `"a"` or *other* . A document which does not have *both*
+/// attributes `x` and `y` will not take part within the index.  A document
+/// which does have both attributes `x` and `y` defined must have the values `0`
+/// or `1` for attribute `x` and any value for attribute `y` will be acceptable,
+/// otherwise the document will not be inserted within the collection.
+/// 
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
+/// { 
+///   "id" : "2755894/5770550", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1]], ["y", [2, "a", [ ]]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Value> JS_EnsureBitarrayVocbaseCol (v8::Arguments const& argv) {
   return EnsureBitarray(argv, false);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureUndefBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on all documents using attributes as paths to
+/// the fields. At least one attribute and one set of possible values must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUndefBitarrayVocbaseCol (v8::Arguments const& argv) {
   return EnsureBitarray(argv, true);

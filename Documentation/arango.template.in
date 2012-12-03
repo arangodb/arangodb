@@ -716,6 +716,7 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT                  = @srcdir@/Documentation/UserManual \
+                         @srcdir@/Documentation/DBAManual \
                          @srcdir@/Documentation/Manual \
 			 @srcdir@/Doxygen/js \
                          @srcdir@/arangod \
