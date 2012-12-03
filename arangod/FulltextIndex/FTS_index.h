@@ -73,7 +73,7 @@ FTS_texts_t;
 FTS_index_t * FTS_CreateIndex (FTS_collection_id_t coll,
                                void*,
                                FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
-                               uint64_t options, 
+                               int options, 
                                uint64_t sizes[10]);
 
 void FTS_FreeIndex (FTS_index_t * ftx);

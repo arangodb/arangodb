@@ -19,122 +19,144 @@ extern ZCOD zckk;
 extern ZCOD zcdh;
 
 typedef struct { 
-    TRI_read_write_lock_t _lock;
-    void* _context; // arbitrary context info the index passed to getTexts
+  TRI_read_write_lock_t _lock;
+  void* _context; // arbitrary context info the index passed to getTexts
+  int _options;
 
-    FTS_collection_id_t colid;   /* collection ID for this index  */
-    FTS_document_id_t *handles;    /* array converting handles to docid */
-    uint8_t * handsfree;
-    FTS_document_id_t firstfree;   /* Start of handle free chain.  */
-    FTS_document_id_t lastslot;
-    int options;
-    TUBER * index1;
-    TUBER * index2;
-    TUBER * index3;
+  FTS_collection_id_t colid;   /* collection ID for this index  */
+  FTS_document_id_t *handles;    /* array converting handles to docid */
+  uint8_t* handsfree;
+  FTS_document_id_t firstfree;   /* Start of handle free chain.  */
+  FTS_document_id_t lastslot;
+  TUBER* index1;
+  TUBER* index2;
+  TUBER* index3;
 
-    FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
+  FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
 } 
 FTS_real_index;
 
 /* Get a unicode character from utf-8  */
 
-static uint64_t getunicode(uint8_t ** ptr)
-{
-    uint64_t c1;
-    c1=**ptr;
-    if(c1<128)
-    {
-        (*ptr)++;
-        return c1;
-    }
-    if(c1<224)
-    {
-        c1=((c1-192)<<6)+(*((*ptr)+1)-128);
-        (*ptr)+=2;
-        return c1;
-    }
-    if(c1<240)
-    {
-        c1=((c1-224)<<12)+((*((*ptr)+1)-128)<<6)
-                          +(*((*ptr)+2)-128);
-        (*ptr)+=3;
-        return c1;
-    }
-    if(c1<248)
-    {
-        c1=((c1-240)<<18)+((*((*ptr)+1)-128)<<12)
-                         +((*((*ptr)+2)-128)<<6)
-                          +(*((*ptr)+3)-128);
-        (*ptr)+=4;
-        return c1;
-    }
-    return 0;
+static uint64_t getunicode (uint8_t** ptr) {
+  uint64_t c1;
+
+  c1 = **ptr;
+  if (c1 < 128) {
+    (*ptr)++;
+    return c1;
+  }
+
+  if (c1 < 224) {
+    c1 = ((c1 - 192) << 6) + (*((*ptr) + 1) - 128);
+    (*ptr) += 2;
+    return c1;
+  }
+
+  if (c1 < 240) {
+    c1 = ((c1 - 224) << 12) + ((*((*ptr) + 1) - 128) << 6) + (*((*ptr) + 2) - 128);
+    (*ptr) += 3;
+    return c1;
+  }
+
+  if (c1 < 248) {
+    c1 = ((c1 - 240) << 18) + ((*((*ptr) + 1) - 128) << 12) + ((*((*ptr) + 2) - 128) << 6) + (*((*ptr) + 3) - 128);
+    (*ptr) += 4;
+    return c1;
+  }
+
+  return 0;
 }
 
 FTS_index_t * FTS_CreateIndex (FTS_collection_id_t coll,
                                void* context,
                                FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
-                               uint64_t options, 
+                               int options, 
                                uint64_t sizes[10]) {
 /* sizes[0] = size of handles table to start with  */
 /* sizes[1] = number of bytes for index 1 */
 /* sizes[2] = number of bytes for index 2 */
 /* sizes[3] = number of bytes for index 3 */
-    FTS_real_index * ix;
-    uint64_t bk;
-    int i;
-    ix=malloc(sizeof(FTS_real_index));
-    if(ix==NULL) return NULL;
-    ix->colid=coll;
+  FTS_real_index* ix;
+  uint64_t bk;
+  int i;
 
-    ix->_context = context;
-    ix->getTexts = getTexts;
+  ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
+  if (ix == NULL) {
+    return NULL;
+  }
 
-    TRI_InitReadWriteLock(&ix->_lock);
+  ix->handles = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(FTS_document_id_t), false);
+  if (ix->handles == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+    return NULL;
+  }
 
-    ix->handles=malloc((sizes[0]+2)*sizeof(FTS_document_id_t));
-    ix->handsfree=malloc((sizes[0]+2)*sizeof(uint8_t));
+  ix->handsfree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
+  if (ix->handsfree == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->handles);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+    return NULL;
+  }
+  
+  ix->colid = coll;
+
+  ix->_context = context;
+  ix->getTexts = getTexts;
+
 /* set up free chain of document handles  */
-    for(i=1;i<sizes[0];i++)
-    {
-        ix->handles[i]=i+1;
-        ix->handsfree[i]=1;
-    }
-    ix->handles[sizes[0]]=0;  /* end of free chain  */
-    ix->handsfree[sizes[0]]=1;
-    ix->firstfree=1;
-    ix->lastslot=sizes[0];
+  for (i = 1; i < sizes[0]; i++) {
+    ix->handles[i]   = i+1;
+    ix->handsfree[i] = 1;
+  }
+
+  ix->handles[sizes[0]] = 0;  /* end of free chain  */
+  ix->handsfree[sizes[0]] = 1;
+  ix->firstfree = 1;
+  ix->lastslot = sizes[0];
+
 /*     create index 2 */
-    ix->index2 = ZStrTuberCons(sizes[2],TUBER_BITS_8);
-    bk=ZStrTuberIns(ix->index2,0,0);
-    if(bk!=0) printf("Help - Can't insert root of index 2\n");
+  ix->index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
+  bk = ZStrTuberIns(ix->index2, 0, 0);
+  if (bk != 0) {
+    printf("Help - Can't insert root of index 2\n");
+  }
+
 /*     create index 3 */
-    ix->index3 = ZStrTuberCons(sizes[3],TUBER_BITS_32);
-    ix->options=options;
+  ix->index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
+  ix->_options = options;
 /*     create index 1 if needed */
-    if(options==FTS_INDEX_SUBSTRINGS)
-    {
-        ix->index1 = ZStrTuberCons(sizes[1],TUBER_BITS_8);
-        bk=ZStrTuberIns(ix->index1,0,0);
-        if(bk!=0) printf("Help - Can't insert root of index 1\n");
+  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+    ix->index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
+    bk = ZStrTuberIns(ix->index1,0,0);
+    if (bk != 0) {
+      printf("Help - Can't insert root of index 1\n");
     }
-    return (FTS_index_t *) ix;
+  }
+  
+  TRI_InitReadWriteLock(&ix->_lock);
+
+  return (FTS_index_t*) ix;
 }
 
-void FTS_FreeIndex ( FTS_index_t * ftx)
-{
-    FTS_real_index * ix;
-    ix = (FTS_real_index *) ftx;
+void FTS_FreeIndex (FTS_index_t* ftx) {
+  FTS_real_index* ix;
 
-    TRI_DestroyReadWriteLock(&ix->_lock);
+  ix = (FTS_real_index*) ftx;
 
-    if(ix->options==FTS_INDEX_SUBSTRINGS) ZStrTuberDest(ix->index1);
-    ZStrTuberDest(ix->index2);
-    ZStrTuberDest(ix->index3);
+  TRI_DestroyReadWriteLock(&ix->_lock);
 
-    free(ix->handsfree);
-    free(ix->handles);
-    free(ix);
+  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+    ZStrTuberDest(ix->index1);
+  }
+
+  ZStrTuberDest(ix->index2);
+  ZStrTuberDest(ix->index3);
+
+  free(ix->handsfree);
+  free(ix->handles);
+  
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
 }
 
 #if 0
@@ -248,6 +270,7 @@ temp=ix->handles[i];
     index2dump(ix,kroot,1);
 }
 #endif
+
 void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 {
     FTS_real_index * ix;
@@ -274,7 +297,7 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 
     ix = (FTS_real_index *)ftx;
     kroot=ZStrTuberK(ix->index2,0,0,0);
-    if(ix->options==FTS_INDEX_SUBSTRINGS)
+    if(ix->_options == FTS_INDEX_SUBSTRINGS)
         kroot1=ZStrTuberK(ix->index1,0,0,0);
     kkey[0]=kroot;     /* origin of index 2 */
 
@@ -510,7 +533,7 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
         ixlen=len;
         for(j=0;j<len;j++) ixlet[j]=letters[j];
         
-        if(ix->options==FTS_INDEX_SUBSTRINGS)
+        if(ix->_options==FTS_INDEX_SUBSTRINGS)
         {
             for(j1=0;j1<len;j1++)
             {
@@ -593,22 +616,27 @@ void RealAddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
     ZStrDest(x3zstrb);
 }
 
-void RealDeleteDocument(FTS_index_t * ftx, FTS_document_id_t docid)
-{
-    FTS_real_index * ix;
-    FTS_document_id_t i;
-    ix=(FTS_real_index *) ftx;
-    for(i=1;i<=ix->lastslot;i++)
-    {
-        if(ix->handsfree[i]==1) continue;
-        if(ix->handles[i]==docid) break;
+void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix;
+  FTS_document_id_t i;
+
+  ix = (FTS_real_index*) ftx;
+  for (i = 1; i <= ix->lastslot; i++) {
+    if (ix->handsfree[i] == 1) {
+      continue;
     }
-    if(i>ix->lastslot)
-    {
-/* TBD - what to do if a document is deleted that isn't there?  */
-        printf("tried to delete nonexistent document\n");
+
+    if (ix->handles[i] == docid) {
+      break;
     }
-    ix->handsfree[i]=1;
+  }
+
+  if (i > ix->lastslot) {
+    /* TBD - what to do if a document is deleted that isn't there?  */
+    printf("tried to delete nonexistent document\n");
+  }
+
+  ix->handsfree[i] = 1;
 }
 
 /* now the customer-facing routines                     */
@@ -616,39 +644,35 @@ void RealDeleteDocument(FTS_index_t * ftx, FTS_document_id_t docid)
 /* preventing a query getting a result with neither the */
 /* old version nor the new one                          */
 
-void FTS_AddDocument(FTS_index_t * ftx, FTS_document_id_t docid)
-{
-    FTS_real_index * ix = (FTS_real_index *) ftx;
+void FTS_AddDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix = (FTS_real_index*) ftx;
 
-    TRI_WriteLockReadWriteLock(&ix->_lock);
-    RealAddDocument(ftx,docid);
-    TRI_WriteUnlockReadWriteLock(&ix->_lock);
+  TRI_WriteLockReadWriteLock(&ix->_lock);
+  RealAddDocument(ftx,docid);
+  TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
-void FTS_DeleteDocument(FTS_index_t * ftx, FTS_document_id_t docid)
-{
-    FTS_real_index * ix = (FTS_real_index *) ftx;
+void FTS_DeleteDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix = (FTS_real_index*) ftx;
 
-    TRI_WriteLockReadWriteLock(&ix->_lock);
-    RealDeleteDocument(ftx,docid);
-    TRI_WriteUnlockReadWriteLock(&ix->_lock);
+  TRI_WriteLockReadWriteLock(&ix->_lock);
+  RealDeleteDocument(ftx,docid);
+  TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
-void FTS_UpdateDocument(FTS_index_t * ftx, FTS_document_id_t docid)
-{
-    FTS_real_index * ix = (FTS_real_index *) ftx;
+void FTS_UpdateDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix = (FTS_real_index*) ftx;
 
-    TRI_WriteLockReadWriteLock(&ix->_lock);
-    RealDeleteDocument(ftx,docid);
-    RealAddDocument(ftx,docid);
-    TRI_WriteUnlockReadWriteLock(&ix->_lock);
+  TRI_WriteLockReadWriteLock(&ix->_lock);
+  RealDeleteDocument(ftx,docid);
+  RealAddDocument(ftx,docid);
+  TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
-void FTS_BackgroundTask(FTS_index_t * ftx)
-{
-/* obtain LOCKMAIN */
-/* remove deleted handles from index3 not done QQQ  */
-/* release LOCKMAIN */
+void FTS_BackgroundTask(FTS_index_t* ftx) {
+  /* obtain LOCKMAIN */
+  /* remove deleted handles from index3 not done QQQ  */
+  /* release LOCKMAIN */
 }
 
 uint64_t findkkey1(FTS_real_index * ix, uint64_t * word)
@@ -852,13 +876,12 @@ void ix1recurs(STEX * dochan, FTS_real_index * ix, uint64_t kk1, uint64_t * wd)
     return;
 }
 
-FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
-                                FTS_query_t * query)
-{
-    FTS_document_ids_t * dc;
-    FTS_real_index * ix;
+FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
+                                       FTS_query_t* query) {
+    FTS_document_ids_t* dc;
+    FTS_real_index* ix;
     size_t queryterm;
-    ZSTR *zstr2,*zstr3;
+    ZSTR *zstr2, *zstr3;
     ZSTR *zstra1, *zstra2, *ztemp;
     ZSTR *zstr;
     STEX * dochan;
@@ -873,21 +896,28 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
     uint64_t unicode;
     uint16_t *docpt;
 
-    ndocs = 1;
 /* TBD obtain read lock */
 
-    ix=(FTS_real_index *) ftx;
-    dc=malloc(sizeof(FTS_document_ids_t));
-    dc->_len=0;     /* no docids so far  */
-    dc->_docs=NULL;
-    zstr2=ZStrCons(10);  /* from index-2 tuber */
-    zstr3=ZStrCons(10);  /* from index-3 tuber  */
-    zstra1=ZStrCons(10); /* current list of documents */
-    zstra2=ZStrCons(10); /* new list of documents  */
-    zstr  =ZStrCons(4);  /* work zstr from stex  */
+    dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
+    if (dc == NULL) {
+      // out of memory
+      return NULL;
+    }
+    
+    dc->_len = 0;     /* no docids so far  */
+    dc->_docs = NULL;
+
+    zstr2  = ZStrCons(10);  /* from index-2 tuber */
+    zstr3  = ZStrCons(10);  /* from index-3 tuber  */
+    zstra1 = ZStrCons(10); /* current list of documents */
+    zstra2 = ZStrCons(10); /* new list of documents  */
+    zstr   = ZStrCons(4);  /* work zstr from stex  */
+    
+    ndocs = 1;
+    ix = (FTS_real_index*) ftx;
+
 /*     - for each term in the query */
-    for(queryterm=0;queryterm<query->_len;queryterm++)
-    {
+    for (queryterm = 0; queryterm < query->_len; queryterm++) {
 /*  Depending on the query type, the objective is do   */
 /*  populate or "and" zstra1 with the sorted list      */
 /*  of document handles that match that term           */
@@ -1086,16 +1116,23 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
     }
     ZStrCxClear(&zcdoc, &ctxa1);
     newhan=0;
-    dc->_docs=malloc(ndocs*sizeof(FTS_document_id_t));
+
+    dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
+    if (dc->_docs == NULL) {
+      // out of memory
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
+      return NULL;
+    }
+
     ndocs=0;
-    while(1)
-    {
+    while(1) {
         oldhan=newhan;
         newhan=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
         if(newhan==oldhan) break;
         if(ix->handsfree[newhan]==0)
             dc->_docs[ndocs++]=ix->handles[newhan];
     }
+
     dc->_len=ndocs;
     ZStrDest(zstra1);
     ZStrDest(zstra2);
@@ -1106,10 +1143,12 @@ FTS_document_ids_t * FTS_FindDocuments (FTS_index_t * ftx,
     return dc;
 }
 
-void FTS_Free_Documents(FTS_document_ids_t * doclist)
-{
-    if(doclist->_docs!=NULL) free (doclist->_docs);
-    free(doclist);
+void FTS_Free_Documents (FTS_document_ids_t* doclist) {
+  if (doclist->_docs != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doclist->_docs);
+  }
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, doclist);
 }
 
 /* end of ftsindex.c */
