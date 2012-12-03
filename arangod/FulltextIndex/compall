@@ -1,3 +1,0 @@
-gcc -Wall -g zstrreg.c zstr.c zcode.c -o zstrreg
-gcc -Wall -Wextra -g avodoc.c FTS_index.c zstr.c zcode.c -o avo
-
