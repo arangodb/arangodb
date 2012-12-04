@@ -127,6 +127,8 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #311: fixed segfault on unload 
+
 * fixed issue #309: renamed stub "import" button from web interface
 
 * fixed issue #307: show waitForSync in collections overview in web interface,

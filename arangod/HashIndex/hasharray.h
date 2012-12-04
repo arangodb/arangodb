@@ -55,11 +55,6 @@ typedef struct TRI_hasharray_s {
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed; // the number of used entries
   
-  // _table might or might not be the same pointer as _data
-  // if you want to handle the hash table memory, always use the _data pointer!
-  // if you want to work with the hash table elements, always use the _table pointer!
-
-  char* _data; // pointer to memory acquired for the hash table
   char* _table; // the table itself, aligned to a cache line boundary 
 
 #ifdef TRI_INTERNAL_STATS
