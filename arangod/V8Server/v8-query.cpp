@@ -2137,7 +2137,9 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 /// @brief build the fulltext search query options from a query string 
 ////////////////////////////////////////////////////////////////////////////////
   
-static FTS_query_t* BuildQueryFulltext (const string& queryString) {
+static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubstringQuery) {
+  *isSubstringQuery = false;
+
   vector<string> words = StringUtils::split(queryString, ',');
 
   if (words.size() == 0) {
@@ -2195,6 +2197,7 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString) {
       }
       else if (command == "substring") {
         query->_localOptions[i] = FTS_MATCH_SUBSTRING;
+        *isSubstringQuery = true;
       }
       
       string word = parts[1];
@@ -2243,13 +2246,18 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   }
 
   const string queryString = TRI_ObjectToString(argv[1]);
+  bool isSubstringQuery = false;
 
-  FTS_query_t* query = BuildQueryFulltext(queryString);
+  FTS_query_t* query = BuildQueryFulltext(queryString, &isSubstringQuery);
   if (! query) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "invalid value for <query>")));
   }
- 
+
   TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx; 
+  if (isSubstringQuery && ! fulltextIndex->_indexSubstrings) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index does not support substring matching")));
+  }
+
   FTS_document_ids_t* queryResult = TRI_FindDocumentsFulltextIndex(fulltextIndex->_fulltextIndex, query);
 
   TRI_FreeQueryFulltextIndex(query);
