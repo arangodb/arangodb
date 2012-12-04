@@ -25,7 +25,7 @@ For more in-depth information
 ## Compilation
 
 Please check the
-[Installation Manual](http://www.arangodb.org/manuals/1.0.0/InstallManual.html)
+[Installation Manual](http://www.arangodb.org/manuals/current/InstallManual.html)
 for installation and compilation instructions.
 
 ### Mac OS X Hints
@@ -72,7 +72,7 @@ Start the shell in another windows:
     arangosh> db.examples.save({ Hallo: "World" });
     {"error":false,"_id":"106097/2333739","_rev":2333739}
 
-    arangosh> db.examples.all();
+    arangosh> db.examples.all().toArray();
     [{ _id : "82883/1524675", _rev : 1524675, Hallo : "World" }]
 
 ## Caveat
