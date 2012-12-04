@@ -110,7 +110,7 @@ HttpResponse* HttpHandler::getResponse () const {
 Job* HttpHandler::createJob (AsyncJobServer* server) {
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
 
-  // stj: TODO: ugly temporary hack, must be fixed
+  // TODO: ugly temporary hack, must be fixed
   if (httpServer != 0) {
     return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
   }
@@ -119,7 +119,7 @@ Job* HttpHandler::createJob (AsyncJobServer* server) {
   if (httpsServer != 0) {
     return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this);
   }
-  // stj: end of hack
+  // end of hack
 
   LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
   return 0;

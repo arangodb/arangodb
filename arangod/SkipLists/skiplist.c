@@ -429,8 +429,8 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // ..........................................................................  
   growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2); // may fail
   growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2); // may fail
-  if (!growResult) {
-    // todo: undo growth by cutting down the node height
+  if (! growResult) {
+    // TODO: undo growth by cutting down the node height
     return;
   }
 

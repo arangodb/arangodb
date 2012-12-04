@@ -454,8 +454,8 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
   
   TRI_InitReadWriteLock(&primary->_lock);
   
-  // init key generator. TODO: make this configurable
-  res = TRI_CreateKeyGenerator(NULL, primary);
+  // init key generator
+  res = TRI_CreateKeyGenerator(primary->base._info._options, primary);
 
   return res;
 }
