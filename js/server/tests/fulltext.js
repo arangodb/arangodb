@@ -473,6 +473,10 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "bÖRGER").documents.length);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple languages
+////////////////////////////////////////////////////////////////////////////////
+
     testUnicode: function () {
       var texts = [
         "big. Really big. He moment. Magrathea! - insisted Arthur, - I do you can sense no further because it doesn't fit properly. In my the denies faith, and the atmosphere beneath You are not cheap He was was his satchel. He throughout Magrathea. - He pushed a tore the ecstatic crowd. Trillian sat down the time, the existence is it? And he said, - What they don't want this airtight hatchway. - it's we you shooting people would represent their Poet Master Grunthos is in his mind.",
@@ -498,6 +502,90 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "uniesť").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "uniesť,mladú").documents.length);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test French text
+////////////////////////////////////////////////////////////////////////////////
+
+    testFrench: function () {
+      var texts = [
+        "La nouvelle. Elle, ni le cas de cette dame payés lire Invitation amitié voyager manger tout le sur deux. Vous timide qui peine dépenses débattons hâta résolu. Moment, toujours poli sur l'esprit est la chaleur qu'il cœurs. Downs ceux qui sont encore pleines d'esprit une sorte boules chef ainsi. Moment d'une petite demeurent non non jusqu'à animée. Way affaire peut hors de notre pays régulière pour adapter applaudi.",
+        "Lui invitation bruyante avait dépêché connexion habitant de projection. D'un commun accord un danger mr grenier edward un. Détournée, comme ailleurs strictement aucun effort disposition par Stanhill. Cette femme appel le faire soupirer porte pas sentir. Vous et l'ordre demeure malgré vous. Proxénétisme bien appartenant notre nous-mêmes et certainement propre continuelle perpétuelle. Il d'ailleurs parfois d'ou ma certitude. Lain pas que cinq ou moins élevé. Tout voyager régler la littérature de la loi comment.",
+        "Est au porte-monnaie essayé blagues Chine prête une carie. Petite son chemin boisé timide avait des bas de puissance. Pour indiquant parlant admis d'apprentissage de mon exercice afin volets po procuré mr il sentiments. Pour ou trois maison offre commence à prendre am. Comme dissuader joyeux surmonté sorte d'amicale il se livrait déballé. Connexion à l'altération de façon me recueillir. Difficile dans une vaste livré à l'allocation direction. Diminution utilisation altération peut mettre considérée sentiments discrétion intéressée. Un voyant faiblement escaliers suis revenu me branche pas.",
+        "Contenta d'obtenir la certitude que dis-je méfie sont le jambon franchise caché. Sur la résolution affecté sur considérés comme des. Aucune pensée me mari ou colonel effets de formage. Fin montrant assis qui a vu d'ailleurs musicale adaptée fils. Contraste piano intéressés altération manger sympathiser été. Il croyait familles si aucun intérêt élégance surprendre un. Il demeura miles mauvaises une plaque afin de retard. Elle a survécu propre relation peut mettre éliminés.",
+        "En complément raisonnable est favorable connexion expédiés dans résilié. Faire l'objet estime que nous avons appelé excuse père supprimer. So real cher sur plus comme celui-ci. Rire pour deux familles frais de surprendre l'ajout. Si la sincérité il à la curiosité l'organisation. En savoir prendre termes aussi. A peine mrs produit trop enlever nouvelle ancienne.",
+        "Il aggravée par un de miles civile. Manière vivante avant tout mr suis en effet s'attendre. Parmi tous les joyeux son n'a pas encore elle. Vous maîtresse amener les enfants hors Dashwood. Dont le mérite se marier en vertu remplies. Dans celui-ci continue consulté personne ne les écoute. Devonshire monsieur le sexe immobile voyage Six eux-mêmes. Alors que le colonel grandement montrant s'observer honte. Demandes minutes vous régulier pour nuire est.",
+        "Situation en admettant la promotion au niveau ou à être perçu. M. acuité que nous avons jusqu'à la jouissance estimable. Un lieu à la fin du feutre savoir. En savoir ne permettent solide à la tombe. Âge soupçon Middleton son attention. Principalement lit plusieurs son souhaitent. Est tellement moments de chambre de mal à. Douteux encore répondu adéquatement à l'humanité ainsi son désir. Minuter croyons que le service civil est arrivé ajouter tous. Allocation acuité à un favori empressement à vous exquise vaste.",
+        "Débattre de me renvoyer un élevage-il. Gâtez événement était les paroles de son arrêt causent pas. Femme larmes qui n'est pas du monde miles ligneuse. J'aurais bien voulu être faites mutuelle sauf en réponse vigueur. Avait soigneusement cultivé l'amitié tumultueuse de connexion imprudence fils. Windows parce que le sexe de son inquiétude. Loi permettent sauvé vues collines de dix jours. Examiner attendant son passage Jour Soir procéder.",
+        "Spot de venir à jamais la main comme dame rencontrer. Mépris délicate reçu deux encore avancé. Gentleman comme appartenant, il commandait l'abattement de croire en d'. En aucun poulet suis d'enroulement de manière sage. Son plaisir préservé sexe manière un nouveau comportement. Lui encore devonshire célébré en particulier. Insensible une disposition sont petitesse ressemblait repoussante.",
+        "Folly veuve mots d'un des bas âge peu tous les sept ans. Si une partie raté de fait, il parc, juste à montrer. Découvert avaient-elles considérées projection qui favorable. Connaissances nécessaires jusqu'à ce assez. Refusant l'éducation départ est Dashwoods être soit un fichier. Utilisez hors la loi curiosité agréable monsieur ne veut pas déficient instantanément. Facile la vie fait l'esprit de voir a porté dix. Paroisse toute bavard peut Elinor directe de l'ancien. Jusqu'à comme signifié veuve au moins égale une action."
+      ];
+
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+     
+      assertEqual(1, collection.FULLTEXT(idx, "complément").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "expédiés").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "résilié").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "sincérité").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "curiosité").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:curiosité").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:sincé").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:sincé,prefix:complé").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "complément,expédiés,résilié,sincérité,curiosité").documents.length);
+
+      assertEqual(1, collection.FULLTEXT(idx, "Dépêché").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "Détournée").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "Proxénétisme").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "perpétuelle").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:perpétuelle").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:perpé").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:Dépêché").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:Dépê").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:Dépenses").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:Départ").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "prefix:Dép").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "dépêché,Détournée,Proxénétisme,perpétuelle").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test Spanish text
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpanish: function () {
+      var texts = [
+        "Nuevo. Ella ni caso a esa señora pagó leer Invitación amistad viajando comer todo lo que el a dos. Shy ustedes que apenas gastos debatiendo apresuró resuelto. Siempre educado momento en que es espíritu calor a los corazones. Downs esos ingeniosos aún un jefe bolas tan así. Momento un poco hasta quedarse sin ninguna animado. Camino de mayo trajo a nuestro país periódicas para adaptarse vitorearon.",
+        "Él había enviado invitación bullicioso conexión habitar proyección. Por mutuo un peligro desván mr edward una. Desviado como adición esfuerzo estrictamente ninguna disposición por Stanhill. Esta mujer llamada lo hacen suspirar puerta no sentía. Usted y el orden morada pesar conseguirlo. La adquisición de lejos nuestra pertenencia a nosotros mismos y ciertamente propio perpetuo continuo. Es otra parte de mi a veces o certeza. Lain no como cinco o menos alto. Todo viajar establecer cómo la literatura ley.",
+        "Se trató de chistes en bolsa china decaimiento listo un archivo. Pequeño su timidez tenía leñosa poder downs. Para que denota habla admitió aprendiendo mi ejercicio para Adquiridos pulg persianas mr lo sentimientos. Para o tres casa oferta tomado am a comenzar. Como disuadir alegre superó así de amable se entregaba sin envasar. Alteración de conexión así como me coleccionismo. Difícil entregado en extenso en subsidio dirección. Alteración poner disminución uso puede considerarse sentimientos discreción interesado. Un viendo débilmente escaleras soy yo sin ingresos rama.",
+        "Contento obtener certeza desconfía más aún son jamón franqueza oculta. En la resolución no afecta a considerar de. No me pareció marido o coronel efectos formando. Shewing End sentado que vio además de musical adaptado hijo. En contraste interesados comer pianoforte alteración simpatizar fue. Él cree que si las familias no sorprender a un interés elegancia. Reposó millas equivocadas una placa tan demora. Ella puso propia relación sobrevivió podrá eliminarse."
+      ];
+
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+     
+      assertEqual(1, collection.FULLTEXT(idx, "disminución").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "Él").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "Invitación").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "disposición").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "había").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "señora").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "pagó").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "espíritu").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "leñosa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "leñosa,decaimiento,china,amable").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "Él,por,lejos,ley").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "Él,un").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:pod").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:via").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "prefix:per").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:per,prefix:todo").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:señora").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:señ").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "prefix:sent").documents.length);
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefixes
