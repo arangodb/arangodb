@@ -3202,9 +3202,15 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
 /// consists of an array of possible values that the field can take. At least
 /// one field and one set of possible values must be given.
 ///
-/// All documents, which do not have the attribute path or with one or more
-/// values that are not suitable, are ignored (that is, are not part of the
-/// bitarray index).
+/// All documents, which do not have *all* of the attribute paths are ignored
+/// (that is, are not part of the bitarray index, they are however stored within
+/// the collection). A document which contains all of the attribute paths yet
+/// has one or more values which are *not* part of the defined range of values
+/// will be rejected and the document will not inserted within the
+/// collection. Note that, if a bitarray index is created subsequent to
+/// any documents inserted in the given collection, then the creation of the
+/// index will fail if one or more documents are rejected (due to
+/// attribute values being outside the designated range).
 ///
 /// In case that the index was successfully created, the index identifier is
 /// returned.
