@@ -4140,8 +4140,8 @@ static TRI_vector_string_t* ParseWordsFulltextIndex (const char* const text,
       // UTF-8
       if (wordStart == NULL) {
         wordStart = ptr;
-        containsUtf8 = true;
       }
+      containsUtf8 = true;
     }
     else {
       if (wordStart != NULL) {

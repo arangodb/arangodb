@@ -164,10 +164,9 @@ function fulltextQuerySuite () {
         collection.save({ text: texts[i] });
       }
 
-      // TODO: the index does not pick this word up
-      // assertEqual(1, collection.FULLTEXT(idx, "AUTOTUERENDELLENentfernungsfirmenmitarbeiterverguetungsbewerter").documents.length);
-      // TODO: the index does not pick this word up
-      // assertEqual(1, collection.FULLTEXT(idx, "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "AUTOTUERENDELLENentfernungsfirmenmitarbeiterverguetungsbewerter").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin").documents.length);
+
       assertEqual(1, collection.FULLTEXT(idx, "reliefpfeiler").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "feilen").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "reihenweise").documents.length);
@@ -207,7 +206,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "ruBBisH,TEXT,some").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "rubbish,text").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "some,text").documents.length);
-      assertEqual(1, collection.FULLTEXT(idx, "more,rubbish,test,data,the,index,should,be,able,to,handle.all,this").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "more,rubbish,test,data,the,index,should,be,able,to,handle,all,this").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "even,more,rubbish,nevertheless,this,should,be,handled,well,too").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "even,too").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "even,rubbish,should,be,handled").documents.length);
@@ -279,8 +278,7 @@ function fulltextQuerySuite () {
       assertEqual(100, collection.FULLTEXT(idx, "dog,lazy,the,over,jumped,fox,brown,quick,the").documents.length);
       assertEqual(100, collection.FULLTEXT(idx, "fox,over,dog").documents.length);
 
-      // TODO: index does not handle this and returns 100 matches
-      // assertEqual(0, collection.FULLTEXT(idx, "the,frog").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "the,frog").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
@@ -305,9 +303,6 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaa").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
-      // TODO: index does not handle this
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
 
       assertEqual(0, collection.FULLTEXT(idx, "foo").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "somerandomstring").documents.length);
@@ -338,15 +333,14 @@ function fulltextQuerySuite () {
       }
 
       assertEqual(1, collection.FULLTEXT(idx, "der,peter").documents.length);
-      // TODO: index does not handle this
-      // assertEqual(3, collection.FULLTEXT(idx, "der,müller").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "börger").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "BÖRGER").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "bÖRGER").documents.length);
-      // assertEqual(2, collection.FULLTEXT(idx, "der,müller,ging,in,den,wald").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "der,müller,ging,in,den,wald,und,aß,den").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "der,müller,ging,in,den,wald,und,aß,den,hühnerbörekbärenmensch").documents.length);
-      // assertEqual(2, collection.FULLTEXT(idx, "der,müller,aß,den,hühnerbörekbärenmensch").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "der,müller").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "börger").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "BÖRGER").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "bÖRGER").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "der,müller,ging,in,den,wald").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "der,müller,ging,in,den,wald,und,aß,den").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "der,müller,ging,in,den,wald,und,aß,den,hühnerbörekbärenmensch").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "der,müller,aß,den,hühnerbörekbärenmensch").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "der,HANS,mag,den,PILZ").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "der,PILZ,hans,den,MAG").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "der,PILZ,hans,den,MAG").documents.length);
@@ -354,9 +348,8 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "der,peter,mag,den,bÖRGER").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "der,peter,mag,bÖRGER").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "der,peter,bÖRGER").documents.length);
-      // TODO: index does not handle this
-      // assertEqual(1, collection.FULLTEXT(idx, "der,bÖRGER").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "bÖRGER").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "der,bÖRGER").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "bÖRGER").documents.length);
     },
 
     testUnicode: function () {
