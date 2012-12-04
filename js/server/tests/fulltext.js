@@ -281,8 +281,8 @@ function fulltextQuerySuite () {
 
       // TODO: index does not handle this and returns 100 matches
       // assertEqual(0, collection.FULLTEXT(idx, "the,frog").documents.length);
-      // assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
-      // assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

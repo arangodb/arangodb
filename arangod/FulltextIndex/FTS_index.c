@@ -28,6 +28,7 @@
 #include "FTS_index.h"
 
 #include "BasicsC/locks.h"
+#include "BasicsC/logging.h"
 #include "FulltextIndex/zstr.h"
 
 // -----------------------------------------------------------------------------
@@ -964,7 +965,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     zstra2 = ZStrCons(10); /* new list of documents  */
     zstr   = ZStrCons(4);  /* work zstr from stex  */
     
-    ndocs = 1;
+    ndocs = 0;
     
     TRI_ReadLockReadWriteLock(&ix->_lock);
 
@@ -1166,29 +1167,32 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             ZStrSTDest(dochan); 
         }   /* end of match-prefix code  */
     }
-    ZStrCxClear(&zcdoc, &ctxa1);
-    newhan=0;
 
-    dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
-    if (dc->_docs == NULL) {
-      // out of memory
-      TRI_ReadUnlockReadWriteLock(&ix->_lock);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
-      return NULL;
-    }
+    if (ndocs != 0) {
+      ZStrCxClear(&zcdoc, &ctxa1);
+      dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
+      if (dc->_docs == NULL) {
+        // out of memory
+        TRI_ReadUnlockReadWriteLock(&ix->_lock);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
+        // TODO: free zstra1, zstra2, zstr, zstr2, zstr3
+        return NULL;
+      }
 
-    ndocs=0;
-    while(1) {
+      newhan=0;
+      ndocs=0;
+      while (1) {
         oldhan=newhan;
         newhan=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
         if(newhan==oldhan) break;
         if(ix->_handsfree[newhan]==0)
-            dc->_docs[ndocs++]=ix->_handles[newhan];
+          dc->_docs[ndocs++]=ix->_handles[newhan];
+      }
+      dc->_len=ndocs;
     }
     
     TRI_ReadUnlockReadWriteLock(&ix->_lock);
 
-    dc->_len=ndocs;
     ZStrDest(zstra1);
     ZStrDest(zstra2);
     ZStrDest(zstr); 
