@@ -969,7 +969,7 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
 /// @brief add a document to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_AddDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
+void FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
@@ -981,7 +981,7 @@ void FTS_AddDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_DeleteDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
+void FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
@@ -993,7 +993,7 @@ void FTS_DeleteDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
 /// @brief update an existing document in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_UpdateDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
+void FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
@@ -1006,7 +1006,7 @@ void FTS_UpdateDocument(FTS_index_t* ftx, FTS_document_id_t docid) {
 /// @brief current not called. TODO: find out what its intention is
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_BackgroundTask(FTS_index_t* ftx) {
+void FTS_BackgroundTask (FTS_index_t* ftx) {
   /* obtain LOCKMAIN */
   /* remove deleted handles from index3 not done QQQ  */
   /* release LOCKMAIN */
@@ -1020,7 +1020,6 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                                        FTS_query_t* query) {
   FTS_document_ids_t* dc;
   FTS_real_index* ix;
-  size_t queryterm;
   ZSTR* zstr2;
   ZSTR* zstr3;
   ZSTR* zstra1;
@@ -1030,28 +1029,15 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
   CTX ctxa1;
   CTX ctxa2;
   CTX ctx3;
+  size_t queryterm;
   uint64_t word[2 * (MAX_WORD_LENGTH + SPACING)];
-  int i, j;
-  uint64_t oldhan, newhan, ndocs, lasthan, odocs;
-  uint64_t nhand1, ohand1;
-  uint16_t* docpt;
-
-  dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
-  if (dc == NULL) {
-    // out of memory
-    return NULL;
-  }
-    
-  dc->_len = 0;     /* no docids so far  */
-  dc->_docs = NULL;
+  uint64_t ndocs = 0;
 
   zstr2  = ZStrCons(10);  /* from index-2 tuber */
   zstr3  = ZStrCons(10);  /* from index-3 tuber  */
   zstra1 = ZStrCons(10); /* current list of documents */
   zstra2 = ZStrCons(10); /* new list of documents  */
   zstr   = ZStrCons(4);  /* work zstr from stex  */
-    
-  ndocs = 0;
     
   ix = (FTS_real_index*) ftx;
   TRI_ReadLockReadWriteLock(&ix->_lock);
@@ -1082,6 +1068,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       uint64_t docb;
       uint64_t dock;
       uint64_t kkey;
+      uint64_t lasthan;
 
       FillWordBuffer(&word[0], query->_texts[queryterm]);
 
@@ -1090,27 +1077,28 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         break;
       }
 
-      j = ZStrTuberRead(ix->_index2, kkey, zstr2);
+      ZStrTuberRead(ix->_index2, kkey, zstr2);
       if (ZStrBitsOut(zstr2, 1) != 1) {
         break;
       }
 
       docb = ZStrDec(zstr2, &zcbky);
       dock = ZStrTuberK(ix->_index3, kkey, 0, docb);
-      i = ZStrTuberRead(ix->_index3, dock, zstr3);
-      if (i == 1) {
+      if (ZStrTuberRead(ix->_index3, dock, zstr3) == 1) {
         printf("Kkey not in ix3 - we're terrified\n");
       }
 
       ZStrCxClear(&zcdoc, &ctx3);
       ZStrCxClear(&zcdoc, &ctxa2);
       ZStrClear(zstra2);
-      newhan = 0;
       lasthan = 0;
-      ndocs = 0;
       
       if (queryterm == 0) {
+        uint64_t newhan = 0;
+
         while (1) {
+          uint64_t oldhan;
+
           oldhan = newhan;
           newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
           if (newhan == oldhan) {
@@ -1124,12 +1112,17 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         }
       }
       else {
+        uint64_t nhand1;
+        uint64_t ohand1;
+        uint64_t oldhan;
+        uint64_t newhan;
+
         ZStrCxClear(&zcdoc, &ctxa1);
         ohand1 = 0;
         nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
         oldhan = 0;
         newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
-/*     zstra1 = zstra1 & zstra2  */
+        // zstra1 = zstra1 & zstra2  
         while (1) {
           if (nhand1 == ohand1) {
             break;
@@ -1148,7 +1141,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             ohand1 = nhand1;
             nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
           }
-          else if (newhan>nhand1) {
+          else if (newhan > nhand1) {
             ohand1 = nhand1;
             nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
           }
@@ -1164,10 +1157,12 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       zstra1 = zstra2;
       zstra2 = ztemp;
     }  /* end of match-complete code  */
-
-    if ((query->_localOptions[queryterm] == FTS_MATCH_PREFIX) ||
-        (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)) {
+    else if ((query->_localOptions[queryterm] == FTS_MATCH_PREFIX) ||
+             (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)) {
+      uint16_t* docpt;
       STEX* dochan;
+      uint64_t odocs;
+      uint64_t lasthan;
 
       // make STEX to contain new list of handles 
       dochan = ZStrSTCons(2);
@@ -1205,9 +1200,13 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       ZStrCxClear(&zcdoc, &ctxa2);
       ZStrClear(zstra2);
       lasthan = 0;
-      ndocs = 0;
+      
       if (queryterm == 0) {
+        int i;
+
         for (i = 0; i < odocs; i++) {
+          uint64_t newhan;
+
           ZStrInsert(zstr, docpt, 2);
           newhan = ZStrDec(zstr, &zcdh);
           docpt += ZStrExtLen(docpt, 2);
@@ -1219,18 +1218,24 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         }
       }
       else {
-/*  merge prefix stex with zstra1  */
+        // merge prefix stex with zstra1
+        uint64_t newhan;
+        uint64_t nhand1;
+        uint64_t ohand1;
+
         ZStrCxClear(&zcdoc, &ctxa1);
-        ohand1 = 0;
         if (odocs == 0) {
           continue;
         }
+
         nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
         ZStrInsert(zstr, docpt, 2);
         newhan = ZStrDec(zstr, &zcdh);
         docpt += ZStrExtLen(docpt, 2);
         odocs--;
-/*     zstra1 = zstra1 & zstra2  */
+        ohand1 = 0;
+
+        // zstra1 = zstra1 & zstra2  
         while (1) {
           if (nhand1 == ohand1) {
             break;
@@ -1275,24 +1280,30 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     }   /* end of match-prefix code  */
   }
 
-  if (ndocs != 0) {
-    ZStrCxClear(&zcdoc, &ctxa1);
 
-    dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
-    if (dc->_docs == NULL) {
-      // out of memory
-      TRI_ReadUnlockReadWriteLock(&ix->_lock);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
+  // prepare the result set
+  dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
+  if (dc == NULL) {
+    // out of memory
+  }
+  else {
+    // init result set
+    dc->_len = 0;
+    dc->_docs = NULL;
     
-      ZStrDest(zstra1);
-      ZStrDest(zstra2);
-      ZStrDest(zstr); 
-      ZStrDest(zstr2); 
-      ZStrDest(zstr3);  
-      return NULL;
+    if (ndocs > 0) {
+      // we found some results
+      dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
+      if (dc->_docs != NULL) {
+        ZStrCxClear(&zcdoc, &ctxa1);
+        AddResultDocuments(dc, ix, zstra1, &ctxa1);
+      }
+      else {
+        // this will trigger an out of memory error at the call size
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
+        dc = NULL;
+      }
     }
-  
-    AddResultDocuments(dc, ix, zstra1, &ctxa1);
   }
     
   TRI_ReadUnlockReadWriteLock(&ix->_lock);
