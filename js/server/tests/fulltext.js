@@ -51,7 +51,7 @@ function fulltextQuerySuite () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      idx = collection.ensureFulltextIndex("text", true).id;
+      idx = collection.ensureFulltextIndex("text", false).id;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,20 +640,159 @@ function fulltextQuerySuite () {
       assertEqual(2, collection.FULLTEXT(idx, "prefix:accus,prefix:takima").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "prefix:accus,prefix:takeshi").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "prefix:accus,takeshi").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief substrings
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubstrings: function () {
+      try {
+        assertEqual(0, collection.FULLTEXT(idx, "substring:fi").documents.length);
+        fail();
+      }
+      catch (err) {
+      }
     }
 
   };
-}
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   substring suite
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fulltext queries
+////////////////////////////////////////////////////////////////////////////////
+
+function fulltextQuerySubstringSuite () {
+  var cn = "UnitTestsFulltext";
+  var collection = null;
+  var idx = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn);
+
+      idx = collection.ensureFulltextIndex("text", true).id;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+    
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief simple queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testSimple: function () {
+      var texts = [
+        "some rubbish text",
+        "More rubbish test data. The index should be able to handle all this.",
+        "even MORE rubbish. Nevertheless this should be handled well, too."
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(1, collection.FULLTEXT(idx, "some").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "rubbish").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "text").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "More").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "test").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "data").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "The").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "index").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "should").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "be").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "able").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "to").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "handle").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "all").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "this").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "even").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "Nevertheless").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "handled").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "well").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "too").documents.length);
+      
+      assertEqual(0, collection.FULLTEXT(idx, "not").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "foobar").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "it").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "BANANA").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "noncontained").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "notpresent").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "Invisible").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "unAvailaBLE").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "Neverthelessy").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "dindex").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "grubbish").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief substring queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubstrings: function () {
+      var texts = [
+        "Ego sum fidus. Canis sum.",
+        "Ibi est Aurelia amica. Aurelia est puelle XI annos nata. Filia est.",
+        "Claudia mater est.",
+        "Anna est ancilla. Liberta est",
+        "Flavus Germanus est servus. Coquus est.",
+        "Ibi Quintus amicus est. Quintus est X annos natus.",
+        "Gaius est frater magnus. Est XVIII annos natus et Bonnae miles.",
+        "Aurelius pater est. Est mercator."
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(1, collection.FULLTEXT(idx, "substring:fidus").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:idus").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:idu").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:canis").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:cani").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:can").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:anis").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:ilia,substring:aurel").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:ibi,substring:mic").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:ibi,substring:micus").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:ibi,substring:amicus").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:ibi,substring:mica").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:ibi,substring:amica").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:mercator,substring:aurel").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:mercator,substring:aurel,substring:pat").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:merca,substring:aurelius,substring:pater").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:cato,substring:elius,substring:ater").documents.length);
+    },
+
+  };
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(fulltextQuerySuite);
+jsunity.run(fulltextQuerySubstringSuite);
 
 return jsunity.done();
 

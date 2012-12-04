@@ -974,13 +974,25 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
 /*     - for each term in the query */
     for (queryterm = 0; queryterm < query->_len; queryterm++) {
+        if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING &&
+            ix->_options != FTS_INDEX_SUBSTRINGS) {
+          TRI_ReadUnlockReadWriteLock(&ix->_lock);
+
+          ZStrDest(zstra1);
+          ZStrDest(zstra2);
+          ZStrDest(zstr); 
+          ZStrDest(zstr2); 
+          ZStrDest(zstr3);  
+          return NULL;
+        }
+
 /*  Depending on the query type, the objective is do   */
 /*  populate or "and" zstra1 with the sorted list      */
 /*  of document handles that match that term           */
 /*  TBD - what to do if it is not a legal option?  */
 /* TBD combine this with other options - no need to use zstring  */
         ndocs = 0;
-
+            
         if(query->_localOptions[queryterm] == FTS_MATCH_COMPLETE)
         {
             j=0;
