@@ -1149,11 +1149,11 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                             lasthan=newhan;
                             ndocs++;
                         }
+                        if(odocs==0) break;
                         ZStrInsert(zstr,docpt,2);
                         newhan=ZStrDec(zstr,&zcdh);
                         docpt+=ZStrExtLen(docpt,2);
                         odocs--;
-                        if(odocs==0) break;
                         ohand1=nhand1;
                         nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
                     }
@@ -1164,11 +1164,11 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                     }
                     else
                     {
+                        if(odocs==0) break;
                         ZStrInsert(zstr,docpt,2);
                         newhan=ZStrDec(zstr,&zcdh);
                         docpt+=ZStrExtLen(docpt,2);
                         odocs--;
-                        if(odocs==0) break;
                     }
                 }
             }
