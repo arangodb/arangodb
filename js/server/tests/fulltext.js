@@ -272,15 +272,14 @@ function fulltextQuerySuite () {
         collection.save({ text: rubbish });
       }
       
-      // TODO: index does not handle this
-      // assertEqual(100, collection.FULLTEXT(idx, "the").documents.length);
-      // assertEqual(100, collection.FULLTEXT(idx, "the,dog").documents.length);
-      // assertEqual(100, collection.FULLTEXT(idx, "quick,brown,dog").documents.length);
-      // assertEqual(100, collection.FULLTEXT(idx, "the,quick,brown,fox,jumped,over,the,lazy,dog").documents.length);
-      // assertEqual(100, collection.FULLTEXT(idx, "dog,lazy,the,over,jumped,fox,brown,quick,the").documents.length);
-      // assertEqual(100, collection.FULLTEXT(idx, "fox,over,dog").documents.length);
+      assertEqual(100, collection.FULLTEXT(idx, "the").documents.length);
+      assertEqual(100, collection.FULLTEXT(idx, "the,dog").documents.length);
+      assertEqual(100, collection.FULLTEXT(idx, "quick,brown,dog").documents.length);
+      assertEqual(100, collection.FULLTEXT(idx, "the,quick,brown,fox,jumped,over,the,lazy,dog").documents.length);
+      assertEqual(100, collection.FULLTEXT(idx, "dog,lazy,the,over,jumped,fox,brown,quick,the").documents.length);
+      assertEqual(100, collection.FULLTEXT(idx, "fox,over,dog").documents.length);
 
-      // TODO: index does not handle this
+      // TODO: index does not handle this and returns 100 matches
       // assertEqual(0, collection.FULLTEXT(idx, "the,frog").documents.length);
       // assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
       // assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
@@ -291,24 +290,34 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testSimilar: function () {
+      var suffix = "a";
       for (var i = 0; i < 100; ++i) {
-        collection.save({ text: "somerandomstring" + i });
+        collection.save({ text: "somerandomstring" + suffix });
+        suffix += "a";
       }
-     
+    
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
       // TODO: index does not handle this
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring0").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring1").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring2").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring10").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring11").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring20").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring21").documents.length);
-      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstring99").documents.length);
-      
-      // TODO: index does not handle this
-      // assertEqual(0, collection.FULLTEXT(idx, "somerandomstring").documents.length);
-      // assertEqual(0, collection.FULLTEXT(idx, "somerandomstring00").documents.length);
-      // assertEqual(0, collection.FULLTEXT(idx, "somerandomstring100").documents.length);
+      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
+      // assertEqual(1, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaaaaaaaaa").documents.length);
+
+      assertEqual(0, collection.FULLTEXT(idx, "foo").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstring").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstringb").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstringbbbba").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstringaaaaab").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstringaaaaabaaaa").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstringaaaaaaaaaaaaaaaaaaaab").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstring0aaaa").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "somerandomstringaaaaa0").documents.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
