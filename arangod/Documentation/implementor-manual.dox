@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ImplementorManual ArangoDB for API Implementors (@VERSION)
 ///
-/// @NAVIGATE{InstallManual,Home,RefManual}
+/// @NAVIGATE_ImplementorManual
 ///
 /// @if LATEX
 /// <ul>

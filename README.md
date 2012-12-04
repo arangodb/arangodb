@@ -78,7 +78,6 @@ Start the shell in another windows:
 ## Caveat
 
 Please note that this is an early version of ArangoDB. There will be
-bugs and we'd really appreciate it if you [report](https://github.com/triAGENS/ArangoDB/issues")
-them:
+bugs and we'd really appreciate it if you report them:
 
   https://github.com/triAGENS/ArangoDB/issues
