@@ -2054,13 +2054,14 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
                                                "corrupted vocbase")));
   }
 
-  bool result = false;
   v8::Handle<v8::Value> value;
   TRI_general_cursor_t* cursor;
 
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   if (cursor) {
+    bool result = false;
+
     TRI_LockGeneralCursor(cursor);
 
     if (cursor->_length == 0) {
@@ -2158,13 +2159,14 @@ static v8::Handle<v8::Value> JS_GetRowsGeneralCursor (v8::Arguments const& argv)
                                                "corrupted vocbase")));
   }
 
-  bool result = false;
   v8::Handle<v8::Array> rows = v8::Array::New();
   TRI_general_cursor_t* cursor;
 
   cursor = (TRI_general_cursor_t*) TRI_BeginUsageDataShadowData(vocbase->_cursors, UnwrapGeneralCursor(argv.Holder()));
 
   if (cursor) {
+    bool result = false;
+
     TRI_LockGeneralCursor(cursor);
 
     // exceptions must be caught in the following part because we hold an exclusive
@@ -4746,14 +4748,12 @@ static v8::Handle<v8::Value> JS_SetAttributeVocbaseCol (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: setAttribute(<key>, <value>)")));
   }
 
-  int res = TRI_ERROR_NO_ERROR;
-
   string key = TRI_ObjectToString(argv[0]);
   string value = TRI_ObjectToString(argv[1]);
 
   TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_col_info_t info;
-  res = TRI_LoadCollectionInfo(collection->_path, &info);
+  int res = TRI_LoadCollectionInfo(collection->_path, &info);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (key == "type") {

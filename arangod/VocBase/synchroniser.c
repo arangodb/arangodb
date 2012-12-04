@@ -370,7 +370,6 @@ void TRI_SynchroniserVocBase (void* data) {
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
       TRI_primary_collection_t* primary;
-      bool result;
 
       collection = collections._buffer[i];
 
@@ -392,6 +391,8 @@ void TRI_SynchroniserVocBase (void* data) {
       type = primary->base._info._type;
 
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {
+        bool result;
+
         result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);
         worked |= result;
 

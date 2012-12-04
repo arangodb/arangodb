@@ -177,7 +177,6 @@ static bool CheckCollection (TRI_collection_t* collection) {
   TRI_vector_pointer_t journals;
   TRI_vector_pointer_t sealed;
   TRI_vector_string_t files;
-  bool ok;
   bool stop;
   regex_t re;
   size_t i;
@@ -327,6 +326,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
       char* number;
       char* dname;
       char* filename;
+      bool ok;
 
       datafile = sealed._buffer[i];
 
@@ -552,8 +552,6 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
                                         char const* path,
                                         TRI_col_info_t* parameter) {
   char* filename;
-  char* tmp1;
-  char* tmp2;
   int res;
 
   // sanity check
@@ -588,6 +586,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // simple collection use the collection identifier
   else if (TRI_IS_DOCUMENT_COLLECTION(parameter->_type)) {
+    char* tmp1;
+    char* tmp2;
+
     tmp1 = TRI_StringUInt64(parameter->_cid);
     if (tmp1 == NULL) {
       LOG_ERROR("cannot create collection '%s', out of memory", path);

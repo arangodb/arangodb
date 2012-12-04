@@ -865,7 +865,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 struct RClass* ArangoDatabaseClass;
 struct RClass* ArangoCollectionClass;
 
-mrb_value MR_ArangoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
+mrb_value MR_ArangoDatabase_Initialize (mrb_state* mrb, mrb_value exc) {
   printf("initializer of ArangoDatabase called\n");
   return exc;
 }
@@ -922,7 +922,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
   struct RClass* ArangoCollectionClass = mrb_define_class(mrb, "ArangoCollection", mrb->object_class);
 
   // add an initializer (for TESTING only)
-  mrb_define_method(mrb, ArangoDatabaseClass, "initialize", MR_ArangoDatabase_Inialize, ARGS_ANY());
+  mrb_define_method(mrb, ArangoDatabaseClass, "initialize", MR_ArangoDatabase_Initialize, ARGS_ANY());
 
   // add a method to extract the collection
   mrb_define_method(mrb, ArangoDatabaseClass, "_collection", MR_ArangoDatabase_Collection, ARGS_ANY());

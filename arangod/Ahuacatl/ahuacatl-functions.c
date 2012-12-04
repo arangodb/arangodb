@@ -328,7 +328,6 @@ static bool EqualName (TRI_associative_pointer_t* array,
 static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
                            TRI_aql_context_t* const context,
                            TRI_aql_field_access_t* fieldAccess) {
-  TRI_aql_collection_hint_t* hint;
   TRI_aql_node_t* args;
   TRI_aql_node_t* vertexCollection;
   TRI_aql_node_t* edgeCollection;
@@ -376,6 +375,8 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   if (len > 0 && 
       n > fieldAccess->_variableNameLength + len && 
       memcmp((void*) lookFor, (void*) name, len) == 0) {
+    TRI_aql_collection_hint_t* hint;
+
     // field name is collection.source.XXX, e.g. users.source._id
     LOG_DEBUG("optimising PATHS() field access %s", fieldAccess->_fullName);
  
@@ -523,20 +524,6 @@ void TRI_FreeFunctionsAql (TRI_associative_pointer_t* functions) {
 
   TRI_DestroyAssociativePointer(functions);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, functions);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to a function by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_function_t* TRI_GetFunctionAql (TRI_associative_pointer_t* functions,
-                                        const char* const internalName) {
-  TRI_aql_function_t* function;
-  
-  function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) internalName);
-  assert(function);
-
-  return function;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -693,15 +680,16 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   // validate argument types
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* parameter = (TRI_aql_node_t*) TRI_AQL_NODE_MEMBER(parameters, i);
-    bool parse = true;
-    bool foundArg = false;
-
+    
     if (repeat) {
       // last argument is repeated
       ARG_CHECK
     }
     else {
       // last argument is not repeated
+      bool parse = true;
+      bool foundArg = false;
+
       allowed = InitParam();
 
       foundArg = false;

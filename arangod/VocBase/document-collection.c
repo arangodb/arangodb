@@ -2834,7 +2834,6 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_idx_iid_t iid) {
   TRI_index_t* found;
   TRI_primary_collection_t* primary;
-  bool removeResult;
   size_t n;
   size_t i;
 
@@ -2876,6 +2875,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
   // .............................................................................
 
   if (found != NULL) {
+    bool removeResult;
+
     removeResult = TRI_RemoveIndexFile(primary, found);
     TRI_FreeIndex(found);
     return removeResult;
@@ -3097,7 +3098,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
                                                         bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
 
   primary = &document->base;
 
@@ -3120,6 +3120,8 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
 
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -3468,7 +3470,6 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
 
   primary = &document->base;
 
@@ -3491,6 +3492,8 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
 
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -3511,7 +3514,6 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
 
   primary = &document->base;
 
@@ -3534,6 +3536,8 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
 
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -3726,7 +3730,6 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
                                                     bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
   
   primary = &document->base;
 
@@ -3750,6 +3753,8 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
 
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -3933,7 +3938,6 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
                                                         bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
   
   primary = &document->base;
 
@@ -3956,6 +3960,8 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
   
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -4175,7 +4181,6 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
                                                         bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
   
   primary = &document->base;
 
@@ -4198,6 +4203,8 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
   
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -4418,7 +4425,6 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
                                                             bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
 
   primary = &document->base;
 
@@ -4442,6 +4448,8 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
 
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
@@ -4690,7 +4698,6 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
                                                         char** errorStr) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
-  int res;
   
   primary = &document->base;
 
@@ -4721,6 +4728,8 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   }
 
   if (created) {
+    int res;
+
     res = TRI_SaveIndex(primary, idx);
     
     // ...........................................................................    

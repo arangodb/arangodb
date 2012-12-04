@@ -403,9 +403,9 @@ void ApplicationV8::collectGarbage () {
 
   while (_stopping == 0) {
     V8Context* context = 0;
-    bool gotSignal = false;
 
     {
+      bool gotSignal = false;
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {

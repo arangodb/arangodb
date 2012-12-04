@@ -369,7 +369,6 @@ int MultiHashIndex_add (HashIndex* hashIndex, HashIndexElement* element) {
 TRI_hash_index_elements_t* MultiHashIndex_find (HashIndex* hashIndex, HashIndexElement* element) {
   TRI_vector_pointer_t result;
   TRI_hash_index_elements_t* results;
-  size_t j;
   
   results = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hash_index_elements_t), false);
   if (results == NULL) {
@@ -390,6 +389,8 @@ TRI_hash_index_elements_t* MultiHashIndex_find (HashIndex* hashIndex, HashIndexE
     results->_numElements = 0;
   }
   else {  
+    size_t j;
+
     results->_numElements = result._length;
     results->_elements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(HashIndexElement) * result._length, false); 
     if (results->_elements == NULL) {

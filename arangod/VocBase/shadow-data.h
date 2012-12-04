@@ -195,26 +195,10 @@ void* TRI_BeginUsageIdShadowData (TRI_shadow_store_t* const, const TRI_shadow_id
 void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const, const void* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a shadow in the index using its id
-///
-/// If the shadow is found, its refcount will be decreased by one.
-/// If the refcount is 0 and the shadow is of type SHADOW_TRANSIENT, the shadow
-/// object will be destroyed.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_EndUsageIdShadowData (TRI_shadow_store_t* const, const TRI_shadow_id);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the persistence flag for a shadow using its data pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_PersistDataShadowData (TRI_shadow_store_t* const, const void* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the persistence flag for a shadow using its id
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_PersistIdShadowData (TRI_shadow_store_t* const, const TRI_shadow_id);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the deleted flag for a shadow using its data pointer

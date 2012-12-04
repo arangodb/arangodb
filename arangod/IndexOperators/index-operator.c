@@ -164,14 +164,14 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
     case TRI_LE_INDEX_OPERATOR: 
     case TRI_LT_INDEX_OPERATOR:
     case TRI_IN_INDEX_OPERATOR: {
-      size_t i;
-
       relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
       if (relationOperator->_parameters != NULL) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, relationOperator->_parameters);
       } 
 
       if (relationOperator->_fields != NULL) {
+        size_t i;
+
         // relationOperator->_fields contains _numFields shapedJson objects
         for (i = 0; i < relationOperator->_numFields; ++i) {
           // destroy each individual shapedJson object

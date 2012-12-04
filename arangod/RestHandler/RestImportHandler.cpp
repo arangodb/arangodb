@@ -294,7 +294,6 @@ bool RestImportHandler::createByDocumentsLines () {
 bool RestImportHandler::createByDocumentsList () {
   size_t numCreated = 0;
   size_t numError = 0;
-  size_t numEmpty = 0;
   const bool forceSync = false;
   
   vector<string> const& suffix = _request->suffix();
@@ -395,6 +394,7 @@ bool RestImportHandler::createByDocumentsList () {
   }
   else {
     // generate result
+    size_t numEmpty = 0;
     generateDocumentsCreated(numCreated, numError, numEmpty);
   }
   
@@ -534,10 +534,10 @@ bool RestImportHandler::createByKeyValueList () {
     //LOGGER_TRACE << "line = " << line;
     
     TRI_json_t* values = parseJsonLine(line);
-    TRI_json_t* json = 0;
 
     if (values) {
       // got a json document or list
+      TRI_json_t* json = 0;
       
       // build the json object from the list
       json = createJsonObject(keys, values, line);

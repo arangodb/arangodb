@@ -325,6 +325,7 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
         case TRI_ACT_NUMBER: {
           key = mrb_str_new(mrb, k.c_str(), k.size());
+          // TODO: val is assigned and then re-assigned. Is this intentional??
           val = mrb_str_new(mrb, v.c_str(), v.size());
           val = mrb_float_value(TRI_DoubleString(v.c_str()));
 
@@ -489,6 +490,7 @@ void TRI_InitMRActions (mrb_state* mrb, triagens::arango::ApplicationMR* applica
   // HttpRequest
   // .............................................................................
 
+  // TODO: rcl is assigned and then re-assigned directly. Is this intentional?
   rcl = mrs->_arangoRequest = mrb_define_class_under(mrb, arango, "HttpRequest", mrb->object_class);
 
   // .............................................................................

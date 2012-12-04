@@ -435,23 +435,6 @@ TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_context_t* const context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST attribute node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_aql_node_t* TRI_CreateNodeAttributeAql (TRI_aql_context_t* const context,
-                                            const char* const name) {
-  CREATE_NODE(TRI_AQL_NODE_ATTRIBUTE)
-
-  if (name == NULL) {
-    ABORT_OOM
-  }
-  
-  TRI_AQL_NODE_STRING(node) = (char*) name;
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST parameter node
 ////////////////////////////////////////////////////////////////////////////////
 

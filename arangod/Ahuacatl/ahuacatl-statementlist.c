@@ -348,7 +348,6 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const list,
   size_t ignoreScopes;
 
   assert(list);
-  assert(position >= 0);
   n = list->_statements._length;
 
   // walk the scope from the specified position backwards until we find the start of the scope

@@ -394,30 +394,6 @@ void TRI_EndUsageDataShadowData (TRI_shadow_store_t* const store,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a shadow in the index using its id
-///
-/// If the shadow is found, its refcount will be decreased by one.
-/// If the refcount is 0 and the shadow is of type SHADOW_TRANSIENT, the shadow
-/// object will be destroyed.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_EndUsageIdShadowData (TRI_shadow_store_t* const store,
-                             const TRI_shadow_id id) {
-  TRI_shadow_t* shadow;
-
-  assert(store);
-  
-  TRI_LockMutex(&store->_lock);
-  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
-
-  if (shadow) {
-    DecreaseRefCount(store, shadow); // this might delete the shadow
-  } 
-
-  TRI_UnlockMutex(&store->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the persistence flag for a shadow using its data pointer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -442,41 +418,18 @@ bool TRI_PersistDataShadowData (TRI_shadow_store_t* const store,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the persistence flag for a shadow using its id
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_PersistIdShadowData (TRI_shadow_store_t* const store,
-                              const TRI_shadow_id id) {
-  TRI_shadow_t* shadow;
-  bool result = false;
-
-  assert(store);
-
-  TRI_LockMutex(&store->_lock);
-  shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_ids, &id);
-
-  if (shadow && !shadow->_deleted) {
-    PersistShadow(shadow);
-    result = true;
-  } 
-
-  TRI_UnlockMutex(&store->_lock);
-  
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the deleted flag for a shadow using its data pointer
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DeleteDataShadowData (TRI_shadow_store_t* const store,
                                const void* const data) {
-  TRI_shadow_t* shadow;
   bool found = false;
 
   assert(store);
 
   if (data) {
+    TRI_shadow_t* shadow;
+
     TRI_LockMutex(&store->_lock);
     shadow = (TRI_shadow_t*) TRI_LookupByKeyAssociativePointer(&store->_pointers, data);
 

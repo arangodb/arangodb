@@ -161,9 +161,10 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
     }
     case TRI_AQL_NODE_LIST: {
       TRI_json_t* result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-      size_t i, n;
-
+      
       if (result) {
+        size_t i, n;
+
         n = node->_members._length;
         for (i = 0; i < n; ++i) {
           TRI_json_t* subValue = TRI_NodeJsonAql(context, TRI_AQL_NODE_MEMBER(node, i));
@@ -177,9 +178,10 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
     }
     case TRI_AQL_NODE_ARRAY: {
       TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-      size_t i, n;
 
       if (result) {
+        size_t i, n;
+
         n = node->_members._length;
         for (i = 0; i < n; ++i) {
           TRI_aql_node_t* element = TRI_AQL_NODE_MEMBER(node, i);
