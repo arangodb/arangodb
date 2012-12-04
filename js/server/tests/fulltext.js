@@ -112,6 +112,84 @@ function fulltextQuerySuite () {
     }, 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test updates
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUpdates: function () {
+      var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
+      var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
+
+      assertEqual(1, collection.FULLTEXT(idx, "like,bananas").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "like,tomatoes").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "oranges,hate").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "people").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "but").documents.length);
+
+      collection.update(d1, { text: "bananas are delicious" });
+      assertEqual(1, collection.FULLTEXT(idx, "bananas").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "delicious").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "like,bananas").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "like,tomatoes").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "oranges,hate").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "people").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "but").documents.length);
+      
+      collection.update(d2, { text: "seems that some where still left!" });
+      assertEqual(1, collection.FULLTEXT(idx, "bananas").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "bananas,delicious").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "bananas,like").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "seems,left").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "delicious").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "oranges").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "people").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deletes
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDeletes: function () {
+      var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
+      var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
+      var d3 = collection.save({ text: "A totally unrelated text is inserted into the index, too" });
+
+      assertEqual(1, collection.FULLTEXT(idx, "like,bananas").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "like,tomatoes").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "oranges,hate").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "people").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "but").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "totally,unrelated").documents.length);
+
+      collection.remove(d1);
+      assertEqual(0, collection.FULLTEXT(idx, "bananas").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "like,bananas").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "like").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "oranges,hate").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "people").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "unrelated,text,index").documents.length);
+      
+      collection.remove(d3);
+      assertEqual(0, collection.FULLTEXT(idx, "bananas").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "like").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "oranges,hate").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "people").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "unrelated,text,index").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "unrelated").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "text").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "index").documents.length);
+      
+      collection.remove(d2);
+      assertEqual(0, collection.FULLTEXT(idx, "bananas").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "like").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "oranges").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "hat").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "people").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "unrelated").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "text").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "index").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief case sensivity
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -376,7 +454,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "Stanisława,Niesiołowski,przestraszone,szczypię").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "uniesť").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "uniesť,mladú").documents.length);
-    },
+    }
 
   };
 }
