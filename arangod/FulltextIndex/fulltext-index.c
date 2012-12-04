@@ -33,6 +33,30 @@
 #include "FulltextIndex/zstr.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                           externs
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief codes, defined in zcode.c
+////////////////////////////////////////////////////////////////////////////////
+
+extern ZCOD zcutf;
+extern ZCOD zcbky;
+extern ZCOD zcdelt;
+extern ZCOD zcdoc;
+extern ZCOD zckk;
+extern ZCOD zcdh;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
@@ -47,13 +71,17 @@
 
 #define NOTFOUND 0xF777777777777
 
-/* codes - in zcode.c so need externs here  */
-extern ZCOD zcutf;
-extern ZCOD zcbky;
-extern ZCOD zcdelt;
-extern ZCOD zcdoc;
-extern ZCOD zckk;
-extern ZCOD zcdh;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of Unicode characters for an indexed word
+////////////////////////////////////////////////////////////////////////////////
+
+#define MAX_WORD_LENGTH  (40)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gap between two words in a temporary search buffer
+////////////////////////////////////////////////////////////////////////////////
+
+#define SPACING          (10)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual index struct used
@@ -195,7 +223,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
             ZStrEnc(zstrwl,&zcutf,unicode);
             unicode=GetUnicode(&utf);
             j++;
-            if(j>40) {
+            if (j > MAX_WORD_LENGTH) {
               break;
             }
         }
@@ -502,15 +530,14 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TODO
+/// @brief find a key - prefix or substring matching
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
   ZSTR* zstr;
   CTX ctx;
   uint64_t* wd;
-  uint64_t tran, newlet, oldlet, bkey, kk1;
-  int j;
+  uint64_t bkey, kk1;
 
   zstr = ZStrCons(10);
   wd = word;
@@ -520,7 +547,11 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
   }
   kk1 = ZStrTuberK(ix->_index2, 0, 0, 0);
 
-  while(1) {
+  while (1) {
+    uint64_t tran;
+    uint64_t newlet;
+    int j;
+
     if (wd == word) {
       break;
     }
@@ -536,6 +567,8 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
     ZStrCxClear(&zcdelt, &ctx);
     newlet = 0;
     while (1) {
+      uint64_t oldlet;
+
       oldlet = newlet;
       newlet = ZStrCxDec(zstr, &zcdelt, &ctx);
       if (newlet == oldlet) {
@@ -564,14 +597,13 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TODO
+/// @brief find a key - complete matching
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
   ZSTR* zstr;
   CTX ctx;
   uint64_t kk2;
-  int j;
 
   zstr = ZStrCons(10);
   kk2 = ZStrTuberK(ix->_index2, 0, 0, 0);
@@ -581,6 +613,7 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
     uint64_t x64;
     uint64_t newlet;
     uint64_t bkey;
+    int j;
 
     tran = *(word++);
     if (tran==0) {
@@ -823,14 +856,14 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
 
 /* set up free chain of document handles  */
   for (i = 1; i < sizes[0]; i++) {
-    ix->_handles[i]   = i+1;
-    ix->_handsfree[i] = 1;
+    ix->_handles[i]        = i+1;
+    ix->_handsfree[i]      = 1;
   }
 
-  ix->_handles[sizes[0]] = 0;  /* end of free chain  */
+  ix->_handles[sizes[0]]   = 0;  /* end of free chain  */
   ix->_handsfree[sizes[0]] = 1;
-  ix->_firstfree = 1;
-  ix->_lastslot = sizes[0];
+  ix->_firstfree           = 1;
+  ix->_lastslot            = sizes[0];
 
 /*     create index 2 */
   ix->_index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
@@ -933,304 +966,315 @@ void FTS_BackgroundTask(FTS_index_t* ftx) {
 
 FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                                        FTS_query_t* query) {
-    FTS_document_ids_t* dc;
-    FTS_real_index* ix;
-    size_t queryterm;
-    ZSTR *zstr2, *zstr3;
-    ZSTR *zstra1, *zstra2, *ztemp;
-    ZSTR *zstr;
-    STEX * dochan;
-    CTX ctxa1, ctxa2;
-    CTX ctx3;
-    uint64_t word1[100];
-    int i,j;
-    uint64_t kk2,kk1,x64,docb,dock;
-    uint64_t oldhan,newhan,ndocs,lasthan,odocs;
-    uint64_t nhand1,ohand1;
-    uint8_t * utf;
-    uint64_t unicode;
-    uint16_t *docpt;
+  FTS_document_ids_t* dc;
+  FTS_real_index* ix;
+  size_t queryterm;
+  ZSTR* zstr2;
+  ZSTR* zstr3;
+  ZSTR* zstra1;
+  ZSTR* zstra2;
+  ZSTR* ztemp;
+  ZSTR* zstr;
+  CTX ctxa1;
+  CTX ctxa2;
+  CTX ctx3;
+  uint64_t word1[2 * (MAX_WORD_LENGTH + SPACING)];
+  int i, j;
+  uint64_t kk2, kk1, x64;
+  uint64_t oldhan, newhan, ndocs, lasthan, odocs;
+  uint64_t nhand1, ohand1;
+  uint8_t* utf;
+  uint64_t unicode;
+  uint16_t* docpt;
 
-    ix = (FTS_real_index*) ftx;
+  dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
+  if (dc == NULL) {
+    // out of memory
+    return NULL;
+  }
+    
+  dc->_len = 0;     /* no docids so far  */
+  dc->_docs = NULL;
 
-    dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
-    if (dc == NULL) {
-      // out of memory
-      return NULL;
-    }
+  zstr2  = ZStrCons(10);  /* from index-2 tuber */
+  zstr3  = ZStrCons(10);  /* from index-3 tuber  */
+  zstra1 = ZStrCons(10); /* current list of documents */
+  zstra2 = ZStrCons(10); /* new list of documents  */
+  zstr   = ZStrCons(4);  /* work zstr from stex  */
     
-    dc->_len = 0;     /* no docids so far  */
-    dc->_docs = NULL;
-
-    zstr2  = ZStrCons(10);  /* from index-2 tuber */
-    zstr3  = ZStrCons(10);  /* from index-3 tuber  */
-    zstra1 = ZStrCons(10); /* current list of documents */
-    zstra2 = ZStrCons(10); /* new list of documents  */
-    zstr   = ZStrCons(4);  /* work zstr from stex  */
+  ndocs = 0;
     
-    ndocs = 0;
-    
-    TRI_ReadLockReadWriteLock(&ix->_lock);
+  ix = (FTS_real_index*) ftx;
+  TRI_ReadLockReadWriteLock(&ix->_lock);
 
 /*     - for each term in the query */
-    for (queryterm = 0; queryterm < query->_len; queryterm++) {
-        if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING &&
-            ix->_options != FTS_INDEX_SUBSTRINGS) {
-          TRI_ReadUnlockReadWriteLock(&ix->_lock);
+  for (queryterm = 0; queryterm < query->_len; queryterm++) {
+    if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING &&
+        ix->_options != FTS_INDEX_SUBSTRINGS) {
+      // substring search but index does not contain substrings
+      TRI_ReadUnlockReadWriteLock(&ix->_lock);
 
-          ZStrDest(zstra1);
-          ZStrDest(zstra2);
-          ZStrDest(zstr); 
-          ZStrDest(zstr2); 
-          ZStrDest(zstr3);  
-          return NULL;
-        }
+      ZStrDest(zstra1);
+      ZStrDest(zstra2);
+      ZStrDest(zstr); 
+      ZStrDest(zstr2); 
+      ZStrDest(zstr3);  
+      return NULL;
+    }
 
 /*  Depending on the query type, the objective is do   */
 /*  populate or "and" zstra1 with the sorted list      */
 /*  of document handles that match that term           */
 /*  TBD - what to do if it is not a legal option?  */
 /* TBD combine this with other options - no need to use zstring  */
-        ndocs = 0;
+    ndocs = 0;
             
-        if(query->_localOptions[queryterm] == FTS_MATCH_COMPLETE)
-        {
-            j=0;
-            utf= query->_texts[queryterm];
-            while(1)
-            {
-                unicode=GetUnicode(&utf);
-                word1[j++]=ZStrXlate(&zcutf,unicode);
-                if(unicode==0) break;
-                if(j>40) break;
+    if (query->_localOptions[queryterm] == FTS_MATCH_COMPLETE) {
+      uint64_t docb;
+      uint64_t dock;
+
+      j = 0;
+      utf = query->_texts[queryterm];
+      while (1) {
+        unicode = GetUnicode(&utf);
+        word1[j++] = ZStrXlate(&zcutf, unicode);
+        if (unicode == 0) {
+          break;
+        }
+        if (j > MAX_WORD_LENGTH) {
+          break;
+        }
+      }
+      word1[j] = 0;
+
+      kk2 = FindKKey2(ix, word1);
+      if (kk2 == NOTFOUND) {
+        break;
+      }
+      j = ZStrTuberRead(ix->_index2, kk2, zstr2);
+      x64 = ZStrBitsOut(zstr2, 1);
+      if (x64 != 1) {
+        break;
+      }
+      docb = ZStrDec(zstr2, &zcbky);
+      dock = ZStrTuberK(ix->_index3, kk2, 0, docb);
+      i = ZStrTuberRead(ix->_index3, dock, zstr3);
+      if (i == 1) {
+        printf("Kkey not in ix3 - we're terrified\n");
+      }
+
+      ZStrCxClear(&zcdoc, &ctx3);
+      ZStrCxClear(&zcdoc, &ctxa2);
+      ZStrClear(zstra2);
+      newhan = 0;
+      lasthan = 0;
+      ndocs = 0;
+      
+      if (queryterm == 0) {
+        while (1) {
+          oldhan = newhan;
+          newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
+          if (newhan == oldhan) {
+            break;
+          }
+          if (ix->_handsfree[newhan] == 0) {
+            ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+            lasthan = newhan;
+            ndocs++;
+          }
+        }
+      }
+      else {
+        ZStrCxClear(&zcdoc, &ctxa1);
+        ohand1 = 0;
+        nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+        oldhan = 0;
+        newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
+/*     zstra1 = zstra1 & zstra2  */
+        while (1) {
+          if (nhand1 == ohand1) {
+            break;
+          }
+          if (oldhan == newhan) {
+            break;
+          }
+          if (newhan == nhand1) {
+            if (ix->_handsfree[newhan] == 0) {
+              ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+              lasthan = newhan;
+              ndocs++;
             }
-            word1[j]=0;
-            kk2=FindKKey2(ix,word1);
-            if(kk2==NOTFOUND) {
+            oldhan = newhan;
+            newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
+            ohand1 = nhand1;
+            nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+          }
+          else if (newhan>nhand1) {
+            ohand1 = nhand1;
+            nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+          }
+          else {
+            oldhan = newhan;
+            newhan = ZStrCxDec(zstr3, &zcdoc, &ctx3);
+          }
+        }
+      }
+      ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan);
+      ZStrNormalize(zstra2);
+      ztemp = zstra1;
+      zstra1 = zstra2;
+      zstra2 = ztemp;
+    }  /* end of match-complete code  */
+
+    if ((query->_localOptions[queryterm] == FTS_MATCH_PREFIX) ||
+        (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)) {
+      STEX* dochan;
+/*  Make STEX to contain new list of handles  */
+      dochan = ZStrSTCons(2);
+      j = MAX_WORD_LENGTH + SPACING;
+      utf = query->_texts[queryterm];
+      while (1) {
+        unicode = GetUnicode(&utf);
+        word1[j++] = ZStrXlate(&zcutf, unicode);
+        if (unicode == 0 || j > MAX_WORD_LENGTH + MAX_WORD_LENGTH + SPACING) {
+          break;
+        }
+      }
+      word1[j] = 0;
+      
+      if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX) {
+        kk2 = FindKKey2(ix, word1 + MAX_WORD_LENGTH + SPACING);
+        if (kk2 == NOTFOUND) {
+          break;
+        }
+/*  call routine to recursively put handles to STEX  */
+        Ix2Recurs(dochan, ix, kk2);
+      }
+      if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING) {
+        kk1 = FindKKey1(ix, word1 + MAX_WORD_LENGTH + SPACING);
+        if (kk1 == NOTFOUND) {
+          break;
+        }
+/*  call routine to recursively put handles to STEX  */
+        Ix1Recurs(dochan, ix, kk1, word1 + MAX_WORD_LENGTH + SPACING);
+      }
+      ZStrSTSort(dochan);
+      odocs = dochan->cnt;
+      docpt = dochan->list;
+      ZStrCxClear(&zcdoc, &ctxa2);
+      ZStrClear(zstra2);
+      lasthan = 0;
+      ndocs = 0;
+      if (queryterm == 0) {
+        for (i = 0; i < odocs; i++) {
+          ZStrInsert(zstr, docpt, 2);
+          newhan = ZStrDec(zstr, &zcdh);
+          docpt += ZStrExtLen(docpt, 2);
+          if (ix->_handsfree[newhan] == 0) {
+            ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+            lasthan = newhan;
+            ndocs++;
+          }
+        }
+      }
+      else {
+/*  merge prefix stex with zstra1  */
+        ZStrCxClear(&zcdoc, &ctxa1);
+        ohand1 = 0;
+        if (odocs == 0) {
+          continue;
+        }
+        nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+        ZStrInsert(zstr, docpt, 2);
+        newhan = ZStrDec(zstr, &zcdh);
+        docpt += ZStrExtLen(docpt, 2);
+        odocs--;
+/*     zstra1 = zstra1 & zstra2  */
+        while (1) {
+          if (nhand1 == ohand1) {
+            break;
+          }
+          if (newhan == nhand1) {
+            if (ix->_handsfree[newhan] == 0) {
+              ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+              lasthan = newhan;
+              ndocs++;
+            }
+            if (odocs==0) {
               break;
             }
-            j=ZStrTuberRead(ix->_index2,kk2,zstr2);
-            x64=ZStrBitsOut(zstr2,1);
-            if(x64!=1) break;
-            docb=ZStrDec(zstr2,&zcbky);
-            dock=ZStrTuberK(ix->_index3,kk2,0,docb);
-            i=ZStrTuberRead(ix->_index3,dock,zstr3);
-            if(i==1)
-            {
-                printf("Kkey not in ix3 - we're terrified\n");
+            ZStrInsert(zstr, docpt, 2);
+            newhan = ZStrDec(zstr, &zcdh);
+            docpt += ZStrExtLen(docpt, 2);
+            odocs--;
+            ohand1 = nhand1;
+            nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+          }
+          else if (newhan > nhand1) {
+            ohand1 = nhand1;
+            nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+          }
+          else {
+            if (odocs == 0) {
+              break;
             }
-            ZStrCxClear(&zcdoc, &ctx3);
-            ZStrCxClear(&zcdoc, &ctxa2);
-            ZStrClear(zstra2);
-            newhan=0;
-            lasthan=0;
-            ndocs=0;
-            if(queryterm==0)
-            {
-                while(1)
-                {
-                    oldhan=newhan;
-                    newhan=ZStrCxDec(zstr3,&zcdoc,&ctx3);
-                    if(newhan==oldhan) break;
-                    if(ix->_handsfree[newhan]==0)
-                    {
-                        ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
-                        lasthan=newhan;
-                        ndocs++;
-                    }
-                }
+            ZStrInsert(zstr, docpt, 2);
+            newhan = ZStrDec(zstr, &zcdh);
+            docpt += ZStrExtLen(docpt, 2);
+            odocs--;
+          }
+        }
+      }
+      ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan);
+      ZStrNormalize(zstra2);
+      ztemp = zstra1;
+      zstra1 = zstra2;
+      zstra2 = ztemp; 
+      ZStrSTDest(dochan); 
+    }   /* end of match-prefix code  */
+  }
 
-            }
-            else
-            {
-                ZStrCxClear(&zcdoc, &ctxa1);
-                ohand1=0;
-                nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-                oldhan=0;
-                newhan=ZStrCxDec(zstr3,&zcdoc,&ctx3);
-/*     zstra1 = zstra1 & zstra2  */
-                while(1)
-                {
-                    if(nhand1==ohand1) break;
-                    if(oldhan==newhan) break;
-                    if(newhan==nhand1)
-                    {
-                        if(ix->_handsfree[newhan]==0)
-                        {
-                            ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
-                            lasthan=newhan;
-                            ndocs++;
-                        }
-                        oldhan=newhan;
-                        newhan=ZStrCxDec(zstr3,&zcdoc,&ctx3);
-                        ohand1=nhand1;
-                        nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-                    }
-                    else if(newhan>nhand1)
-                    {
-                        ohand1=nhand1;
-                        nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-                    }
-                    else
-                    {
-                        oldhan=newhan;
-                        newhan=ZStrCxDec(zstr3,&zcdoc,&ctx3);
-                    }
-                }
-            }
-            ZStrCxEnc(zstra2,&zcdoc,&ctxa2,lasthan);
-            ZStrNormalize(zstra2);
-            ztemp=zstra1;
-            zstra1=zstra2;
-            zstra2=ztemp;
-        }  /* end of match-complete code  */
-        if (  (query->_localOptions[queryterm] == FTS_MATCH_PREFIX)  ||
-              (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)  )
-        {
-/*  Make STEX to contain new list of handles  */
-            dochan=ZStrSTCons(2);
-            j=50;
-            utf= query->_texts[queryterm];
-/* TBD protect against query string greater than 40?  */
-            while(1)
-            {
-                unicode=GetUnicode(&utf);
-                word1[j++]=ZStrXlate(&zcutf,unicode);
-                if(unicode==0) break;
-                if(j>40+50) break;
-            }
-            word1[j] = 0;
-            if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX)
-            {
-                kk2=FindKKey2(ix,word1+50);
-                if(kk2==NOTFOUND) {
-                  break;
-                }
-/*  call routine to recursively put handles to STEX  */
-                Ix2Recurs(dochan,ix,kk2);
-            }
-            if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)
-            {
-                kk1=FindKKey1(ix,word1+50);
-                if(kk1==NOTFOUND) break;
-/*  call routine to recursively put handles to STEX  */
-                Ix1Recurs(dochan,ix,kk1,word1+50);
-            }
-            ZStrSTSort(dochan);
-            odocs=dochan->cnt;
-            docpt=dochan->list;
-            ZStrCxClear(&zcdoc, &ctxa2);
-            ZStrClear(zstra2);
-            lasthan=0;
-            ndocs=0;
-            if(queryterm==0)
-            {
-                for(i=0;i<odocs;i++)
-                {
-                    ZStrInsert(zstr,docpt,2);
-                    newhan=ZStrDec(zstr,&zcdh);
-                    docpt+=ZStrExtLen(docpt,2);
-                    if(ix->_handsfree[newhan]==0)
-                    {
-                        ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
-                        lasthan=newhan;
-                        ndocs++;
-                    }
-                }
-            }
-            else
-            {
-/*  merge prefix stex with zstra1  */
-                ZStrCxClear(&zcdoc, &ctxa1);
-                ohand1=0;
-                if(odocs==0) continue;
-                nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-                ZStrInsert(zstr,docpt,2);
-                newhan=ZStrDec(zstr,&zcdh);
-                docpt+=ZStrExtLen(docpt,2);
-                odocs--;
-/*     zstra1 = zstra1 & zstra2  */
-                while(1)
-                {
-                    if(nhand1==ohand1) break;
-                    if(newhan==nhand1)
-                    {
-                        if(ix->_handsfree[newhan]==0)
-                        {
-                            ZStrCxEnc(zstra2,&zcdoc,&ctxa2,newhan);
-                            lasthan=newhan;
-                            ndocs++;
-                        }
-                        if(odocs==0) break;
-                        ZStrInsert(zstr,docpt,2);
-                        newhan=ZStrDec(zstr,&zcdh);
-                        docpt+=ZStrExtLen(docpt,2);
-                        odocs--;
-                        ohand1=nhand1;
-                        nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-                    }
-                    else if(newhan>nhand1)
-                    {
-                        ohand1=nhand1;
-                        nhand1=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-                    }
-                    else
-                    {
-                        if(odocs==0) break;
-                        ZStrInsert(zstr,docpt,2);
-                        newhan=ZStrDec(zstr,&zcdh);
-                        docpt+=ZStrExtLen(docpt,2);
-                        odocs--;
-                    }
-                }
-            }
-            ZStrCxEnc(zstra2,&zcdoc,&ctxa2,lasthan);
-            ZStrNormalize(zstra2);
-            ztemp=zstra1;
-            zstra1=zstra2;
-            zstra2=ztemp; 
-            ZStrSTDest(dochan); 
-        }   /* end of match-prefix code  */
+  if (ndocs != 0) {
+    ZStrCxClear(&zcdoc, &ctxa1);
+
+    dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
+    if (dc->_docs == NULL) {
+      // out of memory
+      TRI_ReadUnlockReadWriteLock(&ix->_lock);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
+    
+      ZStrDest(zstra1);
+      ZStrDest(zstra2);
+      ZStrDest(zstr); 
+      ZStrDest(zstr2); 
+      ZStrDest(zstr3);  
+      return NULL;
     }
 
-    if (ndocs != 0) {
-      ZStrCxClear(&zcdoc, &ctxa1);
-
-      dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
-      if (dc->_docs == NULL) {
-        // out of memory
-        TRI_ReadUnlockReadWriteLock(&ix->_lock);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
-    
-        ZStrDest(zstra1);
-        ZStrDest(zstra2);
-        ZStrDest(zstr); 
-        ZStrDest(zstr2); 
-        ZStrDest(zstr3);  
-        return NULL;
+    newhan = 0;
+    ndocs = 0;
+    while (1) {
+      oldhan = newhan;
+      newhan = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
+      if (newhan == oldhan) {
+        break;
       }
-
-      newhan=0;
-      ndocs=0;
-      while (1) {
-        oldhan=newhan;
-        newhan=ZStrCxDec(zstra1,&zcdoc,&ctxa1);
-        if(newhan==oldhan) break;
-        if(ix->_handsfree[newhan]==0)
-          dc->_docs[ndocs++]=ix->_handles[newhan];
+      if (ix->_handsfree[newhan] == 0) {
+        dc->_docs[ndocs++] = ix->_handles[newhan];
       }
-      dc->_len=ndocs;
     }
+    dc->_len = ndocs;
+  }
     
-    TRI_ReadUnlockReadWriteLock(&ix->_lock);
+  TRI_ReadUnlockReadWriteLock(&ix->_lock);
 
-    ZStrDest(zstra1);
-    ZStrDest(zstra2);
-    ZStrDest(zstr); 
-    ZStrDest(zstr2); 
-    ZStrDest(zstr3);  
+  ZStrDest(zstra1);
+  ZStrDest(zstra2);
+  ZStrDest(zstr); 
+  ZStrDest(zstr2); 
+  ZStrDest(zstr3);  
 
-    return dc;
+  return dc;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
