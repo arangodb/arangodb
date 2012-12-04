@@ -19,7 +19,6 @@ After=syslog.target network.target
 [Service]
 Type=forking
 PIDFile=/var/run/arangodb/arangod.pid
-ExecStartPre=-/bin/echo 'Starting arangod:'
 ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/run/arangodb
 ExecStart=/usr/sbin/arangod -c /etc/arangodb/arangod.conf --pid-file /var/run/arangodb/arangod.pid --supervisor --uid arangodb
 
