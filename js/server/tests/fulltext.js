@@ -562,39 +562,31 @@ function fulltextQuerySuite () {
       assertEqual(2, collection.FULLTEXT(idx, "prefix:moechte,mueller").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:muell,moechten").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:mueller,moechten").documents.length);
-      /*
-     require("console").log("adx0"); 
       assertEqual(2, collection.FULLTEXT(idx, "moechten,prefix:muell").documents.length);
-     require("console").log("adx1"); 
       assertEqual(2, collection.FULLTEXT(idx, "moechten,prefix:mueller").documents.length);
-     require("console").log("adx2"); 
       assertEqual(2, collection.FULLTEXT(idx, "prefix:moechten,prefix:mueller").documents.length);
 
 
       assertEqual(2, collection.FULLTEXT(idx, "möchten,müller").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:möchten,müller").documents.length);
-     require("console").log("adx0"); 
       assertEqual(2, collection.FULLTEXT(idx, "möchten,prefix:müller").documents.length);
-     require("console").log("adx"); 
       assertEqual(2, collection.FULLTEXT(idx, "prefix:möchten,prefix:müller").documents.length);
-     require("console").log("adx1"); 
       assertEqual(1, collection.FULLTEXT(idx, "prefix:flöten,böse").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:müll,müßige").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:war,prefix:wichtig").documents.length);
-      assertEqual(1, collection.FULLTEXT(idx, "prefix:war,prefix:wichte").documents.length);
-     require("console").log("ad"); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:war,prefix:wichte").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:war,prefix:wichten").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:warum,prefix:wicht").documents.length);
-     require("console").log("ad1"); 
       assertEqual(2, collection.FULLTEXT(idx, "prefix:war,prefix:wicht").documents.length);
-     require("console").log("ae"); 
       assertEqual(2, collection.FULLTEXT(idx, "prefix:war,prefix:wi").documents.length);
-      assertEqual(2, collection.FULLTEXT(idx, "prefix:flöte,prefix:nörgel").documents.length);
-     require("console").log(3); 
-      assertEqual(2, collection.FULLTEXT(idx, "prefix:flöte,böse,wörter,prefix:nörgel").documents.length);
-      assertEqual(2, collection.FULLTEXT(idx, "prefix:flöte,prefix:tröt,prefix:bös").documents.length);
-     require("console").log(2); 
-       */
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flöte,prefix:nörgel").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flöte,böse,wörter,prefix:nörgel").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flöte,prefix:tröt,prefix:bös").documents.length);
+      
       // prefix and non-existing words
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:flöte,wichtig").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:flöte,wichte").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:flöte,prefix:wicht").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "prefix:flöte,prefix:tröt,prefix:bös,GROßE").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "quasi,prefix:quer,präfix:differenz,müller").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "quasi,prefix:quer,präfix:differenz,prefix:müller").documents.length);
@@ -639,14 +631,15 @@ function fulltextQuerySuite () {
       assertEqual(2, collection.FULLTEXT(idx, "Lorem,ipsum,dolor,sit,amet").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "Lorem,aliquyam").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "gubergren,labore").documents.length);
+
       assertEqual(0, collection.FULLTEXT(idx, "gubergren,laborum").documents.length);
-      /*
-      assertEqual(2, collection.FULLTEXT(idx, "dolor,consetetur,prefix:invix").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "dolor,consetetur,prefix:invi").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "dolor,consetetur,prefix:invi,eirmod").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "dolor,consetetur,prefix:invi,prefix:eirmo").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:sanct,voluptua").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:accus,prefix:takima").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "prefix:accus,prefix:takeshi").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "prefix:accus,takeshi").documents.length);
-      */
     }
 
   };
