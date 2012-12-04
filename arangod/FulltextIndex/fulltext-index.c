@@ -94,9 +94,9 @@ typedef struct {
 
   FTS_collection_id_t   _colid;   /* collection ID for this index  */
   FTS_document_id_t*    _handles;    /* array converting handles to docid */
-  uint8_t*              _handsfree;
-  FTS_document_id_t     _firstfree;   /* Start of handle free chain.  */
-  FTS_document_id_t     _lastslot;
+  uint8_t*              _handlesFree;
+  FTS_document_id_t     _firstFree;   /* Start of handle free chain.  */
+  FTS_document_id_t     _lastSlot;
   TUBER*                _index1;
   TUBER*                _index2;
   TUBER*                _index3;
@@ -186,16 +186,16 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     kkey[0]=kroot;     /* origin of index 2 */
 
 /*     allocate the document handle  */
-    handle = ix->_firstfree;
+    handle = ix->_firstFree;
 /* TBD what to do if no more handles  */
     if(handle==0)
     {
         printf("Run out of document handles!\n");
         return;
     }
-    ix->_firstfree = ix->_handles[handle];
+    ix->_firstFree = ix->_handles[handle];
     ix->_handles[handle]=docid;
-    ix->_handsfree[handle]=0;
+    ix->_handlesFree[handle]=0;
     
 /*     Get the actual words from the caller  */
     rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
@@ -511,8 +511,8 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_document_id_t i;
 
   ix = (FTS_real_index*) ftx;
-  for (i = 1; i <= ix->_lastslot; i++) {
-    if (ix->_handsfree[i] == 1) {
+  for (i = 1; i <= ix->_lastSlot; i++) {
+    if (ix->_handlesFree[i] == 1) {
       continue;
     }
 
@@ -521,12 +521,12 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     }
   }
 
-  if (i > ix->_lastslot) {
+  if (i > ix->_lastSlot) {
     /* TBD - what to do if a document is deleted that isn't there?  */
     printf("tried to delete nonexistent document\n");
   }
 
-  ix->_handsfree[i] = 1;
+  ix->_handlesFree[i] = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -726,7 +726,7 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
         break;
       }
 
-      if (ix->_handsfree[newhan] == 0) {
+      if (ix->_handlesFree[newhan] == 0) {
         ZStrClear(zstr);
         ZStrEnc(zstr, &zcdh, newhan);
         ZStrSTAppend(dochan, zstr);
@@ -824,6 +824,35 @@ static void FillWordBuffer (uint64_t* target, const uint8_t* source) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add the found documents to the result 
+////////////////////////////////////////////////////////////////////////////////
+
+static void AddResultDocuments (FTS_document_ids_t* result, 
+                                FTS_real_index* ftx, 
+                                ZSTR* zstr, 
+                                CTX* ctx) {
+  uint64_t newHandle;
+  uint64_t numDocs;
+ 
+  newHandle = 0;
+  numDocs = 0;
+
+  while (1) {
+    uint64_t oldHandle;
+
+    oldHandle = newHandle;
+    newHandle = ZStrCxDec(zstr, &zcdoc, ctx);
+    if (newHandle == oldHandle) {
+      break;
+    }
+    if (ftx->_handlesFree[newHandle] == 0) {
+      result->_docs[numDocs++] = ftx->_handles[newHandle];
+    }
+  }
+  result->_len = numDocs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -838,6 +867,11 @@ static void FillWordBuffer (uint64_t* target, const uint8_t* source) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new fulltext index
+///
+/// sizes[0] = size of handles table to start with
+/// sizes[1] = number of bytes for index 1
+/// sizes[2] = number of bytes for index 2
+/// sizes[3] = number of bytes for index 3
 ////////////////////////////////////////////////////////////////////////////////
 
 FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
@@ -845,12 +879,7 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
                               int options, 
                               uint64_t sizes[10]) {
-/* sizes[0] = size of handles table to start with  */
-/* sizes[1] = number of bytes for index 1 */
-/* sizes[2] = number of bytes for index 2 */
-/* sizes[3] = number of bytes for index 3 */
   FTS_real_index* ix;
-  uint64_t bk;
   int i;
         
   ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
@@ -864,43 +893,45 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
     return NULL;
   }
 
-  ix->_handsfree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
-  if (ix->_handsfree == NULL) {
+  ix->_handlesFree = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (sizes[0] + 2) * sizeof(uint8_t), false);
+  if (ix->_handlesFree == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
     return NULL;
   }
   
-  ix->_colid = coll;
+  ix->_colid   = coll;
   ix->_context = context;
+  ix->_options = options;
+
   ix->getTexts = getTexts;
 
-/* set up free chain of document handles  */
+  // set up free chain of document handles
   for (i = 1; i < sizes[0]; i++) {
-    ix->_handles[i]        = i+1;
-    ix->_handsfree[i]      = 1;
+    ix->_handles[i]          = i + 1;
+    ix->_handlesFree[i]      = 1;
   }
 
-  ix->_handles[sizes[0]]   = 0;  /* end of free chain  */
-  ix->_handsfree[sizes[0]] = 1;
-  ix->_firstfree           = 1;
-  ix->_lastslot            = sizes[0];
+  ix->_handles[sizes[0]]     = 0;  // end of free chain  
+  ix->_handlesFree[sizes[0]] = 1;
+  ix->_firstFree             = 1;
+  ix->_lastSlot              = sizes[0];
 
-/*     create index 2 */
+  // create index 2 
   ix->_index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
-  bk = ZStrTuberIns(ix->_index2, 0, 0);
-  if (bk != 0) {
+  if (ZStrTuberIns(ix->_index2, 0, 0) != 0) {
+    // TODO: free memory and return an error instead
     printf("Help - Can't insert root of index 2\n");
   }
 
-/*     create index 3 */
+  // create index 3
   ix->_index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
-  ix->_options = options;
-/*     create index 1 if needed */
+
+  // create index 1 if needed
   if (ix->_options == FTS_INDEX_SUBSTRINGS) {
     ix->_index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
-    bk = ZStrTuberIns(ix->_index1,0,0);
-    if (bk != 0) {
+    if (ZStrTuberIns(ix->_index1, 0, 0) != 0) {
+      // TODO: free memory and return an error instead
       printf("Help - Can't insert root of index 1\n");
     }
   }
@@ -928,7 +959,7 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
   ZStrTuberDest(ix->_index2);
   ZStrTuberDest(ix->_index3);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handsfree);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
   
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
@@ -999,9 +1030,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
   CTX ctxa1;
   CTX ctxa2;
   CTX ctx3;
-  uint64_t word1[2 * (MAX_WORD_LENGTH + SPACING)];
+  uint64_t word[2 * (MAX_WORD_LENGTH + SPACING)];
   int i, j;
-  uint64_t kk2, kk1, x64;
   uint64_t oldhan, newhan, ndocs, lasthan, odocs;
   uint64_t nhand1, ohand1;
   uint16_t* docpt;
@@ -1051,20 +1081,22 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     if (query->_localOptions[queryterm] == FTS_MATCH_COMPLETE) {
       uint64_t docb;
       uint64_t dock;
+      uint64_t kkey;
 
-      FillWordBuffer(&word1[0], query->_texts[queryterm]);
+      FillWordBuffer(&word[0], query->_texts[queryterm]);
 
-      kk2 = FindKKey2(ix, word1);
-      if (kk2 == NOTFOUND) {
+      kkey = FindKKey2(ix, word);
+      if (kkey == NOTFOUND) {
         break;
       }
-      j = ZStrTuberRead(ix->_index2, kk2, zstr2);
-      x64 = ZStrBitsOut(zstr2, 1);
-      if (x64 != 1) {
+
+      j = ZStrTuberRead(ix->_index2, kkey, zstr2);
+      if (ZStrBitsOut(zstr2, 1) != 1) {
         break;
       }
+
       docb = ZStrDec(zstr2, &zcbky);
-      dock = ZStrTuberK(ix->_index3, kk2, 0, docb);
+      dock = ZStrTuberK(ix->_index3, kkey, 0, docb);
       i = ZStrTuberRead(ix->_index3, dock, zstr3);
       if (i == 1) {
         printf("Kkey not in ix3 - we're terrified\n");
@@ -1084,7 +1116,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           if (newhan == oldhan) {
             break;
           }
-          if (ix->_handsfree[newhan] == 0) {
+          if (ix->_handlesFree[newhan] == 0) {
             ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
             lasthan = newhan;
             ndocs++;
@@ -1106,7 +1138,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             break;
           }
           if (newhan == nhand1) {
-            if (ix->_handsfree[newhan] == 0) {
+            if (ix->_handlesFree[newhan] == 0) {
               ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
               lasthan = newhan;
               ndocs++;
@@ -1137,28 +1169,37 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)) {
       STEX* dochan;
 
-/*  Make STEX to contain new list of handles  */
+      // make STEX to contain new list of handles 
       dochan = ZStrSTCons(2);
 
-      FillWordBuffer(&word1[MAX_WORD_LENGTH + SPACING], query->_texts[queryterm]);
+      FillWordBuffer(&word[MAX_WORD_LENGTH + SPACING], query->_texts[queryterm]);
       
       if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX) {
-        kk2 = FindKKey2(ix, word1 + MAX_WORD_LENGTH + SPACING);
-        if (kk2 == NOTFOUND) {
+        // prefix matching
+        uint64_t kkey;
+
+        kkey = FindKKey2(ix, word + MAX_WORD_LENGTH + SPACING);
+        if (kkey == NOTFOUND) {
           break;
         }
-/*  call routine to recursively put handles to STEX  */
-        Ix2Recurs(dochan, ix, kk2);
+
+        // call routine to recursively put handles to STEX
+        Ix2Recurs(dochan, ix, kkey);
       }
-      if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING) {
-        kk1 = FindKKey1(ix, word1 + MAX_WORD_LENGTH + SPACING);
-        if (kk1 == NOTFOUND) {
+      else if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING) {
+        // substring matching
+        uint64_t kkey;
+
+        kkey = FindKKey1(ix, word + MAX_WORD_LENGTH + SPACING);
+        if (kkey == NOTFOUND) {
           break;
         }
-/*  call routine to recursively put handles to STEX  */
-        Ix1Recurs(dochan, ix, kk1, word1 + MAX_WORD_LENGTH + SPACING);
+        // call routine to recursively put handles to STEX
+        Ix1Recurs(dochan, ix, kkey, word + MAX_WORD_LENGTH + SPACING);
       }
+
       ZStrSTSort(dochan);
+
       odocs = dochan->cnt;
       docpt = dochan->list;
       ZStrCxClear(&zcdoc, &ctxa2);
@@ -1170,7 +1211,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           ZStrInsert(zstr, docpt, 2);
           newhan = ZStrDec(zstr, &zcdh);
           docpt += ZStrExtLen(docpt, 2);
-          if (ix->_handsfree[newhan] == 0) {
+          if (ix->_handlesFree[newhan] == 0) {
             ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
             lasthan = newhan;
             ndocs++;
@@ -1195,7 +1236,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             break;
           }
           if (newhan == nhand1) {
-            if (ix->_handsfree[newhan] == 0) {
+            if (ix->_handlesFree[newhan] == 0) {
               ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
               lasthan = newhan;
               ndocs++;
@@ -1250,20 +1291,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       ZStrDest(zstr3);  
       return NULL;
     }
-
-    newhan = 0;
-    ndocs = 0;
-    while (1) {
-      oldhan = newhan;
-      newhan = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
-      if (newhan == oldhan) {
-        break;
-      }
-      if (ix->_handsfree[newhan] == 0) {
-        dc->_docs[ndocs++] = ix->_handles[newhan];
-      }
-    }
-    dc->_len = ndocs;
+  
+    AddResultDocuments(dc, ix, zstra1, &ctxa1);
   }
     
   TRI_ReadUnlockReadWriteLock(&ix->_lock);
@@ -1391,7 +1420,7 @@ void indexd(FTS_index_t * ftx)
 int temp;
     ix = (FTS_real_index *)ftx;
     printf("\n\nDump of Index\n");
-temp=ix->_firstfree;
+temp=ix->_firstFree;
     printf("Free-chain starts at handle %d\n",temp);
     printf("======= First ten handles======\n");
     for(i=1;i<11;i++)
