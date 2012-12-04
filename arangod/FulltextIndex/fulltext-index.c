@@ -803,6 +803,27 @@ static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t*
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read a unicode word into a buffer of uint64_ts
+////////////////////////////////////////////////////////////////////////////////
+
+static void FillWordBuffer (uint64_t* target, const uint8_t* source) {
+  uint8_t* current;
+  int i;
+
+  current = (uint8_t*) source;
+  i = 0;
+  while (1) {
+    uint64_t unicode = GetUnicode(&current);
+    
+    target[i++] = ZStrXlate(&zcutf, unicode);
+    if (unicode == 0 || i > MAX_WORD_LENGTH) {
+      break;
+    }
+  }
+  target[i] = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -983,8 +1004,6 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
   uint64_t kk2, kk1, x64;
   uint64_t oldhan, newhan, ndocs, lasthan, odocs;
   uint64_t nhand1, ohand1;
-  uint8_t* utf;
-  uint64_t unicode;
   uint16_t* docpt;
 
   dc = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_document_ids_t), false);
@@ -1028,24 +1047,12 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 /*  TBD - what to do if it is not a legal option?  */
 /* TBD combine this with other options - no need to use zstring  */
     ndocs = 0;
-            
+
     if (query->_localOptions[queryterm] == FTS_MATCH_COMPLETE) {
       uint64_t docb;
       uint64_t dock;
 
-      j = 0;
-      utf = query->_texts[queryterm];
-      while (1) {
-        unicode = GetUnicode(&utf);
-        word1[j++] = ZStrXlate(&zcutf, unicode);
-        if (unicode == 0) {
-          break;
-        }
-        if (j > MAX_WORD_LENGTH) {
-          break;
-        }
-      }
-      word1[j] = 0;
+      FillWordBuffer(&word1[0], query->_texts[queryterm]);
 
       kk2 = FindKKey2(ix, word1);
       if (kk2 == NOTFOUND) {
@@ -1129,18 +1136,11 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     if ((query->_localOptions[queryterm] == FTS_MATCH_PREFIX) ||
         (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING)) {
       STEX* dochan;
+
 /*  Make STEX to contain new list of handles  */
       dochan = ZStrSTCons(2);
-      j = MAX_WORD_LENGTH + SPACING;
-      utf = query->_texts[queryterm];
-      while (1) {
-        unicode = GetUnicode(&utf);
-        word1[j++] = ZStrXlate(&zcutf, unicode);
-        if (unicode == 0 || j > MAX_WORD_LENGTH + MAX_WORD_LENGTH + SPACING) {
-          break;
-        }
-      }
-      word1[j] = 0;
+
+      FillWordBuffer(&word1[MAX_WORD_LENGTH + SPACING], query->_texts[queryterm]);
       
       if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX) {
         kk2 = FindKKey2(ix, word1 + MAX_WORD_LENGTH + SPACING);
