@@ -195,7 +195,9 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
             ZStrEnc(zstrwl,&zcutf,unicode);
             unicode=GetUnicode(&utf);
             j++;
-            if(j>40) break;
+            if(j>40) {
+              break;
+            }
         }
 /* terminate the word and insert into STEX  */
         ZStrEnc(zstrwl,&zcutf,0);
@@ -796,7 +798,7 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
   FTS_real_index* ix;
   uint64_t bk;
   int i;
-
+        
   ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
   if (ix == NULL) {
     return NULL;
@@ -977,6 +979,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 /*  of document handles that match that term           */
 /*  TBD - what to do if it is not a legal option?  */
 /* TBD combine this with other options - no need to use zstring  */
+        ndocs = 0;
+
         if(query->_localOptions[queryterm] == FTS_MATCH_COMPLETE)
         {
             j=0;
@@ -986,9 +990,13 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                 unicode=GetUnicode(&utf);
                 word1[j++]=ZStrXlate(&zcutf,unicode);
                 if(unicode==0) break;
+                if(j>40) break;
             }
+            word1[j]=0;
             kk2=FindKKey2(ix,word1);
-            if(kk2==NOTFOUND) break;
+            if(kk2==NOTFOUND) {
+              break;
+            }
             j=ZStrTuberRead(ix->_index2,kk2,zstr2);
             x64=ZStrBitsOut(zstr2,1);
             if(x64!=1) break;
@@ -1077,6 +1085,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                 unicode=GetUnicode(&utf);
                 word1[j++]=ZStrXlate(&zcutf,unicode);
                 if(unicode==0) break;
+                if(j>40+50) break;
             }
             if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX)
             {
