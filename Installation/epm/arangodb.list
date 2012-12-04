@@ -33,7 +33,6 @@ l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}
 
 f 0755 ${susr} ${sgrp} ${bindir}/arangoimp ${project_dir}/bin/arangoimp
 f 0755 ${susr} ${sgrp} ${bindir}/arangosh ${project_dir}/bin/arangosh
-f 0755 ${susr} ${sgrp} ${bindir}/arango-password ${project_dir}/bin/arango-password
 
 # database directory
 d 0755 ${rusr} ${rgrp} ${data_dir} -
@@ -171,8 +170,8 @@ exit 0
 EOF
 
 %preremove <<EOF
-test -n "$FIRST_ARG" || FIRST_ARG=$1
-if [ $FIRST_ARG -eq 0 ]; then
+test -n "$$FIRST_ARG" || FIRST_ARG=$$1
+if [ $$FIRST_ARG -eq 0 ]; then
 # Package removal, not upgrade                                                          
  /bin/systemctl --no-reload disable arangodb.service > /dev/null 2>&1 || :
  /bin/systemctl stop arangodb.service > /dev/null 2>&1 || :
@@ -181,14 +180,14 @@ exit 0
 EOF
 
 %postremove <<EOF
-test -n "$FIRST_ARG" || FIRST_ARG=$1
-if [ $FIRST_ARG -ge 1 ]; then
+test -n "$$FIRST_ARG" || FIRST_ARG=$$1
+if [ $$FIRST_ARG -ge 1 ]; then
 # Package upgrade, not uninstall                                                        
   /bin/systemctl try-restart arangodb.service >/dev/null 2>&1 || :
 else # package uninstall                                                                
   for service in arangodb.service ; do
-    sysv_service=${service%.*}
-    rm -f "/var/lib/systemd/migrated/$sysv_service" 2> /dev/null || :
+    sysv_service=$${service%.*}
+    rm -f "/var/lib/systemd/migrated/$$sysv_service" 2> /dev/null || :
   done
   /bin/systemctl daemon-reload >/dev/null 2>&1 || :
 fi
