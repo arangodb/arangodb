@@ -48,7 +48,7 @@ bin_arangod_SOURCES = \
 	arangod/BitIndexes/bitarray.c \
 	arangod/BitIndexes/bitarrayIndex.c \
 	arangod/GeoIndex/GeoIndex.c \
-	arangod/FulltextIndex/FTS_index.c \
+	arangod/FulltextIndex/fulltext-index.c \
 	arangod/FulltextIndex/zcode.c \
 	arangod/FulltextIndex/zstr.c \
 	arangod/HashIndex/hasharray.c \

@@ -25,10 +25,11 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FTS_index.h"
+#include "fulltext-index.h"
 
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
+
 #include "FulltextIndex/zstr.h"
 
 // -----------------------------------------------------------------------------

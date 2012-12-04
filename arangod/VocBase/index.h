@@ -32,7 +32,8 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/linked-list.h"
-#include "FulltextIndex/FTS_index.h"
+#include "BitIndexes/bitarrayIndex.h"
+#include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/GeoIndex.h"
 #include "HashIndex/hashindex.h"
 #include "PriorityQueue/pqueueindex.h"
@@ -40,7 +41,6 @@
 #include "SkipLists/skiplistIndex.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
-#include "BitIndexes/bitarrayIndex.h"
 
 #ifdef __cplusplus
 extern "C" {

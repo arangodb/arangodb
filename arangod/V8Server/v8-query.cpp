@@ -30,7 +30,7 @@
 #include "v8-query.h"
 
 #include "BasicsC/logging.h"
-#include "FulltextIndex/FTS_index.h"
+#include "FulltextIndex/fulltext-index.h"
 #include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utilities/ResourceHolder.h"

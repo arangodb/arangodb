@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_FULLTEXT_QUERY_H
 #define TRIAGENS_VOC_BASE_FULLTEXT_QUERY_H 1
 
-#include "FulltextIndex/FTS_index.h"
+#include "FulltextIndex/fulltext-index.h"
 
 #ifdef __cplusplus
 extern "C" {
