@@ -670,8 +670,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
   voc_shaper_t* shaper = data;
   void* f;
   attribute_weight_t* weightedAttribute;  
-  attribute_weight_t* weightedItem;
-  attribute_weight_t* result;
 
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
     char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
@@ -715,6 +713,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
     weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
   
     if (weightedAttribute != NULL) {
+      attribute_weight_t* result;
     
       weightedAttribute->_aid       = m->_aid;
       weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
@@ -738,6 +737,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       result = (attribute_weight_t*)(TRI_InsertKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid), weightedAttribute, false));
 
       if (result == NULL) {
+        attribute_weight_t* weightedItem;
+
         weightedItem = TRI_LookupByKeyAssociativePointer(&(shaper->_weightedAttributes), &(weightedAttribute->_aid));
         if (weightedItem == NULL) {
           LOG_ERROR("attribute weight could not be located immediately after insert into associative array");  

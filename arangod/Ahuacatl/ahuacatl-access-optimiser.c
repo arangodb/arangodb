@@ -2786,7 +2786,6 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
   n = accesses->_length;
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* existing = (TRI_aql_field_access_t*) TRI_AtVectorPointer(accesses, i);
-    TRI_aql_field_access_t* copy;
     int result;
 
     if (! TRI_EqualString(candidate->_fullName, existing->_fullName)) {
@@ -2799,6 +2798,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
     result = TRI_PickAccessAql(candidate, existing);
     if (result < 0) {
       // candidate is preferred
+      TRI_aql_field_access_t* copy;
 
       // free existing field access
       assert(existing);

@@ -279,19 +279,21 @@ void TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
-      TRI_vocbase_auth_t* auth;
-      TRI_vocbase_auth_t* old;
       TRI_doc_mptr_t const* d;
       TRI_shaped_json_t shapedJson;
 
       d = (TRI_doc_mptr_t const*) *ptr;
 
       if (d->_validTo == 0) {
+        TRI_vocbase_auth_t* auth;
+
         TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
         auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
 
         if (auth != NULL) {
+          TRI_vocbase_auth_t* old;
+
           old = TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true);
 
           if (old != NULL) {
@@ -368,7 +370,6 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
   TRI_vocbase_auth_t* auth;
   bool res;
   char* hex;
-  char* salted;
   char* sha256;
   size_t hexLen;
   size_t len;
@@ -398,6 +399,8 @@ bool TRI_CheckAuthenticationAuthInfo (char const* username,
       LOG_WARNING("found corrupted password for user '%s'", username);
     }
     else {
+      char* salted;
+
       len = 8 + strlen(password);
       salted = TRI_Allocate(TRI_CORE_MEM_ZONE, len + 1, false);
       memcpy(salted, auth->_password + 3, 8);

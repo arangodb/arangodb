@@ -215,16 +215,6 @@ TRI_aql_scope_t* TRI_GetCurrentScopeStatementWalkerAql (TRI_aql_statement_walker
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get current scopes of statement walker
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t* TRI_GetScopesStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
-  assert(walker);
-
-  return &walker->_currentScopes;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to a variable, identified by its name
 ///
 /// The variable will be searched in the current and the surrounding scopes.

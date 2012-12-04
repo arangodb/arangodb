@@ -159,7 +159,6 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   char* name;
   char* number;
   bool ok;
-  int res;
 
   collection = data;
 
@@ -191,6 +190,8 @@ static void RemoveDatafileCallback (TRI_datafile_t* datafile, void* data) {
   }
   else {
     if (collection->_vocbase->_removeOnCompacted) {
+      int res;
+
       LOG_DEBUG("wiping compacted datafile from disk");
 
       res = TRI_UnlinkFile(filename);
@@ -219,7 +220,6 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_document_collection_t* sim;
   TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
-  bool deleted;
   int res;
 
   sim = data;
@@ -228,6 +228,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    bool deleted;
     
     TRI_voc_size_t markerSize = 0;
     TRI_voc_size_t keyBodySize = 0;

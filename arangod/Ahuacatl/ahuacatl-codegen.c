@@ -208,19 +208,6 @@ static inline void ScopeOutput (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief print an integer in the current scope
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void ScopeOutputInt (TRI_aql_codegen_js_t* const generator, 
-                                   const int64_t value) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-
-  if (! OutputInt(scope->_buffer, value)) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief print an unsgined integer in the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
