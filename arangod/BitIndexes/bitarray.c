@@ -277,12 +277,17 @@ int TRI_FreeBitarray(TRI_bitarray_t* ba) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertBitMaskElementBitarray(TRI_bitarray_t* ba, TRI_bitarray_mask_t* mask, void* element) {
-  // TODO: ba is dereferenced in the following line, but 4 lines later it is check for NULL. This is illogical
-  MasterTable_t* mt = (MasterTable_t*)(ba->_masterTable);
+  MasterTable_t* mt;
   TRI_master_table_position_t position;
   int result;
+
+  if (ba == NULL || mask == NULL || element == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
   
-  if (ba == NULL || mask == NULL || element == NULL || mt == NULL) {
+  mt = (MasterTable_t*)(ba->_masterTable);
+  
+  if (mt == NULL) {
     assert(NULL);
     return TRI_ERROR_INTERNAL;
   }

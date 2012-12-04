@@ -1099,7 +1099,7 @@ int TRI_CloseVocShaper (TRI_shaper_t* s) {
   err = TRI_CloseShapeCollection(shaper->_collection);
 
   if (err != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot close shape collection of shaper, error %lu", (unsigned long) err);
+    LOG_ERROR("cannot close shape collection of shaper, error %d", (int) err);
   }
 
   // TODO free the accessors

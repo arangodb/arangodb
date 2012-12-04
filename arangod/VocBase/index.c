@@ -1886,6 +1886,11 @@ static int InsertHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // .............................................................................
     
   hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
+  if (hashElement.fields == NULL) {
+    LOG_ERROR("out of memory in hashindex");
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
          
   res = HashIndexHelper(hashIndex, &hashElement, doc, NULL);
 
@@ -1962,6 +1967,10 @@ static int RemoveHashIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // .............................................................................
 
   hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
+  if (hashElement.fields == NULL) {
+    LOG_ERROR("out of memory in hashindex");
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   // .............................................................................
   // Fill the json field list from the document
@@ -2056,6 +2065,10 @@ static int UpdateHashIndex (TRI_index_t* idx,
   // .............................................................................
 
   hashElement.fields    = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * hashIndex->_paths._length, false);
+  if (hashElement.fields == NULL) {
+    LOG_ERROR("out of memory in hashindex");
+    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+  }
   
   // .............................................................................
   // Update for unique hash index
@@ -4357,7 +4370,6 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
                                 const TRI_doc_mptr_t* newDoc, 
                                 const TRI_shaped_json_t* oldDoc) {
                              
-  // TODO union { void* p; void const* c; } cnv;
   TRI_fulltext_index_t* fulltextIndex;
   int res;  
 
