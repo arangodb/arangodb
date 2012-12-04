@@ -5,6 +5,14 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief TOC files
+################################################################################
+
+DOXYGEN_TOC = \
+	Documentation/Manual/Home.md \
+	Documentation/UserManual/UserManual.md
+
+################################################################################
 ### @brief JavaScript files
 ################################################################################
 
@@ -62,6 +70,7 @@ WIKI = \
 	ImplementorManual \
 	ImpManual \
 	ImpManualBasics \
+	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
 	IndexGeo \
@@ -141,16 +150,31 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
+### @brief doxygen toc
+################################################################################
+
+.PHONY: doxygen-toc
+
+doxygen-toc:
+	rm -f Doxygen/toc.doxy
+	$(MAKE) Doxygen/toc.doxy
+
+Doxygen/toc.doxy:
+	python @top_srcdir@/Documentation/Scripts/generateTOC.py $(DOXYGEN_TOC) >> Doxygen/toc.doxy.tmp
+	cmp -s Doxygen/toc.doxy Doxygen/toc.doxy.tmp || mv Doxygen/toc.doxy.tmp Doxygen/toc.doxy
+
+################################################################################
 ### @brief doxygen
 ################################################################################
 
 .PHONY: doxygen
 
-Doxygen/arango-html.doxy: Documentation/arango.template
+Doxygen/arango-html.doxy: Documentation/arango.template Doxygen/toc.doxy
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
+	cat Doxygen/toc.doxy >> $@
 
 doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
+	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-html.doxy > /dev/null
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
@@ -165,18 +189,19 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 ### @brief wiki
 ################################################################################
 
-.PHONY: wiki wiki2
+.PHONY: wiki wiki-raw
 
-Doxygen/arango-xml.doxy: Documentation/arango.template
+Doxygen/arango-xml.doxy: Documentation/arango.template Doxygen/toc.doxy
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
+	cat Doxygen/toc.doxy >> $@
 
-wiki: wiki2 
+wiki: wiki-raw
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
-wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+wiki-raw: Doxygen/arango-xml.doxy $(DOXYGEN)
+	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
@@ -185,11 +210,12 @@ wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
 
 .PHONY: latex
 
-Doxygen/arango-latex.doxy: Documentation/arango.template
+Doxygen/arango-latex.doxy: Documentation/arango.template Doxygen/toc.doxy
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
+	cat Doxygen/toc.doxy >> $@
 
 latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
+	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex

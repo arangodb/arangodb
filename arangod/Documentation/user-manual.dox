@@ -26,45 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       USER MANUAL
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManual ArangoDB's User Manual (@VERSION)
-///
-/// @NAVIGATE{Upgrading,Home,DbaManual}
-///
-/// @if LATEX
-/// <ul>
-///  <li>@ref FirstStepsArangoDB</li>
-///  <li>@ref UserManualArangosh</li>
-///  <li>@ref UserManualWebInterface</li>
-///  <li>@ref ShellCollection</li>
-///  <li>@ref ShellDocument</li>
-///  <li>@ref ShellEdge</li>
-///  <li>@ref SimpleQueries</li>
-///  <li>@ref Aql</li>
-///  <li>@ref UserManualActions</li>
-///
-///  @latexonly\appendix@endlatexonly
-///  <li>@ref CommandLine</li>
-///  <li>@ref Glossary</li>
-/// </ul>
-/// @else
-/// @copydetails FirstStepsArangoDBTOC
-/// @copydetails UserManualArangoshTOC
-/// @copydetails UserManualWebInterfaceTOC
-/// @copydetails ShellCollectionTOC
-/// @copydetails ShellDocumentTOC
-/// @copydetails ShellEdgeTOC
-/// @copydetails SimpleQueriesTOC
-/// @copydetails AqlTOC
-/// @copydetails UserManualActionsTOC
-/// @copydetails CommandLineTOC
-/// @endif
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                              USER MANUAL ARANGOSH
 // -----------------------------------------------------------------------------
 
@@ -80,6 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualArangosh The Arango Shell
 ///
+/// @NAVIGATE_UserManualArangosh
 /// @EMBEDTOC{UserManualArangoshTOC}
 ///
 /// @section UserManualArangoshOutput Arango Shell Output
@@ -187,6 +149,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualActions Arango Actions
+///
+/// @NAVIGATE_UserManualActions
 ///
 /// Please note, that user Actions in ArangoDB are still preliminary and details
 /// are subject to change.

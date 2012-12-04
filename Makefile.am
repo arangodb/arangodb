@@ -374,7 +374,11 @@ if ENABLE_HTML2TEXT
 BUILT_SOURCES += README
 
 README: README.md
-	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
+	fgrep -v "[Build Status]" $< \
+		| @MARKDOWN_EXEC@ \
+		| @HTML2TEXT_EXEC@ -style pretty -nobs \
+		| sed -e 's:&gt;:>:g' \
+		> $@.tmp
 	mv $@.tmp $@
 
 endif
