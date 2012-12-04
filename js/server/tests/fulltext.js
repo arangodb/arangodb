@@ -233,6 +233,7 @@ function fulltextQuerySuite () {
     testLongWords: function () {
       var texts = [
         // German is ideal for this
+        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattinsfreundinnenbesucheranlassversammlungsortausschilderungsherstellungsfabrikationsanlagenbetreiberliebhaberliebhaber",
         "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin",
         "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
         "Reliefpfeiler feilen reihenweise Pfeilreifen"
@@ -243,7 +244,7 @@ function fulltextQuerySuite () {
       }
 
       assertEqual(1, collection.FULLTEXT(idx, "AUTOTUERENDELLENentfernungsfirmenmitarbeiterverguetungsbewerter").documents.length);
-      assertEqual(1, collection.FULLTEXT(idx, "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin").documents.length); // significance!
 
       assertEqual(1, collection.FULLTEXT(idx, "reliefpfeiler").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "feilen").documents.length);
@@ -261,6 +262,8 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.FULLTEXT(idx, "auto").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "it").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "not").documents.length);
+      
+      assertEqual(0, collection.FULLTEXT(idx, "somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee").documents.length);
     }, 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,6 +333,24 @@ function fulltextQuerySuite () {
 /// @brief test duplicate entries
 ////////////////////////////////////////////////////////////////////////////////
     
+    testDuplicatesHorizontalMany: function () {
+      var text = "";
+      for (var i = 0; i < 1000; ++i) {
+        text += "some random text,";
+      }
+
+      collection.save({ text: text });
+      collection.save({ text: text });
+     
+      assertEqual(2, collection.FULLTEXT(idx, "text,random").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:rando").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test duplicate entries
+////////////////////////////////////////////////////////////////////////////////
+    
     testDuplicatesQuery: function () {
       collection.save({ text: "the quick brown dog jumped over the lazy fox" });
       collection.save({ text: "apple banana tomato peach" });
@@ -361,6 +382,25 @@ function fulltextQuerySuite () {
 
       assertEqual(0, collection.FULLTEXT(idx, "the,frog").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test duplicate entries
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDuplicatesMatrix: function () {
+      var text = "";
+      for (var i = 0; i < 1000; ++i) {
+        text += "some random text,";
+      }
+
+      for (var i = 0; i < 1000; ++i) {
+        collection.save({ text: text });
+      }
+     
+      assertEqual(1000, collection.FULLTEXT(idx, "text,random").documents.length);
+      assertEqual(1000, collection.FULLTEXT(idx, "prefix:rando").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
 
@@ -598,6 +638,7 @@ function fulltextQuerySuite () {
 
     testLongPrefixes: function () {
       var texts = [
+        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattinsfreundinnenbesucheranlassversammlungsortausschilderungsherstellungsfabrikationsanlagenbetreiberliebhaberliebhaber",
         "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin",
         "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
         "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiter",
@@ -608,16 +649,18 @@ function fulltextQuerySuite () {
         collection.save({ text: texts[i] });
       }
 
-      assertEqual(1, collection.FULLTEXT(idx, "prefix:donau").documents.length);
-      assertEqual(1, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetze").documents.length);
-      assertEqual(1, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetzentraeger").documents.length);
-      assertEqual(1, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstand").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:donau").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetze").documents.length); // significance
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetzentraeger").documents.length); // significance
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstand").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:dampf").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:dampfmaschinenfahrzeugsinspektion").documents.length);
       assertEqual(2, collection.FULLTEXT(idx, "prefix:dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant").documents.length); // !!! only 40 chars are significant
       assertEqual(1, collection.FULLTEXT(idx, "prefix:autotuerendellenentfernungsfirmenmitarbeiter").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:autotuer").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:auto").documents.length);
+      
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee").documents.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -778,6 +821,82 @@ function fulltextQuerySubstringSuite () {
       assertEqual(1, collection.FULLTEXT(idx, "substring:mercator,substring:aurel,substring:pat").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "substring:merca,substring:aurelius,substring:pater").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "substring:cato,substring:elius,substring:ater").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief long substrings
+////////////////////////////////////////////////////////////////////////////////
+
+    testLongSubstrings: function () {
+      var texts = [
+        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattinsfreundinnenbesucheranlassversammlungsortausschilderungsherstellungsfabrikationsanlagenbetreiberliebhaberliebhaber",
+        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin",
+        "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
+        "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiter",
+        "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant"
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(2, collection.FULLTEXT(idx, "substring:donau").documents.length); 
+      assertEqual(4, collection.FULLTEXT(idx, "substring:fahr").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:ver").documents.length); // significance is only 40 chars
+      assertEqual(1, collection.FULLTEXT(idx, "substring:end").documents.length); // significance is only 40 chars
+      assertEqual(3, collection.FULLTEXT(idx, "substring:ent").documents.length);
+      assertEqual(4, collection.FULLTEXT(idx, "substring:damp").documents.length);
+      assertEqual(4, collection.FULLTEXT(idx, "substring:dampf").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:dampfma").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:DONAUDAMPFSCHIFF").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:DONAUDAMPFSCHIFFFAHRTSKAPITAENSMUETZE").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:kapitaen").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:kapitaensmuetze").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "substring:inspektion").documents.length);
+
+      assertEqual(0, collection.FULLTEXT(idx, "substring:ehegattin").documents.length); // significance!
+      assertEqual(0, collection.FULLTEXT(idx, "substring:traegerverein").documents.length); // significance!
+      assertEqual(0, collection.FULLTEXT(idx, "substring:taegerverein").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "substring:hafer").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "substring:apfel").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "substring:glasur").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "substring:somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief substring queries & everything else combined
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiMatching: function () {
+      var texts = [
+        "Ego sum fidus. Canis sum.",
+        "Ibi est Aurelia amica. Aurelia est puelle XI annos nata. Filia est.",
+        "Claudia mater est.",
+        "Anna est ancilla. Liberta est",
+        "Flavus Germanus est servus. Coquus est.",
+        "Ibi Quintus amicus est. Quintus est X annos natus.",
+        "Gaius est frater magnus. Est XVIII annos natus et Bonnae miles.",
+        "Aurelius pater est. Est mercator."
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(1, collection.FULLTEXT(idx, "substring:fidus,ego,sum,prefix:canis").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "claudia,substring:ater,est").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "Quintus,substring:icus,prefix:anno").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "aurelius,pater,est,substring:mercator").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "aurelius,pater,est,substring:tor").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:aur,prefix:merc,substring:merc").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "substring:puelle,substring:annos,substring:nata,substring:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "puelle,prefix:annos,prefix:nata,substring:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:puelle,prefix:annos,prefix:nata,substring:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "puelle,annos,nata,substring:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "puelle,substring:annos,nata,substring:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "puelle,substring:annos,nata,prefix:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "puelle,substring:nos,nata,prefix:filia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "puelle,substring:nos,nata,substring:ili").documents.length);
     },
 
   };
