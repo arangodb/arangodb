@@ -1087,10 +1087,13 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
                 if(unicode==0) break;
                 if(j>40+50) break;
             }
+            word1[j] = 0;
             if (query->_localOptions[queryterm] == FTS_MATCH_PREFIX)
             {
                 kk2=FindKKey2(ix,word1+50);
-                if(kk2==NOTFOUND) break;
+                if(kk2==NOTFOUND) {
+                  break;
+                }
 /*  call routine to recursively put handles to STEX  */
                 Ix2Recurs(dochan,ix,kk2);
             }
@@ -1180,12 +1183,18 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
     if (ndocs != 0) {
       ZStrCxClear(&zcdoc, &ctxa1);
+
       dc->_docs = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, ndocs * sizeof(FTS_document_id_t), false);
       if (dc->_docs == NULL) {
         // out of memory
         TRI_ReadUnlockReadWriteLock(&ix->_lock);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, dc);
-        // TODO: free zstra1, zstra2, zstr, zstr2, zstr3
+    
+        ZStrDest(zstra1);
+        ZStrDest(zstra2);
+        ZStrDest(zstr); 
+        ZStrDest(zstr2); 
+        ZStrDest(zstr3);  
         return NULL;
       }
 

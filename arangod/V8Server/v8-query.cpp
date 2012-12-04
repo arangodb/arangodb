@@ -2197,7 +2197,9 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString) {
         query->_localOptions[i] = FTS_MATCH_SUBSTRING;
       }
       
-      query->_texts[i] = (uint8_t*) TRI_NormaliseWordFulltextIndex(parts[1].c_str(), parts[1].size());
+      string word = parts[1];
+      StringUtils::trimInPlace(word, "\t\r\n\b\f ");
+      query->_texts[i] = (uint8_t*) TRI_NormaliseWordFulltextIndex(word.c_str(), word.size());
       if (query->_texts[i] == 0) {
         TRI_FreeQueryFulltextIndex(query);
         return 0; 

@@ -303,6 +303,9 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.FULLTEXT(idx, "nevertheless,text").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "some,rubbish,data").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "more,nevertheless,index").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "tomato,text").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "banana,too").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "apple").documents.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,6 +457,196 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "Stanisława,Niesiołowski,przestraszone,szczypię").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "uniesť").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "uniesť,mladú").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prefixes
+////////////////////////////////////////////////////////////////////////////////
+
+    testPrefixes1: function () {
+      var texts = [
+        "Ego sum fidus. Canis sum.",
+        "Ibi est Aurelia amica. Aurelia est puelle XI annos nata. Filia est.",
+        "Claudia mater est.",
+        "Anna est ancilla. Liberta est",
+        "Flavus Germanus est servus. Coquus est.",
+        "Ibi Quintus amicus est. Quintus est X annos natus.",
+        "Gaius est frater magnus. Est XVIII annos natus et Bonnae miles.",
+        "Aurelius pater est. Est mercator."
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:aurelia").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:aurelius").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:aureli").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:aurel").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:aure").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:AURE").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:anna").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "prefix:anno").documents.length);
+      assertEqual(4, collection.FULLTEXT(idx, "prefix:ann").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:ANCILLA").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:Ancilla").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:AncillA").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:ancill").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:ancil").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:anci").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:anc").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:ma").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:fid").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:fil").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:fi").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:amic").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:amica").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:amicus").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:nata").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:natus").documents.length);
+      assertEqual(3, collection.FULLTEXT(idx, "prefix:nat").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:MERCATOR").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:MERCATO").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:MERCAT").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:MERCA").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:MERC").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:MER").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:ME").documents.length);
+      
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:pansen").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:banana").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:banan").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:bana").documents.length);
+    }, 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prefixes
+////////////////////////////////////////////////////////////////////////////////
+
+    testPrefixes2: function () {
+      var texts = [
+        "Flötenkröten tröten böse wörter nörgelnd",
+        "Krötenbrote grölen stoßen GROßE Römermöter",
+        "Löwenschützer möchten mächtige Müller ködern",
+        "Differenzenquotienten goutieren gourmante Querulanten, quasi quergestreift",
+        "Warum winken wichtige Winzer weinenden Wichten watschelnd winterher?",
+        "Warum möchten böse wichte wenig müßige müller meiern?",
+        "Loewenschuetzer moechten maechtige Mueller koedern",
+        "Moechten boese wichte wenig mueller melken?"
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      // single prefix
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flötenkröten").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flötenkröte").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flöte").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:gour").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:gou").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:warum").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:müll").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:Müller").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:müller").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:mül").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:mü").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:müß").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:groß").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:große").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:GROßE").documents.length);
+     
+      // multiple search words
+      assertEqual(2, collection.FULLTEXT(idx, "moechten,mueller").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:moechten,mueller").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:moechte,mueller").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:muell,moechten").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:mueller,moechten").documents.length);
+      /*
+     require("console").log("adx0"); 
+      assertEqual(2, collection.FULLTEXT(idx, "moechten,prefix:muell").documents.length);
+     require("console").log("adx1"); 
+      assertEqual(2, collection.FULLTEXT(idx, "moechten,prefix:mueller").documents.length);
+     require("console").log("adx2"); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:moechten,prefix:mueller").documents.length);
+
+
+      assertEqual(2, collection.FULLTEXT(idx, "möchten,müller").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:möchten,müller").documents.length);
+     require("console").log("adx0"); 
+      assertEqual(2, collection.FULLTEXT(idx, "möchten,prefix:müller").documents.length);
+     require("console").log("adx"); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:möchten,prefix:müller").documents.length);
+     require("console").log("adx1"); 
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:flöten,böse").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:müll,müßige").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:war,prefix:wichtig").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:war,prefix:wichte").documents.length);
+     require("console").log("ad"); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:warum,prefix:wicht").documents.length);
+     require("console").log("ad1"); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:war,prefix:wicht").documents.length);
+     require("console").log("ae"); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:war,prefix:wi").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:flöte,prefix:nörgel").documents.length);
+     require("console").log(3); 
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:flöte,böse,wörter,prefix:nörgel").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:flöte,prefix:tröt,prefix:bös").documents.length);
+     require("console").log(2); 
+       */
+      // prefix and non-existing words
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:flöte,prefix:tröt,prefix:bös,GROßE").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "quasi,prefix:quer,präfix:differenz,müller").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "quasi,prefix:quer,präfix:differenz,prefix:müller").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief long prefixes
+////////////////////////////////////////////////////////////////////////////////
+
+    testLongPrefixes: function () {
+      var texts = [
+        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin",
+        "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
+        "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiter",
+        "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant"
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:donau").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetze").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetzentraeger").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstand").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:dampf").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:dampfmaschinenfahrzeugsinspektion").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant").documents.length); // !!! only 40 chars are significant
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:autotuerendellenentfernungsfirmenmitarbeiter").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:autotuer").documents.length);
+      assertEqual(1, collection.FULLTEXT(idx, "prefix:auto").documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lipsum
+////////////////////////////////////////////////////////////////////////////////
+
+    testLipsum: function () {
+      collection.save({ text: "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet." });
+      collection.save({ text: "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet." });
+
+      assertEqual(2, collection.FULLTEXT(idx, "Lorem,ipsum,dolor,sit,amet").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "Lorem,aliquyam").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "gubergren,labore").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "gubergren,laborum").documents.length);
+      /*
+      assertEqual(2, collection.FULLTEXT(idx, "dolor,consetetur,prefix:invix").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:sanct,voluptua").documents.length);
+      assertEqual(2, collection.FULLTEXT(idx, "prefix:accus,prefix:takima").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:accus,prefix:takeshi").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "prefix:accus,takeshi").documents.length);
+      */
     }
 
   };
