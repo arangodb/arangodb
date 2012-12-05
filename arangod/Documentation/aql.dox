@@ -982,7 +982,8 @@
 ///   in the specified collection. If there is a mismatch between the @FA{collection} passed and
 ///   the collection specified in @FA{id}, then no document will be returned. Additionally, if the
 ///   @FA{collection} matches the collection value specified in @FA{id} but the document cannot be
-///   found, no document will be returned.
+///   found, no document will be returned. This function also allows @FA{id} to be a list of ids.
+///   In this case, the function will return a list of all documents that could be found.
 ///
 /// @section AqlOperations High-level operations
 ///

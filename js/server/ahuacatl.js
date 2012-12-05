@@ -412,10 +412,24 @@ function AHUACATL_LIST (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a document by its unique id
+/// @brief get a document by its unique id or their unique ids
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_DOCUMENT (collection, id) {
+  if (AHUACATL_TYPEWEIGHT(id) === AHUACATL_TYPEWEIGHT_LIST) {
+    var c = AHUACATL_COLLECTION(collection);
+
+    var result = [ ];
+    for (var i = 0; i < id.length; ++i) {
+      try {
+        result.push(c.document(id[i]));
+      }
+      catch (e) {
+      }
+    }
+    return result;
+  }
+
   try {
     return AHUACATL_COLLECTION(collection).document(id);
   }
