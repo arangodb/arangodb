@@ -1,5 +1,20 @@
-v1.1.0 (XXXX-XX-XX)
+v1.1.0 (2012-12-05)
 -------------------
+
+* WARNING:
+  arangod now performs a database version check at startup. It will look for a file
+  named "VERSION" in its database directory. If the file is not present, arangod will
+  perform an automatic upgrade of the database directory. This should be the normal
+  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
+
+  If the VERSION file is present but is from an older version of ArangoDB, arangod 
+  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
+  can be performed by starting arangod with the option `--upgrade`. 
+
+  This upgrade procedure shall ensure that users have full control over when they 
+  perform any updates/upgrades of their data, and can plan backups accordingly. The
+  procedure also guarantees that the server is not run without any required system
+  collections or with in incompatible data state.
 
 * fixed issue #311: fixed segfault on unload 
 
@@ -48,21 +63,6 @@ v1.1.0 (XXXX-XX-XX)
   with documents instead of lists.
 
 * added UPGRADING help text
-
-* WARNING:
-  arangod now performs a database version check at startup. It will look for a file
-  named "VERSION" in its database directory. If the file is not present, arangod will
-  perform an automatic upgrade of the database directory. This should be the normal
-  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
-
-  If the VERSION file is present but is from an older version of ArangoDB, arangod 
-  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
-  can be performed by starting arangod with the option `--upgrade`. 
-
-  This upgrade procedure shall ensure that users have full control over when they 
-  perform any updates/upgrades of their data, and can plan backups accordingly. The
-  procedure also guarantees that the server is not run without any required system
-  collections or with in incompatible data state.
 
 * fixed issue #284: fixed Javascript errors when adding edges/vertices without own
   attributes

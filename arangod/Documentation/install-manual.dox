@@ -222,8 +222,14 @@
 /// brew install arangodb
 /// @endcode
 ///
-/// This will install the current stable version of ArangoDB within
-/// your Homebrew tree.
+/// This will install the current stable version of ArangoDB and all dependencies within
+/// your Homebrew tree. Note that the server will be installed as
+///
+///     /usr/local/sbin/arangod
+///
+/// The ArangoDB shell will be install as
+///
+///     /usr/local/bin/arangosh
 ///
 /// If you want to install the latest version use:
 ///
