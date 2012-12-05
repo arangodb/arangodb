@@ -1062,6 +1062,14 @@ function firstRouting (type, parts) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convenience function to return an HTTP 400 error for a bad parameter
+////////////////////////////////////////////////////////////////////////////////
+
+function badParameter (req, res, name) {
+  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, "invalid value for parameter '" + name + "'");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a result
 ///
 /// @FUN{actions.resultOk(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
@@ -1474,6 +1482,7 @@ exports.nextRouting             = nextRouting;
 exports.routingCache            = function() { return RoutingCache; };
 
 // standard HTTP responses
+exports.badParameter            = badParameter;
 exports.resultBad               = resultBad;
 exports.resultError             = resultError;
 exports.resultNotFound          = resultNotFound;
