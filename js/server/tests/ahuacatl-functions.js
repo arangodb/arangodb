@@ -39,8 +39,8 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief execute a given query
 ////////////////////////////////////////////////////////////////////////////////
 
-  function executeQuery (query) {
-    var cursor = AHUACATL_RUN(query, undefined);
+  function executeQuery (query, bindVars) {
+    var cursor = AHUACATL_RUN(query, bindVars);
     if (cursor instanceof ArangoError) {
       print(query, cursor.errorMessage);
     }
@@ -52,12 +52,12 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief execute a given query and return the results as an array
 ////////////////////////////////////////////////////////////////////////////////
 
-  function getQueryResults (query, isFlat) {
-    var result = executeQuery(query).getRows();
+  function getQueryResults (query, isFlat, bindVars) {
+    var result = executeQuery(query, bindVars).getRows();
     var results = [ ];
 
     for (var i in result) {
-      if (!result.hasOwnProperty(i)) {
+      if (! result.hasOwnProperty(i)) {
         continue;
       }
 
@@ -68,7 +68,7 @@ function ahuacatlFunctionsTestSuite () {
       else {
         var keys = [ ];
         for (var k in row) {
-          if (row.hasOwnProperty(k)) {
+          if (row.hasOwnProperty(k) && k != '_rev' && k != '_key' && k != '_id') {
             keys.push(k);
           }
         }
@@ -1076,6 +1076,79 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNION(3, [ ])"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNION(\"yes\", [ ])"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN UNION({ }, [ ])"); } ));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDocument1 : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      var d1 = cx.save({ "title" : "123", "value" : 456 });
+      var d2 = cx.save({ "title" : "nada", "value" : 123 });
+
+      var expected, actual;
+
+      expected = [ { title: "123", value : 456 } ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")", false);
+      assertEqual(expected, actual);
+      
+      expected = [ { title: "nada", value : 123 } ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")", false);
+      assertEqual(expected, actual);
+      
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDocument2 : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      var d1 = cx.save({ "title" : "123", "value" : 456, "zxy" : 1 });
+      var d2 = cx.save({ "title" : "nada", "value" : 123, "zzzz" : false });
+
+      var expected, actual;
+
+      expected = [ { title: "123", value : 456, zxy: 1 } ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : d1._id });
+      assertEqual(expected, actual);
+      
+      expected = [ { title: "nada", value : 123, zzzz : false } ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : d2._id });
+      assertEqual(expected, actual);
+      
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDocumentInvalid : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+
+      var expected, actual;
+
+      // test with non-existing document
+      expected = [ ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + cn + "/99999999999\")", false);
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"thefoxdoesnotexist/99999999999\")", false);
+      assertEqual(expected, actual);
+
+      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

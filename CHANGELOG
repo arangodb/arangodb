@@ -127,6 +127,8 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL function DOCUMENT() to retrieve a document by its _id value
+
 * fixed issue #311: fixed segfault on unload 
 
 * fixed issue #309: renamed stub "import" button from web interface
