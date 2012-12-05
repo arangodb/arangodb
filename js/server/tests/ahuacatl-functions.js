@@ -53,6 +53,24 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getQueryResults (query, isFlat, bindVars) {
+    var sanitize = function (row) {
+      var keys = [ ];
+      for (var k in row) {
+        if (row.hasOwnProperty(k) && k != '_rev' && k != '_key' && k != '_id') {
+          keys.push(k);
+        }
+      }
+
+      keys.sort();
+      var resultRow = { };
+      for (var k in keys) {
+        if (keys.hasOwnProperty(k)) {
+          resultRow[keys[k]] = row[keys[k]];
+        }
+      }
+      return resultRow;
+    };
+
     var result = executeQuery(query, bindVars).getRows();
     var results = [ ];
 
@@ -66,21 +84,16 @@ function ahuacatlFunctionsTestSuite () {
         results.push(row);
       } 
       else {
-        var keys = [ ];
-        for (var k in row) {
-          if (row.hasOwnProperty(k) && k != '_rev' && k != '_key' && k != '_id') {
-            keys.push(k);
+        if (Array.isArray(row)) {
+          var x = [ ];
+          for (var j = 0; j < row.length; ++j) {
+            x.push(sanitize(row[j]));
           }
+          results.push(x);
         }
-       
-        keys.sort();
-        var resultRow = { };
-        for (var k in keys) {
-          if (keys.hasOwnProperty(k)) {
-            resultRow[keys[k]] = row[keys[k]];
-          }
+        else {
+          results.push(sanitize(row));
         }
-        results.push(resultRow);
       }
     }
 
@@ -1123,6 +1136,43 @@ function ahuacatlFunctionsTestSuite () {
       
       expected = [ { title: "nada", value : 123, zzzz : false } ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : d2._id });
+      assertEqual(expected, actual);
+      
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDocumentMulti1 : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var cx = internal.db._create(cn);
+      var d1 = cx.save({ "title" : "123", "value" : 456, "zxy" : 1 });
+      var d2 = cx.save({ "title" : "nada", "value" : 123, "zzzz" : false });
+      var d3 = cx.save({ "title" : "boom", "value" : 3321, "zzzz" : null });
+
+      var expected, actual;
+
+      expected = [ [
+        { title: "123", value : 456, zxy : 1 },
+        { title: "nada", value : 123, zzzz : false },
+        { title: "boom", value : 3321, zzzz : null }
+      ] ];
+
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : [ d1._id, d2._id, d3._id ] });
+      assertEqual(expected, actual);
+     
+      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : [ d2._id ] });
+      assertEqual(expected, actual);
+
+      cx.remove(d3);
+      
+      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", false, { "@cn" : cn, "id" : [ d2._id, d3._id, "abc/def" ] });
       assertEqual(expected, actual);
       
       internal.db._drop(cn);
