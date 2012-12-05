@@ -249,10 +249,22 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t*, TRI_json_t* object, char const* n
 void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an attribute in an json array
+/// @brief looks up an attribute in a json array
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_LookupArrayJson (TRI_json_t* object, char const* name);
+TRI_json_t* TRI_LookupArrayJson (const TRI_json_t* const object, char const* name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an element from a json array
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces an element in a json array
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name, TRI_json_t* replacement);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object
@@ -288,7 +300,7 @@ int TRI_CopyToJson (TRI_memory_zone_t*, TRI_json_t* dst, TRI_json_t const* src);
 /// @brief copies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CopyJson (TRI_memory_zone_t*, TRI_json_t*);
+TRI_json_t* TRI_CopyJson (TRI_memory_zone_t*, const TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json string

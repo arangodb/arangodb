@@ -1,0 +1,10 @@
+-----BEGIN CERTIFICATE-----
+
+(base64 encoded certificate)
+
+-----END CERTIFICATE-----
+-----BEGIN RSA PRIVATE KEY-----
+
+(base64 encoded private key)
+
+-----END RSA PRIVATE KEY-----

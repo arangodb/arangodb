@@ -60,3 +60,4 @@ LDFLAGS="$SAVE_LDFLAGS"
 if test "x$tr_cv_broken_cxa_guard" = xyes;  then
   AC_DEFINE([BROKEN_CXA_GUARD], [1], [static programs have broken cxa_guard])
 fi
+

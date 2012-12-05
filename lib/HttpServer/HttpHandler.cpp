@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
+/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,124 +22,154 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpHandler.h"
 
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpsServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "GeneralServer/GeneralServerJob.h"
 
-namespace triagens {
-  namespace rest {
+using namespace triagens::rest;
 
-    // -----------------------------------------------------------------------------
-    // constructs and destructors
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-    HttpHandler::HttpHandler (HttpRequest* request)
-      : _handlerFactory(0),
-        request(request),
-        response(0),
-        _task(0), 
-        _job(0) {
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a new handler
+////////////////////////////////////////////////////////////////////////////////
 
+HttpHandler::HttpHandler (HttpRequest* request)
+  : _request(request),
+    _response(0),
+    _server(0) {
+}
 
-    HttpHandler::~HttpHandler () {
-      if (request != 0) {
-        delete request;
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a handler
+////////////////////////////////////////////////////////////////////////////////
 
-      if (response != 0) {
-        delete response;
-      }
+HttpHandler::~HttpHandler () {
+  if (_request != 0) {
+    delete _request;
+  }
 
-      if (_task != 0) {
-        _task->setHandler(0);
-      }
-
-      if (_handlerFactory != 0) {
-        _handlerFactory->unregisterHandler(this);
-      }
-    }
-
-    // -----------------------------------------------------------------------------
-    // public methods
-    // -----------------------------------------------------------------------------
-
-    HttpResponse* HttpHandler::getResponse () {
-      return response;
-    }
-
-
-
-    void HttpHandler::setHandlerFactory (HttpHandlerFactory* handlerFactory) {
-      _handlerFactory = handlerFactory;
-    }
-
-
-
-    bool HttpHandler::handleAsync () {
-      if (_job == 0) {
-        LOGGER_WARNING << "no job is known";
-      }
-      else {
-        HttpResponse* response = getResponse();
-
-        try {
-          if (response == 0) {
-            basics::InternalError err("no response received from handler");
-
-            handleError(err);
-            response = getResponse();
-          }
-
-          if (response != 0) {
-            _task->handleResponse(response);
-          }
-        }
-        catch (...) {
-          LOGGER_ERROR << "caught exception in " << __FILE__ << "@" << __LINE__;
-        }
- 
-        // this might delete the handler (i.e. ourselves!)
-        return _job->beginShutdown();
-      }
-
-      return true;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief create a job
-    ////////////////////////////////////////////////////////////////////////////////
-
-    Job* HttpHandler::createJob () {
-      LOGGER_WARNING << "job creation requested for handler that is not intended to produce jobs";
-
-      return 0;
-    }
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief create a job
-    ////////////////////////////////////////////////////////////////////////////////
-
-    Job* HttpHandler::createJob (Scheduler* scheduler, Dispatcher* dispatcher, HttpCommTask* task) {
-      HttpServer* server = dynamic_cast<HttpServer*>(task->getServer());
-
-      GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>* atask =
-        dynamic_cast<GeneralAsyncCommTask<HttpServer, HttpHandlerFactory, HttpCommTask>*>(task);
-
-      GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>* job = 
-        new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(server, scheduler, dispatcher, atask, this);
-
-      setJob(job);
-
-      return job;
-    }
+  if (_response != 0) {
+    delete _response;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the response
+////////////////////////////////////////////////////////////////////////////////
+
+HttpResponse* HttpHandler::getResponse () const {
+  return _response;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   Handler methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Job* HttpHandler::createJob (AsyncJobServer* server) {
+  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
+
+  // stj: TODO: ugly temporary hack, must be fixed
+  if (httpServer != 0) {
+    return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this);
+  }
+
+  HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
+  if (httpsServer != 0) {
+    return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this);
+  }
+  // stj: end of hack
+
+  LOGGER_WARNING << "cannot convert AsyncJobServer into a HttpServer";
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup GeneralServer
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure the handler has only one response, otherwise we'd have a leak
+////////////////////////////////////////////////////////////////////////////////
+        
+void HttpHandler::removePreviousResponse () {
+  if (_response != 0) {
+    delete _response;
+    _response = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new HTTP response
+////////////////////////////////////////////////////////////////////////////////
+
+HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) {
+  // avoid having multiple responses. this would be a memleak
+  removePreviousResponse();
+
+  // otherwise, we return a "standard" (standalone) Http response
+  return new HttpResponse(code);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\)"
+// End:

@@ -110,9 +110,9 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
 /// @FUN{processCsvFile(@FA{filename}, @FA{callback})}
 ///
 /// Processes a CSV file. The @FA{callback} function is called for line in the
-/// file. The seperator is @CODE{\,} and the quote is @CODE{"}.
+/// file. The seperator is @LIT{\,} and the quote is @LIT{"}.
 ///
-/// Create the input file @CODE{csv.txt}
+/// Create the input file @LIT{csv.txt}
 ///
 /// @verbinclude fluent48
 ///
@@ -124,7 +124,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
 ///
 /// Processes a CSV file. The @FA{callback} function is called for line in the
 /// file. The @FA{options} argument must be an object. The value of
-/// @CODE{seperator} sets the seperator character and @CODE{quote} the quote
+/// @LIT{seperator} sets the seperator character and @LIT{quote} the quote
 /// character.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -136,7 +136,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   }
 
   // extract the filename
-  v8::String::Utf8Value filename(argv[0]);
+  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));
@@ -149,34 +149,33 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   v8::Handle<v8::String> separatorKey = v8::String::New("separator");
   v8::Handle<v8::String> quoteKey = v8::String::New("quote");
 
-  char separator = ',';
-  char quote = '"';
+  string separator = ",";
+  string quote = "\"";
 
   if (3 <= argv.Length()) {
     v8::Handle<v8::Object> options = argv[2]->ToObject();
-    bool error;
 
     // separator
     if (options->Has(separatorKey)) {
-      separator = TRI_ObjectToCharacter(options->Get(separatorKey), error);
+      separator = TRI_ObjectToString(options->Get(separatorKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be a character")));
+      if (separator.size() < 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
       }
     }
 
     // quote
     if (options->Has(quoteKey)) {
-      quote = TRI_ObjectToCharacter(options->Get(quoteKey), error);
+      quote = TRI_ObjectToString(options->Get(quoteKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be a character")));
+      if (quote.length() > 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
       }
     }
   }
 
   // read and convert
-  int fd = open(*filename, O_RDONLY);
+  int fd = TRI_OPEN(*filename, O_RDONLY);
 
   if (fd < 0) {
     return scope.Close(v8::ThrowException(v8::String::New(TRI_LAST_ERROR_STR)));
@@ -190,8 +189,13 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
                     ProcessCsvAdd,
                     ProcessCsvEnd);
 
-  parser._separator = separator;
-  parser._quote = quote;
+  TRI_SetSeparatorCsvParser(&parser, (char*) separator.c_str(), separator.size());
+  if (quote.length() > 0) {
+    TRI_SetQuoteCsvParser(&parser, quote[0], true);
+  }
+  else {
+    TRI_SetQuoteCsvParser(&parser, '\0', false);
+  }
 
   parser._dataEnd = &cb;
 
@@ -203,7 +207,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   while (true) {
     v8::HandleScope scope;
 
-    ssize_t n = read(fd, buffer, sizeof(buffer));
+    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
@@ -228,7 +232,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 /// Processes a JSON file. The file must contain the JSON objects each on its
 /// own line. The @FA{callback} function is called for each object.
 ///
-/// Create the input file @CODE{json.txt}
+/// Create the input file @LIT{json.txt}
 ///
 /// @verbinclude fluent49
 ///
@@ -246,7 +250,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
   }
 
   // extract the filename
-  v8::String::Utf8Value filename(argv[0]);
+  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*filename == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<filename> must be an UTF8 filename")));

@@ -32,7 +32,6 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +68,7 @@ typedef struct TRI_aql_scope_s {
   TRI_associative_pointer_t _variables;
   TRI_vector_pointer_t* _ranges;
   TRI_aql_scope_e _type;
+  bool _selfContained;
   size_t _id;
 }
 TRI_aql_scope_t;

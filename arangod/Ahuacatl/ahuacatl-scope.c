@@ -118,6 +118,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_id = NextId(context);
   scope->_type = NextType(context, type);
   scope->_ranges = NULL;
+  scope->_selfContained = true;
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
@@ -241,7 +242,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
     return false;
   }
   
-  TRI_AQL_LOG("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+  LOG_TRACE("starting scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   TRI_PushBackVectorPointer(&context->_memory._scopes, (void*) scope);
   TRI_PushBackVectorPointer(&context->_currentScopes, (void*) scope);
 
@@ -250,7 +251,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
     return false;
   }
   
-  if (!TRI_AddStatementListAql(context->_statements, node)) {
+  if (! TRI_AppendStatementListAql(context->_statements, node)) {
     return false;
   }
 
@@ -272,14 +273,14 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
   assert(n > 0);
 
   scope = TRI_RemoveVectorPointer(&context->_currentScopes, --n);
-  TRI_AQL_LOG("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+  LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   
   node = TRI_CreateNodeScopeEndAql(context, scope);
   if (node == NULL) {
     return false;
   }
   
-  if (!TRI_AddStatementListAql(context->_statements, node)) {
+  if (! TRI_AppendStatementListAql(context->_statements, node)) {
     return false;
   }
 
@@ -311,14 +312,14 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
     assert(scope);
 
-    TRI_AQL_LOG("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
+    LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
   
     node = TRI_CreateNodeScopeEndAql(context, scope);
     if (node == NULL) {
       return false;
     }
   
-    if (!TRI_AddStatementListAql(context->_statements, node)) {
+    if (! TRI_AppendStatementListAql(context->_statements, node)) {
       return false;
     }
 
@@ -388,7 +389,7 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   }
 
   scope = CurrentScope(context);
-  assert(!TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
+  assert(! TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
 
   return true;
 }

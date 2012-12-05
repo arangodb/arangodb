@@ -28,7 +28,7 @@
 #include "barrier.h"
 
 #include "BasicsC/logging.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           BARRIER
@@ -91,7 +91,7 @@ static void LinkBarrierElement (TRI_barrier_t* element, TRI_barrier_list_t* cont
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitBarrierList (TRI_barrier_list_t* container, TRI_doc_collection_t* collection) {
+void TRI_InitBarrierList (TRI_barrier_list_t* container, TRI_primary_collection_t* collection) {
   container->_collection = collection;
 
   TRI_InitSpin(&container->_lock);

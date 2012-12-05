@@ -1,3 +1,290 @@
+v1.1.0 (2012-12-05)
+-------------------
+
+* WARNING:
+  arangod now performs a database version check at startup. It will look for a file
+  named "VERSION" in its database directory. If the file is not present, arangod will
+  perform an automatic upgrade of the database directory. This should be the normal
+  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
+
+  If the VERSION file is present but is from an older version of ArangoDB, arangod 
+  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
+  can be performed by starting arangod with the option `--upgrade`. 
+
+  This upgrade procedure shall ensure that users have full control over when they 
+  perform any updates/upgrades of their data, and can plan backups accordingly. The
+  procedure also guarantees that the server is not run without any required system
+  collections or with in incompatible data state.
+
+* fixed issue #311: fixed segfault on unload 
+
+* fixed issue #309: renamed stub "import" button from web interface
+
+* fixed issue #307: added WaitForSync column in collections list in in web interface 
+
+* fixed issue #306: naming in web interface 
+
+* fixed issue #304: do not clear AQL query text input when switching tabs in
+  web interface
+
+* fixed issue #303: added documentation about usage of var keyword in web interface
+
+* fixed issue #301: PATCH does not work in web interface
+
+# fixed issue #269: fix make distclean & clean
+
+* fixed issue #296: system collections not usable from AQL
+
+* fixed issue #295: deadlock on shutdown
+
+* added collection type label to web interface
+
+* fixed issue #290: the web interface now disallows creating non-edges in edge collections
+  when creating collections via the web interface, the collection type must also be
+  specified (default is document collection)
+
+* fixed issue #289: tab-completion does not insert any spaces
+
+* fixed issue #282: fix escaping in web interface
+
+* made AQL function NOT_NULL take any number of arguments. Will now return its
+  first argument that is not null, or null if all arguments are null. This is downwards
+  compatible.
+
+* changed misleading AQL function name NOT_LIST() to FIRST_LIST() and slightly changed
+  the behavior. The function will now return its first argument that is a list, or null 
+  if none of the arguments are lists.
+  This is mostly downwards-compatible. The only change to the previous implementation in
+  1.1-beta will happen if two arguments were passed and the 1st and 2nd arguments were 
+  both no lists. In previous 1.1, the 2nd argument was returned as is, but now null 
+  will be returned.
+
+* add AQL function FIRST_DOCUMENT(), with same behavior as FIRST_LIST(), but working
+  with documents instead of lists.
+
+* added UPGRADING help text
+
+* fixed issue #284: fixed Javascript errors when adding edges/vertices without own
+  attributes
+
+* fixed issue #283: AQL LENGTH() now works on documents, too
+
+* fixed issue #281: documentation for skip lists shows wrong example
+
+* fixed AQL optimiser bug, related to OR-combined conditions that filtered on the
+  same attribute but with different conditions
+
+* fixed issue #277: allow usage of collection names when creating edges
+  the fix of this issue also implies validation of collection names / ids passed to
+  the REST edge create method. edges with invalid collection ids or names in the
+  "from" or "to" values will be rejected and not saved
+
+
+v1.1.beta2 (2012-11-13)
+-----------------------
+
+* fixed arangoirb compilation
+
+* fixed doxygen
+
+
+v1.1.beta1 (2012-10-24)
+-----------------------
+
+* fixed AQL optimiser bug
+
+* WARNING:
+  - the user has changed from "arango" to "arangodb", the start script has changed from
+    "arangod" to "arangodb", the database directory has changed from "/var/arangodb" to
+    "/var/lib/arangodb" to be compliant with various Linux policies
+
+  - In 1.1, we have introduced types for collections: regular documents go into document
+    collections, and edges go into edge collections. The prefixing (db.xxx vs. edges.xxx) 
+    works slightly different in 1.1: edges.xxx can still be used to access collections, 
+    however, it will not determine the type of existing collections anymore. To create an 
+    edge collection 1.1, you can use db._createEdgeCollection() or edges._create(). 
+    And there's of course also db._createDocumentCollection(). 
+    db._create() is also still there and will create a document collection by default, 
+    whereas edges._create() will create an edge collection.
+
+  - the admin web interface that was previously available via the simple URL suffix / 
+    is now available via a dedicated URL suffix only: /_admin/html
+    The reason for this is that routing and URLs are now subject to changes by the end user,
+    and only URLs parts prefixed with underscores (e.g. /_admin or /_api) are reserved
+    for ArangoDB's internal usage.
+
+* the server now handles requests with invalid Content-Length header values as follows:
+  - if Content-Length is negative, the server will respond instantly with HTTP 411
+    (length required)
+
+  - if Content-Length is positive but shorter than the supplied body, the server will
+    respond with HTTP 400 (bad request)
+
+  - if Content-Length is positive but longer than the supplied body, the server will
+    wait for the client to send the missing bytes. The server allows 90 seconds for this
+    and will close the connection if the client does not send the remaining data
+
+  - if Content-Length is bigger than the maximum allowed size (512 MB), the server will 
+    fail with HTTP 413 (request entitiy too large).
+
+  - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
+    the server will fail with HTTP 431 (request header fields too large)
+
+* issue #265: allow optional base64 encoding/decoding of action response data
+
+* issue #252: create _modules collection using arango-upgrade (note: arango-upgrade was
+  finally replaced by the `--upgrade` option for arangod)
+
+* issue #251: allow passing arbitrary options to V8 engine using new command line option:
+  --javascript.v8-options. Using this option, the Harmony features or other settings in
+  v8 can be enabled if the end user requires them
+
+* issue #248: allow AQL optimiser to pull out completely uncorrelated subqueries to the
+  top level, resulting in less repeated evaluation of the subquery
+
+* upgraded to Doxygen 1.8.0
+
+* issue #247: added AQL function MERGE_RECURSIVE
+
+* issue #246: added clear() function in arangosh
+
+* issue #245: Documentation: Central place for naming rules/limits inside ArangoDB
+
+* reduced size of hash index elements by 50 %, allowing more index elements to fit in 
+  memory
+
+* issue #235: GUI Shell throws Error:ReferenceError: db is not defined
+
+* issue #229: methods marked as "under construction" 
+
+* issue #228: remove unfinished APIs (/_admin/config/*) 
+
+* having the OpenSSL library installed is now a prerequisite to compiling ArangoDB
+  Also removed the --enable-ssl configure option because ssl is always required.
+
+* added AQL functions TO_LIST, NOT_LIST
+
+* issue #224: add optional Content-Id for batch requests
+
+* issue #221: more documentation on AQL explain functionality. Also added
+  ArangoStatement.explain() client method
+
+* added db._createStatement() method on server as well (was previously available
+  on the client only)
+
+* issue #219: continue in case of "document not found" error in PATHS() function
+
+* issue #213: make waitForSync overridable on specifc actions
+
+* changed AQL optimiser to use indexes in more cases. Previously, indexes might
+  not have been used when in a reference expression the inner collection was 
+  specified last. Example: FOR u1 IN users FOR u2 IN users FILTER u1._id == u2._id
+  Previously, this only checked whether an index could be used for u2._id (not
+  possible). It was not checked whether an index on u1._id could be used (possible).
+  Now, for expressions that have references/attribute names on both sides of the
+  above as above, indexes are checked for both sides.
+  
+* issue #204: extend the CSV import by TSV and by user configurable 
+  seperator character(s)
+
+* issue #180: added support for batch operations
+
+* added startup option --server.backlog-size
+  this allows setting the value of the backlog for the listen() system call.
+  the default value is 10, the maximum value is platform-dependent
+
+* introduced new configure option "--enable-maintainer-mode" for
+  ArangoDB maintainers. this option replaces the previous compile switches
+  --with-boost-test, --enable-bison, --enable-flex and --enable-errors-dependency
+  the individual configure options have been removed. --enable-maintainer-mode
+  turns them all on.
+
+* removed potentially unused configure option --enable-memfail
+
+* fixed issue #197: HTML web interface calls /_admin/user-manager/session
+
+* fixed issue #195: VERSION file in database directory
+
+* fixed issue #193: REST API HEAD request returns a message body on 404
+
+* fixed issue #188: intermittent issues with 1.0.0
+  (server-side cursors not cleaned up in all cases, pthreads deadlock issue)
+
+* issue #189: key store should use ISO datetime format bug 
+
+* issue #187: run arango-upgrade on server start (note: arango-upgrade was finally
+  replaced by the `--upgrade` option for arangod)n
+
+* fixed issue #183: strange unittest error
+
+* fixed issue #182: manual pages
+
+* fixed issue #181: use getaddrinfo
+
+* moved default database directory to "/var/lib/arangodb" in accordance with 
+  http://www.pathname.com/fhs/pub/fhs-2.3.html
+
+* fixed issue #179: strange text in import manual
+
+* fixed issue #178: test for aragoimp is missing
+
+* fixed issue #177: a misleading error message was returned if unknown variables
+  were used in certain positions in an AQL query.
+
+* fixed issue #176: explain how to use AQL from the arangosh
+
+* issue #175: re-added hidden (and deprecated) option --server.http-port. This 
+  option is only there to be downwards-compatible to Arango 1.0.
+
+* fixed issue #174: missing Documentation for `within`
+
+* fixed issue #170: add db.<coll_name>.all().toArray() to arangosh help screen
+
+* fixed issue #169: missing argument in Simple Queries
+
+* added program arango-upgrade. This program must be run after installing ArangoDB
+  and after upgrading from a previous version of ArangoDB. The arango-upgrade script
+  will ensure all system collections are created and present in the correct state.
+  It will also perform any necessary data updates.
+  Note: arango-upgrade was finally replaced by the `--upgrade` option for arangod.
+
+* issue #153: edge collection should be a flag for a collection
+  collections now have a type so that the distinction between document and edge 
+  collections can now be done at runtime using a collection's type value.
+  A collection's type can be queried in Javascript using the <collection>.type() method. 
+  
+  When new collections are created using db._create(), they will be document 
+  collections by default. When edge._create() is called, an edge collection will be created.
+  To explicitly create a collection of a specific/different type, use the methods 
+  _createDocumentCollection() or _createEdgeCollection(), which are available for
+  both the db and the edges object.
+  The Javascript objects ArangoEdges and ArangoEdgesCollection have been removed
+  completely.
+  All internal and test code has been adjusted for this, and client code
+  that uses edges.* should also still work because edges is still there and creates
+  edge collections when _create() is called.
+  
+  INCOMPATIBLE CHANGE: Client code might still need to be changed in the following aspect:
+  Previously, collections did not have a type so documents and edges could be inserted
+  in the same collection. This is now disallowed. Edges can only be inserted into
+  edge collections now. As there were no collection types in 1.0, ArangoDB will perform
+  an automatic upgrade when migrating from 1.0 to 1.1.
+  The automatic upgrade will check every collection and determine its type as follows:
+  - if among the first 50 documents in the collection there are documents with
+    attributes "_from" and "_to", the collection is typed as an edge collection
+  - if among the first 50 documents in the collection there are no documents with
+    attributes "_from" and "_to", the collection is made as a document collection
+
+* issue #150: call V8 garbage collection on server periodically
+
+* issue #110: added support for partial updates
+
+  The REST API for documents now offers an HTTP PATCH method to partially update
+  documents. Overwriting/replacing documents is still available via the HTTP PUT method
+  as before. The Javascript API in the shell also offers a new update() method in extension to
+  the previously existing replace() method.
+
+
 v1.0.4 (2012-11-12)
 -------------------
 
@@ -71,6 +358,57 @@ v1.0.beta3 (2012-08-10)
 
 * fix for issue #149: Inconsistent port for admin interface
 
+* fix for issue #163: server cannot create collection because of abandoned files
+
+* fix for issue #157: check for readline and ncurses headers, not only libraries
+
+* fix for issue #108: db.<collection>.truncate() inefficient
+
+* fix for issue #109: added startup note about cached collection names and how to
+  refresh them
+
+* fix for issue #156: fixed memleaks in /_api/import
+
+* fix for issue #59: added tests for /_api/import
+
+* modified return value for calls to /_api/import: now, the attribute "empty" is 
+  returned as well, stating the number of empty lines in the input. Also changed the
+  return value of the error code attribute ("errorNum") from 1100 ("corrupted datafile")
+  to 400 ("bad request") in case invalid/unexpected JSON data was sent to the server. 
+  This error code is more appropriate as no datafile is broken but just input data is
+  incorrect.
+
+* fix for issue #152: Memleak for barriers
+
+* fix for issue #151: Memleak, collection data not removed
+
+* value of --database.maximal-journal-size parameter is now validated on startup. If
+  value is smaller than the minimum value (currently 1048576), an error is thrown and
+  the server will not start. Before this change, the global value of maximal journal 
+  size was not validated at server start, but only on collection level
+
+* increased sleep value in statistics creation loop from 10 to 500 microseconds. This
+  reduces accuracy of statistics values somewhere after the decimal points but saves
+  CPU time.
+
+* avoid additional sync() calls when writing partial shape data (attribute name data) 
+  to disk. sync() will still be called when the shape marker (will be written after
+  the attributes) is written to disk 
+
+* issue #147: added flag --database.force-sync-shapes to force synching of shape data
+  to disk. The default value is true so it is the same behavior as in version 1.0.
+  if set to false, shape data is synched to disk if waitForSync for the collection is
+  set to true, otherwise, shape data is not synched.
+  
+* fix for issue #145: strange issue on Travis: added epsilon for numeric comparion in
+  geo index
+
+* fix for issue #136: adjusted message during indexing
+
+* issue #131: added timeout for HTTP keep-alive connections. The default value is 300 
+  seconds. There is a startup parameter server.keep-alive-timeout to configure the value. 
+  Setting it to 0 will disable keep-alive entirely on the server.
+
 * fix for issue #137: AQL optimizer should use indexes for ref accesses with 
   2 named attributes
 
@@ -90,6 +428,75 @@ v1.0.beta1 (2012-07-29)
 
 * fixed issue #126: Access-Shaper must be cached
 
+* INCOMPATIBLE CHANGE: renamed parameters "connect-timeout" and "request-timeout" 
+  for arangosh and arangoimp to "--server.connect-timeout" and "--server.request-timeout"
+
+* INCOMPATIBLE CHANGE: authorization is now required on the server side
+  Clients sending requests without HTTP autorization will be rejected with HTTP 401
+  To allow backwards compatibility, the server can be started with the option
+  "--server.disable-authentication"
+
+* added options "--server.username" and "--server.password" for arangosh and arangoimp
+  These parameters must be used to specify the user and password to be used when
+  connecting to the server. If no password is given on the command line, arangosh/
+  arangoimp will interactively prompt for a password.
+  If no user name is specified on the command line, the default user "root" will be
+  used.
+
+* added startup option "--server.ssl-cipher-list" to determine which ciphers to
+  use in SSL context. also added SSL_OP_CIPHER_SERVER_PREFERENCE to SSL default 
+  options so ciphers are tried in server and not in client order
+
+* changed default SSL protocol to TLSv1 instead of SSLv2
+
+* changed log-level of SSL-related messages
+
+* added SSL connections if server is compiled with OpenSSL support. Use --help-ssl
+
+* INCOMPATIBLE CHANGE: removed startup option "--server.admin-port". 
+  The new endpoints feature (see --server.endpoint) allows opening multiple endpoints 
+  anyway, and the distinction between admin and "other" endpoints can be emulated 
+  later using privileges
+
+* INCOMPATIBLE CHANGE: removed startup options "--port", "--server.port", and 
+  "--server.http-port" for arangod. 
+  These options have been replaced by the new "--server.endpoint" parameter
+  
+* INCOMPATIBLE CHANGE: removed startup option "--server" for arangosh and arangoimp.
+  These options have been replaced by the new "--server.endpoint" parameter
+
+* Added "--server.endpoint" option to arangod, arangosh, and arangoimp.
+  For arangod, this option allows specifying the bind endpoints for the server
+  The server can be bound to one or multiple endpoints at once. For arangosh
+  and arangoimp, the option specifies the server endpoint to connect to.
+  The following endpoint syntax is currently supported:
+  - tcp://host:port or http@tcp://host:port (HTTP over IPv4)
+  - tcp://[host]:port or http@tcp://[host]:port (HTTP over IPv6)
+  - ssl://host:port or http@tcp://host:port (HTTP over SSL-encrypted IPv4)
+  - ssl://[host]:port or http@tcp://[host]:port (HTTP over SSL-encrypted IPv6)
+  - unix://path/to/socket or http@unix:///path/to/socket (HTTP over UNIX socket)
+
+  If no port is specified, the default port of 8529 will be used.
+
+* INCOMPATIBLE CHANGE: removed startup options "--server.require-keep-alive" and 
+  "--server.secure-require-keep-alive". 
+  The server will now behave as follows which should be more conforming to the 
+  HTTP standard:
+  * if a client sends a "Connection: close" header, the server will close the
+    connection
+  * if a client sends a "Connection: keep-alive" header, the server will not
+    close the connection
+  * if a client does not send any "Connection" header, the server will assume
+    "keep-alive" if the request was an HTTP/1.1 request, and "close" if the
+    request was an HTTP/1.0 request
+
+* (minimal) internal optimisations for HTTP request parsing and response header 
+  handling
+
+* fixed Unicode unescaping bugs for \f and surrogate pairs in BasicsC/strings.c
+
+* changed implementation of TRI_BlockCrc32 algorithm to use 8 bytes at a time
+
 * fixed issue #122: arangod doesn't start if <log.file> cannot be created
 
 * fixed issue #121: wrong collection size reported
@@ -100,7 +507,7 @@ v1.0.beta1 (2012-07-29)
 
 * fixed escaping of document data in HTML admin front end
 
-* added HTTP basic authentication, use "--server.http-auth yes" to enable
+* added HTTP basic authentication, this is always turned on
 
 * added server startup option --server.disable-admin-interface to turn off the
   HTML admin interface

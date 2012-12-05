@@ -27,13 +27,6 @@
 
 #include "Initialise.h"
 
-#include "build.h"
-
-#include "Basics/Initialise.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpResponse.h"
-#include "Rest/Url.h"
-
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -44,6 +37,14 @@
 #ifndef OPENSSL_THREADS
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
+
+#include "build.h"
+
+#include "Basics/Initialise.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
+#include "Rest/Url.h"
+#include "Statistics/statistics.h"
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -124,10 +125,8 @@ namespace triagens {
       OpenSSL_add_all_algorithms();
       ERR_load_crypto_strings();
 
-#ifdef TRI_OPENSSL_VERSION
       revision = "$Revision: OPENSSL " TRI_OPENSSL_VERSION " $";
       LOGGER_TRACE << revision;
-#endif      
 
 #ifdef TRI_LIBEV_VERSION
       revision = "$Revision: LIBEV " TRI_LIBEV_VERSION " $";

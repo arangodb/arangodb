@@ -1,8 +1,8 @@
 # -*- mode: Makefile; -*-
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                        JAVASCRIPT
-################################################################################
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief JavaScript source code as header
@@ -11,9 +11,11 @@
 JAVASCRIPT_HEADER = \
 	js/common/bootstrap/js-errors.h \
 	js/common/bootstrap/js-modules.h \
+	js/common/bootstrap/js-monkeypatches.h \
 	js/common/bootstrap/js-print.h \
 	js/client/js-client.h \
 	js/server/js-server.h \
+	js/server/js-version-check.h \
 	js/server/js-ahuacatl.h
 
 BUILT_SOURCES += $(JAVASCRIPT_HEADER)
@@ -23,18 +25,21 @@ BUILT_SOURCES += $(JAVASCRIPT_HEADER)
 ################################################################################
 
 JAVASCRIPT_BROWSER = \
+	html/admin/js/modules/statement-basics.js \
 	html/admin/js/modules/simple-query-basics.js \
 	html/admin/js/modules/simple-query.js
 
 BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
 
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                             MRUBY
-################################################################################
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief MRuby source code as header
 ################################################################################
+
+if ENABLE_MRUBY
 
 MRUBY_HEADER = \
 	mr/common/bootstrap/mr-error.h \
@@ -42,98 +47,11 @@ MRUBY_HEADER = \
 
 BUILT_SOURCES += $(MRUBY_HEADER)
 
-################################################################################
-## --SECTION--                                                           DOXYGEN
-################################################################################
+endif
 
-################################################################################
-### @brief JavaScript files
-################################################################################
-
-DOXYGEN = \
-	Doxygen/js/actions/system/api-collection.c \
-	Doxygen/js/actions/system/api-cursor.c \
-	Doxygen/js/actions/system/api-edges.c \
-	Doxygen/js/actions/system/api-explain.c \
-	Doxygen/js/actions/system/api-index.c \
-	Doxygen/js/actions/system/api-query.c \
-	Doxygen/js/actions/system/api-simple.c \
-	Doxygen/js/actions/system/api-system.c \
-	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/bootstrap/print.c \
-	Doxygen/js/common/modules/graph.c \
-	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/simple-query-basics.c \
-	Doxygen/js/server/modules/org/arangodb/actions.c \
-	Doxygen/js/server/modules/simple-query.c \
-	Doxygen/js/server/server.c
-
-################################################################################
-### @brief wiki pages
-################################################################################
-
-WIKI = \
-	ArangoErrors \
-	CommandLine \
-	Compiling \
-	DbaManual \
-	DbaManualBasics \
-	DbaManualAuthentication \
-	DbaManualDatafileDebugger \
-	DefineAction \
-	ExamplesSetup \
-	FirstStepsArangoDB \
-	Glossary \
-	Graphs \
-	Home \
-	HttpCollection \
-	HttpCursor \
-	HttpImport \
-	HttpIndex \
-	HttpInterface \
-	HttpQueries \
-	HttpSimple \
-	HttpSystem \
-	ImplementorManual \
-	ImpManual \
-	ImpManualBasics \
-	IndexCap \
-	IndexCapHttp \
-	IndexGeo \
-	IndexGeoHttp \
-	IndexHash \
-	IndexHashHttp \
-	IndexSkiplist \
-	IndexSkiplistHttp \
-	InstallManual \
-	Installing \
-	JSModuleActions \
-	JSModuleConsole \
-	JSModuleFs \
-	JSModuleGraph \
-	JSModuleInternal \
-	JSModules \
-	Key-Value \
-	RefManual \
-	RestDocument \
-	RestEdge \
-	RestSystem \
-	ShellCollection \
-	ShellDocument \
-	ShellEdge \
-	ShellIndex \
-	SimpleQueries \
-	UserManual \
-	UserManualBasics \
-	UserManualArangosh \
-	UserManualActions \
-        Aql \
-        AqlExamples \
-	jsUnity
-
-################################################################################
+## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
-################################################################################
+## -----------------------------------------------------------------------------
 
 ## Local Variables:
 ## mode: outline-minor

@@ -26,244 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       USER MANUAL
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManual ArangoDB's User Manual (@VERSION)
-///
-/// @if LATEX
-/// <ul>
-///  <li>@ref UserManualBasics</li>
-///  <li>@ref FirstStepsArangoDB</li>
-///  <li>@ref UserManualArangosh</li>
-///  <li>@ref ShellCollection</li>
-///  <li>@ref ShellDocument</li>
-///  <li>@ref ShellEdge</li>
-///  <li>@ref SimpleQueries</li>
-///  <li>@ref Aql</li>
-///  <li>@ref UserManualActions</li>
-///
-///  @latexonly\appendix@endlatexonly
-///  <li>@ref CommandLine</li>
-///  <li>@ref Glossary</li>
-/// </ul>
-/// @else
-/// @copydetails UserManualBasicsTOC
-/// @copydetails FirstStepsArangoDBTOC
-/// @copydetails UserManualArangoshTOC
-/// @copydetails ShellCollectionTOC
-/// @copydetails ShellDocumentTOC
-/// @copydetails ShellEdgeTOC
-/// @copydetails SimpleQueriesTOC
-/// @copydetails AqlTOC
-/// @copydetails UserManualActionsTOC
-/// @copydetails CommandLineTOC
-/// @endif
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                USER MANUAL BASICS
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualBasicsTOC
-///
-/// <ul>
-///  <li>@ref UserManualBasics
-///   <ul>
-///    <li>@ref UserManualServerStartStop
-///     <ul>
-///      <li>@ref UserManualServerStartStopOptions</li>
-///     </ul>
-///    </li>
-///    <li>@ref UserManualServerFE</li>
-///    <li>@ref UserManualShellStartStop
-///     <ul>
-///      <li>@ref UserManualShellStartStopOptions</li>
-///     </ul>
-///    </li>
-///    <li>@ref UserManualServerStartStopDebug
-///    </li>
-///   </ul>
-///  </li>
-/// </ul>
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManualBasics About ArangoDB
-///
-/// We recently started a new open source project - a universal nosql database
-/// called AvocadoDB which became ArangoDB in May 2012.
-///
-/// Key features include:
-/// 
-/// <ul>
-///  <li> Schema-free schemata let you combine the space efficiency of MySQL with
-///       the performance power of NoSQL</li>
-///  <li> Use ArangoDB as an application server and fuse your application and
-///       database together for maximal throughput</li>
-///  <li> JavaScript for all: no language zoo, you can use one language from your
-///       browser to your back-end</li>
-///  <li> ArangoDB is multi-threaded - exploit the power of all your cores</li>
-///  <li> Flexible data modeling: model your data as combination of key-value pairs,
-///       documents or graphs - perfect for social relations</li>
-///  <li> Free index choice: use the correct index for your problem, be it a skip
-///       list or a n-gram search</li>
-///  <li> Configurable durability: let the application decide if it needs more
-///       durability or more performance</li>
-///  <li> No-nonsense storage: ArangoDB uses all of the power of modern storage
-///       hardware, like SSD and large caches</li>
-///  <li> It is open source (Apache Licence 2.0)</li>
-/// </ul>
-///
-/// For more in-depth information
-///
-/// <ul>
-///  <li> read more on the @EXTRES{http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives,design goals of ArangoDB}</li>
-///  <li> @EXTREF{http://vimeo.com/36411892,watch the video}@SPC- Martin Schoenert, 
-///       architect of ArangoDB, gives an introduction of what the ArangoDB project 
-///       is about.</li>
-///  <li> or give it a @EXTRES{http://www.arangodb.org/try,try}.</li>
-/// </ul>
-///
-/// The ArangoDB database groups documents into collections. Collections and
-/// documents can be accessed using queries. For simple queries involving just
-/// one collection and one search criteria, you can use a simple interface from
-/// within JavaScript code or other languages supported by an API. This
-/// interface allows you to select documents from one collection based on just
-/// one search criteria. For more complex queries, you can use the Arango Query
-/// Language (AQL), which is an evolution of SQL resp. UNQL for the NoSQL
-/// world. AQL allows you to use more then one collection, similar to joins from
-/// SQL, while still retaining the document and list structures like UNQL.
-///
-/// The ArangoDB database packages comes with various programs:
-///
-/// - @LIT{arangod}: The ArangoDB database daemon. This server program is
-///   intended to run as daemon process and to server the various clients
-///   connection to the server via TCP / HTTP. See @ref
-///   UserManualServerStartStop.
-/// - @LIT{arangosh}: The ArangoDB shell. A client that implements a
-///   read-eval-print loop (REPL) and provides functions to access and
-///   administrate the ArangoDB server. See @ref UserManualShellStartStop.
-/// - @LIT{arangoimp}: A bulk importer for the ArangoDB server.
-///   See @ref ImpManual
-///
-/// @EMBEDTOC{UserManualBasicsTOC}
-///
-/// @section UserManualServerStartStop Starting the ArangoDB Server
-///////////////////////////////////////////////////////////////////
-///
-/// The ArangoDB database server has two modes of operation: as server, where it
-/// will answer to client requests and an emergency console, in which you can
-/// access the database directly. The latter - as the name suggests - should 
-/// only be used in case of an emergency, for example, a corrupted
-/// collection. Using the emergency console allows you to issue all commands
-/// normally available in actions and transactions.
-///
-/// You should never start more than one server for the same database,
-/// independent from the mode of operation.
-///
-/// The following command starts the ArangoDB database in server mode. You will
-/// be able to access the server using HTTP requests on port 8529. See @ref
-/// UserManualServerStartStopOptions "below" for a list of frequently used
-/// options, see @ref CommandLine "here" for a complete list.
-///
-/// @TINYEXAMPLE{option-database-directory,starting the server}
-///
-/// After starting the server, point your favorite browser to:
-///
-/// @LIT{http://localhost:8529/}
-///
-/// to access the administration front-end.
-///
-/// @subsection UserManualServerStartStopOptions Frequently Used Options
-////////////////////////////////////////////////////////////////////////
-///
-/// The following command-line options are frequently used. For a full
-/// list of options see @ref CommandLine "here".
-///
-/// @CMDOPT{@CA{database-directory}}
-////////////////////////////////////
-///
-/// Uses the @CA{database-directory} as base directory. There is an alternative
-/// version available for use in configuration files, see @ref
-/// CommandLineArango "here".
-///
-/// @copydetails triagens::rest::ApplicationServer::_options
-////////////////////////////////////////////////////////////
-///
-/// @CMDOPT{--log @CA{level}}
-/////////////////////////////
-///
-/// Allows the user to choose the level of information which is logged by the
-/// server. The @CA{level} is specified as a string and can be one of the
-/// following values: fatal, error, warning, info, debug, trace.  For more
-/// information see @ref CommandLineLogging "here".
-///
-/// @copydetails triagens::arango::ArangoServer::_httpPort
-//////////////////////////////////////////////////////////
-///
-/// @CMDOPT{--daemon}
-/////////////////////
-///
-/// Runs the server as a daemon (as a background process).
-///
-/// @section UserManualServerFE ArangoDB's Front-End
-////////////////////////////////////////////////////
-///
-/// The ArangoDB server has a graphical front-end, which allows you to inspect
-/// the current state of the server. You can read the front-end using the
-/// following URL:
-///
-/// @LIT{http://localhost:8529/_admin}
-///
-/// Unless you have loaded an application into the ArangoDB server, which remaps
-/// the paths, the front-end will also be available under
-///
-/// @LIT{http://localhost:8529/}.
-///
-/// @htmlonly <img src="images/fe1.png" alt="ArangoDB Front-End">@endhtmlonly
-/// @latexonly\includegraphics[width=12cm]{images/fe1.png}@endlatexonly
-///
-/// The front-end allows you the browser through the collections and
-/// documents. If you need to administrate the database, please use
-/// the ArgangoDB shell described in the next section.
-///
-/// @section UserManualShellStartStop Starting the ArangoDB Shell
-/////////////////////////////////////////////////////////////////
-///
-/// After the server has been @ref UserManualServerStartStop "started",
-/// you can use the ArangoDB shell to administrate the server. Without
-/// any arguments, the ArangoDB shell will try to contact the server
-/// on port 8529 on the localhost. For more information see @ref
-/// UserManualArangosh.
-///
-/// @TINYEXAMPLE{arangosh-start,starting the shell}
-///
-/// The shell will print its own version number and, if successfully connected
-/// to a server, the version number of the ArangoDB server.
-///
-/// @subsection UserManualShellStartStopOptions Command-Line Options
-////////////////////////////////////////////////////////////////////
-///
-/// Use @LIT{--help} to get a list of command-line options:
-///
-/// @TINYEXAMPLE{arangosh-options,shell options}
-///
-/// @section UserManualServerStartStopDebug Starting the ArangoDB Emergency Console
-///////////////////////////////////////////////////////////////////////////////////
-///
-/// The following command starts a emergency console. See below for a list of
-/// frequently used options, see @ref CommandLine "here" for a complete list.
-///
-/// @note Never start the emergency console for a database which also has a
-/// server attached to it. In general the ArangoDB shell is what you want.
-///
-/// @EXAMPLE{start-emergency-console,emergency console}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                              USER MANUAL ARANGOSH
 // -----------------------------------------------------------------------------
 
@@ -279,6 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualArangosh The Arango Shell
 ///
+/// @NAVIGATE_UserManualArangosh
 /// @EMBEDTOC{UserManualArangoshTOC}
 ///
 /// @section UserManualArangoshOutput Arango Shell Output
@@ -370,6 +133,8 @@
 ///     </ul>
 ///    </li>
 ///    <li>@ref UserManualActionsReqRes</li>
+///    <li>@ref UserManualActionsModify</li>
+///    <li>@ref UserManualActionsHandlers</li>
 ///    <li>@ref UserManualActionsAdvanced
 ///     <ul>
 ///      <li>@ref UserManualActionsAdvancedRedirects</li>
@@ -384,6 +149,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualActions Arango Actions
+///
+/// @NAVIGATE_UserManualActions
 ///
 /// Please note, that user Actions in ArangoDB are still preliminary and details
 /// are subject to change.
@@ -447,7 +214,7 @@
 //////////////////////////////////////////////////////////////
 ///
 /// The client API or browser sends a HTTP request to the ArangoDB server and
-/// the server returns a HTTP response to the client. A HTTP requests consist
+/// the server returns a HTTP response to the client. A HTTP request consists
 /// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
 /// request path like @LIT{/hello/world}. For a real Web server there are a zillion
 /// of other thing to consider, we will ignore this for the moment. The HTTP
@@ -926,6 +693,109 @@
 ///     }
 /// }
 /// @endcode
+/// 
+/// @section UserManualActionsModify Modifying Request and Response
+///
+/// As we've seen in the previous examples, actions get called
+/// with the request and response objects (named @LIT{req} and @LIT{res} in the
+/// examples) passed as parameters to their handler functions. 
+///
+/// The @LIT{req} object contains the incoming HTTP request, which
+/// might or might not have been modified by a previous action (if actions were
+/// chained).
+///
+/// A handler can modify the request object in place if desired. This might
+/// be useful when writing middleware (see below) that is used to intercept
+/// incoming requests, modify them and pass them to the actual handlers.
+///
+/// While modifying the request object might not be that relevant for 
+/// non-middleware actions, modifying the response object definitely is. Modifying
+/// the response object is an action's only way to return data to the caller of
+/// the action.
+///
+/// We've already seen how to set the HTTP status code, the content type, and the
+/// result body. The @LIT{res} object has the following properties for these:
+/// - contentType: MIME type of the body as defined in the HTTP standard (e.g. 
+///   @LIT{text/html}, @LIT{text/plain}, @LIT{application/json}, ...)
+/// - responsecode: the HTTP status code of the response as defined in the HTTP
+///   standard. Common values for actions that succeed are @LIT{200} or @LIT{201}. 
+///   Please refer to the HTTP standard for more information.
+/// - body: the actual response data
+///
+/// To set or modify arbitrary headers of the response object, the @LIT{headers}
+/// property can be used. For example, to add a user-defined header to the response,
+/// the following code will do:
+///
+/// @code
+/// res.headers = res.headers || { }; // headers might or might not be present
+/// res.headers['X-Test'] = 'someValue'; // set header X-Test to "someValue"
+/// @endcode
+///
+/// This will set the additional HTTP header @LIT{X-Test} to value @LIT{someValue}.
+/// Other headers can be set as well. Note that ArangoDB might change the case
+/// of the header names to lower case when assembling the overall response that
+/// is sent to the caller.
+///
+/// It is not necessary to explicitly set a @LIT{Content-Length} header for the
+/// response as ArangoDB will calculate the content length automatically and add
+/// this header itself. ArangoDB might also add a @LIT{Connection} header itself
+/// to handle HTTP keep-alive.
+///
+/// ArangoDB also supports automatic transformation of the body data to another
+/// format. Currently, the only supported transformations are base64-encoding and
+/// base64-decoding. Using the transformations, an action can create a base64
+/// encoded body and still let ArangoDB send the non-encoded version, for example:
+///
+/// @code
+/// res.body = 'VGhpcyBpcyBhIHRlc3Q=';
+/// res.transformations = res.transformations || [ ]; // initialise
+/// res.transformations.push('base64decode'); // will base64 decode the response body
+/// @endcode
+///
+/// When ArangoDB processes the response, it will base64-decode what's in @LIT{res.body}
+/// and set the HTTP header @LIT{Content-Encoding: binary}. The opposite can be
+/// achieved with the @LIT{base64encode} transformation: ArangoDB will then automatically
+/// base64-encode the body and set a @LIT{Content-Encoding: base64} HTTP header.
+///
+/// @section UserManualActionsHandlers Writing dynamic action handlers
+/////////////////////////////////////////////////////////////////////
+///
+/// To write your own dynamic action handlers, you must put them into modules.
+///
+/// Modules are a means of organising action handlers and making them loadable
+/// under specific names. 
+///
+/// To start, we'll define a simple action handler in a module @LIT{/own/test}:
+///
+/// @code
+/// arangosh> db._modules.save({ 
+/// ........>   path: "/own/test",
+/// ........>   content: "exports.do = function(req, res, options, next) { res.body = 'test'; res.responseCode = 200; res.contentType = 'text/html'; };",
+/// ........>   autoload: true });
+/// @endcode
+///
+/// This does nothing but register a do action handler in a module @LIT{/own/test}.
+/// The action handler is not yet callable, but must be mapped to a route first.
+/// To map the action to the route @LIT{/ourtest}, execute the following command:
+///
+/// @code
+/// arangosh> db._routing.save({ 
+/// ........>   url: "/ourtest",
+/// ........>   action: { controller: "/own/test" } }); 
+/// @endcode
+///
+/// In order to see the module in action, you must either restart the server
+/// or call the internal reload function.
+///
+/// @code
+/// arangosh> require("internal").reloadRouting()
+/// @endcode
+///
+/// Now use the browser and access
+///
+/// @LIT{http://localhost:8529/ourtest}
+///
+/// You will see that the module's do function has been executed.
 ///
 /// @section UserManualActionsAdvanced Advanced Usages
 //////////////////////////////////////////////////////

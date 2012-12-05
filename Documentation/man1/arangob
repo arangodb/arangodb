@@ -1,0 +1,49 @@
+COMMAND SECTION "DATE" "" "ArangoDB"
+NAME
+COMMAND - the ArangoDB benchmark and test tool
+SYNOPSIS
+COMMAND [options]
+DESCRIPTION
+The arangob binary can be used to issue test requests to the 
+ArangoDB database. It can be used for benchmarks or server function
+testing. It supports parallel querying and batch requests.
+arangob currently only supports a few common test cases out of the box.
+More test cases might be added later.
+OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+OPTION "--configuration <string>"
+read configuration from file <string> ENDOPTION
+OPTION "--batch-size <int32>"
+number of operations to send per batch (use 0 to disable batching)
+OPTION "--collection <string>"
+name of collection to use in test (only relevant for tests that invoke collections)
+OPTION "--concurrency <int32>"
+number of parallel threads that will issue requests (default is 1 thread)
+OPTION "--requests <int32>"
+total number of requests to perform
+OPTION "--test-case <string>"
+name of test case to perform (possible values: "version" and "document")
+OPTION "--complexity <int32>"
+complexity value for test case (meaning depends on test case)
+OPTION "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.username <string>"
+username to use when connecting (default "root") ENDOPTION
+OPTION "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt ENDOPTION
+EXAMPLES
+EXAMPLE COMMAND 
+starts COMMAND with the default user and server endpoint ENDEXAMPLE
+EXAMPLE COMMAND --server.username fuchsia 
+starts COMMAND with a specific user. Password prompt will follow ENDEXAMPLE
+EXAMPLE COMMAND --server.username fuchsia --server.password "abcd@34"
+starts COMMAND with a specific user and password given on command line ENDEXAMPLE
+EXAMPLE COMMAND --server.endpoint tcp://192.168.173.13:8529
+starts COMMAND connecting to a specific server ENDEXAMPLE
+EXAMPLE COMMAND --server.endpoint ssl://192.168.173.13:8530
+starts COMMAND connecting to a specific server using an SSL connection ENDEXAMPLE
+AUTHOR

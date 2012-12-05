@@ -39,22 +39,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Init flag for deliberate out-of-memory cases
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MEMFAIL
-static bool MemFailInitialised = false;
-#endif 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Probability for deliberate out-of-memory cases
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MEMFAIL
-static double MemFailProbability;
-#endif 
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,41 +97,35 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Enable deliberate out-of-memory cases for TRI_Allocate
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MEMFAIL
-void TRI_ActivateMemFailures (double probability) {
-  srand(32452843 + time(NULL) * 49979687);
-  MemFailProbability = probability;
-  MemFailInitialised = true;
-}
-#endif 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Deactivate deliberate out-of-memory cases for TRI_Allocate
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MEMFAIL
-void TRI_DeactiveMemFailures (void) {
-  MailFailInitialised = false;
-  MemFailProbability = 0.0;
-}
-#endif 
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error message
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
 TRI_memory_zone_t* TRI_UnknownMemZoneZ (char const* file, int line) {
-  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
+/*  printf("MEMORY ZONE: using unknown memory zone at (%s,%d)\n",
          file,
          line);
-
+*/
   return &TriUnknownMemZone;
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief system memory allocation
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_SystemAllocate (uint64_t n, bool set) {
+  char* m;
+
+  m = malloc((size_t) n);
+  if (m != NULL) {
+    if (set) {
+      memset(m, 0, (size_t) n);
+    }
+  }
+
+  return m;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
@@ -159,19 +137,6 @@ void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, bool set, char const* 
 void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
   char* m;
-
-#ifdef TRI_ENABLE_MEMFAIL
-  // if configured with --enable-memfail, we can make calls to malloc fail
-  // deliberately. This makes testing memory bottlenecks easier.
-
-  if (MemFailInitialised && zone->_failable) {
-    if (RAND_MAX * MemFailProbability >= rand ()) {
-      errno = ENOMEM;
-      zone->_failed = true;
-      return NULL;
-    }
-  }
-#endif
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
   m = malloc((size_t) n + sizeof(intptr_t));
@@ -242,19 +207,6 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
   }
 
-#ifdef TRI_ENABLE_MEMFAIL
-  // if configured with --enable-memfail, we can make calls to malloc fail
-  // deliberately. This makes testing memory bottlenecks easier.
-
-  if (MemFailInitialised && zone->_failable) {
-    if (RAND_MAX * MemFailProbability >= rand ()) {
-      errno = ENOMEM;
-      zone->_failed = true;
-      return NULL;
-    }
-  }
-#endif
-
   p = (char*) m;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
@@ -269,7 +221,6 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   }
 
   p = realloc(p, (size_t) n + sizeof(intptr_t));
-  p = p + sizeof(intptr_t);
 #else
   p = realloc(p, (size_t) n);
 #endif
@@ -297,6 +248,10 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     return TRI_Reallocate(zone, m, n);
 #endif
   }
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  p += sizeof(intptr_t);
+#endif
 
   return p;
 }
@@ -326,6 +281,27 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
   }
 #endif
 
+  free(p);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free memory allocated by some low-level functions
+///
+/// this can be used to free memory that was not allocated by TRI_Allocate, but
+/// by malloc et al
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+void TRI_SystemFreeZ (void* p, char const* file, int line) {
+#else
+void TRI_SystemFree (void* p) {
+#endif
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+  if (p == NULL) {
+    printf("MEMORY ZONE: freeing nil ptr\n");
+  }
+#endif
   free(p);
 }
 

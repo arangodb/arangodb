@@ -41,16 +41,17 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
+#include "BasicsC/strings.h"
+#include "Rest/HttpRequest.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantString.h"
-
-#include "json.h"
 #include "V8/v8-conv.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
+using namespace triagens::rest;
 using namespace triagens::v8client;
 using namespace std;
 
@@ -67,30 +68,32 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection::V8ClientConnection (const std::string& hostname,
+V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         const string& username,
                                         const string& password,
-                                        int port,
                                         double requestTimeout,
-                                        size_t retries,
-                                        double connectionTimeout,
+                                        double connectTimeout,
+                                        size_t numRetries,
                                         bool warn)
-  : _connected(false),
+  : _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
-      
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
-  if (username != "") {
-    _client->setUserNamePassword("/", username, password);
+  
+  _connection = GeneralClientConnection::factory(endpoint, requestTimeout, connectTimeout, numRetries);
+  if (_connection == 0) {
+    throw "out of memory";
   }
+
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+  _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
   map<string, string> headerFields;
-  SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version", 0, 0, headerFields);
 
-  if (!result->isComplete()) {
+  if (! result || ! result->isComplete()) {
     // save error message
     _lastErrorMessage = _client->getErrorMessage();
     _lastHttpReturnCode = 500;
@@ -99,27 +102,46 @@ V8ClientConnection::V8ClientConnection (const std::string& hostname,
     _lastHttpReturnCode = result->getHttpReturnCode();
 
     if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
-      triagens::basics::VariantArray* json = result->getBodyAsVariantArray();
+
+      // default value
+      _version = "arango";
+
+      // convert response body to json
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
 
       if (json) {
-        triagens::basics::VariantString* vs = json->lookupString("server");
 
-        if (vs && vs->getValue() == "arango") {
-          // connected to arango server
-          _connected = true;
-          vs = json->lookupString("version");
+        // look up "server" value (this returns a pointer, not a copy)
+        TRI_json_t* server = TRI_LookupArrayJson(json, "server");
 
-          if (vs) {
-            _version = vs->getValue();
+        if (server) {
+
+          // "server" value is a string and content is "arango"
+          if (server->_type == TRI_JSON_STRING && TRI_EqualString(server->_value._string.data, "arango")) {
+
+            // look up "version" value (this returns a pointer, not a copy)
+            TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
+
+            if (vs) {
+
+              // "version" value is a string
+              if (vs->_type == TRI_JSON_STRING) {
+                _version = string(vs->_value._string.data, vs->_value._string.length);
+              }
+            }
           }
+
+          // must not free server and vs, they are contained in the "json" variable and freed below
         }
 
-        delete json;
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
     }        
   }
-  
-  delete result; 
+ 
+  if (result) { 
+    delete result; 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,6 +155,10 @@ V8ClientConnection::~V8ClientConnection () {
 
   if (_client) {
     delete _client;
+  }
+  
+  if (_connection) {
+    delete _connection;
   }
 }
 
@@ -154,7 +180,7 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8ClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,22 +208,6 @@ const std::string& V8ClientConnection::getErrorMessage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string& V8ClientConnection::getHostname () {
-  return _client->getHostname();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int V8ClientConnection::getPort () {
-  return _client->getPort();
-}
-    
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
             
@@ -211,7 +221,7 @@ triagens::httpclient::SimpleHttpClient* V8ClientConnection::getHttpClient() {
 
 v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
                                                    map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::GET, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +230,7 @@ v8::Handle<v8::Value> V8ClientConnection::getData (std::string const& location,
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& location,
                                                       map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::DELETE, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +239,7 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData (std::string const& locatio
 
 v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
                                                     map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::HEAD, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
 }    
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +249,7 @@ v8::Handle<v8::Value> V8ClientConnection::headData (std::string const& location,
 v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
                                                     std::string const& body,
                                                     map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::POST, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +259,17 @@ v8::Handle<v8::Value> V8ClientConnection::postData (std::string const& location,
 v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
                                                    std::string const& body, 
                                                    map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::PUT, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "PATCH" request
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> V8ClientConnection::patchData (std::string const& location,
+                                                     std::string const& body, 
+                                                     map<string, string> const& headerFields) {
+  return requestData(HttpRequest::HTTP_REQUEST_PATCH, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,10 +286,10 @@ v8::Handle<v8::Value> V8ClientConnection::putData (std::string const& location,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a request
+/// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
+v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestType method,
                                                        string const& location,
                                                        string const& body,
                                                        map<string, string> const& headerFields) {
@@ -286,7 +306,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (int method,
   else {
     _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
   }
-                  
+
   if (!_httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();

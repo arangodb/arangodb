@@ -34,10 +34,9 @@
 
 #include "VocBase/vocbase.h"
 #include "VocBase/barrier.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-index.h"
 
 #ifdef __cplusplus

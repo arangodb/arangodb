@@ -29,6 +29,7 @@
 
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/mersenne.h"
 #include "BasicsC/process-utils.h"
 #include "BasicsC/random.h"
 #include "BasicsC/socket-utils.h"
@@ -50,6 +51,7 @@
 
 void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseMemory();
+  TRI_InitialiseMersenneTwister();
   TRI_InitialiseError();
   TRI_InitialiseLogging(true);
   TRI_InitialiseHashes();
@@ -59,9 +61,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
 
   LOG_TRACE("%s", "$Revision: BASICS-C " TRIAGENS_VERSION " (c) triAGENS GmbH $");
 
-#ifdef TRI_NCURSES_VERSION
-  LOG_TRACE("%s", "$Revision: NCURSES " TRI_NCURSES_VERSION " $");
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

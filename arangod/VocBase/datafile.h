@@ -148,7 +148,7 @@ TRI_df_state_e;
 typedef enum {
   TRI_DF_MARKER_HEADER    = 1000,
   TRI_DF_MARKER_FOOTER    = 1001,
-  TRI_DF_MARKER_SKIP      = 1002,
+  TRI_DF_MARKER_SKIP      = 1002,  // currently unused
   TRI_DF_MARKER_ATTRIBUTE = 1003,
   TRI_DF_MARKER_SHAPE     = 1004,
 
@@ -157,9 +157,9 @@ typedef enum {
   TRI_DOC_MARKER_HEADER             = 3000,
   TRI_DOC_MARKER_DOCUMENT           = 3001,
   TRI_DOC_MARKER_DELETION           = 3002,
-  TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003,
-  TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004,
-  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005,
+  TRI_DOC_MARKER_BEGIN_TRANSACTION  = 3003, // currently unused
+  TRI_DOC_MARKER_COMMIT_TRANSACTION = 3004, // currently unused
+  TRI_DOC_MARKER_ABORT_TRANSACTION  = 3005, // currently unused
   TRI_DOC_MARKER_EDGE               = 3006
 }
 TRI_df_marker_type_e;
@@ -222,8 +222,9 @@ typedef struct TRI_datafile_s {
 
   TRI_df_state_e _state;         // state of the datafile (READ or WRITE)
 
-  char* _filename;               // underlying filename
-  int _fd;                       // underlying file descriptor
+  char* _filename;             // underlying filename
+  int _fd;                     // underlying file descriptor
+  void* _mmHandle;             // underlying memory map object handle (windows only)
 
   TRI_voc_size_t _maximalSize;   // maximale size of the datafile
   TRI_voc_size_t _currentSize;   // current size of the datafile

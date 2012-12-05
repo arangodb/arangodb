@@ -740,7 +740,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_null_shape_t), true);
 
   if (shape == NULL) {
-    return NULL;
+    return false;
   }
 
   shape->_size = sizeof(TRI_null_shape_t);
@@ -759,7 +759,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_boolean_shape_t), true);
 
   if (shape == NULL) {
-    return NULL;
+    return false;
   }
 
   shape->_size = sizeof(TRI_boolean_shape_t);
@@ -778,7 +778,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_number_shape_t), true);
 
   if (shape == NULL) {
-    return NULL;
+    return false;
   }
 
   shape->_size = sizeof(TRI_number_shape_t);
@@ -797,7 +797,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_short_string_shape_t), true);
 
   if (shape == NULL) {
-    return NULL;
+    return false;
   }
 
   shape->_size = sizeof(TRI_short_string_shape_t);
@@ -816,7 +816,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_long_string_shape_t), true);
 
   if (shape == NULL) {
-    return NULL;
+    return false;
   }
 
   shape->_size = sizeof(TRI_long_string_shape_t);
@@ -835,7 +835,7 @@ bool TRI_InsertBasicTypesShaper (TRI_shaper_t* shaper) {
   shape = TRI_Allocate(shaper->_memoryZone, sizeof(TRI_list_shape_t), true);
 
   if (shape == NULL) {
-    return NULL;
+    return false;
   }
 
   shape->_size = sizeof(TRI_list_shape_t);

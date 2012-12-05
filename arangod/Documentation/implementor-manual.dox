@@ -26,7 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ImplementorManual ArangoDB's Reference Manual for API Implementors (@VERSION)
+/// @page ImplementorManual ArangoDB for API Implementors (@VERSION)
+///
+/// @NAVIGATE_ImplementorManual
 ///
 /// @if LATEX
 /// <ul>
@@ -41,9 +43,12 @@
 ///  <li>@ref HttpCollection</li>
 ///  <li>@ref HttpIndex</li>
 ///  <li>@ref HttpSystem</li>
+///  <li>@ref HttpMisc</li>
+///  <li>@ref HttpBatch</li>
 ///  <li>@ref HttpImport</li>
+///  <li>@ref Communication</li>
+///  <li>@ref NamingConventions</li>
 ///  <li>@ref ArangoErrors</li>
-///  <li>@ref IndexSkiplist</li>
 ///  <li>@ref Glossary</li>
 /// </ul>
 /// @else
@@ -65,17 +70,22 @@
 ///   @copydetails HttpCollectionTOC
 ///   @copydetails HttpIndexTOC
 ///   @copydetails HttpSystemTOC
+///   @copydetails HttpMiscTOC
 ///  </li>
 ///  <li>Interface for bulk imports
 ///   @copydetails HttpImportTOC
 ///  </li>
+///  <li>Interface for batch operations
+///   @copydetails HttpBatchTOC
+///  </li>
 ///  <li>Advanced Topics
 ///   <ul>
+///    <li>@ref Communication</li>
+///    <li>@ref NamingConventions</li>
 ///    <li>@ref ArangoErrors</li>
 ///   </ul>
 ///  </li>
 ///  <li>Under Construction
-///   @copydetails IndexSkiplistHttpTOC
 ///   <ul>
 ///    <li>@ref Key-Value
 ///     <ul>
@@ -84,6 +94,25 @@
 ///      <li>@ref Key-ValueGet "GET /_api/key/collection-name/key"</li>
 ///      <li>@ref Key-ValueDelete "DELETE /_api/key/collection-name/key"</li>
 ///      <li>@ref Key-ValueSearch "GET /_api/keys/collection-name/prefix"</li>
+///     </ul>
+///    </li>
+///   </ul>
+///   <ul>
+///    <li>@ref HttpBlueprints
+///     <ul>
+///      <li>@ref A_JSF_POST_blueprints_graph   "POST /_api/blueprints/graph"</li>
+///      <li>@ref A_JSF_GET_blueprints_graph    "GET /_api/blueprints/graph"</li>
+///      <li>@ref A_JSF_DELETE_blueprints_graph "DELETE /_api/blueprints/graph"</li>
+///      <li>@ref A_JSF_POST_blueprints_vertex   "POST /_api/blueprints/vertex"</li>
+///      <li>@ref A_JSF_GET_blueprints_vertex    "GET /_api/blueprints/vertex"</li>
+///      <li>@ref A_JSF_PUT_blueprints_vertex    "PUT /_api/blueprints/vertex"</li>
+///      <li>@ref A_JSF_DELETE_blueprints_vertex "DELETE /_api/blueprints/vertex"</li>
+///      <li>@ref A_JSF_POST_blueprints_vertices  "POST /_api/blueprints/vertices"</li>
+///      <li>@ref A_JSF_POST_blueprints_edge   "POST /_api/blueprints/edge"</li>
+///      <li>@ref A_JSF_GET_blueprints_edge    "GET /_api/blueprints/edge"</li>
+///      <li>@ref A_JSF_PUT_blueprints_edge    "PUT /_api/blueprints/edge"</li>
+///      <li>@ref A_JSF_DELETE_blueprints_edge "DELETE /_api/blueprints/edge"</li>
+///      <li>@ref A_JSF_POST_blueprints_edges   "POST /_api/blueprints/edges"</li>
 ///     </ul>
 ///    </li>
 ///   </ul>

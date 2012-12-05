@@ -81,31 +81,31 @@ namespace triagens {
 /// @brief Command Line Options
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string const OPTIONS_CMDLINE;
+        static std::string const OPTIONS_CMDLINE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hidden Options
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string const OPTIONS_HIDDEN;
+        static std::string const OPTIONS_HIDDEN;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Limit Options
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string const OPTIONS_LIMITS;
+        static std::string const OPTIONS_LIMITS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Logger Options
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string const OPTIONS_LOGGER;
+        static std::string const OPTIONS_LOGGER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Server Options
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string const OPTIONS_SERVER;
+        static std::string const OPTIONS_SERVER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -126,7 +126,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationServer (string const& description, string const& version);
+        ApplicationServer (const std::string& name, const std::string& title, const std::string& version);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -159,19 +159,25 @@ namespace triagens {
 /// @brief sets the name of the system config file with a path
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setSystemConfigFile (string const& name, string const& path);
+        void setSystemConfigFile (const std::string& name, const std::string& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the name of the system config file without a path
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setSystemConfigFile (string const& name);
+        void setSystemConfigFile (const std::string& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the name of the user config file
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setUserConfigFile (string const& name);
+        void setUserConfigFile (const std::string& name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the application
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string const& getName () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the logging
@@ -189,7 +195,7 @@ namespace triagens {
 /// @brief returns the command line arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> programArguments ();
+        std::vector<std::string> programArguments ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the arguments with empty options description
@@ -201,13 +207,19 @@ namespace triagens {
 /// @brief parses the arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool parse (int argc, char* argv[], map<string, triagens::basics::ProgramOptionsDescription>);
+        bool parse (int argc, char* argv[], std::map<std::string, triagens::basics::ProgramOptionsDescription>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the server
 ////////////////////////////////////////////////////////////////////////////////
 
         void prepare ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares the server
+////////////////////////////////////////////////////////////////////////////////
+
+        void prepare2 ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the scheduler
@@ -228,10 +240,10 @@ namespace triagens {
         void beginShutdown ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down everything
+/// @brief stops everything
 ////////////////////////////////////////////////////////////////////////////////
 
-        void shutdown ();
+        void stop ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief raises the privileges
@@ -270,7 +282,7 @@ namespace triagens {
 /// @brief adds options to description
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (map<string, basics::ProgramOptionsDescription>&);
+        void setupOptions (std::map<std::string, basics::ProgramOptionsDescription>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -329,12 +341,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief program options
 ///
-/// @CMDOPT{--help}
+/// @CMDOPT{\--help}
 ///
 /// @CMDOPT{-h}
 ///
 /// Prints a list of the most common options available and then
-/// exits. In order to see all options use @CODE{--help-all}.
+/// exits. In order to see all options use @LIT{\-\-help-all}.
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::ProgramOptions _options;
@@ -356,13 +368,13 @@ namespace triagens {
 /// @brief command line arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> _arguments;
+        std::vector<std::string> _arguments;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defined features
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ApplicationFeature*> _features;
+        std::vector<ApplicationFeature*> _features;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exit on parent death
@@ -383,43 +395,49 @@ namespace triagens {
         volatile sig_atomic_t _stopping;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the application
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _name;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief title of the application
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _title;
+        std::string _title;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version of the application
 ///
-/// @CMDOPT{--version}
+/// @CMDOPT{\--version}
 ///
 /// @CMDOPT{-v}
 ///
 /// Prints the version of the server and exits.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _version;
+        std::string _version;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief config file
 ///
-/// @CMDOPT{--configuration @CA{filename}}
+/// @CMDOPT{\--configuration @CA{filename}}
 ///
 /// @CMDOPT{-c @CA{filename}}
 ///
 /// Specifies the name of the configuration file to use.
 ///
 /// If this command is not passed to the server, then by default, the server
-/// will attempt to first locate a file named @CODE{~/SERVER/SERVER.conf} in the
+/// will attempt to first locate a file named @LIT{~/SERVER/SERVER.conf} in the
 /// user's home directory, where @CA{SERVER} is the name of the corresponding
 /// server.
 ///
 /// If no such file is found, the server will proceed to look for a file
-/// @CODE{/etc/SERVER.conf} in the system configuration directory. The default
+/// @LIT{/etc/SERVER.conf} in the system configuration directory. The default
 /// installation specifies the system configuration directory as
 /// /etc. Therefore, in case that no configuration file is found in the user's
 /// home directory, the server will proceed to look for a file named
-/// @CODE{/etc/SERVER.conf}.
+/// @LIT{/etc/SERVER.conf}.
 ///
 /// Only command line options with a value should be set within the
 /// configuration file. Command line options which act as flags should be
@@ -455,34 +473,34 @@ namespace triagens {
 ///
 /// @verbinclude conf5
 ///
-/// when starting up the server. Note that, the word @CODE{none} is
+/// when starting up the server. Note that, the word @LIT{none} is
 /// case-insensitive.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _configFile;
+        std::string _configFile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user config file
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _userConfigFile;
+        std::string _userConfigFile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system config file
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _systemConfigFile;
+        std::string _systemConfigFile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system config path
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _systemConfigPath;
+        std::string _systemConfigPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the user id to use for the process
 ///
-/// @CMDOPT{--uid @CA{uid}}
+/// @CMDOPT{\--uid @CA{uid}}
 ///
 /// The name (identity) of the user the server will run as. If this parameter is
 /// not specified, the server will not attempt to change its UID, so that the
@@ -499,24 +517,24 @@ namespace triagens {
 /// can lower privileges but not raise them.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _uid;
+        std::string _uid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief real uid
 ////////////////////////////////////////////////////////////////////////////////
 
-        uid_t _realUid;
+        TRI_uid_t _realUid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief effective uid
 ////////////////////////////////////////////////////////////////////////////////
 
-        uid_t _effectiveUid;
+        TRI_uid_t _effectiveUid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the group id to use for the process
 ///
-/// @CMDOPT{--gid @CA{gid}}
+/// @CMDOPT{\--gid @CA{gid}}
 ///
 /// The name (identity) of the group the server will run as. If this parameter
 /// is not specified, then the server will not attempt to change its GID, so
@@ -529,24 +547,24 @@ namespace triagens {
 /// This parameter is related to the parameter uid.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _gid;
+        std::string _gid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief real gid
 ////////////////////////////////////////////////////////////////////////////////
 
-        gid_t _realGid;
+        TRI_gid_t _realGid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief effective gid
 ////////////////////////////////////////////////////////////////////////////////
 
-        gid_t _effectiveGid;
+        TRI_gid_t _effectiveGid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log application name
 ///
-/// @CMDOPT{--log.application @CA{name}}
+/// @CMDOPT{\--log.application @CA{name}}
 ///
 /// Specifies the @CA{name} of the application which should be logged if this item of
 /// information is to be logged.
@@ -557,7 +575,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log host name
 ///
-/// @CMDOPT{--log.hostname @CA{name}}
+/// @CMDOPT{\--log.hostname @CA{name}}
 ///
 /// Specifies the @CA{name} of the operating environment (the "hostname") which
 /// should be logged if this item of information is to be logged. Note that
@@ -569,7 +587,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log facility
 ///
-/// @CMDOPT{--log.facility @CA{name}}
+/// @CMDOPT{\--log.facility @CA{name}}
 ///
 /// Specifies the name of the server instance which should be logged if this
 /// item of information is to be logged.
@@ -580,9 +598,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
 ///
-/// @CMDOPT{--log.level @CA{level}}
+/// @CMDOPT{\--log.level @CA{level}}
 ///
-/// @CMDOPT{--log @CA{level}}
+/// @CMDOPT{\--log @CA{level}}
 ///
 /// Allows the user to choose the level of information which is logged by the
 /// server. The argument @CA{level} is specified as a string and can be one of
@@ -652,7 +670,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log format
 ///
-/// @CMDOPT{--log.format @CA{format}}
+/// @CMDOPT{\--log.format @CA{format}}
 ///
 /// @copydetails triagens::basics::Logger::setLogFormat
 ////////////////////////////////////////////////////////////////////////////////
@@ -662,7 +680,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log severity
 ///
-/// @CMDOPT{--log.severity @CA{severity}}
+/// @CMDOPT{\--log.severity @CA{severity}}
 ///
 /// This parameter provides a set of standard log severities which can be
 /// used. The currently accepted @CA{severities} are:
@@ -683,7 +701,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
 ///
-/// @CMDOPT{--log.file @CA{filename}}
+/// @CMDOPT{\--log.file @CA{filename}}
 ///
 /// This option allows the user to specify the name of a file to which
 /// information is logged. By default, if no log file is specified, the standard
@@ -701,7 +719,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log prefix
 ///
-/// @CMDOPT{--log.prefix @CA{prefix}}
+/// @CMDOPT{\--log.prefix @CA{prefix}}
 ///
 /// This option is used specify an prefix to logged text.
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,7 +729,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
 ///
-/// @CMDOPT{--log.syslog @CA{arg}}
+/// @CMDOPT{\--log.syslog @CA{arg}}
 ///
 /// If this option is set, then in addition to output being directed to the
 /// standard output (or to a specified file, in the case that the command line
@@ -732,7 +750,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log thread identifier
 ///
-/// @CMDOPT{--log.thread}
+/// @CMDOPT{\--log.thread}
 ///
 /// Whenever log output is generated, the process ID is written as part of the
 /// log information. Setting this option appends the thread id of the calling
@@ -752,7 +770,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log line number
 ///
-/// @CMDOPT{--log.line-number}
+/// @CMDOPT{\--log.line-number}
 ///
 /// Normally, if an human readable fatal, error, warning or info message is
 /// logged, no information about the file and line number is provided. The file
@@ -765,7 +783,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log filter
 ///
-/// @CMDOPT{--log.filter @CA{arg}}
+/// @CMDOPT{\--log.filter @CA{arg}}
 ///
 /// For debug and trace messages, only log those messages occurring in the
 /// file @CA{arg}.
@@ -776,7 +794,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random number generator to use
 ///
-/// @CMDOPT{--random.generator @CA{arg}}
+/// @CMDOPT{\--random.generator @CA{arg}}
 ///
 /// The argument is an integer (1,2,3 or 4) which sets the manner in which
 /// random numbers are generated. The default method (3) is to use the a
@@ -787,7 +805,7 @@ namespace triagens {
 /// algorithm. Algorithm 4 is a combination of the blocking random number
 /// generator and the Mersenne Twister.
 ///
-/// @CMDOPT{--random.no-seed}
+/// @CMDOPT{\--random.no-seed}
 ///
 /// By default, the random generator is seeded. Setting this option causes the
 /// random number generator not to be seeded. (Seeding the random number

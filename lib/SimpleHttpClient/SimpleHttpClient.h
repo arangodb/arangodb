@@ -31,69 +31,36 @@
 
 #include <Basics/Common.h>
 
-#include <netdb.h>
-
 #include "Basics/StringBuffer.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "SimpleHttpClient/SimpleClient.h"
 
 namespace triagens {
   namespace httpclient {
       
-      class SimpleHttpResult;
+    class SimpleHttpResult;
+    class GeneralClientConnection;
     
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief simple http client
     ////////////////////////////////////////////////////////////////////////////////
 
-    class SimpleHttpClient {
+    class SimpleHttpClient : public SimpleClient {
+
     private:
-      enum { READBUFFER_SIZE = 8096 };
-      
       SimpleHttpClient (SimpleHttpClient const&);
       SimpleHttpClient& operator= (SimpleHttpClient const&);
 
     public:
 
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief supported request methods
-      ////////////////////////////////////////////////////////////////////////////////
-
-      enum http_method {
-        GET, POST, PUT, DELETE, HEAD
-      };
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief state of the connection
-      ////////////////////////////////////////////////////////////////////////////////
-
-      enum request_state {
-        IN_CONNECT,
-        IN_WRITE,
-        IN_READ_HEADER,
-        IN_READ_BODY,
-        IN_READ_CHUNKED_HEADER,
-        IN_READ_CHUNKED_BODY,
-        FINISHED,
-        DEAD
-      };      
-      
-      ////////////////////////////////////////////////////////////////////////////////
       /// @brief constructs a new http client
-      ///
-      /// @param hostname               server hostname
-      /// @param port                   server port
-      /// @param requestTimeout         timeout in seconds for the request
-      /// @param connectTimeout         timeout in seconds for the tcp connect 
-      /// @param connectRetries         maximum number of request retries
-      /// @param warn                   enable warnings
-      ///
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpClient (string const& hostname,
-                        int port,
-                        double requestTimeout,
-                        double connectTimeout, 
-                        size_t connectRetries,
-                        bool warn);
+      SimpleHttpClient (GeneralClientConnection*, 
+                        double, 
+                        bool);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief destructs a http client
@@ -103,54 +70,14 @@ namespace triagens {
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief make a http request
-      ///        The caller has to delete the result object
-      ///
-      /// @param method                         http method
-      /// @param location                       request location
-      /// @param body                           request body
-      /// @param bodyLength                     body length
-      /// @param headerFields                   header fields
-      ///
-      /// @return SimpleHttpResult              the request result
+      /// the caller has to delete the result object
       ////////////////////////////////////////////////////////////////////////////////
 
-      SimpleHttpResult* request (int method, 
-                           const string& location,
-                           const char* body, 
-                           size_t bodyLength,
-                           const map<string, string>& headerFields);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the socket is connected
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      bool isConnected () {
-          return _isConnected;
-      } 
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the hostname of the remote server
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      const string& getHostname () {
-          return _hostname;
-      }
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the port of the remote server
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      int getPort () {
-          return _port;
-      }
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns the port of the remote server
-      ////////////////////////////////////////////////////////////////////////////////      
-     
-      const string& getErrorMessage () {
-          return _errorMessage;
-      }
+      virtual SimpleHttpResult* request (rest::HttpRequest::HttpRequestType method, 
+                                         const string& location,
+                                         const char* body, 
+                                         size_t bodyLength,
+                                         const map<string, string>& headerFields);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief sets username and password 
@@ -158,21 +85,23 @@ namespace triagens {
       /// @param prefix                         prefix for sending username and password
       /// @param username                       username
       /// @param password                       password
-      ///
-      /// @return void
       ////////////////////////////////////////////////////////////////////////////////
       
-      void setUserNamePassword (const string& prefix, 
-                                const string& username, 
-                                const string& password);
+      virtual void setUserNamePassword (const string& prefix, 
+                                        const string& username, 
+                                        const string& password);
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief reset state
+      ////////////////////////////////////////////////////////////////////////////////
+
+      virtual void reset ();
 
     private:
       
       ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get the Result
-      ///        The caller has to delete the result object
-      ///
-      /// @return SimpleHttpResult          the request result
+      /// @brief get the result
+      /// the caller has to delete the result object
       ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* getResult ();
@@ -187,48 +116,11 @@ namespace triagens {
       /// @param headerFields                   list of header fields
       ////////////////////////////////////////////////////////////////////////////////
       
-      void setRequest (int method,
+      void setRequest (rest::HttpRequest::HttpRequestType method,
                        const string& location,
                        const char* body, 
                        size_t bodyLength,
                        const map<string, string>& headerFields);
-      
-      void handleConnect ();
-      void handleWrite (double timeout);
-      void handleRead (double timeout);
-      
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the request is in progress
-      ////////////////////////////////////////////////////////////////////////////////      
-
-      bool isWorking () {
-        return  _state < FINISHED;
-      }   
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the socket is connected
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool checkConnect ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief close connection
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool close ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief write data to socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool write ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief read th answer
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool read ();
       
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief read the http header
@@ -254,81 +146,15 @@ namespace triagens {
       
       bool readChunkedBody ();
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief connect the socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool connectSocket (struct addrinfo *aip);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief returns true if the socket is readable
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool readable ();
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets non-blocking mode for a socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool setNonBlocking (socket_t fd);
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief sets close-on-exit for a socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool setCloseOnExec (socket_t fd);
-      
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief reset connection
-      ////////////////////////////////////////////////////////////////////////////////
-
-      void reset ();
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief ckeck socket
-      ////////////////////////////////////////////////////////////////////////////////
-
-      bool checkSocket ();
-      
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief get timestamp
-      ///
-      /// @return double          time in seconds
-      ////////////////////////////////////////////////////////////////////////////////
-      
-      double now ();                  
-      
     private:
-      string _hostname;          // the hostname
-      int _port;                 // the port     
-      double _requestTimeout;
-      double _connectTimeout;
-      size_t _connectRetries;
-      bool _warn;
 
-      socket_t _socket;         
-
-      // read and write buffer
-      triagens::basics::StringBuffer _writeBuffer;
-      triagens::basics::StringBuffer _readBuffer;
-                  
-      request_state _state;
-      
-      size_t _written;
-      
       uint32_t _nextChunkedSize;
 
-      bool _isConnected;
-            
       SimpleHttpResult* _result;
       
-      double _lastConnectTime;
-      size_t _numConnectRetries;
-      
-      string _errorMessage;
-      
-      std::vector< std::pair<std::string, std::string> >_pathToBasicAuth;
+      std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
+
+      const size_t _maxPacketSize;
 
     };
   }

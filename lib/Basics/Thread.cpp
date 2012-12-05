@@ -26,6 +26,10 @@
 /// @author Copyright 2008-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "Thread.h"
 
 #include <errno.h>
@@ -33,6 +37,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Logger/Logger.h"
+
 
 using namespace triagens::basics;
 
@@ -110,7 +115,7 @@ TRI_tid_t Thread::currentThreadId () {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread (const string& name)
+Thread::Thread (std::string const& name)
   : _name(name),
     _asynchronousCancelation(false),
     _thread(),
@@ -158,8 +163,8 @@ bool Thread::isRunning () {
 /// @brief returns a thread identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-intptr_t Thread::threadId () {
-  return (intptr_t) _thread;
+TRI_tid_t Thread::threadId () {
+  return (TRI_tid_t) _thread;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +207,30 @@ void Thread::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::join () {
+  TRI_JoinThread(&_thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops and joins the thread
+////////////////////////////////////////////////////////////////////////////////
+
+void Thread::shutdown () {
+  size_t const MAX_TRIES = 10;
+  size_t const WAIT = 10000;
+
+  for (size_t i = 0;  i < MAX_TRIES;  ++i) {
+    if (_running == 0) {
+      break;
+    }
+
+    usleep(WAIT);
+  }
+
+  if (_running != 0) {
+    LOGGER_TRACE << "trying to cancel (aka stop) the thread " << _name;
+    TRI_StopThread(&_thread);
+  }
+
   TRI_JoinThread(&_thread);
 }
 
@@ -277,14 +306,7 @@ void Thread::runMe () {
     run();
   }
   catch (...) {
-    LOGGER_DEBUG << "caught exception on " << _name;
     _running = 0;
-
-    if (_finishedCondition != 0) {
-      CONDITION_LOCKER(locker, *_finishedCondition);
-      locker.broadcast();
-    }
-
     throw;
   }
 

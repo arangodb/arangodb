@@ -80,7 +80,7 @@ void TRI_InitMutex (TRI_mutex_t* mutex) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroyes a mutex
+/// @brief destroys a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyMutex (TRI_mutex_t* mutex) {
@@ -163,7 +163,7 @@ void TRI_InitSpin (TRI_spin_t* spinLock) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroyes a spin-lock
+/// @brief destroys a spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroySpin (TRI_spin_t* spinLock) {
@@ -246,7 +246,7 @@ void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroyes a read-write lock
+/// @brief destroys a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
@@ -265,7 +265,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @addtogroup Threading
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,10 +299,10 @@ again:
         complained = true;
       }
       usleep(BUSY_LOCK_DELAY);
-#ifdef TRI_HAVE_SCHED_H      
+#ifdef TRI_HAVE_SCHED_H
       // let other threads do things
       sched_yield();
-#endif      
+#endif
 
       // ideal use case for goto :-)
       goto again;
@@ -357,7 +357,9 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc = pthread_rwlock_unlock(lock);
+  int rc;
+
+  rc  = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
     LOG_ERROR("could not read-unlock the read-write lock: %s", strerror(rc));
@@ -392,6 +394,12 @@ void TRI_InitCondition (TRI_condition_t* cond) {
 
   cond->_ownMutex = true;
   cond->_mutex = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false);
+
+  if (cond->_mutex == NULL) {
+    LOG_ERROR("could not allocate memory for condition variable mutex");
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
 
   pthread_mutex_init(cond->_mutex, 0);
 }
@@ -463,7 +471,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
   rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
-    LOG_ERROR("could not broadcast the condition: %s", strerror(rc));
+    LOG_ERROR("could not croadcast the condition: %s", strerror(rc));
     TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }

@@ -341,13 +341,18 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      escapedString = TRI_EscapeUtf8String(value->_value._string, strlen(value->_value._string), false, &outLength);
-      if (!escapedString) {
+      escapedString = TRI_EscapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, 
+                                            value->_value._string, 
+                                            strlen(value->_value._string), 
+                                            false, 
+                                            &outLength);
+      if (escapedString == NULL) {
         return false;
       }
 
       if (TRI_AppendStringStringBuffer(buffer, escapedString) != TRI_ERROR_NO_ERROR) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, escapedString); 
+
         return false;
       }
 

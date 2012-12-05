@@ -1,0 +1,108 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/cy.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/cy.xml
+ */
+cy{
+    Languages{
+        af{"Affricaneg"}
+        am{"Amhareg"}
+        ar{"Arabeg"}
+        as{"Asameg"}
+        be{"Belarwsiyn"}
+        bg{"Bwlgareg"}
+        bh{"Bihari"}
+        bn{"Bengali; Bangla"}
+        br{"Llydaweg"}
+        bs{"Bosnieg"}
+        ca{"Catalaneg"}
+        cs{"Tsiec"}
+        cy{"Cymraeg"}
+        da{"Daneg"}
+        de{"Almaeneg"}
+        el{"Groeg"}
+        en{"Saesneg"}
+        eo{"Esperanto"}
+        es{"Sbaeneg"}
+        et{"Estoneg"}
+        eu{"Basgeg"}
+        fa{"Persieg"}
+        fi{"Ffineg"}
+        fil{"Tagalog"}
+        fo{"Ffaroeg"}
+        fr{"Ffrangeg"}
+        ga{"Gwyddeleg"}
+        gd{"Gaeleg yr Alban"}
+        gl{"Galiseg"}
+        he{"Hebraeg"}
+        hi{"Hindi"}
+        hr{"Croateg"}
+        hu{"Hwngareg"}
+        hy{"Armeneg"}
+        ia{"Interlingua"}
+        id{"Indonesieg"}
+        ie{"Interlingue"}
+        is{"Islandeg"}
+        it{"Eidaleg"}
+        ja{"Siapaneeg"}
+        jv{"Jafanaeg"}
+        ka{"Georgeg"}
+        km{"Cambodieg"}
+        kn{"Kannada"}
+        ko{"Corëeg"}
+        ku{"Cwrdeg"}
+        la{"Lladin"}
+        ln{"Lingala"}
+        lo{"Laoeg"}
+        lt{"Lithwaneg"}
+        lv{"Latfieg"}
+        ml{"Malayalam"}
+        mn{"Mongoleg"}
+        mr{"Marathi"}
+        ms{"Malai"}
+        mt{"Malteseg"}
+        ne{"Nepali"}
+        nl{"Iseldireg"}
+        nn{"Norwyeg (Nynorsk)"}
+        no{"Norwyeg"}
+        oc{"Ocsitaneg"}
+        or{"Oriya"}
+        pa{"Pwnjabi"}
+        pl{"Pwyleg"}
+        ps{"Pashto"}
+        pt{"Portiwgaleg"}
+        ro{"Rwmaneg"}
+        ru{"Rwsieg"}
+        sa{"Sansgrit"}
+        sd{"Sindhi"}
+        sh{"Serbo-Croateg"}
+        si{"Sinhaleg"}
+        sk{"Slofaceg"}
+        sl{"Slofeneg"}
+        so{"Somaleg"}
+        sq{"Albaneg"}
+        sr{"Serbeg"}
+        st{"Sesotheg"}
+        su{"Sundaneg"}
+        sv{"Swedeg"}
+        sw{"Swahili"}
+        ta{"Tamil"}
+        tlh{"Klingon"}
+        uk{"Wcreineg"}
+        und{"anh"}
+        uz{"Wsbeceg"}
+        vi{"Fietnameg"}
+        zh{"Tseineeg"}
+        zu{"Zwlw"}
+    }
+    Scripts{
+        Latn{"Lladin"}
+    }
+    Version{"2.0.65.46"}
+}

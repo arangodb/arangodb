@@ -44,6 +44,8 @@
 #include <BasicsC/hashes.h>
 #include "ShapedJson/shaped-json.h"
 #include "ShapedJson/json-shaper.h"
+#include "IndexIterators/index-iterator.h"
+#include "IndexOperators/index-operator.h"
 
 #include "hasharray.h"
 
@@ -58,10 +60,8 @@ typedef struct {
 
 
 typedef struct {
-  size_t numFields;          // the number of fields
   TRI_shaped_json_t* fields; // list of shaped json objects the blob of data within will be hashed
   void* data;                // master document pointer
-  void* collection;          // currently not used     
 } HashIndexElement;
 
 typedef struct {
@@ -71,17 +71,25 @@ typedef struct {
 
 
 
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Common hash index methods
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+int HashIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
+
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-// Unique hash indexes
+// Unique hash index methods
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
 
 void HashIndex_destroy (HashIndex*);
 
-HashIndex* HashIndex_new (void);
+HashIndex* HashIndex_new (size_t, size_t);
 
 void HashIndex_free (HashIndex*);
 
@@ -118,7 +126,7 @@ void MultiHashIndex_free (HashIndex*);
 
 void MultiHashIndex_freeResult(TRI_hash_index_elements_t* const);
 
-HashIndex* MultiHashIndex_new (void);
+HashIndex* MultiHashIndex_new (size_t, size_t);
 
 int MultiHashIndex_add (HashIndex*, HashIndexElement*);
 

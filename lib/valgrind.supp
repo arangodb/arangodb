@@ -6,3 +6,11 @@
    fun:ev_realloc
    ...
 }
+
+{
+   Protcol Buffers
+   Memcheck:Leak
+   ...
+   fun:_ZN6google8protobuf14DescriptorPool24InternalAddGeneratedFileEPKvi
+   ...
+}

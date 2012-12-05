@@ -41,12 +41,14 @@
 #include <sstream>
 
 #include "Basics/StringUtils.h"
+#include "BasicsC/json.h"
+#include "BasicsC/strings.h"
+#include "Rest/HttpRequest.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Variant/VariantArray.h"
 #include "Variant/VariantString.h"
-
-#include "json.h"
 
 extern "C" {
 #include "mruby/array.h"
@@ -56,6 +58,7 @@ extern "C" {
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::mrclient;
+using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -72,24 +75,31 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
-                                              const std::string& hostname,
-                                              int port,
+                                              Endpoint* endpoint,
+                                              const string& username,
+                                              const string& password,
                                               double requestTimeout,
-                                              size_t retries,
                                               double connectionTimeout,
+                                              size_t numRetries,
                                               bool warn)
   : _mrb(mrb),
-    _connected(false),
+    _connection(0),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
     _client(0),
     _httpResult(0) {
       
-  _client = new SimpleHttpClient(hostname, port, requestTimeout, retries, connectionTimeout, warn);
+  _connection = GeneralClientConnection::factory(endpoint, connectionTimeout, requestTimeout, numRetries);
+  if (_connection == 0) {
+    throw "out of memory";
+  }
+
+  _client = new SimpleHttpClient(_connection, requestTimeout, warn);
+  _client->setUserNamePassword("/", username, password);
 
   // connect to server and get version number
   map<string, string> headerFields;
-  SimpleHttpResult* result = _client->request(SimpleHttpClient::GET, "/_api/version", 0, 0, headerFields);
+  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version", 0, 0, headerFields);
 
   if (!result->isComplete()) {
     // save error message
@@ -100,22 +110,39 @@ MRubyClientConnection::MRubyClientConnection (mrb_state* mrb,
     _lastHttpReturnCode = result->getHttpReturnCode();
 
     if (result->getHttpReturnCode() == SimpleHttpResult::HTTP_STATUS_OK) {
-      triagens::basics::VariantArray* json = result->getBodyAsVariantArray();
+
+      // default value
+      _version = "arango";
+
+      // convert response body to json
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().str().c_str());
 
       if (json) {
-        triagens::basics::VariantString* vs = json->lookupString("server");
 
-        if (vs && vs->getValue() == "arango") {
-          // connected to arango server
-          _connected = true;
-          vs = json->lookupString("version");
+        // look up "server" value (this returns a pointer, not a copy)
+        TRI_json_t* server = TRI_LookupArrayJson(json, "server");
 
-          if (vs) {
-            _version = vs->getValue();
+        if (server) {
+
+          // "server" value is a string and content is "arango"
+          if (server->_type == TRI_JSON_STRING && TRI_EqualString(server->_value._string.data, "arango")) {
+
+            // look up "version" value (this returns a pointer, not a copy)
+            TRI_json_t* vs = TRI_LookupArrayJson(json, "version");
+
+            if (vs) {
+
+              // "version" value is a string
+              if (vs->_type == TRI_JSON_STRING) {
+                _version = string(vs->_value._string.data, vs->_value._string.length);
+              }
+            }
           }
+
+          // must not free server and vs, they are contained in the "json" variable and freed below
         }
 
-        delete json;
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
     }        
   }
@@ -155,7 +182,7 @@ MRubyClientConnection::~MRubyClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool MRubyClientConnection::isConnected () {
-  return _connected;
+  return _connection->isConnected();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,22 +210,6 @@ const std::string& MRubyClientConnection::getErrorMessage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string& MRubyClientConnection::getHostname () {
-  return _client->getHostname();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-////////////////////////////////////////////////////////////////////////////////
-
-int MRubyClientConnection::getPort () {
-  return _client->getPort();
-}
-    
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ////////////////////////////////////////////////////////////////////////////////
             
@@ -212,7 +223,7 @@ triagens::httpclient::SimpleHttpClient* MRubyClientConnection::getHttpClient() {
 
 mrb_value MRubyClientConnection::getData (std::string const& location,
                                           map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::GET, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_GET, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,7 +232,7 @@ mrb_value MRubyClientConnection::getData (std::string const& location,
 
 mrb_value MRubyClientConnection::deleteData (std::string const& location,
                                              map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::DELETE, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_DELETE, location, "", headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,7 +241,7 @@ mrb_value MRubyClientConnection::deleteData (std::string const& location,
 
 mrb_value MRubyClientConnection::headData (std::string const& location,
                                            map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::HEAD, location, "", headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_HEAD, location, "", headerFields);
 }    
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +251,7 @@ mrb_value MRubyClientConnection::headData (std::string const& location,
 mrb_value MRubyClientConnection::postData (std::string const& location,
                                            std::string const& body,
                                            map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::POST, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_POST, location, body, headerFields);
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +261,7 @@ mrb_value MRubyClientConnection::postData (std::string const& location,
 mrb_value MRubyClientConnection::putData (std::string const& location,
                                           std::string const& body, 
                                           map<string, string> const& headerFields) {
-  return requestData(SimpleHttpClient::PUT, location, body, headerFields);
+  return requestData(HttpRequest::HTTP_REQUEST_PUT, location, body, headerFields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +277,7 @@ mrb_value MRubyClientConnection::putData (std::string const& location,
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-mrb_value MRubyClientConnection::requestData (int method,
+mrb_value MRubyClientConnection::requestData (HttpRequest::HttpRequestType method,
                                               string const& location,
                                               string const& body,
                                               map<string, string> const& headerFields) {

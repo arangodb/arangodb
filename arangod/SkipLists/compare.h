@@ -40,7 +40,8 @@
 
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
+#include "BasicsC/utf8-helper.h"
 
 #define USE_STATIC_SKIPLIST_COMPARE 1
 
@@ -250,13 +251,6 @@ static int attributeWeightCompareFunction(const void* leftItem, const void* righ
   const weighted_attribute_t* l = (const weighted_attribute_t*)(leftItem);
   const weighted_attribute_t* r = (const weighted_attribute_t*)(rightItem);
 
-  /* start oreste debug
-  name = l->_shaper->lookupAttributeId(l->_shaper, l->_aid);
-  printf("%s:%u::%ld::%ld::%s\n",__FILE__,__LINE__,l->_aid,l->_weight,name);
-  name = r->_shaper->lookupAttributeId(r->_shaper, r->_aid);
-  printf("%s:%u::%ld::%ld::%s\n",__FILE__,__LINE__,r->_aid,r->_weight,name);
-  end oreste debug */
-  
   if (l->_weight < r->_weight) { return -1; }
   if (l->_weight > r->_weight) { return  1; }
   return 0;
@@ -376,11 +370,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
         }
         case TRI_SHAPE_NUMBER: {
           // compare the numbers
-          /*
-          printf("%s:%u:%f:%f\n",__FILE__,__LINE__,
-                 *((TRI_shape_number_t*)(left->_data.data)),
-                 *((TRI_shape_number_t*)(right->_data.data))                 );
-          */       
           if ( *((TRI_shape_number_t*)(left->_data.data)) == *((TRI_shape_number_t*)(right->_data.data)) ) {          
             return 0;          
           }  
@@ -429,7 +418,11 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
             rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right->_data.data);
           }         
           
-          result = strcmp(leftString,rightString);          
+#ifdef TRI_HAVE_ICU  
+          result = TR_compare_utf8(leftString,rightString);
+#else
+          result = strcmp(leftString,rightString);
+#endif
           return result;
         }
         case TRI_SHAPE_ARRAY:
@@ -821,8 +814,8 @@ static int IndexStaticCompareElementElement (struct TRI_skiplist_s* skiplist, vo
   }    
 
   
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < hLeftElement->numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
@@ -915,18 +908,10 @@ static int IndexStaticCompareKeyElement (struct TRI_skiplist_s* skiplist, void* 
   }
   
   
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
-  /*
-  printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
-    *((double*)((j + hLeftElement->fields)->_data.data)),
-    *((double*)((j + hRightElement->fields)->_data.data)),
-    (uint64_t)(hLeftElement->data),
-    (uint64_t)(hRightElement->data)
-  );
-  */
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), 
                                                 (j + hRightElement->fields),
                                                 leftShaper,
@@ -994,8 +979,8 @@ static int IndexStaticMultiCompareElementElement (TRI_skiplist_multi_t* multiSki
   }    
 
 
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < hLeftElement->numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
@@ -1068,8 +1053,8 @@ static int  IndexStaticMultiCompareKeyElement (TRI_skiplist_multi_t* multiSkipli
     numFields = hRightElement->numFields;
   }
   
-  leftShaper  = ((TRI_doc_collection_t*)(hLeftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(hRightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(hLeftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(hRightElement->collection))->_shaper;
   
   for (j = 0; j < numFields; j++) {
     compareResult = CompareShapedJsonShapedJson((j + hLeftElement->fields), (j + hRightElement->fields), leftShaper, rightShaper);
@@ -1097,14 +1082,6 @@ static bool IndexStaticMultiEqualElementElement (TRI_skiplist_multi_t* multiSkip
     return true;
   }    
 
-  /*
-  printf("%s:%u:%f:%f,%u:%u\n",__FILE__,__LINE__,
-    *((double*)((hLeftElement->fields)->_data.data)),
-    *((double*)((hRightElement->fields)->_data.data)),
-    (uint64_t)(hLeftElement->data),
-    (uint64_t)(hRightElement->data)
-  );
-  */
   return (hLeftElement->data == hRightElement->data);
 }
 

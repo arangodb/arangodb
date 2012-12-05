@@ -37,9 +37,8 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
-#include "Ahuacatl/ahuacatl-log.h"
 #include "Ahuacatl/ahuacatl-scope.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -99,7 +98,8 @@ typedef struct TRI_aql_codegen_js_s {
 
   size_t _registerIndex;
   size_t _functionIndex;
-  bool _error;
+  int _errorCode; // error number
+  char* _errorValue; // error context string
 }
 TRI_aql_codegen_js_t;
 

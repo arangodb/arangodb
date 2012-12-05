@@ -156,6 +156,23 @@ typedef struct po_visit_functions_s {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef __TCHAR_DEFINED
+
+struct option * InitOptionStructure (struct option * option,
+                                     TCHAR const * name,
+                                     int hasArg,
+                                     int * flag,
+                                     int val) {
+  option->name = name;
+  option->has_arg = hasArg;
+  option->flag = flag;
+  option->val = 256 + val;
+
+  return option;
+}
+
+#else
+
 struct option * InitOptionStructure (struct option * option,
                                      char const * name,
                                      int hasArg,
@@ -168,6 +185,8 @@ struct option * InitOptionStructure (struct option * option,
 
   return option;
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a atomic option
@@ -212,8 +231,11 @@ static void CreateDoubleOption (po_double_t * desc, void const * input, void * o
 
   po = output;
 
+#ifdef __TCHAR_DEFINED
   InitOptionStructure(&doubleOpt, desc->base._name, 1, 0, po->_longopts._length);
-
+#else
+  InitOptionStructure(&doubleOpt, desc->base._name, 1, 0, po->_longopts._length);
+#endif
   memset(&item, 0, sizeof(item));
 
   item._desc = &desc->base;
@@ -1344,6 +1366,107 @@ char * TRI_UsagePODescription (TRI_PO_section_t * desc) {
 /// @brief parses a command line of arguments
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef __TCHAR_DEFINED
+
+bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
+                                       int argc,
+                                       char ** argv) {
+  extern TCHAR *optarg;
+  extern int optind;
+
+  TRI_string_buffer_t buffer;
+  TRI_PO_item_t * item;
+  char const* shortOptions;
+  size_t i;
+  int c;
+  int idx;
+  int maxIdx;
+
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
+
+  for (i = 0;  i < options->_items._length;  ++i) {
+    item = TRI_AtVector(&options->_items, i);
+
+    if (item->_desc->_short != '\0') {
+      TRI_AppendCharStringBuffer(&buffer, item->_desc->_short);
+
+      if (item->_desc->_type == TRI_PO_FLAG) {
+        po_flag_t* p;
+
+        p = (po_flag_t*) item->_desc;
+
+        if (p->_value != 0) {
+          TRI_AppendCharStringBuffer(&buffer, ':');
+        }
+      }
+      else {
+        TRI_AppendCharStringBuffer(&buffer, ':');
+      }
+    }
+  }
+
+  if (TRI_LengthStringBuffer(&buffer) == 0) {
+    shortOptions = "";
+  }
+  else {
+    shortOptions = TRI_BeginStringBuffer(&buffer);
+  }
+
+  optind = 1;
+  maxIdx = options->_items._length;
+
+  while (true) {
+    c = getopt_long(argc, argv, shortOptions, (const struct option*) options->_longopts._buffer, &idx);
+
+    if (c == -1) {
+      for (i = optind;  i < (size_t) argc;  ++i) {
+        TRI_PushBackVectorString(&options->_arguments, TRI_DuplicateString(argv[i]));
+      }
+
+      break;
+    }
+
+    if (c < 256) {
+      for (i = 0;  i < options->_items._length;  ++i) {
+        item = TRI_AtVector(&options->_items, i);
+
+        if (item->_desc->_short == c) {
+          break;
+        }
+      }
+
+      if (i == options->_items._length) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        TRI_DestroyStringBuffer(&buffer);
+        return false;
+      }
+    }
+    else {
+      c -= 256;
+
+      if (c >= maxIdx) {
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        TRI_DestroyStringBuffer(&buffer);
+        return false;
+      }
+
+      item = TRI_AtVector(&options->_items, c);
+    }
+
+    // the opt.. are external variables
+    item->_used = true;
+    item->parse(optarg, item->_desc);
+  }
+
+  TRI_AnnihilateStringBuffer(&buffer);
+
+  return true;
+}
+
+#else
+
 bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
                                        int argc,
                                        char ** argv) {
@@ -1415,6 +1538,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
       if (i == options->_items._length) {
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        TRI_DestroyStringBuffer(&buffer);
         return false;
       }
     }
@@ -1423,6 +1547,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
       if (c >= maxIdx) {
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
+        TRI_DestroyStringBuffer(&buffer);
         return false;
       }
 
@@ -1438,6 +1563,8 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
   return true;
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a text file containing the configuration variables
@@ -1511,7 +1638,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     res = regexec(&re1, buffer, 0, 0, 0);
 
     if (res == 0) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
       continue;
     }
@@ -1523,7 +1650,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       TRI_FreeString(TRI_CORE_MEM_ZONE, section);
 
       section = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       continue;
@@ -1536,7 +1663,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       value = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, section, option, value);
@@ -1567,7 +1694,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     if (res == 0) {
       option = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, section, option, "");
@@ -1598,7 +1725,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[2].rm_so);
       value = TRI_DuplicateString2(buffer + matches[3].rm_so, matches[3].rm_eo - matches[3].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, tmpSection, option, value);
@@ -1626,7 +1753,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       tmpSection = TRI_DuplicateString2(buffer + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
       option = TRI_DuplicateString2(buffer + matches[2].rm_so, matches[2].rm_eo - matches[1].rm_so);
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+      TRI_SystemFree(buffer);
       buffer = NULL;
 
       ok = HandleOption(options, tmpSection, option, "");
@@ -1648,13 +1775,13 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
     TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
     fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+    TRI_SystemFree(buffer);
     buffer = NULL;
     break;
   }
 
   if (buffer != NULL) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
+    TRI_SystemFree(buffer);
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, section);

@@ -35,12 +35,6 @@
 #include "Basics/StringBuffer.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-class PB_ArangoBatchMessage;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                class HttpResponse
 // -----------------------------------------------------------------------------
 
@@ -103,8 +97,11 @@ namespace triagens {
           NOT_FOUND            = 404,
           METHOD_NOT_ALLOWED   = 405,
           CONFLICT             = 409,
+          LENGTH_REQUIRED      = 411,
           PRECONDITION_FAILED  = 412,
+          ENTITY_TOO_LARGE     = 413,
           UNPROCESSABLE_ENTITY = 422,
+          HEADER_TOO_LARGE     = 431,
 
           SERVER_ERROR         = 500,
           NOT_IMPLEMENTED      = 501,
@@ -145,6 +142,12 @@ namespace triagens {
         static HttpResponseCode responseCode (string const& str);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the batch response error count header
+////////////////////////////////////////////////////////////////////////////////
+
+        static const string& getBatchErrorHeader ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,13 +167,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         HttpResponse ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response
-////////////////////////////////////////////////////////////////////////////////
-
-        explicit
-        HttpResponse (string const& lines);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http response
@@ -207,7 +203,7 @@ namespace triagens {
 /// @brief returns the response code
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponseCode responseCode ();
+        HttpResponseCode responseCode () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the content length
@@ -238,10 +234,31 @@ namespace triagens {
 ///
 /// Returns the value of a header field with given name. If no header field
 /// with the given name was specified by the client, the empty string is
-/// returned. found is try if the client specified the header field.
+/// returned.
+/// The header field name must already be trimmed and lower-cased
+////////////////////////////////////////////////////////////////////////////////
+
+        string header (const char*, const size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+///
+/// Returns the value of a header field with given name. If no header field
+/// with the given name was specified by the client, the empty string is
+/// returned. found is set if the client specified the header field.
 ////////////////////////////////////////////////////////////////////////////////
 
         string header (string const& field, bool& found) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+///
+/// Returns the value of a header field with given name. If no header field
+/// with the given name was specified by the client, the empty string is
+/// returned. found is set if the client specified the header field.
+////////////////////////////////////////////////////////////////////////////////
+
+        string header (const char*, const size_t, bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all header fields
@@ -254,7 +271,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
 ///
-/// The key is automatically converted to lower case.
+/// The key must be lowercased and trimmed already
+/// The key string must remain valid until the response is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        void setHeader (const char*, const size_t, string const& value);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+///
+/// The key must be lowercased and trimmed already
+/// The key string must remain valid until the response is destroyed
+/// The value string must remain valid until the response is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        void setHeader (const char*, const size_t, const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+///
+/// The key is automatically converted to lower case and trimmed.
 ////////////////////////////////////////////////////////////////////////////////
 
         void setHeader (string const& key, string const& value);
@@ -282,18 +318,10 @@ namespace triagens {
         void writeHeader (basics::StringBuffer*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the message to a protocol buffer
-///
-/// You should call write only after the body has been created.
-////////////////////////////////////////////////////////////////////////////////
-
-        void write (PB_ArangoBatchMessage*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of the body
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t bodySize ();
+        size_t bodySize () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the body
@@ -321,7 +349,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,7 +357,7 @@ namespace triagens {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief response code

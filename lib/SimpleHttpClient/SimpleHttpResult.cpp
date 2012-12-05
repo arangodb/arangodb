@@ -39,8 +39,6 @@
 #include "SimpleHttpResult.h"
 #include "Basics/StringUtils.h"
 
-#include "JsonParserX/JsonParserXDriver.h"
-
 using namespace triagens::basics;
 using namespace std;
 
@@ -86,8 +84,8 @@ namespace triagens {
           return "Error while writing to server.";
         case (READ_ERROR):
           return "Error while reading from server.";
-        default:
-          return "Unknown error.";
+      default:
+        return "Unknown error.";
       }
     }
 
@@ -119,6 +117,7 @@ namespace triagens {
 
       if (k == "http/1.1" || k == "http/1.0") {
         if (value.length() > 2) {
+          // we assume the status code is 3 chars long
           string code = value.substr(0, 3);
           setHttpReturnCode(atoi(code.c_str()));
           setHttpReturnMessage(value.substr(3 + 1));
@@ -153,33 +152,5 @@ namespace triagens {
 
       return "";
     }
-    
-    
-    VariantObject* SimpleHttpResult::getBodyAsVariant () {
-
-      triagens::rest::JsonParserXDriver parser;
-      VariantObject* result = parser.parse(_resultBody.str());
-
-      return result;
-    }
-
-    VariantArray* SimpleHttpResult::getBodyAsVariantArray () {
-
-      basics::VariantObject* v = getBodyAsVariant();
-
-      if (!v) {
-        return 0;
-      }
-
-      basics::VariantArray* array = dynamic_cast<basics::VariantArray*> (v);
-
-      if (!array) {
-        delete v;
-        return 0;
-      }
-
-      return array;
-    }
-   
   }
 }

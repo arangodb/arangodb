@@ -124,7 +124,7 @@ namespace triagens {
       bool createByArray ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a documents by JSAON arrays
+/// @brief creates a documents by JSON arrays
 ////////////////////////////////////////////////////////////////////////////////
 
       bool createByList ();
@@ -133,7 +133,7 @@ namespace triagens {
 /// @brief creates the result
 ////////////////////////////////////////////////////////////////////////////////
 
-      void generateDocumentsCreated (size_t numCreated, size_t numError);
+      void generateDocumentsCreated (size_t, size_t, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
@@ -145,7 +145,7 @@ namespace triagens {
 /// @brief builds a TRI_json_t object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
       
-      TRI_json_t* createJsonObject (TRI_json_t* keys, TRI_json_t* values);
+      TRI_json_t* createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line);
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.

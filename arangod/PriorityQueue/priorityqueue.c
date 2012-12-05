@@ -47,16 +47,6 @@
 // --SECTION--                                       useful forward declarations
 // -----------------------------------------------------------------------------
 
-/*
-oreste's debug only
-typedef struct {
-  size_t numFields;          // the number of fields
-  TRI_shaped_json_t* fields; // list of shaped json objects which the collection should know about
-  void* data;                // master document pointer
-  void* collection;          // pointer to the collection;
-  uint64_t pqSlot;           // int pointer to the position in the pq array
-} xx;
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup PriorityQueue

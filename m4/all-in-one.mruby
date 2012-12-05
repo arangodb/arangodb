@@ -1,8 +1,12 @@
 dnl -*- mode: Autoconf; -*-
 
-dnl -----------------------------------------------------------------------------------------
-dnl option for MRUBY support
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                            MRUBY
+dnl ----------------------------------------------------------------------------
+
+MRUBY_CPPFLAGS=""
+MRUBY_LDLAGS=""
+MRUBY_LIBSLAGS=""
 
 AC_ARG_ENABLE(mruby,
   AS_HELP_STRING([--enable-mruby], [enable MRUBY]),
@@ -22,9 +26,9 @@ fi
 
 AM_CONDITIONAL(ENABLE_MRUBY, test "x$tr_MRUBY" = "xyes")
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl add substitutions
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
 AC_SUBST(MRUBY_CPPFLAGS)
 AC_SUBST(MRUBY_LDFLAGS)
@@ -32,23 +36,26 @@ AC_SUBST(MRUBY_LIBS)
 
 MRUBY_CPPFLAGS="${MRUBY_CPPFLAGS} -DTRI_MRUBY_VERSION='\"${TRI_MRUBY_VERSION}\"'"
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl informational output
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
 if test "x$tr_MRUBY" = "xyes";  then
-  BASIC_INFO="$BASIC_INFO|MRUBY: enabled"
-
+  LIB_INFO="$LIB_INFO|MRUBY: 3rdParty version"
   LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
 
-  FLAG_INFO="$FLAG_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
-  FLAG_INFO="$FLAG_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
-  FLAG_INFO="$FLAG_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
-  FLAG_INFO="$FLAG_INFO|."
+  LIB_INFO="$LIB_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
+  LIB_INFO="$LIB_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
 else
-  BASIC_INFO="$BASIC_INFO|MRUBY: disabled"
+  LIB_INFO="$LIB_INFO|MRUBY: disabled"
 fi
 
+LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                      END-OF-FILE
+dnl ----------------------------------------------------------------------------
 
 dnl Local Variables:
 dnl mode: outline-minor

@@ -37,6 +37,63 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone, 
+                                   const TRI_json_t* const lhs, 
+                                   const TRI_json_t* const rhs,
+                                   const bool nullMeansRemove) {
+  size_t i, n;
+  
+  TRI_json_t* result = TRI_CopyJson(zone, lhs);
+
+  if (result == NULL) {
+    return NULL;
+  }
+
+  n = rhs->_value._objects._length;
+  for (i = 0; i < n; i += 2) {
+    // enumerate all the replacement values
+    TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i);
+    TRI_json_t* value = TRI_AtVector(&rhs->_value._objects, i + 1);
+
+    if (value->_type == TRI_JSON_NULL && nullMeansRemove) {
+      // replacement value is a null and we don't want to store nulls => delete attribute from the result
+      TRI_DeleteArrayJson(zone, result, key->_value._string.data);
+    }
+    else {
+      // replacement value is not a null or we want to store nulls
+      TRI_json_t* lhsValue = TRI_LookupArrayJson(lhs, key->_value._string.data);
+
+      if (lhsValue == NULL) {
+        // existing array does not have the attribute => append new attribute
+        if (value->_type == TRI_JSON_ARRAY) {
+          TRI_json_t* empty = TRI_CreateArrayJson(zone);
+          TRI_json_t* merged = MergeRecursive(zone, empty, value, nullMeansRemove);
+          TRI_Insert3ArrayJson(zone, result, key->_value._string.data, merged);
+
+          TRI_FreeJson(zone, empty);
+        }
+        else {
+          TRI_Insert3ArrayJson(zone, result, key->_value._string.data, TRI_CopyJson(zone, value));
+        }
+      }
+      else {
+        // existing array already has the attribute => replace attribute
+        if (lhsValue->_type == TRI_JSON_ARRAY && value->_type == TRI_JSON_ARRAY) {
+          TRI_json_t* merged = MergeRecursive(zone, lhsValue, value, nullMeansRemove);
+          TRI_ReplaceArrayJson(zone, result, key->_value._string.data, merged);
+          TRI_FreeJson(zone, merged);
+        }
+        else {
+          TRI_ReplaceArrayJson(zone, result, key->_value._string.data, value);
+        }
+      }
+    }
+
+  }
+
+  return result;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fruitsort initialisation parameters
 ///
@@ -661,6 +718,24 @@ bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
 
   // no duplicate found
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge two JSON documents into one
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone, 
+                           const TRI_json_t* const lhs, 
+                           const TRI_json_t* const rhs,
+                           const bool nullMeansRemove) {
+  TRI_json_t* result;
+
+  assert(lhs->_type == TRI_JSON_ARRAY);
+  assert(rhs->_type == TRI_JSON_ARRAY);
+
+  result = MergeRecursive(zone, lhs, rhs, nullMeansRemove);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

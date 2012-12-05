@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief MR enigne configuration
+/// @brief MR engine configuration
 ///
 /// @file
 ///
@@ -28,6 +28,8 @@
 #include "ApplicationMR.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "MRServer/mr-actions.h"
 #include "VocBase/vocbase.h"
@@ -58,16 +60,42 @@ namespace {
     public:
       MRGcThread (ApplicationMR* applicationMR) 
         : Thread("mr-gc"),
-          _applicationMR(applicationMR) {
+          _applicationMR(applicationMR),
+          _lock(),
+          _lastGcStamp(TRI_microtime()) {
       }
 
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect garbage in an endless loop (main functon of GC thread)
+////////////////////////////////////////////////////////////////////////////////
+
       void run () {
         _applicationMR->collectGarbage();
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the timestamp of the last GC
+////////////////////////////////////////////////////////////////////////////////
+
+      double getLastGcStamp () {
+        READ_LOCKER(_lock);
+        return _lastGcStamp;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the global GC timestamp 
+////////////////////////////////////////////////////////////////////////////////
+
+      void updateGcStamp (double value) {
+        WRITE_LOCKER(_lock);
+      }
+
     private:
       ApplicationMR* _applicationMR;
+      ReadWriteLock _lock;
+      double _lastGcStamp;
   };
 
 }
@@ -96,9 +124,10 @@ namespace {
 ApplicationMR::ApplicationMR (string const& binaryPath)
   : ApplicationFeature("MRuby"),
     _startupPath(),
-    _startupModules("mr/modules"),
+    _startupModules(),
     _actionPath(),
     _gcInterval(1000),
+    _gcFrequency(10.0),
     _startupLoader(),
     _actionLoader(),
     _vocbase(0),
@@ -108,44 +137,6 @@ ApplicationMR::ApplicationMR (string const& binaryPath)
     _freeContexts(),
     _dirtyContexts(),
     _stopping(0) {
-
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
-    _actionPath = binaryPath + "/../share/arango/mr/actions/system";
-    _startupModules = binaryPath + "/../share/arango/mr/server/modules"
-              + ";" + binaryPath + "/../share/arango/mr/common/modules";
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-    _actionPath = binaryPath + "/../mr/actions/system";
-    _startupModules = binaryPath + "/../mr/server/modules"
-              + ";" + binaryPath + "/../mr/common/modules";
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-#else
-
-#ifdef _PKGDATADIR_
-    _actionPath = string(_PKGDATADIR_) + "/mr/actions/system";
-    _startupModules = string(_PKGDATADIR_) + "/mr/server/modules"
-              + ";" + string(_PKGDATADIR_) + "/mr/common/modules";
-
-#endif
-
-#endif
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,16 +200,25 @@ ApplicationMR::MRContext* ApplicationMR::enterContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationMR::exitContext (MRContext* context) {
+  MRGcThread* gc = dynamic_cast<MRGcThread*>(_gcThread);
+  assert(gc != 0);
+  double lastGc = gc->getLastGcStamp();
+
   ++context->_dirt;
 
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    if (context->_dirt < _gcInterval) {
-      _freeContexts.push_back(context);
+    if (context->_lastGcStamp + _gcFrequency < lastGc) {
+      LOGGER_TRACE << "periodic gc interval reached";
+      _dirtyContexts.push_back(context);
+    }
+    else if (context->_dirt >= _gcInterval) {
+      LOGGER_TRACE << "maximum number of requests reached";
+      _dirtyContexts.push_back(context);
     }
     else {
-      _dirtyContexts.push_back(context);
+      _freeContexts.push_back(context);
     }
 
     guard.broadcast();
@@ -232,21 +232,42 @@ void ApplicationMR::exitContext (MRContext* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationMR::collectGarbage () {
+  MRGcThread* gc = dynamic_cast<MRGcThread*>(_gcThread);
+  assert(gc != 0);
+  uint64_t waitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+
   while (_stopping == 0) {
     MRContext* context = 0;
+    bool gotSignal = false;
 
     {
       CONDITION_LOCKER(guard, _contextCondition);
 
       if (_dirtyContexts.empty()) {
-        guard.wait();
+        // check whether we got a wait timeout or a signal
+        gotSignal = guard.wait(waitTime);
       }
 
       if (! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
       }
+      else if (! gotSignal && ! _freeContexts.empty()) {
+        // we timed out waiting for a signal
+
+        // do nothing for now
+        // TODO: fix this if MRuby needs some proactive GC
+        context = 0;
+
+        // TODO: pick one of the free contexts to clean up, based on its last GC stamp
+        // this is already implemented in ApplicationV8::pickContextForFc()
+        // if necessary for MRuby, the code in pickContextForGc() can be used as a prototype
+      }
     }
+
+    // update last gc time   
+    double lastGc = TRI_microtime();
+    gc->updateGcStamp(lastGc);
 
     if (context != 0) {
       LOGGER_TRACE << "collecting MR garbage";
@@ -254,6 +275,7 @@ void ApplicationMR::collectGarbage () {
       mrb_garbage_collect(context->_mrb);
 
       context->_dirt = 0;
+      context->_lastGcStamp = lastGc;
 
       {
         CONDITION_LOCKER(guard, _contextCondition);
@@ -292,7 +314,8 @@ void ApplicationMR::disableActions () {
 
 void ApplicationMR::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
   options["RUBY Options:help-admin"]
-    ("ruby.gc-interval", &_gcInterval, "Ruby garbage collection interval (each x requests)")
+    ("ruby.gc-interval", &_gcInterval, "Ruby request-based garbage collection interval (each x requests)")
+    ("ruby.gc-frequency", &_gcFrequency, "Ruby time-based garbage collection frequency (each x seconds)")
   ;
 
   options["RUBY Options:help-admin"]
@@ -307,7 +330,16 @@ void ApplicationMR::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationMR::prepare () {
-  LOGGER_INFO << "using Ruby modules path '" << _startupModules << "'";
+
+  // check the startup modules
+  if (_startupModules.empty()) {
+    LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  else {
+    LOGGER_INFO << "using Ruby modules path '" << _startupModules << "'";
+  }
 
   // set up the startup loader
   if (_startupPath.empty()) {
@@ -323,7 +355,12 @@ bool ApplicationMR::prepare () {
   }
 
   // set up action loader
-  if (! _actionPath.empty()) {
+  if (_actionPath.empty()) {
+    LOGGER_FATAL << "no 'ruby.modules-path' has been supplied, giving up";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  else {
     LOGGER_INFO << "using Ruby action files at '" << _actionPath << "'";
 
     _actionLoader.setDirectory(_actionPath);
@@ -347,14 +384,6 @@ bool ApplicationMR::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationMR::isStartable () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool ApplicationMR::start () {
   _gcThread = new MRGcThread(this);
   _gcThread->start();
@@ -366,15 +395,7 @@ bool ApplicationMR::start () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationMR::isStarted () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationMR::beginShutdown () {
+void ApplicationMR::close () {
   _stopping = 1;
   _contextCondition.broadcast();
 }
@@ -383,8 +404,9 @@ void ApplicationMR::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationMR::shutdown () {
-  _gcThread->stop();
+void ApplicationMR::stop () {
+  _gcThread->shutdown();
+  delete _gcThread;
 
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownMRInstance(i);
@@ -418,17 +440,17 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
   MRContext* context = _contexts[i] = new MRContext();
 
   // create a new shell
-  mrb_state* mrb = context->_mrb = MR_OpenShell();
+  context->_mrb = MR_OpenShell();
 
-  TRI_InitMRUtils(mrb);
+  TRI_InitMRUtils(context->_mrb);
 
   if (! _actionPath.empty()) {
-    TRI_InitMRActions(mrb, this);
+    TRI_InitMRActions(context->_mrb, this);
   }
 
   // load all init files
   for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = _startupLoader.loadScript(mrb, files[i]);
+    bool ok = _startupLoader.loadScript(context->_mrb, files[i]);
 
     if (! ok) {
       LOGGER_FATAL << "cannot load Ruby utilities from file '" << files[i] << "'";
@@ -439,7 +461,7 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
 
   // load all actions
   if (! _actionPath.empty()) {
-    bool ok = _actionLoader.executeAllScripts(mrb);
+    bool ok = _actionLoader.executeAllScripts(context->_mrb);
 
     if (! ok) {
       LOGGER_FATAL << "cannot load Ruby actions from directory '" << _actionLoader.getDirectory() << "'";
@@ -447,6 +469,8 @@ bool ApplicationMR::prepareMRInstance (size_t i) {
       return false;
     }
   }
+
+  context->_lastGcStamp = TRI_microtime();
 
   // and return from the context
   LOGGER_TRACE << "initialised MR context #" << i;

@@ -59,7 +59,9 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
 
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
+#endif    
   }
 
   // add a new element to the associative array
@@ -73,14 +75,16 @@ static void AddNewElement (TRI_associative_array_t* array, void* element) {
 
 static void ResizeAssociativeArray (TRI_associative_array_t* array) {
   char * oldTable;
-  uint64_t oldAlloc;
+  uint32_t oldAlloc;
   uint64_t j;
 
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
+#ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
+#endif  
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, true);
 
@@ -162,6 +166,8 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   }
 
   array->_nrUsed = 0;
+
+#ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
   array->_nrAdds = 0;
   array->_nrRems = 0;
@@ -170,6 +176,7 @@ void TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,14 +221,18 @@ void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif
   }
 
   // return whatever we found
@@ -256,14 +267,18 @@ void* TRI_LookupByElementAssociativeArray (TRI_associative_array_t* array, void*
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif    
   }
 
   // return whatever we found
@@ -304,14 +319,18 @@ bool TRI_InsertElementAssociativeArray (TRI_associative_array_t* array, void* el
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   // if we found an element, return
@@ -353,14 +372,18 @@ bool TRI_InsertKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif  
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif  
   }
 
   // if we found an element, return
@@ -396,14 +419,18 @@ bool TRI_RemoveElementAssociativeArray (TRI_associative_array_t* array, void* el
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualElementElement(array, element, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return false
@@ -454,14 +481,18 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t* array, void* key, v
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   while (! array->isEmptyElement(array, array->_table + i * array->_elementSize)
          && ! array->isEqualKeyElement(array, key, array->_table + i * array->_elementSize)) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return false
@@ -541,7 +572,9 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 
   while (array->_table[i] != NULL) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
+#endif    
   }
 
   // add a new element to the associative array
@@ -555,14 +588,16 @@ static void AddNewElementPointer (TRI_associative_pointer_t* array, void* elemen
 
 static void ResizeAssociativePointer (TRI_associative_pointer_t* array) {
   void** oldTable;
-  uint64_t oldAlloc;
+  uint32_t oldAlloc;
   uint64_t j;
 
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
+#ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
+#endif  
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
@@ -623,6 +658,8 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   }
 
   array->_nrUsed = 0;
+
+#ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
   array->_nrAdds = 0;
   array->_nrRems = 0;
@@ -631,6 +668,7 @@ void TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,13 +733,17 @@ void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t* array,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif    
   }
 
   // return whatever we found
@@ -721,13 +763,17 @@ void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t* array,
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif
   }
 
   // return whatever we found
@@ -755,13 +801,17 @@ void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t* array,
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   old = array->_table[i];
@@ -809,13 +859,17 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t* array,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   old = array->_table[i];
@@ -855,13 +909,17 @@ void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t* array,
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return 0
@@ -907,13 +965,17 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif
   }
 
   // if we did not find such an item return false
@@ -972,6 +1034,8 @@ size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const a
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
+///
+/// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AddNewElementSynced (TRI_associative_synced_t* array, void* element) {
@@ -986,7 +1050,9 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 
   while (array->_table[i] != NULL) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesR++;
+#endif
   }
 
   // add a new element to the associative array
@@ -996,18 +1062,22 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the array
+/// 
+/// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ResizeAssociativeSynced (TRI_associative_synced_t* array) {
   void** oldTable;
-  uint64_t oldAlloc;
+  uint32_t oldAlloc;
   uint64_t j;
 
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = 2 * array->_nrAlloc + 1;
+#ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
+#endif  
 
   array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
 
@@ -1068,6 +1138,8 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   }
 
   array->_nrUsed = 0;
+
+#ifdef TRI_INTERNAL_STATS
   array->_nrFinds = 0;
   array->_nrAdds = 0;
   array->_nrRems = 0;
@@ -1076,6 +1148,7 @@ void TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrProbesA = 0;
   array->_nrProbesD = 0;
   array->_nrProbesR = 0;
+#endif
 
   TRI_InitReadWriteLock(&array->_lock);
 }
@@ -1125,15 +1198,19 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t* array,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif    
   }
 
   result = array->_table[i];
@@ -1158,15 +1235,19 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrFinds++;
+#endif
 
   // search the table
   TRI_ReadLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesF++;
+#endif    
   }
 
   result = array->_table[i];
@@ -1197,15 +1278,19 @@ void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif
 
   // search the table, TODO optimise the locks
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   old = array->_table[i];
@@ -1250,15 +1335,19 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrAdds++;
+#endif
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
+#endif    
   }
 
   old = array->_table[i];
@@ -1296,15 +1385,19 @@ void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t* array,
   hash = array->hashElement(array, element);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return 0
@@ -1352,15 +1445,19 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t* array,
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
 
+#ifdef TRI_INTERNAL_STATS
   // update statistics
   array->_nrRems++;
+#endif
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
     i = (i + 1) % array->_nrAlloc;
+#ifdef TRI_INTERNAL_STATS
     array->_nrProbesD++;
+#endif    
   }
 
   // if we did not find such an item return false

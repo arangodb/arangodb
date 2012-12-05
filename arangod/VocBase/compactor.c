@@ -31,8 +31,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "VocBase/simple-collection.h"
-#include "VocBase/shadow-data.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -47,7 +46,7 @@
 /// @brief compactify interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const COMPACTOR_INTERVAL = 1 * 1000 * 1000;
+static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -69,7 +68,7 @@ static int const COMPACTOR_INTERVAL = 1 * 1000 * 1000;
 /// to allow the gc to start when waiting for a journal to appear.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* sim,
+static TRI_datafile_t* SelectCompactor (TRI_document_collection_t* sim,
                                         TRI_voc_size_t size,
                                         TRI_df_marker_t** result) {
   TRI_datafile_t* datafile;
@@ -77,7 +76,7 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* sim,
   size_t i;
   size_t n;
 
-  TRI_LOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 
   while (true) {
     n = sim->base.base._compactors._length;
@@ -92,26 +91,26 @@ static TRI_datafile_t* SelectCompactor (TRI_sim_collection_t* sim,
 
       // in case of full datafile, try next
       if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
         return datafile;
       }
       else if (res != TRI_ERROR_ARANGO_DATAFILE_FULL) {
-        TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+        TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
         return NULL;
       }
     }
 
-    TRI_WAIT_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+    TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
   }
 
-  TRI_UNLOCK_JOURNAL_ENTRIES_SIM_COLLECTION(sim);
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write document to file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CopyDocument (TRI_sim_collection_t* collection,
+static int CopyDocument (TRI_document_collection_t* collection,
                          TRI_df_marker_t const* marker,
                          TRI_df_marker_t** result,
                          TRI_voc_fid_t* fid) {
@@ -132,8 +131,10 @@ static int CopyDocument (TRI_sim_collection_t* collection,
   // and write marker and blob
   return TRI_WriteElementDatafile(journal,
                                   *result,
-                                  marker, marker->_size,
-                                  NULL, 0,
+                                  marker, 
+                                  marker->_size,
+                                  NULL, 
+                                  0,
                                   false);
 }
 
@@ -209,15 +210,18 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
   TRI_df_marker_t* result;
   TRI_doc_datafile_info_t* dfi;
   TRI_doc_mptr_t const* found;
-  TRI_sim_collection_t* sim;
+  TRI_document_collection_t* sim;
+  TRI_primary_collection_t* primary;
   TRI_voc_fid_t fid;
   bool deleted;
   int res;
 
   sim = data;
+  primary = &sim->base;
 
   // new or updated document
-  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || marker->_type == TRI_DOC_MARKER_EDGE) {
+  if (marker->_type == TRI_DOC_MARKER_DOCUMENT || 
+      marker->_type == TRI_DOC_MARKER_EDGE) {
     TRI_doc_document_marker_t const* d;
     size_t markerSize;
 
@@ -229,21 +233,22 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     }
     else {
       LOG_FATAL("unknown marker type %d", (int) marker->_type);
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
 
     d = (TRI_doc_document_marker_t const*) marker;
 
     // check if the document is still active
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&sim->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, &d->_did);
     deleted = found == NULL || found->_deletion != 0;
 
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     if (deleted) {
-      LOG_TRACE("found a stale document: %lu", d->_did);
+      LOG_TRACE("found a stale document: %llu", (unsigned long long) d->_did);
       return true;
     }
 
@@ -251,29 +256,29 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: ", TRI_last_error());
+      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
       return false;
     }
 
     // check if the document is still active
-    TRI_READ_LOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = TRI_LookupByKeyAssociativePointer(&sim->_primaryIndex, &d->_did);
+    found = TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, &d->_did);
     deleted = found == NULL || found->_deletion != 0;
 
-    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_SIM_COLLECTION(sim);
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
     // update datafile
-    TRI_WRITE_LOCK_DATAFILES_SIM_COLLECTION(sim);
+    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
 
     if (deleted) {
       dfi->_numberDead += 1;
       dfi->_sizeDead += marker->_size - markerSize;
 
-      LOG_DEBUG("found a stale document after copying: %lu", d->_did);
-      TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
+      LOG_DEBUG("found a stale document after copying: %llu", (unsigned long long) d->_did);
+      TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
       return true;
     }
@@ -281,13 +286,12 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     cnv.c = found;
     cnv.v->_fid = datafile->_fid;
     cnv.v->_data = result;
-    cnv.v->_document._data.data = ((char*) cnv.v->_data) + markerSize;
 
     // update datafile info
     dfi->_numberAlive += 1;
     dfi->_sizeAlive += marker->_size - markerSize;
 
-    TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
 
   // deletion
@@ -298,17 +302,17 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
     res = CopyDocument(sim, marker, &result, &fid);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL("cannot write compactor file: ", TRI_last_error());
+      LOG_FATAL("cannot write compactor file: %s", TRI_last_error());
       return false;
     }
 
     // update datafile info
-    TRI_WRITE_LOCK_DATAFILES_SIM_COLLECTION(sim);
+    TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, fid);
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, fid);
     dfi->_numberDeletion += 1;
 
-    TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
+    TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
   }
 
   return true;
@@ -318,7 +322,7 @@ static bool Compactifier (TRI_df_marker_t const* marker, void* data, TRI_datafil
 /// @brief wait for journal to sync
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WaitCompactSync (TRI_sim_collection_t* collection, TRI_datafile_t* datafile) {
+static void WaitCompactSync (TRI_document_collection_t* collection, TRI_datafile_t* datafile) {
   TRI_LockCondition(&collection->_journalsCondition);
 
   while (datafile->_synced < datafile->_written) {
@@ -332,26 +336,29 @@ static void WaitCompactSync (TRI_sim_collection_t* collection, TRI_datafile_t* d
 /// @brief compactify a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CompactifyDatafile (TRI_sim_collection_t* sim, TRI_voc_fid_t fid) {
+static void CompactifyDatafile (TRI_document_collection_t* sim, TRI_voc_fid_t fid) {
   TRI_datafile_t* df;
+  TRI_primary_collection_t* primary;
   bool ok;
   size_t n;
   size_t i;
 
-  // locate the datafile
-  TRI_READ_LOCK_DATAFILES_SIM_COLLECTION(sim);
+  primary = &sim->base;
 
-  n = sim->base.base._datafiles._length;
+  // locate the datafile
+  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+
+  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    df = sim->base.base._datafiles._buffer[i];
+    df = primary->base._datafiles._buffer[i];
 
     if (df->_fid == fid) {
       break;
     }
   }
 
-  TRI_READ_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   if (i == n) {
     return;
@@ -371,20 +378,20 @@ static void CompactifyDatafile (TRI_sim_collection_t* sim, TRI_voc_fid_t fid) {
   WaitCompactSync(sim, df);
 
   // remove the datafile from the list of datafiles
-  TRI_WRITE_LOCK_DATAFILES_SIM_COLLECTION(sim);
+  TRI_WRITE_LOCK_DATAFILES_DOC_COLLECTION(primary);
 
-  n = sim->base.base._datafiles._length;
+  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
-    df = sim->base.base._datafiles._buffer[i];
+    df = primary->base._datafiles._buffer[i];
 
     if (df->_fid == fid) {
-      TRI_RemoveVectorPointer(&sim->base.base._datafiles, i);
+      TRI_RemoveVectorPointer(&primary->base._datafiles, i);
       break;
     }
   }
 
-  TRI_WRITE_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
+  TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   if (i == n) {
     LOG_WARNING("failed to locate the datafile '%lu'", (unsigned long) df->_fid);
@@ -392,38 +399,45 @@ static void CompactifyDatafile (TRI_sim_collection_t* sim, TRI_voc_fid_t fid) {
   }
 
   // add a deletion marker to the result set container
-  TRI_CreateBarrierDatafile(&sim->base._barrierList, df, RemoveDatafileCallback, &sim->base.base);
+  TRI_CreateBarrierDatafile(&primary->_barrierList, df, RemoveDatafileCallback, &primary->base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CompactifySimCollection (TRI_sim_collection_t* sim) {
+static bool CompactifyDocumentCollection (TRI_document_collection_t* sim) {
+  TRI_primary_collection_t* primary;
   TRI_vector_t vector;
   size_t n;
   size_t i;
+  bool worked = false;
 
-  if (! TRI_TRY_READ_LOCK_DATAFILES_SIM_COLLECTION(sim)) {
-    return;
+  primary = &sim->base;
+
+  // if we cannot acquire the read lock instantly, we will exit directly.
+  // otherwise we'll risk a multi-thread deadlock between synchroniser,
+  // compactor and data-modification threads (e.g. POST /_api/document)
+  if (! TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(primary)) {
+    return worked;
   }
-  
-  TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
 
   // copy datafile information
-  n = sim->base.base._datafiles._length;
+  TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_datafile_info_t));
+
+  n = primary->base._datafiles._length;
 
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* df;
     TRI_doc_datafile_info_t* dfi;
 
-    df = sim->base.base._datafiles._buffer[i];
-    dfi = TRI_FindDatafileInfoDocCollection(&sim->base, df->_fid);
+    df = primary->base._datafiles._buffer[i];
+    dfi = TRI_FindDatafileInfoPrimaryCollection(primary, df->_fid);
 
     TRI_PushBackVector(&vector, dfi);
   }
 
-  TRI_READ_UNLOCK_DATAFILES_SIM_COLLECTION(sim);
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
 
   // handle datafiles with dead objects
   for (i = 0;  i < vector._length;  ++i) {
@@ -444,104 +458,13 @@ static void CompactifySimCollection (TRI_sim_collection_t* sim) {
               (unsigned long) dfi->_numberDeletion);
 
     CompactifyDatafile(sim, dfi->_fid);
+    worked = true;
   }
 
   // cleanup local variables
   TRI_DestroyVector(&vector);
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks all datafiles of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupSimCollection (TRI_sim_collection_t* sim) {
-  // loop until done
-  while (true) {
-    TRI_barrier_list_t* container;
-    TRI_barrier_t* element;
-    bool hasUnloaded = false;
-
-    container = &sim->base._barrierList;
-    element = NULL;
-
-    // check and remove a callback elements at the beginning of the list
-    TRI_LockSpin(&container->_lock);
-
-    if (container->_begin == NULL || container->_begin->_type == TRI_BARRIER_ELEMENT) {
-      // did not find anything on top of the barrier list or found an element marker
-      // this means we must exit
-      TRI_UnlockSpin(&container->_lock);
-      return;
-    }
-
-    element = container->_begin;
-    assert(element);
-
-    // found an element to go on with
-    container->_begin = element->_next;
-
-    if (element->_next == NULL) {
-      container->_end = NULL;
-    }
-    else {
-      element->_next->_prev = NULL;
-    }
-
-    TRI_UnlockSpin(&container->_lock);
-
-    // execute callback, sone of the callbacks might delete or free our collection
-    if (element->_type == TRI_BARRIER_DATAFILE_CALLBACK) {
-      TRI_barrier_datafile_cb_t* de;
-
-      de = (TRI_barrier_datafile_cb_t*) element;
-
-      de->callback(de->_datafile, de->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-      // next iteration
-    }
-    else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
-      // collection is unloaded
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-      
-      if (hasUnloaded) {
-        // this has unloaded and freed the collection
-        return;
-      }
-    }
-    else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
-      // collection is dropped
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-
-      if (hasUnloaded) {
-        // this has dropped the collection
-        return;
-      }
-    }
-    else {
-      // unknown type
-      LOG_FATAL("unknown barrier type '%d'", (int) element->_type);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-    }
-
-    // next iteration
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clean up shadows
-////////////////////////////////////////////////////////////////////////////////
-
-static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
-  // clean unused cursors
-  TRI_CleanupShadowData(vocbase->_cursors, (double) SHADOW_CURSOR_MAX_AGE, force);
+  return worked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,7 +488,7 @@ void TRI_CompactorVocBase (void* data) {
   TRI_vocbase_t* vocbase = data;
   TRI_vector_pointer_t collections;
   
-  assert(vocbase->_active);
+  assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -573,15 +496,9 @@ void TRI_CompactorVocBase (void* data) {
     size_t n;
     size_t i;
     TRI_col_type_e type;
-    // keep initial _active value as vocbase->_active might change during compaction loop
-    int active = vocbase->_active; 
-
-    if (active == 2) {
-      // shadows must be cleaned before collections are handled
-      // otherwise the shadows might still hold barriers on collections 
-      // and collections cannot be closed properly
-      CleanupShadows(vocbase, true);
-    }
+    // keep initial _state value as vocbase->_state might change during compaction loop
+    int state = vocbase->_state;
+    bool worked = false;
 
     // copy all collections
     TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -594,47 +511,53 @@ void TRI_CompactorVocBase (void* data) {
 
     for (i = 0;  i < n;  ++i) {
       TRI_vocbase_col_t* collection;
-      TRI_doc_collection_t* doc;
+      TRI_primary_collection_t* primary;
 
       collection = collections._buffer[i];
 
       if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+        // if we can't acquire the read lock instantly, we continue directly
+        // we don't want to stall here for too long
         continue;
       }
 
-      doc = collection->_collection;
+      primary = collection->_collection;
 
-      if (doc == NULL) {
+      if (primary == NULL) {
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
         continue;
       }
 
-      type = doc->base._type;
+      type = primary->base._type;
 
-      // for simple document collection, compactify datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
+      // for simple collection, compactify datafiles
+      if (TRI_IS_DOCUMENT_COLLECTION(type)) {
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED) {
-          CompactifySimCollection((TRI_sim_collection_t*) doc);
+          TRI_barrier_t* ce = TRI_CreateBarrierElement(&primary->_barrierList);
+
+          worked = CompactifyDocumentCollection((TRI_document_collection_t*) primary);
+          if (ce != NULL) {
+            TRI_FreeBarrier(ce);
+          }
         }
       }
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-      // now release the lock and maybe unload the collection or some datafiles
-      if (type == TRI_COL_TYPE_SIMPLE_DOCUMENT) {
-        CleanupSimCollection((TRI_sim_collection_t*) doc);
+      if (worked) {
+        // signal the cleanup thread that we worked and that it can now wake up
+        TRI_LockCondition(&vocbase->_cleanupCondition);
+        TRI_SignalCondition(&vocbase->_cleanupCondition);
+        TRI_UnlockCondition(&vocbase->_cleanupCondition);
       }
     }
 
-    if (vocbase->_active == 1) {
-      // clean up unused shadows
-      CleanupShadows(vocbase, false);
-
+    if (vocbase->_state == 1) {
       // only sleep while server is still running
       usleep(COMPACTOR_INTERVAL);
     }
 
-    if (active == 2) {
+    if (state == 2) {
       // server shutdown
       break;
     }

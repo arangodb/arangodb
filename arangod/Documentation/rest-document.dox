@@ -47,7 +47,8 @@
 /// <ul>
 ///  <li>@ref RestDocumentRead "GET /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentCreate "POST /_api/document?collection=collection-identifier"</li>
-///  <li>@ref RestDocumentUpdate "PUT /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentReplace "PUT /_api/document/document-handle"</li>
+///  <li>@ref RestDocumentUpdate "PATCH /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentDelete "DELETE /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentHead "HEAD /_api/document/document-handle"</li>
 ///  <li>@ref RestDocumentReadAll "GET /_api/document?collection=collection-identifier"</li>
@@ -73,9 +74,6 @@
 /// All documents contain two special fields, the document handle in @LIT{_id}
 /// and the etag aka document revision in @LIT{_rev}.
 ///
-/// Some examples in the manual assume that you have created some example
-/// collections, see @ref ExamplesSetup.
-///
 /// @copydoc GlossaryDocumentHandle
 ///
 /// @copydoc GlossaryDocumentIdentifier
@@ -97,7 +95,7 @@
 /// defines a document and is managed by ArangoDB. All documents are
 /// found under the URI:
 ///
-/// @LIT{http://@FA{server}:@FA{port}/_api/document/@FA{document-handle}}
+/// @LIT{http://server:port/_api/document/document-handle}
 ///
 /// For example: Assume that the document handle, which is stored in
 /// the @LIT{_id} field of the document, is @LIT{7254820/362549736},
@@ -124,6 +122,9 @@
 ///
 /// @anchor RestDocumentCreate
 /// @copydetails triagens::arango::RestDocumentHandler::createDocument
+///
+/// @anchor RestDocumentReplace
+/// @copydetails triagens::arango::RestDocumentHandler::replaceDocument
 ///
 /// @anchor RestDocumentUpdate
 /// @copydetails triagens::arango::RestDocumentHandler::updateDocument

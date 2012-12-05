@@ -1,0 +1,35 @@
+> curl --data @- -X POST --dump - http://localhost:8529/_api/blueprints/edges?graph=graph1
+{"batchSize" : 100}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{
+  "result": [
+    {
+      "_id": "90051519/93328319",
+      "_rev": 93328319,
+      "_key": "93328319",
+      "_bidirectional": false,
+      "_from": "89265087/92607423",
+      "_to": "89265087/92672959",
+      "$label": null,
+      "$id": "edge2",
+      "optional1": "val1b"
+    },
+    {
+      "_id": "90051519/92935103",
+      "_rev": 92935103,
+      "_key": "92935103",
+      "_bidirectional": false,
+      "_from": "89265087/92410815",
+      "_to": "89265087/92607423",
+      "$label": null,
+      "$id": "edge1",
+      "optional1": "val1a"
+    }
+  ],
+  "hasMore": false,
+  "error": false,
+  "code": 201
+}

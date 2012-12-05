@@ -21,7 +21,6 @@ bin_arangod_LDADD = \
 
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \
-	arangod/Actions/ActionDispatcherThread.cpp \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
 	arangod/Ahuacatl/ahuacatl-ast-node.c \
@@ -55,12 +54,14 @@ bin_arangod_SOURCES = \
 	arangod/IndexOperators/index-operator.c \
 	arangod/PriorityQueue/pqueueindex.c \
 	arangod/PriorityQueue/priorityqueue.c \
+	arangod/RestHandler/StatisticsBaseHandler.cpp \
+	arangod/RestHandler/ConnectionStatisticsHandler.cpp \
+	arangod/RestHandler/RequestStatisticsHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
-	arangod/RestServer/ArangoHttpServer.cpp \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplist.c \
@@ -72,16 +73,18 @@ bin_arangod_SOURCES = \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/VocBase/auth.c \
 	arangod/VocBase/barrier.c \
-	arangod/VocBase/blob-collection.c \
+	arangod/VocBase/cleanup.c \
 	arangod/VocBase/collection.c \
 	arangod/VocBase/compactor.c \
 	arangod/VocBase/datafile.c \
 	arangod/VocBase/document-collection.c \
+	arangod/VocBase/edge-collection.c \
 	arangod/VocBase/general-cursor.c \
 	arangod/VocBase/headers.c \
 	arangod/VocBase/index.c \
+	arangod/VocBase/primary-collection.c \
 	arangod/VocBase/shadow-data.c \
-	arangod/VocBase/simple-collection.c \
+	arangod/VocBase/shape-collection.c \
 	arangod/VocBase/synchroniser.c \
 	arangod/VocBase/voc-shaper.c \
 	arangod/VocBase/vocbase.c
@@ -100,13 +103,6 @@ bin_arangod_SOURCES += \
 endif
 
 
-
-if ENABLE_ZEROMQ
-
-bin_arangod_LDADD += \
-	@ZEROMQ_LIBS@
-endif
-
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
 ################################################################################
@@ -124,6 +120,12 @@ FLEX_FILES += \
 
 BISON_FILES += \
 	arangod/Ahuacatl/ahuacatl-grammar.c
+
+if ENABLE_MAINTAINER_MODE
+
+CLEANUP += \
+	arangod/Ahuacatl/ahuacatl-grammar.h
+endif
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

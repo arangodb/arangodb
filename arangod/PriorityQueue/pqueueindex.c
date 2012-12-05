@@ -38,7 +38,7 @@
 #include "pqueueindex.h"
 #include "ShapedJson/shaped-json.h"
 #include "ShapedJson/json-shaper.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include <BasicsC/hashes.h>
 #include <BasicsC/logging.h>
 
@@ -546,8 +546,8 @@ static bool IsLessPQIndex(TRI_pqueue_t* pq, void* leftItem, void* rightItem) {
     maxNumFields = rightElement->numFields;
   }
   
-  leftShaper  = ((TRI_doc_collection_t*)(leftElement->collection))->_shaper;
-  rightShaper = ((TRI_doc_collection_t*)(rightElement->collection))->_shaper;
+  leftShaper  = ((TRI_primary_collection_t*)(leftElement->collection))->_shaper;
+  rightShaper = ((TRI_primary_collection_t*)(rightElement->collection))->_shaper;
   
   compareResult = 0;
 
@@ -953,37 +953,6 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
     
     case TRI_SHAPE_ARRAY:
     {
-      /* start oreste: 
-        char* shape = (char*)(leftShape);
-        uint64_t fixedEntries;
-        uint64_t variableEntries;
-        uint64_t ssid;
-        uint64_t aaid;
-        char* name;
-        TRI_shape_t* newShape;
-        
-        shape = shape + sizeof(TRI_shape_t);        
-        fixedEntries = *((TRI_shape_size_t*)(shape));
-        shape = shape + sizeof(TRI_shape_size_t);
-        variableEntries = *((TRI_shape_size_t*)(shape));
-        shape = shape + sizeof(TRI_shape_size_t);
-        ssid = *((TRI_shape_sid_t*)(shape));
-        shape = shape + (sizeof(TRI_shape_sid_t) * (fixedEntries + variableEntries));
-        aaid = *((TRI_shape_aid_t*)(shape));
-        shape = shape + (sizeof(TRI_shape_aid_t) * (fixedEntries + variableEntries));
-        
-        name      = leftShaper->lookupAttributeId(leftShaper,aaid);
-        newShape  = leftShaper->lookupShapeId(leftShaper, ssid);
-
-        
-        printf("%s:%u:_fixedEntries:%u\n",__FILE__,__LINE__,fixedEntries);
-        printf("%s:%u:_variableEntries:%u\n",__FILE__,__LINE__,variableEntries);
-        printf("%s:%u:_sids[0]:%u\n",__FILE__,__LINE__,ssid);
-        printf("%s:%u:_aids[0]:%u\n",__FILE__,__LINE__,aaid);
-        printf("%s:%u:name:%s\n",__FILE__,__LINE__,name);
-        printf("%s:%u:type:%d\n",__FILE__,__LINE__,newShape->_type);
-                         
-       end oreste */
       assert(false);
       switch (rightType) {
         case TRI_SHAPE_ILLEGAL: 

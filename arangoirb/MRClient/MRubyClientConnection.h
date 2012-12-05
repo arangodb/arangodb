@@ -41,6 +41,7 @@
 #include <Basics/Common.h>
 
 #include "MRuby/mr-utils.h"
+#include "Rest/HttpRequest.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -48,8 +49,13 @@
 
 namespace triagens {
   namespace httpclient {
+    class GeneralClientConnection;
     class SimpleHttpClient;
     class SimpleHttpResult;
+  }
+  
+  namespace rest {
+    class Endpoint;
   }
 }
 
@@ -91,20 +97,15 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
-///
-/// @param string hostname            server hostname
-/// @param int port                   server port
-/// @param double requestTimeout      timeout in seconds for one request
-/// @param size_t retries             maximum number of request retries
-/// @param double connTimeout         timeout in seconds for the tcp connect 
 ////////////////////////////////////////////////////////////////////////////////
 
         MRubyClientConnection (mrb_state*,
-                               const string& hostname, 
-                               int port, 
+                               triagens::rest::Endpoint*,
+                               const string& username,
+                               const string& passwort,
                                double requestTimeout,
-                               size_t retries,
                                double connectionTimeout,
+                               size_t numRetries,
                                bool warn);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,21 +158,13 @@ namespace triagens {
         const std::string& getErrorMessage ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
+/// @brief get the endpoint string
 ///
-/// @return string          the server name
+/// @return string         
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string& getHostname ();
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-///
-/// @return string          the server port
-////////////////////////////////////////////////////////////////////////////////
+        const std::string getEndpointSpecification ();
 
-        int getPort ();
-      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
 ///
@@ -258,12 +251,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     private:
-      
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a request
+/// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      mrb_value requestData (int method, 
+      mrb_value requestData (rest::HttpRequest::HttpRequestType method, 
                              std::string const& location,
                              std::string const& body,
                              map<string, string> const& headerFields);
@@ -288,6 +281,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       mrb_state* _mrb;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connection
+////////////////////////////////////////////////////////////////////////////////
+
+      triagens::httpclient::GeneralClientConnection* _connection;
+      
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server version

@@ -28,8 +28,9 @@
 
 #include "HttpResponse.h"
 
+#include "BasicsC/strings.h"
 #include "Basics/StringUtils.h"
-#include "ProtocolBuffers/arangodb.pb.h"
+#include "Logger/Logger.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -73,16 +74,21 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case NOT_FOUND:            return "404 Not Found";
     case METHOD_NOT_ALLOWED:   return "405 Method Not Supported";
     case CONFLICT:             return "409 Conflict";
+    case LENGTH_REQUIRED:      return "411 Length Required";
     case PRECONDITION_FAILED:  return "412 Precondition Failed";
+    case ENTITY_TOO_LARGE:     return "413 Request Entity Too Large";
     case UNPROCESSABLE_ENTITY: return "422 Unprocessable Entity";
+    case HEADER_TOO_LARGE:     return "431 Request Header Fields Too Large";
 
     case SERVER_ERROR:         return "500 Internal Error";
-    case NOT_IMPLEMENTED:      return "501 Not implemented";
+    case NOT_IMPLEMENTED:      return "501 Not Implemented";
     case BAD_GATEWAY:          return "502 Bad Gateway";
     case SERVICE_UNAVAILABLE:  return "503 Service Temporarily Unavailable";
 
     // default
-    default:                   return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
+    default:                   
+      LOGGER_WARNING << "unknown HTTP response code " << code << " returned";
+      return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
   }
 }
 
@@ -126,6 +132,16 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the batch error count header
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpResponse::getBatchErrorHeader () {
+  static const string header = "X-Arango-Errors";
+
+  return header;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -144,25 +160,11 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
 
 HttpResponse::HttpResponse ()
   : _code(NOT_IMPLEMENTED),
-    _headers(5),
+    _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _isHeadResponse(false),
     _bodySize(0),
     _freeables() {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new http response
-////////////////////////////////////////////////////////////////////////////////
-
-HttpResponse::HttpResponse (string const& header)
-  : _code(NOT_IMPLEMENTED),
-    _headers(5),
-    _body(TRI_UNKNOWN_MEM_ZONE),
-    _isHeadResponse(false),
-    _bodySize(0),
-    _freeables() {
-  setHeaders(header, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,38 +173,15 @@ HttpResponse::HttpResponse (string const& header)
 
 HttpResponse::HttpResponse (HttpResponseCode code)
   : _code(code),
-    _headers(5),
+    _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _isHeadResponse(false),
     _bodySize(0),
     _freeables() {
-  char* headerBuffer = StringUtils::duplicate("server\ntriagens GmbH High-Performance HTTP Server\n"
-                                              "connection\nKeep-Alive\n"
-                                              "content-type\ntext/plain;charset=utf-8\n");
-  _freeables.push_back(headerBuffer);
-  
-  bool key = true;
-  char* startKey = headerBuffer;
-  char* startValue = 0;
-  char* end = headerBuffer + strlen(headerBuffer);
 
-  for (char* ptr = headerBuffer;  ptr < end;  ++ptr) {
-    if (*ptr == '\n') {
-      *ptr = '\0';
-      
-      if (key) {
-        startValue = ptr + 1;
-        key = false;
-      }
-      else {
-        _headers.insert(startKey, startValue);
-        
-        startKey = ptr + 1;
-        startValue = 0;
-        key = true;
-      }
-    }
-  }
+  _headers.insert("server", 6, "triagens GmbH High-Performance HTTP Server");
+  _headers.insert("connection", 10, "Keep-Alive");
+  _headers.insert("content-type", 12, "text/plain; charset=utf-8");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +211,7 @@ HttpResponse::~HttpResponse () {
 /// @brief returns the response code
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode () {
+HttpResponse::HttpResponseCode HttpResponse::responseCode () const {
   return _code;
 }
 
@@ -245,7 +224,7 @@ size_t HttpResponse::contentLength () {
     return _bodySize;
   }
   else {
-    Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length");
+    Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
     
     if (kv == 0) {
       return 0;
@@ -260,7 +239,7 @@ size_t HttpResponse::contentLength () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponse::setContentType (string const& contentType) {
-  setHeader("content-type", contentType);
+  setHeader("content-type", 12, contentType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,9 +262,41 @@ string HttpResponse::header (string const& key) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
+string HttpResponse::header (const char* key, const size_t keyLength) const {
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
+  
+  if (kv == 0) {
+    return "";
+  }
+  else {
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+////////////////////////////////////////////////////////////////////////////////
+
 string HttpResponse::header (string const& key, bool& found) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
+  
+  if (kv == 0) {
+    found = false;
+    return "";
+  }
+  else {
+    found = true;
+    return kv->_value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a header field
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpResponse::header (const char* key, const size_t keyLength, bool& found) const {
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
   
   if (kv == 0) {
     found = false;
@@ -318,6 +329,36 @@ map<string, string> HttpResponse::headers () const {
   }
   
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::setHeader (const char* key, const size_t keyLength, string const& value) {
+  if (value.empty()) {
+    _headers.erase(key);
+  }
+  else {
+    char const* v = StringUtils::duplicate(value);
+    
+    _headers.insert(key, keyLength, v);
+    
+    _freeables.push_back(v);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a header field
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::setHeader (const char* key, const size_t keyLength, const char* value) {
+  if (*value == '\0') {
+    _headers.erase(key);
+  }
+  else {
+    _headers.insert(key, keyLength, value);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,13 +529,15 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     if (key == 0) {
       continue;
     }
+
+    const size_t keyLength = strlen(key);
     
     // ignore content-length
-    if (strcmp(key, "content-length") == 0) {
+    if (keyLength == 14 && *key == 'c' && memcmp(key, "content-length", keyLength) == 0) {
       continue;
     }
     
-    if (strcmp(key, "transfer-encoding") == 0) {
+    if (keyLength == 17 && *key == 't' && memcmp(key, "transfer-encoding", keyLength) == 0) {
       seenTransferEncoding = true;
       transferEncoding = begin->_value;
       continue;
@@ -502,23 +545,23 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     
     char const* value = begin->_value;
     
-    output->appendText(key);
-    output->appendText(": ");
+    output->appendText(key, keyLength);
+    output->appendText(": ", 2);
     output->appendText(value);
-    output->appendText("\r\n");
+    output->appendText("\r\n", 2);
   }
   
   if (seenTransferEncoding && transferEncoding == "chunked") {
-    output->appendText("transfer-encoding: chunked\r\n");
+    output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
   }
   else {
     if (seenTransferEncoding) {
-      output->appendText("transfer-encoding: ");
+      output->appendText("transfer-encoding: ", 19);
       output->appendText(transferEncoding);
-      output->appendText("\r\n");
+      output->appendText("\r\n", 2);
     }
-    
-    output->appendText("content-length: ");
+   
+    output->appendText("content-length: ", 16);
     
     if (_isHeadResponse) {
       output->appendInteger(_bodySize);
@@ -527,90 +570,16 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendInteger(_body.length());
     }
     
-    output->appendText("\r\n");
+    output->appendText("\r\n\r\n", 4);
   }
-  
-  output->appendText("\r\n");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes the message to a protocol buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpResponse::write (PB_ArangoBatchMessage* message) {
-  message->set_type(PB_BLOB_RESPONSE);
-  PB_ArangoBlobResponse* blob = message->mutable_blobresponse();
-
-  blob->set_status((int32_t) _code);
-
-  // copy the headers
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-  
-  string contentType = "text/plain";
-
-  for (_headers.range(begin, end);  begin < end;  ++begin) {
-    char const* key = begin->_key;
-    
-    if (key == 0) {
-      continue;
-    }
-    
-    // ignore content-length
-    if (strcmp(key, "content-length") == 0) {
-      continue;
-    }
-    
-    if (strcmp(key, "transfer-encoding") == 0) {
-      continue;
-    }
-
-    if (strcmp(key, "connection") == 0) {
-      continue;
-    }
-
-    if (strcmp(key, "server") == 0) {
-      continue;
-    }
-
-    char const* value = begin->_value;
-    
-    if (strcmp(key, "content-type") == 0) {
-      contentType = value;
-      continue;
-    }
-    
-    PB_ArangoKeyValue* kv = blob->add_headers();
-
-    kv->set_key(key);
-    kv->set_value(value);
-  }
-
-  // set the content type
-  if (StringUtils::isPrefix(contentType, "application/json")) {
-    blob->set_contenttype(PB_JSON_CONTENT);
-  }
-  else {
-    blob->set_contenttype(PB_TEXT_CONTENT);
-  }
-
-  // check the body
-  if (_isHeadResponse) {
-    blob->set_contentlength(_bodySize);
-  }
-  else {
-    blob->set_contentlength(_body.length());
-
-    string content(_body.c_str(), _body.length());
-    blob->set_content(content);
-  }
+  // end of header, body to follow
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of the body
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpResponse::bodySize () {
+size_t HttpResponse::bodySize () const {
   if (_isHeadResponse) {
     return _bodySize;
   }

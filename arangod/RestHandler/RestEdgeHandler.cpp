@@ -31,7 +31,8 @@
 #include "BasicsC/conversions.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -99,7 +100,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestEdgeHandler::createDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -108,12 +109,14 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
+  bool forceSync = extractWaitForSync();
+
   // edge
-  TRI_sim_edge_t edge;
+  TRI_document_edge_t edge;
 
   // extract the from
   bool found;
-  char const* from = request->value("from", found);
+  char const* from = _request->value("from", found);
 
   if (! found || *from == '\0') {
     generateError(HttpResponse::BAD,
@@ -123,7 +126,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the to
-  char const* to = request->value("to", found);
+  char const* to = _request->value("to", found);
 
   if (! found || *to == '\0') {
     generateError(HttpResponse::BAD,
@@ -133,7 +136,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the cid
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -143,11 +146,11 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
@@ -159,57 +162,58 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
+  CollectionAccessor ca(_vocbase, collection, getCollectionType(), create);
+  
+  int res = ca.use();
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
 
+  TRI_voc_cid_t cid = ca.cid();
+  const bool waitForSync = forceSync || ca.waitForSync();
+
   // split document handle
-  edge._fromCid = _collection->_cid;
-  edge._toCid = _collection->_cid;
+  edge._fromCid = cid;
+  edge._toCid = cid;
 
   res = parseDocumentId(from, edge._fromCid, edge._fromDid);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
-
-    generateError(HttpResponse::BAD,
-                  res,
-                  "'from' is not a document handle");
+    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      generateError(HttpResponse::NOT_FOUND, res, "'from' does not point to a valid collection");
+    }
+    else {
+      generateError(HttpResponse::BAD, res, "'from' is not a document handle");
+    }
     return false;
   }
 
   res = parseDocumentId(to, edge._toCid, edge._toDid);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
-
-    generateError(HttpResponse::BAD,
-                  res,
-                  "'to' is not a document handle");
+    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      generateError(HttpResponse::NOT_FOUND, res, "'to' does not point to a valid collection");
+    }
+    else {
+      generateError(HttpResponse::BAD, res, "'to' is not a document handle");
+    }
     return false;
   }
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
+  
+  WriteTransaction trx(&ca);
 
-  _documentCollection->beginWrite(_documentCollection);
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_EDGE, json, &edge, reuseId, false, forceSync);
 
-  bool waitForSync = _documentCollection->base._waitForSync;
-  TRI_voc_cid_t cid = _documentCollection->base._cid;
-
-  // note: unlocked is performed by createJson()
-  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_EDGE, json, &edge, reuseId, true);
+  trx.end();
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
-
-  // release collection and free json
-  releaseCollection();
 
   // generate result
   if (mptr._did != 0) {

@@ -36,7 +36,7 @@
 #define YY_NO_INPUT
 }
 
-%option noyywrap nounput batch debug
+%option noyywrap nounput batch
 %option 8bit
 %option reentrant
 %option extra-type="struct jsonData"

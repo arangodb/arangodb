@@ -291,6 +291,25 @@ function dijkstraSuite() {
       assertEqual(pathes[0][2].toString(), v3.getId());
     },
 
+
+    testGetCorrectCachedResults : function () {
+      var v1 = graph.addVertex(1),
+        v2 = graph.addVertex(2),
+        v3 = graph.addVertex(3),
+        e1 = graph.addEdge(v1, v2),
+        e2 = graph.addEdge(v2, v3),
+        e3,
+        pathes = v1.pathTo(v3, {cached: true});
+
+      e3 = graph.addEdge(v1, v3);
+
+      pathes = v1.pathTo(v3, {cached: true});
+
+      assertEqual(pathes.length, 1);
+      assertEqual(pathes[0][0].toString(), v1.getId());
+      assertEqual(pathes[0][1].toString(), v3.getId());
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a short, distinct path on a directed graph
 ////////////////////////////////////////////////////////////////////////////////

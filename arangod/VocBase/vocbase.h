@@ -44,7 +44,7 @@ extern "C" {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_collection_s;
+struct TRI_primary_collection_s;
 struct TRI_col_parameter_s;
 struct TRI_shadow_store_s;
 
@@ -342,10 +342,10 @@ typedef uint32_t TRI_col_type_t;
 ///
 /// There are the following locks:
 ///
-/// @CODE{TRI_vocbase_t._lock}: This lock protects the access to _collections,
+/// @LIT{TRI_vocbase_t._lock}: This lock protects the access to _collections,
 /// _collectionsByName, and _collectionsById.
 ///
-/// @CODE{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
+/// @LIT{TRI_vocbase_col_t._lock}: This lock protects the status (loaded,
 /// unloaded) of the collection. If you want to use a collection, you must call
 /// @ref TRI_UseCollectionVocBase, this will either load or manifest the
 /// collection and a read-lock is held when the functions returns.  You must
@@ -361,6 +361,7 @@ typedef struct TRI_vocbase_s {
   bool _removeOnDrop; // wipe collection from disk after dropping
   bool _removeOnCompacted; // wipe datafile from disk after compaction
   bool _defaultWaitForSync;
+  bool _forceSyncShapes; // force synching of shape data to disk
   TRI_voc_size_t _defaultMaximalSize;
 
   TRI_read_write_lock_t _lock;
@@ -374,13 +375,21 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t _authInfo;
   TRI_read_write_lock_t _authInfoLock;
 
-  sig_atomic_t _active; // 0 = inactive, 1 = normal operation, 2 = in shutdown process
+  // state of the database
+  // 0 = inactive
+  // 1 = normal operation/running
+  // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
+  // 3 = shutdown in progress/waiting for cleanup thread to finish
+  sig_atomic_t _state; 
+
   TRI_thread_t _synchroniser;
   TRI_thread_t _compactor;
+  TRI_thread_t _cleanup;
 
   struct TRI_shadow_store_s* _cursors;
   TRI_associative_pointer_t* _functions; 
 
+  TRI_condition_t _cleanupCondition;
   TRI_condition_t _syncWaitersCondition;
   int64_t _syncWaiters;  
 }
@@ -401,7 +410,7 @@ typedef enum {
 TRI_vocbase_col_status_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection container
+/// @brief collection container
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_col_s {
@@ -415,7 +424,7 @@ typedef struct TRI_vocbase_col_s {
 
   TRI_read_write_lock_t _lock;               // lock protecting the status
   TRI_vocbase_col_status_e _status;          // status of the collection
-  struct TRI_doc_collection_s* _collection;  // NULL or pointer to loaded collection
+  struct TRI_primary_collection_s* _collection;  // NULL or pointer to loaded collection
 }
 TRI_vocbase_col_t;
 
@@ -436,7 +445,7 @@ TRI_vocbase_col_t;
 /// @brief checks if a collection is allowed
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_IsAllowedCollectionName (struct TRI_col_parameter_s*, char const*);
+bool TRI_IsAllowedCollectionName (struct TRI_col_parameter_s*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
@@ -454,7 +463,7 @@ void TRI_UpdateTickVocBase (TRI_voc_tick_t tick);
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_msync (int fd, char const* begin, char const* end);
+bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -500,10 +509,22 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const
 TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a (document) collection by name
+/// @brief finds a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a primary collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an edge collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set

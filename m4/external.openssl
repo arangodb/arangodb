@@ -4,17 +4,6 @@ dnl ----------------------------------------------------------------------------
 dnl option for SSL support
 dnl -----------------------------------------------------------------------------------------
 
-AC_ARG_ENABLE(ssl,
-  AC_HELP_STRING([--enable-ssl], [enable ssl support (default: yes)]),
-
-  if test "$enableval" = "yes";  then
-    tr_OPENSSL="yes";
-  else
-    tr_OPENSSL="no";
-  fi,
-  tr_OPENSSL="yes"
-)
-
 AC_ARG_WITH(openssl-inc,
   AS_HELP_STRING([--with-openssl-inc=DIR], [where the OpenSSL header files are located]),
   OPENSSL_CPPFLAGS="-I$withval"
@@ -53,66 +42,62 @@ dnl ----------------------------------------------------------------------------
 dnl check for header and library
 dnl -----------------------------------------------------------------------------------------
 
-if test "$tr_OPENSSL" = "yes";  then
-  AC_CHECK_HEADERS([openssl/ssl.h])
+AC_CHECK_HEADERS([openssl/ssl.h])
 
-  AC_CHECK_LIB([crypto], [CRYPTO_get_ex_data],
-    OPENSSL_LIBS="-lcrypto $OPENSSL_LIBS",
-    AC_MSG_ERROR([please install the OpenSSL library]),
-    [-lz $LIBS])
+AC_CHECK_LIB([crypto], [CRYPTO_get_ex_data],
+  OPENSSL_LIBS="-lcrypto $OPENSSL_LIBS",
+  AC_MSG_ERROR([please install the OpenSSL library]),
+  [-lz $LIBS])
 
-  AC_CHECK_LIB([ssl], [SSL_get_error],
-    OPENSSL_LIBS="-lssl $OPENSSL_LIBS",
-    AC_MSG_ERROR([Please install the OpenSSL library]),
-    [-lcrypto -lz -ldl $LIBS])
+AC_CHECK_LIB([ssl], [SSL_get_error],
+  OPENSSL_LIBS="-lssl $OPENSSL_LIBS",
+  AC_MSG_ERROR([Please install the OpenSSL library]),
+  [-lcrypto -lz -ldl $LIBS])
 
-  dnl check if SSLv23_method returns a const method
-  AC_MSG_CHECKING([return type of SSLv23_method])
-  LIBS="-lcrypto -lssl -lz -ldl $LIBS"
-  AC_TRY_COMPILE([#include <openssl/ssl.h>],
-                 [SSL_METHOD* meth = SSLv23_method();],
-                 tr_OPENSSL_NEEDS_CONST=no,
-                 tr_OPENSSL_NEEDS_CONST=yes)
+dnl check if SSLv23_method returns a const method
+AC_MSG_CHECKING([return type of SSLv23_method])
+LIBS="-lcrypto -lssl -lz -ldl $LIBS"
+AC_TRY_COMPILE([#include <openssl/ssl.h>],
+               [SSL_METHOD* meth = SSLv23_method();],
+               tr_OPENSSL_NEEDS_CONST=no,
+               tr_OPENSSL_NEEDS_CONST=yes)
 
-  if test "x$tr_OPENSSL_NEEDS_CONST" = "xyes";  then
-    AC_MSG_RESULT([SSL_METHOD const*])
-    AC_DEFINE_UNQUOTED(OPENSSL_NEEDS_CONST, 1, [true if SSLv23_method return SSL_METHOD const*])
-  else
-    AC_MSG_RESULT([SSL_METHOD*])
-  fi
+if test "x$tr_OPENSSL_NEEDS_CONST" = "xyes";  then
+  AC_MSG_RESULT([SSL_METHOD const*])
+  AC_DEFINE_UNQUOTED(OPENSSL_NEEDS_CONST, 1, [true if SSLv23_method return SSL_METHOD const*])
+else
+  AC_MSG_RESULT([SSL_METHOD*])
+fi
 
-  dnl check if openssl was compiled using zlib 
-  if test "x$tr_STATIC_PROGRAMS" = xyes;  then
-    LDFLAGS="$LDFLAGS $lt_prog_compiler_static"
+dnl check if openssl was compiled using zlib 
+if test "x$tr_STATIC_PROGRAMS" = xyes;  then
+  LDFLAGS="$LDFLAGS $lt_prog_compiler_static"
 
-    AC_MSG_CHECKING([if OpenSSL requires static zlib])
+  AC_MSG_CHECKING([if OpenSSL requires static zlib])
 
-    AC_LINK_IFELSE([AC_LANG_PROGRAM(
-    [[
+  AC_LINK_IFELSE([AC_LANG_PROGRAM(
+  [[
 #include <openssl/ssl.h>
-    ]],
-    [[
-      SSL_library_init();
-    ]])],
-    [tr_OPENSSL_NEEDS_ZLIB=no],
-    [tr_OPENSSL_NEEDS_ZLIB=yes])
+  ]],
+  [[
+    SSL_library_init();
+  ]])],
+  [tr_OPENSSL_NEEDS_ZLIB=no],
+  [tr_OPENSSL_NEEDS_ZLIB=yes])
 
-    AC_MSG_RESULT($tr_OPENSSL_NEEDS_ZLIB)
+  AC_MSG_RESULT($tr_OPENSSL_NEEDS_ZLIB)
 
-    if test "x$tr_OPENSSL_NEEDS_ZLIB" = "xyes";  then
-      AC_CHECK_LIB([z], [zError],
-          OPENSSL_LIBS="$OPENSSL_LIBS -lz",
-          AC_MSG_ERROR([please install the static zlib library]))
-    fi
+  if test "x$tr_OPENSSL_NEEDS_ZLIB" = "xyes";  then
+    AC_CHECK_LIB([z], [zError],
+        OPENSSL_LIBS="$OPENSSL_LIBS -lz",
+        AC_MSG_ERROR([please install the static zlib library]))
   fi
 fi
 
-if test "x$tr_OPENSSL" = xyes;  then
-  TR_ABSOLUTE_LIBRARIES([ssl], [OPENSSL_LIBS])
+TR_ABSOLUTE_LIBRARIES([ssl], [OPENSSL_LIBS])
 
-  if test "x$tr_libraries_found" != xyes;  then
-    AC_MSG_ERROR([Please install the OpenSSL library])
-  fi
+if test "x$tr_libraries_found" != xyes;  then
+  AC_MSG_ERROR([Please install the OpenSSL library])
 fi
 
 dnl -----------------------------------------------------------------------------------------
@@ -125,8 +110,6 @@ TR_STATIC_LIBRARY([ssl], [OPENSSL_LIBS])
 dnl -----------------------------------------------------------------------------------------
 dnl add substitutions
 dnl -----------------------------------------------------------------------------------------
-
-AM_CONDITIONAL(ENABLE_OPENSSL, test "x$tr_OPENSSL" = "xyes")
 
 AC_SUBST(OPENSSL_CPPFLAGS)
 AC_SUBST(OPENSSL_LDFLAGS)
@@ -148,7 +131,7 @@ main () {
 _ACEOF
 AC_MSG_CHECKING([OPENSSL version])
 eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 " " $5 " " $6 " " $7 " " $8 " " $9}' > conftest.output
-TRI_OPENSSL_VERSION=`cat conftest.output`
+TRI_OPENSSL_VERSION=`head -1 conftest.output | sed -e 's: *$::'`
 AC_MSG_RESULT([$TRI_OPENSSL_VERSION])
 rm -f conftest*
 
@@ -166,16 +149,13 @@ dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------
 
-if test "x$tr_OPENSSL" = xyes;  then
-  LIB_INFO="$LIB_INFO|OPENSSL VERSION: ${TRI_OPENSSL_VERSION}"
+LIB_INFO="$LIB_INFO|OPENSSL VERSION: ${TRI_OPENSSL_VERSION}"
 
-  FLAG_INFO="$FLAG_INFO|OPENSSL_CPPFLAGS: ${OPENSSL_CPPFLAGS}"
-  FLAG_INFO="$FLAG_INFO|OPENSSL_LDFLAGS:  ${OPENSSL_LDFLAGS}"
-  FLAG_INFO="$FLAG_INFO|OPENSSL_LIBS:     ${OPENSSL_LIBS}"
-  FLAG_INFO="$FLAG_INFO|."
-else
-  LIB_INFO="$LIB_INFO|OPENSSL VERSION: disabled"
-fi
+LIB_INFO="$LIB_INFO|OPENSSL_CPPFLAGS: ${OPENSSL_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|OPENSSL_LDFLAGS:  ${OPENSSL_LDFLAGS}"
+LIB_INFO="$LIB_INFO|OPENSSL_LIBS:     ${OPENSSL_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
 
 dnl Local Variables:
 dnl mode: outline-minor

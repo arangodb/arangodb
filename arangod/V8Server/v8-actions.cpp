@@ -186,7 +186,7 @@ static void ParseActionOptionsParameter (TRI_v8_global_t* v8g,
   if (parameter == "collection") {
     p = TRI_ACT_COLLECTION;
   }
-  if (parameter == "collection-name") {
+  else if (parameter == "collection-name") {
     p = TRI_ACT_COLLECTION_NAME;
   }
   else if (parameter == "collection-identifier") {
@@ -304,8 +304,19 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   //        },
   //
   //        "requestType" : "GET",
-  //        "requestBody" : "... only for PUT and POST ..."
+  //        "requestBody" : "... only for PUT and POST ...",
+  //        "user" : "authenticatedUser"
   //      }
+
+  // create user or null
+  string const& user = request->user();
+
+  if (user.empty()) {
+    req->Set(v8g->UserKey, v8::Null());
+  }
+  else {
+    req->Set(v8g->UserKey, v8::String::New(user.c_str()));
+  }
 
   // copy prefix
   string path = request->prefix();
@@ -355,6 +366,10 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       req->Set(v8g->RequestBodyKey, v8::String::New(request->body()));
       break;
     
+    case HttpRequest::HTTP_REQUEST_PATCH:
+      req->Set(v8g->RequestTypeKey, v8g->PatchConstant);
+      break;
+
     case HttpRequest::HTTP_REQUEST_DELETE:
       req->Set(v8g->RequestTypeKey, v8g->DeleteConstant);
       break;
@@ -461,7 +476,8 @@ static HttpResponse* ExecuteActionVocbase (TRI_vocbase_t* vocbase,
     HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
     if (res->Has(v8g->ResponseCodeKey)) {
-      code = (HttpResponse::HttpResponseCode) TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey));
+      // Windows has issues with converting from a double to an enumeration type
+      code = (HttpResponse::HttpResponseCode) ((int) (TRI_ObjectToDouble(res->Get(v8g->ResponseCodeKey))));
     }
 
     HttpResponse* response = new HttpResponse(code);
@@ -558,7 +574,7 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   }
 
   // extract the action name
-  v8::String::Utf8Value utf8name(argv[0]);
+  TRI_Utf8ValueNFC utf8name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*utf8name == 0) {
     return scope.Close(v8::ThrowException(v8::String::New("<name> must be an UTF8 name")));
@@ -711,10 +727,12 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context, ApplicationV8* applicat
   v8g->ResponseCodeKey = v8::Persistent<v8::String>::New(v8::String::New("responseCode"));
   v8g->SuffixKey = v8::Persistent<v8::String>::New(v8::String::New("suffix"));
   v8g->TransformationsKey = v8::Persistent<v8::String>::New(v8::String::New("transformations"));
+  v8g->UserKey = v8::Persistent<v8::String>::New(v8::String::New("user"));
 
   v8g->DeleteConstant = v8::Persistent<v8::String>::New(v8::String::New("DELETE"));
   v8g->GetConstant = v8::Persistent<v8::String>::New(v8::String::New("GET"));
   v8g->HeadConstant = v8::Persistent<v8::String>::New(v8::String::New("HEAD"));
+  v8g->PatchConstant = v8::Persistent<v8::String>::New(v8::String::New("PATCH"));
   v8g->PostConstant = v8::Persistent<v8::String>::New(v8::String::New("POST"));
   v8g->PutConstant = v8::Persistent<v8::String>::New(v8::String::New("PUT"));
 }

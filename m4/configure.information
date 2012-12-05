@@ -17,7 +17,7 @@ fi
 if test "x$LIB_INFO" != "x";  then
   AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-  echo $LIB_INFO | tr "|" "\n" | sort | while read a; do
+  echo $LIB_INFO | tr "|" "\n" | while read a; do
     if test "x$a" != "x";  then
       AC_MSG_NOTICE([$[]a])
     fi
