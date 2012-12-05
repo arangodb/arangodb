@@ -214,7 +214,7 @@
 //////////////////////////////////////////////////////////////
 ///
 /// The client API or browser sends a HTTP request to the ArangoDB server and
-/// the server returns a HTTP response to the client. A HTTP requests consists
+/// the server returns a HTTP response to the client. A HTTP request consists
 /// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
 /// request path like @LIT{/hello/world}. For a real Web server there are a zillion
 /// of other thing to consider, we will ignore this for the moment. The HTTP
@@ -689,7 +689,7 @@
 ///         ...
 ///     },
 ///     "options": {
-///         "Hallo": "world"
+///         "Hallo": "World"
 ///     }
 /// }
 /// @endcode
@@ -810,7 +810,7 @@
 /// arangosh> db._routing.save({ 
 /// ........>   url: "/",
 /// ........>   action: {
-/// ........>     controller: "org/arangodb/actions", 
+/// ........>     controller: "org/arangodb/actions",
 /// ........>     do: "redirectRequest", 
 /// ........>     options: { 
 /// ........>       permanently: true,
