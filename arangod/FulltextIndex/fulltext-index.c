@@ -119,7 +119,7 @@ FTS_real_index;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a unicode character from UTF-8
+/// @brief get a unicode character number from a UTF-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetUnicode (uint8_t** ptr) {
@@ -127,24 +127,32 @@ static uint64_t GetUnicode (uint8_t** ptr) {
 
   c1 = **ptr;
   if (c1 < 128) {
+    // single byte
     (*ptr)++;
     return c1;
   }
 
+  // multi-byte
   if (c1 < 224) {
-    c1 = ((c1 - 192) << 6) + (*((*ptr) + 1) - 128);
+    c1 = ((c1 - 192) << 6) + 
+         (*((*ptr) + 1) - 128);
     (*ptr) += 2;
     return c1;
   }
 
   if (c1 < 240) {
-    c1 = ((c1 - 224) << 12) + ((*((*ptr) + 1) - 128) << 6) + (*((*ptr) + 2) - 128);
+    c1 = ((c1 - 224) << 12) + 
+         ((*((*ptr) + 1) - 128) << 6) + 
+         (*((*ptr) + 2) - 128);
     (*ptr) += 3;
     return c1;
   }
 
   if (c1 < 248) {
-    c1 = ((c1 - 240) << 18) + ((*((*ptr) + 1) - 128) << 12) + ((*((*ptr) + 2) - 128) << 6) + (*((*ptr) + 3) - 128);
+    c1 = ((c1 - 240) << 18) + 
+         ((*((*ptr) + 1) - 128) << 12) + 
+         ((*((*ptr) + 2) - 128) << 6) + 
+         (*((*ptr) + 3) - 128);
     (*ptr) += 4;
     return c1;
   }
@@ -157,27 +165,29 @@ static uint64_t GetUnicode (uint8_t** ptr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
-  FTS_real_index * ix;
-  FTS_texts_t *rawwords;
+  FTS_real_index* ix;
+  FTS_texts_t* rawwords;
   CTX ctx2a, ctx2b, x3ctx, x3ctxb;
-  STEX * stex;
-  ZSTR *zstrwl, *zstr2a, *zstr2b, *x3zstr, *x3zstrb;
+  STEX* stex;
+  ZSTR* zstrwl;
+  ZSTR* zstr2a;
+  ZSTR* zstr2b;
+  ZSTR* x3zstr;
+  ZSTR* x3zstrb;
   uint64_t letters[MAX_WORD_LENGTH + 2];
   uint64_t ixlet[MAX_WORD_LENGTH + 2];
   uint64_t kkey[MAX_WORD_LENGTH + 2];    /* for word *without* this letter */
   uint64_t kkey1[MAX_WORD_LENGTH + 2];   /* ix1 word whose last letter is this */
   int ixlen;
-  uint16_t * wpt;
+  uint16_t* wpt;
   uint64_t handle, newhan, oldhan;
   uint64_t kroot;
   uint64_t kroot1 = 0; /* initialise even if unused. this will prevent compiler warnings */
-  int nowords,wdx;
-  int i,j,len,j1,j2;
-  uint8_t * utf;
-  uint64_t unicode;
-  uint64_t tran,x64,oldlet, newlet;
+  int nowords, wdx;
+  int i, j, len;
+  uint64_t tran, x64, oldlet, newlet;
   uint64_t bkey = 0;
-  uint64_t docb,dock;
+  uint64_t docb, dock;
 
   ix = (FTS_real_index*) ftx;
   kroot = ZStrTuberK(ix->_index2, 0, 0, 0);
@@ -218,6 +228,9 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   x3zstrb = ZStrCons(35);
 
   for (i = 0; i< nowords; i++) {
+    uint64_t unicode;
+    uint8_t* utf;
+
     utf = rawwords->_texts[i];
     j = 0;
     ZStrClear(zstrwl);
@@ -276,7 +289,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
       }
 
       x64 = ZStrBitsOut(zstr2a, 1);
-      if(x64 == 1) {
+      if (x64 == 1) {
         // skip over the B-key into index 3  
         docb = ZStrDec(zstr2a, &zcbky);
       }
@@ -431,6 +444,8 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     }
         
     if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+      int j1, j2;
+
       for (j1 = 0; j1 < len; j1++) {
         kkey1[j1 + 1] = kroot1;
         for (j2 = j1; j2 >= 0; j2--) {
@@ -565,7 +580,7 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
     }
 
     tran = *(--wd);
-/*     Get the Z-string for the index-1 entry of this key */
+    // get the Z-string for the index-1 entry of this key 
     if (ZStrTuberRead(ix->_index1, kk1, zstr) == 1) {
       kk1 = NOTFOUND;
       break;
@@ -624,7 +639,7 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
     if (tran==0) {
       break;
     }
-/*     Get the Z-string for the index-2 entry of this key */
+    // get the Z-string for the index-2 entry of this key
     if (ZStrTuberRead(ix->_index2, kk2, zstr) == 1) {
       kk2 = NOTFOUND;
       break;
@@ -633,9 +648,9 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
     if (ZStrBitsOut(zstr, 1) == 1) {
       uint64_t docb;
 
-/*     skip over the B-key into index 3  */
+      // skip over the B-key into index 3
       docb = ZStrDec(zstr, &zcbky);
-/* silly use of docb to get rid of compiler warning  */
+      // silly use of docb to get rid of compiler warning  
       if (docb == 0xffffff) {
         // TODO: change to error code
         printf("impossible\n");
@@ -676,7 +691,7 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TODO
+/// @brief index recursion, complete matching
 /// for each query term, update zstra2 to only contain handles matching that
 /// also recursive index 2 handles kk2 to dochan STEX using zcdh 
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,26 +702,24 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
   ZSTR* zstr;
   CTX ctx2, ctx3;
   uint64_t newlet;
-  uint64_t x64; 
-  int j;
 
-  zstr2 = ZStrCons(10);  /* index 2 entry for this prefix */
-  zstr3 = ZStrCons(10);  /* index 3 entry for this prefix */
-                               /* if any  */
-  zstr = ZStrCons(2);  /* single doc handle work area */
+  // index 2 entry for this prefix 
+  zstr2 = ZStrCons(10); 
+  // index 3 entry for this prefix (if any)
+  zstr3 = ZStrCons(10); 
+  // single doc handle work area 
+  zstr = ZStrCons(2);  
 
-  j = ZStrTuberRead(ix->_index2, kk2, zstr2);
-  if (j == 1) {
+  if (ZStrTuberRead(ix->_index2, kk2, zstr2) == 1) {
     // TODO: change to return code
     printf("recursion failed to read kk2\n");
     exit(1);
   }
 
-  x64 = ZStrBitsOut(zstr2, 1);
-  if (x64 == 1) {
-/* process the documents into the STEX  */
-/* uses zcdh not LastEnc because it must sort into */
-/* numerical order                                 */
+  if (ZStrBitsOut(zstr2, 1) == 1) {
+    // process the documents into the STEX  
+    // uses zcdh not LastEnc because it must sort into 
+    // numerical order                                 
     uint64_t docb;
     uint64_t dock;
     uint64_t newhan;
@@ -762,24 +775,24 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TODO
+/// @brief index recursion, prefix matching
 ////////////////////////////////////////////////////////////////////////////////
 
 static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t* wd) {
   ZSTR* zstr;
   CTX ctx;
-  int j;
-  uint64_t newlet, kk2;
+  uint64_t newlet;
+  uint64_t kk2;
 
   kk2 = FindKKey2(ix,wd);
 
   if (kk2 != NOTFOUND) {
-    Ix2Recurs(dochan,ix,kk2);
+    Ix2Recurs(dochan, ix, kk2);
   }
 
-  zstr = ZStrCons(10);  /* index 1 entry for this prefix */
-  j = ZStrTuberRead(ix->_index1, kk1, zstr);
-  if (j == 1) {
+  // index 1 entry for this prefix 
+  zstr = ZStrCons(10);  
+  if (ZStrTuberRead(ix->_index1, kk1, zstr) == 1) {
     // TODO: make this return an error instead
     printf("recursion failed to read kk1\n");
     exit(1);
