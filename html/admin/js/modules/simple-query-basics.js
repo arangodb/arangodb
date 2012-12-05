@@ -1336,7 +1336,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones an all query
+/// @brief clones a near query
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryNear.prototype.clone = function () {
@@ -1520,7 +1520,7 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clones an all query
+/// @brief clones a within query
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQueryWithin.prototype.clone = function () {
@@ -1601,6 +1601,139 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             SIMPLE QUERY FULLTEXT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryFulltext (collection, attribute, query, iid) {
+  this._collection = collection;
+  this._attribute = attribute;
+  this._query = query;
+  this._index = (iid === undefined ? null : iid);
+ 
+  if (iid === undefined) {
+    var idx = collection.getIndexes();
+
+    for (var i = 0;  i < idx.length;  ++i) {
+      var index = idx[i];
+
+      if (index.type === "fulltext" && index.fields[0] == attribute) {
+        if (this._index === null) {
+          this._index = index.id;
+        }
+        else if (index.indexSubstrings && ! this._index.indexSubstrings) {
+          // prefer indexes that have substrings indexed
+          this._index = index.id;
+        }
+      }
+    }
+  }
+    
+  if (this._index === null) {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.message;
+    throw err;
+  }
+}
+
+SimpleQueryFulltext.prototype = new SimpleQuery();
+SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a fulltext query for a collection
+///
+/// @FUN{@FA{collection}.fulltext(@FA{attribute}, @FA{query})}
+////////////////////////////////////////////////////////////////////////////
+///
+/// This will find the documents from the collection's fulltext index that match the search
+/// query.
+///
+/// In order to use the @FN{fulltext} operator, a fulltext index must be defined for the
+/// collection, for the specified attribute. If multiple fulltext indexes are defined
+/// for the collection and attribute, the most capable one will be selected.
+///
+/// @EXAMPLES
+///
+/// To find all documents which contain the terms @LIT{foo} and @LIT{bar}:
+///
+/// @TINYEXAMPLE{simple-query-fulltext,complete match query}
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.fulltext = function (attribute, query) {
+  return new SimpleQueryFulltext(this, attribute, query);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryFulltext.prototype.clone = function () {
+  var query;
+
+  query = new SimpleQueryFulltext(this._collection, this._attribute, this._query, this._index);
+  query._skip = this._skip;
+  query._limit = this._limit;
+
+  return query;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryFulltext.prototype._PRINT = function () {
+  var text;
+
+  text = "SimpleQueryFulltext("
+       + this._collection.name()
+       + ", "
+       + this._attribute
+       + ", \""
+       + this._query
+       + "\")";
+  
+  if (this._skip !== null && this._skip !== 0) {
+    text += ".skip(" + this._skip + ")";
+  }
+
+  if (this._limit !== null) {
+    text += ".limit(" + this._limit + ")";
+  }
+
+  internal.output(text);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -1617,6 +1750,7 @@ exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryWithin = SimpleQueryWithin;
+exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

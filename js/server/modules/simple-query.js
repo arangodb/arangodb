@@ -315,7 +315,7 @@ SQ.SimpleQueryRange.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an all query
+/// @brief executes a near query
 ////////////////////////////////////////////////////////////////////////////////
 
 SQ.SimpleQueryNear.prototype.execute = function () {
@@ -377,14 +377,13 @@ SQ.SimpleQueryNear.prototype.execute = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an all query
+/// @brief executes a within query
 ////////////////////////////////////////////////////////////////////////////////
 
 SQ.SimpleQueryWithin.prototype.execute = function () {
   var result;
   var documents;
   var distances;
-  var limit;
 
   if (this._execution === null) {
     result = this._collection.WITHIN(this._index, this._latitude, this._longitude, this._radius);
@@ -396,6 +395,41 @@ SQ.SimpleQueryWithin.prototype.execute = function () {
         documents[i][this._distance] = distances[i];
       }
     }
+
+    this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, this._limit);
+    this._countQuery = result.documents.length - this._skip;
+    this._countTotal = result.documents.length;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             SIMPLE QUERY FULLTEXT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+SQ.SimpleQueryFulltext.prototype.execute = function () {
+  var result;
+  var documents;
+
+  if (this._execution === null) {
+    result = this._collection.FULLTEXT(this._index, this._query);
+    documents = result.documents;
 
     this._execution = new SQ.GeneralArrayCursor(result.documents, this._skip, this._limit);
     this._countQuery = result.documents.length - this._skip;
@@ -421,6 +455,7 @@ exports.SimpleQueryByExample = SQ.SimpleQueryByExample;
 exports.SimpleQueryGeo = SQ.SimpleQueryGeo;
 exports.SimpleQueryNear = SQ.SimpleQueryNear;
 exports.SimpleQueryWithin = SQ.SimpleQueryWithin;
+exports.SimpleQueryFulltext = SQ.SimpleQueryFulltext;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -2227,7 +2227,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
                                             v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  // expect: FULLTEXT(<index-id>, <query>)
+  // expect: FULLTEXT(<index-handle>, <query>)
   if (argv.Length() != 2) {
     return scope.Close(v8::ThrowException(
                          TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
@@ -2288,6 +2288,24 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
+///
+/// @FUN{@FA{collection}.FULLTEXT(@FA{index-handle}, @FA{query})}
+///
+/// The @FN{FULLTEXT} operator performs a fulltext search using the specified 
+/// index and the specified @FA{query}.
+///
+/// @FA{query} must contain a comma-separated list of words to look for.
+/// Each word can optionally be prefixed with one of the following command
+/// literals:
+/// - @LIT{prefix}: perform a prefix-search for the word following
+/// - @LIT{substring}: perform substring-matching for the word following. This 
+///   option is only supported for fulltext indexes that have been created with
+///   the @LIT{indexSubstrings} option
+/// - @LIT{complete}: only match the complete following word (this is the default)
+///
+/// @EXAMPLES
+///
+/// @verbinclude shell-simple-fulltext
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {

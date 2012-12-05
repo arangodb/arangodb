@@ -49,7 +49,7 @@ var API = "_api/simple/";
 /// Returns all documents of a collections. The call expects a JSON object
 /// as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - @LIT{collection}: The name of the collection to query.
 ///
 /// - @LIT{skip}: The number of documents to skip in the query (optional).
 ///
@@ -134,7 +134,7 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - @LIT{collection}: The name of the collection to query.
 ///
 /// - @LIT{latitude}: The latitude of the coordinate.
 ///
@@ -248,7 +248,7 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - @LIT{collection}: The name of the collection to query.
 ///
 /// - @LIT{latitude}: The latitude of the coordinate.
 ///
@@ -346,6 +346,92 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_fulltext
+/// @brief returns documents of a collection as a result of a fulltext query
+///
+/// @RESTHEADER{PUT /_api/simple/fulltext,executes simple query "fulltext"}
+///
+/// @REST{PUT /_api/simple/fulltext}
+///
+/// This will find all documents from the collection that match the fulltext
+/// query specified in @FA{query}.
+///
+/// In order to use the @FN{fulltext} operator, a fulltext index must be defined 
+/// for the collection and the specified attribute.
+///
+/// The call expects a JSON hash array as body with the following attributes:
+///
+/// - @LIT{collection}: The name of the collection to query.
+///
+/// - @LIT{attribute}: The attribute that contains the texts.
+///
+/// - @LIT{query}: The fulltext query.
+///
+/// - @LIT{skip}: The documents to skip in the query. (optional)
+///
+/// - @LIT{limit}: The maximal amount of documents to return. (optional)
+///
+/// Returns a cursor containing the result, see @ref HttpCursor for details.
+///
+/// @EXAMPLES
+///
+/// @verbinclude api-simple-fulltext
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "fulltext",
+  context : "api",
+
+  callback : function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
+      }
+      else {
+        var limit = body.limit;
+        var skip = body.skip;
+        var attribute = body.attribute;
+        var query = body.query;
+        var name = body.collection;
+        var collection = internal.db._collection(name);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (attribute === null || attribute === undefined) {
+          actions.badParameter(req, res, "attribute");
+        }
+        else if (query === null || query === undefined) {
+          actions.badParameter(req, res, "query");
+        }
+        else {
+          var result = collection.fulltext(attribute, query);
+          
+          if (skip !== null && skip !== undefined) {
+            result = result.skip(skip);
+          }
+          
+          if (limit !== null && limit !== undefined) {
+            result = result.limit(limit);
+          }
+          
+          actions.resultCursor(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize));
+        }
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_PUT_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
@@ -357,7 +443,7 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - @LIT{collection}: The name of the collection to query.
 ///
 /// - @LIT{example}: The example.
 ///
@@ -443,7 +529,7 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - @LIT{collection}: The name of the collection to query.
 ///
 /// - @LIT{example}: The example.
 ///
@@ -564,7 +650,7 @@ actions.defineHttp({
 ///
 /// The call expects a JSON hash array as body with the following attributes:
 ///
-/// - @LIT{collection}: The identifier or name of the collection to query.
+/// - @LIT{collection}: The name of the collection to query.
 ///
 /// - @LIT{attribute}: The attribute path to check.
 ///
