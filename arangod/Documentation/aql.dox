@@ -977,6 +977,12 @@
 ///
 /// - @FN{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
 ///   with attributes @LIT{name} and @LIT{_id}.
+/// - @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document that id uniquely identified by
+///   the @FA{id}. ArangoDB will try to find the document using the @LIT{_id} value of the document
+///   in the specified collection. If there is a mismatch between the @FA{collection} passed and
+///   the collection specified in @FA{id}, then no document will be returned. Additionally, if the
+///   @FA{collection} matches the collection value specified in @FA{id} but the document cannot be
+///   found, no document will be returned.
 ///
 /// @section AqlOperations High-level operations
 ///
