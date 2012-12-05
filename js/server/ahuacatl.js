@@ -90,6 +90,10 @@ function AHUACATL_INDEX (collection, indexTypes) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_COLLECTION (name) {
+  if (typeof name !== 'string') {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "internal");
+  }
+
   if (name.substring(0, 1) === '_') {
     // system collections need to be accessed slightly differently as they
     // are not returned by the propertyGetter of db
@@ -107,6 +111,7 @@ function AHUACATL_NORMALIZE (value) {
   if (value === null || value === undefined) {
     return null;
   }
+
   if (typeof(value) !== "object") {
     return value;
   }
@@ -404,6 +409,19 @@ function AHUACATL_LIST (value) {
   }
 
   return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a document by its unique id
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_DOCUMENT (collection, id) {
+  try {
+    return AHUACATL_COLLECTION(collection).document(id);
+  }
+  catch (e) {
+    return undefined;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
