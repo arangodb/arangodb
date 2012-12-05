@@ -157,349 +157,358 @@ static uint64_t GetUnicode (uint8_t** ptr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
-    FTS_real_index * ix;
-    FTS_texts_t *rawwords;
-    CTX ctx2a, ctx2b, x3ctx, x3ctxb;
-    STEX * stex;
-    ZSTR *zstrwl, *zstr2a, *zstr2b, *x3zstr, *x3zstrb;
-    uint64_t letters[42];
-    uint64_t ixlet[42];
-    uint64_t kkey[42];    /* for word *without* this letter */
-    uint64_t kkey1[42];   /* ix1 word whose last letter is this */
-    int ixlen;
-    uint16_t * wpt;
-    uint64_t handle, newhan, oldhan;
-    uint64_t kroot;
-    uint64_t kroot1 = 0; /* initialise even if unused. this will prevent compiler warnings */
-    int nowords,wdx;
-    int i,j,len,j1,j2;
-    uint8_t * utf;
-    uint64_t unicode;
-    uint64_t tran,x64,oldlet, newlet;
-    uint64_t bkey = 0;
-    uint64_t docb,dock;
+  FTS_real_index * ix;
+  FTS_texts_t *rawwords;
+  CTX ctx2a, ctx2b, x3ctx, x3ctxb;
+  STEX * stex;
+  ZSTR *zstrwl, *zstr2a, *zstr2b, *x3zstr, *x3zstrb;
+  uint64_t letters[MAX_WORD_LENGTH + 2];
+  uint64_t ixlet[MAX_WORD_LENGTH + 2];
+  uint64_t kkey[MAX_WORD_LENGTH + 2];    /* for word *without* this letter */
+  uint64_t kkey1[MAX_WORD_LENGTH + 2];   /* ix1 word whose last letter is this */
+  int ixlen;
+  uint16_t * wpt;
+  uint64_t handle, newhan, oldhan;
+  uint64_t kroot;
+  uint64_t kroot1 = 0; /* initialise even if unused. this will prevent compiler warnings */
+  int nowords,wdx;
+  int i,j,len,j1,j2;
+  uint8_t * utf;
+  uint64_t unicode;
+  uint64_t tran,x64,oldlet, newlet;
+  uint64_t bkey = 0;
+  uint64_t docb,dock;
 
-    ix = (FTS_real_index *)ftx;
-    kroot=ZStrTuberK(ix->_index2,0,0,0);
-    if(ix->_options == FTS_INDEX_SUBSTRINGS)
-        kroot1=ZStrTuberK(ix->_index1,0,0,0);
-    kkey[0]=kroot;     /* origin of index 2 */
+  ix = (FTS_real_index*) ftx;
+  kroot = ZStrTuberK(ix->_index2, 0, 0, 0);
 
-/*     allocate the document handle  */
-    handle = ix->_firstFree;
-/* TBD what to do if no more handles  */
-    if(handle==0)
-    {
-        printf("Run out of document handles!\n");
-        return;
-    }
-    ix->_firstFree = ix->_handles[handle];
-    ix->_handles[handle]=docid;
-    ix->_handlesFree[handle]=0;
+  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+    kroot1 = ZStrTuberK(ix->_index1, 0, 0, 0);
+  }
+
+  // origin of index 2 
+  kkey[0] = kroot;     
+
+  // allocate the document handle 
+  handle = ix->_firstFree;
+  if (handle == 0) {
+    // TODO: what to do if no more handles
+    printf("Run out of document handles!\n");
+    return;
+  }
+
+  ix->_firstFree           = ix->_handles[handle];
+  ix->_handles[handle]     = docid;
+  ix->_handlesFree[handle] = 0;
     
-/*     Get the actual words from the caller  */
-    rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
-    if (rawwords == NULL) {
-      return;
+  // get the actual words from the caller 
+  rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
+  if (rawwords == NULL) {
+    return;
+  }
+
+  nowords = rawwords->_len;
+  // put the words into a STEX 
+
+  stex    = ZStrSTCons(2);  /* format 2=uint16 is all that there is! */
+  zstrwl  = ZStrCons(25);  /* 25 enough for word list  */
+  zstr2a  = ZStrCons(30);  /* 30 uint64's is always enough for ix2  */
+  zstr2b  = ZStrCons(30);
+  x3zstr  = ZStrCons(35);
+  x3zstrb = ZStrCons(35);
+
+  for (i = 0; i< nowords; i++) {
+    utf = rawwords->_texts[i];
+    j = 0;
+    ZStrClear(zstrwl);
+    unicode = GetUnicode(&utf);
+    while (unicode != 0) {
+      ZStrEnc(zstrwl, &zcutf, unicode);
+      unicode = GetUnicode(&utf);
+      j++;
+      if (j > MAX_WORD_LENGTH) {
+        break;
+      }
+    }
+    // terminate the word and insert into STEX
+    ZStrEnc(zstrwl, &zcutf, 0);
+    ZStrNormalize(zstrwl);
+    ZStrSTAppend(stex, zstrwl);
+  }
+
+  // sort them
+  ZStrSTSort(stex);
+  // set current length of word = 0 
+  ixlen = 0;
+
+  // for each word in the STEX
+  nowords = stex->cnt;
+  wpt = (uint16_t*) stex->list;
+  for (wdx = 0; wdx < nowords; wdx++) {
+    // get it out as a word  
+    ZStrInsert(zstrwl, wpt, 2);
+    len = 0;
+    while (1) {
+      letters[len] = ZStrDec(zstrwl, &zcutf);
+      if (letters[len] == 0) {
+        break;
+      }
+      len++;
     }
 
-    nowords=rawwords->_len;
-/*     Put the words into a STEX */
+    wpt += ZStrExtLen(wpt, 2);
+    // find out where it first differs from previous one 
+    for (j = 0; j < ixlen; j++) {
+      if (letters[j] != ixlet[j]) {
+        break;
+      }
+    }
 
-    stex=ZStrSTCons(2);  /* format 2=uint16 is all that there is! */
-    zstrwl=ZStrCons(25);  /* 25 enough for word list  */
-    zstr2a=ZStrCons(30);  /* 30 uint64's is always enough for ix2  */
-    zstr2b=ZStrCons(30);
-    x3zstr=ZStrCons(35);
-    x3zstrb=ZStrCons(35);
-    for(i=0;i<nowords;i++)
-    {
-        utf=rawwords->_texts[i];
-        j=0;
-        ZStrClear(zstrwl);
-        unicode=GetUnicode(&utf);
-        while(unicode!=0)
-        {
-            ZStrEnc(zstrwl,&zcutf,unicode);
-            unicode=GetUnicode(&utf);
-            j++;
-            if (j > MAX_WORD_LENGTH) {
+    // for every new letter in the word, get its K-key into array 
+    while (j < len) {
+      // obtain the translation of the letter  
+      tran = ZStrXlate(&zcutf, letters[j]);
+      // get the Z-string for the index-2 entry before this letter 
+      i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+      if (i == 1) {
+        // TODO: change to return an error
+        printf("Kkey not found - we're buggered\n");
+      }
+
+      x64 = ZStrBitsOut(zstr2a, 1);
+      if(x64 == 1) {
+        // skip over the B-key into index 3  
+        docb = ZStrDec(zstr2a, &zcbky);
+      }
+      // look to see if the letter is there 
+      ZStrCxClear(&zcdelt, &ctx2a);
+      newlet = 0;
+      while (1) {
+        oldlet = newlet;
+        newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+        if (newlet == oldlet) {
+          break;
+        }
+        bkey = ZStrDec(zstr2a, &zcbky);
+        if (newlet >= tran) {
+          break;
+        }
+      }
+
+      if (newlet != tran) {
+        // if not there, create a new index-2 entry for it  
+        bkey = ZStrTuberIns(ix->_index2, kkey[j], tran);
+        kkey[j + 1] = ZStrTuberK(ix->_index2, kkey[j], tran, bkey); 
+        // update old index-2 entry to insert new letter
+        ZStrCxClear(&zcdelt, &ctx2a);
+        ZStrCxClear(&zcdelt, &ctx2b);
+        i=ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+        ZStrClear(zstr2b);
+        x64=ZStrBitsOut(zstr2a, 1);
+        ZStrBitsIn(x64, 1, zstr2b);
+        if(x64 == 1) { 
+          // copy over the B-key into index 3 
+          docb = ZStrDec(zstr2a, &zcbky);
+          ZStrEnc(zstr2b, &zcbky, docb);
+        }
+
+        newlet = 0;
+        while (1) {
+          oldlet = newlet;
+          newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+          if (newlet == oldlet) {
+            break;
+          }
+          if (newlet > tran) {
+            break;
+          }
+          ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+          x64 = ZStrDec(zstr2a, &zcbky);
+          ZStrEnc(zstr2b, &zcbky, x64);
+        }
+        ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
+        ZStrEnc(zstr2b, &zcbky, bkey);
+        if (newlet == oldlet) {
+          ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
+        }
+        else {
+          while (newlet != oldlet) {
+            oldlet = newlet;
+            ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+            x64 = ZStrDec(zstr2a, &zcbky);
+            ZStrEnc(zstr2b, &zcbky, x64);
+            newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+          }
+          ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+        }
+        ZStrNormalize(zstr2b);
+        ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b);
+      }
+      else {
+        // if it is, get its KKey and put in (next) slot 
+        kkey[j + 1] = ZStrTuberK(ix->_index2, kkey[j], tran, bkey);
+      }
+      j++;
+    }
+    
+    // kkey[j] is kkey of whole word.
+    // so read the zstr from index2 
+    i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+    if (i == 1) {
+      // TODO: change to return an error 
+      printf("Kkey not found - we're running for cover\n");
+    }
+    // is there already an index-3 entry available? 
+    x64 = ZStrBitsOut(zstr2a, 1);
+    // If so, get its b-key  
+    if(x64 == 1) {
+      docb = ZStrDec(zstr2a, &zcbky);
+    }
+    else {
+      docb = ZStrTuberIns(ix->_index3, kkey[j], 0);
+      // put it into index 2 
+      ZStrCxClear(&zcdelt, &ctx2a);
+      ZStrCxClear(&zcdelt, &ctx2b);
+      i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+      ZStrClear(zstr2b);
+      x64 = ZStrBitsOut(zstr2a, 1);
+      ZStrBitsIn(1, 1, zstr2b);
+      ZStrEnc(zstr2b, &zcbky, docb);
+      newlet = 0;
+      while (1) {
+        oldlet = newlet;
+        newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+        if (newlet == oldlet) {
+          break;
+        }
+        ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+        x64 = ZStrDec(zstr2a, &zcbky);
+        ZStrEnc(zstr2b,&zcbky, x64);
+      }
+      ZStrNormalize(zstr2b);
+      ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b); 
+    }
+    dock = ZStrTuberK(ix->_index3, kkey[j], 0, docb);
+    // insert doc handle into index 3
+    i = ZStrTuberRead(ix->_index3, dock, x3zstr);
+    ZStrClear(x3zstrb);
+    if (i == 1) {
+      // TODO: change to return an error 
+      printf("Kkey not found in ix3 - we're doomed\n");
+    }
+    ZStrCxClear(&zcdoc, &x3ctx);
+    ZStrCxClear(&zcdoc, &x3ctxb);
+    newhan = 0;
+    while (1) {
+      oldhan = newhan;
+      newhan = ZStrCxDec(x3zstr, &zcdoc, &x3ctx);
+      if (newhan == oldhan) {
+        break;
+      }
+      if (newhan > handle) {
+        break;
+      }
+      ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan);
+    }
+    ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle);
+    if (newhan == oldhan) {
+      ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle);
+    }
+    else {
+      ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan);
+      while (newhan != oldhan) {
+        oldhan = newhan;
+        newhan = ZStrCxDec(x3zstr, &zcdoc, &x3ctx);
+        ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan);
+      }
+    }
+    ZStrNormalize(x3zstrb);
+    ZStrTuberUpdate(ix->_index3, dock, x3zstrb); 
+    // copy the word into ix
+    ixlen = len;
+    for (j = 0; j < len; j++) {
+      ixlet[j] = letters[j];
+    }
+        
+    if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+      for (j1 = 0; j1 < len; j1++) {
+        kkey1[j1 + 1] = kroot1;
+        for (j2 = j1; j2 >= 0; j2--) {
+          tran = ZStrXlate(&zcutf, ixlet[j2]);
+          i = ZStrTuberRead(ix->_index1, kkey1[j2 + 1], zstr2a);
+          if (i == 1) {
+            // TODO: change to return an error 
+            printf("Kkey not found - we're in trouble!\n");
+          }
+          // look to see if the letter is there  
+          ZStrCxClear(&zcdelt, &ctx2a);
+          newlet = 0;
+          while (1) {
+            oldlet = newlet;
+            newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+            if (newlet == oldlet) {
               break;
             }
-        }
-/* terminate the word and insert into STEX  */
-        ZStrEnc(zstrwl,&zcutf,0);
-        ZStrNormalize(zstrwl);
-        ZStrSTAppend(stex,zstrwl);
-    }
-/*     Sort them */
-    ZStrSTSort(stex);
-/*     Set current length of word = 0 */
-    ixlen=0;
-/*     For each word in the STEX */
-    nowords=stex->cnt;
-    wpt=(uint16_t *) stex->list;
-    for(wdx=0;wdx<nowords;wdx++)
-    {
-/*         get it out as a word  */
-        ZStrInsert(zstrwl,wpt,2);
-        len=0;
-        while(1)
-        {
-            letters[len]=ZStrDec(zstrwl,&zcutf);
-            if(letters[len]==0) break;
-            len++;
-        }
-
-        wpt+=ZStrExtLen(wpt,2);
-/*         find out where it first differs from previous one */
-        for(j=0;j<ixlen;j++)
-        {
-            if(letters[j]!=ixlet[j]) break;
-        }
-/* For every new letter in the word, get its K-key into array */
-        while(j<len)
-        {
-/*     obtain the translation of the letter  */
-            tran=ZStrXlate(&zcutf,letters[j]);
-/*     Get the Z-string for the index-2 entry before this letter */
-            i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
-            if(i==1)
-            {
-                printf("Kkey not found - we're buggered\n");
+            bkey = ZStrDec(zstr2a, &zcbky);
+            if (newlet >= tran) {
+              break;
             }
-
-            x64=ZStrBitsOut(zstr2a,1);
-            if(x64==1) 
-            {
-/*     skip over the B-key into index 3  */
-                docb=ZStrDec(zstr2a,&zcbky);
-            }
-/*     look to see if the letter is there  */
-            ZStrCxClear(&zcdelt, &ctx2a);
-            newlet=0;
-            while(1)
-            {
-                oldlet=newlet;
-                newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                if(newlet==oldlet) break;
-                bkey=ZStrDec(zstr2a,&zcbky);
-                if(newlet>=tran) break;
-            }
-            if(newlet != tran)
-            {
-/*       if not there, create a new index-2 entry for it  */
-                bkey=ZStrTuberIns(ix->_index2,kkey[j],tran);
-                kkey[j+1]=ZStrTuberK(ix->_index2,kkey[j],tran,bkey); 
-/*     update old index-2 entry to insert new letter  */
-                ZStrCxClear(&zcdelt, &ctx2a);
-                ZStrCxClear(&zcdelt, &ctx2b);
-                i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
-                ZStrClear(zstr2b);
-                x64=ZStrBitsOut(zstr2a,1);
-                ZStrBitsIn(x64,1,zstr2b);
-                if(x64==1) 
-                {
-/*     copy over the B-key into index 3  */
-                    docb=ZStrDec(zstr2a,&zcbky);
-                    ZStrEnc(zstr2b,&zcbky,docb);
-                }
-                newlet=0;
-                while(1)
-                {
-                    oldlet=newlet;
-                    newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                    if(newlet==oldlet) break;
-                    if(newlet>tran) break;
-                    ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                    x64=ZStrDec(zstr2a,&zcbky);
-                    ZStrEnc(zstr2b,&zcbky,x64);
-                }
-                ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,tran);
-                ZStrEnc(zstr2b,&zcbky,bkey);
-                if(newlet==oldlet)
-                {
-                    ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,tran);
-                }
-                else
-                {
-                    while(newlet!=oldlet)
-                    {
-                        oldlet=newlet;
-                        ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                        x64=ZStrDec(zstr2a,&zcbky);
-                        ZStrEnc(zstr2b,&zcbky,x64);
-                        newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                    }
-                    ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                }
-                ZStrNormalize(zstr2b);
-                ZStrTuberUpdate(ix->_index2,kkey[j],zstr2b);
-            }
-            else
-            {
-/*     - if it is, get its KKey and put in (next) slot */
-                kkey[j+1]=ZStrTuberK(ix->_index2,kkey[j],tran,bkey);
-            }
-            j++;
-        }
-/*      kkey[j] is kkey of whole word.     */
-/*      so read the zstr from index2       */
-        i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
-        if(i==1)
-        {
-            printf("Kkey not found - we're running for cover\n");
-        }
-/*  is there already an index-3 entry available?  */
-        x64=ZStrBitsOut(zstr2a,1);
-/*     If so, get its b-key  */
-        if(x64==1)
-        {
-            docb=ZStrDec(zstr2a,&zcbky);
-        }
-        else
-        {
-            docb=ZStrTuberIns(ix->_index3,kkey[j],0);
-/*     put it into index 2 */
+          }
+          if (newlet != tran) {
+            // if not there, create a new index-1 entry for it  
+            bkey = ZStrTuberIns(ix->_index1, kkey1[j2 + 1], tran);
+            kkey1[j2] = ZStrTuberK(ix->_index1, kkey1[j2 + 1], tran, bkey); 
+            // update old index-1 entry to insert new letter
             ZStrCxClear(&zcdelt, &ctx2a);
             ZStrCxClear(&zcdelt, &ctx2b);
-            i=ZStrTuberRead(ix->_index2,kkey[j],zstr2a);
+            i = ZStrTuberRead(ix->_index1, kkey1[j2 + 1], zstr2a);
             ZStrClear(zstr2b);
-            x64=ZStrBitsOut(zstr2a,1);
-            ZStrBitsIn(1,1,zstr2b);
-            ZStrEnc(zstr2b,&zcbky,docb);
-            newlet=0;
-            while(1)
-            {
-                oldlet=newlet;
-                newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                if(newlet==oldlet) break;
-                ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                x64=ZStrDec(zstr2a,&zcbky);
-                ZStrEnc(zstr2b,&zcbky,x64);
+            newlet = 0;
+            while (1) {
+              oldlet = newlet;
+              newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+              if (newlet == oldlet) {
+                break;
+              }
+              if (newlet > tran) {
+                break;
+              }
+              ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+              x64 = ZStrDec(zstr2a, &zcbky);
+              ZStrEnc(zstr2b, &zcbky, x64);
+            }
+            ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
+            ZStrEnc(zstr2b, &zcbky, bkey);
+            if (newlet == oldlet) {
+              ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
+            }
+            else {
+              while (newlet != oldlet) {
+                oldlet = newlet;
+                ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+                x64 = ZStrDec(zstr2a, &zcbky);
+                ZStrEnc(zstr2b, &zcbky, x64);
+                newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
+              }
+              ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
             }
             ZStrNormalize(zstr2b);
-            ZStrTuberUpdate(ix->_index2,kkey[j],zstr2b); 
+            ZStrTuberUpdate(ix->_index1, kkey1[j2 + 1], zstr2b);
+          }
+          else {
+            kkey1[j2] = ZStrTuberK(ix->_index1, kkey1[j2 + 1], tran, bkey);
+          }
         }
-        dock=ZStrTuberK(ix->_index3,kkey[j],0,docb);
-/*     insert doc handle into index 3      */
-        i=ZStrTuberRead(ix->_index3,dock,x3zstr);
-        ZStrClear(x3zstrb);
-        if(i==1)
-        {
-            printf("Kkey not found in ix3 - we're doomed\n");
-        }
-        ZStrCxClear(&zcdoc, &x3ctx);
-        ZStrCxClear(&zcdoc, &x3ctxb);
-        newhan=0;
-        while(1)
-        {
-            oldhan=newhan;
-            newhan=ZStrCxDec(x3zstr,&zcdoc,&x3ctx);
-            if(newhan==oldhan) break;
-            if(newhan>handle) break;
-            ZStrCxEnc(x3zstrb,&zcdoc,&x3ctxb,newhan);
-        }
-        ZStrCxEnc(x3zstrb,&zcdoc,&x3ctxb,handle);
-        if(newhan==oldhan)
-            ZStrCxEnc(x3zstrb,&zcdoc,&x3ctxb,handle);
-        else
-        {
-            ZStrCxEnc(x3zstrb,&zcdoc,&x3ctxb,newhan);
-            while(newhan!=oldhan)
-            {
-                oldhan=newhan;
-                newhan=ZStrCxDec(x3zstr,&zcdoc,&x3ctx);
-                ZStrCxEnc(x3zstrb,&zcdoc,&x3ctxb,newhan);
-            }
-        }
-        ZStrNormalize(x3zstrb);
-        ZStrTuberUpdate(ix->_index3,dock,x3zstrb); 
-/*      copy the word into ix                */
-        ixlen=len;
-        for(j=0;j<len;j++) ixlet[j]=letters[j];
-        
-        if(ix->_options==FTS_INDEX_SUBSTRINGS)
-        {
-            for(j1=0;j1<len;j1++)
-            {
-                kkey1[j1+1]=kroot1;
-                for(j2=j1;j2>=0;j2--)
-                {
-                    tran=ZStrXlate(&zcutf,ixlet[j2]);
-                    i=ZStrTuberRead(ix->_index1,kkey1[j2+1],zstr2a);
-                    if(i==1)
-                    {
-          printf("Kkey not found - we're in trouble!\n");
-                    }
-/*     look to see if the letter is there  */
-                    ZStrCxClear(&zcdelt, &ctx2a);
-                    newlet=0;
-                    while(1)
-                    {
-                        oldlet=newlet;
-                        newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                        if(newlet==oldlet) break;
-                        bkey=ZStrDec(zstr2a,&zcbky);
-                        if(newlet>=tran) break;
-                    }
-                    if(newlet != tran)
-                    {
-
-/*       if not there, create a new index-1 entry for it  */
-                        bkey=ZStrTuberIns(ix->_index1,kkey1[j2+1],tran);
-                        kkey1[j2]=ZStrTuberK(ix->_index1,kkey1[j2+1],tran,bkey); 
-/*     update old index-1 entry to insert new letter  */
-                        ZStrCxClear(&zcdelt, &ctx2a);
-                        ZStrCxClear(&zcdelt, &ctx2b);
-                        i=ZStrTuberRead(ix->_index1,kkey1[j2+1],zstr2a);
-                        ZStrClear(zstr2b);
-                        newlet=0;
-                        while(1)
-                        {
-                            oldlet=newlet;
-                            newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                            if(newlet==oldlet) break;
-                            if(newlet>tran) break;
-                            ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                            x64=ZStrDec(zstr2a,&zcbky);
-                            ZStrEnc(zstr2b,&zcbky,x64);
-                        }
-                        ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,tran);
-                        ZStrEnc(zstr2b,&zcbky,bkey);
-                        if(newlet==oldlet)
-                        {
-                            ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,tran);
-                        }
-                        else
-                        {
-                            while(newlet!=oldlet)
-                            {
-                                oldlet=newlet;
-                                ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                                x64=ZStrDec(zstr2a,&zcbky);
-                                ZStrEnc(zstr2b,&zcbky,x64);
-                                newlet=ZStrCxDec(zstr2a,&zcdelt,&ctx2a);
-                            }
-                            ZStrCxEnc(zstr2b,&zcdelt,&ctx2b,newlet);
-                        }
-                        ZStrNormalize(zstr2b);
-                        ZStrTuberUpdate(ix->_index1,kkey1[j2+1],zstr2b);
-                    }
-                    else
-                    {
-                        kkey1[j2]=ZStrTuberK(ix->_index1,kkey1[j2+1],tran,bkey);
-                    }
-                }
-            }
-        }
+      }
     }
-    ZStrSTDest(stex);
-    ZStrDest(zstrwl);
-    ZStrDest(zstr2a);
-    ZStrDest(zstr2b);
-    ZStrDest(x3zstr);
-    ZStrDest(x3zstrb);
+  }
+
+  ZStrSTDest(stex);
+  ZStrDest(zstrwl);
+  ZStrDest(zstr2a);
+  ZStrDest(zstr2b);
+  ZStrDest(x3zstr);
+  ZStrDest(x3zstrb);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,7 +559,6 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
   while (1) {
     uint64_t tran;
     uint64_t newlet;
-    int j;
 
     if (wd == word) {
       break;
@@ -558,8 +566,7 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
 
     tran = *(--wd);
 /*     Get the Z-string for the index-1 entry of this key */
-    j = ZStrTuberRead(ix->_index1, kk1, zstr);
-    if (j == 1) {
+    if (ZStrTuberRead(ix->_index1, kk1, zstr) == 1) {
       kk1 = NOTFOUND;
       break;
     }
@@ -610,30 +617,27 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
 
   while (1) {
     uint64_t tran;
-    uint64_t x64;
     uint64_t newlet;
     uint64_t bkey;
-    int j;
 
     tran = *(word++);
     if (tran==0) {
       break;
     }
 /*     Get the Z-string for the index-2 entry of this key */
-    j = ZStrTuberRead(ix->_index2, kk2, zstr);
-    if (j == 1) {
-      kk2=NOTFOUND;
+    if (ZStrTuberRead(ix->_index2, kk2, zstr) == 1) {
+      kk2 = NOTFOUND;
       break;
     }
 
-    x64=ZStrBitsOut(zstr, 1);
-    if (x64 == 1) {
+    if (ZStrBitsOut(zstr, 1) == 1) {
       uint64_t docb;
 
 /*     skip over the B-key into index 3  */
       docb = ZStrDec(zstr, &zcbky);
 /* silly use of docb to get rid of compiler warning  */
       if (docb == 0xffffff) {
+        // TODO: change to error code
         printf("impossible\n");
       }
     }
@@ -712,6 +716,7 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
     dock = ZStrTuberK(ix->_index3, kk2, 0, docb);
     i = ZStrTuberRead(ix->_index3, dock, zstr3);
     if (i == 1) {
+      // TODO: make this return an error instead
       printf("Kkey not in ix3 - we're doomed\n");
     }
     ZStrCxClear(&zcdoc, &ctx3);
@@ -775,8 +780,8 @@ static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t*
   zstr = ZStrCons(10);  /* index 1 entry for this prefix */
   j = ZStrTuberRead(ix->_index1, kk1, zstr);
   if (j == 1) {
+    // TODO: make this return an error instead
     printf("recursion failed to read kk1\n");
-    // TODO: change to error code
     exit(1);
   }
 
