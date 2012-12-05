@@ -189,6 +189,9 @@ replDict["e_highlight"] = ""
 replDict["s_sp"] = " "
 replDict["e_sp"] = ""
 
+replDict["s_ndash"] = "--"
+replDict["e_ndash"] = ""
+
 ################################################################################
 #### @brief generate code for text value
 ################################################################################
@@ -260,6 +263,7 @@ gencDict["codeline"] = True
 gencDict["highlight"] = True
 
 gencDict["sp"] = False
+gencDict["ndash"] = False
 
 ################################################################################
 #### @brief table entry
@@ -344,7 +348,12 @@ def start_element(name, attrs):
     elif name == "itemizedlist": listlevel = listlevel + 1
     elif name == "orderedlist": listlevel = listlevel + 1
     #endif
-    
+
+    if name == "heading":
+        titlevel = int(attrs["level"])
+        name = "title"
+    #endif
+
     text = ""
 
     if name == "title":
@@ -407,6 +416,11 @@ def end_element(name):
     elif name == "orderedlist": listlevel = listlevel - 1
     #endif
     
+    if name == "heading":
+        titlevel = titlevel - 1
+        name = "title"
+    #endif
+        
     if name == "title":
         titafter = True
         text = replDict["e_%s_%d" % (name, titlevel)]
