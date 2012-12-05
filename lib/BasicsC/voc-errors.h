@@ -205,6 +205,9 @@ extern "C" {
 /// - 1570: @LIT{no suitable geo index found for geo restriction on '\%s'}
 ///   Will be raised when a geo restriction was specified but no suitable geo
 ///   index is found to resolve it.
+/// - 1571: @LIT{no suitable fulltext index found for fulltext query on '\%s'}
+///   Will be raised when a fulltext query is performed on a collection without
+///   a suitable fulltext index.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -1198,6 +1201,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_GEO_INDEX_MISSING                                 (1570)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1571: ERROR_QUERY_FULLTEXT_INDEX_MISSING
+///
+/// no suitable fulltext index found for fulltext query on '%s'
+///
+/// Will be raised when a fulltext query is performed on a collection without a
+/// suitable fulltext index.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING                            (1571)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

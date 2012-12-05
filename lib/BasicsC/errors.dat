@@ -129,6 +129,7 @@ ERROR_QUERY_DIVISION_BY_ZERO,1562,"division by zero","Will be raised when there 
 ERROR_QUERY_LIST_EXPECTED,1563,"list expected","Will be raised when a non-list operand is used for an operation that expects a list argument operand."
 ERROR_QUERY_FAIL_CALLED,1569,"FAIL(%s) called","Will be raised when the function FAIL() is called from inside a query."
 ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restriction on '%s'","Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it."
+ERROR_QUERY_FULLTEXT_INDEX_MISSING,1571,"no suitable fulltext index found for fulltext query on '%s'","Will be raised when a fulltext query is performed on a collection without a suitable fulltext index."
 
 ################################################################################
 ## ArangoDB cursor errors

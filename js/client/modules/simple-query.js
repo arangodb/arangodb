@@ -271,7 +271,7 @@ SQ.SimpleQueryRange.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an all query
+/// @brief executes a near query
 ////////////////////////////////////////////////////////////////////////////////
 
 SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
@@ -338,7 +338,7 @@ SQ.SimpleQueryNear.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an all query
+/// @brief executes a within query
 ////////////////////////////////////////////////////////////////////////////////
 
 SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
@@ -393,6 +393,65 @@ SQ.SimpleQueryWithin.prototype.execute = function (batchSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             SIMPLE QUERY FULLTEXT
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup SimpleQuery
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
+  var documents;
+
+  if (this._execution === null) {
+    if (batchSize != undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }
+
+    var data = {
+      collection : this._collection.name(),
+      attribute : this._attribute,
+      query : this._query
+    }  
+    
+    if (this._limit !== null) {
+      data.limit = this._limit;
+    }
+
+    if (this._skip !== null) {
+      data.skip = this._skip;
+    }
+
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
+    }
+  
+    var requestResult = this._collection._database._connection.PUT("/_api/simple/fulltext", JSON.stringify(data));
+
+    client.checkRequestResult(requestResult);
+
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
@@ -406,6 +465,7 @@ exports.SimpleQueryByExample = SQ.SimpleQueryByExample;
 exports.SimpleQueryGeo = SQ.SimpleQueryGeo;
 exports.SimpleQueryNear = SQ.SimpleQueryNear;
 exports.SimpleQueryWithin = SQ.SimpleQueryWithin;
+exports.SimpleQueryFulltext = SQ.SimpleQueryFulltext;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
