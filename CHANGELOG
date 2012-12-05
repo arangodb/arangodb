@@ -1,6 +1,8 @@
 v1.1.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #311: fixed segfault on unload 
+
 * fixed issue #309: renamed stub "import" button from web interface
 
 * fixed issue #307: added WaitForSync column in collections list in in web interface 
