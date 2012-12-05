@@ -34,7 +34,7 @@
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/blob-collection.h"
+#include "VocBase/shape-collection.h"
 #include "VocBase/datafile.h"
 
 #ifdef __cplusplus
@@ -92,7 +92,8 @@ TRI_df_shape_marker_t;
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*,
                                    char const* path,
-                                   char const* name);
+                                   char const* name,
+                                   const bool waitForSync);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an persistent shaper, but does not free the pointer
@@ -123,7 +124,7 @@ void TRI_FreeVocShaper (TRI_shaper_t*);
 /// @brief returns the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t*);
+TRI_shape_collection_t* TRI_CollectionVocShaper (TRI_shaper_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a persistent shaper

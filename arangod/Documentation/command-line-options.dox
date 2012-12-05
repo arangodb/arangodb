@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// @brief user guide guide
 ///
 /// @file
@@ -35,8 +35,10 @@
 ///     <ul>
 ///      <li>@ref CommandLineHelp "help"</li>
 ///      <li>@ref CommandLineVersion "version"</li>
+///      <li>@ref CommandLineUpgrade "upgrade"</li>
 ///      <li>@ref CommandLineConfiguration "configuration"</li>
 ///      <li>@ref CommandLineDaemon "daemon"</li>
+///      <li>@ref CommandLineDefaultLanguage "default-language"</li>
 ///      <li>@ref CommandLineSupervisor "supervisor"</li>
 ///      <li>@ref CommandLineUid "uid"</li>
 ///      <li>@ref CommandLineGid "gid"</li>
@@ -45,14 +47,23 @@
 ///    </li>
 ///    <li>@ref CommandLineArango
 ///     <ul>
-///      <li>@ref CommandLineArangoHttpPort "server.http-port"</li>
-///      <li>@ref CommandLineArangoAdminPort "server.admin-port"</li>
-///      <li>@ref CommandLineArangoHttpAuth "server.http-auth"</li>
-///      <li>@ref CommandLineArangoDisableAdminInterface "server.disable-admin-interface"</li>
+///      <li>@ref CommandLineArangoEndpoint "server.endpoint"</li>
+///      <li>@ref CommandLineArangoDisableAuthentication "server.disable-authentication"</li>
+///      <li>@ref CommandLineArangoKeepAliveTimeout "server.keep-alive-timeout"</li>
+///      <li>@ref CommandLineArangoKeyFile "server.keyfile"</li>
+///      <li>@ref CommandLineArangoCaFile "server.cafile"</li>
+///      <li>@ref CommandLineArangoSslProtocol "server.ssl-protocol"</li>
+///      <li>@ref CommandLineArangoSslCacheMode "server.ssl-cache"</li>
+///      <li>@ref CommandLineArangoSslOptions "server.ssl-options"</li>
+///      <li>@ref CommandLineArangoSslCipherList "server.ssl-cipher-list"</li>
 ///      <li>@ref CommandLineArangoDirectory "database.directory"</li>
 ///      <li>@ref CommandLineArangoMaximalJournalSize "database.maximal-journal-size"</li>
 ///      <li>@ref CommandLineArangoWaitForSync "database.wait-for-sync"</li>
-///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-drop"</li>
+///      <li>@ref CommandLineArangoForceSyncShapes "database.force-sync-shapes"</li>
+///      <li>@ref CommandLineArangoRemoveOnDrop "database.remove-on-compacted"</li>
+///      <li>@ref CommandLineArangoJsGcFrequency "javascript.gc-frequency"</li>
+///      <li>@ref CommandLineArangoJsGcInterval "javascript.gc-interval"</li>
+///      <li>@ref CommandLineArangoJsV8Options "javascript.v8-options"</li>
 ///     </ul>
 ///    </li>
 ///    <li>@ref CommandLineLogging
@@ -104,6 +115,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLine Command-Line Options
 ///
+/// @NAVIGATE_CommandLine
 /// @EMBEDTOC{CommandLineTOC}
 ///
 /// @section CommandLineGeneralOptions General Options
@@ -115,19 +127,25 @@
 /// @anchor CommandLineVersion
 /// @copydetails triagens::rest::ApplicationServer::_version
 ///
+/// @anchor CommandLineUpgrade
+/// @copydetails triagens::arango::ApplicationV8::_performUpgrade
+///
 /// @anchor CommandLineConfiguration
 /// @copydetails triagens::rest::ApplicationServer::_configFile
 ///
 /// @anchor CommandLineDaemon
-/// @CMDOPT{--daemon}
+/// @CMDOPT{\--daemon}
 ///
 /// Runs the server as a daemon (as a background process). This parameter can
 /// only be set if the pid (process id) file is specified. That is, unless a
 /// value to the parameter pid-file is given, then the server will report an
 /// error and exit.
 ///
+/// @anchor CommandLineDefaultLanguage
+/// @copydetails triagens::arango::ArangoServer::_defaultLanguage
+///
 /// @anchor CommandLineSupervisor
-/// @CMDOPT{--supervisor}
+/// @CMDOPT{\--supervisor}
 ///
 /// Executes the server in supervisor mode. In the event that the server
 /// unexpectedly terminates due to an internal error, the supervisor will
@@ -159,17 +177,35 @@
 /// @section CommandLineArango Command-Line Options for the ArangoDB
 ////////////////////////////////////////////////////////////////////
 ///
-/// @anchor CommandLineArangoHttpPort
-/// @copydetails triagens::arango::ArangoServer::_httpPort
+/// @anchor CommandLineArangoEndpoint
+/// @copydetails triagens::rest::ApplicationEndpointServer::_endpoints
 ///
-/// @anchor CommandLineArangoAdminPort
-/// @copydetails triagens::arango::ArangoServer::_adminPort
+/// @anchor CommandLineArangoDisableAuthentication
+/// @copydetails triagens::rest::ApplicationEndpointServer::_disableAuthentication
 ///
-/// @anchor CommandLineArangoHttpAuth
-/// @copydetails triagens::arango::ArangoServer::_httpAuth
+/// @anchor CommandLineArangoKeepAliveTimeout
+/// @copydetails triagens::rest::ApplicationEndpointServer::_keepAliveTimeout
+///
+/// @anchor CommandLineArangoKeyFile
+/// @copydetails triagens::rest::ApplicationEndpointServer::_httpsKeyfile
+///
+/// @anchor CommandLineArangoCaFile
+/// @copydetails triagens::rest::ApplicationEndpointServer::_cafile
+///
+/// @anchor CommandLineArangoSslProtocol
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslProtocol
+///
+/// @anchor CommandLineArangoSslCacheMode
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCache
+///
+/// @anchor CommandLineArangoSslOptions
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslOptions
+///
+/// @anchor CommandLineArangoSslCipherList
+/// @copydetails triagens::rest::ApplicationEndpointServer::_sslCipherList
 ///
 /// @anchor CommandLineArangoDisableAdminInterface
-/// @CMDOPT{--disable-admin-interface @CA{value}}
+/// @CMDOPT{\--disable-admin-interface @CA{value}}
 ///
 /// If this option is specified and @CA{value} is @LIT{true}, then the HTML
 /// administration interface at URL @LIT{http://server:port/} will be disabled
@@ -184,8 +220,20 @@
 /// @anchor CommandLineArangoWaitForSync
 /// @copydetails triagens::arango::ArangoServer::_defaultWaitForSync
 ///
+/// @anchor CommandLineArangoForceSyncShapes
+/// @copydetails triagens::arango::ArangoServer::_forceSyncShapes
+///
 /// @anchor CommandLineArangoRemoveOnDrop
 /// @copydetails triagens::arango::ArangoServer::_removeOnDrop
+///
+/// @anchor CommandLineArangoJsGcFrequency
+/// @copydetails triagens::arango::ApplicationV8::_gcFrequency
+///
+/// @anchor CommandLineArangoJsGcInterval
+/// @copydetails triagens::arango::ApplicationV8::_gcInterval
+///
+/// @anchor CommandLineArangoJsV8Options
+/// @copydetails triagens::arango::ApplicationV8::_v8Options;
 ///
 /// @section CommandLineScheduler Command-Line Options for Communication
 ////////////////////////////////////////////////////////////////////////
@@ -197,14 +245,14 @@
 /// @copydetails triagens::rest::ApplicationScheduler::_backend
 ///
 /// @anchor CommandLineSchedulerShowIoBackends
-/// @CMDOPT{--show-io-backends}
+/// @CMDOPT{\--show-io-backends}
 ///
 /// If this option is specified, then the server will list available backends
 /// and exit. This option is useful only when used in conjunction with the
 /// option scheduler.backend. An integer is returned (which is platform
 /// dependent) which indicates available backends on your platform. See libev
 /// for further details and for the meaning of the integer returned. This
-/// describes the allowed integers for @CODE{scheduler.backend}, see
+/// describes the allowed integers for @LIT{scheduler.backend}, see
 /// @ref CommandLineScheduler "here" for details.
 ///
 /// @section CommandLineLogging Command-Line Options for Logging

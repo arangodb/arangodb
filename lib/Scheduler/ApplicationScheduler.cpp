@@ -25,9 +25,14 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "ApplicationScheduler.h"
 
 #include "Basics/Exceptions.h"
+#include "BasicsC/process-utils.h"
 #include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"
@@ -48,10 +53,45 @@ using namespace triagens::rest;
 
 namespace {
 
+
+#ifdef _WIN32
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward declared handler for crtl c for windows
+////////////////////////////////////////////////////////////////////////////////
+
+#include <windows.h>
+#include <stdio.h>
+
+  bool static CtrlHandler(DWORD eventType); 
+  static SignalTask* localSignalTask;
+
+#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles control-c
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+  class ControlCTask : public SignalTask {
 
+    public:
+
+      ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
+        localSignalTask = this;
+        int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true); 
+      }
+
+    public:
+      bool handleSignal () {
+        return true;
+      }
+
+    public:
+      ApplicationServer* _server;
+      uint32_t _seen;
+  };
+#else
   class ControlCTask : public SignalTask {
     public:
       ControlCTask (ApplicationServer* server)
@@ -63,13 +103,13 @@ namespace {
 
     public:
       bool handleSignal () {
+        string msg = _server->getName() + " [shutting down]";
+
+        TRI_SetProcessTitle(msg.c_str());
+
         if (_seen == 0) {
           LOGGER_INFO << "control-c received, beginning shut down sequence";
           _server->beginShutdown();
-        }
-        else if (_seen == 1) {
-          LOGGER_INFO << "control-c received, shutting down";
-          _server->shutdown();
         }
         else {
           LOGGER_INFO << "control-c received, terminating";
@@ -85,11 +125,28 @@ namespace {
       ApplicationServer* _server;
       uint32_t _seen;
   };
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles hangup
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+  class HangupTask : public SignalTask {
+    public:
+      HangupTask ()
+        : Task("Hangup"), SignalTask() {
+      }
+
+    public:
+      bool handleSignal () {
+        LOGGER_INFO << "hangup received, about to reopen logfile";
+        TRI_ReopenLogging();
+        LOGGER_INFO << "hangup received, reopened logfile";
+        return true;
+      }
+  };
+#else
   class HangupTask : public SignalTask {
     public:
       HangupTask ()
@@ -105,6 +162,7 @@ namespace {
         return true;
       }
   };
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces a scheduler status report
@@ -125,7 +183,52 @@ namespace {
     public:
       Scheduler* _scheduler;
   };
-}
+
+#ifdef _WIN32
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handler for crtl c for windows
+////////////////////////////////////////////////////////////////////////////////
+
+  bool CtrlHandler(DWORD eventType) {
+    ControlCTask* ccTask = (ControlCTask*)(localSignalTask);
+
+    switch (eventType) {
+      case CTRL_C_EVENT: 
+      case CTRL_CLOSE_EVENT: 
+      case CTRL_LOGOFF_EVENT: 
+      case CTRL_SHUTDOWN_EVENT: {
+        string msg = ccTask->_server->getName() + " [shutting down]";
+
+        TRI_SetProcessTitle(msg.c_str());
+
+        if (ccTask->_seen == 0) {
+          LOGGER_INFO << "control-c received, beginning shut down sequence";
+          ccTask->_server->beginShutdown();
+        }
+        else {
+          LOGGER_INFO << "control-c received, terminating";
+          exit(EXIT_FAILURE);
+        }
+
+        ++ccTask->_seen;
+
+        return true;
+      }
+
+      default: {
+        return false;
+      }
+
+    }
+
+    return false;
+  }
+
+#endif
+
+}  // end of anonymous (unamed) namespace
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -166,6 +269,9 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler () {
+  if (_scheduler != 0) {
+    delete _scheduler;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +357,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
     ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
-    ("scheduler.report-intervall", &_reportIntervall, "scheduler report intervall")
+    ("scheduler.report-interval", &_reportIntervall, "scheduler report interval")
     ("server.no-reuse-address", "do not try to reuse address")
 #ifdef TRI_HAVE_GETRLIMIT
     ("server.descriptors-minimum", &_descriptorMinimum, "minimum number of file descriptors needed to start")
@@ -273,7 +379,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::parsePhase1 (basics::ProgramOptions& options) {
+bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& options) {
 
   // show io backends
   if (options.has("show-io-backends")) {
@@ -288,7 +394,7 @@ bool ApplicationScheduler::parsePhase1 (basics::ProgramOptions& options) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::parsePhase2 (basics::ProgramOptions& options) {
+bool ApplicationScheduler::parsePhase2 (triagens::basics::ProgramOptions& options) {
 
   // check if want to reuse the address
   if (options.has("server.reuse-address")) {
@@ -311,17 +417,7 @@ bool ApplicationScheduler::parsePhase2 (basics::ProgramOptions& options) {
 
 bool ApplicationScheduler::prepare () {
   buildScheduler();
-  buildSchedulerReporter();
-  buildControlCHandler();
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationScheduler::isStartable () {
   return true;
 }
 
@@ -330,6 +426,9 @@ bool ApplicationScheduler::isStartable () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::start () {
+  buildSchedulerReporter();
+  buildControlCHandler();
+
   bool ok = _scheduler->start(0);
 
   if (! ok) {
@@ -341,19 +440,12 @@ bool ApplicationScheduler::start () {
     return false;
   }
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationScheduler::isStarted () {
-  if (_scheduler != 0) {
-    return _scheduler->isStarted();
+  while (! _scheduler->isStarted()) {
+    LOGGER_DEBUG << "waiting for scheduler to start";
+    usleep(500 * 1000);
   }
 
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,35 +464,26 @@ bool ApplicationScheduler::open () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::isRunning () {
+void ApplicationScheduler::stop () {
+  size_t const MAX_TRIES = 10;
+
   if (_scheduler != 0) {
-    return _scheduler->isRunning();
-  }
 
-  return false;
-}
+    // remove all helper tasks
+    for (vector<Task*>::iterator i = _tasks.begin();  i != _tasks.end();  ++i) {
+      Task* task = *i;
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+      _scheduler->destroyTask(task);
+    }
 
-void ApplicationScheduler::beginShutdown () {
-  if (_scheduler != 0) {
+    _tasks.clear();
+
+    // shutdown the scheduler
     _scheduler->beginShutdown();
-  }
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::shutdown () {
-  if (_scheduler != 0) {
-    int count = 0;
-
-    while (++count < 6 && _scheduler->isRunning()) {
+    for (size_t count = 0;  count < MAX_TRIES && _scheduler->isRunning();  ++count) {
       LOGGER_TRACE << "waiting for scheduler to stop";
-      sleep(1);
+      usleep(1000000);
     }
 
     _scheduler->shutdown();
@@ -448,7 +531,10 @@ void ApplicationScheduler::buildSchedulerReporter () {
   }
 
   if (0.0 < _reportIntervall) {
-    _scheduler->registerTask(new SchedulerReporterTask(_scheduler, _reportIntervall));
+    Task* reporter = new SchedulerReporterTask(_scheduler, _reportIntervall);
+
+    _scheduler->registerTask(reporter);
+    _tasks.push_back(reporter);
   }
 }
 
@@ -462,8 +548,17 @@ void ApplicationScheduler::buildControlCHandler () {
     exit(EXIT_FAILURE);
   }
 
-  _scheduler->registerTask(new ControlCTask(_applicationServer));
-  _scheduler->registerTask(new HangupTask());
+  // control C handler
+  Task* controlC = new ControlCTask(_applicationServer);
+
+  _scheduler->registerTask(controlC);
+  _tasks.push_back(controlC);
+
+  // hangup handler
+  Task* hangup = new HangupTask();
+
+  _scheduler->registerTask(hangup);
+  _tasks.push_back(hangup);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,6 +634,8 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
 #endif
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

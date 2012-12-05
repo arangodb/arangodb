@@ -39,7 +39,7 @@
 #include "BasicsC/string-buffer.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/primary-collection.h"
 #include "BasicsC/logging.h"
 
 
@@ -56,15 +56,43 @@ static bool  BitarrayIndexHasPrevIterationCallback (TRI_index_iterator_t*);
 static void* BitarrayIndexPrevIterationCallback    (TRI_index_iterator_t*);
 static void* BitarrayIndexPrevsIterationCallback   (TRI_index_iterator_t*, int64_t);
 static void  BitarrayIndexResetIterator            (TRI_index_iterator_t*, bool);
+
+
 // .............................................................................
-// forward declaration of static functions used here
+// forward declaration of static functions used for bit mask callbacks
 // .............................................................................
 
-static int  BitarrayIndex_findHelper (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*);
-static int  generateBitMask          (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
-static int  generateEqualBitMask     (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
-// static void debugPrintMask           (BitarrayIndex*, uint64_t);
+static void  BitarrayIndex_destroyMaskSet             (TRI_bitarray_mask_set_t*);
+static void  BitarrayIndex_extendMaskSet              (TRI_bitarray_mask_set_t*, const int, const double);
+static int   BitarrayIndex_findHelper                 (BitarrayIndex*, TRI_vector_t*, TRI_index_operator_t*, TRI_index_iterator_t*, TRI_bitarray_mask_set_t*);
+#if 0
+static void  BitarrayIndex_freeMaskSet                (TRI_bitarray_mask_set_t*);
+#endif
+static int   BitarrayIndex_generateInsertBitMask      (BitarrayIndex*, const BitarrayIndexElement*, TRI_bitarray_mask_t*);
+static int   BitarrayIndex_generateEqualBitMask       (BitarrayIndex*, const TRI_relation_index_operator_t*, TRI_bitarray_mask_t*);
+static int   BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t*, TRI_json_t*, uint64_t*);
+static void  BitarrayIndex_insertMaskSet              (TRI_bitarray_mask_set_t*, TRI_bitarray_mask_t*, bool);
 
+
+// .............................................................................
+// forward declaration of static functions which are used by the query engine
+// .............................................................................
+
+static int                   BitarrayIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
+static TRI_index_iterator_t* BitarrayIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*)); 
+static int                   BitarrayIndex_freeMethodCall   (void*, void*);
+
+
+// .............................................................................
+// forward declaration of static functions used for debugging callbacks
+// comment out to suppress compile warnings -- todo add preprocessor directives
+// .............................................................................
+
+/*
+static void BitarrayIndex_debugPrintMaskFooter     (const char*); 
+static void BitarrayIndex_debugPrintMaskHeader     (const char*);
+static void BitarrayIndex_debugPrintMask           (BitarrayIndex*, uint64_t);
+*/
 
 
 // -----------------------------------------------------------------------------
@@ -119,6 +147,41 @@ void BitarrayIndex_free(BitarrayIndex* baIndex) {
 //------------------------------------------------------------------------------
 // Public Methods 
 //------------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Assigns a static function call to a function pointer used by Query Engine
+////////////////////////////////////////////////////////////////////////////////
+
+int BittarrayIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
+  switch (methodType) {
+  
+    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
+      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
+      *call = BitarrayIndex_freeMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
+      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
+      *call = BitarrayIndex_queryMethodCall;
+      break;
+    }
+    
+    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
+      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
+      *call = BitarrayIndex_resultMethodCall;
+      break;
+    }
+
+    default : {
+      assert(false);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a new bitarray index. Failure will return an appropriate error code
@@ -231,10 +294,21 @@ int BitarrayIndex_add(BitarrayIndex* baIndex, BitarrayIndexElement* element) {
   // ..........................................................................
   
   // ..........................................................................
-  // generate bit mask
+  // generate bit mask -- initialise first
   // ..........................................................................
   
-  result = generateBitMask (baIndex, element, &mask);
+  mask._mask       = 0;
+  mask._ignoreMask = 0;
+    
+  result = BitarrayIndex_generateInsertBitMask(baIndex, element, &mask);
+  //debugPrintMask(baIndex, mask._mask); 
+ 
+ 
+  // ..........................................................................
+  // It may happen that the values for one or more attributes are unsupported
+  // in this an error will be returned.
+  // ..........................................................................
+  
   if (result != TRI_ERROR_NO_ERROR) {
     return result;
   }  
@@ -261,6 +335,8 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
                                          bool (*filter) (TRI_index_iterator_t*) ) {
 
   TRI_index_iterator_t* iterator;
+  TRI_bitarray_mask_set_t maskSet;
+  int result;
   
   // ...........................................................................  
   // Attempt to allocate memory for the index iterator which stores the results
@@ -277,8 +353,9 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   // ...........................................................................  
   // We now initialise the index iterator with all the call back functions.
   // ...........................................................................  
-  
+
   TRI_InitVector(&(iterator->_intervals), TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_index_iterator_interval_t));
+  
   iterator->_index           = collectionIndex;  
   iterator->_currentInterval = 0;  
   iterator->_cursor          = NULL;
@@ -293,7 +370,30 @@ TRI_index_iterator_t* BitarrayIndex_find(BitarrayIndex* baIndex,
   iterator->_destroyIterator = BitarrayIndexDestroyIterator;
   iterator->_reset           = BitarrayIndexResetIterator;
   
-  BitarrayIndex_findHelper(baIndex, shapeList, indexOperator, iterator);
+  // ...........................................................................  
+  // We now initialise the mask set and set the array to some reasonable size
+  // ...........................................................................  
+  
+  maskSet._setSize   = 0;
+  maskSet._arraySize = 0;
+  maskSet._maskArray = 0;
+  BitarrayIndex_extendMaskSet(&maskSet, 20, 0.0);
+  
+  result = BitarrayIndex_findHelper(baIndex, shapeList, indexOperator, iterator, &maskSet);
+
+  if (result == TRI_ERROR_NO_ERROR) {
+    //BitarrayIndex_debugPrintMaskHeader("lookup");
+    //BitarrayIndex_debugPrintMask(baIndex,(maskSet._maskArray)->_mask);
+    //BitarrayIndex_debugPrintMask(baIndex,(maskSet._maskArray)->_ignoreMask);
+    //BitarrayIndex_debugPrintMaskFooter("");
+    result = TRI_LookupBitMaskSetBitarray(baIndex->_bitarray, &maskSet, iterator);
+  }
+  
+  BitarrayIndex_destroyMaskSet(&maskSet);
+  
+  if (result != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
   
   return iterator;
 }
@@ -513,55 +613,13 @@ void BitarrayIndexResetIterator(TRI_index_iterator_t* iterator, bool beginning) 
 // .............................................................................
 
 int BitarrayIndex_findHelper(BitarrayIndex* baIndex, 
-                              TRI_vector_t* shapeList, 
-                              TRI_index_operator_t* indexOperator, 
-                              TRI_index_iterator_t* iterator) {
+                             TRI_vector_t* shapeList, 
+                             TRI_index_operator_t* indexOperator, 
+                             TRI_index_iterator_t* iterator,
+                             TRI_bitarray_mask_set_t* maskSet) {
 
-  // BitarrayIndexElement element;
-  TRI_bitarray_mask_t mask;
   int result;
   
-  /*
-  element.fields      = NULL;
-  element.numFields   = 0;
-  element.collection  = NULL;
-  element.data        = NULL;
-  */
-  
-  mask._mask       = 0;
-  mask._ignoreMask = 0;
-  
-  // ............................................................................
-  // Prepare the values variable with details about the fields and collection
-  // these may be required later. These values make sense only for relational
-  // type operators.
-  // ............................................................................
-  
-  switch (indexOperator->_type) {
-    case TRI_EQ_INDEX_OPERATOR:
-    case TRI_LE_INDEX_OPERATOR: 
-    case TRI_LT_INDEX_OPERATOR: 
-    case TRI_GE_INDEX_OPERATOR: 
-    case TRI_GT_INDEX_OPERATOR: {
-      /* TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) (indexOperator); */
-      /*
-      element.fields     = relationOperator->_fields;
-      element.numFields  = relationOperator->_numFields;
-      element.collection = relationOperator->_collection;
-      */
-      break;
-    }
-    
-    default: {
-      // ..........................................................................
-      // If it is not a relational index operator we may not have access
-      // access _fields and _collection
-      // ..........................................................................
-      break;       
-    }
-  }
-
-
   // ............................................................................
   // Process the indexOperator recursively
   // ............................................................................
@@ -569,19 +627,88 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
   switch (indexOperator->_type) {
 
     case TRI_AND_INDEX_OPERATOR: {
-      assert(false);
+      int j;
+      TRI_bitarray_mask_set_t leftMaskSet;
+      TRI_bitarray_mask_set_t rightMaskSet;
+      TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*)(indexOperator);    
+      TRI_index_operator_t* leftOp                  = logicalOperator->_left; 
+      TRI_index_operator_t* rightOp                 = logicalOperator->_right; 
+
+      leftMaskSet._setSize   = 0;
+      leftMaskSet._arraySize = 0;
+      leftMaskSet._maskArray = 0;
+      BitarrayIndex_extendMaskSet(&leftMaskSet, 20, 0.0);
+      rightMaskSet._setSize   = 0;
+      rightMaskSet._arraySize = 0;
+      rightMaskSet._maskArray = 0;
+      BitarrayIndex_extendMaskSet(&rightMaskSet, 20, 0.0);
+
+
+      // ........................................................................
+      // For 'AND' operator, we simply take the intersection of the masks generated
+      // ........................................................................
+
+      result = BitarrayIndex_findHelper(baIndex, shapeList, leftOp, iterator, &leftMaskSet); 
+      if (result != TRI_ERROR_NO_ERROR) {
+        BitarrayIndex_destroyMaskSet(&leftMaskSet);
+        return result;
+      }
+      
+      result = BitarrayIndex_findHelper(baIndex, shapeList, rightOp, iterator, &rightMaskSet); 
+      if (result != TRI_ERROR_NO_ERROR) {
+        BitarrayIndex_destroyMaskSet(&rightMaskSet);
+        return result;
+      }
+      
+      for (j = 0; j < leftMaskSet._setSize; ++j) {
+        int k;
+        TRI_bitarray_mask_t* leftMask = leftMaskSet._maskArray + j;
+        TRI_bitarray_mask_t andMask;
+        leftMask->_mask = leftMask->_mask | leftMask->_ignoreMask;
+        for (k = 0; k < rightMaskSet._setSize; ++k) {
+          TRI_bitarray_mask_t* rightMask = rightMaskSet._maskArray + k;
+          rightMask->_mask = rightMask->_mask | rightMask->_ignoreMask;
+          andMask._mask = leftMask->_mask & rightMask->_mask;
+          andMask._ignoreMask = 0;
+          BitarrayIndex_insertMaskSet(maskSet,&andMask, true);
+        }
+      }
+      
       break;    
     }
 
   
     case TRI_OR_INDEX_OPERATOR: {
-      assert(false);
+      TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*)(indexOperator);    
+      TRI_index_operator_t* leftOp                  = logicalOperator->_left; 
+      TRI_index_operator_t* rightOp                 = logicalOperator->_right; 
+
+      
+      // ........................................................................
+      // For 'OR' operator, we simply take the union of the masks generated
+      // ........................................................................
+      
+      result = BitarrayIndex_findHelper(baIndex, shapeList, leftOp, iterator, maskSet); 
+      if (result != TRI_ERROR_NO_ERROR) {
+        return result;
+      }
+      
+      
+      result = BitarrayIndex_findHelper(baIndex, shapeList, rightOp, iterator, maskSet); 
+      if (result != TRI_ERROR_NO_ERROR) {
+        return result;
+      }
+      
       break;    
     }
     
     
     case TRI_EQ_INDEX_OPERATOR: {
+      TRI_bitarray_mask_t mask;
       TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*)(indexOperator);
+      
+      mask._mask       = 0;
+      mask._ignoreMask = 0;
 
       // ............................................................................
       // for bitarray indexes, the number of attribute values ALWAYS matches the
@@ -598,34 +725,62 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
       // generate the bit mask
       // ............................................................................
       
-      result = generateEqualBitMask(baIndex, relationOperator, &mask); 
-      //debugPrintMask(baIndex, mask._mask);      
-      //debugPrintMask(baIndex, mask._ignoreMask);      
+      result = BitarrayIndex_generateEqualBitMask(baIndex, relationOperator, &mask); 
+      //BitarrayIndex_debugPrintMask(baIndex, mask._mask);      
+      //BitarrayIndex_debugPrintMask(baIndex, mask._ignoreMask);      
       
-      result = TRI_LookupBitMaskBitarray(baIndex->_bitarray, &mask, iterator);
+      // .......................................................................
+      // for now return this error
+      // .......................................................................
+        
+      if (result == TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE) {
+        return result;
+      }
+      
+      // .......................................................................
+      // Append the mask generated here to the mask set
+      // .......................................................................
 
+      BitarrayIndex_insertMaskSet(maskSet,&mask, true);
+      //BitarrayIndex_debugPrintMaskHeader("lookup");
+      //BitarrayIndex_debugPrintMask(baIndex,mask._mask);
+      //BitarrayIndex_debugPrintMask(baIndex,mask._ignoreMask);
+      //BitarrayIndex_debugPrintMaskFooter("");
+      
       break;    
     }
+
+
+    case TRI_NE_INDEX_OPERATOR: {
+      // todo
+      assert(false);
+      break;    
+    }
+
     
     case TRI_LE_INDEX_OPERATOR: {
+      // todo -- essentially (since finite number) take the union
       assert(false);
       break;    
     }  
     
     
     case TRI_LT_INDEX_OPERATOR: {
+      // todo
       assert(false);
       break;    
     }  
     
 
     case TRI_GE_INDEX_OPERATOR: {
+      // todo
       assert(false);
       break;    
     }  
   
   
     case TRI_GT_INDEX_OPERATOR: {
+      // todo
       assert(false);
       break;    
     }  
@@ -636,6 +791,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     
   } // end of switch statement
    
+  
   return result;   
 }
             
@@ -737,12 +893,140 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
     }  
   }        
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementation of static functions used for bit mask callbacks
+////////////////////////////////////////////////////////////////////////////////
+
+static void  BitarrayIndex_destroyMaskSet(TRI_bitarray_mask_set_t* maskSet) {
+  if (maskSet != 0) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, maskSet->_maskArray);   
+  }  
+}
+
+
+static void  BitarrayIndex_extendMaskSet(TRI_bitarray_mask_set_t* maskSet, const int nSize, const double increaseBy) {
+  size_t newSize;
+  TRI_bitarray_mask_t* newArray;
+  
+  if (nSize <= 0) {
+    newSize = (increaseBy * maskSet->_arraySize) + 1;
+  }
+  else {
+    newSize = nSize;
+  }
+
+  newArray = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_bitarray_mask_t) * newSize, true);    
+  
+  if (newArray == NULL) {
+    // todo report memory failure
+    return;
+  }
+  
+  if (maskSet->_maskArray == 0 || maskSet->_arraySize == 0) {
+    maskSet->_maskArray = newArray;
+    maskSet->_arraySize = newSize;
+    maskSet->_setSize   = 0;
+    return;
+  }
+
+  memcpy(newArray, maskSet->_maskArray, sizeof(TRI_bitarray_mask_t) * maskSet->_setSize);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, maskSet->_maskArray);   
+  maskSet->_maskArray = newArray;
+  maskSet->_arraySize = newSize;
+}
+
+#if 0
+static void  BitarrayIndex_freeMaskSet(TRI_bitarray_mask_set_t* maskSet) {
+  BitarrayIndex_destroyMaskSet(maskSet);
+  if (maskSet != 0) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, maskSet);   
+  }  
+}
+#endif
+
+static int BitarrayIndex_generateEqualBitMaskHelper(TRI_json_t* valueList, TRI_json_t* value, uint64_t* mask) {
+  int i;
+  uint64_t other = 0;
+  uint64_t tempMask = 0;
+
+  
+  // .............................................................................
+  // valueList is a list of possible values for a given attribute. 
+  // value is the attribute value to determine if it exists within the list of 
+  // allowed values.
+  // .............................................................................
+  
+  for (i = 0; i < valueList->_value._objects._length; ++i) {    
+    int k;
+    TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
+        
+    // ...........................................................................
+    // if the ith possible set of values is not a list, do comparison 
+    // ...........................................................................
+        
+    if (listEntry->_type != TRI_JSON_LIST) {
+      if (isEqualJson(value, listEntry)) {
+        tempMask = tempMask | (1 << i);
+      }  
+      continue; // there may be further matches!
+    }
+        
+        
+    // ...........................................................................
+    // ith entry in the set of possible values is a list
+    // ...........................................................................
+        
+    // ...........................................................................
+    // Special case of an empty list -- this means all other values
+    // ...........................................................................
+        
+    if (listEntry->_value._objects._length == 0) { // special case determine what the bit position of other is
+      other = (1 << i);
+      continue; // there may be further matches!
+    }
+        
+        
+    for (k = 0; k < listEntry->_value._objects._length; k++) {
+      TRI_json_t* subListEntry;
+      subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), k));            
+      if (isEqualJson(value, subListEntry)) {
+        tempMask = tempMask | (1 << i);
+        break;
+      }  
+    }      
+        
+  }
+  
+  if (tempMask != 0) {
+    *mask = *mask | tempMask;
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (other != 0) {
+    *mask = *mask | other;
+    return TRI_ERROR_NO_ERROR;
+  }
+
+
+  // ...........................................................................
+  // Allow this as an option when Bitarray index is created.
+  // ...........................................................................
+  
+  return TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE;
+
+  
+}  
+
             
-int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
+int BitarrayIndex_generateInsertBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element, TRI_bitarray_mask_t* mask) {
 
   TRI_shaper_t* shaper;
   int j;
   int shiftLeft;
+  int result;
   
   // ...........................................................................
   // some safety checks first
@@ -755,7 +1039,6 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
   if (element->collection == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-
 
   // ...........................................................................
   // We could be trying to store an 'undefined' document into the bitarray
@@ -782,73 +1065,35 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
   // and what values the document has sent.
   // ...........................................................................
   
-  shaper      = ((TRI_doc_collection_t*)(element->collection))->_shaper;
+  shaper      = ((TRI_primary_collection_t*)(element->collection))->_shaper;
   mask->_mask = 0;
   shiftLeft   = 0;
   
   for (j = 0; j < baIndex->_values._length; ++j) {
     TRI_json_t* valueList;
     TRI_json_t* value;
-    uint64_t    other;    
-    int         i;
     uint64_t    tempMask;
     
     value      = TRI_JsonShapedJson(shaper, &(element->fields[j])); // from shaped json to simple json   
     valueList  = (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j));
-    other      = 0;
     tempMask   = 0;
     
-    for (i = 0; i < valueList->_value._objects._length; ++i) {
-      TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
-      // .......................................................................
-      // We need to take special care if the json object is a list
-      // .......................................................................
-      
-      if (listEntry->_type == TRI_JSON_LIST) {
-        // an empty list
-        if (listEntry->_value._objects._length == 0) {
-          other = (1 << i);
-        }
-        else {
-          int k;
-          for (k = 0; k < listEntry->_value._objects._length; k++) {
-            TRI_json_t* subListEntry;
-            subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
-            if (isEqualJson(value, subListEntry)) {
-              tempMask = tempMask | (1 << i);
-            }  
-          }          
-        }
-      }      
-      
-      else {
-        if (isEqualJson(value, listEntry)) {
-          tempMask = tempMask | (1 << i);
-        }  
-      }
-  
-  
-    }
-     
+    
+    // .........................................................................
+    // value is now the shaped json converted into plain json for comparison
+    // ........................................................................
+
+    result = BitarrayIndex_generateEqualBitMaskHelper(valueList, value, &tempMask);       
+         
     // ............................................................................
     // remove the json entry created from the shaped json
     // ............................................................................
     
     TRI_FreeJson(shaper->_memoryZone, value);
-      
-     
-    // ............................................................................
-    // When we create a bitarray index, for example: ensureBitarray("x",[0,[],1,2,3])
-    // and we insert doc with {"x" : "hello world"}, then, since the value of "x"
-    // does not match 0,1,2 or 3 and [] appears as a valid list item, the doc is
-    // inserted with a mask of 01000
-    // This is what other means below
-    // ............................................................................
     
-    if (tempMask == 0) {
-      tempMask = other;
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
     }
-    
     
     mask->_mask = mask->_mask | (tempMask << shiftLeft);
     
@@ -859,10 +1104,13 @@ int generateBitMask(BitarrayIndex* baIndex, const BitarrayIndexElement* element,
 }
 
 
-int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operator_t* relationOperator, TRI_bitarray_mask_t* mask) {
+      
+int BitarrayIndex_generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operator_t* relationOperator, TRI_bitarray_mask_t* mask) {
   int j;
   int shiftLeft;
   int ignoreShiftLeft;
+  int result;
+  
   // ...........................................................................
   // some safety checks first
   // ...........................................................................
@@ -901,8 +1149,6 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
   for (j = 0; j < baIndex->_values._length; ++j) { // loop over the number of attributes defined in the index
     TRI_json_t* valueList;
     TRI_json_t* value;
-    uint64_t    other;    
-    int         i;
     uint64_t    tempMask;
     
     
@@ -918,58 +1164,60 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     // .........................................................................
     
     if (value->_type == TRI_JSON_UNUSED) {    
+      uint64_t tempInt;
       tempMask = ~((~(uint64_t)(0)) << ignoreShiftLeft);
-      other    = (~(uint64_t)(0)) << (ignoreShiftLeft - valueList->_value._objects._length);
-      mask->_ignoreMask = mask->_ignoreMask | (tempMask & other);      
-      other    = 0;
+      tempInt  = (~(uint64_t)(0)) << (ignoreShiftLeft - valueList->_value._objects._length);
+      mask->_ignoreMask = mask->_ignoreMask | (tempMask & tempInt);      
       tempMask = 0;
     }
         
     
+    // .........................................................................
+    // the client sent us one or more values for the attribute. If client sent
+    // us [a_1,a_2,...,a_n] as a value, then this is interpretated as turning 
+    // on those bits. Note that if the value is itself a json list, then
+    // this must be sent as [[l_1,l_2,...,l_m]]
+    // .........................................................................
+    
     else {
-      other    = 0;
       tempMask = 0;
+
       
-      for (i = 0; i < valueList->_value._objects._length; ++i) {    
-        TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));                 
-        int k;
+      // ........................................................................
+      // the value (for this jth attribute) sent by the client is NOT a list
+      // ........................................................................
+
+      if (value->_type != TRI_JSON_LIST) {
+        result = BitarrayIndex_generateEqualBitMaskHelper(valueList, value, &tempMask);       
+        
         
         // .......................................................................
-        // if the ith possible set of values is not a list, do comparison 
+        // for now return this error
         // .......................................................................
         
-        if (listEntry->_type != TRI_JSON_LIST) {
-          if (isEqualJson(value, listEntry)) {
-            tempMask = tempMask | (1 << i);
-          }  
-          continue;
+        if (result == TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE) {
+          return result;
         }
-        
-        
-        // .......................................................................
-        // ith entry in the set of possible values is a list
-        // .......................................................................
-        
-        // .......................................................................
-        // Special case of an empty list -- this means all other values
-        // .......................................................................
-        
-        if (listEntry->_value._objects._length == 0) { // special case 
-          other = (1 << i);
-          continue;
-        }
-        
-        
-        for (k = 0; k < listEntry->_value._objects._length; k++) {
-          TRI_json_t* subListEntry;
-          subListEntry = (TRI_json_t*)(TRI_AtVector(&(listEntry->_value._objects), i));            
-          if (isEqualJson(value, subListEntry)) {
-            tempMask = tempMask | (1 << i);
-            break;
-          }  
-        }      
-        
+
       }
+      
+      
+      // ........................................................................
+      // the value (for this jth attribute) sent by the client IS  a list
+      // we now have to loop through all the entries in this list
+      // ........................................................................
+      
+      else {
+        int i;
+        for (i = 0; i < value->_value._objects._length; ++i) {
+          TRI_json_t* listEntry = (TRI_json_t*)(TRI_AtVector(&(value->_value._objects), i));                         
+          result = BitarrayIndex_generateEqualBitMaskHelper(valueList, listEntry, &tempMask);       
+          if (result == TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE) {
+            return result;
+          }
+        }
+      }
+      
     }     
      
     // ............................................................................
@@ -979,11 +1227,6 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     // inserted with a mask of 01000
     // This is what other means below
     // ............................................................................
-    
-    if (tempMask == 0) {
-      tempMask = other;
-    }
-    
     
     mask->_mask = mask->_mask | (tempMask << shiftLeft);
     
@@ -998,15 +1241,86 @@ int generateEqualBitMask(BitarrayIndex* baIndex, const TRI_relation_index_operat
     return TRI_ERROR_INTERNAL;
   }    
   
+  //debugPrintMaskHeader("lookup mask/ignore mask");
+  //debugPrintMask(baIndex,mask->_mask);
+  //debugPrintMask(baIndex,mask->_ignoreMask);
+  //debugPrintMaskFooter("");
+  
   return TRI_ERROR_NO_ERROR;
 }
 
 
+static void  BitarrayIndex_insertMaskSet(TRI_bitarray_mask_set_t* maskSet, TRI_bitarray_mask_t* mask, bool checkForDuplicate) {  
+  if (checkForDuplicate) {
+    int j;
+    for (j = 0; j < maskSet->_setSize; ++j) {
+      TRI_bitarray_mask_t* inMask = maskSet->_maskArray + j;
+      if (inMask->_mask == mask->_mask && inMask->_ignoreMask == mask->_ignoreMask) {
+        return;
+      }  
+    }  
+  }  
+  
+  if (maskSet->_setSize == maskSet->_arraySize) {
+    BitarrayIndex_extendMaskSet(maskSet, -1, 1.2);    
+  }
+  
+  memcpy((maskSet->_maskArray + maskSet->_setSize), mask, sizeof(TRI_bitarray_mask_t));
+  ++maskSet->_setSize;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared query engine callback functions
+////////////////////////////////////////////////////////////////////////////////////////
+
+static int BitarrayIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                         TRI_index_challenge_t* challenge, void* data) {
+  BitarrayIndex* baIndex = (BitarrayIndex*)(theIndex);
+  if (baIndex == NULL || indexOperator == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+static TRI_index_iterator_t* BitarrayIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator, 
+                                          void* data, bool (*filter) (TRI_index_iterator_t*)) {
+  BitarrayIndex* baIndex = (BitarrayIndex*)(theIndex);
+  if (baIndex == NULL || indexOperator == NULL) {
+    return NULL;
+  }
+  assert(false);
+  return NULL;
+}
+
+static int BitarrayIndex_freeMethodCall(void* theIndex, void* data) {
+  BitarrayIndex* baIndex = (BitarrayIndex*)(theIndex);
+  if (baIndex == NULL) {
+    return TRI_ERROR_INTERNAL;
+  }
+  assert(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Implementation of forward declared debug functions
+////////////////////////////////////////////////////////////////////////////////////////
+
 /*
-void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
+void BitarrayIndex_debugPrintMaskFooter(const char* footer) {
+  printf("%s\n\n",footer);
+}
+
+void BitarrayIndex_debugPrintMaskHeader(const char* header) {
+  printf("------------------- %s --------------------------\n",header);
+}
+
+
+void BitarrayIndex_debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
   int j;
   
-  printf("------------------- mask --------------------------\n");
   for (j = 0; j < baIndex->_bitarray->_numColumns; ++j) {
     if ((mask & ((uint64_t)(1) << j)) == 0) {
       printf("0");
@@ -1015,9 +1329,10 @@ void debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
       printf("1");
     }
   }
-  printf("\n\n");
+  printf("\n");
 }
 */
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

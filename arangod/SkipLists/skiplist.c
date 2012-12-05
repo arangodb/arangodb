@@ -353,7 +353,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // ..........................................................................  
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
-    LOG_ERROR("Invalid maximum height for skiplist", TRI_ERROR_INTERNAL);
+    LOG_ERROR("Invalid maximum height for skiplist");
     assert(false);
   }  
   
@@ -400,6 +400,7 @@ void TRI_InitSkipList (TRI_skiplist_t* skiplist, size_t elementSize,
   // do it here once off.
   // ..........................................................................  
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
+  // TODO: memory allocation might fail
   
   // ..........................................................................  
   // Assign the element size
@@ -1412,7 +1413,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // ..........................................................................  
   skiplist->_base._maxHeight = maximumHeight;
   if (maximumHeight > SKIPLIST_ABSOLUTE_MAX_HEIGHT) {
-    LOG_ERROR("Invalid maximum height for skiplist", TRI_ERROR_INTERNAL);
+    LOG_ERROR("Invalid maximum height for skiplist");
     assert(false);
   }  
   
@@ -1449,7 +1450,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
     }
     default: {
       assert(false);
-      // todo: log error
+      // TODO: log error
       break;
     }    
   }  // end of switch statement
@@ -1459,7 +1460,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   // do it here once off.
   // ..........................................................................  
   skiplist->_base._random = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint32_t) * skiplist->_base._numRandom, false);
-  /* FIXME: memory allocation might fail */
+  /* TODO: memory allocation might fail */
   
   // ..........................................................................  
   // Assign the element size
@@ -1489,7 +1490,7 @@ void TRI_InitSkipListMulti (TRI_skiplist_multi_t* skiplist,
   growResult = GrowNodeHeight(&(skiplist->_base._startNode), 2);
   growResult = growResult && GrowNodeHeight(&(skiplist->_base._endNode), 2);
   if (!growResult) {
-    // todo: truncate he nodes and return
+    // todo: truncate the nodes and return
     return;
   }
   
@@ -1940,17 +1941,6 @@ int TRI_InsertElementSkipListMulti(TRI_skiplist_multi_t* skiplist, void* element
     tempRightNode = tempLeftNode->_column[j]._next;
     JoinNodes(tempLeftNode, newNode, j, j);
     JoinNodes(newNode, tempRightNode, j, j);
-    /*
-    printf("%s:%u:%u:%u:%u:%u:%u:%u:%u\n",__FILE__,__LINE__,
-      (uint64_t)(tempLeftNode),
-      (uint64_t)(&(skiplist->_base._startNode)),
-      (uint64_t)(newNode->_column[j]._prev),
-      (uint64_t)(tempRightNode),
-      (uint64_t)(&(skiplist->_base._endNode)),
-      (uint64_t)(newNode->_column[j]._next),
-      (uint64_t)(newNode)
-      );
-      */
   }  
 
   

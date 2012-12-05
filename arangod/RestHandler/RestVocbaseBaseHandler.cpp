@@ -39,6 +39,7 @@
 #include "Variant/VariantInt32.h"
 #include "Variant/VariantString.h"
 #include "Variant/VariantUInt64.h"
+#include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
 
 using namespace std;
@@ -107,7 +108,6 @@ string RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH = "/_api/import";
 
 string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,9 +128,6 @@ string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbase_t* vocbase)
   : RestBaseHandler(request),
     _vocbase(vocbase),
-    _collection(0),
-    _documentCollection(0),
-    _barrier(0),
     _timing(),
     _timingResult(RES_FAIL) {
 }
@@ -140,10 +137,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request, TRI_vocbas
 ////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
-  if (_barrier != 0) {
-    TRI_FreeBarrier(_barrier);
-  }
-
   LOGGER_REQUEST_IN_END_I(_timing) << _timingResult;
 }
 
@@ -165,7 +158,7 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateOk () {
-  response = new HttpResponse(HttpResponse::NO_CONTENT);
+  _response = createResponse(HttpResponse::NO_CONTENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,13 +171,13 @@ void RestVocbaseBaseHandler::generateCreated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::CREATED);
+  _response = createResponse(HttpResponse::CREATED);
 
-  response->setContentType("application/json; charset=utf-8");
-  response->setHeader("ETag", "\"" + ridStr + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("ETag", "\"" + ridStr + "\"");
+  _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -202,13 +195,13 @@ void RestVocbaseBaseHandler::generateAccepted (TRI_voc_cid_t cid, TRI_voc_did_t 
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::ACCEPTED);
+  _response = createResponse(HttpResponse::ACCEPTED);
 
-  response->setContentType("application/json; charset=utf-8");
-  response->setHeader("ETag", "\"" + ridStr + "\"");
-  response->setHeader("location", DOCUMENT_PATH + "/" + handle);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("ETag", "\"" + ridStr + "\"");
+  _response->setHeader("location", DOCUMENT_PATH + "/" + handle);
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -226,11 +219,11 @@ void RestVocbaseBaseHandler::generateDeleted (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
 
-  response->setContentType("application/json; charset=utf-8");
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
@@ -248,26 +241,16 @@ void RestVocbaseBaseHandler::generateUpdated (TRI_voc_cid_t cid, TRI_voc_did_t d
   string ridStr = StringUtils::itoa(rid);
   string handle = cidStr + "/" + didStr;
 
-  response = new HttpResponse(HttpResponse::OK);
+  _response = createResponse(HttpResponse::OK);
 
-  response->setContentType("application/json; charset=utf-8");
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"_id\":\"")
     .appendText(handle.c_str())
     .appendText("\",\"_rev\":")
     .appendInteger(rid)
     .appendText("}");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates collection not found error message
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
-  generateError(HttpResponse::NOT_FOUND, 
-                TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                "collection " + COLLECTION_PATH + "/" + cid + " not found");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +300,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_voc_did_t did, TRI_voc_rid_t rid) {
-  response = new HttpResponse(HttpResponse::PRECONDITION_FAILED);
+  _response = createResponse(HttpResponse::PRECONDITION_FAILED);
 
   VariantArray* result = new VariantArray();
   result->add("error", new VariantBoolean(true));
@@ -328,13 +311,12 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
   result->add("_rev", new VariantUInt64(rid));
 
   string contentType;
-  bool ok = OutputGenerator::output(selectResultGenerator(request), response->body(), result, contentType);
+  bool ok = OutputGenerator::output(selectResultGenerator(_request), _response->body(), result, contentType);
 
   if (ok) {
-    response->setContentType(contentType);
+    _response->setContentType(contentType);
   }
   else {
-    delete response;
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "cannot generate response");
   }
 
@@ -346,9 +328,9 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (TRI_voc_cid_t cid, TRI_
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (string const& etag) {
-  response = new HttpResponse(HttpResponse::NOT_MODIFIED);
+  _response = createResponse(HttpResponse::NOT_MODIFIED);
 
-  response->setHeader("ETag", "\"" + etag + "\"");
+  _response->setHeader("ETag", "\"" + etag + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,18 +338,20 @@ void RestVocbaseBaseHandler::generateNotModified (string const& etag) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
-                                               bool generateDocument) {
-  if (document == 0 || _documentCollection == 0) {
+                                               const TRI_voc_cid_t cid,
+                                               TRI_shaper_t* shaper,
+                                               const bool generateDocument) {
+  if (document == 0) {
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_INTERNAL,
-                  "document or collection pinter is null, should not happen");
+                  "document pointer is null, should not happen");
     return;
   }
 
   // add document identifier to buffer
   TRI_string_buffer_t buffer;
 
-  string id = StringUtils::itoa(_documentCollection->base._cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
+  string id = StringUtils::itoa(cid) + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + StringUtils::itoa(document->_did);
 
   TRI_json_t augmented;
   TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
@@ -398,7 +382,9 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   // convert object to string
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_StringifyAugmentedShapedJson(_documentCollection->_shaper, &buffer, &document->_document, &augmented);
+  TRI_shaped_json_t shapedJson;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+  TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
 
@@ -411,18 +397,52 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
   }
 
   // and generate a response
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json; charset=utf-8");
-  response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
+  _response = createResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->setHeader("ETag", "\"" + StringUtils::itoa(document->_rid) + "\"");
 
   if (generateDocument) {
-    response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+    _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
   }
   else {
-    response->headResponse(TRI_LengthStringBuffer(&buffer));
+    _response->headResponse(TRI_LengthStringBuffer(&buffer));
   }
 
   TRI_AnnihilateStringBuffer(&buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates collection not found error message
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateCollectionNotFound (string const& cid) {
+  generateError(HttpResponse::NOT_FOUND, 
+                TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                "collection " + COLLECTION_PATH + "/" + cid + " not found");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate an approriate error message for the collection-related 
+/// error that occurred
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateCollectionError (const string& collection, 
+                                                      const int res) {
+  if (TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND == res) {
+    if (collection.empty()) {
+      // no collection name specified
+      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "no collection name specified"); 
+    }
+    else {
+      // collection name specified but collection not found
+      generateCollectionNotFound(collection);
+    }
+
+    return;
+  }
+
+  // other errors
+  generateError(HttpResponse::SERVER_ERROR, res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +451,7 @@ void RestVocbaseBaseHandler::generateDocument (TRI_doc_mptr_t const* document,
 
 TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char const* parameter) {
   bool found;
-  char const* etag = request->header(header, found);
+  char const* etag = _request->header(header, found);
 
   if (found) {
     char const* s = etag;
@@ -457,7 +477,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char 
     return 0;
   }
   else {
-    etag = request->value(parameter, found);
+    etag = _request->value(parameter, found);
 
     if (found) {
       return TRI_UInt64String(etag);
@@ -472,9 +492,9 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header, char 
 /// @brief extracts the update policy
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
+TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () const {
   bool found;
-  char const* policy = request->value("policy", found);
+  char const* policy = _request->value("policy", found);
 
   if (found) {
     if (TRI_CaseEqualString(policy, "error")) {
@@ -493,57 +513,18 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief uses a collection, loading or manifesting and locking it
+/// @brief extracts the waitForSync value
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestVocbaseBaseHandler::useCollection (string const& name, bool create) {
-  _collection = 0;
-  _documentCollection = 0;
+bool RestVocbaseBaseHandler::extractWaitForSync () const {
+  bool found;
+  char const* forceStr = _request->value("waitForSync", found);
 
-  // sanity check
-  if (name.empty()) {
-    generateError(HttpResponse::BAD, 
-                  TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "collection identifier is empty");
-    return TRI_set_errno(TRI_ERROR_HTTP_CORRUPTED_JSON);
+  if (found) {
+    return StringUtils::boolean(forceStr);
   }
 
-  // try to find the collection
-  if (isdigit(name[0])) {
-    TRI_voc_cid_t id = StringUtils::uint64(name);
-
-    _collection = TRI_LookupCollectionByIdVocBase(_vocbase, id);
-  }
-  else {
-    _collection = TRI_FindCollectionByNameVocBase(_vocbase, name.c_str(), create);
-  }
-
-  if (_collection == 0) {
-    generateCollectionNotFound(name);
-    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  // and use the collection
-  int res = TRI_UseCollectionVocBase(_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _documentCollection = _collection->_collection;
-    assert(_documentCollection != 0);
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::releaseCollection () {
-  if (_collection == 0) {
-    return;
-  }
-
-  TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,7 +533,7 @@ void RestVocbaseBaseHandler::releaseCollection () {
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
   char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, request->body(), &errmsg);
+  TRI_json_t* json = _request->toJson(&errmsg);
 
   if (json == 0) {
     if (errmsg == 0) {
@@ -565,7 +546,7 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
 
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
     }
 
     return 0;
@@ -583,48 +564,12 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the restult-set, needs a loaded collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_mptr_t const RestVocbaseBaseHandler::findDocument (string const& doc) {
-  TRI_doc_mptr_t document;
-
-  if (_documentCollection == 0) {
-    document._did = 0;
-    return document;
-  }
-
-  TRI_voc_did_t id = StringUtils::uint64(doc);
-
-  // .............................................................................
-  // inside read transaction
-  // .............................................................................
-
-  _documentCollection->beginRead(_documentCollection);
-
-  document = _documentCollection->read(_documentCollection, id);
-
-  // keep the oldest barrier
-  if (_barrier != 0) {
-    _barrier = TRI_CreateBarrierElement(&_documentCollection->_barrierList);
-  }
-
-  _documentCollection->endRead(_documentCollection);
-
-  // .............................................................................
-  // outside read transaction
-  // .............................................................................
-
-  return document;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
                                              TRI_voc_cid_t& cid,
-                                             TRI_voc_did_t& did) {
+                                             TRI_voc_did_t& did) { 
   vector<string> split;
   int res;
 
@@ -634,11 +579,27 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
+
   cid = TRI_UInt64String(split[0].c_str());
   res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    // issue #277: non-numeric collection id, now try looking up by name
+    TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, split[0].c_str());
+    if (collection == 0) {
+      // collection not found
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+    // collection found by name
+    cid = collection->_cid;
+  }
+  else {
+    // validate whether collection exists
+    TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    if (collection == 0) {
+      // collection not found
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
   }
 
   did = TRI_UInt64String(split[1].c_str());

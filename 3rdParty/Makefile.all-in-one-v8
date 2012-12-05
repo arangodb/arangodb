@@ -1,0 +1,53 @@
+# -*- mode: Makefile; -*-
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                           LIBRARY
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief V8
+################################################################################
+
+BUILT_SOURCES += @V8_LIBS@
+
+@V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
+
+@srcdir@/.v8-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING V8"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+	cd @top_srcdir@/3rdParty/V8 && $(MAKE) library=static snapshot=off @V8_TARGET@
+
+	touch @srcdir@/.v8-build-@TRI_BITS@
+
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD V8 FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+
+CLEANUP += @srcdir@/.v8-build-@TRI_BITS@
+CLEANUP_3RD += clean-v8
+
+clean-v8:
+	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+	rm -rf @top_srcdir@/3rdParty/V8/out
+	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
+	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
+	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

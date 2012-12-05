@@ -33,6 +33,7 @@
 #include <BasicsC/locks.h>
 #include <BasicsC/logging.h>
 #include <BasicsC/strings.h>
+#include <BasicsC/utf8-helper.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -97,7 +98,7 @@ typedef struct voc_shaper_s {
   TRI_shape_aid_t _nextAid;
   TRI_shape_sid_t _nextSid;
 
-  TRI_blob_collection_t* _collection;
+  TRI_shape_collection_t* _collection;
 
   TRI_mutex_t _shapeLock;
   TRI_mutex_t _attributeLock;
@@ -164,7 +165,11 @@ static int attributeWeightCompareFunction(const void* leftItem, const void* righ
 
   assert(l);
   assert(r);
+#ifdef TRI_HAVE_ICU  
+  return TR_compare_utf8(l->_attribute, r->_attribute);
+#else  
   return (strcmp(l->_attribute, r->_attribute));
+#endif  
 }
 
 static int attributeWeightCompareFunctionPointer(const void* leftItem, const void* rightItem) {
@@ -174,7 +179,11 @@ static int attributeWeightCompareFunctionPointer(const void* leftItem, const voi
   assert(l);
   assert(r);
 
+#ifdef TRI_HAVE_ICU  
+  return TR_compare_utf8(l->_attribute, r->_attribute);
+#else  
   return (strcmp(l->_attribute, r->_attribute));
+#endif  
 }
 
 
@@ -369,7 +378,7 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
 
   
   // write into the shape collection
-  res = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_attribute_marker_t), name, n, &result);
+  res = TRI_WriteShapeCollection(s->_collection, &marker.base, sizeof(TRI_df_attribute_marker_t), name, n, &result);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_attributeLock);
@@ -590,7 +599,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   shape->_sid = s->_nextSid++;
 
   // write into the shape collection
-  res = TRI_WriteBlobCollection(s->_collection, &marker.base, sizeof(TRI_df_shape_marker_t), shape, shape->_size, &result);
+  res = TRI_WriteShapeCollection(s->_collection, &marker.base, sizeof(TRI_df_shape_marker_t), shape, shape->_size, &result);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_UnlockMutex(&s->_shapeLock);
@@ -809,7 +818,7 @@ static uint64_t HashElementWeightedAttribute (TRI_associative_pointer_t* array, 
 /// @brief initialises a persistent shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collection) {
+static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collection) {
   shaper->base.findAttributeName = FindAttributeName;
   shaper->base.lookupAttributeId = LookupAttributeId;
   shaper->base.findShape = FindShape;
@@ -904,21 +913,25 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_blob_collection_t* collecti
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
                                    char const* path,
-                                   char const* name) {
+                                   char const* name, 
+                                   const bool waitForSync) {
   voc_shaper_t* shaper;
-  TRI_blob_collection_t* collection;
+  TRI_shape_collection_t* collection;
   TRI_col_parameter_t parameter;
   bool ok;
 
-  TRI_InitParameterCollection(vocbase, &parameter, name, SHAPER_DATAFILE_SIZE);
+  TRI_InitParameterCollection(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE);
+  // override wait for sync for shapes
+  parameter._waitForSync = waitForSync;
 
-  collection = TRI_CreateBlobCollection(vocbase, path, &parameter);
+  collection = TRI_CreateShapeCollection(vocbase, path, &parameter);
 
   if (collection == NULL) {
     return NULL;
   }
 
   shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+  // TODO: memory allocation might fail
   TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);
 
@@ -947,7 +960,7 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   assert(shaper);
   assert(shaper->_collection);
 
-  TRI_FreeBlobCollection(shaper->_collection);
+  TRI_FreeShapeCollection(shaper->_collection);
 
   TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
   TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
@@ -1008,7 +1021,7 @@ void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
 /// @brief returns the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
+TRI_shape_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
   return ((voc_shaper_t*) shaper)->_collection;
 }
 
@@ -1019,10 +1032,10 @@ TRI_blob_collection_t* TRI_CollectionVocShaper (TRI_shaper_t* shaper) {
 TRI_shaper_t* TRI_OpenVocShaper (TRI_vocbase_t* vocbase,
                                  char const* filename) {
   voc_shaper_t* shaper;
-  TRI_blob_collection_t* collection;
+  TRI_shape_collection_t* collection;
   bool ok;
 
-  collection = TRI_OpenBlobCollection(vocbase, filename);
+  collection = TRI_OpenShapeCollection(vocbase, filename);
 
   if (collection == NULL) {
     return NULL;
@@ -1076,10 +1089,10 @@ int TRI_CloseVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
   int err;
 
-  err = TRI_CloseBlobCollection(shaper->_collection);
+  err = TRI_CloseShapeCollection(shaper->_collection);
 
   if (err != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot close blob collection of shaper, error %lu", (unsigned long) err);
+    LOG_ERROR("cannot close shape collection of shaper, error %lu", (unsigned long) err);
   }
 
   // TODO free the accessors

@@ -40,6 +40,7 @@
 #define TRIAGENS_V8_CLIENT_CONNECTION_H 1
 
 #include <Basics/Common.h>
+#include "Rest/HttpRequest.h"
 
 #include <v8.h>
 
@@ -49,8 +50,13 @@
 
 namespace triagens {
   namespace httpclient {
+    class GeneralClientConnection;
     class SimpleHttpClient;
     class SimpleHttpResult;
+  }
+
+  namespace rest {
+    class Endpoint;
   }
 }
 
@@ -94,14 +100,13 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8ClientConnection (const string& hostname,
-                            const string& username, 
-                            const string& password, 
-                            int port, 
-                            double requestTimeout,
-                            size_t retries,
-                            double connectionTimeout,
-                            bool warn);
+        V8ClientConnection (triagens::rest::Endpoint*,
+                            const string&,
+                            const string&,
+                            double,
+                            double, 
+                            size_t,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -153,20 +158,12 @@ namespace triagens {
         const std::string& getErrorMessage ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the hostname 
+/// @brief get the endpoint string
 ///
-/// @return string          the server name
+/// @return string         
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string& getHostname ();
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the port
-///
-/// @return string          the server port
-////////////////////////////////////////////////////////////////////////////////
-
-        int getPort ();
+        const std::string getEndpointSpecification ();
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the simple http client
@@ -241,6 +238,20 @@ namespace triagens {
                                        map<string, string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief do a "PATCH" request
+///
+/// @param string location                     the request location
+/// @param string body                         the request body
+/// @param map<string, string> headerFields    additional header fields
+///
+/// @return v8::Value                          a V8 JavaScript object
+////////////////////////////////////////////////////////////////////////////////
+
+        v8::Handle<v8::Value> patchData (std::string const& location,
+                                         std::string const& body,
+                                         map<string, string> const& headerFields);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -256,10 +267,10 @@ namespace triagens {
     private:
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executs a request
+/// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> requestData (int method, 
+      v8::Handle<v8::Value> requestData (rest::HttpRequest::HttpRequestType method, 
                                          std::string const& location,
                                          std::string const& body,
                                          map<string, string> const& headerFields);
@@ -280,16 +291,16 @@ namespace triagens {
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief connection
+////////////////////////////////////////////////////////////////////////////////
+
+      triagens::httpclient::GeneralClientConnection* _connection;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief server version
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string _version;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection status
-////////////////////////////////////////////////////////////////////////////////
-
-      bool _connected;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief last http return code

@@ -30,22 +30,27 @@
 
 #include <errno.h>
 
+
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <netdb.h>
-
-#include <netinet/in.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
+#endif 
+
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+#include <sys/types.h>
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/socket-utils.h"
 #include "Logger/Logger.h"
-
-#include "GeneralServer/GeneralFigures.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;
@@ -55,50 +60,18 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask (string const& address, int port, bool reuseAddress)
+ListenTask::ListenTask (Endpoint* endpoint, bool reuseAddress)
   : Task("ListenTask"),
     readWatcher(0),
     reuseAddress(reuseAddress),
-    address(address),
-    port(port),
+    _endpoint(endpoint),
     listenSocket(0),
-    bound(false),
     acceptFailures(0) {
   bindSocket();
-}
-
-
-
-ListenTask::ListenTask (int port, bool reuseAddress)
-  : Task("ListenTask"),
-    readWatcher(0),
-    reuseAddress(reuseAddress),
-    address(""),
-    port(port),
-    listenSocket(0),
-    bound(false),
-    acceptFailures(0) {
-  bindSocket();
-}
-
-ListenTask::ListenTask (struct addrinfo *aip, bool reuseAddress)
-  : Task("ListenTask"),
-    readWatcher(0),
-    reuseAddress(reuseAddress),
-    address(""),
-    port(0),
-    listenSocket(0),
-    bound(false),
-    acceptFailures(0) {
-  bindSocket(aip);
 }
 
 
 ListenTask::~ListenTask () {
-  if (listenSocket != -1) {
-    close(listenSocket);
-  }
-
   if (readWatcher != 0) {
     scheduler->uninstallEvent(readWatcher);
   }
@@ -111,7 +84,7 @@ ListenTask::~ListenTask () {
 bool ListenTask::isBound () const {
   MUTEX_LOCKER(changeLock);
   
-  return bound;
+  return _endpoint != 0 && _endpoint->isConnected();
 }
 
 
@@ -121,7 +94,7 @@ bool ListenTask::isBound () const {
 // -----------------------------------------------------------------------------
 
 void ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
-  if (! bound) {
+  if (! isBound()) {
     return;
   }
   
@@ -164,10 +137,12 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
         LOGGER_ERROR << "too many accept failures, stopping logging";
       }
       
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
       return true;
     }
+    
+    acceptFailures = 0;
     
     struct sockaddr_in addr_out;
     socklen_t len_out = sizeof(addr_out);
@@ -175,62 +150,28 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     int res = getsockname(connfd, (sockaddr*) &addr_out, &len_out);
 
     if (res != 0) {
-      close(connfd);
+      TRI_CLOSE(connfd);
       
       LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
       
+      return true;
+    }
+ 
+    // disable nagle's algorithm, set to non-blocking and close-on-exec  
+    bool result = _endpoint->initIncoming(connfd); 
+    if (!result) {
+      TRI_CLOSE(connfd);
+
+      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
+
       return true;
     }
 
-    acceptFailures = 0;
-    
-    // disable nagle's algorithm
-    int n = 1;
-    res = setsockopt(connfd, IPPROTO_TCP, TCP_NODELAY, (char*)&n, sizeof(n));
-    
-    if (res != 0 ) {
-      close(connfd);
-      
-      LOGGER_WARNING << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
-      return true;
-    }
-    
-    // set socket to non-blocking
-    bool ok = TRI_SetNonBlockingSocket(connfd);
-    
-    if (! ok) {
-      close(connfd);
-      
-      LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
-      return true;
-    }
-    
-    ok = TRI_SetCloseOnExecSocket(connfd);
-    
-    if (! ok) {
-      close(connfd);
-      
-      LOGGER_ERROR << "cannot set close-on-exec: " << errno << " (" << strerror(errno) << ")";
-      GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-      
-      return true;
-    }
-    
-    // handle connection
-    ConnectionInfo info;
-/*
-        info.serverAddress = inet_ntoa(addr_out.sin_addr);
-        info.serverPort = port;
-        
-        info.clientAddress = inet_ntoa(addr.sin_addr);
-        info.clientPort = addr.sin_port;
-*/
     // set client address and port
+    ConnectionInfo info;
+
     char host[NI_MAXHOST], serv[NI_MAXSERV];
     if (getnameinfo((sockaddr*) &addr, len,
                     host, sizeof(host),
@@ -240,12 +181,12 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
       info.clientPort = addr.sin_port;
     }
     else {
-          info.clientAddress = inet_ntoa(addr.sin_addr);
-          info.clientPort = addr.sin_port;
+      info.clientAddress = inet_ntoa(addr.sin_addr);
+      info.clientPort = addr.sin_port;
     }
     
-    info.serverAddress = address;
-    info.serverPort = port;
+    info.serverAddress = _endpoint->getHost();
+    info.serverPort = _endpoint->getPort();
     
     return handleConnected(connfd, info);
   }
@@ -258,126 +199,10 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 // -----------------------------------------------------------------------------
 
 bool ListenTask::bindSocket () {
-  bound = false;
-  listenSocket = -1;
-  
-  struct addrinfo *result, *aip;
-  struct addrinfo hints;
-  int error;
-  
-  memset(&hints, 0, sizeof (struct addrinfo));
-  hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_ALL;
-  hints.ai_socktype = SOCK_STREAM;
-  
-  string portString = StringUtils::itoa(port);
-  
-  if (address.empty()) {
-    LOGGER_ERROR << "get any address";
-    error = getaddrinfo(NULL, portString.c_str(), &hints, &result);
-  }
-  else {
-    error = getaddrinfo(address.c_str(), portString.c_str(), &hints, &result);
-  }
-  
-  if (error != 0) {
-    LOGGER_ERROR << "getaddrinfo for host: " << address.c_str() << " => " << gai_strerror(error);
+  listenSocket = _endpoint->connect(30, 300); // connect timeout in seconds
+  if (listenSocket == 0) {
     return false;
   }
-  
-  // Try all returned addresses until one works
-  for (aip = result; aip != NULL; aip = aip->ai_next) {
-    
-    // try to bind the address info pointer
-    if (bindSocket(aip)) {
-      // OK
-      break;
-    }
-    
-  }
-  
-  freeaddrinfo(result);
-  
-  return bound;
-}
-
-
-
-bool ListenTask::bindSocket (struct addrinfo *aip) {
-  bound = false;
-  listenSocket = -1;
-  
-  // set address and port
-  char host[NI_MAXHOST], serv[NI_MAXSERV];
-  if (getnameinfo(aip->ai_addr, aip->ai_addrlen,
-                  host, sizeof(host),
-                  serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-    
-    address = string(host);
-    port = StringUtils::int32(string(serv));
-    
-    LOGGER_TRACE << "bind to address '" << address << "' port '" << string(serv) << "'";
-  }
-  
-  listenSocket = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
-  if (listenSocket == -1) {
-    return false;
-  }
-  
-  // try to reuse address
-  if (reuseAddress) {
-    int opt = 1;
-    
-    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-      LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
-      return false;
-    }
-    
-    LOGGER_TRACE << "reuse address flag set";
-  }
-  
-  int res = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
-  if (res < 0) {
-    LOGGER_ERROR << "bind failed with " << errno << " (" << strerror(errno) << ")";
-    (void) close(listenSocket);
-    listenSocket = -1;
-    return false;
-  }
-  
-  // listen for new connection
-  res = listen(listenSocket, 10);
-  
-  if (res < 0) {
-    close(listenSocket);
-    
-    LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
-    
-    return false;
-  }
-  
-  // set socket to non-blocking
-  bool ok = TRI_SetNonBlockingSocket(listenSocket);
-
-  if (!ok) {
-    close(listenSocket);
-    
-    LOGGER_ERROR << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
-    
-    return false;
-  }
-
-  // set close on exit
-  ok = TRI_SetCloseOnExecSocket(listenSocket);
-
-  if (!ok) {
-    close(listenSocket);
-    
-    LOGGER_ERROR << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
-    
-    return false;
-  }
-  
-  bound = true;
   
   return true;
 }

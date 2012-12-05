@@ -32,17 +32,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DbaManual ArangoDB's DBA Manual (@VERSION)
 ///
+/// @NAVIGATE_DbaManual
+///
 /// @if LATEX
 /// <ul>
 ///  <li>@ref DbaManualBasics</li>
 ///  <li>@ref DbaManualAuthentication</li>
 ///  <li>@ref DbaManualDatafileDebugger</li>
+///  <li>@ref DbaManualEmergencyConsole</li>
 ///  <li>@ref ShellCollection</li>
 ///  <li>@ref ShellIndex</li>
 ///  <li>@ref IndexCap</li>
 ///  <li>@ref IndexGeo</li>
 ///  <li>@ref IndexHash</li>
 ///  <li>@ref IndexSkiplist</li>
+///  <li>@ref IndexBitArray</li>
 ///
 ///  @latexonly\appendix@endlatexonly
 ///  <li>@ref Glossary</li>
@@ -51,6 +55,7 @@
 /// @copydetails DbaManualBasicsTOC
 /// @copydetails DbaManualAuthenticationTOC
 /// @copydetails DbaManualDatafileDebuggerTOC
+/// @copydetails DbaManualEmergencyConsoleTOC
 /// @copydetails ShellCollectionTOC
 /// @copydetails ShellIndexTOC
 /// @copydetails IndexesTOC
@@ -69,7 +74,12 @@
 ///   <ul>
 ///    <li>@ref DbaManualBasicsDurability</li>
 ///    <li>@ref DbaManualBasicsMvcc</li>
-///    <li>@ref DbaManualBasicsConfig</li>
+///    <li>@ref DbaManualBasicsConfig
+///     <ul>
+///      <li>@ref DbaManualBasicsConfigGlobal</li>
+///      <li>@ref DbaManualBasicsConfigCollection</li>
+///     </ul>
+///    </li>
 ///   </ul>
 ///  </li>
 /// </ul>
@@ -84,8 +94,12 @@
 ///////////////////////////////////////////////////////////////
 ///
 /// Database documents are stored in memory-mapped files. Per default, these
-/// memory-mapped files are synced frequently - storing all documents securely
-/// at once (durability).
+/// memory-mapped files are synced regularly but not instantly. This is often a
+/// good tradeoff between storage performance and durability. If this level of
+/// durabiity is too low for an application, the server can also sync all
+/// modifications to disk instantly. This will give full durability but will come
+/// with a performance penalty as each data modification will trigger a sync
+/// I/O operation.
 ///
 /// @section DbaManualBasicsMvcc AppendOnly/MVCC
 ////////////////////////////////////////////////
@@ -103,6 +117,22 @@
 ///
 /// @section DbaManualBasicsConfig Configuration
 ////////////////////////////////////////////////
+///
+/// @subsection DbaManualBasicsConfigGlobal Global Configuration
+////////////////////////////////////////////////////////////////
+///
+/// There are certain default values, which you can store in the
+/// configuration file or supply on the command line.
+///
+/// @copydetails triagens::arango::ArangoServer::_defaultMaximalSize
+///
+/// @copydetails triagens::arango::ArangoServer::_forceSyncShapes
+///
+/// @subsection DbaManualBasicsConfigCollection Per Collection Configuration
+////////////////////////////////////////////////////////////////////////////
+///
+/// You can configure the durability behavior on a per collection basis.
+/// Use the ArangoDB shell to change these properties.
 ///
 /// @copydetails JS_PropertiesVocbaseCol
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,27 +172,8 @@
 ///
 /// @verbinclude user-document
 ///
-/// If the server is started using the option 
-///
-/// @LIT{--server.http-auth yes}
-///
-/// then access via HTTP requires a user name and password using "basic
-/// authentication". The user must exists in the @LIT{_users}
-/// collection and must be active.
-///
-/// In order to generate an entry, you can use the supplied shell script
-///
-/// @LIT{/usr/sbin/arango-password \<username> [\<password>]}
-///
-/// Note that you must stop the @LIT{arangod} server before executing this
-/// script.
-///
 /// @section DbaManualAuthenticationCommandLine Command-Line Options for the Authentication and Authorisation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// @anchor CommandLineArangoHttpAuth
-/// @copydetails triagens::arango::ArangoServer::_httpAuth
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      DBA MANUAL DATAFILE DEBUGGER
@@ -182,19 +193,46 @@
 ///
 /// @EMBEDTOC{DbaManualDatafileDebuggerTOC}
 ///
-/// AranagoDB uses append-only journals. The corruption should only occur when
-/// the database server is kill. In this case, the corruption should only
+/// AranagoDB uses append-only journals. Data corruption should only occur when
+/// the database server is killed. In this case, the corruption should only
 /// occur in the last object(s) being written to the journal.
 ///
 /// If a corruption occurs within a normal datafile, then this can only happen
 /// if a hardware fault occurred.
 ///
-/// If a journal or datafile is corrupt, shutdown the database server and start
+/// If a journal or datafile is corrupt, shut down the database server and start
 /// the program
 ///
 /// @LIT{arango-dfdb}
 ///
 /// in order to check the consistency of the datafiles and journals.
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      DBA MANUAL EMERGENCY CONSOLE
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualEmergencyConsoleTOC
+///
+/// <ul>
+///  <li>@ref DbaManualEmergencyConsole
+///  </li>
+/// </ul>
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @page DbaManualEmergencyConsole Emergency Console
+///
+/// @EMBEDTOC{DbaManualEmergencyConsoleTOC}
+///
+/// The following command starts a emergency console. See below for a list of
+/// frequently used options, see @ref CommandLine "here" for a complete list.
+///
+/// @note Never start the emergency console for a database which also has a
+/// server attached to it. In general the ArangoDB shell is what you want.
+///
+/// @EXAMPLE{start-emergency-console,emergency console}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------

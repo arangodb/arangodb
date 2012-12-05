@@ -1,0 +1,54 @@
+.TH arangosh 1 "So 30. Sep 01:36:14 CEST 2012" "" "ArangoDB"
+.SH NAME
+arangosh - the ArangoDB shell
+.SH SYNOPSIS
+arangosh [options]
+.SH DESCRIPTION
+The arangosh binary can be used to establish an interactive
+client connection to the ArangoDB database. When the connection
+is established, it can be used to execute actions on the server.
+.SH OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+.IP "--configuration <string>"
+read configuration from file <string> 
+.IP "--log.level <string>"
+set the log level (possible values: "fatal", "error", "warning", "info", "debug", "trace") 
+.IP "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port 
+.IP "--server.username <string>"
+username to use when connecting (default "root") 
+.IP "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt 
+.SH EXAMPLES
+.EX
+shell> arangosh 
+starts arangosh with the default user and server endpoint 
+.EE
+
+.EX
+shell> arangosh --server.username fuchsia 
+starts arangosh with a specific user. Password prompt will follow 
+.EE
+
+.EX
+shell> arangosh --server.username fuchsia --server.password "abcd@34"
+starts arangosh with a specific user and password given on command line 
+.EE
+
+.EX
+shell> arangosh --server.endpoint tcp://192.168.173.13:8529
+starts arangosh connecting to a specific server 
+.EE
+
+.EX
+shell> arangosh --server.endpoint ssl://192.168.173.13:8530
+starts arangosh connecting to a specific server using an SSL connection 
+.EE
+
+
+.SH AUTHOR
+	    Copyright 2012, triAGENS GmbH, Cologne, Germany

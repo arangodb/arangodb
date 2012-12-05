@@ -25,10 +25,16 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 #include "ApplicationServer.h"
 
+#ifdef TRI_HAVE_POSIX_PWD_GRP
 #include <pwd.h>
 #include <grp.h>
+#endif
 
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Basics/FileUtils.h"
@@ -100,7 +106,7 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationServer::ApplicationServer (string const& title, string const& version)
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -109,6 +115,7 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
     _exitOnParentDeath(false),
     _watchParent(0),
     _stopping(0),
+    _name(name),
     _title(title),
     _version(version),
     _configFile(),
@@ -141,7 +148,7 @@ ApplicationServer::ApplicationServer (string const& title, string const& version
 
 ApplicationServer::~ApplicationServer () {
   Random::shutdown();
-  for_each(_features.begin(), _features.end(), DeleteObject());
+  for_each(_features.begin(), _features.end(), DeleteObjectAny());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +176,7 @@ void ApplicationServer::addFeature (ApplicationFeature* feature) {
 /// @brief sets the name of the system config file with a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (string const& name, string const& path) {
+void ApplicationServer::setSystemConfigFile (std::string const& name, std::string const& path) {
   _systemConfigFile = name;
   _systemConfigPath = path;
 }
@@ -178,7 +185,7 @@ void ApplicationServer::setSystemConfigFile (string const& name, string const& p
 /// @brief sets the name of the system config file without a path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (string const& name) {
+void ApplicationServer::setSystemConfigFile (std::string const& name) {
   return setSystemConfigFile(name, "");
 }
 
@@ -186,8 +193,16 @@ void ApplicationServer::setSystemConfigFile (string const& name) {
 /// @brief sets the name of the user config file
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setUserConfigFile (string const& name) {
+void ApplicationServer::setUserConfigFile (std::string const& name) {
   _userConfigFile = name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the application
+////////////////////////////////////////////////////////////////////////////////
+
+string const& ApplicationServer::getName () const {
+  return _name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,6 +231,7 @@ void ApplicationServer::setupLogging () {
   }
 
   TRI_SetLineNumberLogging(_logLineNumber);
+
   TRI_SetLogLevelLogging(_logLevel);
   TRI_SetLogSeverityLogging(_logSeverity);
   TRI_SetPrefixLogging(_logPrefix);
@@ -225,15 +241,19 @@ void ApplicationServer::setupLogging () {
     TRI_SetFileToLog(i->c_str());
   }
 
-  if (NULL == TRI_CreateLogAppenderFile(_logFile)) {
+  if (NULL == TRI_CreateLogAppenderFile(_logFile.c_str())) {
     if (_logFile.length() > 0) {
       // the user specified a log file to use but it could not be created. bail out
-      std::cerr << "failed to create logfile " << _logFile << std::endl;
+      std::cerr << "failed to create logfile '" << _logFile << "'. Please check the path and permissions." << std::endl;
       exit(EXIT_FAILURE);      
 
     }
   }
-  TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
+#ifdef TRI_ENABLE_SYSLOG
+  if (_logSyslog != "") {
+    TRI_CreateLogAppenderSyslog(_logPrefix.c_str(), _logSyslog.c_str());
+  }
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +288,7 @@ bool ApplicationServer::parse (int argc, char* argv[]) {
 
 bool ApplicationServer::parse (int argc,
                                char* argv[],
-                               map<string, ProgramOptionsDescription> opts) {
+                               std::map<std::string, ProgramOptionsDescription> opts) {
 
   // .............................................................................
   // setup the options
@@ -304,7 +324,7 @@ bool ApplicationServer::parse (int argc,
   bool ok = _options.parse(_description, argc, argv);
 
   if (! ok) {
-    cout << _options.lastError() << endl;
+    cout << "cannot parse command line: " << _options.lastError() << endl;
     return false;
   }
 
@@ -365,10 +385,6 @@ bool ApplicationServer::parse (int argc,
   // parse phase 2
   // .............................................................................
 
-  if (! _options.has("random.no-seed")) {
-    Random::seed();
-  }
-
   try {
     switch (_randomGenerator) {
       case 1: Random::selectVersion(Random::RAND_MERSENNE);  break;
@@ -402,7 +418,7 @@ bool ApplicationServer::parse (int argc,
 void ApplicationServer::prepare () {
 
   // prepare all features
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
     LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
@@ -411,6 +427,31 @@ void ApplicationServer::prepare () {
 
     if (! ok) {
       LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
+      exit(EXIT_FAILURE);      
+    }
+
+    LOGGER_TRACE << "prepared server feature '" << feature->getName() << "'";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares the server
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationServer::prepare2 () {
+
+  // prepare all features
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    LOGGER_DEBUG << "preparing server feature '" << feature->getName() << "'";
+
+    bool ok = feature->prepare2();
+
+    if (! ok) {
+      LOGGER_FATAL << "failed to prepare server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 
@@ -425,32 +466,27 @@ void ApplicationServer::prepare () {
 void ApplicationServer::start () {
   LOGGER_DEBUG << "ApplicationServer version " << TRIAGENS_VERSION;
 
+#ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
+#endif
+
+  raisePrivileges();
 
   // start all startable features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
 
-    if (! feature->isStartable()) {
-      continue;
-    }
-
     bool ok = feature->start();
 
     if (! ok) {
       LOGGER_FATAL << "failed to start server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 
-    LOGGER_INFO << "starting server feature '" << feature->getName() << "'";
-
-    while (! feature->isStarted()) {
-      usleep(1000);
-    }
-
-    LOGGER_TRACE << "started server feature '" << feature->getName() << "'";
+    LOGGER_DEBUG << "started server feature '" << feature->getName() << "'";
   }
 
   // now open all features
@@ -463,6 +499,7 @@ void ApplicationServer::start () {
 
     if (! ok) {
       LOGGER_FATAL << "failed to open server feature '" << feature->getName() <<"'";
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);      
     }
 
@@ -479,53 +516,16 @@ void ApplicationServer::start () {
 void ApplicationServer::wait () {
   bool running = true;
 
-  // get all startable features
-  vector<ApplicationFeature*> startable;
-
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-    ApplicationFeature* feature = *i;
-
-    if (feature->isStartable()) {
-      startable.push_back(feature);
-    }
-  }
-
-  // wait until all startable features have stopped
+  // wait until we receive a stop signal
   while (running && _stopping == 0) {
 
     // check the parent and wait for a second
-    if (startable.empty()) {
-      if (! checkParent()) {
-        running = false;
-        break;
-      }
-
-      sleep(1);
-    }
-
-    // check the other features - give each of them a second
-    else {
+    if (! checkParent()) {
       running = false;
-
-      for (vector<ApplicationFeature*>::iterator i = startable.begin();  i != startable.end();  ++i) {
-        ApplicationFeature* feature = *i;
-
-        bool r = feature->isRunning();
-
-        if (r) {
-          running = r;
-        }
-
-        if (! checkParent()) {
-          running = false;
-          break;
-        }
-      }
-
-      if (running) {
-        sleep(1);
-      }
+      break;
     }
+
+    sleep(1);
   }
 }
 
@@ -538,32 +538,32 @@ void ApplicationServer::beginShutdown () {
     return;
   }
 
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
-    ApplicationFeature* feature = *i;
-
-    LOGGER_DEBUG << "beginning shutdown sequence of server feature '" << feature->getName() << "'";
-
-    feature->beginShutdown();
-
-    LOGGER_TRACE << "shutdown sequence initiated for server feature '" << feature->getName() << "'";
-  }
-
   _stopping = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down everything
+/// @brief stops everything
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::shutdown () {
+void ApplicationServer::stop () {
   beginShutdown();
 
+  // close all features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ApplicationFeature* feature = *i;
+
+    feature->close();
+
+    LOGGER_TRACE << "closed server feature '" << feature->getName() << "'";
+  }
+
+  // stop all features
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
     LOGGER_DEBUG << "shutting down server feature '" << feature->getName() << "'";
 
-    feature->shutdown();
+    feature->stop();
 
     LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
@@ -792,14 +792,22 @@ bool ApplicationServer::checkParent () {
   }
 #endif
 
+// unfortunately even though windows has <signal.h>, there is no
+// kill method defined. Notice that the kill below is not to terminate
+// the process. 
+#ifdef TRI_HAVE_SIGNAL_H
   if (_watchParent != 0) {
+#ifdef TRI_HAVE_POSIX
     int res = kill(_watchParent, 0);
-
+#else
+    int res = -1;
+#endif
     if (res != 0) {
       LOGGER_INFO << "parent " << _watchParent << " has died";
       return false;
     }
   }
+#endif
 
   return true;
 }
@@ -827,7 +835,7 @@ bool ApplicationServer::readConfigurationFile () {
     // but for some reason can not be parsed. Best to report an error.
 
     if (! ok) {
-      cout << _options.lastError() << endl;
+      cout << "cannot parse config file '" << _configFile << "': " << _options.lastError() << endl;
     }
 
     return ok;
@@ -860,7 +868,7 @@ bool ApplicationServer::readConfigurationFile () {
         // but for some reason can not be parsed. Best to report an error.
 
         if (! ok) {
-          cout << _options.lastError() << endl;
+          cout << "cannot parse config file '" << homeDir << "': " << _options.lastError() << endl;
         }
 
         return ok;
@@ -904,7 +912,7 @@ bool ApplicationServer::readConfigurationFile () {
           // but for some reason can not be parsed. Best to report an error.
 
           if (! ok) {
-            cout << _options.lastError() << endl;
+            cout << "cannot parse config file '" << sysDir << "': " << _options.lastError() << endl;
           }
 
           return ok;
@@ -934,7 +942,7 @@ bool ApplicationServer::readConfigurationFile () {
         // but for some reason can not be parsed. Best to report an error.
 
         if (! ok) {
-          cout << _options.lastError() << endl;
+          cout << "cannot parse config file '" << sysDir << "': " << _options.lastError() << endl;
         }
 
         return ok;

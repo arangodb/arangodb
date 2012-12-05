@@ -29,12 +29,20 @@
 #ifndef TRIAGENS_SCHEDULER_LISTEN_TASK_H
 #define TRIAGENS_SCHEDULER_LISTEN_TASK_H 1
 
+#ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netdb.h>
+#endif
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 
 #include "Scheduler/Task.h"
 
 #include "Basics/Mutex.h"
 #include "Rest/ConnectionInfo.h"
+#include "Rest/Endpoint.h"
 
 namespace triagens {
   namespace rest {
@@ -51,27 +59,15 @@ namespace triagens {
 /// @brief maximal number of failed connects
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const MAX_ACCEPT_ERRORS = 1000;
+        static size_t const MAX_ACCEPT_ERRORS = 128;
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given address and port (deprecated)
+/// @brief listen to given endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        ListenTask (string const& address, int port, bool reuseAddress);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given port (deprecated)
-////////////////////////////////////////////////////////////////////////////////
-
-        ListenTask (int port, bool reuseAddress);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief listen to given adress info pointer
-////////////////////////////////////////////////////////////////////////////////
-
-        ListenTask (struct addrinfo *aip, bool reuseAddress);
+        ListenTask (Endpoint*, bool);
 
       public:
 
@@ -131,14 +127,11 @@ namespace triagens {
 
       private:
         bool bindSocket ();
-        bool bindSocket (struct addrinfo *aip);
 
       private:
         bool reuseAddress;
-        string address;
-        int port;
+        Endpoint* _endpoint;
         socket_t listenSocket;
-        bool bound;
 
         size_t acceptFailures;
 

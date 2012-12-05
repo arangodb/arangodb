@@ -73,7 +73,7 @@ function GET_api_indexes (req, res) {
   var name = req.parameters.collection;
   var id = parseInt(name) || name;
   var collection = internal.db._collection(id);
-
+  
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
@@ -190,19 +190,14 @@ function POST_api_index_cap (req, res, collection, body) {
                       "expecting a size");
   }
 
-  try {
-    var size = body.size;
-    var index = collection.ensureCapConstraint(size);
+  var size = body.size;
+  var index = collection.ensureCapConstraint(size);
 
-    if (index.isNewlyCreated) {
-      actions.resultOk(req, res, actions.HTTP_CREATED, index);
-    }
-    else {
-      actions.resultOk(req, res, actions.HTTP_OK, index);
-    }
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+  else {
+    actions.resultOk(req, res, actions.HTTP_OK, index);
   }
 }
 
@@ -273,73 +268,68 @@ function POST_api_index_geo (req, res, collection, body) {
                       "fields must be a list of attribute paths: " + fields);
   }
 
-  try {
-    var index;
+  var index;
 
-    if (fields.length === 1) {
+  if (fields.length === 1) {
 
-      // attribute list and geoJson
-      if (body.hasOwnProperty("geoJson")) {
-        if (body.hasOwnProperty("constraint") && body.constraint) {
-          if (body.hasOwnProperty("ignoreNull")) {
-            index = collection.ensureGeoConstraint(fields[0], body.geoJson, body.ignoreNull);
-          }
-          else {
-            index = collection.ensureGeoConstraint(fields[0], body.geoJson, false);
-          }
-        }
-        else {
-          index = collection.ensureGeoIndex(fields[0], body.geoJson);
-        }
-      }
-
-      // attribute list
-      else {
-        if (body.hasOwnProperty("constraint") && body.constraint) {
-          if (body.hasOwnProperty("ignoreNull")) {
-            index = collection.ensureGeoConstraint(fields[0], body.ignoreNull);
-          }
-          else {
-            index = collection.ensureGeoConstraint(fields[0], false);
-          }
-        }
-        else {
-          index = collection.ensureGeoIndex(fields[0]);
-        }
-      }
-    }
-
-    // attributes
-    else if (fields.length === 2) {
+    // attribute list and geoJson
+    if (body.hasOwnProperty("geoJson")) {
       if (body.hasOwnProperty("constraint") && body.constraint) {
         if (body.hasOwnProperty("ignoreNull")) {
-          index = collection.ensureGeoConstraint(fields[0], fields[1], body.ignoreNull);
+          index = collection.ensureGeoConstraint(fields[0], body.geoJson, body.ignoreNull);
         }
         else {
-          index = collection.ensureGeoConstraint(fields[0], fields[1], false);
+          index = collection.ensureGeoConstraint(fields[0], body.geoJson, false);
         }
       }
       else {
-        index = collection.ensureGeoIndex(fields[0], fields[1]);
+        index = collection.ensureGeoIndex(fields[0], body.geoJson);
       }
     }
 
-    // something is wrong
+    // attribute list
     else {
-      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                      "fields must be a list of attribute paths of length 1 or 2: " + fields);
-      return;
-    }
-
-    if (index.isNewlyCreated) {
-      actions.resultOk(req, res, actions.HTTP_CREATED, index);
-    }
-    else {
-      actions.resultOk(req, res, actions.HTTP_OK, index);
+      if (body.hasOwnProperty("constraint") && body.constraint) {
+        if (body.hasOwnProperty("ignoreNull")) {
+          index = collection.ensureGeoConstraint(fields[0], body.ignoreNull);
+        }
+        else {
+          index = collection.ensureGeoConstraint(fields[0], false);
+        }
+      }
+      else {
+        index = collection.ensureGeoIndex(fields[0]);
+      }
     }
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+
+  // attributes
+  else if (fields.length === 2) {
+    if (body.hasOwnProperty("constraint") && body.constraint) {
+      if (body.hasOwnProperty("ignoreNull")) {
+        index = collection.ensureGeoConstraint(fields[0], fields[1], body.ignoreNull);
+      }
+      else {
+        index = collection.ensureGeoConstraint(fields[0], fields[1], false);
+      }
+    }
+    else {
+      index = collection.ensureGeoIndex(fields[0], fields[1]);
+    }
+  }
+
+  // something is wrong
+  else {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+        "fields must be a list of attribute paths of length 1 or 2: " + fields);
+    return;
+  }
+
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
+  }
+  else {
+    actions.resultOk(req, res, actions.HTTP_OK, index);
   }
 }
 
@@ -390,25 +380,20 @@ function POST_api_index_hash (req, res, collection, body) {
                       "fields must be a list of attribute paths: " + fields);
   }
 
-  try {
-    var index;
+  var index;
 
-    if (body.unique) {
-      index = collection.ensureUniqueConstraint.apply(collection, fields);
-    }
-    else {
-      index = collection.ensureHashIndex.apply(collection, fields);
-    }
-
-    if (index.isNewlyCreated) {
-      actions.resultOk(req, res, actions.HTTP_CREATED, index);
-    }
-    else {
-      actions.resultOk(req, res, actions.HTTP_OK, index);
-    }
+  if (body.unique) {
+    index = collection.ensureUniqueConstraint.apply(collection, fields);
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+  else {
+    index = collection.ensureHashIndex.apply(collection, fields);
+  }
+
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
+  }
+  else {
+    actions.resultOk(req, res, actions.HTTP_OK, index);
   }
 }
 
@@ -455,27 +440,80 @@ function POST_api_index_skiplist (req, res, collection, body) {
                       "fields must be a list of attribute paths: " + fields);
   }
 
-  try {
-    var index;
+  var index;
 
-    if (body.unique) {
-      index = collection.ensureUniqueSkiplist.apply(collection, fields);
-    }
-    else {
-      index = collection.ensureSkiplist.apply(collection, fields);
-    }
-
-    if (index.isNewlyCreated) {
-      actions.resultOk(req, res, actions.HTTP_CREATED, index);
-    }
-    else {
-      actions.resultOk(req, res, actions.HTTP_OK, index);
-    }
+  if (body.unique) {
+    index = collection.ensureUniqueSkiplist.apply(collection, fields);
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+  else {
+    index = collection.ensureSkiplist.apply(collection, fields);
+  }
+
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
+  }
+  else {
+    actions.resultOk(req, res, actions.HTTP_OK, index);
   }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a bitarray
+///
+/// @RESTHEADER{POST /_api/index,creates a bitarray index}
+///
+/// @REST{POST /_api/index?collection=@FA{collection-identifier}}
+///
+/// Creates a bitarray index for the collection @FA{collection-identifier}, if
+/// it does not already exist. The call expects an object containing the index
+/// details.
+///
+/// - @LIT{type}: must be equal to @LIT{"bitarray"}.
+///
+/// - @LIT{fields}: A list of pairs. A pair consists of an attribute path followed by a list of values.
+///
+/// - @LIT{unique}: Must always be set to @LIT{false}.
+///
+/// If the index does not already exists and could be created, then a @LIT{HTTP
+/// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
+/// returned.
+///
+/// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
+/// returned. It is possible to specify a name instead of an identifier.  
+///
+/// @EXAMPLES
+///
+/// Creating a bitarray index:
+///
+/// @verbinclude api-index-create-new-bitarray
+////////////////////////////////////////////////////////////////////////////////
+
+function POST_api_index_bitarray (req, res, collection, body) {
+  var fields = body.fields;
+
+  if (! (fields instanceof Array)) {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "fields must be a list of attribute paths: " + fields);
+  }
+
+  var index;
+
+  if (body.unique) {
+    throw "Bitarray indexes can not be unique";
+  }
+  else {
+    index = collection.ensureBitarray.apply(collection, fields);
+  }
+
+  if (index.isNewlyCreated) {
+    actions.resultOk(req, res, actions.HTTP_CREATED, index);
+  }
+  else {
+    actions.resultOk(req, res, actions.HTTP_OK, index);
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index
@@ -488,14 +526,16 @@ function POST_api_index_skiplist (req, res, collection, body) {
 /// an object containing the index details.
 ///
 /// See @ref IndexCapHttp, @ref IndexGeoHttp, @ref IndexHashHttp, and
-/// @ref IndexSkiplistHttp for details.
+/// @ref IndexSkiplistHttp for details. By default, non-unique indexes will
+/// be created. To change this, use the @LIT{unique} attribute in the index details
+/// and set its value to @LIT{true}.
 ///
 /// If the index does not already exists and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
 ///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
-/// returned. It is possible to specify a name instead of an identifier.  
+/// returned. It is possible to specify a name instead of an identifier. 
 ///
 /// @EXAMPLES
 ///
@@ -517,6 +557,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function POST_api_index (req, res) {
+
   if (req.suffix.length !== 0) {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
                       "expect POST /" + API + "?collection=<collection-identifer>");
@@ -537,7 +578,7 @@ function POST_api_index (req, res) {
   if (body === undefined) {
     return;
   }
-
+  
   if (body.type === "cap") {
     POST_api_index_cap(req, res, collection, body);
   }
@@ -549,6 +590,9 @@ function POST_api_index (req, res) {
   }
   else if (body.type === "skiplist") {
     POST_api_index_skiplist(req, res, collection, body);
+  }
+  else if (body.type === "bitarray") {
+    POST_api_index_bitarray(req, res, collection, body);
   }
   else {
     actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
@@ -586,19 +630,14 @@ function DELETE_api_index (req, res) {
     return;
   }
 
-  try {
-    var iid = parseInt(decodeURIComponent(req.suffix[1]));
-    var droped = collection.dropIndex(collection._id + "/" + iid);
+  var iid = parseInt(decodeURIComponent(req.suffix[1]));
+  var dropped = collection.dropIndex(collection._id + "/" + iid);
 
-    if (droped) {
-      actions.resultOk(req, res, actions.HTTP_OK, { id : collection._id + "/" + iid });
-    }
-    else {
-      actions.indexNotFound(req, res, collection, collection._id + "/" + iid);
-    }
+  if (dropped) {
+    actions.resultOk(req, res, actions.HTTP_OK, { id : collection._id + "/" + iid });
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+  else {
+    actions.indexNotFound(req, res, collection, collection._id + "/" + iid);
   }
 }
 
@@ -611,17 +650,22 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    if (req.requestType === actions.GET) {
-      GET_api_index(req, res);
+    try {
+      if (req.requestType === actions.GET) {
+        GET_api_index(req, res);
+      }
+      else if (req.requestType === actions.DELETE) {
+        DELETE_api_index(req, res);
+      }
+      else if (req.requestType === actions.POST) {
+        POST_api_index(req, res);
+      }
+      else {
+        actions.resultUnsupported(req, res);
+      }
     }
-    else if (req.requestType === actions.DELETE) {
-      DELETE_api_index(req, res);
-    }
-    else if (req.requestType === actions.POST) {
-      POST_api_index(req, res);
-    }
-    else {
-      actions.resultUnsupported(req, res);
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });

@@ -28,7 +28,6 @@ module.define("simple-query-basics", function(exports, module) {
 
 var internal = require("internal");
 var ArangoCollection = internal.ArangoCollection;
-var ArangoEdgesCollection = internal.ArangoEdgesCollection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              GENERAL ARRAY CURSOR
@@ -147,6 +146,15 @@ GeneralArrayCursor.prototype._PRINT = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all elements of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+GeneralArrayCursor.prototype.toArray = 
+GeneralArrayCursor.prototype.elements = function () {
+  return this._documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the cursor is exhausted
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -177,7 +185,8 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._limit = null;
   this._countTotal = null;
   this._countQuery = null;
-  this.current = null;
+  this._current = null;
+  this._stop = null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,6 +216,7 @@ function SimpleQuery () {
   this._limit = null;
   this._countQuery = null;
   this._countTotal = null;
+  this._batchSize = null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,6 +278,27 @@ SimpleQuery.prototype.clone = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query
+///
+/// @FUN{@FA{query}.execute(@FA{batchSize})}
+///
+/// Executes a simple query. If the optional @FA{batchSize} value is specified,
+/// the server will return at most @FN{batchSize} values in one roundtrip.
+/// The @FA{batchSize} cannot be adjusted after the query is first executed.
+///
+/// Note that there is no need to explicitly call the execute method if another
+/// means of fetching the query results is chosen. The following two approaches
+/// lead to the same result:
+/// @code
+/// result = db.users.all().toArray();
+/// q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+/// @endcode
+///
+/// The following two alternatives both use a @FA{batchSize} and return the same
+/// result:
+/// @code
+/// q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
+/// q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.execute = function () {
@@ -293,7 +324,7 @@ SimpleQuery.prototype.execute = function () {
 /// @FUN{@FA{query}.limit(@FA{number})}
 ///
 /// Limits a result to the first @FA{number} documents. Specifying a limit of
-/// @CODE{0} returns no documents at all. If you do not need a limit, just do
+/// @LIT{0} returns no documents at all. If you do not need a limit, just do
 /// not add the limit operator. The limit must be non-negative.
 ///
 /// In general the input to @FN{limit} should be sorted. Otherwise it will be
@@ -393,6 +424,34 @@ SimpleQuery.prototype.toArray = function () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the batch size
+///
+/// @FUN{@FA{cursor}.getBatchSize()}
+///
+/// Returns the batch size for queries. If the returned value is undefined, the
+/// server will determine a sensible batch size for any following requests.
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuery.prototype.getBatchSize = function () {
+  return this._batchSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the batch size for any following requests
+///
+/// @FUN{@FA{cursor}.setBatchSize(@FA{number})}
+///
+/// Sets the batch size for queries. The batch size determines how many results
+/// are at most transferred from the server to the client in one chunk.
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQuery.prototype.setBatchSize = function (value) {
+  if (value >= 1) {
+    this._batchSize = value;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents
 ///
 /// @FUN{@FA{cursor}.count()}
@@ -472,7 +531,7 @@ SimpleQuery.prototype.hasNext = function () {
 /// @verbinclude simple5
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuery.prototype.next = function() {
+SimpleQuery.prototype.next = function () {
   this.execute();
 
   return this._execution.next();
@@ -549,8 +608,6 @@ SimpleQueryAll.prototype.constructor = SimpleQueryAll;
 ArangoCollection.prototype.all = function () {
   return new SimpleQueryAll(this);
 }
-
-ArangoEdgesCollection.prototype.all = ArangoCollection.prototype.all;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -794,8 +851,6 @@ ArangoCollection.prototype.byExample = function () {
   return new SimpleQueryByExample(this, example);
 }
 
-ArangoEdgesCollection.prototype.byExample = ArangoCollection.prototype.byExample;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,6 +945,10 @@ SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 /// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
 /// not as attribute.
 ///
+/// For range queries it is required that a skiplist index is present for the
+/// queried attribute. If no skiplist index is present on the attribute, an
+/// error will be thrown.
+///
 /// @EXAMPLES
 ///
 /// Use @FN{toArray} to get all documents at once:
@@ -900,8 +959,6 @@ SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 ArangoCollection.prototype.range = function (name, left, right) {
   return new SimpleQueryRange(this, name, left, right, 0);
 }
-
-ArangoEdgesCollection.prototype.range = ArangoCollection.prototype.range;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a closed range query for a collection
@@ -928,8 +985,6 @@ ArangoEdgesCollection.prototype.range = ArangoCollection.prototype.range;
 ArangoCollection.prototype.closedRange = function (name, left, right) {
   return new SimpleQueryRange(this, name, left, right, 1);
 }
-
-ArangoEdgesCollection.prototype.closedRange = ArangoCollection.prototype.closedRange;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1093,8 +1148,6 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
   return new SimpleQueryGeo(this, idx.id);
 }
-
-ArangoEdgesCollection.prototype.geo = ArangoCollection.geo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1268,8 +1321,6 @@ SimpleQueryNear.prototype.constructor = SimpleQueryNear;
 ArangoCollection.prototype.near = function (lat, lon) {
   return new SimpleQueryNear(this, lat, lon);
 }
-
-ArangoEdgesCollection.prototype.near = ArangoCollection.prototype.near;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1454,8 +1505,6 @@ SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
 ArangoCollection.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this, lat, lon, radius);
 }
-
-ArangoEdgesCollection.prototype.within = ArangoCollection.prototype.within;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

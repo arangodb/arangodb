@@ -27,6 +27,73 @@
 
 #include "strings.h"
 
+#include "utf8-helper.h"
+#include <openssl/sha.h>
+
+#include "BasicsC/conversions.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Strings
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hex values for all characters
+////////////////////////////////////////////////////////////////////////////////
+
+static char const HexValues[513] = {
+  "000102030405060708090a0b0c0d0e0f"
+  "101112131415161718191a1b1c1d1e1f"
+  "202122232425262728292a2b2c2d2e2f"
+  "303132333435363738393a3b3c3d3e3f"
+  "404142434445464748494a4b4c4d4e4f"
+  "505152535455565758595a5b5c5d5e5f"
+  "606162636465666768696a6b6c6d6e6f"
+  "707172737475767778797a7b7c7d7e7f"
+  "808182838485868788898a8b8c8d8e8f"
+  "909192939495969798999a9b9c9d9e9f"
+  "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+  "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+  "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
+  "d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+  "e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
+  "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief integer values for all hex characters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint8_t const HexDecodeLookup[256] = {
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,1,2,3,4,5,6,7,8,9,             // 0123456789
+  0,0,0,0,0,0,0,                   // :;<=>?@
+  10,11,12,13,14,15,               // ABCDEF
+  0,0,0,0,0,0,0,0,0,0,0,0,0,       // GHIJKLMNOPQRS
+  0,0,0,0,0,0,0,0,0,0,0,0,0,       // TUVWXYZ[/]^_`
+  10,11,12,13,14,15,               // abcdef
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -327,7 +394,7 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiString (char const* value) {
+char* TRI_LowerAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -340,7 +407,10 @@ char* TRI_LowerAsciiString (char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+  buffer = TRI_Allocate(zone, (sizeof(char) * length) + 1, false);
+  if (buffer == NULL) {
+    return NULL;
+  }
 
   p = (char*) value;
   out = buffer;
@@ -360,10 +430,18 @@ char* TRI_LowerAsciiString (char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to lower case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_LowerAsciiString (char const* value) {
+  return TRI_LowerAsciiStringZ(TRI_CORE_MEM_ZONE, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to upper case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiString (char const* value) {
+char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -376,7 +454,10 @@ char* TRI_UpperAsciiString (char const* value) {
 
   length = strlen(value);
 
-  buffer = TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char) * length) + 1, false);
+  buffer = TRI_Allocate(zone, (sizeof(char) * length) + 1, false);
+  if (buffer == NULL) {
+    return NULL;
+  }
   
   p = (char*) value;
   out = buffer;
@@ -393,6 +474,14 @@ char* TRI_UpperAsciiString (char const* value) {
   *out = '\0';
 
   return buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string to upper case
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UpperAsciiString (char const* value) {
+  return TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,6 +522,24 @@ bool TRI_CaseEqualString2 (char const* left, char const* right, size_t n) {
 
 bool TRI_IsPrefixString (char const* full, char const* prefix) {
   return strncmp(full, prefix, strlen(prefix)) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief duplicates a string, without using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SystemDuplicateString (char const* value) {
+  size_t n;
+  char* result;
+
+  n = strlen(value) + 1;
+  result = (char*) TRI_SystemAllocate(n, false);
+
+  if (result) {
+    memcpy(result, value, n);
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,6 +670,14 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
+  return TRI_Concatenate3StringZ(TRI_CORE_MEM_ZONE, a, b, c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief concatenate three strings using a memory zone
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_Concatenate3StringZ (TRI_memory_zone_t* zone, char const* a, char const* b, char const* c) {
   char* result;
   size_t na;
   size_t nb;
@@ -572,13 +687,14 @@ char* TRI_Concatenate3String (char const* a, char const* b, char const* c) {
   nb = strlen(b);
   nc = strlen(c);
 
-  result = TRI_Allocate(TRI_CORE_MEM_ZONE, na + nb + nc + 1, false);
+  result = TRI_Allocate(zone, na + nb + nc + 1, false);
+  if (result != NULL) {
+    memcpy(result, a, na);
+    memcpy(result + na, b, nb);
+    memcpy(result + na + nb, c, nc);
 
-  memcpy(result, a, na);
-  memcpy(result + na, b, nb);
-  memcpy(result + na + nb, c, nc);
-
-  result[na + nb + nc] = '\0';
+    result[na + nb + nc] = '\0';
+  }
 
   return result;
 }
@@ -818,21 +934,76 @@ void TRI_FreeString (TRI_memory_zone_t* zone, char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a single hex to an integer
+/// @brief converts into hex reqpresentation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_IntHex (char ch, int errorValue) {
-  if ('0' <= ch && ch <= '9') {
-    return ch - '0';
-  }
-  else if ('A' <= ch && ch <= 'F') {
-    return ch - 'A' + 10;
-  }
-  else if ('a' <= ch && ch <= 'f') {
-    return ch - 'a' + 10;
+char* TRI_EncodeHexString (char const* source, size_t sourceLen, size_t* dstLen) {
+  char* result;
+  uint16_t* hex;
+  uint16_t* dst;
+  uint8_t* src;
+  size_t j;
+
+  *dstLen = (sourceLen * 2);
+  dst = TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1, false);
+  result = (char*) dst;
+  
+  hex = (uint16_t*) HexValues;
+  src = (uint8_t*)  source;
+
+  for (j = 0;  j < sourceLen;  j++) {
+    *dst = hex[*src];
+    dst++;
+    src++;
   }
 
-  return errorValue;
+  *((char*) dst) = 0; // terminate the string
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts from hex reqpresentation
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_DecodeHexString (char const* source, size_t sourceLen, size_t* dstLen) {
+  char* result;
+  uint8_t* dst;
+  uint8_t* src;
+  uint8_t d;
+  size_t j;
+
+  *dstLen = (sourceLen / 2);
+  dst = TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1, false);
+  result = (char*) dst;
+
+  src = (uint8_t*) source;
+
+  for (j = 0;  j < sourceLen;  j += 2) {
+    d  = HexDecodeLookup[*src++] << 4;
+    d |= HexDecodeLookup[*src++];
+
+    *dst++ = d;
+  }
+
+  *dst = 0; // terminate the string
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha256 of a string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen) {
+  unsigned char* dst;
+
+  dst = TRI_Allocate(TRI_CORE_MEM_ZONE, SHA256_DIGEST_LENGTH, false);
+  *dstLen = SHA256_DIGEST_LENGTH;
+
+  SHA256((unsigned char const*) source, sourceLen, dst);
+
+  return (char*) dst;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,7 +1294,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
     memcpy(qtr, buffer, *outLength + 1);
   }
 
-  TRI_Free(TRI_CORE_MEM_ZONE, buffer);
+  TRI_Free(zone, buffer);
   return qtr;
 }
 
@@ -1144,7 +1315,12 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   char * qtr;
   char const * ptr;
   char const * end;
-
+  
+#ifdef TRI_HAVE_ICU
+  char * utf8_nfc;
+  size_t tmpLength = 0;
+#endif
+  
   buffer = TRI_Allocate(zone, inLength + 1, false);
 
   if (buffer == NULL) {
@@ -1240,10 +1416,20 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *qtr = '\0';
   *outLength = qtr - buffer;
 
+#ifdef TRI_HAVE_ICU
+  if (*outLength > 0) {
+    utf8_nfc = TR_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
+    if (utf8_nfc) {
+      *outLength = tmpLength;
+      TRI_Free(zone, buffer);
+      return utf8_nfc;
+    }    
+  }
+#endif
 
   // we might have wasted some space if the unescaped string is shorter than the
   // escaped one. this is the case if the string contained escaped characters
-  if (*outLength < (ptr - in)) {
+  if (((ptr - in) > 0) && (*outLength < (size_t)(ptr - in))) {
     // result string is shorter than original string
     qtr = TRI_Allocate(zone, *outLength + 1, false);
  

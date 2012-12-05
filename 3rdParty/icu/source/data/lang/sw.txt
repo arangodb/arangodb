@@ -1,0 +1,296 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/sw.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/sw.xml
+ */
+sw{
+    Keys{
+        calendar{"Kalenda"}
+        collation{"Mbinu ya Kupanga"}
+        currency{"Fedha"}
+        numbers{"Nambari"}
+        x{"Matumizi ya Kibinafsi"}
+    }
+    Languages{
+        ab{"Kiabkhazi"}
+        af{"Kiafrikana"}
+        ak{"Kiakan"}
+        am{"Kiamhari"}
+        ar{"Kiarabu"}
+        as{"Kiassam"}
+        ay{"Aimara"}
+        az{"Kiazabajani"}
+        be{"Kibelarusi"}
+        bg{"Kibulgaria"}
+        bn{"Kibangla"}
+        bo{"Kitibeti"}
+        bs{"Kibosnia"}
+        ca{"Kikatalani"}
+        cs{"Kicheki"}
+        cy{"Kiwelisi"}
+        da{"Kidenmaki"}
+        de{"Kijerumani"}
+        de_AT{"Kijerumani cha Austria"}
+        de_CH{"Kijerumani cha Juu cha Uswisi"}
+        dv{"Kidivehi"}
+        dz{"Kizongkha"}
+        efi{"Kiefiki"}
+        el{"Kigiriki"}
+        en{"Kiingereza"}
+        en_AU{"Kiingereza cha Australia"}
+        en_CA{"Kiingereza cha Kanada"}
+        en_GB{"Kiingereza cha Uingereza"}
+        en_US{"Kiingereza cha Marekani"}
+        eo{"Kiesperanto"}
+        es{"Kihispania"}
+        es_419{"Kihispania cha Amerika ya Kilatinini"}
+        es_ES{"Kihispania cha Iberia"}
+        et{"Kiestonia"}
+        eu{"Kibasque"}
+        fa{"Kiajemi"}
+        fi{"Kifinlandi"}
+        fil{"Kifilipino"}
+        fj{"Kifiji"}
+        fo{"Kifaroe"}
+        fr{"Kifaransa"}
+        fr_CA{"Kifaransa cha Kanada"}
+        fr_CH{"Kifaransa cha Uswisi"}
+        fy{"Kifrisia cha Magharibi"}
+        ga{"Kiayalandi"}
+        gd{"Kigaeli cha Uskoti"}
+        gl{"Kigalisia"}
+        gn{"Kiguarani"}
+        gsw{"Kijerumani cha Uswisi"}
+        gu{"Kigujarati"}
+        ha{"Kihausa"}
+        haw{"Kihawai"}
+        he{"Kiebrania"}
+        hi{"Kihindi"}
+        hr{"Kroeshia"}
+        ht{"Kihaiti"}
+        hu{"Kihungari"}
+        hy{"Kiarmenia"}
+        id{"Kiindonesia"}
+        ig{"Kiigbo"}
+        is{"Kiaisilandi"}
+        it{"Kiitaliano"}
+        ja{"Kijapani"}
+        jv{"Kijava"}
+        ka{"Kijojia"}
+        kk{"Kikazaki"}
+        km{"Kikambodia"}
+        kn{"Kikannada"}
+        ko{"Kikorea"}
+        ks{"Kashmiri"}
+        ku{"Kikurdi"}
+        ky{"Kirigizi"}
+        la{"Kilatini"}
+        lb{"Kilasembagi"}
+        ln{"Kilingala"}
+        lo{"Kilaosi"}
+        lt{"Kilithuania"}
+        lv{"Kilatvia"}
+        mg{"Malagasi"}
+        mi{"Maori"}
+        mk{"Kimasedonia"}
+        ml{"Kimalayalam"}
+        mn{"Mongolia"}
+        mr{"Kimarathi"}
+        ms{"Kimalesia"}
+        mt{"Kimalta"}
+        my{"Kiburma"}
+        nb{"Kibokmal cha Norwe"}
+        nd{"Kindebele cha Kaskazini"}
+        ne{"Kinepali"}
+        nl{"Kiholanzi"}
+        nl_BE{"Kiflemi"}
+        nn{"Kinorwe Kipya"}
+        nso{"Kisotho cha Kaskazini"}
+        ny{"Kinyanja"}
+        or{"Kioriya"}
+        os{"Kiosetia"}
+        pa{"Kipunjabi"}
+        pl{"Kipolandi"}
+        ps{"Kipashto"}
+        pt{"Kireno"}
+        pt_BR{"Kireno cha Brazil"}
+        pt_PT{"Kireno cha Iberia"}
+        qu{"Quechua"}
+        rm{"Kiromanshi"}
+        rn{"Kirundi"}
+        ro{"Kiromania"}
+        ru{"Kirusi"}
+        rw{"Kinyarwanda"}
+        sa{"Kisanskriti"}
+        sd{"Kisindhi"}
+        se{"Kisami cha Kaskazini"}
+        sg{"Kisango"}
+        si{"Kisinhala"}
+        sk{"Kislovakia"}
+        sl{"Kislovenia"}
+        sm{"Kisamoa"}
+        sn{"Kishona"}
+        so{"Kisomali"}
+        sq{"Kialbania"}
+        sr{"Kiserbia"}
+        ss{"Kiswati"}
+        st{"Kisotho cha Kusini"}
+        su{"Kisunda"}
+        sv{"Kiswidi"}
+        sw{"Kiswahili"}
+        ta{"Kitamil"}
+        te{"Kitelugu"}
+        tet{"Kitetum"}
+        tg{"Tajiki"}
+        th{"Kitailandi"}
+        ti{"Kitigrinya"}
+        tk{"Kiturukimeni"}
+        tn{"Kitswana"}
+        to{"Tonga"}
+        tpi{"Kitokpisin"}
+        tr{"Kituruki"}
+        ts{"Kitsonga"}
+        tt{"Kitatari"}
+        ty{"Kitahiti"}
+        ug{"Kiuigur"}
+        uk{"Kiukrania"}
+        und{"Lugha Isiyojulikana"}
+        ur{"Kiurdu"}
+        uz{"Kiuzbeki"}
+        ve{"Kivenda"}
+        vi{"Kivietinamu"}
+        wo{"Wolof"}
+        xh{"Kixhosa"}
+        yo{"Kiyoruba"}
+        zh{"Kichina"}
+        zh_Hans{"Kichina Rahisi"}
+        zh_Hant{"Kichina cha Jadi"}
+        zu{"Kizulu"}
+        zxx{"Hakuna maudhui ya lugha"}
+    }
+    LanguagesShort{
+        az{"Kiazeri"}
+    }
+    Scripts{
+        Arab{"Kiarabu"}
+        Armn{"Kiarmenia"}
+        Beng{"Kibengali"}
+        Bopo{"Kibopomofo"}
+        Brai{"Braille"}
+        Cyrl{"Kisiriliki"}
+        Deva{"Kidevanagari"}
+        Ethi{"Kiethiopia"}
+        Geor{"Kijojia"}
+        Grek{"Kigiriki"}
+        Gujr{"Kigujarati"}
+        Guru{"Kigurmukhi"}
+        Hang{"Kihangul"}
+        Hani{"Kihan"}
+        Hans{"Rahisi"}
+        Hant{"Kihan cha Jadi"}
+        Hebr{"Kiebrania"}
+        Hira{"Kihiragana"}
+        Jpan{"Kijapani"}
+        Kana{"Kikatakana"}
+        Khmr{"Kikambodia"}
+        Knda{"Kikannada"}
+        Kore{"Kikorea"}
+        Laoo{"Kilaosi"}
+        Latn{"Kilatini"}
+        Mlym{"Kimalayalam"}
+        Mong{"Mongolia"}
+        Mymr{"Myama"}
+        Orya{"Kioriya"}
+        Sinh{"Kisinhala"}
+        Taml{"Kitamil"}
+        Telu{"Kitelugu"}
+        Thaa{"Kithaana"}
+        Thai{"Kitai"}
+        Tibt{"Kitibeti"}
+        Zsym{"Alama"}
+        Zxxx{"Haiandikwi"}
+        Zyyy{"Kawaida"}
+        Zzzz{"Hati isiyojulikana"}
+    }
+    Scripts%stand-alone{
+        Hans{"Kihan Rahisi"}
+        Hant{"Kihan cha Jadi"}
+    }
+    Types{
+        calendar{
+            buddhist{"Kalenda ya Kibuddha"}
+            chinese{"Kalenda ya Kichina"}
+            coptic{"Kalenda ya Koptiki"}
+            ethiopic{"Kalenda ya Kiethiopia"}
+            ethiopic-amete-alem{"Kalenda ya Kiethiopia ya Amete Alem"}
+            gregorian{"Kalenda ya Kigregori"}
+            hebrew{"Kalenda ya Kihebrania"}
+            indian{"Kalenda ya Taifa ya India"}
+            islamic{"Kalenda ya Kiislamu"}
+            islamic-civil{"Kalenda ya Kiislamu/Rasmi"}
+            japanese{"Kalenda ya Kijapani"}
+            persian{"Kalenda ya Kiajemi"}
+            roc{"Kalenda ya Minguo"}
+        }
+        collation{
+            big5han{"Mpangilio wa Kichina cha Jadi - Big5"}
+            dictionary{"Mpangilio wa Kamusi"}
+            ducet{"Mpangilio wa Chaguo-Msingi wa Unicode"}
+            gb2312han{"Mpangilio wa Kichina Rahisi - GB2312"}
+            phonebook{"Mpangilio wa Orodha za Nambari za Simu"}
+            pinyin{"Mpangilio wa Kipinyin"}
+            reformed{"Mpangilio Uliorekebishwa"}
+            search{"Utafutaji wa Kijumla"}
+            stroke{"Mpangilio wa Mikwaju"}
+            traditional{"Mpangilio wa Kawaida"}
+            unihan{"Mpangilio wa Mikwaju ya Shina"}
+        }
+        numbers{
+            arab{"Nambari za Kiarabu/Kihindi"}
+            arabext{"Nambari za Kiarabu/Kihindi Zilizopanuliwa"}
+            armn{"Nambari za Kiarmenia"}
+            armnlow{"Nambari Ndogo za Kiamenia"}
+            beng{"Nambari za Kibengali"}
+            deva{"Nambari za Kidevanagari"}
+            ethi{"Nambari za Kiethiopia"}
+            fullwide{"Nambari za Upana Kamili"}
+            geor{"Nambari za Georgia"}
+            grek{"Nambari za Kigiriki"}
+            greklow{"Nambari Ndogo za Kigiriki"}
+            gujr{"Nambari za Kigujarati"}
+            guru{"Nambari za Kigurumukhi"}
+            hanidec{"Nambari za Desimali za Kichina"}
+            hans{"Nambari za Kichina Rahisi"}
+            hansfin{"Nambari za Kifedha za Kichina Rahisi"}
+            hant{"Nambari za Kichina cha Jadi"}
+            hantfin{"Nambari za Kichina za Fedha"}
+            hebr{"Nambari za Kihebrania"}
+            jpan{"Nambari za Kijapani"}
+            jpanfin{"Nambari za Kifedha za Kijapani"}
+            khmr{"Nambari za Kikhmeri"}
+            knda{"Nambari za Kikannada"}
+            laoo{"Nambari za Kilao"}
+            latn{"Nambari za Magharibi"}
+            mlym{"Nambari za Kimalayamu"}
+            mong{"Nambari za Kimongolia"}
+            mymr{"Nambari za Myama"}
+            orya{"Nambari za Kioriya"}
+            roman{"Nambari za Kirumi"}
+            romanlow{"Nambari Ndogo za Kirumi"}
+            taml{"Nambari za Kitamil"}
+            telu{"Nambari za Kitelugu"}
+            thai{"Nambari za Kitai"}
+            tibt{"Nambari za Kitibeti"}
+        }
+    }
+    Version{"2.0.65.46"}
+    localeDisplayPattern{
+        separator{","}
+    }
+}

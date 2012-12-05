@@ -1,0 +1,41 @@
+COMMAND SECTION "DATE" "" "ArangoDB"
+NAME
+COMMAND - a bulk importer for the ArangoDB database
+SYNOPSIS
+COMMAND [options] 
+DESCRIPTION
+The COMMAND binary can be used to bulk import data from a file into the
+ArangoDB database. Input data be present in the input file in either CSV
+format with column headlines, or in JSON format. If JSON format is used,
+each line in the input file must contain exactly one JSON document with 
+the attribute name/value pairs to import.
+OPTIONS
+For a complete list of options, please refer to the ArangoDB
+online manual, available at http://www.arangodb.org/
+
+The most important startup options are:
+
+OPTION "--configuration <string>"
+read configuration from file <string> ENDOPTION
+OPTION "--collection <string>"
+name of collection to import into ENDOPTION
+OPTION "--create-collection <bool>"
+set to "true" if collection should be created by the import ENDOPTION
+OPTION "--file <string>"
+input file with the data to import ENDOPTION
+OPTION "--eol <string>"
+the end-of-line character or string to be used ENDOPTION
+OPTION "--quote <string>"
+optional quote character to be used ENDOPTION
+OPTION "--separator <string>"
+separator character or string to be used. the default value is "," ENDOPTION
+OPTION "--type <string>"
+set to "json", "tsv" or "csv", depending on the input file format ENDOPTION
+OPTION "--server.endpoint <string>"
+server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
+OPTION "--server.username <string>"
+username to use when connecting (default "root") ENDOPTION
+OPTION "--server.password <string>"
+password to use when connecting. Leave empty for a password prompt ENDOPTION
+EXAMPLES
+AUTHOR

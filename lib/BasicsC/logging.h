@@ -283,6 +283,21 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief macro that validates printf() style call arguments
+/// the printf() call contained will never be executed but is just there to
+/// enable compile-time error check. it will be optimised away after that
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_LOGGER
+
+#define LOG_ARG_CHECK(...)                                                                                 \
+  if (false) {                                                                                             \
+    printf(__VA_ARGS__);                                                                                   \
+  }                                                                                                        \
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief logs fatal errors
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -290,6 +305,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_FATAL(...)                                                                                     \
   do {                                                                                                     \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                    \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \
@@ -309,6 +325,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_ERROR(...)                                                                                     \
   do {                                                                                                     \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                                                    \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \
@@ -330,6 +347,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_WARNING(...)                                                                                     \
   do {                                                                                                       \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {                                                    \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                        \
@@ -351,6 +369,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_INFO(...)                                                                                     \
   do {                                                                                                    \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                                                    \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                     \
@@ -372,6 +391,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_DEBUG(...)                                                                                     \
   do {                                                                                                     \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {                                            \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_DEBUG, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \
@@ -391,6 +411,7 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #define LOG_TRACE(...)                                                                                     \
   do {                                                                                                     \
+    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
     if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {                                            \
       TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_TRACE, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
     }                                                                                                      \

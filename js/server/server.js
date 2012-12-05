@@ -6,8 +6,8 @@
          white: true,
          plusplus: true */
 /*global require, db, edges, ModuleCache, Module,
-  ArangoCollection, ArangoEdgesCollection, ArangoDatabase,
-  ArangoEdges, ArangoError, ShapedJson,
+  ArangoCollection, ArangoDatabase,
+  ArangoError, ShapedJson,
   SYS_DEFINE_ACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,9 +55,8 @@
   var console = require("console");
 
   internal.db = db;
-  internal.edges = edges;
+  internal.edges = db;
   internal.ArangoCollection = ArangoCollection;
-  internal.ArangoEdgesCollection = ArangoEdgesCollection;
 
   if (typeof SYS_DEFINE_ACTION === "undefined") {
     internal.defineAction = function() {
@@ -110,8 +109,6 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-}());
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             Module "simple-query"
 // -----------------------------------------------------------------------------
@@ -125,44 +122,12 @@
 /// @brief simple-query module
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var console = require("console");
-
   try {
     require("simple-query");
   }
   catch (err) {
     console.error("while loading 'simple-query' module: %s", err);
   }
-}());
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            Module "monkeypatches"
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleMonkeypatches
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief monkeypatches module
-////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var console = require("console");
-
-  try {
-    require("monkeypatches");
-  }
-  catch (err) {
-    console.error("while loading 'monkeypatches' module: %s", err);
-  }
-}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -176,9 +141,6 @@
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json
@@ -197,8 +159,6 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-}());
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ArangoError
 // -----------------------------------------------------------------------------
@@ -207,9 +167,6 @@
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an error
@@ -237,8 +194,6 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-}());
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ArangoDatabase
 // -----------------------------------------------------------------------------
@@ -248,8 +203,21 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var internal = require("internal");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._createStatement = function (data) {  
+    return new ArangoStatement(this, data);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory method to create and execute a new statement
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._query = function (data) {  
+    return new ArangoStatement(this, { query: data }).execute();
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
@@ -282,8 +250,7 @@
   ArangoDatabase.prototype._drop = function(name) {
     var collection = name;
 
-    if (! (name instanceof ArangoCollection
-        || name instanceof ArangoEdgesCollection)) {
+    if (! (name instanceof ArangoCollection)) {
       collection = internal.db._collection(name);
     }
 
@@ -293,8 +260,6 @@
 
     return collection.drop();
   };
-
-  ArangoEdges.prototype._drop = ArangoDatabase.prototype._drop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -328,8 +293,7 @@
   ArangoDatabase.prototype._truncate = function(name) {
     var collection = name;
 
-    if (! (name instanceof ArangoCollection
-        || name instanceof ArangoEdgesCollection)) {
+    if (! (name instanceof ArangoCollection)) {
       collection = internal.db._collection(name);
     }
 
@@ -337,15 +301,8 @@
       return;
     }
 
-    var all = collection.ALL(null, null).documents;
-    var i;
-
-    for (i = 0;  i < all.length;  ++i) {
-      collection.remove(all[i]._id);
-    }
+    collection.truncate();
   };
-
-  ArangoEdges.prototype._truncate = ArangoDatabase.prototype._truncate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index
@@ -398,8 +355,6 @@
     return null;
   };
 
-  ArangoEdges.prototype._index = ArangoDatabase.prototype._index;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
 ///
@@ -446,18 +401,12 @@
     return col.dropIndex(id);
   };
 
-  ArangoEdges.prototype._dropIndex = ArangoDatabase.prototype._dropIndex;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a database
 ////////////////////////////////////////////////////////////////////////////////
 
     ArangoDatabase.prototype._PRINT = function(seen, path, names, level) {
       internal.output("[ArangoDatabase \"" + this._path + "\"]");
-    };
-
-    ArangoEdges.prototype._PRINT =  function(seen, path, names, level) {
-      internal.output("[ArangoEdges \"" + this._path + "\"]");
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,15 +417,9 @@
       return "[ArangoDatabase \"" + this._path + "\"]";
     };
 
-    ArangoEdges.prototype.toString = function(seen, path, names, level) {
-      return "[ArangoEdges \"" + this._path + "\"]";
-    };
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
@@ -487,50 +430,59 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  var internal = require("internal");
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.STATUS_CORRUPTED = 0;
-  ArangoEdgesCollection.STATUS_CORRUPTED = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is new born
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.STATUS_NEW_BORN = 1;
-  ArangoEdgesCollection.STATUS_NEW_BORN = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloaded
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.STATUS_UNLOADED = 2;
-  ArangoEdgesCollection.STATUS_UNLOADED = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is loaded
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.STATUS_LOADED = 3;
-  ArangoEdgesCollection.STATUS_LOADED = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is unloading
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.STATUS_UNLOADING = 4;
-  ArangoEdgesCollection.STATUS_UNLOADING = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is deleted
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.STATUS_DELETED = 5;
-  ArangoEdgesCollection.STATUS_DELETED = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document collection
+////////////////////////////////////////////////////////////////////////////////
+  
+  ArangoCollection.TYPE_DOCUMENT = 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.TYPE_EDGE = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attachment collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.TYPE_ATTACHMENT = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
@@ -544,8 +496,6 @@
   ArangoCollection.prototype.toArray = function() {
     return this.ALL(null, null).documents;
   };
-
-  ArangoEdgesCollection.prototype.toArray = ArangoCollection.prototype.toArray;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -565,8 +515,6 @@
   ArangoCollection.prototype.truncate = function() {
     return internal.db._truncate(this);
   };
-
-  ArangoEdgesCollection.prototype.truncate = ArangoCollection.prototype.truncate;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an index of a collection
@@ -607,14 +555,12 @@
     return null;
   };
 
-  ArangoEdgesCollection.prototype.index = ArangoCollection.prototype.index;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype._PRINT = function() {
-    var status = "unknown";
+    var status = type = "unknown";
 
     switch (this.status()) {
       case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
@@ -625,9 +571,15 @@
       case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
     }
 
+    switch (this.type()) {
+      case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
+      case ArangoCollection.TYPE_EDGE: type = "edge"; break;
+      case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
+    }
+
     internal.output("[ArangoCollection ",
                     this._id, 
-                    ", \"", this.name(), "\" (status ", status, ")]");
+                    ", \"", this.name(), "\" (type ", type, ", status ", status, ")]");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,54 +594,56 @@
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-}());
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                             ArangoEdgesCollection
+// --SECTION--                                                   ArangoStatement
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  var internal = require("internal");
   
-  var mc = internal.db._collection("_modules");
-
-  if (mc === null) {
-    mc = internal.db._create("_modules", { isSystem: true });
+  try {
+    var SQ = require("simple-query-basics");
+    var SB = require("statement-basics");
+    internal.ArangoStatement = SB.ArangoStatement;
+    ArangoStatement = SB.ArangoStatement;
   }
-
-
+  catch (err) {
+    console.error("while loading 'statement-basics' module: %s", err);
+  }
+  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a collection
+/// @brief parse a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoEdgesCollection.prototype._PRINT = function() {
-    var status = "unknown";
+  SB.ArangoStatement.prototype.parse = function () {
+    var result = AHUACATL_PARSE(this._query); 
 
-    switch (this.status()) {
-      case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
-      case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-      case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
-      case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
-      case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-      case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
-    }
-
-    internal.output("[ArangoEdgesCollection ",
-                    this._id,
-                    ", \"", this.name(), "\" (status ", status, ")]");
+    return { "bindVars" : result.parameters, "collections" : result.collections };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief string representation of a collection
+/// @brief explain a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.toString = function(seen, path, names, level) {
-    return "[ArangoEdgesCollection " + this._id + "]";
+  SB.ArangoStatement.prototype.explain = function () {
+    return AHUACATL_EXPLAIN(this._query); 
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the query
+///
+/// This will return a cursor with the query results in case of success.
+////////////////////////////////////////////////////////////////////////////////
+
+  SB.ArangoStatement.prototype.execute = function () {
+    var result = AHUACATL_RUN(this._query, 
+                              this._bindVars, 
+                              this._doCount != undefined ? this._doCount : false, 
+                              null, 
+                              true);  
+    return new SQ.GeneralArrayCursor(result, 0, null);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -698,7 +652,11 @@
 
 }());
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:

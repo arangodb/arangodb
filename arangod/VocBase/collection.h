@@ -44,10 +44,10 @@ extern "C" {
 ///
 /// Data is stored in datafiles. A set of datafiles forms a collection. A
 /// datafile can be read-only and sealed or read-write. All datafiles of a
-/// collections are stored in a directory. This directory contains the following
+/// collection are stored in a directory. This directory contains the following
 /// files:
 ///
-/// - parameter.json: The parameter of a collection.
+/// - parameter.json: The parameters of a collection.
 ///
 /// - datafile-NNN.db: A read-only datafile. The number NNN is the datafile
 ///     identifier, see @ref TRI_datafile_t.
@@ -60,20 +60,20 @@ extern "C" {
 ///     identifier, see @ref TRI_index_t.
 ///
 /// The structure @ref TRI_collection_t is abstract. Currently, there are
-/// two concrete sub-classes @ref TRI_sim_collection_t and
-/// @ref TRI_blob_collection_t.
+/// two concrete sub-classes @ref TRI_document_collection_t and
+/// @ref TRI_shape_collection_t.
 ///
-/// @section BlobCollection Blob Collection
+/// @section ShapeCollection Shape Collection
 ///
-/// @copydetails TRI_blob_collection_t
+/// @copydetails TRI_shape_collection_t
 ///
-/// @section DocCollection Document Collection
+/// @section PrimaryCollection Document Collection
 ///
-/// @copydetails TRI_doc_collection_t
+/// @copydetails TRI_primary_collection_t
 ///
-/// @section SimCollection Simple Document Collection
+/// @section DocumentCollection Simple Document Collection
 ///
-/// @copydetails TRI_sim_collection_t
+/// @copydetails TRI_document_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -89,13 +89,33 @@ extern "C" {
 /// @brief collection version
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_VERSION         (1)
+#define TRI_COL_VERSION         (2)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximal path length
+/// @brief collection meta info filename
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COL_PARAMETER_FILE  "parameter.json"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     public macros
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the collection is a document collection
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_IS_DOCUMENT_COLLECTION(type) \
+  ((type) == TRI_COL_TYPE_DOCUMENT || (type) == TRI_COL_TYPE_EDGE)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -146,8 +166,9 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_TYPE_BLOB = 1,
-  TRI_COL_TYPE_SIMPLE_DOCUMENT = 2
+  TRI_COL_TYPE_SHAPE = 1,
+  TRI_COL_TYPE_DOCUMENT = 2,
+  TRI_COL_TYPE_EDGE = 3
 }
 TRI_col_type_e;
 
@@ -158,7 +179,7 @@ TRI_col_type_e;
 typedef struct TRI_col_header_marker_s {
   TRI_df_marker_t base;
 
-  TRI_col_type_t _type;
+  TRI_col_type_e _type;
   TRI_voc_cid_t _cid;
 }
 TRI_col_header_marker_t;
@@ -168,7 +189,7 @@ TRI_col_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_parameter_s {
-  TRI_col_type_e _type;              // collection type
+  TRI_col_type_t _type;              // collection type
 
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
   TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
@@ -185,7 +206,7 @@ TRI_col_parameter_t;
 
 typedef struct TRI_col_info_s {
   TRI_col_version_t _version;        // collection version
-  TRI_col_type_t _type;              // collection type
+  TRI_col_type_e _type;              // collection type
   TRI_voc_cid_t _cid;                // collection identifier
 
   char _name[TRI_COL_PATH_LENGTH];   // name of the collection
@@ -202,7 +223,7 @@ TRI_col_info_t;
 
 typedef struct TRI_collection_s {
   TRI_col_version_t _version;        // collection version, will be set
-  TRI_col_type_t _type;              // collection type, will be set
+  TRI_col_type_e _type;              // collection type, will be set
   TRI_vocbase_t* _vocbase;
 
   TRI_col_state_e _state;            // state of the collection
@@ -247,6 +268,7 @@ TRI_collection_t;
 void TRI_InitParameterCollection (TRI_vocbase_t* vocbase,
                                   TRI_col_parameter_t*,
                                   char const* name,
+                                  TRI_col_type_e type,
                                   TRI_voc_size_t maximalSize);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +323,9 @@ int TRI_SaveParameterInfoCollection (char const* filename, TRI_col_info_t*);
 /// @brief updates the parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateParameterInfoCollection (TRI_collection_t*, TRI_col_parameter_t const*);
+int TRI_UpdateParameterInfoCollection (TRI_vocbase_t*,
+                                       TRI_collection_t*, 
+                                       TRI_col_parameter_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection

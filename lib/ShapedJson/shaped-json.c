@@ -1554,7 +1554,7 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
     return false;
   }
 
-  unicoded = TRI_EscapeUtf8String(data, l - 1, true, &out);
+  unicoded = TRI_EscapeUtf8StringZ(buffer->_memoryZone, data, l - 1, true, &out);
 
   if (unicoded == NULL) {
     return false;
@@ -1563,10 +1563,11 @@ static bool StringifyJsonShapeDataLongString (TRI_shaper_t* shaper,
   res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(buffer->_memoryZone, unicoded);
     return false;
   }
 
-  TRI_FreeString(shaper->_memoryZone, unicoded);
+  TRI_FreeString(buffer->_memoryZone, unicoded);
 
   res = TRI_AppendCharStringBuffer(buffer, '"');
 
@@ -1587,7 +1588,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
                                          char const* data,
                                          uint64_t size,
                                          bool braces,
-                                         size_t* num) {
+                                         uint64_t* num) {
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   TRI_shape_sid_t const* sids;
@@ -2229,7 +2230,7 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
                                        TRI_json_t const* augment) {
   TRI_shape_t const* shape;
   bool ok;
-  size_t num;
+  uint64_t num;
   int res;
 
   shape = shaper->lookupShapeId(shaper, shaped->_sid);

@@ -31,7 +31,7 @@ ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an inte
 ## HTTP errors
 ################################################################################
 
-ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation an JSON object is corrupt."
+ERROR_HTTP_CORRUPTED_JSON,600,"invalid JSON object","Will be raised when a string representation of a JSON object is corrupt."
 ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised when the URL contains superfluous suffices."
 
 ################################################################################
@@ -76,7 +76,7 @@ ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a
 ERROR_ARANGO_COLLECTION_NOT_FOUND,1203,"collection not found","Will be raised when a collection with a given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document handle","Will be raised when a document handle is corrupt."
-ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maixaml size of journal too small","Will be raised when the maximal size of the journal is too small."
+ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maixmal size of journal too small","Will be raised when the maximal size of the journal is too small."
 ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name duplicate is detected."
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
@@ -88,6 +88,7 @@ ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a
 ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,1215,"cap constraint already defined","Will be raised when a cap constraint was already defined."
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
 ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
+ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -108,6 +109,7 @@ ERROR_QUERY_SCRIPT,1503,"runtime error '%s'","Will be raised when a runtime erro
 ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number out of range","Will be raised when a number is outside the expected range."
 ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
+ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
 ERROR_QUERY_COLLECTION_NOT_FOUND,1520,"unable to open collection '%s'","Will be raised when one of the collections referenced in the query was not found."
 ERROR_QUERY_COLLECTION_LOCK_FAILED,1521,"unable to read-lock collection %s","Will be raised when a read lock on the collection cannot be acquired."
 ERROR_QUERY_TOO_MANY_COLLECTIONS,1522,"too many collections","Will be raised when the number of collections in a query is beyond the allowed value."
@@ -131,27 +133,6 @@ ERROR_QUERY_GEO_INDEX_MISSING,1570,"no suitable geo index found for geo restrict
 ################################################################################
 
 ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is requested via its id but a cursor with that id cannot be found."
-
-################################################################################
-## Application Server
-################################################################################
-
-ERROR_SESSION_USERHANDLER_URL_INVALID,1700,"expecting <prefix>/user/<username>","TODO"
-ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER,1701,"cannot create user","TODO"
-ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND,1702,"role not found","TODO"
-ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION,1703,"no permission to create user with that role","TODO"
-ERROR_SESSION_USERHANDLER_USER_NOT_FOUND,1704,"user not found","TODO"
-ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW,1705,"cannot manage password for user","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID1,1706,"expecting POST <prefix>/session","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID2,1707,"expecting GET <prefix>/session/<sid>","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID3,1708,"expecting PUT <prefix>/session/<sid>/<method>","TODO"
-ERROR_SESSION_SESSIONHANDLER_URL_INVALID4,1709,"expecting DELETE <prefix>/session/<sid>","TODO"
-ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN,1710,"unknown session","TODO"
-ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND,1711,"session has not bound to user","TODO"
-ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN,1712,"cannot login with session","TODO"
-ERROR_SESSION_USERSHANDLER_INVALID_URL,1713,"expecting GET <prefix>/users","TODO"
-ERROR_SESSION_DIRECTORYSERVER_INVALID_URL,1714,"expecting /directory/sessionvoc/<token>","TODO"
-ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED,1715,"directory server is not configured","TODO"
 
 ################################################################################
 ## Key value access
@@ -190,7 +171,7 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ################################################################################
 ## ArangoDB index errors (3000-3999)
 ##
-## For error that occur when fulfilling a user request which fails due to index.
+## Errors that occur when user request fails due to an index error.
 ################################################################################
 
 ERROR_ARANGO_INDEX_PQ_INSERT_FAILED,3100,"priority queue insert failure","Will be raised when an attempt to insert a document into a priority queue index fails for some reason."
@@ -212,3 +193,6 @@ WARNING_ARANGO_INDEX_SKIPLIST_REMOVE_ITEM_MISSING,3311,"skiplist index remove fa
 WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING,3400,"bitarray index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into a bitarray index is caused by in the document not having one or more attributes which are required by the bitarray index."
 WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING,3402,"bitarray index update warning - attribute missing in revised document","Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the bitarray index."
 WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING,3411,"bitarray index remove failure - item missing in index","Will be raised when an attempt to remove a document from a bitarray index fails when document can not be located within that index."
+ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE,3413,"bitarray index insert failure - document attribute value unsupported in index","Will be raised when an attempt to insert a document into a bitarray index fails due to the fact that one or more values for an index attribute is not supported within that index."
+ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES,3415,"bitarray index creation failure - one or more index attributes are duplicated.","Will be raised when an attempt to create an index with two or more index attributes repeated."
+ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES,3417,"bitarray index creation failure - one or more index attribute values are duplicated.","Will be raised when an attempt to create an index with two or more index attribute values repeated."

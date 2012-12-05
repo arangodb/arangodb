@@ -39,6 +39,7 @@
 #include "Rest/HttpResponse.h"
 
 using namespace std;
+using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
@@ -169,7 +170,7 @@ void ApplicationAdminServer::allowVersion (string name, string version) {
 
 void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, string const& prefix) {
   if (_allowVersion) {
-    if (!_versionDataDirect) {
+    if (! _versionDataDirect) {
       _versionDataDirect = new RestVersionHandler::version_options_t;
       _versionDataDirect->_name = _name;
       _versionDataDirect->_version = _version;
@@ -180,7 +181,7 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, stri
                         RestHandlerCreator<RestVersionHandler>::createData<RestVersionHandler::version_options_t const*>,
                         (void*) _versionDataDirect);
 
-    if (!_versionDataQueued) {
+    if (! _versionDataQueued) {
       _versionDataQueued = new RestVersionHandler::version_options_t;
       _versionDataQueued->_name = _name;
       _versionDataQueued->_version = _version;
@@ -215,16 +216,14 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   // .............................................................................
   
   if (_allowAdminDirectory) {
-    if (! _adminDirectory.empty()) {
-      LOGGER_INFO << "using JavaScript front-end files stored at '" << _adminDirectory << "'";
+    LOGGER_INFO << "using JavaScript front-end files stored at '" << _adminDirectory << "'";
 
-      reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = _adminDirectory;
-      reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
-      reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
-      reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
+    reinterpret_cast<PathHandler::Options*>(_pathOptions)->path = _adminDirectory;
+    reinterpret_cast<PathHandler::Options*>(_pathOptions)->contentType = "text/plain";
+    reinterpret_cast<PathHandler::Options*>(_pathOptions)->allowSymbolicLink = false;
+    reinterpret_cast<PathHandler::Options*>(_pathOptions)->defaultFile = "index.html";
       
-      factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
-    }
+    factory->addPrefixHandler(prefix + "/html", RestHandlerCreator<PathHandler>::createData<PathHandler::Options*>, _pathOptions);
   }
   
   // .............................................................................
@@ -247,8 +246,12 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
+/// @addtogroup ApplicationServer
 /// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
@@ -263,6 +266,19 @@ void ApplicationAdminServer::setupOptions (map<string, basics::ProgramOptionsDes
       ("server.fe-configuration", &_feConfiguration, "file to store the front-end preferences")
     ;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationAdminServer::prepare () {
+  if (_allowAdminDirectory && _adminDirectory.empty()) {
+    LOGGER_FATAL << "you must specify an admin directory, giving up!";
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

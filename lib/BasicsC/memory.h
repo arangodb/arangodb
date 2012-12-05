@@ -101,19 +101,10 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief out-of-memory simulator configuration functions for debugging
-///
-/// Functions are only available if configured with --enable-memfail.
-/// Otherwise, they are replaced with empty macros.
+/// @brief system memory allocation
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MEMFAIL
-void TRI_ActivateMemFailures (double probability);
-void TRI_DeactivateMemFailures (void);
-#else
-#define TRI_ActiveMemFailures(p)    do {} while (0)
-#define TRI_DeactivateMemFailures() do {} while (0)
-#endif
+void* TRI_SystemAllocate (uint64_t, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
@@ -146,6 +137,20 @@ void* TRI_Reallocate (TRI_memory_zone_t*, void*, uint64_t);
 void TRI_FreeZ (TRI_memory_zone_t*, void*, char const* file, int line);
 #else
 void TRI_Free (TRI_memory_zone_t*, void*);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free memory allocated by some low-level functions
+///
+/// this can be used to free memory that was not allocated by TRI_Allocate, but
+/// by malloc et al
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define TRI_SystemFree(a) TRI_SystemFreeZ((a),__FILE__,__LINE__)
+void TRI_SystemFreeZ (void*, char const* file, int line);
+#else
+void TRI_SystemFree (void*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

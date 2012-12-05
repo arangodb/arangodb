@@ -46,18 +46,15 @@ namespace triagens {
     void InitialiseBasics (int argv, char* argc[]) {
       TRIAGENS_C_INITIALISE(argv, argc);
 
+      // use the rng so the linker does not remove it from the executable
+      // we might need it later because .so files might refer to the symbols
       Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
-      Random::UniformInteger random(0,1);
+      Random::UniformInteger random(0, 1);
       random.random();
       Random::selectVersion(v);
 
       string revision = "$Revision: BASICS " TRIAGENS_VERSION " (c) triAGENS GmbH $";
       LOGGER_TRACE << revision;
-
-#ifdef BOOST_VERSION
-      revision = "$Revision: BOOST " TRI_BOOST_VERSION " $";
-      LOGGER_TRACE << revision;
-#endif
 
 #ifdef TRI_BROKEN_CXA_GUARD
       pthread_cond_t cond;

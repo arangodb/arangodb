@@ -146,7 +146,6 @@ bool OpenCollections (TRI_aql_context_t* const context) {
   n = context->_collections._length;
   for (i = 0; i < n; ++i) {
     TRI_aql_collection_t* collection = context->_collections._buffer[i];
-    char* name;
 
     assert(collection);
     assert(collection->_name);
@@ -154,12 +153,11 @@ bool OpenCollections (TRI_aql_context_t* const context) {
     assert(!collection->_barrier);
     assert(!collection->_readLocked);
 
-    TRI_AQL_LOG("locking collection '%s'", collection->_name);
+    LOG_TRACE("locking collection '%s'", collection->_name);
+    collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, collection->_name);
+    if (collection->_collection == NULL) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, collection->_name);
 
-    name = collection->_name;
-    collection->_collection = TRI_UseCollectionByNameVocBase(context->_vocbase, name);
-    if (!collection->_collection) {
-      TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
       return false;
     }
   }
@@ -341,12 +339,12 @@ void TRI_UnlockCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection);
     assert(collection->_name);
 
-    if (!collection->_collection) {
+    if (collection->_collection == NULL) {
       // collection not yet opened
       continue;
     }
   
-    TRI_AQL_LOG("unlocking collection '%s'", collection->_name);
+    LOG_TRACE("unlocking collection '%s'", collection->_name);
     
     TRI_ReleaseCollectionVocBase(context->_vocbase, collection->_collection);
 
@@ -386,7 +384,7 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
     int lockResult;
 
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_doc_collection_t* documentCollection;
+    TRI_primary_collection_t* primaryCollection;
 
     assert(collection);
     assert(collection->_name);
@@ -395,19 +393,22 @@ bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const context) {
     assert(!collection->_readLocked);
     assert(!collection->_barrier);
 
-    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+    primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
-    TRI_AQL_LOG("read-locking collection '%s'", collection->_name);
+    LOG_TRACE("read-locking collection '%s'", collection->_name);
 
-    lockResult = documentCollection->beginRead(documentCollection);
+    lockResult = primaryCollection->beginRead(primaryCollection);
     if (lockResult != TRI_ERROR_NO_ERROR) {
       // couldn't acquire the read lock
+      LOG_WARNING("couldn't acquire read-lock on collection '%s'", collection->_name);
+
       result = false;
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, collection->_name);
       break;
     }
     else {
       collection->_readLocked = true;
+      LOG_TRACE("read-locked collection '%s'", collection->_name);
     }
   }
 
@@ -425,7 +426,7 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
   i = context->_collections._length;
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_doc_collection_t* documentCollection;
+    TRI_primary_collection_t* primaryCollection;
 
     assert(collection);
     assert(collection->_name);
@@ -443,12 +444,13 @@ void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection->_collection->_collection);
     assert(!collection->_barrier);
 
-    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+    primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
-    TRI_AQL_LOG("read-unlocking collection '%s'", collection->_name);
+    LOG_TRACE("read-unlocking collection '%s'", collection->_name);
 
-    documentCollection->endRead(documentCollection);
+    primaryCollection->endRead(primaryCollection);
     collection->_readLocked = false;
+    LOG_TRACE("read-unlocked collection '%s'", collection->_name);
   }
 }
 
@@ -467,7 +469,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
     TRI_barrier_t* ce;
 
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_doc_collection_t* documentCollection;
+    TRI_primary_collection_t* primaryCollection;
 
     assert(collection);
     assert(collection->_name);
@@ -476,11 +478,11 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection->_collection->_collection);
     assert(!collection->_barrier);
 
-    documentCollection = (TRI_doc_collection_t*) collection->_collection->_collection;
+    primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
 
-    TRI_AQL_LOG("adding barrier for collection '%s'", collection->_name);
+    LOG_TRACE("adding barrier for collection '%s'", collection->_name);
 
-    ce = TRI_CreateBarrierElement(&documentCollection->_barrierList);
+    ce = TRI_CreateBarrierElement(&primaryCollection->_barrierList);
     if (!ce) {
       // couldn't create the barrier
       result = false;
@@ -519,7 +521,7 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const context) {
     assert(collection->_barrier);
     assert(collection->_collection->_collection);
 
-    TRI_AQL_LOG("removing barrier for collection '%s'", collection->_name);
+    LOG_TRACE("removing barrier for collection '%s'", collection->_name);
 
     TRI_FreeBarrier(collection->_barrier);
     collection->_barrier = NULL;

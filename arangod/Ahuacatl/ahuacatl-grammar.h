@@ -95,7 +95,7 @@
 typedef union YYSTYPE
 {
 
-/* Line 2068 of yacc.c  */
+/* Line 2132 of yacc.c  */
 #line 26 "arangod/Ahuacatl/ahuacatl-grammar.y"
 
   TRI_aql_node_t* node;
@@ -105,7 +105,7 @@ typedef union YYSTYPE
 
 
 
-/* Line 2068 of yacc.c  */
+/* Line 2132 of yacc.c  */
 #line 110 "arangod/Ahuacatl/ahuacatl-grammar.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1

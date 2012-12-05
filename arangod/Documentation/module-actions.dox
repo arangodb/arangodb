@@ -67,49 +67,49 @@
 /////////////////////////////////////////
 ///
 /// @anchor JSModuleActionsDefineHttp
-/// @copydetails JSF_DefineHttp
+/// @copydetails JSF_defineHttp
 /// <hr>
 ///
 /// @anchor JSModuleActionsResultError
-/// @copydetails JSF_ResultError
+/// @copydetails JSF_resultError
 /// <hr>
 ///
 /// @anchor JSModuleActionsGetErrorMessage
-/// @copydetails JSF_GetErrorMessage
+/// @copydetails JSF_getErrorMessage
 /// <hr>
 ///
 /// @section JSModuleActionsHTTP Standard HTTP Result Generators
 ////////////////////////////////////////////////////////////////
 ///
 /// @anchor JSModuleActionsResultOk
-/// @copydetails JSF_ResultOk
+/// @copydetails JSF_resultOk
 /// <hr>
 ///
 /// @anchor JSModuleActionsResultBad
-/// @copydetails JSF_ResultBad
+/// @copydetails JSF_resultBad
 /// <hr>
 ///
 /// @anchor JSModuleActionsResultNotFound
-/// @copydetails JSF_ResultNotFound
+/// @copydetails JSF_resultNotFound
 /// <hr>
 ///
 /// @anchor JSModuleActionsResultUnsupported
-/// @copydetails JSF_ResultUnsupported
+/// @copydetails JSF_resultUnsupported
 /// <hr>
 ///
 /// @section JSModuleActionsArangoDB ArangoDB Result Generators
 /////////////////////////////////////////////////////////////////
 ///
 /// @anchor JSModuleActionsCollectionNotFound
-/// @copydetails JSF_CollectionNotFound
+/// @copydetails JSF_collectionNotFound
 /// <hr>
 ///
 /// @anchor JSModuleActionsIndexNotFound
-/// @copydetails JSF_IndexNotFound
+/// @copydetails JSF_indexNotFound
 /// <hr>
 ///
 /// @anchor JSModuleActionsResultException
-/// @copydetails JSF_ResultException
+/// @copydetails JSF_resultException
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

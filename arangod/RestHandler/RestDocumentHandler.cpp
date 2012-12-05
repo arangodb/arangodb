@@ -29,11 +29,14 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
 #include "BasicsC/string-buffer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
+#include "Utils/Barrier.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -95,7 +98,7 @@ string const& RestDocumentHandler::queue () {
 HttpHandler::status_e RestDocumentHandler::execute () {
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = request->requestType();
+  HttpRequest::HttpRequestType type = _request->requestType();
 
   // prepare logging
   static LoggerData::Task const logCreate(DOCUMENT_PATH + " [create]");
@@ -103,6 +106,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
   static LoggerData::Task const logUpdate(DOCUMENT_PATH + " [update]");
   static LoggerData::Task const logDelete(DOCUMENT_PATH + " [delete]");
   static LoggerData::Task const logHead(DOCUMENT_PATH + " [head]");
+  static LoggerData::Task const logPatch(DOCUMENT_PATH + " [patch]");
   static LoggerData::Task const logIllegal(DOCUMENT_PATH + " [illegal]");
 
   LoggerData::Task const * task = &logCreate;
@@ -114,10 +118,14 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     case HttpRequest::HTTP_REQUEST_POST: task = &logCreate; break;
     case HttpRequest::HTTP_REQUEST_PUT: task = &logUpdate; break;
+    case HttpRequest::HTTP_REQUEST_PATCH: task = &logUpdate; break;
   }
 
   _timing << *task;
+#ifdef TRI_ENABLE_LOGGER
+  // if ifdef is not used, the compiler will complain
   LOGGER_REQUEST_IN_START_I(_timing);
+#endif
 
   // execute one of the CRUD methods
   bool res = false;
@@ -127,7 +135,8 @@ HttpHandler::status_e RestDocumentHandler::execute () {
     case HttpRequest::HTTP_REQUEST_GET: res = readDocument(); break;
     case HttpRequest::HTTP_REQUEST_HEAD: res = checkDocument(); break;
     case HttpRequest::HTTP_REQUEST_POST: res = createDocument(); break;
-    case HttpRequest::HTTP_REQUEST_PUT: res = updateDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PUT: res = replaceDocument(); break;
+    case HttpRequest::HTTP_REQUEST_PATCH: res = updateDocument(); break;
 
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
       res = false;
@@ -177,10 +186,21 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 /// @LIT{HTTP 202} is returned in order to indicate that the document has been
 /// accepted but not yet stored.
 ///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document creation operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
 /// If the @FA{collection-identifier} is unknown, then a @LIT{HTTP 404} is
 /// returned and the body of the response contains an error document.
 ///
-/// If the body does not contain a valid JSON representation of an document,
+/// If the body does not contain a valid JSON representation of a document,
 /// then a @LIT{HTTP 400} is returned and the body of the response contains
 /// an error document.
 ///
@@ -200,9 +220,15 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ///
 /// @EXAMPLE{rest-create-document,create a document}
 ///
-/// Create a document in a collection where @LIT{waitForSync} is @LIT{false}.
+/// Create a document in a collection with a collection-level @LIT{waitForSync} 
+/// value of @LIT{false}.
 ///
 /// @EXAMPLE{rest-create-document-accept,accept a document}
+///
+/// Create a document in a collection with a collection-level @LIT{waitForSync} 
+/// value of @LIT{false}, but with using @FA{waitForSync} URL parameter.
+///
+/// @EXAMPLE{rest-create-document-wait,create a document}
 ///
 /// Create a document in a known, named collection
 ///
@@ -222,7 +248,7 @@ HttpHandler::status_e RestDocumentHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -231,9 +257,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
+  bool forceSync = extractWaitForSync();
+
   // extract the cid
   bool found;
-  char const* collection = request->value("collection", found);
+  char const* collection = _request->value("collection", found);
 
   if (! found || *collection == '\0') {
     generateError(HttpResponse::BAD,
@@ -243,11 +271,11 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // auto-ptr that will free JSON data when scope is left
@@ -259,34 +287,35 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
+  CollectionAccessor ca(_vocbase, collection, getCollectionType(), create);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  int res = ca.use();
+
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
+  
+  TRI_voc_cid_t cid = ca.cid();
+  const bool waitForSync = forceSync || ca.waitForSync();
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
-  _documentCollection->beginWrite(_documentCollection);
+  WriteTransaction trx(&ca);
 
-  bool waitForSync = _documentCollection->base._waitForSync;
-  TRI_voc_cid_t cid = _documentCollection->base._cid;
+  TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false, forceSync);
 
-  // note: unlocked is performed by createJson()
-  TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, true);
+  trx.end();
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // release collection and free json
-  releaseCollection();
-
   // generate result
   if (mptr._did != 0) {
-    if (waitForSync) {
+    if (waitForSync ) {
       generateCreated(cid, mptr._did, mptr._rid);
     }
     else {
@@ -327,7 +356,7 @@ bool RestDocumentHandler::createDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument () {
-  size_t len = request->suffix().size();
+  size_t len = _request->suffix().size();
 
   switch (len) {
     case 0:
@@ -392,7 +421,7 @@ bool RestDocumentHandler::readDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   /// check for an etag
   TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0);
@@ -402,45 +431,48 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   string collection = suffix[0];
   string did = suffix[1];
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
+  
+  int res = ca.use();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
+  
+  TRI_voc_cid_t cid = ca.cid();
+  TRI_shaper_t* shaper = ca.shaper();
+  TRI_voc_did_t id = StringUtils::uint64(did);
 
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
-  _documentCollection->beginRead(_documentCollection);
+  ReadTransaction trx(&ca);
 
-  TRI_voc_cid_t cid = _documentCollection->base._cid;
-  TRI_doc_mptr_t const document = findDocument(did);
+  TRI_doc_mptr_t const document = trx.primary()->read(trx.primary(), id);
 
-  _documentCollection->endRead(_documentCollection);
+  // register a barrier. will be destroyed automatically
+  Barrier barrier(trx.primary());
+
+  trx.end();
 
   // .............................................................................
   // outside read transaction
   // .............................................................................
 
-  // release collection
-  releaseCollection();
-
   // generate result
   if (document._did == 0) {
-    generateDocumentNotFound(cid,  did);
+    generateDocumentNotFound(cid, did);
     return false;
   }
 
   TRI_voc_rid_t rid = document._rid;
 
   if (ifNoneRid == 0) {
-    if (ifRid == 0) {
-      generateDocument(&document, generateBody);
-    }
-    else if (ifRid == rid) {
-      generateDocument(&document, generateBody);
+    if (ifRid == 0 || ifRid == rid) {
+      generateDocument(&document, cid, shaper, generateBody);
     }
     else {
       generatePreconditionFailed(cid, document._did, rid);
@@ -458,11 +490,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     }
   }
   else {
-    if (ifRid == 0) {
-      generateDocument(&document, generateBody);
-    }
-    else if (ifRid == rid) {
-      generateDocument(&document, generateBody);
+    if (ifRid == 0 || ifRid == rid) {
+      generateDocument(&document, cid, shaper, generateBody);
     }
     else {
       generatePreconditionFailed(cid, document._did, rid);
@@ -490,58 +519,51 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
-
   // extract the cid
   bool found;
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
+  
+  int res = ca.use();
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
+
+  vector<TRI_voc_did_t> ids;
+  TRI_voc_cid_t cid = ca.cid();
 
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
-  vector<TRI_voc_did_t> ids;
+  ReadTransaction trx(&ca);
 
-  _documentCollection->beginRead(_documentCollection);
+  const TRI_primary_collection_t* primary = trx.primary();
 
-  TRI_voc_cid_t cid = _documentCollection->base._cid;
+  if (0 < primary->_primaryIndex._nrUsed) {
+    void** ptr = primary->_primaryIndex._table;
+    void** end = ptr + primary->_primaryIndex._nrAlloc;
 
-  try {
-    TRI_sim_collection_t* collection = (TRI_sim_collection_t*) _documentCollection;
+    for (;  ptr < end;  ++ptr) {
+      if (*ptr) {
+        TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-    if (0 < collection->_primaryIndex._nrUsed) {
-      void** ptr = collection->_primaryIndex._table;
-      void** end = collection->_primaryIndex._table + collection->_primaryIndex._nrAlloc;
-
-      for (;  ptr < end;  ++ptr) {
-        if (*ptr) {
-          TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-          if (d->_deletion == 0) {
-            ids.push_back(d->_did);
-          }
+        if (d->_deletion == 0) {
+          ids.push_back(d->_did);
         }
       }
     }
   }
-  catch (...) {
-    // necessary so we will always remove the read lock
-  }
-  
-  _documentCollection->endRead(_documentCollection);
+
+  trx.end();
 
   // .............................................................................
   // outside read transaction
   // .............................................................................
-
-  // release collection
-  releaseCollection();
 
   // generate result
   TRI_string_buffer_t buffer;
@@ -567,10 +589,10 @@ bool RestDocumentHandler::readAllDocuments () {
   TRI_AppendStringStringBuffer(&buffer, "\n] }\n");
 
   // and generate a response
-  response = new HttpResponse(HttpResponse::OK);
-  response->setContentType("application/json; charset=utf-8");
+  _response = createResponse(HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
 
-  response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+  _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
 
   TRI_AnnihilateStringBuffer(&buffer);
 
@@ -594,7 +616,7 @@ bool RestDocumentHandler::readAllDocuments () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
@@ -607,45 +629,76 @@ bool RestDocumentHandler::checkDocument () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document
+/// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document,updates a document}
+/// @RESTHEADER{PUT /_api/document,replaces a document}
 ///
 /// @REST{PUT /_api/document/@FA{document-handle}}
 ///
-/// Updates the document identified by @FA{document-handle}. If the document exists
-/// and can be updated, then a @LIT{HTTP 201} is returned and the "ETag" header
-/// field contains the new revision of the document.
+/// Completely updates (i.e. replaces) the document identified by @FA{document-handle}. 
+/// If the document exists and can be updated, then a @LIT{HTTP 201} is returned 
+/// and the "ETag" header field contains the new revision of the document.
 ///
-/// Note the updated document passed in the body of the request normally also
-/// contains the @FA{document-handle} in the attribute @LIT{_id} and the
-/// revision in @LIT{_rev}. These attributes, however, are ignored. Only the URI
-/// and the "ETag" header are relevant in order to avoid confusion when using
-/// proxies.
+/// If the new document passed in the body of the request contains the
+/// @FA{document-handle} in the attribute @LIT{_id} and the revision in @LIT{_rev},
+/// these attributes will be ignored. Only the URI and the "ETag" header are 
+/// relevant in order to avoid confusion when using proxies.
+///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document replacement operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute @LIT{_id} contains the known
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
 /// contains the new document revision.
 ///
-/// If the document does not exists, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
-/// If an etag is supplied in the "If-Match" header field, then the ArangoDB
-/// checks that the revision of the document is equal to the etag. If there is a
-/// mismatch, then a @LIT{HTTP 409} conflict is returned and no update is
-/// performed.
+/// There are two ways for specifying the targeted document revision id for
+/// conditional replacements (i.e. replacements that will only be executed if
+/// the revision id found in the database matches the document revision id specified
+/// in the request):
+/// - specifying the target revision in the @LIT{rev} URL parameter
+/// - specifying the target revision in the @LIT{if-match} HTTP header
+///
+/// Specifying a target revision is optional, however, if done, only one of the
+/// described mechanisms must be used (either the @LIT{rev} URL parameter or the
+/// @LIT{if-match} HTTP header).
+/// Regardless which mechanism is used, the parameter needs to contain the target 
+/// document revision id as returned in the @LIT{_rev} attribute of a document or
+/// by an HTTP @LIT{etag} header.
+///
+/// For example, to conditionally replace a document based on a specific revision
+/// id, you the following request:
+/// @REST{PUT /_api/document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
+///
+/// If a target revision id is provided in the request (e.g. via the @FA{etag} value
+/// in the @LIT{rev} URL parameter above), ArangoDB will check that
+/// the revision id of the document found in the database is equal to the target
+/// revision id provided in the request. If there is a mismatch between the revision
+/// id, then by default a @LIT{HTTP 409} conflict is returned and no replacement is 
+/// performed. ArangoDB will return an HTTP @LIT{412 precondition failed} response then.
+///
+/// The conditional update behavior can be overriden with the @FA{policy} URL parameter:
 ///
 /// @REST{PUT /_api/document/@FA{document-handle}?policy=@FA{policy}}
 ///
-/// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last},
-/// then the last write will win.
+/// If @FA{policy} is set to @LIT{error}, then the behavior is as before: replacements
+/// will fail if the revision id found in the database does not match the target 
+/// revision id specified in the request.
 ///
-/// @REST{PUT /_api/document/@FA{collection-identifier}/@FA{document-identifier}?rev=@FA{etag}}
-///
-/// You can also supply the etag using the parameter @LIT{rev} instead of an "ETag"
-/// header. You must never supply both the "ETag" header and the @LIT{rev}
-/// parameter.
+/// If @FA{policy} is set to @LIT{last}, then the replacement will succeed, even if the
+/// revision id found in the database does not match the target revision id specified 
+/// in the request. You can use the @LIT{last} @FA{policy} to force replacements.
 ///
 /// @EXAMPLES
 ///
@@ -670,8 +723,71 @@ bool RestDocumentHandler::checkDocument () {
 /// @verbinclude rest-update-document-rev-other
 ////////////////////////////////////////////////////////////////////////////////
 
+bool RestDocumentHandler::replaceDocument () {
+  return modifyDocument(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document
+///
+/// @RESTHEADER{PATCH /_api/document,patches a document}
+///
+/// @REST{PATCH /_api/document/@FA{document-handle}}
+///
+/// Partially updates the document identified by @FA{document-handle}. 
+/// The body of the request must contain a JSON document with the attributes
+/// to patch (the patch document). All attributes from the patch document will
+/// be added to the existing document if they do not yet exist, and overwritten 
+/// in the existing document if they do exist there. 
+///
+/// Setting an attribute value to @LIT{null} in the patch document will cause a 
+/// value of @LIT{null} be saved for the attribute by default. If the intention
+/// is to delete existing attributes with the patch command, the URL parameter 
+/// @LIT{keepNull} can be used with a value of @LIT{false}.
+/// This will modify the behavior of the patch command to remove any attributes 
+/// from the existing document that are contained in the patch document with an 
+/// attribute value of @LIT{null}.
+///
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document update operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// The body of the response contains a JSON object with the information about
+/// the handle and the revision. The attribute @LIT{_id} contains the known
+/// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
+/// contains the new document revision.
+///
+/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
+/// body of the response contains an error document.
+///
+/// You can conditionally update a document based on a target revision id by
+/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header. 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the @FA{policy} parameter. This is the same as when replacing 
+/// documents (see replacing documents for details).
+///
+/// @EXAMPLES
+///
+/// @verbinclude rest-patch-document
+////////////////////////////////////////////////////////////////////////////////
+
 bool RestDocumentHandler::updateDocument () {
-  vector<string> const& suffix = request->suffix();
+  return modifyDocument(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for replaceDocument and updateDocument
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestDocumentHandler::modifyDocument (bool isPatch) {
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
@@ -680,6 +796,8 @@ bool RestDocumentHandler::updateDocument () {
     return false;
   }
 
+  bool forceSync = extractWaitForSync();
+
   // split the document reference
   string collection = suffix[0];
   string didStr = suffix[1];
@@ -687,6 +805,7 @@ bool RestDocumentHandler::updateDocument () {
   // auto-ptr that will free JSON data when scope is left
   JsonContainer container(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   TRI_json_t* json = container.ptr();
+  
   if (json == 0) {
     return false;
   }
@@ -700,68 +819,107 @@ bool RestDocumentHandler::updateDocument () {
   // extract or chose the update policy
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  int res = ca.use();
+
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
+  
+  TRI_shaper_t* shaper = ca.shaper();
+  TRI_voc_cid_t cid = ca.cid();
+  TRI_voc_rid_t rid = 0;
+  
+  // init target document
+  TRI_doc_mptr_t mptr;
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
-  _documentCollection->beginWrite(_documentCollection);
+  WriteTransaction trx(&ca);
 
-  // unlocking is performed in updateJson()
-  TRI_voc_rid_t rid = 0;
-  TRI_voc_cid_t cid = _documentCollection->base._cid;
+  if (isPatch) {
+    // patching an existing document
+    bool nullMeansRemove;
+    bool found;
+    char const* valueStr = _request->value("keepNull", found);
+    if (!found || StringUtils::boolean(valueStr)) {
+      // default: null values are saved as Null
+      nullMeansRemove = false;
+    }
+    else {
+      // delete null attributes
+      nullMeansRemove = true;
+    }
 
-  TRI_doc_mptr_t const mptr = _documentCollection->updateJson(_documentCollection, json, did, revision, &rid, policy, true);
-  res = mptr._did == 0 ? TRI_errno() : 0;
+    // read the existing document
+    TRI_doc_mptr_t document = trx.primary()->read(trx.primary(), did);
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document._data);
+    TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
+  
+    if (old != 0) {
+      TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+      TRI_FreeJson(shaper->_memoryZone, old);
+
+      if (patchedJson != 0) {
+        mptr = trx.primary()->updateJson(trx.primary(), patchedJson, did, revision, &rid, policy, false, forceSync);
+
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+      }
+    }
+  }
+  else {
+    // replacing an existing document
+    mptr = trx.primary()->updateJson(trx.primary(), json, did, revision, &rid, policy, false, forceSync);
+  }
+
+  trx.end();
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // release collection
-  releaseCollection();
-  
+  res = mptr._did == 0 ? TRI_errno() : 0;
+
   // generate result
   if (mptr._did != 0) {
     generateUpdated(cid, did, mptr._rid);
     return true;
   }
-  else {
-    switch (res) {
-      case TRI_ERROR_ARANGO_READ_ONLY:
-        generateError(HttpResponse::FORBIDDEN, 
-                      TRI_ERROR_ARANGO_READ_ONLY,
-                      "collection is read-only");
-        return false;
 
-      case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-        generateDocumentNotFound(cid, didStr);
-        return false;
+  switch (res) {
+    case TRI_ERROR_ARANGO_READ_ONLY:
+      generateError(HttpResponse::FORBIDDEN, 
+          TRI_ERROR_ARANGO_READ_ONLY,
+          "collection is read-only");
+      return false;
 
-      case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-        generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
-        return false;
+    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+      generateDocumentNotFound(cid, didStr);
+      return false;
 
-      case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-        generateError(HttpResponse::BAD, res, "geo constraint violated");
-        return false;
+    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
+      return false;
 
-      case TRI_ERROR_ARANGO_CONFLICT:
-        generatePreconditionFailed(_documentCollection->base._cid, did, rid);
-        return false;
+    case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
+      generateError(HttpResponse::BAD, res, "geo constraint violated");
+      return false;
 
-      default:
-        generateError(HttpResponse::SERVER_ERROR,
-                      TRI_ERROR_INTERNAL,
-                      "cannot update, failed with " + string(TRI_last_error()));
-        return false;
-    }
+    case TRI_ERROR_ARANGO_CONFLICT:
+      generatePreconditionFailed(cid, did, rid);
+      return false;
+
+    default:
+      generateError(HttpResponse::SERVER_ERROR,
+          TRI_ERROR_INTERNAL,
+          "cannot update, failed with " + string(TRI_last_error()));
+      return false;
   }
 }
 
@@ -780,24 +938,25 @@ bool RestDocumentHandler::updateDocument () {
 /// @FA{document-handle} of the updated document, the attribute @LIT{_rev}
 /// contains the known document revision.
 ///
-/// If the document does not exists, then a @LIT{HTTP 404} is returned and the
+/// If the document does not exist, then a @LIT{HTTP 404} is returned and the
 /// body of the response contains an error document.
 ///
-/// If an etag is supplied in the "If-Match" field, then the ArangoDB checks
-/// that the revision of the document is equal to the etag. If there is a
-/// mismatch, then a @LIT{HTTP 412} conflict is returned and no delete is
-/// performed.
+/// You can conditionally delete a document based on a target revision id by
+/// using either the @FA{rev} URL parameter or the @LIT{if-match} HTTP header. 
+/// To control the update behavior in case there is a revision mismatch, you
+/// can use the @FA{policy} parameter. This is the same as when replacing 
+/// documents (see replacing documents for more details).
 ///
-/// @REST{DELETE /_api/document/@FA{document-handle}?policy=@FA{policy}}
-///
-/// As before, if @FA{policy} is @LIT{error}. If @FA{policy} is @LIT{last}, then
-/// the last write will win.
-///
-/// @REST{DELETE /_api/document/@FA{document-handle}?rev=@FA{etag}}
-///
-/// You can also supply the etag using the parameter @LIT{rev} instead of an
-/// "If-Match" header. You must never supply both the "If-Match" header and the
-/// @LIT{rev} parameter.
+/// Optionally, the URL parameter @FA{waitForSync} can be used to force 
+/// synchronisation of the document deletion operation to disk even in case
+/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
+/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the @FA{waitForSync} parameter
+/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
+/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
 ///
 /// @EXAMPLES
 ///
@@ -815,7 +974,7 @@ bool RestDocumentHandler::updateDocument () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, 
@@ -823,6 +982,8 @@ bool RestDocumentHandler::deleteDocument () {
                   "expecting DELETE /_api/document/<document-handle>");
     return false;
   }
+
+  bool forceSync = extractWaitForSync();
 
   // split the document reference
   string collection = suffix[0];
@@ -844,31 +1005,33 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  // find and load collection given by name oder identifier
-  int res = useCollection(collection);
+  // find and load collection given by name or identifier
+  CollectionAccessor ca(_vocbase, collection, getCollectionType(), false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  int res = ca.use();
+
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
+  
+  TRI_voc_cid_t cid = ca.cid();
+  TRI_voc_rid_t rid = 0;
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
 
-  _documentCollection->beginWrite(_documentCollection);
-
-  TRI_voc_rid_t rid = 0;
-  TRI_voc_cid_t cid = _documentCollection->base._cid;
+  WriteTransaction trx(&ca);
 
   // unlocking is performed in destroy()
-  res = _documentCollection->destroy(_documentCollection, did, revision, &rid, policy, true);
+  res = trx.primary()->destroy(trx.primary(), did, revision, &rid, policy, false, forceSync);
+
+  trx.end();
 
   // .............................................................................
   // outside write transaction
   // .............................................................................
-
-  // release collection
-  releaseCollection();
 
   // generate result
   if (res == TRI_ERROR_NO_ERROR) {
@@ -888,7 +1051,7 @@ bool RestDocumentHandler::deleteDocument () {
         return false;
 
       case TRI_ERROR_ARANGO_CONFLICT:
-        generatePreconditionFailed(_documentCollection->base._cid, did, rid);
+        generatePreconditionFailed(cid, did, rid);
         return false;
 
       default:

@@ -10,7 +10,7 @@ describe ArangoDB do
   context "dealing with collections:" do
 
 ################################################################################
-## reading all collection
+## reading all collections
 ################################################################################
 
     context "all collections:" do
@@ -41,6 +41,7 @@ describe ArangoDB do
 
         # filter out system collections
         realCollections = [ ]
+
         collections.each { |collection|
           if collection['name'].slice(0, 1) != "_"
             realCollections.push(collection)
@@ -48,6 +49,7 @@ describe ArangoDB do
         }
 
 	realNames = { }
+
         names.each do |name, collection| 
           if name.slice(0, 1) != '_'
             realNames[name] = collection

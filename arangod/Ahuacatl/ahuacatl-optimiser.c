@@ -60,6 +60,29 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+ 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a local optimiser structure that is used temporarily during the
+/// AST traversal
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct aql_optimiser_s {
+  TRI_aql_context_t* _context;
+}
+aql_optimiser_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -69,6 +92,34 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const,
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an optimiser structure
+////////////////////////////////////////////////////////////////////////////////
+
+static aql_optimiser_t* CreateOptimiser (TRI_aql_context_t* const context) {
+  aql_optimiser_t* optimiser;
+  
+  optimiser = (aql_optimiser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(aql_optimiser_t), false);
+
+  if (optimiser == NULL) {
+    return NULL;
+  }
+
+  optimiser->_context = context;
+
+  return optimiser;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free an optimiser structure
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeOptimiser (aql_optimiser_t* const optimiser) {
+  assert(optimiser);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, optimiser);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pick an index for the ranges found
@@ -85,7 +136,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
   collectionName = TRI_AQL_NODE_STRING(nameNode);
   assert(collectionName);
-
+  
   hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
   if (hint == NULL) {
@@ -93,7 +144,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
     return;
   }
-
+  
   if (hint->_ranges == NULL) {
     // no ranges found to be used as indexes
 
@@ -109,7 +160,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
   hint->_collection = collection;
 
-  availableIndexes = &(((TRI_sim_collection_t*) collection->_collection->_collection)->_indexes);
+  availableIndexes = &(((TRI_document_collection_t*) collection->_collection->_collection)->_allIndexes);
 
   if (availableIndexes == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -133,15 +184,15 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
 static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
-  TRI_aql_context_t* context;
+  aql_optimiser_t* optimiser;
   
   if (node->_type != TRI_AQL_NODE_COLLECTION) {
     return node;
   }
-  
-  context = (TRI_aql_context_t*) walker->_data;
 
-  AttachCollectionHint(context, node);
+  optimiser = (aql_optimiser_t*) walker->_data;
+
+  AttachCollectionHint(optimiser->_context, node);
 
   return node;
 }
@@ -317,13 +368,13 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
-  TRI_AQL_LOG("optimised function call");
+  LOG_TRACE("optimised function call");
 
   return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a for statement
+/// @brief optimise a FOR statement
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
@@ -334,7 +385,7 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
     // for statement with a list expression
     if (expression->_members._length == 0) {
       // list is empty => we can eliminate the for statement
-      TRI_AQL_LOG("optimised away empty for loop");
+      LOG_TRACE("optimised away empty for loop");
 
       return TRI_GetDummyReturnEmptyNodeAql();
     }
@@ -342,9 +393,9 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
 
   return node;
 }
-
+ 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a sort statement
+/// @brief optimise a SORT statement
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
@@ -373,12 +424,12 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
     TRI_RemoveVectorPointer(&list->_members, i);
     --n;
 
-    TRI_AQL_LOG("optimised away sort element");
+    LOG_TRACE("optimised away sort element");
   }
 
   if (n == 0) {
     // no members left => sort removed
-    TRI_AQL_LOG("optimised away sort");
+    LOG_TRACE("optimised away sort");
 
     return TRI_GetDummyNopNodeAql();
   }
@@ -387,30 +438,30 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a constant filter expression
+/// @brief optimise a constant FILTER expression
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
   if (TRI_GetBooleanNodeValueAql(node)) {
     // filter expression is always true => remove it
-    TRI_AQL_LOG("optimised away constant (true) filter");
+    LOG_TRACE("optimised away constant (true) filter");
 
     return TRI_GetDummyNopNodeAql();
   }
 
   // filter expression is always false => invalidate surrounding scope(s)
-  TRI_AQL_LOG("optimised away scope"); 
+  LOG_TRACE("optimised away scope"); 
 
   return TRI_GetDummyReturnEmptyNodeAql();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a filter statement
+/// @brief optimise a FILTER statement
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
                                        TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+  aql_optimiser_t* optimiser = (aql_optimiser_t*) walker->_data;
   TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
  
   while (true) {
@@ -431,7 +482,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
     oldRanges = TRI_GetCurrentRangesStatementWalkerAql(walker);
     
     changed = false;
-    newRanges = TRI_OptimiseRangesAql(context, expression, &changed, oldRanges);
+    newRanges = TRI_OptimiseRangesAql(optimiser->_context, expression, &changed, oldRanges);
     
     if (newRanges) {
       TRI_SetCurrentRangesStatementWalkerAql(walker, newRanges);
@@ -557,7 +608,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
-  TRI_AQL_LOG("optimised away unary logical operation");
+  LOG_TRACE("optimised away unary logical operation");
 
   return node;
 }
@@ -603,7 +654,7 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   assert(node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND ||
          node->_type == TRI_AQL_NODE_OPERATOR_BINARY_OR);
 
-  TRI_AQL_LOG("optimised away binary logical operation");
+  LOG_TRACE("optimised away binary logical operation");
 
   if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND) {
     if (lhsValue) {
@@ -700,7 +751,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
     
-  TRI_AQL_LOG("optimised away binary relational operation");
+  LOG_TRACE("optimised away binary relational operation");
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -785,7 +836,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     return NULL;
   }
   
-  TRI_AQL_LOG("optimised away binary arithmetic operation");
+  LOG_TRACE("optimised away binary arithmetic operation");
 
   return node;
 }
@@ -819,7 +870,7 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
     return node;
   }
     
-  TRI_AQL_LOG("optimised away ternary operation");
+  LOG_TRACE("optimised away ternary operation");
   
   // evaluate condition
   if (TRI_GetBooleanNodeValueAql(condition)) {
@@ -840,7 +891,7 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
 
 static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker, 
                                      TRI_aql_node_t* node) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+  TRI_aql_context_t* context = ((aql_optimiser_t*) walker->_data)->_context;
 
   assert(node);
 
@@ -910,7 +961,7 @@ static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walk
 ////////////////////////////////////////////////////////////////////////////////
 
 static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
-  TRI_aql_context_t* context = (TRI_aql_context_t*) walker->_data;
+  TRI_aql_context_t* context = ((aql_optimiser_t*) walker->_data)->_context;
   TRI_vector_pointer_t* ranges;
   size_t i, n;
 
@@ -977,6 +1028,17 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     }
 
     if (expressionNode != NULL) {
+      if (expressionNode->_type == TRI_AQL_NODE_FCALL) {
+        // the defining node is a function call
+        // get the function name
+        TRI_aql_function_t* function = TRI_AQL_NODE_DATA(expressionNode);
+
+        if (function->optimise != NULL) {
+          // call the function's optimise callback
+          function->optimise(expressionNode, context, fieldAccess);
+        }
+      }
+
       if (expressionNode->_type == TRI_AQL_NODE_COLLECTION) {
         TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(expressionNode));
 
@@ -1012,21 +1074,21 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 /// @brief optimise the AST, first iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool OptimiseAst (TRI_aql_context_t* const context) {
+static bool OptimiseAst (aql_optimiser_t* const optimiser) {
   TRI_aql_statement_walker_t* walker;
 
-  walker = TRI_CreateStatementWalkerAql((void*) context, 
+  walker = TRI_CreateStatementWalkerAql((void*) optimiser, 
                                         true,
                                         &OptimiseNode,
                                         NULL, 
                                         &ProcessStatement);
   if (walker == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }
 
-  TRI_WalkStatementsAql(walker, context->_statements); 
+  TRI_WalkStatementsAql(walker, optimiser->_context->_statements); 
 
   TRI_FreeStatementWalkerAql(walker);
 
@@ -1037,21 +1099,21 @@ static bool OptimiseAst (TRI_aql_context_t* const context) {
 /// @brief determine which indexes to use in the query
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DetermineIndexes (TRI_aql_context_t* const context) {
+static bool DetermineIndexes (aql_optimiser_t* const optimiser) {
   TRI_aql_statement_walker_t* walker;
 
-  walker = TRI_CreateStatementWalkerAql((void*) context, 
+  walker = TRI_CreateStatementWalkerAql((void*) optimiser, 
                                         false,
                                         &AnnotateNode, 
                                         NULL, 
                                         NULL);
   if (walker == NULL) {
-    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
     return false;
   }
 
-  TRI_WalkStatementsAql(walker, context->_statements); 
+  TRI_WalkStatementsAql(walker, optimiser->_context->_statements); 
 
   TRI_FreeStatementWalkerAql(walker);
 
@@ -1076,15 +1138,19 @@ static bool DetermineIndexes (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_OptimiseAql (TRI_aql_context_t* const context) {
-  if (!OptimiseAst(context)) {
+  aql_optimiser_t* optimiser;
+  bool result;
+  
+  optimiser = CreateOptimiser(context);
+  if (optimiser == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
-  if (!DetermineIndexes(context)) {
-    return false;
-  }
+  result = (OptimiseAst(optimiser) && DetermineIndexes(optimiser));
+  FreeOptimiser(optimiser);
 
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

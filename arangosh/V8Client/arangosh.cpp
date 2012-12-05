@@ -32,17 +32,19 @@
 
 #include "build.h"
 
-#include "BasicsC/csv.h"
+#include "3rdParty/valgrind/valgrind.h"
 
+#include "ArangoShell/ArangoClient.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "BasicsC/csv.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
-#include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
-#include "Logger/Logger.h"
-#include "Rest/AddressPort.h"
+#include "Rest/Endpoint.h"
+#include "Rest/Initialise.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -50,13 +52,8 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8Client/ImportHelper.h"
 #include "V8Client/V8ClientConnection.h"
-#include "Variant/VariantArray.h"
-#include "Variant/VariantBoolean.h"
-#include "Variant/VariantInt64.h"
-#include "Variant/VariantString.h"
-
-#include "ImportHelper.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -67,50 +64,9 @@ using namespace triagens::arango;
 
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-monkeypatches.h"
 #include "js/common/bootstrap/js-errors.h"
 #include "js/client/js-client.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection default values
-////////////////////////////////////////////////////////////////////////////////
-
-static string const  DEFAULT_SERVER_NAME = "127.0.0.1";
-static int const     DEFAULT_SERVER_PORT = 8529;
-static int64_t const DEFAULT_REQUEST_TIMEOUT = 300;
-static size_t const  DEFAULT_RETRIES = 5;
-static int64_t const DEFAULT_CONNECTION_TIMEOUT = 5;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief colors for output
-////////////////////////////////////////////////////////////////////////////////
-
-static char const DEF_RED[6]         = "\x1b[31m";
-static char const DEF_BOLD_RED[8]    = "\x1b[1;31m";
-static char const DEF_GREEN[6]       = "\x1b[32m";
-static char const DEF_BOLD_GREEN[8]  = "\x1b[1;32m";
-static char const DEF_BLUE[6]        = "\x1b[34m";
-static char const DEF_BOLD_BLUE[8]   = "\x1b[1;34m";
-static char const DEF_YELLOW[8]      = "\x1b[1;33m";
-static char const DEF_WHITE[6]       = "\x1b[37m";
-static char const DEF_BOLD_WHITE[8]  = "\x1b[1;37m";
-static char const DEF_BLACK[6]       = "\x1b[30m";
-static char const DEF_BOLD_BLACK[8]  = "\x1b[1;39m";
-static char const DEF_BLINK[5]       = "\x1b[5m";
-static char const DEF_BRIGHT[5]      = "\x1b[1m";
-static char const DEF_RESET[5]       = "\x1b[0m";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -120,6 +76,12 @@ static char const DEF_RESET[5]       = "\x1b[0m";
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base class for clients
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoClient BaseClient;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -134,94 +96,10 @@ V8ClientConnection* ClientConnection = 0;
 v8::Persistent<v8::ObjectTemplate> ConnectionTempl;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connect timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t ConnectTimeout = DEFAULT_CONNECTION_TIMEOUT;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief max size body size (used for imports)
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t MaxUploadSize = 500000;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disable auto completion
-////////////////////////////////////////////////////////////////////////////////
-
-static bool NoAutoComplete = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deactivate colors
-////////////////////////////////////////////////////////////////////////////////
-
-static bool NoColors = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the output pager
-////////////////////////////////////////////////////////////////////////////////
-
-static string OutputPager = "less -X -R -F -L";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the pager FILE 
-////////////////////////////////////////////////////////////////////////////////
-
-static FILE *PAGER = stdout;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use pretty print
-////////////////////////////////////////////////////////////////////////////////
-
-static bool PrettyPrint = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quiet start
-////////////////////////////////////////////////////////////////////////////////
-
-static bool Quiet = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request timeout (in s) 
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t RequestTimeout = DEFAULT_REQUEST_TIMEOUT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server address and port
-////////////////////////////////////////////////////////////////////////////////
-
-static string ServerAddressPort = DEFAULT_SERVER_NAME + ":" + StringUtils::itoa(DEFAULT_SERVER_PORT);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server address
-////////////////////////////////////////////////////////////////////////////////
-
-static string ServerAddress = DEFAULT_SERVER_NAME;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server port
-////////////////////////////////////////////////////////////////////////////////
-
-static int ServerPort = DEFAULT_SERVER_PORT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief user name
-////////////////////////////////////////////////////////////////////////////////
-
-static string Username = "";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief password
-////////////////////////////////////////////////////////////////////////////////
-
-static string Password = "";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use password flag
-////////////////////////////////////////////////////////////////////////////////
-
-static bool HasPassword = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup JavaScript files
@@ -254,12 +132,6 @@ static vector<string> UnitTests;
 static vector<string> JsLint;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief use pager
-////////////////////////////////////////////////////////////////////////////////
-
-static bool UsePager = false;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -271,20 +143,6 @@ static bool UsePager = false;
 /// @addtogroup V8Shell
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print to pager
-////////////////////////////////////////////////////////////////////////////////
-
-static void internalPrint (const char *format, const char *str = 0) {
-  if (str) {
-    fprintf(PAGER, format, str);    
-  }
-  else {
-    fprintf(PAGER, "%s", format);    
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
@@ -305,7 +163,7 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 
     string str = TRI_ObjectToString(val);
 
-    internalPrint(str.c_str());
+    BaseClient.internalPrint(str.c_str());
   }
 
   return v8::Undefined();
@@ -316,13 +174,14 @@ static v8::Handle<v8::Value> JS_PagerOutput (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
-  if (UsePager) {
-    internalPrint("Using pager already.\n");        
+  if (BaseClient.usePager()) {
+    BaseClient.internalPrint("Using pager already.\n");        
   }
   else {
-    UsePager = true;
-    internalPrint("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
+    BaseClient.setUsePager(true);
+    BaseClient.internalPrint("Using pager '%s' for output buffering.\n", BaseClient.outputPager().c_str());    
   }
+
   return v8::Undefined();
 }
 
@@ -331,13 +190,15 @@ static v8::Handle<v8::Value> JS_StartOutputPager (v8::Arguments const& ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
-  if (UsePager) {
-    internalPrint("Stopping pager.\n");
+  if (BaseClient.usePager()) {
+    BaseClient.internalPrint("Stopping pager.\n");
   }
   else {
-    internalPrint("Pager not running.\n");    
+    BaseClient.internalPrint("Pager not running.\n");    
   }
-  UsePager = false;
+
+  BaseClient.setUsePager(false);
+
   return v8::Undefined();
 }
 
@@ -346,7 +207,7 @@ static v8::Handle<v8::Value> JS_StopOutputPager (v8::Arguments const& ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           function for CSV import
+// --SECTION--                                                   import function
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,28 +253,26 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   v8::Handle<v8::String> separatorKey = v8::String::New("separator");
   v8::Handle<v8::String> quoteKey = v8::String::New("quote");
 
-  char separator = ',';
-  char quote = '"';
+  string separator = ",";
+  string quote = "\"";
 
   if (3 <= argv.Length()) {
     v8::Handle<v8::Object> options = argv[2]->ToObject();
-    bool error;
-
     // separator
     if (options->Has(separatorKey)) {
-      separator = TRI_ObjectToCharacter(options->Get(separatorKey), error);
+      separator = TRI_ObjectToString(options->Get(separatorKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be a character")));
+      if (separator.length() < 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.separator must be at least one character")));
       }
     }
 
     // quote
     if (options->Has(quoteKey)) {
-      quote = TRI_ObjectToCharacter(options->Get(quoteKey), error);
+      quote = TRI_ObjectToString(options->Get(quoteKey));
 
-      if (error) {
-        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be a character")));
+      if (quote.length() > 1) {
+        return scope.Close(v8::ThrowException(v8::String::New("<options>.quote must be at most one character")));
       }
     }
   }
@@ -421,12 +280,12 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   ImportHelper ih(ClientConnection->getHttpClient(), MaxUploadSize);
   
   ih.setQuote(quote);
-  ih.setSeparator(separator);
+  ih.setSeparator(separator.c_str());
 
   string fileName = TRI_ObjectToString(argv[0]);
   string collectionName = TRI_ObjectToString(argv[1]);
  
-  if (ih.importCsv(collectionName, fileName)) {
+  if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New();
     result->Set(v8::String::New("lines"), v8::Integer::New(ih.getReadLines()));
     result->Set(v8::String::New("created"), v8::Integer::New(ih.getImportedLines()));
@@ -436,19 +295,6 @@ static v8::Handle<v8::Value> JS_ImportCsvFile (v8::Arguments const& argv) {
   
   return scope.Close(v8::ThrowException(v8::String::New(ih.getErrorMessage().c_str())));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              JSON import function
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a JSON file
@@ -500,6 +346,44 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: NORMALIZE_STRING(<string>)")));
+  }
+
+  return scope.Close(TRI_normalize_V8_Obj(argv[0]));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two UTF 16 strings
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_compare_string (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    return scope.Close(v8::ThrowException(
+                         TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION,
+                                               "usage: COMPARE_STRING(<left string>, <right string>)")));
+  }
+
+  v8::String::Value left(argv[0]);
+  v8::String::Value right(argv[1]);
+  
+  int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(), *right, right.length());
+  
+  return scope.Close(v8::Integer::New(result));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -510,31 +394,17 @@ static v8::Handle<v8::Value> JS_ImportJsonFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts pager
+/// @brief return a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
-
-static void StartPager () {
-  if (!UsePager || OutputPager == "" || OutputPager == "stdout") {
-    PAGER= stdout;
-    return;
-  }
   
-  if (!(PAGER = popen(OutputPager.c_str(), "w"))) {
-    printf("popen() failed! defaulting PAGER to stdout!\n");
-    PAGER= stdout;
-    UsePager = false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops pager
-////////////////////////////////////////////////////////////////////////////////
-
-static void StopPager ()
-{
-  if (PAGER != stdout) {
-    pclose(PAGER);
-  }
+static V8ClientConnection* CreateConnection () {
+  return new V8ClientConnection(BaseClient.endpointServer(),
+                                BaseClient.username(),
+                                BaseClient.password(), 
+                                BaseClient.requestTimeout(), 
+                                BaseClient.connectTimeout(), 
+                                ArangoClient::DEFAULT_RETRIES,
+                                false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -542,97 +412,41 @@ static void StopPager ()
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ParseProgramOptions (int argc, char* argv[]) {
-  string level = "info";
-
   ProgramOptionsDescription description("STANDARD options");
+  ProgramOptionsDescription javascript("JAVASCRIPT options");
 
-  ProgramOptionsDescription hidden("HIDDEN options");
-
-  hidden
-    ("colors", "activate color support")
-    ("no-pretty-print", "disable pretty printting")          
-    ("auto-complete", "enable auto completion, use no-auto-complete to disable")
+  javascript
+    ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
+    ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
+    ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
+    ("jslint", &JsLint, "do not start as shell, run jslint instead")
   ;
 
   description
-    ("connect-timeout", &ConnectTimeout, "connect timeout in seconds")
-    ("help,h", "help message")
-    ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
-    ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
-    ("jslint", &JsLint, "do not start as shell, run jslint instead")
-    ("log.level,l", &level,  "log level")
-    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks")
-    ("no-auto-complete", "disable auto completion")
-    ("no-colors", "deactivate color support")
-    ("pager", &OutputPager, "output pager")
-    ("pretty-print", "pretty print values")          
-    ("quiet,s", "no banner")
-    ("request-timeout", &RequestTimeout, "request timeout in seconds")
-    ("server", &ServerAddressPort, "server address and port, use 'none' to start without a server")
-    ("username", &Username, "username to use when connecting")
-    ("password", &Password, "password to use when connecting (leave empty for prompt)")
-    ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
-    ("use-pager", "use pager")
-    (hidden, true)
+    ("max-upload-size", &MaxUploadSize, "maximum size of import chunks (in bytes)")
+    (javascript, false)
   ;
 
+  // fill in used options
+  BaseClient.setupGeneral(description);
+  BaseClient.setupColors(description);
+  BaseClient.setupAutoComplete(description);
+  BaseClient.setupPrettyPrint(description);
+  BaseClient.setupPager(description);
+  BaseClient.setupServer(description);
+
+  // and parse the command line and config file
   ProgramOptions options;
-
-  if (! options.parse(description, argc, argv)) {
-    cerr << options.lastError() << "\n";
-    exit(EXIT_FAILURE);
-  }
-
-  // check for help
-  set<string> help = options.needHelp("help");
-
-  if (! help.empty()) {
-    cout << description.usage(help) << endl;
-    exit(EXIT_SUCCESS);
-  }
-
-  // set the logging
-  TRI_SetLogLevelLogging(level.c_str());
-  TRI_CreateLogAppenderFile("-");
-  
-  // check if have a password
-  HasPassword = options.has("password");
-
-  // set colors
-  if (options.has("colors")) {
-    NoColors = false;
-  }
-
-  if (options.has("no-colors")) {
-    NoColors = true;
-  }
-
-  if (options.has("auto-complete")) {
-    NoAutoComplete = false;
-  }
-
-  if (options.has("no-auto-complete")) {
-    NoAutoComplete = true;
-  }
-
-  if (options.has("pretty-print")) {
-    PrettyPrint = true;
-  }
-
-  if (options.has("no-pretty-print")) {
-    PrettyPrint = false;
-  }
-
-  if (options.has("use-pager")) {
-    UsePager = true;
-  }
-
-  if (options.has("quiet")) {
-    Quiet = true;
-  }
+  BaseClient.parse(options, description, argc, argv, "arangosh.conf");
 
   // set V8 options
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
+
+  // check module path
+  if (StartupModules.empty()) {
+    LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
+    exit(EXIT_FAILURE);
+  }
 }
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -662,7 +476,7 @@ enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 
 static void ClientConnection_DestructorCallback (v8::Persistent<v8::Value> , void* parameter) {
   V8ClientConnection* client = (V8ClientConnection*) parameter;
-  delete(client);
+  delete client;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -686,38 +500,30 @@ static v8::Handle<v8::Object> wrapV8ClientConnection (V8ClientConnection* connec
 static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  string server = ServerAddress;
-  int port = ServerPort;
-  size_t retries = DEFAULT_RETRIES;
-  
   if (argv.Length() > 0 && argv[0]->IsString()) {
     string definition = TRI_ObjectToString(argv[0]);
-    
-    AddressPort ap;
+  
+    BaseClient.createEndpoint(definition);
 
-    if (! ap.split(definition)) {
+    if (BaseClient.endpointServer() == 0) { 
       string errorMessage = "error in '" + definition + "'";
       return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));      
-    }    
-
-    if (! ap._address.empty()) {
-      server = ap._address;
     }
-
-    port = ap._port;
   }
+
+  if (BaseClient.endpointServer() == 0) { 
+    return v8::Undefined();
+  }   
   
-  V8ClientConnection* connection = new V8ClientConnection(server, Username, Password, port, (double) RequestTimeout, retries, (double) ConnectTimeout, false);
+  V8ClientConnection* connection = CreateConnection();
   
   if (connection->isConnected()) {
-    printf("Connected to Arango DB %s:%d Version %s\n", 
-            connection->getHostname().c_str(), 
-            connection->getPort(), 
-            connection->getVersion().c_str());    
+    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() 
+         << "' Version " << connection->getVersion() << endl; 
   }
   else {
     string errorMessage = "Could not connect. Error message: " + connection->getErrorMessage();
-    delete(connection);
+    delete connection;
     return scope.Close(v8::ThrowException(v8::String::New(errorMessage.c_str())));
   }
 
@@ -743,7 +549,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGet (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("usage: get(<url>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   // check header fields
   map<string, string> headerFields;
@@ -774,7 +580,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDelete (v8::Arguments const& a
     return scope.Close(v8::ThrowException(v8::String::New("usage: delete(<url>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   // check header fields
   map<string, string> headerFields;
@@ -804,7 +610,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPost (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: post(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -835,7 +641,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
     return scope.Close(v8::ThrowException(v8::String::New("usage: put(<url>, <body>[, <headers>])")));
   }
 
-  v8::String::Utf8Value url(argv[0]);
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
   v8::String::Utf8Value body(argv[1]);
 
   // check header fields
@@ -845,6 +651,37 @@ static v8::Handle<v8::Value> ClientConnection_httpPut (v8::Arguments const& argv
   }
 
   return scope.Close(connection->putData(*url, *body, headerFields));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "httpPatch"
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ClientConnection_httpPatch (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("connection class corrupted")));
+  }
+  
+  // check params
+  if (argv.Length() < 2 || argv.Length() > 3 || !argv[0]->IsString() || !argv[1]->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: patch(<url>, <body>[, <headers>])")));
+  }
+
+  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  v8::String::Utf8Value body(argv[1]);
+
+  // check header fields
+  map<string, string> headerFields;
+  if (argv.Length() > 2) {
+    objectToMap(headerFields, argv[2]);
+  }
+
+  return scope.Close(connection->patchData(*url, *body, headerFields));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -930,10 +767,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
     return scope.Close(v8::ThrowException(v8::String::New("usage: toString()")));
   }
   
-  string result = "[object ArangoConnection:" 
-                + connection->getHostname()
-                + ":"
-                + triagens::basics::StringUtils::itoa(connection->getPort());
+  string result = "[object ArangoConnection:" + BaseClient.endpointServer()->getSpecification();
           
   if (connection->isConnected()) {
     result += ","
@@ -948,7 +782,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "isConnected"
+/// @brief ClientConnection method "getVersion"
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& argv) {
@@ -969,11 +803,6 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -981,15 +810,15 @@ static void RunShell (v8::Handle<v8::Context> context) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  V8LineEditor* console = new V8LineEditor(context, ".arangosh");
+  V8LineEditor console(context, ".arangosh");
 
-  console->open(!NoAutoComplete);
+  console.open(BaseClient.autoComplete());
 
   while (true) {
     while (! v8::V8::IdleNotification()) {
     }
 
-    char* input = console->prompt("arangosh> ");
+    char* input = console.prompt("arangosh> ");
 
     if (input == 0) {
       break;
@@ -1001,41 +830,38 @@ static void RunShell (v8::Handle<v8::Context> context) {
 
     string i = triagens::basics::StringUtils::trim(input);
 
-    if (i == "exit" || i == "quit") {
+    if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       break;
     }
 
-    if (i == "help") {
+    if (i == "help" || i == "help;") {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       input = TRI_DuplicateString("help()");
     }
     
-    console->addHistory(input);
+    console.addHistory(input);
     
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
     
-    StartPager();
+    BaseClient.startPager();
 
     TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
       cout << TRI_StringifyV8Exception(&tryCatch);
     }
 
-    StopPager();
+    BaseClient.stopPager();
   }
 
-  console->close();
+  console.close();
 
-  if (Quiet) {
-    printf("\n");
-  }
-  else {
-    printf("\nBye Bye! Auf Wiedersehen!\n");
-  }
+  cout << endl;
+
+  BaseClient.printByeBye();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1112,38 +938,68 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
 /// @brief adding colors for output
 ////////////////////////////////////////////////////////////////////////////////
 
-static void addColors (v8::Handle<v8::Context> context) {  
-  context->Global()->Set(v8::String::New("COLOR_RED"), v8::String::New(DEF_RED, 5),
+static void AddColors (v8::Handle<v8::Context> context) {  
+  context->Global()->Set(v8::String::New("COLOR_RED"),
+                         v8::String::New(ArangoClient::COLOR_RED),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BOLD_RED"), v8::String::New(DEF_BOLD_RED, 8),
+
+  context->Global()->Set(v8::String::New("COLOR_BOLD_RED"),
+                         v8::String::New(ArangoClient::COLOR_BOLD_RED),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_GREEN"), v8::String::New(DEF_GREEN, 5),
+
+  context->Global()->Set(v8::String::New("COLOR_GREEN"),
+                         v8::String::New(ArangoClient::COLOR_GREEN),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BOLD_GREEN"), v8::String::New(DEF_BOLD_GREEN, 8),
+
+  context->Global()->Set(v8::String::New("COLOR_BOLD_GREEN"),
+                         v8::String::New(ArangoClient::COLOR_BOLD_GREEN),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BLUE"), v8::String::New(DEF_BLUE, 5),
+
+  context->Global()->Set(v8::String::New("COLOR_BLUE"),
+                         v8::String::New(ArangoClient::COLOR_BLUE),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BOLD_BLUE"), v8::String::New(DEF_BOLD_BLUE, 8),
+
+  context->Global()->Set(v8::String::New("COLOR_BOLD_BLUE"),
+                         v8::String::New(ArangoClient::COLOR_BOLD_BLUE),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_WHITE"), v8::String::New(DEF_WHITE, 5),
+
+  context->Global()->Set(v8::String::New("COLOR_YELLOW"),
+                         v8::String::New(ArangoClient::COLOR_YELLOW),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_YELLOW"), v8::String::New(DEF_YELLOW, 5),
+
+  context->Global()->Set(v8::String::New("COLOR_BOLD_YELLOW"),
+                         v8::String::New(ArangoClient::COLOR_BOLD_YELLOW),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"), v8::String::New(DEF_BOLD_WHITE, 7),
+
+  context->Global()->Set(v8::String::New("COLOR_WHITE"),
+                         v8::String::New(ArangoClient::COLOR_WHITE),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BLACK"), v8::String::New(DEF_BLACK, 5),
+
+  context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"),
+                         v8::String::New(ArangoClient::COLOR_BOLD_WHITE),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"), v8::String::New(DEF_BOLD_BLACK, 8),
+
+  context->Global()->Set(v8::String::New("COLOR_BLACK"),
+                         v8::String::New(ArangoClient::COLOR_BLACK),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BLINK"), v8::String::New(DEF_BLINK, 4),
+
+  context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"),
+                         v8::String::New(ArangoClient::COLOR_BOLD_BLACK),
                          v8::ReadOnly);
-  context->Global()->Set(v8::String::New("COLOR_BRIGHT"), v8::String::New(DEF_BRIGHT, 4),
+
+  context->Global()->Set(v8::String::New("COLOR_BLINK"),
+                         v8::String::New(ArangoClient::COLOR_BLINK),
                          v8::ReadOnly);
-  if (!NoColors) {
-    context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::String::New(DEF_BRIGHT, 4));
-  }
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"), v8::String::New(DEF_RESET, 4),
+
+  context->Global()->Set(v8::String::New("COLOR_BRIGHT"),
+                         v8::String::New(ArangoClient::COLOR_BRIGHT),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"),
+                         v8::String::New(ArangoClient::COLOR_RESET),
                          v8::ReadOnly);    
+
+  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::Boolean::New(BaseClient.colors()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1165,54 +1021,12 @@ static void addColors (v8::Handle<v8::Context> context) {
 
 int main (int argc, char* argv[]) {
   TRIAGENS_C_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALISE(argc, argv);
+  
   TRI_InitialiseLogging(false);
   int ret = EXIT_SUCCESS;
 
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-  {
-    char* binaryPath = TRI_LocateBinaryPath(argv[0]);
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-  
-    StartupModules = string(binaryPath) + "/../share/arango/js/client/modules"
-             + ";" + string(binaryPath) + "/../share/arango/js/common/modules";
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_STARTUP_MODULES_PATH
-    StartupModules = TRI_STARTUP_MODULES_PATH;
-#else
-    StartupModules = string(binaryPath) + "/../js/client/modules"
-             + ";" + string(binaryPath) + "/../js/common/modules";
-#endif
-
-#else
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-#ifdef _PKGDATADIR_
-
-    StartupModules = string(_PKGDATADIR_) + "/js/client/modules"
-             + ";" + string(_PKGDATADIR_) + "/js/common/modules";
-
-#endif
-
-#endif
-#endif
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
-  }
+  BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 
   // .............................................................................
   // parse the program options
@@ -1220,62 +1034,27 @@ int main (int argc, char* argv[]) {
 
   ParseProgramOptions(argc, argv);
   
-  // check connection args
-  if (ConnectTimeout <= 0) {
-    cout << "invalid value for connect-timeout." << endl;
-    exit(EXIT_FAILURE);
-  }
-
-  if (RequestTimeout <= 0) {
-    cout << "invalid value for request-timeout." << endl;
-    exit(EXIT_FAILURE);
-  }
-
-  // must specify a user name
-  if (! HasPassword && Username != "") {
-    cout << "Please specify a password: " << flush;
-
-    // now prompt for it
-    getline(cin, Password);
-  }
-
   // .............................................................................
   // set-up client connection
   // .............................................................................
 
   // check if we want to connect to a server
-  bool useServer = (ServerAddressPort != "none");
+  bool useServer = (BaseClient.endpointString() != "none");
 
+  // if we are in jslint mode, we will not need the server at all
   if (!JsLint.empty()) {
-    // if we are in jslint mode, we will not need the server at all
     useServer = false;
   }
 
   if (useServer) {
-    AddressPort ap;
+    BaseClient.createEndpoint();
 
-    if (! ap.split(ServerAddressPort)) {
-      if (! ServerAddress.empty()) {
-        printf("Could not split %s.\n", ServerAddress.c_str());
-        exit(EXIT_FAILURE);
-      }
+    if (BaseClient.endpointServer() == 0) {
+      cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
+      exit(EXIT_FAILURE);
     }
 
-    if (! ap._address.empty()) {
-      ServerAddress = ap._address;
-    }
-
-    ServerPort = ap._port;
-    
-    ClientConnection = new V8ClientConnection(
-      ServerAddress, 
-      Username,
-      Password,
-      ServerPort, 
-      (double) RequestTimeout,
-      DEFAULT_RETRIES, 
-      (double) ConnectTimeout,
-      false);
+    ClientConnection = CreateConnection();
   }
   
   // .............................................................................
@@ -1291,7 +1070,7 @@ int main (int argc, char* argv[]) {
   v8::Persistent<v8::Context> context = v8::Context::New(0, global);
 
   if (context.IsEmpty()) {
-    printf("cannot initialize V8 engine\n");
+    cerr << "cannot initialize V8 engine" << endl;
     exit(EXIT_FAILURE);
   }
 
@@ -1302,16 +1081,15 @@ int main (int argc, char* argv[]) {
                          v8::FunctionTemplate::New(JS_PagerOutput)->GetFunction(),
                          v8::ReadOnly);
   
-  
   TRI_InitV8Utils(context, StartupModules);
   
   TRI_InitV8Shell(context);
 
   // set pretty print default: (used in print.js)
-  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(PrettyPrint));
+  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
   
   // add colors for print.js
-  addColors(context);
+  AddColors(context);
 
   // .............................................................................
   // define ArangoConnection class
@@ -1327,6 +1105,7 @@ int main (int argc, char* argv[]) {
     connection_proto->Set("POST", v8::FunctionTemplate::New(ClientConnection_httpPost));
     connection_proto->Set("DELETE", v8::FunctionTemplate::New(ClientConnection_httpDelete));
     connection_proto->Set("PUT", v8::FunctionTemplate::New(ClientConnection_httpPut));
+    connection_proto->Set("PATCH", v8::FunctionTemplate::New(ClientConnection_httpPatch));
     connection_proto->Set("lastHttpReturnCode", v8::FunctionTemplate::New(ClientConnection_lastHttpReturnCode));
     connection_proto->Set("lastErrorMessage", v8::FunctionTemplate::New(ClientConnection_lastErrorMessage));
     connection_proto->Set("isConnected", v8::FunctionTemplate::New(ClientConnection_isConnected));
@@ -1359,23 +1138,40 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("importJsonFile"),
                          v8::FunctionTemplate::New(JS_ImportJsonFile)->GetFunction(),
                          v8::ReadOnly);
+ 
+  context->Global()->Set(v8::String::New("NORMALIZE_STRING"),
+                         v8::FunctionTemplate::New(JS_normalize_string)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("COMPARE_STRING"),
+                         v8::FunctionTemplate::New(JS_compare_string)->GetFunction(),
+                         v8::ReadOnly);
   
+  context->Global()->Set(v8::String::New("HAS_ICU"),
+#ifdef TRI_ICU_VERSION
+                         v8::Boolean::New(true),
+#else
+                         v8::Boolean::New(false),
+#endif
+                         v8::ReadOnly);
   
   // .............................................................................
   // banner
   // .............................................................................  
 
   // http://www.network-science.de/ascii/   Font: ogre
-  if (! Quiet) {
-    char const* g = DEF_GREEN;
-    char const* r = DEF_RED;
-    char const* z = DEF_RESET;
+  if (! BaseClient.quiet()) {
+    char const* g = ArangoClient::COLOR_GREEN;
+    char const* r = ArangoClient::COLOR_RED;
+    char const* z = ArangoClient::COLOR_RESET;
 
-    if (NoColors) {
+    if (! BaseClient.colors()) {
       g = "";
       r = "";
       z = "";
     }
+
+    cout << endl;
 
     printf("%s                                  %s     _     %s\n", g, r, z);
     printf("%s  __ _ _ __ __ _ _ __   __ _  ___ %s ___| |__  %s\n", g, r, z);
@@ -1384,44 +1180,37 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
 
-    printf("\n");
-    printf("Welcome to arangosh %s. Copyright (c) 2012 triAGENS GmbH.\n", TRIAGENS_VERSION);
+    cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
 #ifdef TRI_V8_VERSION
-    printf("Using Google V8 %s JavaScript engine.\n", TRI_V8_VERSION);
+    cout << "Using Google V8 " << TRI_V8_VERSION << " JavaScript engine." << endl;
 #else
-    printf("Using Google V8 JavaScript engine.\n\n");
+    cout << "Using Google V8 JavaScript engine." << endl << endl;
 #endif
   
 #ifdef TRI_READLINE_VERSION
-    printf("Using READLINE %s.\n", TRI_READLINE_VERSION);
+    cout << "Using READLINE " << TRI_READLINE_VERSION << "." << endl;
 #endif
 
-    printf("\n");
+#ifdef TRI_ICU_VERSION
+    cout << "Using ICU " << TRI_ICU_VERSION << " - International Components for Unicode." << endl;
+#endif
+    
+    cout << endl;
 
-    // set up output
-    if (UsePager) {
-      printf("Using pager '%s' for output buffering.\n", OutputPager.c_str());    
-    }
-
-    if (PrettyPrint) {
-      printf("Pretty print values.\n");    
-    }
+    BaseClient.printWelcomeInfo();
 
     if (useServer) {
       if (ClientConnection->isConnected()) {
-        if (! Quiet) {
-          printf("Connected to Arango DB %s:%d Version %s\n", 
-                 ClientConnection->getHostname().c_str(), 
-                 ClientConnection->getPort(), 
-                 ClientConnection->getVersion().c_str());
+        if (! BaseClient.quiet()) {
+          cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
+               << "' Version " << ClientConnection->getVersion() << endl; 
         }
       }
       else {
-        printf("Could not connect to server %s:%d\n", ServerAddress.c_str(), ServerPort);
-        string errorMessage = ClientConnection->getErrorMessage();
-        if (errorMessage != "") {
-          printf("Error message '%s'\n", errorMessage.c_str());
+        cerr << "Could not connect to endpoint '" << BaseClient.endpointString() << "'" << endl;
+        if (ClientConnection->getErrorMessage() != "") {
+          cerr << "Error message '" << ClientConnection->getErrorMessage() << "'" << endl;
         }
       }
     }
@@ -1434,6 +1223,7 @@ int main (int argc, char* argv[]) {
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
     StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    StartupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
     StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
     StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     StartupLoader.defineScript("client/client.js", JS_client_client);
@@ -1443,11 +1233,13 @@ int main (int argc, char* argv[]) {
     StartupLoader.setDirectory(StartupPath);
   }
 
-  context->Global()->Set(v8::String::New("ARANGO_QUIET"), Quiet ? v8::True() : v8::False(), v8::ReadOnly);
+  context->Global()->Set(v8::String::New("ARANGO_QUIET"), v8::Boolean::New(BaseClient.quiet()), v8::ReadOnly);
+  context->Global()->Set(v8::String::New("VALGRIND"), v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
 
   // load all init files
   char const* files[] = {
     "common/bootstrap/modules.js",
+    "common/bootstrap/monkeypatches.js",
     "common/bootstrap/print.js",
     "common/bootstrap/errors.js",
     "client/client.js"
@@ -1464,7 +1256,7 @@ int main (int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
-  
+
   // .............................................................................
   // run normal shell
   // .............................................................................
@@ -1506,12 +1298,18 @@ int main (int argc, char* argv[]) {
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
   // v8::V8::Dispose();
 
+  TRIAGENS_REST_SHUTDOWN;
+
   return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

@@ -29,6 +29,8 @@
 
 #include "BasicsC/json.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/conversions.h"
+#include "Rest/HttpRequest.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;

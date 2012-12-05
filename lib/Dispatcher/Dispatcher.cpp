@@ -73,11 +73,7 @@ DispatcherThread* Dispatcher::defaultDispatcherThread (DispatcherQueue* queue) {
 Dispatcher::Dispatcher ()
   : _accessDispatcher(),
     _stopping(0),
-    _queues()
-#ifdef TRI_ENABLE_ZEROMQ
-  , _zeroMQContext(0)
-#endif
-    {
+    _queues() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +119,7 @@ bool Dispatcher::isRunning () {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (string const& name, size_t nrThreads) {
+void Dispatcher::addQueue (std::string const& name, size_t nrThreads) {
   _queues[name] = new DispatcherQueue(this, name, defaultDispatcherThread, nrThreads);
 }
 
@@ -131,7 +127,7 @@ void Dispatcher::addQueue (string const& name, size_t nrThreads) {
 /// @brief adds a queue which given dispatcher thread type
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (string const& name, newDispatcherThread_fptr func, size_t nrThreads) {
+void Dispatcher::addQueue (std::string const& name, newDispatcherThread_fptr func, size_t nrThreads) {
   _queues[name] = new DispatcherQueue(this, name, func, nrThreads);
 }
 
@@ -140,6 +136,7 @@ void Dispatcher::addQueue (string const& name, newDispatcherThread_fptr func, si
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Dispatcher::addJob (Job* job) {
+  RequestStatisticsAgentSetQueueStart(job);
 
   // do not start new jobs if we are already shutting down
   if (_stopping != 0) {
@@ -161,7 +158,7 @@ bool Dispatcher::addJob (Job* job) {
   // add the job to the list of ready jobs
   queue->addJob(job);
 
-  // indicate sucess, BUT never access job after it has been added to the queue
+  // indicate success, BUT never access job after it has been added to the queue
   return true;
 }
 
@@ -172,7 +169,7 @@ bool Dispatcher::addJob (Job* job) {
 bool Dispatcher::start () {
   MUTEX_LOCKER(_accessDispatcher);
 
-  for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
+  for (map<std::string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end();  ++i) {
     bool ok = i->second->start();
 
     if (! ok) {
@@ -296,30 +293,6 @@ void Dispatcher::reportStatus () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the ZeroMQ context
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-void* Dispatcher::zeroMQContext () {
-  return _zeroMQContext;
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the ZeroMQ context
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-void Dispatcher::setZeroMQContext (void* context) {
-  _zeroMQContext = context;
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -336,8 +309,8 @@ void Dispatcher::setZeroMQContext (void* context) {
 /// @brief looks up a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherQueue* Dispatcher::lookupQueue (string const& name) {
-  map<string, DispatcherQueue*>::const_iterator i = _queues.find(name);
+DispatcherQueue* Dispatcher::lookupQueue (const std::string& name) {
+  map<std::string, DispatcherQueue*>::const_iterator i = _queues.find(name);
 
   if (i == _queues.end()) {
     return 0;

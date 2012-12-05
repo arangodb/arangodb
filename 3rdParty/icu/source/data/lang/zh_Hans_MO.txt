@@ -1,0 +1,86 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/zh_Hans_MO.xml
+// *
+// ***************************************************************************
+zh_Hans_MO{
+    Keys{
+        collation{"排序顺序"}
+    }
+    Languages{
+        ast{"阿斯图里亚思文"}
+        de_AT{"奥地利德文"}
+        en_AU{"澳大利亚英文"}
+        en_CA{"加拿大英文"}
+        en_GB{"英国英文"}
+        en_US{"美国英文"}
+        es_419{"拉丁美洲西班牙文"}
+        es_ES{"伊比利亚西班牙文"}
+        fr_CA{"加拿大法文"}
+        fr_CH{"瑞士法文"}
+        gu{"古吉拉特文"}
+        ml{"马拉雅拉姆文"}
+        nl_BE{"佛兰芒文"}
+        pag{"邦阿西楠文"}
+        pt_BR{"巴西葡萄牙文"}
+        pt_PT{"伊比利亚葡萄牙文"}
+        su{"巽他文"}
+        za{"壮文"}
+        zh_Hans{"简体中文"}
+        zh_Hant{"繁体中文"}
+    }
+    Scripts{
+        Arab{"阿拉伯文"}
+        Armn{"亚美尼亚文"}
+        Beng{"孟加拉文"}
+        Cyrl{"西里尔文"}
+        Deva{"天城文"}
+        Ethi{"埃塞俄比亚文"}
+        Geor{"格鲁吉亚文"}
+        Grek{"希腊文"}
+        Gujr{"古吉拉特文"}
+        Hebr{"希伯来文"}
+        Jpan{"日文"}
+        Khmr{"高棉文"}
+        Knda{"卡纳塔克文"}
+        Laoo{"老挝文"}
+        Latn{"拉丁文"}
+        Mlym{"马拉雅拉姆文"}
+        Mymr{"缅甸文"}
+        Orya{"奥里亚文"}
+        Sinh{"辛哈拉文"}
+        Taml{"泰米尔文"}
+        Telu{"泰卢固文"}
+        Thaa{"塔安娜文"}
+        Thai{"泰文"}
+        Zxxx{"非书面文字"}
+        Zzzz{"未知语系"}
+    }
+    Types{
+        collation{
+            big5han{"繁体中文排序顺序 (Big5)"}
+            gb2312han{"简体中文排序顺序 (GB2312)"}
+            pinyin{"拼音排序顺序"}
+            stroke{"笔画排序"}
+        }
+    }
+    Variants{
+        1901{"传统德文拼字"}
+        1996{"1996 年德文拼字"}
+        AREVELA{"东亚美尼亚文"}
+        AREVMDA{"西亚美尼亚文"}
+        PINYIN{"拼音罗马字"}
+        POLYTON{"多音字母"}
+        REVISED{"修订的拼字"}
+        SAAHO{"萨霍文"}
+        WADEGILE{"韦氏拼音罗马字"}
+    }
+    Version{"2.0.64.65"}
+    codePatterns{
+        script{"语系：{0}"}
+        territory{"地区：{0}"}
+    }
+}

@@ -222,11 +222,11 @@ module = ModuleCache["/"] = new Module("/");
 ///
 /// @FN{require} checks if the file specified by @FA{path} has already been
 /// loaded.  If not, the content of the file is executed in a new
-/// context. Within the context you can use the global variable @CODE{exports}
+/// context. Within the context you can use the global variable @LIT{exports}
 /// in order to export variables and functions. This variable is returned by
 /// @FN{require}.
 ///
-/// Assume that your module file is @CODE{test1.js} and contains
+/// Assume that your module file is @LIT{test1.js} and contains
 ///
 /// @verbinclude modules-require-1
 ///
@@ -306,6 +306,21 @@ ModuleCache["/internal"] = new Module("/internal");
   internal.wait = SYS_WAIT;
 
 
+  // password interface
+  internal.encodePassword = function (password) {
+    var salt;
+    var encoded;
+
+    salt = internal.sha256("time:" + SYS_TIME());
+    salt = salt.substr(0,8);
+
+    encoded = "$1$" + salt + "$" + internal.sha256(salt + password);
+    
+    return encoded;
+  }
+
+
+
   // command line parameter
   internal.MODULES_PATH = "";
 
@@ -315,12 +330,13 @@ ModuleCache["/internal"] = new Module("/internal");
 
 
   // output 
-  internal.start_pager = function() {};
-  internal.stop_pager = function() {};
+  internal.start_pager = function () {};
+  internal.stop_pager = function () {};
 
   internal.ARANGO_QUIET = false;
 
-  internal.COLOR_OUTPUT = undefined;
+  internal.COLOR_OUTPUT = false;
+  internal.COLOR_OUTPUT_DEFAULT = "";
   internal.COLOR_OUTPUT_RESET = "";
   internal.COLOR_BRIGHT = "";
 
@@ -348,6 +364,26 @@ ModuleCache["/internal"] = new Module("/internal");
 
   if (typeof PRETTY_PRINT !== "undefined") {
     internal.PRETTY_PRINT = PRETTY_PRINT;
+  }
+
+  if (internal.COLOR_OUTPUT) {
+    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;
+
+    internal.COLOR_BLACK = COLOR_BLACK;
+    internal.COLOR_BOLD_BLACK = COLOR_BOLD_BLACK;
+    internal.COLOR_BLINK = COLOR_BLINK;
+    internal.COLOR_BLUE = COLOR_BLUE;
+    internal.COLOR_BOLD_BLUE = COLOR_BOLD_BLUE;
+    internal.COLOR_BRIGHT = COLOR_BRIGHT;
+    internal.COLOR_GREEN = COLOR_GREEN;
+    internal.COLOR_BOLD_GREEN = COLOR_BOLD_GREEN;
+    internal.COLOR_RED = COLOR_RED;
+    internal.COLOR_BOLD_RED = COLOR_BOLD_RED;
+    internal.COLOR_WHITE = COLOR_WHITE;
+    internal.COLOR_BOLD_WHITE = COLOR_BOLD_WHITE;
+    internal.COLOR_YELLOW = COLOR_YELLOW;
+    internal.COLOR_BOLD_YELLOW = COLOR_BOLD_YELLOW;
+    internal.COLOR_OUTPUT_RESET = COLOR_OUTPUT_RESET;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

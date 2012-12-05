@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
+var internal = require("internal");
 var API = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +78,7 @@ function GET_edges (req, res) {
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = edges._collection(id);
+  var collection = internal.db._collection(id);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -88,24 +89,18 @@ function GET_edges (req, res) {
   var direction = req.parameters['direction'];
   var e;
 
-  try {
-    if (direction === null || direction === undefined || direction === "" || direction === "any") {
-      e = collection.edges(vertex);
-    }
-    else if (direction === "in") {
-      e = collection.inEdges(vertex);
-    }
-    else if (direction === "out") {
-      e = collection.outEdges(vertex);
-    }
-    else {
-      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
-      return;
-    }
+  if (direction === null || direction === undefined || direction === "" || direction === "any") {
+    e = collection.edges(vertex);
   }
-  catch (err) {
-    actions.resultException(req, res, err);
+  else if (direction === "in") {
+    e = collection.inEdges(vertex);
+  }
+  else if (direction === "out") {
+    e = collection.outEdges(vertex);
+  }
+  else {
+    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+                      "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
     return;
   }
 
@@ -123,11 +118,16 @@ actions.defineHttp({
   context : "api",
 
   callback : function (req, res) {
-    if (req.requestType === actions.GET) {
-      GET_edges(req, res);
+    try {
+      if (req.requestType === actions.GET) {
+        GET_edges(req, res);
+      }
+      else {
+        actions.resultUnsupported(req, res);
+      }
     }
-    else {
-      actions.resultUnsupported(req, res);
+    catch (err) {
+      actions.resultException(req, res, err);
     }
   }
 });

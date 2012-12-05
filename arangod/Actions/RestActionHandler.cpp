@@ -27,7 +27,6 @@
 
 #include "RestActionHandler.h"
 
-#include "Actions/ActionDispatcherThread.h"
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
@@ -118,6 +117,7 @@ HttpHandler::status_e RestActionHandler::execute () {
   static LoggerData::Task const logIllegal("ACTION [illegal]");
   static LoggerData::Task const logPost("ACTION [post]");
   static LoggerData::Task const logPut("ACTION [put]");
+  static LoggerData::Task const logPatch("ACTION [patch]");
 
   LoggerData::Task const * task = &logIllegal;
 
@@ -125,7 +125,7 @@ HttpHandler::status_e RestActionHandler::execute () {
 
   // need an action
   if (_action == 0) {
-    generateNotImplemented(request->requestPath());
+    generateNotImplemented(_request->requestPath());
   }
 
   // need permission
@@ -137,7 +137,7 @@ HttpHandler::status_e RestActionHandler::execute () {
   else {
 
     // extract the sub-request type
-    HttpRequest::HttpRequestType type = request->requestType();
+    HttpRequest::HttpRequestType type = _request->requestType();
 
     // prepare logging
     switch (type) {
@@ -146,11 +146,15 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_POST: task = &logPost; break;
       case HttpRequest::HTTP_REQUEST_PUT: task = &logPut; break;
       case HttpRequest::HTTP_REQUEST_HEAD: task = &logHead; break;
+      case HttpRequest::HTTP_REQUEST_PATCH: task = &logPatch; break;
       case HttpRequest::HTTP_REQUEST_ILLEGAL: task = &logIllegal; break;
     }
 
     _timing << *task;
+#ifdef TRI_ENABLE_LOGGER
+  // if ifdef is not used, the compiler will complain
     LOGGER_REQUEST_IN_START_I(_timing);
+#endif
 
     // execute one of the CRUD methods
     switch (type) {
@@ -159,6 +163,7 @@ HttpHandler::status_e RestActionHandler::execute () {
       case HttpRequest::HTTP_REQUEST_PUT: res = executeAction(); break;
       case HttpRequest::HTTP_REQUEST_DELETE: res = executeAction(); break;
       case HttpRequest::HTTP_REQUEST_HEAD: res = executeAction(); break;
+      case HttpRequest::HTTP_REQUEST_PATCH: res = executeAction(); break;
 
       default:
         res = false;
@@ -191,14 +196,14 @@ HttpHandler::status_e RestActionHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::executeAction () {
-  response = _action->execute(_vocbase, request);
+  _response = _action->execute(_vocbase, _request);
 
-  if (response == 0) {
+  if (_response == 0) {
     generateNotImplemented(_action->_url);
     return false;
   }
 
-  return (int) response->responseCode() < 400;
+  return (int) _response->responseCode() < 400;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

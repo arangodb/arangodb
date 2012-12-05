@@ -31,6 +31,7 @@
 #include <readline/history.h>
 
 #include "BasicsC/strings.h"
+#include "V8/v8-utils.h"
 
 #if RL_READLINE_VERSION >= 0x0500
 #define completion_matches rl_completion_matches
@@ -156,7 +157,7 @@ static char* CompletionGenerator (char const* text, int state) {
       for (size_t i = 0;  i < n;  ++i) {
         v8::Handle<v8::Value> v = properties->Get(i);
 
-        v8::String::Utf8Value str(v);
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
         char const* s = *str;
 
         if (s != 0 && *s) {
@@ -176,7 +177,7 @@ static char* CompletionGenerator (char const* text, int state) {
   }
 
   if (currentIndex < result.size()) {
-    return TRI_DuplicateString(result[currentIndex++].c_str());
+    return TRI_SystemDuplicateString(result[currentIndex++].c_str());
   }
   else {
     result.clear();
@@ -197,14 +198,15 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
   if (result != 0 && result[0] != 0 && result[1] == 0) {
     size_t n = strlen(result[0]);
 
-    if (result[0][n-1] == ')') {
-      result[0][n-1] = '\0';
-
-#if RL_READLINE_VERSION >= 0x0500
-      rl_completion_suppress_append = 1;
-#endif
+    if (result[0][n - 1] == ')') {
+      result[0][n - 1] = '\0';
     }
   }
+
+#if RL_READLINE_VERSION >= 0x0500
+  // issue #289
+  rl_completion_suppress_append = 1;
+#endif
 
   return result;
 }
@@ -249,12 +251,15 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 
 bool V8LineEditor::open (const bool autoComplete) {
   if (autoComplete) {
+    // issue #289: do not append a space after completion
+    rl_completion_append_character = '\0';
+    
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
 
     rl_bind_key('\t', rl_complete);
   }
-
+  
   return LineEditor::open(autoComplete);
 }
 

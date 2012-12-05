@@ -1,0 +1,61 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2012 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// * Tool: com.ibm.icu.dev.tool.cldr.LDML2ICUConverter.java
+// * Source File:<path>/common/main/yav.xml
+// *
+// ***************************************************************************
+/**
+ *  ICU <specials> source: <path>/xml/main/yav.xml
+ */
+yav{
+    Languages{
+        ak{"akánɛ"}
+        am{"amalíke"}
+        ar{"́pakas"}
+        be{"pielúse"}
+        bg{"bulgálɛ"}
+        bn{"pengálɛ́ɛ"}
+        cs{"cɛ́kɛ́ɛ"}
+        de{"ŋndiáman"}
+        el{"yavánɛ"}
+        en{"íŋgilísé"}
+        es{"nuɛspanyɔ́lɛ"}
+        fa{"nupɛ́lisɛ"}
+        fr{"feleŋsí"}
+        ha{"pakas"}
+        hi{"índí"}
+        hu{"ɔ́ŋgɛ"}
+        id{"índonísiɛ"}
+        ig{"íbo"}
+        it{"itáliɛ"}
+        ja{"ndiáman"}
+        jv{"yávanɛ"}
+        km{"kímɛɛ"}
+        ko{"kolíe"}
+        ms{"máliɛ"}
+        my{"bímanɛ"}
+        ne{"nunipálɛ"}
+        nl{"nilándɛ"}
+        pa{"nupunsapíɛ́"}
+        pl{"nupolonɛ́ɛ"}
+        pt{"nupɔlitukɛ́ɛ"}
+        ro{"nulumɛ́ŋɛ"}
+        ru{"nulúse"}
+        rw{"nuluándɛ́ɛ"}
+        so{"nusomalíɛ"}
+        sv{"nusuetua"}
+        ta{"nutámule"}
+        th{"nutáyɛ"}
+        tr{"nutúluke"}
+        uk{"nukeleniɛ́ŋɛ"}
+        ur{"nulutú"}
+        vi{"nufiɛtnamíɛŋ"}
+        yav{"nuasue"}
+        yo{"nuyolúpa"}
+        zh{"sinúɛ"}
+        zu{"nusulú"}
+    }
+    Version{"2.0.65.46"}
+}

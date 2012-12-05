@@ -1,0 +1,2 @@
+; h:\mingw\3.3.1\bin\dlltool.exe --export-all-symbols --output-def=history.def
+EXPORTS

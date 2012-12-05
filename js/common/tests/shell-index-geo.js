@@ -4,7 +4,7 @@
 /*global require,
     db,
     assertEqual, assertTrue,
-    ArangoCollection, ArangoEdgesCollection */
+    ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -66,18 +66,8 @@ function GeoIndexCreationSuite() {
 
   tearDown : function () {
     collection.unload();
-
-    while (collection.status() != internal.ArangoCollection.STATUS_UNLOADED) {
-      console.log("waiting for collection '%s' to unload", cn);
-      internal.wait(1);
-    }
-
     collection.drop();
-
-    while (collection.status() != internal.ArangoCollection.STATUS_DELETED) {
-      console.log("waiting for collection '%s' to drop", cn);
-      internal.wait(1);
-    }
+    internal.wait(0.0);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,6 +535,7 @@ function GeoIndexErrorHandlingSuite() {
 
   tearDown : function () {
     collection.drop();
+    internal.wait(0.0);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -917,6 +908,7 @@ function GeoIndexSimpleQueriesSuite() {
 
   tearDown : function () {
     collection.drop();
+    internal.wait(0.0);
   },
 
 ////////////////////////////////////////////////////////////////////////////////

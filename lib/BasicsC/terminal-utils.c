@@ -42,7 +42,7 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-#if ! defined(HAVE_NCURSES) && ! defined(TRI_WIN32_CONSOLE)
+#if ! defined(TRI_HAVE_SYS_IOCTL_H) && ! defined(TRI_WIN32_CONSOLE)
 
 int TRI_ColumnsWidth (void) {
   char* e;
@@ -63,12 +63,26 @@ int TRI_ColumnsWidth (void) {
   return TRI_DEFAULT_COLUMNS;
 }
 
-#else
-
-void AvoidEmptyWarning1 (void) {
-}
-
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the visibility of stdin inputs (turn off for password entry etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetStdinVisibility (bool visible) {
+#ifdef TRI_HAVE_TERMIOS_H
+  struct termios tty;
+  
+  tcgetattr(STDIN_FILENO, &tty);
+  if (visible) {
+    tty.c_lflag |= ECHO;
+  }
+  else {
+    tty.c_lflag &= ~ECHO;
+  }
+  (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

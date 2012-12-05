@@ -29,6 +29,7 @@
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Rest/AnyServer.h"
+#include "Rest/OperationMode.h"
 
 #include "VocBase/vocbase.h"
 
@@ -39,15 +40,13 @@
 namespace triagens {
   namespace rest {
     class ApplicationDispatcher;
-    class ApplicationHttpServer;
-    class ApplicationHttpsServer;
+    class ApplicationEndpointServer;
     class ApplicationScheduler;
-    class ApplicationZeroMQ;
     class HttpServer;
+    class HttpsServer;
   }
 
   namespace admin {
-    class ApplicationUserManager;
     class ApplicationAdminServer;
   }
 
@@ -63,18 +62,6 @@ namespace triagens {
 /// @addtogroup ArangoDB
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server shell operation modes
-////////////////////////////////////////////////////////////////////////////////
-
-    typedef enum {
-      MODE_CONSOLE,
-      MODE_UNITTESTS,
-      MODE_JSLINT,
-      MODE_SCRIPT
-    }
-    server_operation_mode_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -101,7 +88,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief UnviversalVoc constructor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
         ArangoServer (int argc, char** argv);
@@ -138,6 +125,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             public static methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDB
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -152,7 +154,7 @@ namespace triagens {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-        int executeConsole (server_operation_mode_e);
+        int executeConsole (triagens::rest::OperationMode::server_operation_mode_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the ruby emergency console
@@ -188,7 +190,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of command line arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +202,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         char** _argv;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief are we running under valgrind?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _runningOnValgrind;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to binary
@@ -220,28 +228,16 @@ namespace triagens {
         rest::ApplicationDispatcher* _applicationDispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application http server
+/// @brief application endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::ApplicationHttpServer* _applicationHttpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application https server
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::ApplicationHttpsServer* _applicationHttpsServer;
+        rest::ApplicationEndpointServer* _applicationEndpointServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructed admin server application
 ////////////////////////////////////////////////////////////////////////////////
 
         admin::ApplicationAdminServer* _applicationAdminServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed user server application
-////////////////////////////////////////////////////////////////////////////////
-
-        admin::ApplicationUserManager* _applicationUserManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application MR
@@ -258,80 +254,9 @@ namespace triagens {
         ApplicationV8* _applicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ZeroMQ server
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::ApplicationZeroMQ* _applicationZeroMQ;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed http server
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::HttpServer* _httpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed admin http server
-////////////////////////////////////////////////////////////////////////////////
-
-        rest::HttpServer* _adminHttpServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for client requests
-///
-/// @CMDOPT{--server.http-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by clients. This will bind to any
-/// address available. If you do not specify an admin port, then the http port
-/// will serve both client and administration request. If you have
-/// higher security requirements, you can use a special administration
-/// port.
-///
-/// @CMDOPT{--server.http-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{address} and @CA{port} for HTTP requests by clients. This
-/// will bind to the given @CA{address}, which can be a numeric value like
-/// @CODE{192.168.1.1} or a name.
-///
-/// @CMDOPT{--port @CA{port}}
-///
-/// This variant can be used as command line option.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _httpPort;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use basic http authentication
-///
-/// @CMDOPT{--server.http-auth @CA{flag}}
-///
-/// If @CA{flag} is @LIT{yes}, then the HTTP access is secured with "HTTP Basic
-/// Authentication". The user and sha256 of the password are stored in a
-/// collection @LIT{_users}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _httpAuth;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list port for admin requests
-///
-/// @CMDOPT{--server.admin-port @CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to any address available.
-///
-/// @CMDOPT{--server.admin-port @CA{address}:@CA{port}}
-///
-/// Specifies the @CA{port} for HTTP requests by the administrator. This will
-/// bind to the given @CA{address}, which can be a numeric value like
-/// 192.168.1.1 or a name.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _adminPort;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
 ///
-/// @CMDOPT{--server.threads @CA{number}}
+/// @CMDOPT{\--server.threads @CA{number}}
 ///
 /// Specifies the @CA{number} of threads that are spawned to handle action
 /// requests using Rest, JavaScript, or Ruby.
@@ -342,10 +267,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
 ///
-/// @CMDOPT{--database.directory @CA{directory}}
+/// @CMDOPT{\--database.directory @CA{directory}}
 ///
 /// The directory containing the collections and data-files. Defaults
-/// to @CODE{/var/lib/arango}.
+/// to @LIT{/var/lib/arango}.
 ///
 /// @CMDOPT{@CA{directory}}
 ///
@@ -362,7 +287,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on drop
 ///
-/// @CMDOPT{--database.remove-on-drop @CA{flag}}
+/// @CMDOPT{\--database.remove-on-drop @CA{flag}}
 ///
 /// If @LIT{true} and you drop a collection, then they directory and all
 /// associated datafiles will be removed from disk. If @LIT{false}, then they
@@ -379,7 +304,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove on compaction
 ///
-/// @CMDOPT{--database.remove-on-compaction @CA{flag}}
+/// @CMDOPT{\--database.remove-on-compaction @CA{flag}}
 ///
 /// Normally the garbage collection will removed compacted datafile. For debug
 /// purposes you can use this option to keep the old datafiles. You should
@@ -393,7 +318,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default journal size
 ///
-/// @CMDOPT{--database.maximal-journal-size @CA{size}}
+/// @CMDOPT{\--database.maximal-journal-size @CA{size}}
 ///
 /// Maximal size of journal in bytes. Can be overwritten when creating a new
 /// collection. Note that this also limits the maximal size of a single
@@ -407,7 +332,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default wait for sync behavior
 ///
-/// @CMDOPT{--database.wait-for-sync @CA{boolean}}
+/// @CMDOPT{\--database.wait-for-sync @CA{boolean}}
 ///
 /// Default wait-for-sync value. Can be overwritten when creating a new
 /// collection.
@@ -418,9 +343,24 @@ namespace triagens {
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief force sync shapes
+///
+/// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
+///
+/// Force syncing of shape data to disk when writing shape information. 
+/// If turned off, syncing will still happen for shapes of collections that
+/// have a waitForSync value of @LIT{true}. If turned on, syncing of shape data
+/// will always happen, regards of the value of waitForSync.
+///
+/// The default is @LIT{true}.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _forceSyncShapes;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
-/// @CMDOPT{--javascript.unit-tests @CA{test-file}}
+/// @CMDOPT{\--javascript.unit-tests @CA{test-file}}
 ///
 /// Runs one or more unit tests.
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,7 +370,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief files to jslint
 ///
-/// @CMDOPT{--jslint @CA{test-file}}
+/// @CMDOPT{\--jslint @CA{test-file}}
 ///
 /// Runs jslint on one or more files.
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,7 +380,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run script file
 ///
-/// @CMDOPT{--javascript.script @CA{script-file}}
+/// @CMDOPT{\--javascript.script @CA{script-file}}
 ///
 /// Runs the script file.
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,12 +390,27 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parameters to script file
 ///
-/// @CMDOPT{--javascript.script-parameter @CA{script-parameter}}
+/// @CMDOPT{\--javascript.script-parameter @CA{script-parameter}}
 ///
 /// Parameter to script.
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _scriptParameters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief server default language for sorting strings
+///
+/// @CMDOPT{\-\-default-language @CA{default-language}}
+///
+/// The default language ist used for sorting and comparing strings. 
+/// The language value is a two-letter language code (ISO-639) or it is 
+/// composed by a two-letter language code with and a two letter country code 
+/// (ISO-3166). Valid languages are "de", "en", "en_US" or "en_UK".
+///
+/// The default default-language is set to be the system locale on that platform.
+////////////////////////////////////////////////////////////////////////////////
+
+        string _defaultLanguage;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase

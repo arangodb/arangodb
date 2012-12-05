@@ -45,9 +45,12 @@
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
+// this is one reason why macros should never be used.
+// trying to return a pointer as a boolean
 #define ABORT_OOM                                                                \
   TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);                \
   return NULL;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut macro to create a new node or fail in case of OOM
@@ -56,7 +59,7 @@
 #define CREATE_NODE(type)                                                        \
   TRI_aql_node_t* node = (TRI_aql_node_t*)                                       \
     TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);           \
-  if (!node) {                                                                   \
+  if (node == NULL) {                                                            \
     ABORT_OOM                                                                    \
   }                                                                              \
                                                                                  \
@@ -68,7 +71,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define ADD_MEMBER(member)                                                       \
-  if (!member) {                                                                 \
+  if (member == NULL) {                                                          \
     ABORT_OOM                                                                    \
   }                                                                              \
                                                                                  \
@@ -87,7 +90,7 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNode (TRI_aql_context_t* const context,
+inline static void InitNode (TRI_aql_context_t* const context,
                              TRI_aql_node_t* const node, 
                              const TRI_aql_node_type_e type) {
   node->_type = type;
@@ -378,7 +381,18 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   
   if (strlen(name) == 0) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_COLLECTION_NOT_FOUND, name);
+
     return NULL;
+  }
+  else {
+    TRI_col_parameter_t parameters;
+
+    parameters._isSystem = true;
+    if (! TRI_IsAllowedCollectionName(&parameters, name)) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+
+      return NULL;
+    }
   }
 
   {
@@ -387,6 +401,8 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
     
     // init collection hint
     hint = TRI_CreateCollectionHintAql();
+
+    // attach the hint to the collection
     node->_value._value._data = hint;
 
     if (hint == NULL) {
@@ -936,14 +952,14 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
 
     function = TRI_GetByExternalNameFunctionAql(functions, name);
 
-    if (!function) {
+    if (! function) {
       // function name is unknown
       TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name);
       return NULL;
     }
 
     // validate function call arguments
-    if (!TRI_ValidateArgsFunctionAql(context, function, parameters)) {
+    if (! TRI_ValidateArgsFunctionAql(context, function, parameters)) {
       return NULL;
     }
 

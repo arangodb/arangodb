@@ -39,6 +39,8 @@
 
 #include "build.h"
 
+#include "3rdParty/valgrind/valgrind.h"
+
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -46,23 +48,27 @@
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/Random.h"
+#include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
+#include "BasicsC/messages.h"
 #include "BasicsC/strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
-#include "HttpServer/ApplicationHttpServer.h"
+#include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/RedirectHandler.h"
+
 #include "Logger/Logger.h"
 #include "Rest/Initialise.h"
+#include "Rest/OperationMode.h"
+#include "RestHandler/ConnectionStatisticsHandler.h"
+#include "RestHandler/RequestStatisticsHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
-#include "RestServer/ArangoHttpServer.h"
 #include "Scheduler/ApplicationScheduler.h"
-#include "UserManager/ApplicationUserManager.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -76,21 +82,11 @@
 #include "MRuby/MRLoader.h"
 #endif
 
-#ifdef TRI_ENABLE_ZEROMQ
-#include "ZeroMQ/ApplicationZeroMQ.h"
-#endif
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
-
-#include "js/common/bootstrap/js-modules.h"
-#include "js/common/bootstrap/js-print.h"
-#include "js/common/bootstrap/js-errors.h"
-#include "js/server/js-ahuacatl.h"
-#include "js/server/js-server.h"
 
 #ifdef TRI_ENABLE_MRUBY
 #include "mr/common/bootstrap/mr-error.h"
@@ -144,7 +140,6 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
 
 static void DefineAdminHandlers (HttpHandlerFactory* factory,
                                  ApplicationAdminServer* admin,
-                                 ApplicationUserManager* user,
                                  TRI_vocbase_t* vocbase) {
 
   // add "/version" handler
@@ -152,8 +147,15 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 
   // add admin handlers
   admin->addHandlers(factory, "/_admin");
-  user->addHandlers(factory, "/_admin");
 
+  // add statistics
+  factory->addHandler("/_admin/connection-statistics",
+                      RestHandlerCreator<ConnectionStatisticsHandler>::createNoData,
+                      0);
+
+  factory->addHandler("/_admin/request-statistics",
+                      RestHandlerCreator<RequestStatisticsHandler>::createNoData,
+                      0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +163,7 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class ArangoServer
+// --SECTION--                                                class ArangoServer
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -180,24 +182,19 @@ static void DefineAdminHandlers (HttpHandlerFactory* factory,
 ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
+    _runningOnValgrind(false),
     _binaryPath(),
     _applicationScheduler(0),
     _applicationDispatcher(0),
-    _applicationHttpServer(0),
-    _applicationHttpsServer(0),
+    _applicationEndpointServer(0),
     _applicationAdminServer(0),
-    _applicationUserManager(0),
-    _httpServer(0),
-    _adminHttpServer(0),
-    _httpPort("127.0.0.1:8529"),
-    _httpAuth(false),
-    _adminPort(),
     _dispatcherThreads(8),
-    _databasePath("/var/lib/arangodb"),
+    _databasePath(),
     _removeOnDrop(true),
     _removeOnCompacted(true),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
+    _forceSyncShapes(true),
     _vocbase(0) {
 
   // locate path to binary
@@ -206,18 +203,16 @@ ArangoServer::ArangoServer (int argc, char** argv)
   p = TRI_LocateBinaryPath(argv[0]);
   _binaryPath = p;
 
+  if ((RUNNING_ON_VALGRIND) > 0) {
+    _runningOnValgrind = true;
+  }
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, p);
 
   // set working directory and database directory
   _workingDirectory = "/var/tmp";
-  
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-  _workingDirectory = _binaryPath + "/../tmp";
-  _databasePath = _binaryPath + "/../var/arangodb";
-#endif
-
-#ifdef _DATABASEDIR_
-  _databasePath = _DATABASEDIR_;
+#ifdef TRI_HAVE_ICU  
+  _defaultLanguage = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 #endif
 }
 
@@ -239,7 +234,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
-  _applicationServer = new ApplicationServer("[<options>] <database-directory>", TRIAGENS_VERSION);
+  map<string, ProgramOptionsDescription> additional;
+
+  _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
+  _applicationServer->setSystemConfigFile("arangod.conf");
   _applicationServer->setUserConfigFile(".arango/arangod.conf");
 
   // .............................................................................
@@ -269,16 +267,16 @@ void ArangoServer::buildApplicationServer () {
   _applicationMR = new ApplicationMR(_binaryPath);
   _applicationServer->addFeature(_applicationMR);
 
-#endif
+#else
 
-  // .............................................................................
-  // ZeroMQ
-  // .............................................................................
+  string ignoreOpt;
 
-#ifdef TRI_ENABLE_ZEROMQ
-
-  _applicationZeroMQ = new ApplicationZeroMQ(_applicationServer);
-  _applicationServer->addFeature(_applicationZeroMQ);
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("ruby.gc-interval", &ignoreOpt, "Ruby garbage collection interval (each x requests)")
+    ("ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")
+    ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
+    ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
+  ;
 
 #endif
 
@@ -291,93 +289,19 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationAdminServer->allowLogViewer();
   _applicationAdminServer->allowVersion("arango", TRIAGENS_VERSION);
+  _applicationAdminServer->allowAdminDirectory(); // might be changed later
 
   // .............................................................................
-  // build the application user manager
+  // define server options
   // .............................................................................
-
-  _applicationUserManager = new ApplicationUserManager();
-  _applicationServer->addFeature(_applicationUserManager);
-
-  // create manager role
-  vector<right_t> rightsManager;
-  rightsManager.push_back(RIGHT_TO_MANAGE_USER);
-  rightsManager.push_back(RIGHT_TO_MANAGE_ADMIN);
-
-  _applicationUserManager->createRole("manager", rightsManager, 0);
-
-  // create admin role
-  vector<right_t> rightsAdmin;
-  rightsAdmin.push_back(RIGHT_TO_MANAGE_USER);
-  rightsAdmin.push_back(RIGHT_TO_BE_DELETED);
-
-  _applicationUserManager->createRole("admin", rightsAdmin, RIGHT_TO_MANAGE_ADMIN);
-
-  // create user role
-  vector<right_t> rightsUser;
-  rightsUser.push_back(RIGHT_TO_BE_DELETED);
-
-  _applicationUserManager->createRole("user", rightsUser, RIGHT_TO_MANAGE_USER);
-
-  // create a standard user
-  _applicationUserManager->createUser("manager", "manager");
-
-  // added a anonymous right for session which are not logged in
-  vector<right_t> rightsAnonymous;
-  rightsAnonymous.push_back(RIGHT_TO_LOGIN);
-
-  _applicationUserManager->setAnonymousRights(rightsAnonymous);
-
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
-  _applicationServer->setSystemConfigFile("arangod.conf", _binaryPath + "/../etc/arangodb");
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../share/arango/html/admin");
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_HTML_ADMIN_PATH
-  _applicationAdminServer->allowAdminDirectory(TRI_HTML_ADMIN_PATH);
-#else
-  _applicationAdminServer->allowAdminDirectory(_binaryPath + "/../html/admin");
-#endif
-
-#else
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-  _applicationServer->setSystemConfigFile("arangod.conf");
-  _applicationAdminServer->allowAdminDirectory(string(_PKGDATADIR_) + "/html/admin");
-
-#endif
-#endif
-
-  // .............................................................................
-  // a http server
-  // .............................................................................
-
-  _applicationHttpServer = new ApplicationHttpServer(_applicationServer, _applicationScheduler, _applicationDispatcher);
-  _applicationServer->addFeature(_applicationHttpServer);
 
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
 
-  map<string, ProgramOptionsDescription> additional;
-
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
+    ("upgrade", "perform a database upgrade")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -390,29 +314,19 @@ void ArangoServer::buildApplicationServer () {
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
-    ("working directory", &_workingDirectory, "working directory in daemon mode")
+    ("working-directory", &_workingDirectory, "working directory in daemon mode")
+#ifdef TRI_HAVE_ICU
+    ("default-language", &_defaultLanguage, "ISO-639 language code")
+#endif  
   ;
+  
+  // .............................................................................
+  // javascript options
+  // .............................................................................
 
   additional["JAVASCRIPT Options:help-admin"]
     ("javascript.script", &_scriptFile, "do not start as server, run script instead")
     ("javascript.script-parameter", &_scriptParameters, "script parameter")
-    ("jslint", &_jslint, "do not start as server, run js lint instead")
-    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
-  ;
-
-  // .............................................................................
-  // for this server we display our own options such as port to use
-  // .............................................................................
-
-  _applicationHttpServer->showPortOptions(false);
-
-  additional["PORT Options"]
-    ("server.http-port", &_httpPort, "port for client access")
-    ("server.http-auth", &_httpAuth, "use basic authentication")
-  ;
-
-  additional[ApplicationServer::OPTIONS_HIDDEN]
-    ("port", &_httpPort, "port for client access")
   ;
 
   // .............................................................................
@@ -427,41 +341,89 @@ void ArangoServer::buildApplicationServer () {
     ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
+    ("database.force-sync-shapes", &_forceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off")
   ;
 
   additional["DATABASE Options:help-devel"]
     ("database.remove-on-compacted", &_removeOnCompacted, "wipe a datafile from disk after compaction")
   ;
+   
+  additional["JAVASCRIPT Options:help-devel"]
+    ("jslint", &_jslint, "do not start as server, run js lint instead")
+    ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
+  ;
 
   // .............................................................................
-  // database options
+  // server options
+  // .............................................................................
+  
+  // .............................................................................
+  // for this server we display our own options such as port to use
   // .............................................................................
 
   bool disableAdminInterface = false;
 
-  additional["Server Options:help-admin"]
-    ("server.admin-port", &_adminPort, "http server:port for ADMIN requests")
+  additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.disable-admin-interface", &disableAdminInterface, "turn off the HTML admin interface")
   ;
 
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
+  
+  // .............................................................................
+  // endpoint server
+  // .............................................................................
+
+  _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
+                                                             _applicationScheduler,
+                                                             _applicationDispatcher,
+                                                             "arangodb",
+                                                             TRI_CheckAuthenticationAuthInfo);
+  _applicationServer->addFeature(_applicationEndpointServer);
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
   // .............................................................................
 
   if (! _applicationServer->parse(_argc, _argv, additional)) {
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   
+#ifdef TRI_HAVE_ICU  
+  // .............................................................................
+  // set language of default collator
+  // .............................................................................
+
+  UVersionInfo icuVersion;
+  char icuVersionString[U_MAX_VERSION_STRING_LENGTH];
+  u_getVersion(icuVersion);
+  u_versionToString(icuVersion, icuVersionString);  
+  LOGGER_INFO << "using ICU " << icuVersionString;        
+  
+  Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "_" << Utf8Helper::DefaultUtf8Helper.getCollatorCountry() << "'";    
+  }
+  else {
+    LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
+  }
+#endif  
+ 
   // .............................................................................
   // disable access to the HTML admin interface
   // .............................................................................
 
   if (disableAdminInterface) {
     _applicationAdminServer->allowAdminDirectory(false);
+  }
+
+  if (_defaultMaximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+    // validate journal size
+    LOGGER_FATAL << "invalid journal size. expected at least " << TRI_JOURNAL_MINIMAL_SIZE;
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
 
   // .............................................................................
@@ -472,40 +434,41 @@ void ArangoServer::buildApplicationServer () {
 
   if (1 < arguments.size()) {
     LOGGER_FATAL << "expected at most one database directory, got " << arguments.size();
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
   else if (1 == arguments.size()) {
     _databasePath = arguments[0];
   }
 
-  // .............................................................................
-  // in shell mode ignore the rest
-  // .............................................................................
-
-  if (_applicationServer->programOptions().has("console")) {
-    int res = executeConsole(MODE_CONSOLE);
-    exit(res);
-  }
-  else if (_applicationServer->programOptions().has("javascript.unit-tests")) {
-    int res = executeConsole(MODE_UNITTESTS);
-    exit(res);
-  }
-  else if (_applicationServer->programOptions().has("jslint")) {
-    int res = executeConsole(MODE_JSLINT);
-    exit(res);
-  }
-  else if (_applicationServer->programOptions().has("javascript.script")) {
-    int res = executeConsole(MODE_SCRIPT);
-    exit(res);
+  if (_databasePath.empty()) {
+    LOGGER_FATAL << "no database path has been supplied, giving up";
+    LOGGER_INFO << "please use the '--database.directory' option";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
 
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  if (mode == OperationMode::MODE_CONSOLE || 
+      mode == OperationMode::MODE_UNITTESTS ||
+      mode == OperationMode::MODE_JSLINT ||
+      mode == OperationMode::MODE_SCRIPT) {
+    int res = executeConsole(mode);
+
+    TRI_FlushLogging();
+    exit(res);
+  }
 #ifdef TRI_ENABLE_MRUBY
-  if (_applicationServer->programOptions().has("ruby-console")) {
+  else if (mode == OperationMode::MODE_RUBY_CONSOLE) {
     int res = executeRubyConsole();
+
+    TRI_FlushLogging();
     exit(res);
   }
 #endif
+
+  // if we got here, then we are in server mode
 
   // .............................................................................
   // sanity checks
@@ -519,20 +482,16 @@ void ArangoServer::buildApplicationServer () {
     _supervisorMode = true;
   }
 
-  if (_daemonMode) {
+  if (_daemonMode || _supervisorMode) {
     if (_pidFile.empty()) {
-      LOGGER_FATAL << "no pid-file defined, but daemon mode requested";
-      cerr << "no pid-file defined, but daemon mode requested\n";
+      cerr << "no pid-file defined, but daemon or supervisor mode requested, giving up\n";
+
+      LOGGER_FATAL << "no pid-file defined, but daemon or supervisor mode was requested";
       LOGGER_INFO << "please use the '--pid-file' option";
+
+      TRI_FlushLogging();
       exit(EXIT_FAILURE);
     }
-  }
-
-  if (_databasePath.empty()) {
-    LOGGER_FATAL << "no database path has been supplied, giving up";
-    cerr << "no database path has been supplied, giving up\n";
-    LOGGER_INFO << "please use the '--database.directory' option";
-    exit(EXIT_FAILURE);
   }
 }
 
@@ -542,10 +501,6 @@ void ArangoServer::buildApplicationServer () {
 
 int ArangoServer::startupServer () {
   v8::HandleScope handle_scope;
-
-  bool useHttpPort = ! _httpPort.empty();
-  bool useAdminPort = ! _adminPort.empty() && _adminPort != "-";
-  bool shareAdminPort = useHttpPort && _adminPort.empty();
 
   // .............................................................................
   // open the database
@@ -561,20 +516,17 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
 
-  size_t actionConcurrency = _dispatcherThreads;
+  _applicationV8->setVocbase(_vocbase);
+  _applicationV8->setConcurrency(_dispatcherThreads);
 
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      actionConcurrency += 2;
-    }
+  if (_applicationServer->programOptions().has("upgrade")) {
+    _applicationV8->performUpgrade();
   }
 
-  _applicationV8->setVocbase(_vocbase);
-  _applicationV8->setConcurrency(actionConcurrency);
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
-  _applicationMR->setConcurrency(actionConcurrency);
+  _applicationMR->setConcurrency(_dispatcherThreads);
 #endif
 
   _applicationServer->prepare();
@@ -584,141 +536,43 @@ int ArangoServer::startupServer () {
   // .............................................................................
 
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads);
-
-  Dispatcher* dispatcher = _applicationDispatcher->dispatcher();
-
-  // use a separate queue for administrator requests
-  if (! shareAdminPort) {
-    if (useAdminPort) {
-      dispatcher->addQueue("SYSTEM", 2);
-    }
-  }
-
-  // .............................................................................
-  // create a client http server and http handler factory
-  // .............................................................................
-
-  Scheduler* scheduler = _applicationScheduler->scheduler();
-
-  // we pass the options be reference, so keep them until shutdown
+  
+  _applicationServer->prepare2();
+  
+    
+  // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
   httpOptions._vocbase = _vocbase;
   httpOptions._queue = "STANDARD";
 
-  HttpHandlerFactory::auth_fptr auth = 0;
+  // create the handlers
+  httpOptions._contexts.insert("user");
+  httpOptions._contexts.insert("api");
+  httpOptions._contexts.insert("admin");
 
-  if (_httpAuth) {
-    auth = TRI_CheckAuthenticationAuthInfo;
-  }
+  // create the server
+  _applicationEndpointServer->buildServers();
+    
+  HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  // if we want a http port create the factory
-  if (useHttpPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
+  DefineApiHandlers(handlerFactory, _applicationAdminServer, _vocbase);
+  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _vocbase);
 
-    httpOptions._contexts.insert("user");
-    httpOptions._contexts.insert("api");
-
-    vector<AddressPort> ports;
-    ports.push_back(AddressPort(_httpPort));
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-
-    if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-      httpOptions._contexts.insert("admin");
-    }
-
-    // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &httpOptions);
-
-    _httpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, ports);
-  }
+  // add action handler
+  handlerFactory->addPrefixHandler("/",
+                                   RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+                                   (void*) &httpOptions);
+  
 
   // .............................................................................
-  // create a admin http server and http handler factory
+  // start the statistics collector thread
   // .............................................................................
-
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t adminOptions;
-  adminOptions._vocbase = _vocbase;
-  adminOptions._queue = "SYSTEM";
-
-  // if we want a admin http port create the factory
-  if (useAdminPort) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory("arangodb", auth);
-
-    adminOptions._contexts.insert("api");
-    adminOptions._contexts.insert("admin");
-
-    vector<AddressPort> adminPorts;
-    adminPorts.push_back(AddressPort(_adminPort));
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-    DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-
-    // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &adminOptions);
-
-    _adminHttpServer = _applicationHttpServer->buildServer(new ArangoHttpServer(scheduler, dispatcher), factory, adminPorts);
-  }
-
-  // .............................................................................
-  // create a http handler factory for zeromq
-  // .............................................................................
-
-#ifdef TRI_ENABLE_ZEROMQ
-
-  // we pass the options be reference, so keep them until shutdown
-  RestActionHandler::action_options_t zeromqOptions;
-  zeromqOptions._vocbase = _vocbase;
-  zeromqOptions._queue = "CLIENT";
-
-  // only construct factory if ZeroMQ is active
-  if (_applicationZeroMQ->isActive()) {
-    HttpHandlerFactory* factory = new HttpHandlerFactory();
-
-    DefineApiHandlers(factory, _applicationAdminServer, _vocbase);
-
-    if (shareAdminPort) {
-      DefineAdminHandlers(factory, _applicationAdminServer, _applicationUserManager, _vocbase);
-    }
-
-    // add action handler
-    factory->addPrefixHandler("/",
-                              RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-                              (void*) &httpOptions);
-
-    _applicationZeroMQ->setHttpHandlerFactory(factory);
-  }
-
-#endif
-
+      
+  TRI_InitialiseStatistics();
+  
   // .............................................................................
   // start the main event loop
   // .............................................................................
-
-  if (useHttpPort) {
-    if (shareAdminPort) {
-      LOGGER_INFO << "HTTP client/admin port: " << _httpPort;
-    }
-    else {
-      LOGGER_INFO << "HTTP client port: " << _httpPort;
-    }
-  }
-  else {
-    LOGGER_WARNING << "HTTP client port not defined, maybe you want to use the 'server.http-port' option?";
-  }
-
-  if (useAdminPort) {
-    LOGGER_INFO << "HTTP admin port: " << _adminPort;
-  }
-  else if (! shareAdminPort) {
-    LOGGER_INFO << "HTTP admin port not defined, maybe you want to use the 'server.admin-port' option?";
-  }
 
   _applicationServer->start();
 
@@ -731,7 +585,7 @@ int ArangoServer::startupServer () {
   // and cleanup
   // .............................................................................
 
-  _applicationServer->shutdown();
+  _applicationServer->stop();
   closeDatabase();
 
   return 0;
@@ -754,7 +608,7 @@ int ArangoServer::startupServer () {
 /// @brief executes the JavaScript emergency console
 ////////////////////////////////////////////////////////////////////////////////
 
-int ArangoServer::executeConsole (server_operation_mode_e mode) {
+int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   bool ok;
 
   // only simple logging
@@ -768,12 +622,16 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(1);
+  if (_applicationServer->programOptions().has("upgrade")) {
+    _applicationV8->performUpgrade();
+  }
   _applicationV8->disableActions();
 
   ok = _applicationV8->prepare();
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize V8 enigne";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -790,7 +648,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
     v8::HandleScope globalScope;
 
     // run the shell
-    if (mode != MODE_SCRIPT) {
+    if (mode != OperationMode::MODE_SCRIPT) {
       printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
     }
     else {
@@ -799,6 +657,10 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
 
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
+        
+    context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+    context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
+    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
 
     ok = true;
 
@@ -808,7 +670,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run all unit tests
       // .............................................................................
 
-      case MODE_UNITTESTS: {
+      case OperationMode::MODE_UNITTESTS: {
         v8::HandleScope scope;
         v8::TryCatch tryCatch;
 
@@ -841,7 +703,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run jslint
       // .............................................................................
 
-      case MODE_JSLINT: {
+      case OperationMode::MODE_JSLINT: {
         v8::HandleScope scope;
         v8::TryCatch tryCatch;
 
@@ -870,10 +732,10 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       }
 
       // .............................................................................
-      // run console
+      // run script
       // .............................................................................
 
-      case MODE_SCRIPT: {
+      case OperationMode::MODE_SCRIPT: {
         v8::TryCatch tryCatch;
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
@@ -930,28 +792,28 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
       // run console
       // .............................................................................
 
-      case MODE_CONSOLE: {
-        V8LineEditor* console = new V8LineEditor(context->_context, ".arango");
+      case OperationMode::MODE_CONSOLE: {
+        V8LineEditor console(context->_context, ".arango");
 
-        console->open(true);
+        console.open(true);
 
         while (true) {
           while(! v8::V8::IdleNotification()) {
           }
 
-          char* input = console->prompt("arangod> ");
+          char* input = console.prompt("arangod> ");
 
           if (input == 0) {
-            printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+            printf("<ctrl-D>\n%s\n", TRI_BYE_MESSAGE);
             break;
           }
 
           if (*input == '\0') {
-            TRI_FreeString(TRI_CORE_MEM_ZONE, input);
+            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
             continue;
           }
 
-          console->addHistory(input);
+          console.addHistory(input);
 
           v8::HandleScope scope;
           v8::TryCatch tryCatch;
@@ -963,12 +825,12 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
             cout << TRI_StringifyV8Exception(&tryCatch);
           }
         }
-
-        console->close();
-
-        delete console;
-
+        
         break;
+      }
+
+      default: {
+        assert(false);
       }
     }
   }
@@ -979,8 +841,8 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
 
   _applicationV8->exitContext(context);
 
-  _applicationV8->beginShutdown();
-  _applicationV8->shutdown();
+  _applicationV8->close();
+  _applicationV8->stop();
 
   
   closeDatabase();
@@ -996,9 +858,7 @@ int ArangoServer::executeConsole (server_operation_mode_e mode) {
 #ifdef TRI_ENABLE_MRUBY
 
 struct RClass* ArangoDatabaseClass;
-struct RClass* ArangoEdgesClass;
 struct RClass* ArangoCollectionClass;
-struct RClass* ArangoEdgesCollectionClass;
 
 mrb_value MR_ArangoDatabase_Inialize (mrb_state* mrb, mrb_value exc) {
   printf("initializer of ArangoDatabase called\n");
@@ -1054,9 +914,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
   // setup the classes
 #if 0
   struct RClass* ArangoDatabaseClass = mrb_define_class(mrb, "ArangoDatabase", mrb->object_class);
-  struct RClass* ArangoEdgesClass = mrb_define_class(mrb, "ArangoEdges", mrb->object_class);
   struct RClass* ArangoCollectionClass = mrb_define_class(mrb, "ArangoCollection", mrb->object_class);
-  struct RClass* ArangoEdgesCollectionClass = mrb_define_class(mrb, "ArangoEdgesCollection", mrb->object_class);
 
   // add an initializer (for TESTING only)
   mrb_define_method(mrb, ArangoDatabaseClass, "initialize", MR_ArangoDatabase_Inialize, ARGS_ANY());
@@ -1094,6 +952,7 @@ int ArangoServer::executeRubyConsole () {
 
   if (! ok) {
     LOGGER_FATAL << "cannot initialize MRuby enigne";
+    TRI_FlushLogging();
     exit(EXIT_FAILURE);
   }
 
@@ -1101,20 +960,19 @@ int ArangoServer::executeRubyConsole () {
 
   // enter MR context
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
-  mrb_state* mrb = context->_mrb;
 
   // create a line editor
   printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
 
-  MRLineEditor* console = new MRLineEditor(mrb, ".arango-mrb");
+  MRLineEditor console(context->_mrb, ".arango-mrb");
 
-  console->open(false);
+  console.open(false);
 
   while (true) {
-    char* input = console->prompt("arangod> ");
+    char* input = console.prompt("arangod> ");
 
     if (input == 0) {
-      printf("<ctrl-D>\nBye Bye! Arrivederci! Auf Wiedersehen! До свидания! さようなら\n");
+      printf("<ctrl-D>\n" TRI_BYE_MESSAGE "\n");
       break;
     }
 
@@ -1123,9 +981,9 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    console->addHistory(input);
+    console.addHistory(input);
 
-    struct mrb_parser_state* p = mrb_parse_string(mrb, input, NULL);
+    struct mrb_parser_state* p = mrb_parse_string(context->_mrb, input, NULL);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (p == 0 || p->tree == 0 || 0 < p->nerr) {
@@ -1133,30 +991,29 @@ int ArangoServer::executeRubyConsole () {
       continue;
     }
 
-    int n = mrb_generate_code(mrb, p);
+    int n = mrb_generate_code(context->_mrb, p);
 
     if (n < 0) {
       LOGGER_ERROR << "failed to execute Ruby bytecode";
       continue;
     }
 
-    mrb_value result = mrb_run(mrb,
-                               mrb_proc_new(mrb, mrb->irep[n]),
-                               mrb_top_self(mrb));
+    mrb_value result = mrb_run(context->_mrb,
+                               mrb_proc_new(context->_mrb, context->_mrb->irep[n]),
+                               mrb_top_self(context->_mrb));
 
-    if (mrb->exc) {
+    if (context->_mrb->exc != 0) {
       LOGGER_ERROR << "caught Ruby exception";
-      mrb_p(mrb, mrb_obj_value(mrb->exc));
-      mrb->exc = 0;
+      mrb_p(context->_mrb, mrb_obj_value(context->_mrb->exc));
+      context->_mrb->exc = 0;
     }
     else if (! mrb_nil_p(result)) {
-      mrb_p(mrb, result);
+      mrb_p(context->_mrb, result);
     }
   }
 
   // close the console
-  console->close();
-  delete console;
+  console.close();
 
   // close the database
   closeDatabase();
@@ -1180,8 +1037,6 @@ void ArangoServer::openDatabase () {
     LOGGER_INFO << "please use the '--database.directory' option";
     TRI_FlushLogging();
 
-    ApplicationUserManager::unloadUsers();
-    ApplicationUserManager::unloadRoles();
     exit(EXIT_FAILURE);
   }
 
@@ -1189,6 +1044,7 @@ void ArangoServer::openDatabase () {
   _vocbase->_removeOnCompacted = _removeOnCompacted;
   _vocbase->_defaultMaximalSize = _defaultMaximalSize;
   _vocbase->_defaultWaitForSync = _defaultWaitForSync;
+  _vocbase->_forceSyncShapes = _forceSyncShapes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1196,9 +1052,6 @@ void ArangoServer::openDatabase () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabase () {
-  ApplicationUserManager::unloadUsers();
-  ApplicationUserManager::unloadRoles();
-
   TRI_CleanupActions();
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);

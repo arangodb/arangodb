@@ -25,6 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   arango-password
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoDB
 /// @{
@@ -45,9 +49,9 @@ function main (argv) {
 
   users = db._collection("_users");
 
-  if (db._collection("_users") == null) {
-    console.log("creating users collection '_users'");
-    users = db._create("_users", { isSystem: true, waitForSync: true });
+  if (users == null) {
+    console.error("users collection '_users' not available.");
+    return 2;
   }
 
   internal.output("\n");
@@ -74,7 +78,12 @@ function main (argv) {
     password = argv[2];
   }
   
-  var hash = internal.sha256(password);
+  var hash = internal.encodePassword(password);
+
+  if (username == "" ) {
+    internal.output("username must not be empty\n");
+    return 1;
+  }
 
   var user = users.firstExample({ user: username });
 
@@ -96,6 +105,10 @@ function main (argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

@@ -38,15 +38,18 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 
+using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace std;
 
 #include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-monkeypatches.h"
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-ahuacatl.h"
 #include "js/server/js-server.h"
+#include "js/server/js-version-check.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class V8GcThread
@@ -173,10 +176,13 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 ApplicationV8::ApplicationV8 (string const& binaryPath)
   : ApplicationFeature("V8"),
     _startupPath(),
-    _startupModules("js/modules"),
+    _startupModules(),
     _actionPath(),
+    _useActions(true),
+    _performUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
+    _v8Options(""),
     _startupLoader(),
     _actionLoader(),
     _vocbase(0),
@@ -187,54 +193,6 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _dirtyContexts(),
     _busyContexts(),
     _stopping(0) {
-
-  // .............................................................................
-  // use relative system paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_SYSTEM
-
-    _actionPath = binaryPath + "/../share/arango/js/actions/system";
-    _startupModules = binaryPath + "/../share/arango/js/server/modules"
-                + ";" + binaryPath + "/../share/arango/js/common/modules";
-
-#else
-
-  // .............................................................................
-  // use relative development paths
-  // .............................................................................
-
-#ifdef TRI_ENABLE_RELATIVE_DEVEL
-
-#ifdef TRI_SYSTEM_ACTION_PATH
-    _actionPath = TRI_SYSTEM_ACTION_PATH;
-#else
-    _actionPath = binaryPath + "/../js/actions/system";
-#endif
-
-#ifdef TRI_STARTUP_MODULES_PATH
-    _startupModules = TRI_STARTUP_MODULES_PATH;
-#else
-    _startupModules = binaryPath + "/../js/server/modules"
-                + ";" + binaryPath + "/../js/common/modules";
-#endif
-
-  // .............................................................................
-  // use absolute paths
-  // .............................................................................
-
-#else
-
-#ifdef _PKGDATADIR_
-
-    _actionPath = string(_PKGDATADIR_) + "/js/actions/system";
-    _startupModules = string(_PKGDATADIR_) + "/js/server/modules"
-              + ";" + string(_PKGDATADIR_) + "/js/common/modules";
-
-#endif
-
-#endif
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,6 +232,14 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief perform a database upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::performUpgrade () {
+  _performUpgrade = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enters an context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -306,8 +272,8 @@ ApplicationV8::V8Context* ApplicationV8::enterContext () {
 
 void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-
   assert(gc != 0);
+
   double lastGc = gc->getLastGcStamp();
 
   CONDITION_LOCKER(guard, _contextCondition);
@@ -317,16 +283,16 @@ void ApplicationV8::exitContext (V8Context* context) {
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
-
+  
   ++context->_dirt;
 
   if (context->_lastGcStamp + _gcFrequency < lastGc) {
-    LOGGER_TRACE << "periodic gc interval reached";
+    LOGGER_TRACE << "V8 context has reached GC timeout threshold and will be scheduled for GC";
     _dirtyContexts.push_back(context);
     _busyContexts.erase(context);
   }
   else if (context->_dirt >= _gcInterval) {
-    LOGGER_TRACE << "maximum number of requests reached";
+    LOGGER_TRACE << "V8 context has reached maximum number of requests and will be scheduled for GC";
     _dirtyContexts.push_back(context);
     _busyContexts.erase(context);
   }
@@ -395,7 +361,7 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
   // this is the context to clean up
   context = _freeContexts[pickedContextNr];
   assert(context != 0);
-  
+
   // now compare its last GC timestamp with the last global GC stamp
   if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
     // no need yet to clean up the context
@@ -421,7 +387,7 @@ ApplicationV8::V8Context* ApplicationV8::pickContextForGc () {
 void ApplicationV8::collectGarbage () {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   assert(gc != 0);
-  
+
   // this flag will be set to true if we timed out waiting for a GC signal
   // if set to true, the next cycle will use a reduced wait time so the GC
   // can be performed more early for all dirty contexts. The flag is set
@@ -444,9 +410,10 @@ void ApplicationV8::collectGarbage () {
 
       if (_dirtyContexts.empty()) {
         uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
-        // we'll wait for a signal or a timeout 
+
+        // we'll wait for a signal or a timeout
         gotSignal = guard.wait(waitTime);
-        
+
         // use a reduced wait time in the next round because we seem to be idle
         // the reduced wait time will allow use to perfom GC for more contexts
         useReducedWait = ! gotSignal;
@@ -506,7 +473,7 @@ void ApplicationV8::collectGarbage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::disableActions () {
-  _actionPath.clear();
+  _useActions = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -530,12 +497,10 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
   options["JAVASCRIPT Options:help-admin"]
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
-  ;
-
-  options["JAVASCRIPT Options:help-admin"]
     ("javascript.action-directory", &_actionPath, "path to the JavaScript action directory")
     ("javascript.modules-path", &_startupModules, "one or more directories separated by (semi-) colons")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing alternate JavaScript startup scripts")
+    ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 }
 
@@ -545,11 +510,20 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
-  LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
-
+  
+  // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
-    // use a minimum of 1 second for GC
     _gcFrequency = 1;
+  }
+
+  // check the startup modules
+  if (_startupModules.empty()) {
+    LOGGER_FATAL << "no 'javascript.modules-path' has been supplied, giving up";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
+  }
+  else {
+    LOGGER_INFO << "using JavaScript modules path '" << _startupModules << "'";
   }
 
   // set up the startup loader
@@ -557,6 +531,7 @@ bool ApplicationV8::prepare () {
     LOGGER_INFO << "using built-in JavaScript startup files";
 
     _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    _startupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
     _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
     _startupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     _startupLoader.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
@@ -569,10 +544,22 @@ bool ApplicationV8::prepare () {
   }
 
   // set up action loader
-  if (! _actionPath.empty()) {
-    LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";
+  if (_useActions) {
+    if (_actionPath.empty()) {
+      LOGGER_FATAL << "no 'javascript.action-directory' has been supplied, giving up";
+      TRI_FlushLogging();
+      exit(EXIT_FAILURE);
+    }
+    else {
+      LOGGER_INFO << "using JavaScript action files at '" << _actionPath << "'";
 
-    _actionLoader.setDirectory(_actionPath);
+      _actionLoader.setDirectory(_actionPath);
+    }
+  }
+
+  if (_v8Options.size() > 0) {
+    LOGGER_INFO << "using V8 options '" << _v8Options << "'";
+    v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
   }
 
   // setup instances
@@ -593,14 +580,6 @@ bool ApplicationV8::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::isStartable () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool ApplicationV8::start () {
   _gcThread = new V8GcThread(this);
   _gcThread->start();
@@ -612,15 +591,7 @@ bool ApplicationV8::start () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::isStarted () {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationV8::beginShutdown () {
+void ApplicationV8::close () {
   _stopping = 1;
   _contextCondition.broadcast();
 }
@@ -629,12 +600,12 @@ void ApplicationV8::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::shutdown () {
-  _contextCondition.broadcast();
-  usleep(1000);
-  _gcThread->stop();
-  _gcThread->join();
+void ApplicationV8::stop () {
 
+  // stop GC
+  _gcThread->shutdown();
+
+  // shutdown all action threads
   for (size_t i = 0;  i < _nrInstances;  ++i) {
     shutdownV8Instance(i);
   }
@@ -662,8 +633,9 @@ void ApplicationV8::shutdown () {
 /// @brief prepares a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::prepareV8Instance (size_t i) {
+bool ApplicationV8::prepareV8Instance (const size_t i) {
   static char const* files[] = { "common/bootstrap/modules.js",
+                                 "common/bootstrap/monkeypatches.js",
                                  "common/bootstrap/print.js",
                                  "common/bootstrap/errors.js",
                                  "server/ahuacatl.js",
@@ -697,7 +669,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   TRI_InitV8VocBridge(context->_context, _vocbase);
   TRI_InitV8Queries(context->_context);
 
-  if (! _actionPath.empty()) {
+  if (_useActions) {
     TRI_InitV8Actions(context->_context, this);
   }
 
@@ -706,11 +678,11 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   TRI_InitV8Shell(context->_context);
 
   // load all init files
-  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = _startupLoader.loadScript(context->_context, files[i]);
+  for (size_t j = 0;  j < sizeof(files) / sizeof(files[0]);  ++j) {
+    bool ok = _startupLoader.loadScript(context->_context, files[j]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[i] << "'";
+      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[j] << "'";
 
       context->_context->Exit();
       context->_isolate->Exit();
@@ -720,8 +692,40 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
     }
   }
 
+
+  if (i == 0) {
+    LOGGER_DEBUG << "running database version check";
+
+    const string script = _startupLoader.buildScript(JS_server_version_check);
+
+    // special check script to be run just once in first thread (not in all)
+    v8::HandleScope scope;
+    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context->_context,
+                                                               v8::String::New(script.c_str()),
+                                                               v8::String::New("version-check.js"),
+                                                               false);
+  
+    if (! TRI_ObjectToBoolean(result)) {
+      if (_performUpgrade) {
+        LOGGER_FATAL << "Database upgrade failed. Please inspect the logs from the upgrade procedure";
+      }
+      else {
+        LOGGER_FATAL << "Database version check failed. Please start the server with the --upgrade option";
+      }
+
+      context->_context->Exit();
+      context->_isolate->Exit();
+      delete context->_locker;
+
+      return false;
+    }
+
+    LOGGER_DEBUG << "database version check passed";
+  }
+
   // load all actions
-  if (! _actionPath.empty()) {
+  if (_useActions) {
     bool ok = _actionLoader.executeAllScripts(context->_context);
 
     if (! ok) {
@@ -747,9 +751,9 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   context->_context->Exit();
   context->_isolate->Exit();
   delete context->_locker;
-  
-  context->_lastGcStamp = TRI_microtime();
 
+  context->_lastGcStamp = TRI_microtime();
+  
   LOGGER_TRACE << "initialised V8 context #" << i;
 
   _freeContexts.push_back(context);

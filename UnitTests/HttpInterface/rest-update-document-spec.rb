@@ -57,7 +57,7 @@ describe ArangoDB do
 
 	doc.code.should eq(400)
 	doc.parsed_response['error'].should eq(true)
-	doc.parsed_response['errorNum'].should eq(600)
+	doc.parsed_response['errorNum'].should eq(1203)
 	doc.parsed_response['code'].should eq(400)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
@@ -332,6 +332,76 @@ describe ArangoDB do
 	doc.code.should eq(200)
 	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 	doc.parsed_response['error'].should eq(false)
+
+	did2 = doc.parsed_response['_id']
+	did2.should be_kind_of(String)
+	did2.should eq(did)
+	
+	rev2 = doc.parsed_response['_rev']
+	rev2.should be_kind_of(Integer)
+	rev2.should_not eq(rev)
+
+	ArangoDB.delete(location)
+
+	ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "create a document and update it, waitForSync URL param=false" do
+	cmd = "/_api/document?collection=#{@cid}&waitForSync=false"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = ArangoDB.post(cmd, :body => body)
+
+	doc.code.should eq(201)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	did = doc.parsed_response['_id']
+	rev = doc.parsed_response['_rev']
+
+	# update document
+	cmd = "/_api/document/#{did}"
+	body = "{ \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_put("#{prefix}-sync-false", cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+	did2 = doc.parsed_response['_id']
+	did2.should be_kind_of(String)
+	did2.should eq(did)
+	
+	rev2 = doc.parsed_response['_rev']
+	rev2.should be_kind_of(Integer)
+	rev2.should_not eq(rev)
+
+	ArangoDB.delete(location)
+
+	ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "create a document and update it, waitForSync URL param=true" do
+	cmd = "/_api/document?collection=#{@cid}&waitForSync=true"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = ArangoDB.post(cmd, :body => body)
+
+	doc.code.should eq(201)
+
+	location = doc.headers['location']
+	location.should be_kind_of(String)
+
+	did = doc.parsed_response['_id']
+	rev = doc.parsed_response['_rev']
+
+	# update document
+	cmd = "/_api/document/#{did}"
+	body = "{ \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_put("#{prefix}-sync-true", cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.parsed_response['error'].should eq(false)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
 	did2 = doc.parsed_response['_id']
 	did2.should be_kind_of(String)

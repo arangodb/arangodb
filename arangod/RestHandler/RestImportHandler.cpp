@@ -29,9 +29,10 @@
 
 #include "Basics/StringUtils.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/JsonContainer.h"
-#include "VocBase/simple-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -94,7 +95,7 @@ string const& RestImportHandler::queue () {
 HttpHandler::status_e RestImportHandler::execute () {
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = request->requestType();
+  HttpRequest::HttpRequestType type = _request->requestType();
 
   // prepare logging
   static LoggerData::Task const logCreate(DOCUMENT_IMPORT_PATH + " [create]");
@@ -108,7 +109,10 @@ HttpHandler::status_e RestImportHandler::execute () {
   }
 
   _timing << *task;
+#ifdef TRI_ENABLE_LOGGER
+  // if ifdef is not used, the compiler will complain
   LOGGER_REQUEST_IN_START_I(_timing);
+#endif
 
   // execute one of the CRUD methods
   bool res = false;
@@ -117,7 +121,7 @@ HttpHandler::status_e RestImportHandler::execute () {
     case HttpRequest::HTTP_REQUEST_POST: {
         // extract the import type
         bool found;
-        string documentType = request->value("type", found);
+        string documentType = _request->value("type", found);
         
         if (found && documentType == "documents") {
           res = createByArray();  
@@ -167,8 +171,10 @@ HttpHandler::status_e RestImportHandler::execute () {
 bool RestImportHandler::createByArray () {
   size_t numCreated = 0;
   size_t numError = 0;
+  size_t numEmpty = 0;
+  const bool forceSync = false;
   
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -179,7 +185,7 @@ bool RestImportHandler::createByArray () {
 
   // extract the collection name
   bool found;
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -189,36 +195,33 @@ bool RestImportHandler::createByArray () {
   }
   
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
-    
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "Could not use collection");
+  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
+  
+  int res = ca.use();
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
     return false;
   }
 
   // .............................................................................
   // inside write transaction
   // .............................................................................
-
-  _documentCollection->beginWrite(_documentCollection);
+  
+  WriteTransaction trx(&ca);
 
   size_t start = 0;
   size_t next = 0;
   string line;
   
-  string body(request->body(), request->bodySize());
+  string body(_request->body(), _request->bodySize());
 
   while (next != string::npos && start < body.size()) {
     next = body.find('\n', start);
@@ -231,17 +234,17 @@ bool RestImportHandler::createByArray () {
       start = next + 1;      
     }
 
+    StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
+      ++numEmpty;
       continue;
     }
-    
-    //LOGGER_TRACE << "line = " << line;
     
     TRI_json_t* values = parseJsonLine(line);
 
     if (values) {      
       // now save the document
-      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false, forceSync);
       if (mptr._did != 0) {
         ++numCreated;
       }
@@ -252,29 +255,22 @@ bool RestImportHandler::createByArray () {
       
     }
     else {
-      LOGGER_WARNING << "no JSON data in line: " << (line);            
+      LOGGER_WARNING << "no valid JSON data in line " << line;            
       ++numError;
     }
-            
   }
 
-  _documentCollection->endWrite(_documentCollection);
+  trx.end();
   
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // release collection and free json
-  releaseCollection();
-
   // generate result
-  generateDocumentsCreated(numCreated, numError);
+  generateDocumentsCreated(numCreated, numError, numEmpty);
   
   return true;
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
@@ -291,8 +287,10 @@ bool RestImportHandler::createByArray () {
 bool RestImportHandler::createByList () {
   size_t numCreated = 0;
   size_t numError = 0;
+  size_t numEmpty = 0;
+  const bool forceSync = false;
   
-  vector<string> const& suffix = request->suffix();
+  vector<string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
@@ -303,7 +301,7 @@ bool RestImportHandler::createByList () {
 
   // extract the collection name
   bool found;
-  string collection = request->value("collection", found);
+  string collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -313,27 +311,28 @@ bool RestImportHandler::createByList () {
   }
   
   // shall we create the collection?
-  char const* valueStr = request->value("createCollection", found);
+  char const* valueStr = _request->value("createCollection", found);
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // shall we reuse document and revision id?
-  valueStr = request->value("useId", found);
+  valueStr = _request->value("useId", found);
   bool reuseId = found ? StringUtils::boolean(valueStr) : false;
 
   size_t start = 0;
-  string body(request->body(), request->bodySize());
+  string body(_request->body(), _request->bodySize());
   size_t next = body.find('\n', start);
   
   if (next == string::npos) {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "No JSON list in second line found");
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON list in second line found");
     return false;            
   }
   
   TRI_json_t* keys = 0;
     
   string line = body.substr(start, next);
+  StringUtils::trimInPlace(line, "\r\n\t ");
 
   // get first line
   if (line != "") { 
@@ -341,54 +340,50 @@ bool RestImportHandler::createByList () {
     keys = parseJsonLine(line);
     
     if (!keys) {
-      LOGGER_WARNING << "No JSON data in first line: " << line;
+      LOGGER_WARNING << "no JSON data in first line";
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "No JSON data found");
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "no JSON string list in first line found");
       return false;      
     }
     
     if (keys->_type == TRI_JSON_LIST) {
       if (!checkKeys(keys)) {
-        LOGGER_WARNING << "No JSON string list in first line found: " << line;
+        LOGGER_WARNING << "no JSON string list in first line found";
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
         generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "No JSON string list in first line found");
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "no JSON string list in first line found");
         return false;        
       }
       start = next + 1;
     }
     else {
-      LOGGER_WARNING << "Wrong JSON data in first line: " << line;
+      LOGGER_WARNING << "no JSON string list in first line found";
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "Wrong JSON data");
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "no JSON string list in first line found");
       return false;      
     }        
   }
   else {
-    LOGGER_WARNING << "No JSON data in first line: " << line;
+    LOGGER_WARNING << "no JSON string list in first line found";
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "No JSON data found");
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string list in first line found");
     return false;      
   }        
       
   // find and load collection given by name or identifier
-  int res = useCollection(collection, create);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    releaseCollection();
-    
+  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
+  
+  int res = ca.use();
+  if (TRI_ERROR_NO_ERROR != res) {
     if (keys) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     }
- 
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_ARANGO_CORRUPTED_DATAFILE,
-                  "Could not use collection");
+    generateCollectionError(collection, res);
     return false;
   }
 
@@ -396,7 +391,7 @@ bool RestImportHandler::createByList () {
   // inside write transaction
   // .............................................................................
 
-  _documentCollection->beginWrite(_documentCollection);
+  WriteTransaction trx(&ca);
 
   while (next != string::npos && start < body.length()) {
     next = body.find('\n', start);
@@ -408,8 +403,10 @@ bool RestImportHandler::createByList () {
       line = body.substr(start, next - start);
       start = next + 1;      
     }
-
+    
+    StringUtils::trimInPlace(line, "\r\n\t ");
     if (line.length() == 0) {
+      ++numEmpty;
       continue;
     }
     
@@ -422,17 +419,16 @@ bool RestImportHandler::createByList () {
       // got a json document or list
       
       // build the json object from the list
-      json = createJsonObject(keys, values);
+      json = createJsonObject(keys, values, line);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
         
       if (!json) {
-        LOGGER_WARNING << "no valid JSON data in line: " << (line);            
         ++numError;          
         continue;
       }
 
       // now save the document
-      TRI_doc_mptr_t const mptr = _documentCollection->createJson(_documentCollection, TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false);
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, json, 0, reuseId, false, forceSync);
       if (mptr._did != 0) {
         ++numCreated;
       }
@@ -443,7 +439,7 @@ bool RestImportHandler::createByList () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);      
     }
     else {
-      LOGGER_WARNING << "no JSON data in line: " << (line);            
+      LOGGER_WARNING << "no valid JSON data in line: " << line;            
       ++numError;
     }
             
@@ -453,54 +449,61 @@ bool RestImportHandler::createByList () {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
   }
 
-  _documentCollection->endWrite(_documentCollection);
+  trx.end();
   
   // .............................................................................
   // outside write transaction
   // .............................................................................
 
-  // release collection and free json
-  releaseCollection();
-
   // generate result
-  generateDocumentsCreated(numCreated, numError);
+  generateDocumentsCreated(numCreated, numError, numEmpty);
   
   return true;
 }
 
 
+void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError, size_t numEmpty) {
+  _response = createResponse(HttpResponse::CREATED);
+  _response->setContentType("application/json; charset=utf-8");
 
-void RestImportHandler::generateDocumentsCreated (size_t numCreated, size_t numError) {
-
-  response = new HttpResponse(HttpResponse::CREATED);
-
-  response->setContentType("application/json; charset=utf-8");
-
-  response->body()
+  _response->body()
     .appendText("{\"error\":false,\"created\":")
     .appendInteger(numCreated)
     .appendText(",\"errors\":")
     .appendInteger(numError)
+    .appendText(",\"empty\":")
+    .appendInteger(numEmpty)
     .appendText("}");
 }
 
 TRI_json_t* RestImportHandler::parseJsonLine (const string& line) {
   char* errmsg = 0;
   TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, line.c_str(), &errmsg);
+
+  if (errmsg != 0) {
+    // must free this error message, otherwise we'll have a memleak
+    TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
+  }
   return json;
 }
 
-TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values) {
+TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t* keys, TRI_json_t* values, const string& line) {
   
   if (values->_type != TRI_JSON_LIST) {
+    LOGGER_WARNING << "no valid JSON list data in line: " << line;            
     return 0;
   }
   
   if (keys->_value._objects._length !=  values->_value._objects._length) {
+    LOGGER_WARNING << "wrong number of JSON values in line: " << line;            
     return 0;
   }
   
   TRI_json_t* result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (result == 0) {
+    LOGGER_ERROR << "out of memory";
+    return 0;
+  }
   
   size_t n = keys->_value._objects._length;
 

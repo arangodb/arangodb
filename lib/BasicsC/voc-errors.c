@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <BasicsC/common.h>
-#include "lib/BasicsC/voc-errors.h"
+#include "./lib/BasicsC/voc-errors.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup VocError
@@ -54,7 +54,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
-  REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maixaml size of journal too small");
+  REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maixmal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
@@ -66,6 +66,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
@@ -74,6 +75,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number out of range");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
+  REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_NOT_FOUND, "unable to open collection '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
   REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");
@@ -92,22 +94,6 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_FAIL_CALLED, "FAIL(%s) called");
   REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
-  REG_ERROR(ERROR_SESSION_USERHANDLER_URL_INVALID, "expecting <prefix>/user/<username>");
-  REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CREATE_USER, "cannot create user");
-  REG_ERROR(ERROR_SESSION_USERHANDLER_ROLE_NOT_FOUND, "role not found");
-  REG_ERROR(ERROR_SESSION_USERHANDLER_NO_CREATE_PERMISSION, "no permission to create user with that role");
-  REG_ERROR(ERROR_SESSION_USERHANDLER_USER_NOT_FOUND, "user not found");
-  REG_ERROR(ERROR_SESSION_USERHANDLER_CANNOT_CHANGE_PW, "cannot manage password for user");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID1, "expecting POST <prefix>/session");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID2, "expecting GET <prefix>/session/<sid>");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID3, "expecting PUT <prefix>/session/<sid>/<method>");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_URL_INVALID4, "expecting DELETE <prefix>/session/<sid>");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_SESSION_UNKNOWN, "unknown session");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_SESSION_NOT_BOUND, "session has not bound to user");
-  REG_ERROR(ERROR_SESSION_SESSIONHANDLER_CANNOT_LOGIN, "cannot login with session");
-  REG_ERROR(ERROR_SESSION_USERSHANDLER_INVALID_URL, "expecting GET <prefix>/users");
-  REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_INVALID_URL, "expecting /directory/sessionvoc/<token>");
-  REG_ERROR(ERROR_SESSION_DIRECTORYSERVER_NOT_CONFIGURED, "directory server is not configured");
   REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
   REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
   REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
@@ -141,6 +127,9 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_DOCUMENT_ATTRIBUTE_MISSING, "bitarray index insertion warning - attribute missing in document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING, "bitarray index update warning - attribute missing in revised document");
   REG_ERROR(WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING, "bitarray index remove failure - item missing in index");
+  REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE, "bitarray index insert failure - document attribute value unsupported in index");
+  REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES, "bitarray index creation failure - one or more index attributes are duplicated.");
+  REG_ERROR(ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES, "bitarray index creation failure - one or more index attribute values are duplicated.");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

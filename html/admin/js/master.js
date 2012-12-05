@@ -10,25 +10,26 @@ var welcomeMSG = ""
 + "  \\__,_|_|  \\__,_|_| |_|\\__, |\\___/|___/_| |_| \n"
 + "                        |___/                  \n"
 + "                                               \n"
-+ "Welcome to arangosh Copyright (c) 2012 triAGENS GmbH."
++ "Welcome to arangosh Copyright (c) 2012 triAGENS GmbH.";
 
-
+var existingCharts; 
+var statDivCount;  
 // documents global vars
-var collectionCount;
-var totalCollectionCount;
+var collectionTotalPages;
 var collectionCurrentPage;  
+var globalDocumentCopy = { };
 var globalCollectionName;  
-var globalCollectionID;
-var globalCollectionRev;
 var checkCollectionName; 
 var printedHelp = false; 
 var open = false;
 var rowCounter = 0; 
 var shArray = []; 
 
+// a static cache
+var CollectionTypes = { };
+
 $(document).ready(function() {       
 showCursor();
-
 //hide incomplete functions 
 $("#uploadFile").attr("disabled", "disabled");
 $("#uploadFileImport").attr("disabled", "disabled");
@@ -92,6 +93,60 @@ $("#documents_first").live('click', function () {
 $("#documents_last").live('click', function () {
   createLastPagination("#documentsTable"); 
 });
+
+///////////////////////////////////////////////////////////////////////////////
+//statistics live click buttons close 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsClose").live('click', function () {
+  var divID = $(this).parent().parent();
+  var chart = $(this).parent().parent().attr('id');
+  var chartID = JSON.parse(chart.replace(/\D/g, '' ));
+  var todelete; 
+
+  $.each(existingCharts, function(x, i ) {
+    var tempid = i.id; 
+    if (tempid == chartID) {
+      todelete = x; 
+    } 
+  });  
+  
+  existingCharts.splice(todelete, 1);  
+  $("#chartBox"+chartID).remove();   
+
+  stateSaving(); 
+  
+  if (temptop > 150 && templeft > 20) {
+    templeft = templeft - 10; 
+    temptop = temptop - 10;
+  }
+
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistic settings 
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsSettings").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  $(chartID).hide(); 
+  $(settingsID).fadeIn(); 
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// show statistics charts
+///////////////////////////////////////////////////////////////////////////////
+
+$(".statsCharts").live('click', function () {
+  var chartID = $(this).parent().next("div");
+  var settingsID = $(this).parent().next("div").next("div");
+  stateSaving(); 
+  updateChartBoxes(); 
+  $(settingsID).hide(); 
+  $(chartID).fadeIn(); 
+});
+
 ///////////////////////////////////////////////////////////////////////////////
 /// html customizations  
 ///////////////////////////////////////////////////////////////////////////////
@@ -123,21 +178,21 @@ $("#tabs").tabs({
 /// checks for a login user cookie, creates new sessions if null  
 ///////////////////////////////////////////////////////////////////////////////
 
-if ($.cookie("sid") == null) {
-  $('#logoutButton').hide();
-  $('#movetologinButton').show();
-  $.ajax({
-    type: "POST",
-    url: "/_admin/user-manager/session/",
-    contentType: "application/json",
-    processData: false, 
-    success: function(data) {
-      $.cookie("sid", data.sid);
-      },
-      error: function(data) {
-      }
-  });
-}
+// if ($.cookie("sid") == null) {
+//   $('#logoutButton').hide();
+//   $('#movetologinButton').show();
+//   $.ajax({
+//     type: "POST",
+//     url: "/_admin/user-manager/session/",
+//     contentType: "application/json",
+//     processData: false, 
+//     success: function(data) {
+//       $.cookie("sid", data.sid);
+//       },
+//       error: function(data) {
+//       }
+//   });
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// if user exists, then:   
@@ -167,8 +222,8 @@ var collectionTable = $('#collectionsTableID').dataTable({
     "bAutoWidth": false, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sWidth":"150px", "bSortable":false, "sClass":"leftCell"}, {"sWidth": "200px"}, {"sWidth": "200px"}, null, {"sWidth": "200px"}, {"sWidth": "200px", "sClass":"rightCell"} ],
-    "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 4, 5 ] }],
+    "aoColumns": [{"sWidth":"150px", "bSortable":false, "sClass":"leftCell"}, {"sWidth": "200px"}, {"sWidth": "200px"}, {"sWidth": "150px"}, null, {"sWidth": "100px"}, {"sWidth": "200px"}, {"sWidth": "200px", "sClass":"rightCell"} ],
+    "aoColumnDefs": [{ "sClass": "alignRight", "aTargets": [ 6, 7 ] }],
     "oLanguage": {"sEmptyTable": "No collections"}
 });
 
@@ -206,7 +261,7 @@ var newDocumentTable = $('#NewDocumentTableID').dataTable({
     "bAutoWidth": true, 
     "iDisplayLength": -1, 
     "bJQueryUI": true, 
-    "aoColumns": [{"sClass":"read_only center leftCell","bSortable": false, "sWidth": "30px"}, 
+    "aoColumns": [{ "sClass":"read_only center leftCell","bSortable": false, "sWidth": "30px"}, 
                   {"sClass":"writeable", "bSortable": false, "sWidth":"250px" }, 
                   {"sClass":"writeable rightCell", "bSortable": false },
                   {"bVisible": false } ] 
@@ -344,6 +399,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').show(); 
       createnav("Collections"); 
       highlightNav("#nav1");
+      highlightNavButton("#Collections"); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -436,13 +492,10 @@ var logTable = $('#logTableID').dataTable({
           $('#documentEditView').show();
           $('#documentEditSourceView').hide();
           $.each(data, function(key, val) {
-            if (key == '_id') {
-              documentEditTable.fnAddData(["&nbsp;", key, val, JSON.stringify(val)]);
+            if (isSystemAttribute(key)) {
+              documentEditTable.fnAddData(["", key, value2html(val, true), JSON.stringify(val)]);
             }
-            else if (key == '_rev') {
-              documentEditTable.fnAddData(["&nbsp;", key, val, JSON.stringify(val)]);
-            }
-            else if (key != '_rev' && key != '_id') {
+            else {
               documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
             }
           });
@@ -460,23 +513,11 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash.substr(0, 16) == "#showCollection?") {
       $('#nav1').removeClass('highlighted'); 
-      var collectionID = location.hash.substr(16, location.hash.length); 
+      var found = location.hash.match(/\?(\d+)(=.+)?$/);
+      if (! found) {
+        throw "invalid URL";
+      }
       globalAjaxCursorChange();
-      $.ajax({
-        type: "GET",
-        url: "/_api/collection/" + collectionID + "/count", 
-        contentType: "application/json",
-        processData: false,
-        async: false,  
-        success: function(data) {
-          globalCollectionName = data.name;
-          test = data.name; 
-          collectionCount = data.count; 
-          $('#nav2').text(globalCollectionName);
-        },
-        error: function(data) {
-        }
-      });
 
       $('#nav1').text('Collections');
       $('#nav1').attr('href', '#');
@@ -487,29 +528,10 @@ var logTable = $('#logTableID').dataTable({
       $("#nav2").removeClass("arrowbg");
       $("#nav1").addClass("arrowbg");
 
-      $.ajax({
-        type: 'PUT',
-        url: '/_api/simple/all/',
-        data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
-        contentType: "application/json",
-        success: function(data) {
-          $.each(data.result, function(k, v) {
-            documentsTable.fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + "</pre>"]);  
-          });
-        $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-        showCursor();
-        },
-        error: function(data) {
-          
-        }
-      });
-      documentsTable.fnClearTable(); 
       hideAllSubDivs();
       $('#collectionsView').hide();
       $('#documentsView').show();
-      totalCollectionCount = Math.ceil(collectionCount / 10); 
-      collectionCurrentPage = 1;
-      $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
+      loadDocuments(found[1], collectionCurrentPage);
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -566,6 +588,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#logView').show();
       createnav ("Logs"); 
+      highlightNavButton("#Logs"); 
       showCursor();
     }
 
@@ -574,10 +597,17 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
     else if (location.hash == "#status") {
+      $('#graphBox').empty(); 
+      stateReading(); 
       hideAllSubDivs(); 
       $('#collectionsView').hide();
       $('#statusView').show();
-      createnav ("Status"); 
+      createnav ("Statistics"); 
+      highlightNavButton("#Status"); 
+      makeDraggableAndResizable(); 
+      //TODO
+      createChartBoxes(); 
+      updateGraphs(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -590,6 +620,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#configView').show();
       createnav ("Configuration"); 
+      highlightNavButton("#Config"); 
       var switcher = "primary";
       var insertType;  
 
@@ -681,24 +712,6 @@ var logTable = $('#logTableID').dataTable({
         error: function(data) {
         }
       });
-/* 
-      var content={"Menue":{"Haha":"wert1", "ahha":"wert2"}, "Favoriten":{"top10":"content"},"Test":{"testing":"hallo 123 test"}}; 
-      $("#configContent").empty();
-
-      $.each(content, function(data) {
-        $('#configContent').append('<div class="customToolbar">' + data + '</div>');
-        $.each(content[data], function(key, val) {
-          if (switcher == "primary") {
-            $('#configContent').append('<a class="toolbar_left toolbar_primary">' + key + '</a><a class="toolbar_right toolbar_primary">' + val + '</a><br>');
-          switcher = "secondary"; 
-          }
-          else if (switcher == "secondary") {
-            $('#configContent').append('<a class="toolbar_left toolbar_secondary">' + key + '</a><a class="toolbar_right toolbar_secondary">' + val + '</a><br>');
-          switcher = "primary"; 
-          }
-        });         
-      }); 
-*/
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -707,10 +720,10 @@ var logTable = $('#logTableID').dataTable({
 
     else if (location.hash == "#query") {
       hideAllSubDivs(); 
-      $('#queryContent').val('');
       $('#collectionsView').hide();
       $('#queryView').show();
       createnav ("Query"); 
+      highlightNavButton("#Query"); 
       $('#queryContent').focus();
     }
 
@@ -724,6 +737,7 @@ var logTable = $('#logTableID').dataTable({
       $('#collectionsView').hide();
       $('#avocshView').show();
       createnav ("ArangoDB Shell"); 
+      highlightNavButton("#AvocSH"); 
       $('#avocshContent').focus();
       if (printedHelp === false) {
         print(welcomeMSG + require("arangosh").HELP);
@@ -744,6 +758,7 @@ var logTable = $('#logTableID').dataTable({
       $('#nav1').text('Collections');
       $('#nav2').text('Create new collection');
       $('#nav1').attr('class', 'arrowbg'); 
+      highlightNavButton("#Collections"); 
 
       hideAllSubDivs();
       $('#collectionsView').hide();
@@ -759,61 +774,58 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#saveEditedDocButton').live('click', function () {
-    
     if (tableView == true) {
       var data = documentEditTable.fnGetData();
       var result = {}; 
-      var collectionID; 
+      var documentID; 
 
       for (row in data) {
         var row_data = data[row];
         if ( row_data[1] == "_id" ) {
-          collectionID = row_data[3]; 
+          documentID = JSON.parse(row_data[3]); 
         } 
         else {
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
-        
       }
 
       $.ajax({
         type: "PUT",
-        url: "/_api/document/" + JSON.parse(collectionID),
+        url: "/_api/document/" + documentID,
         data: JSON.stringify(result), 
         contentType: "application/json",
         processData: false, 
         success: function(data) {
           tableView = true;
-          var collID = JSON.parse(collectionID).split("/");  
+          var collID = documentID.split("/");  
           window.location.href = "#showCollection?" + collID[0];  
         },
         error: function(data) {
-          alert(JSON.stringify(data)); 
+          alert(getErrorMessage(data));
         }
       });
     }
     else {
       try {
-        var collectionID; 
+        var documentID = globalDocumentCopy._id;
         var boxContent = $('#documentEditSourceBox').val();
-        collectionID = globalCollectionID;  
         boxContent = stateReplace(boxContent);
         parsedContent = JSON.parse(boxContent); 
 
         $.ajax({
           type: "PUT",
-          url: "/_api/document/" + collectionID,
+          url: "/_api/document/" + documentID,
           data: JSON.stringify(parsedContent), 
           contentType: "application/json",
           processData: false, 
           success: function(data) {
             tableView = true;
             $('#toggleEditedDocButton').val('Edit Source'); 
-            var collID = collectionID.split("/");  
+            var collID = documentID.split("/");  
             window.location.href = "#showCollection?" + collID[0];  
           },
           error: function(data) {
-           alert(JSON.stringify(data)); 
+           alert(getErrorMessage(data));
           }
         });
       }
@@ -859,65 +871,57 @@ var logTable = $('#logTableID').dataTable({
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#saveNewDocButton').live('click', function () {
+    var post;
+
+    var found = location.hash.match(/\?(\d+)=.+$/);
+    if (! found) {
+      throw "invalid URL";
+    }
+
+    var collectionID = found[1];
     
     if (tableView == true) {
       var data = newDocumentTable.fnGetData();
       var result = {}; 
-      var collectionID = location.hash.substr(12, location.hash.length); 
-      var collID = collectionID.split("="); 
 
       for (row in data) {
         var row_data = data[row];
         result[row_data[1]] = JSON.parse(row_data[3]);
       }
 
-      $.ajax({
-        type: "POST",
-        url: "/_api/document?collection=" + collID, 
-        data: JSON.stringify(result), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          tableView = true;
-          window.location.href = "#showCollection?" + collID;  
-        },
-        error: function(data) {
-          alert(JSON.stringify(data)); 
-        }
-      });
+      post = JSON.stringify(result);
     }
     else {
+      var boxContent = $('#NewDocumentSourceBox').val();
+      var jsonContent = JSON.parse(boxContent);
+      $.each(jsonContent, function(row1, row2) {
+        if ( row1 == '_id') {
+          collectionID = row2; 
+        } 
+      });
 
       try {
-        var collectionID = location.hash.substr(12, location.hash.length); 
-        var collID = collectionID.split("="); 
-        var boxContent = $('#NewDocumentSourceBox').val();
-        var jsonContent = JSON.parse(boxContent);
-        $.each(jsonContent, function(row1, row2) {
-          if ( row1 == '_id') {
-            collectionID = row2; 
-          } 
-        });
-
-        $.ajax({
-          type: "POST",
-          url: "/_api/document?collection=" + collID, 
-          data: JSON.stringify(jsonContent), 
-          contentType: "application/json",
-          processData: false, 
-          success: function(data) {
-            tableView = true;
-            window.location.href = "#showCollection?" + collID;  
-          },
-          error: function(data) {
-            alert(JSON.stringify(data)); 
-          }
-        });
+        post = JSON.stringify(jsonContent);
       }
       catch(e) {
         alert("Please make sure the entered value is a valid json string."); 
       }
     }
+
+    $.ajax({
+      type: "POST",
+      url: "/_api/" + collectionApiType(collectionID) + "?collection=" + collectionID, 
+      data: post,
+      contentType: "application/json",
+      processData: false, 
+      success: function(data) {
+        tableView = true;
+        window.location.href = "#showCollection?" + collectionID;  
+      },
+      error: function(data) {
+        alert(getErrorMessage(data));
+      }
+    });
   });
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -948,11 +952,13 @@ var logTable = $('#logTableID').dataTable({
           var row_data = content[row];
           result[row_data[1]] = JSON.parse(row_data[3]);
         }
-        
-        globalCollectionRev = result._rev; 
-        globalCollectionID = result._id; 
-        delete result._id;
-        delete result._rev;
+
+        var copies = { }; // copy system attributes
+        for (var a in systemAttributes()) {
+          copies[a] = result[a];
+          delete result[a];
+        }
+        globalDocumentCopy = copies;
 
         var myFormattedString = FormatJSON(result);
         $('#documentEditSourceBox').val(myFormattedString); 
@@ -969,10 +975,14 @@ var logTable = $('#logTableID').dataTable({
         parsedContent = JSON.parse(boxContent); 
         documentEditTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
-            documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>',key, value2html(val), JSON.stringify(val)]);
-          });
-            documentEditTable.fnAddData(['', "_id", globalCollectionID, JSON.stringify(globalCollectionID)]);
-            documentEditTable.fnAddData(['', "_rev", globalCollectionRev, JSON.stringify(globalCollectionRev)]);
+          documentEditTable.fnAddData(['<button class="enabled" id="deleteEditedDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"</button>', key, value2html(val), JSON.stringify(val)]);
+        });
+
+        for (var a in systemAttributes()) {
+          if (globalDocumentCopy[a] != undefined) {
+            documentEditTable.fnAddData(['', a, value2html(globalDocumentCopy[a], true), JSON.stringify(globalDocumentCopy[a]) ]);
+          }
+        }
   
         documentTableMakeEditable ('#documentEditTableID'); 
         $('#documentEditTableView').toggle();
@@ -1013,74 +1023,74 @@ var logTable = $('#logTableID').dataTable({
 /// perform logout 
 ///////////////////////////////////////////////////////////////////////////////
 
-  $('#logoutButton').live('click', function () {
-      $.ajax({
-        type: "PUT",
-        url: '/_admin/user-manager/session/' + sid + '/logout',
-        data: JSON.stringify({'user': currentUser}), 
-        contentType: "application/json",
-        processData: false, 
-        success: function(data) {
-          $('#loginWindow').show();
-          $('#logoutButton').hide();
-          $('#movetologinButton').show();
-          $('#activeUser').text('Guest!');  
-          $.cookie("rights", null);
-          $.cookie("user", null);
-          currentUser = null;
-          window.location.href = ""; 
-        },
-        error: function(data) {
-        }
-      });
-  });
+//   $('#logoutButton').live('click', function () {
+//       $.ajax({
+//         type: "PUT",
+//         url: '/_admin/user-manager/session/' + sid + '/logout',
+//         data: JSON.stringify({'user': currentUser}), 
+//         contentType: "application/json",
+//         processData: false, 
+//         success: function(data) {
+//           $('#loginWindow').show();
+//           $('#logoutButton').hide();
+//           $('#movetologinButton').show();
+//           $('#activeUser').text('Guest!');  
+//           $.cookie("rights", null);
+//           $.cookie("user", null);
+//           currentUser = null;
+//           window.location.href = ""; 
+//         },
+//         error: function(data) {
+//         }
+//       });
+//   });
 
 ///////////////////////////////////////////////////////////////////////////////
 /// perform login  
 ///////////////////////////////////////////////////////////////////////////////
 
-  $('#loginButton').live('click', function () {
-    var username = $('#usernameField').val();
-    var password = $('#passwordField').val();
-    var shapassword;
+//   $('#loginButton').live('click', function () {
+//     var username = $('#usernameField').val();
+//     var password = $('#passwordField').val();
+//     var shapassword;
 
-    if (password != '') {
-      shapassword = $.sha256(password);   
-    }
-    else {
-      shapassword = password;
-    }
+//     if (password != '') {
+//       shapassword = $.sha256(password);   
+//     }
+//     else {
+//       shapassword = password;
+//     }
 
-    $.ajax({
-      type: "PUT",
-      url: '/_admin/user-manager/session/' + sid + '/login',
-      data: JSON.stringify({'user': username, 'password': shapassword}), 
-      contentType: "application/json",
-      processData: false, 
-      success: function(data) {
-        currentUser = $.cookie("user"); 
-        $('#loginWindow').hide();
-        $('#logoutButton').show();
-        $('#movetologinButton').hide();
-        $('#activeUser').text(username + '!');  
-        $.cookie("rights", data.rights);
-        $.cookie("user", data.user);
+//     $.ajax({
+//       type: "PUT",
+//       url: '/_admin/user-manager/session/' + sid + '/login',
+//       data: JSON.stringify({'user': username, 'password': shapassword}), 
+//       contentType: "application/json",
+//       processData: false, 
+//       success: function(data) {
+//         currentUser = $.cookie("user"); 
+//         $('#loginWindow').hide();
+//         $('#logoutButton').show();
+//         $('#movetologinButton').hide();
+//         $('#activeUser').text(username + '!');  
+//         $.cookie("rights", data.rights);
+//         $.cookie("user", data.user);
 
-        /*animation*/
-        $('#movetologinButton').text("Login");
-        $('#footerSlideContent').animate({ height: '25px' });
-        $('#footerSlideButton').css('backgroundPosition', 'top left');
-        open = false;
+//         /*animation*/
+//         $('#movetologinButton').text("Login");
+//         $('#footerSlideContent').animate({ height: '25px' });
+//         $('#footerSlideButton').css('backgroundPosition', 'top left');
+//         open = false;
 
-        return false; 
-      },
-      error: function(data) {
-        alert(JSON.stringify(data)); 
-        return false; 
-      }
-    });
-    return false; 
-  });
+//         return false; 
+//       },
+//       error: function(data) {
+//         alert(JSON.stringify(data)); 
+//         return false; 
+//       }
+//     });
+//     return false; 
+//   });
 
 ///////////////////////////////////////////////////////////////////////////////
 /// toggle button for source / table - new document view 
@@ -1118,11 +1128,11 @@ var logTable = $('#logTableID').dataTable({
 
         newDocumentTable.fnClearTable(); 
         $.each(parsedContent, function(key, val) {
-          if (key == '_id' || key == '_rev') {
-            newDocumentTable.fnAddData(["", key, value2html(val), JSON.stringify(val)]);
+          if (isSystemAttribute(key)) {
+            newDocumentTable.fnAddData(["", key, value2html(val, true), JSON.stringify(val)]);
           }
           else {
-              newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
+            newDocumentTable.fnAddData(['<button class="enabled" id="deleteNewDocButton"><img src="/_admin/html/media/icons/delete_icon16.png" width="16" height="16"></button>',key, value2html(val), JSON.stringify(val)]);
           }
         });
         documentTableMakeEditable ('#NewDocumentTableID'); 
@@ -1336,29 +1346,29 @@ var lastFormatQuestion = true;
   });
 
 ///////////////////////////////////////////////////////////////////////////////
-/// delete a document
+/// edit / delete a document
 ///////////////////////////////////////////////////////////////////////////////
 
   $('#documentsView tr td button').live('click', function () {
     var aPos = documentsTable.fnGetPosition(this.parentElement);
     var aData = documentsTable.fnGetData(aPos[0]);
-    var row = $(this).closest("tr").get(0);
     var documentID = aData[1];
    
     if (this.id == "deleteDoc") { 
-    try { 
-      $.ajax({ 
-        type: 'DELETE', 
-        contentType: "application/json",
-        url: "/_api/document/" + documentID 
-      });
-    }
+      try { 
+        $.ajax({ 
+          type: 'DELETE', 
+          contentType: "application/json",
+          url: "/_api/document/" + documentID 
+        });
+      }
+      catch(e) {
+        alert(e); 
+      }
 
-    catch(e) {
-      alert(e); 
-    }
-
-    documentsTable.fnDeleteRow(documentsTable.fnGetPosition(row));
+      var row = $(this).closest("tr").get(0);
+      documentsTable.fnDeleteRow(documentsTable.fnGetPosition(row));
+      loadDocuments(globalCollectionName, collectionCurrentPage);
     }
 
     if (this.id == "editDoc") {
@@ -1375,24 +1385,30 @@ var lastFormatQuestion = true;
       $('#subCenterView').hide();
       $('#collectionsView').show();
       window.location.href = "#";
+      highlightNavButton ("#Collections");
     }
-    if (this.id == "Logs") {
+    else if (this.id == "Logs") {
       window.location.href = "#logs";
+      highlightNavButton ("#Logs");
     }
-    if (this.id == "Status") {
+    else if (this.id == "Status") {
       window.location.href = "#status";
+      highlightNavButton ("#Status");
     }
-    if (this.id == "Configuration") {
+    else if (this.id == "Configuration") {
       window.location.href = "#config";
+      highlightNavButton ("#Configuration");
     }
-    if (this.id == "Documentation") {
+    else if (this.id == "Documentation") {
       return 0; 
     }
-    if (this.id == "Query") {
+    else if (this.id == "Query") {
       window.location.href = "#query";
+      highlightNavButton ("#Query");
     }
-    if (this.id == "AvocSH") {
+    else if (this.id == "AvocSH") {
       window.location.href = "#avocsh";
+      highlightNavButton ("#AvocSH");
     }
   });
 
@@ -1423,8 +1439,7 @@ var lastFormatQuestion = true;
           drawCollectionsTable(); 
         },
         error: function(data) {
-          var temp = JSON.parse(data.responseText);
-          alert("Error: " + JSON.stringify(temp.errorMessage));  
+          alert(getErrorMessage(data));
         }
       });
   });
@@ -1443,11 +1458,12 @@ var lastFormatQuestion = true;
 
   $('#saveNewCollection').live('click', function () {
       var wfscheck = $('input:radio[name=waitForSync]:checked').val();
-      var systemcheck = $('input:radio[name=isSystem]:checked').val();
+      var type = $('input:radio[name=type]:checked').val(); // collection type
       var collName = $('#createCollName').val(); 
       var collSize = $('#createCollSize').val();
       var journalSizeString;
- 
+      var isSystem = (collName.substr(0, 1) === '_');
+
       if (collSize == '') { 
         journalSizeString = ''; 
       }
@@ -1463,7 +1479,7 @@ var lastFormatQuestion = true;
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":"' + collName + '", "waitForSync":' + JSON.parse(wfscheck) + ',"isSystem":' + JSON.parse(systemcheck)+ journalSizeString + '}',
+        data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfscheck) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + type + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -1474,13 +1490,7 @@ var lastFormatQuestion = true;
           drawCollectionsTable(); 
         },
         error: function(data) {
-          try {
-            var responseText = JSON.parse(data.responseText);
-            alert(responseText.errorMessage);
-          }
-          catch (e) {
-            alert(data.responseText);
-          }
+          alert(getErrorMessage(data));
         }
       });
   }); 
@@ -1635,14 +1645,15 @@ function drawCollectionsTable () {
         tempStatus = "new born collection";
       }
       else if (tempStatus == 2) {
-        tempStatus = "<font color=orange>unloaded</font>";
+        tempStatus = "unloaded";
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
-        val.id, val.name, tempStatus, "-", "-"]);
+        val.id, val.name, collectionType(val), tempStatus, "", "-", "-"]);
        }
       else if (tempStatus == 3) {
-        tempStatus = "<font color=green>loaded</font>";
+        tempStatus = "<font color=\"green\">loaded</font>";
         var alive; 
         var size; 
+        var waitForSync;
       
         $.ajax({
           type: "GET",
@@ -1653,22 +1664,23 @@ function drawCollectionsTable () {
           success: function(data) {
             size = data.figures.journals.fileSize + data.figures.datafiles.fileSize; 
             alive = data.figures.alive.count; 
+            waitForSync = data.waitForSync;
           },
           error: function(data) {
           }
         });
         
         items.push(['<button class="enabled" id="delete"><img src="/_admin/html/media/icons/round_minus_icon16.png" width="16" height="16" title="Delete"></button><button class="enabled" id="unload"><img src="/_admin/html/media/icons/not_connected_icon16.png" width="16" height="16" title="Unload"></button><button class="enabled" id="showdocs"><img src="/_admin/html/media/icons/zoom_icon16.png" width="16" height="16" title="Show Documents"></button><button class="enabled" id="edit" title="Edit"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', 
-        val.id, val.name, tempStatus,  bytesToSize(size), alive]);
+        val.id, val.name, collectionType(val), tempStatus,  waitForSync ? "yes" : "no", bytesToSize(size), alive]);
       }
       else if (tempStatus == 4) {
         tempStatus = "in the process of being unloaded"; 
         items.push(['<button id="delete"><img src="/_admin/html/media/icons/round_minus_icon16_nofunction.png" class="nofunction" width="16" height="16"></button><button class="enabled" id="load"><img src="/_admin/html/media/icons/connect_icon16.png" width="16" height="16"></button><button><img src="/_admin/html/media/icons/zoom_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button><button><img src="/_admin/html/media/icons/doc_edit_icon16_nofunction.png" width="16" height="16" class="nofunction"></img></button>', 
-        val.id, val.name, tempStatus, "", ""]);
+        val.id, val.name, collectionType(val), tempStatus, "", "-", "-"]);
       }
       else if (tempStatus == 5) {
         tempStatus = "deleted"; 
-        items.push(["", val.id, val.name, tempStatus, "", ""]);
+        items.push(["", val.id, val.name, collectionType(val), tempStatus, "", "-", "-"]);
       }
 /*      else {
         tempStatus = "corrupted"; 
@@ -1692,7 +1704,7 @@ function documentTableMakeEditable (tableID) {
       $(this).removeClass('writeable');
       i = 0; 
     }
-    if (this.innerHTML == "_id" || this.innerHTML == "_rev") {
+    if (isSystemAttribute(this.innerHTML)) {
       $(this).removeClass('writeable');
       i = 1; 
     }
@@ -1764,6 +1776,7 @@ function escaped (value) {
 ///////////////////////////////////////////////////////////////////////////////
 
 function getTypedValue (value) {
+  value = value.replace(/(^\s+|\s+$)/g, '');
   if (value == 'true') {
     return true;
   }
@@ -1796,8 +1809,17 @@ function getTypedValue (value) {
   // fallback: value is a string
   value = value + '';
   
-  if (value.substr(0, 1) == '"' && value.substr(-1) == '"' ) {
-    value = value.substr(1, value.length-2);
+  if (value !== '' && (value.substr(0, 1) != '"' || value.substr(-1) != '"')) {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw "error";
+  }
+   
+  try {
+    value = JSON.parse(value);
+  }
+  catch (e) {
+    alert("You have entered an invalid string value. Please review and adjust it.");
+    throw e;
   }
   return value;
 }
@@ -1806,23 +1828,27 @@ function getTypedValue (value) {
 /// checks type fo typed cell value 
 ///////////////////////////////////////////////////////////////////////////////
 
-function value2html (value) {
-  var checked = typeof(value); 
+function value2html (value, isReadOnly) {
+  var typify = function (value) {
+  var checked = typeof(value);
   switch(checked) { 
     case 'number': 
-    return ("<a class=\"sh_number\">" + value + "</a>");
+      return ("<a class=\"sh_number\">" + value + "</a>");
     case 'string': 
-    return ("<a class=\"sh_string\">"  + escaped(value) + "</a>");
+      return ("<a class=\"sh_string\">"  + escaped(value) + "</a>");
     case 'boolean': 
-    return ("<a class=\"sh_keyword\">" + value + "</a>");
+      return ("<a class=\"sh_keyword\">" + value + "</a>");
     case 'object':
-    if (value instanceof Array) {
-      return ("<a class=\"sh_array\">" + escaped(JSON.stringify(value)) + "</a>");
-    }
-    else {
-      return ("<a class=\"sh_object\">"+ escaped(JSON.stringify(value)) + "</a>");
-    }
+      if (value instanceof Array) {
+        return ("<a class=\"sh_array\">" + escaped(JSON.stringify(value)) + "</a>");
+      }
+      else {
+        return ("<a class=\"sh_object\">"+ escaped(JSON.stringify(value)) + "</a>");
+      }
   }
+  };
+
+  return (isReadOnly ? "(read-only) " : "") + typify(value);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1925,57 +1951,36 @@ function createLogTable(loglevel) {
   });
 }
 
-function createPrevDocPagination() {
+function createFirstPagination () {
   if (collectionCurrentPage == 1) {
     return 0; 
   }
-  var prevPage = JSON.parse(collectionCurrentPage) -1; 
-  var offset = prevPage * 10 - 10; 
 
-  $('#documentsTableID').dataTable().fnClearTable();
-  $.ajax({
-    type: 'PUT',
-    url: '/_api/simple/all/',
-    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
-    contentType: "application/json",
-    success: function(data) {
-      $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
-      });
-      $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-    },
-    error: function(data) {        
-    }
-  });
-  collectionCurrentPage = prevPage; 
-  $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
+  loadDocuments(globalCollectionName, 1);
 }
-function createNextDocPagination () {
 
-  if (collectionCurrentPage == totalCollectionCount) {
+function createLastPagination () {
+  if (collectionCurrentPage == collectionTotalPages) {
+    return 0;
+  }
+
+  loadDocuments(globalCollectionName, collectionTotalPages);
+}
+
+function createPrevDocPagination() {
+  if (collectionCurrentPage <= 1) {
     return 0; 
   }
-   
-  var nextPage = JSON.parse(collectionCurrentPage) +1; 
-  var offset =  collectionCurrentPage * 10; 
+  
+  loadDocuments(globalCollectionName, collectionCurrentPage - 1);
+}
 
-  $('#documentsTableID').dataTable().fnClearTable();
-  $.ajax({
-    type: 'PUT',
-    url: '/_api/simple/all/',
-    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
-    contentType: "application/json",
-    success: function(data) {
-      $.each(data.result, function(k, v) {
-        $("#documentsTableID").dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>']);  
-      });
-      $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-    },
-    error: function(data) {        
-    }
-  });
-  collectionCurrentPage = nextPage; 
-  $('#documents_status').text("Showing page " + collectionCurrentPage + " of " + totalCollectionCount); 
+function createNextDocPagination () {
+  if (collectionCurrentPage >= collectionTotalPages) {
+    return 0; 
+  }
+  
+  loadDocuments(globalCollectionName, collectionCurrentPage + 1);
 }
 
 function createPrevPagination(checked) {
@@ -2043,33 +2048,6 @@ function cutByResolution (string) {
   return escaped(string);
 }
 
-function createFirstPagination () {
-
-  if (collectionCurrentPage == 1) {
-    return 0; 
-  }
-
-  $('#documentsTableID').dataTable().fnClearTable();
-  
-  $.ajax({
-    type: 'PUT',
-    url: '/_api/simple/all/',
-    data: '{"collection":"' + globalCollectionName + '","skip":0,"limit":10}', 
-    contentType: "application/json",
-    success: function(data) {
-      $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
-      });
-      $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-      collectionCurrentPage = 1;
-      $('#documents_status').text("Showing page 1 of " + totalCollectionCount); 
-    },
-    error: function(data) {
-      
-    }
-  });
-}
-
 function createLastLogPagination (tableid) {
   var totalPages = Math.ceil(currentAmount / 10); 
   var offset = (totalPages * 10) - 10; 
@@ -2092,33 +2070,6 @@ function createLastLogPagination (tableid) {
     });
     currentPage = totalPages;  
     $(currentTableID + '_status').text("Showing page " + currentPage + " of " + totalPages); 
-  });
-
-}
-
-function createLastPagination () {
-  if (totalCollectionCount == collectionCurrentPage) {
-    return 0
-  }
-
-  $('#documentsTableID').dataTable().fnClearTable();
-  
-  var offset = totalCollectionCount * 10 - 10; 
-  $.ajax({
-    type: 'PUT',
-    url: '/_api/simple/all/',
-    data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
-    contentType: "application/json",
-    success: function(data) {
-      $.each(data.result, function(k, v) {
-        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class=prettify>' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
-      });
-      $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-      collectionCurrentPage = totalCollectionCount;
-      $('#documents_status').text("Showing page " + totalCollectionCount + " of " + totalCollectionCount); 
-    },
-    error: function(data) {
-    }
   });
 }
 
@@ -2311,40 +2262,7 @@ function stateReplace (value) {
 }
 
 $('#submitDocPageInput').live('click', function () {
-  try {
-    var enteredPage = JSON.parse($('#docPageInput').val());
-    if (enteredPage > 0 && enteredPage <= totalCollectionCount) {
-      $('#documentsTableID').dataTable().fnClearTable();
-  
-      var offset = enteredPage * 10 - 10; 
-      $.ajax({
-        type: 'PUT',
-        url: '/_api/simple/all/',
-        data: '{"collection":"' + globalCollectionName + '","skip":' + offset + ',"limit":10}', 
-        contentType: "application/json",
-        success: function(data) {
-          $.each(data.result, function(k, v) {
-            $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify">' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
-          });
-          $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
-          collectionCurrentPage = enteredPage;
-          $('#documents_status').text("Showing page " + enteredPage + " of " + totalCollectionCount); 
-          return false; 
-        },
-        error: function(data) {
-        }
-      });
-    }
-    
-    else { 
-      return false; 
-    }  
-  }
-
-  catch(e) {
-    alert("No valid Page"); 
-  return false; 
-  }
+  loadDocuments(globalCollectionName, parseInt($('#docPageInput').val()));
   return false; 
 });
 
@@ -2434,4 +2352,688 @@ function validate(evt) {
     theEvent.returnValue = false;
     if(theEvent.preventDefault) theEvent.preventDefault();
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw hours statistics 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawConnections (placeholder, granularity) {
+  var array = [];
+  $.ajax({
+    type: "GET",
+    url: "/_admin/connection-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+      if (data.start.length == data.httpDuration.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          array.push([data.start[i]*1000,data.httpDuration.count[i]]);
+        }
+
+        var options = {
+          legend: {
+            margin: 0,  
+            show: true,
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            lines: { show: true, 
+                     steps: false, 
+                     fill: true, 
+                     lineWidth: 0.5, 
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.6 } ] } 
+            },
+            points: { show: false },
+            label: "Connections"
+          }, 
+          xaxis: {
+            mode: "time",
+            timeformat: "%h:%M", 
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          grid: { hoverable: true, autoHighlight: false },
+          colors: ["#9EAF5A"],
+          grid: {
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true, 
+          }
+        };
+
+        $.plot($(placeholder), [array], options);
+
+        $(placeholder).qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+        $(placeholder).bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+          }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// draw requests (granularity) 
+///////////////////////////////////////////////////////////////////////////////
+
+function drawRequests (placeholder, granularity) {
+  var arraySent = [];
+  var arrayReceived = [];
+  var boxCount = placeholder.replace(/\D/g, '' );  
+ 
+  $.ajax({
+    type: "GET",
+    url: "/_admin/request-statistics?granularity=" + granularity,
+    contentType: "application/json",
+    processData: false, 
+    success: function(data) {
+ 
+      if (data.start.length == data.bytesSent.count.length && data.start.length == data.bytesReceived.count.length) {
+        var counter = 0; 
+        for (i=0; i < data.start.length; i++) {
+          arraySent.push([data.start[i]*1000,data.bytesSent.mean[i]]);
+          arrayReceived.push([data.start[i]*1000,data.bytesReceived.mean[i]]);
+        }
+        var stack = 0, bars = false, lines = false, steps = false;
+        var options = {
+          legend: {
+            show: true,
+            margin: 0,  
+            noColumns: 0, 
+            backgroundOpacity: 0.4 
+          }, 
+          series: {
+            lines: { show: true, 
+                     steps: false,  
+                     fill: true, 
+                     lineWidth: 0.5,
+                     fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.7 } ] } 
+            },
+          }, 
+          xaxis: {
+            mode: "time",
+            timeformat: "%h:%M", 
+            twelveHourClock: false
+          },
+          //crosshair: { mode: "x" },
+          colors: ["#9EAF5A", "#5C3317"],
+          grid: {
+            mouseActiveRadius: 5, 
+            backgroundColor: { colors: ["#fff", "#eee"] },
+            borderWidth: 1,
+            hoverable: true 
+          }
+        };
+
+        var sent = $('input:checkbox[name=bytessent'+boxCount+']:checked').val(); 
+        var received = $('input:checkbox[name=bytesreceived'+boxCount+']:checked').val(); 
+
+        if ( sent == "on" && received == "on" ) {
+          $.plot($(placeholder), [{ label: "Bytes sent", data: arraySent}, {label: "Bytes received", data:  arrayReceived}], options);
+        }
+        else if ( sent == "on" && received == undefined ) {
+          $.plot($(placeholder), [{ label: "Bytes sent", data: arraySent}], options);
+        }   
+        else if ( sent == undefined && received == "on" ) {
+          $.plot($(placeholder), [{ label: "Bytes received", data: arrayReceived}], options);
+        }
+        else if ( sent == undefined && received == undefined ) {
+          $.plot($(placeholder), [], options);
+        }
+
+        $(placeholder).qtip({
+          prerender: true,
+          content: 'Loading...', // Use a loading message primarily
+          position: {
+            viewport: $(window), // Keep it visible within the window if possible
+            target: 'mouse', // Position it in relation to the mouse
+            adjust: { y: -30 } // ...but adjust it a bit so it doesn't overlap it.
+          },
+          show: false, // We'll show it programatically, so no show event is needed
+          style: {
+            classes: 'ui-tooltip-tipsy',
+            tip: false, 
+          }
+        });
+
+        $(placeholder).bind('plothover', function(event, coords, item) {
+          var self = $(this),
+          api = $(this).qtip(), previousPoint, content; 
+
+          if(!item) {
+            api.cache.point = false;
+            return api.hide(event);
+          }
+
+          previousPoint = api.cache.point;
+          if(previousPoint !== item.dataIndex)  {
+            api.cache.point = item.dataIndex;
+            // Setup new content
+            var date = new Date(item.datapoint[0]); 
+            var hours = date.getHours(); 
+            var minutes = date.getMinutes(); 
+            var formattedTime = hours + ':' + minutes; 
+            if (item.series.label == "Bytes received") {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[2];
+            }
+            else {
+              content = item.series.label + '(' + formattedTime + ') = ' + item.datapoint[1];
+            } 
+            // Update the tooltip content
+            api.set('content.text', content);
+            // Make sure we don't get problems with animations
+            api.elements.tooltip.stop(1, 1);
+            // Show the tooltip, passing the coordinates
+            api.show(coords);
+          }
+        });
+
+      }
+    },
+    error: function(data) {
+    }
+  });
+}
+
+function updateGraphs() {
+  if (location.hash == "#status") {
+    updateChartBoxes(); 
+    setTimeout(updateGraphs, 60000);
+  }
+  else {
+  }
+}
+
+$(document).delegate('#btnAddNewStat', 'mouseleave', function () { setTimeout(function(){ if (!ItemActionButtons.isHoverMenu) { $('#btnSaveExtraOptions').hide(); }}, 100, 1) });
+$(document).delegate('#btnSaveExtraOptions', 'mouseenter', function () { ItemActionButtons.isHoverMenu = true; });
+$(document).delegate('#btnSaveExtraOptions', 'mouseleave', function () { $('#btnSaveExtraOptions').hide(); ItemActionButtons.isHoverMenu = false; });
+ 
+var $IsHoverExtraOptionsFlag = 0;
+ 
+$(document).ready(function () {
+  $(".button").button();
+  $(".buttonset").buttonset();
+ 
+  $('#btnAddNewStat').button({ icons: { primary: "ui-icon-plusthick" } });
+  $('#btnSaveExtraOptions li').addClass('ui-corner-all ui-widget');
+  $('#btnSaveExtraOptions li').hover(
+    function () {
+      $(this).addClass('ui-state-default'); 
+    },
+    function () {  
+      $(this).removeClass('ui-state-default'); 
+    }
+  );
+  $('#btnSaveExtraOptions li').mousedown(function () { 
+    $(this).addClass('ui-state-active'); 
+  });
+  $('#btnSaveExtraOptions li').mouseup(function () { 
+    $(this).removeClass('ui-state-active'); 
+  });
+});
+ 
+var ItemActionButtons = {
+
+  isHoverMenu: false,
+ 
+  AllowDelete: function (value) { value ? $("#btnDelete").show() : $("#btnDelete").hide() },
+  AllowCancel: function (value) { value ? $("#btnCancel").show() : $("#btnCancel").hide() },
+  AllowSave: function (value) { value ? $("#btnSave").show() : $("#btnSave").hide() },
+  AllowSaveExtra: function (value) { value ? $("#btnAddNewStat").show() : $("#btnAddNewStat").hide() },
+ 
+  onDeleteClick: function () { },
+  onCancelClick: function () { },
+  onSaveClick: function () { },
+  onSaveExtraClick: function () {
+    $('#btnSaveExtraOptions').toggle();
+    var btnLeft = $('#divSaveButton').offset().left;
+    var btnTop = $('#divSaveButton').offset().top + $('#divSaveButton').outerHeight(); // +$('#divSaveButton').css('padding');
+    var btnWidth = $('#divSaveButton').outerWidth();
+    $('#btnSaveExtraOptions').css('left', btnLeft).css('top', btnTop);
+  },
+  ShowConnectionsStats: function () {
+    var chartcount = JSON.parse(statDivCount)+1; 
+    existingCharts.push({type:"connection", granularity:"minutes", top:50, left:50, id:JSON.parse(chartcount)});
+    statDivCount = chartcount; 
+    createSingleBox (chartcount, "connection"); 
+  },
+  ShowRequestsStats: function () { 
+    var chartcount = JSON.parse(statDivCount)+1; 
+    existingCharts.push({type:"request", granularity:"minutes", sent:true, received:true, top:50, left: 50, id:chartcount});
+    statDivCount = chartcount;
+    createSingleBox (chartcount, "request", true);
+  }
+}
+
+$.fn.isVisible = function() {
+  return $.expr.filters.visible(this[0]);
+};
+
+function stateSaving () {
+  $.each(existingCharts, function(v, i ) {
+    // position statesaving 
+    var tempcss = $("#chartBox"+this.id).position();  
+    // size statesaving 
+    var tempheight = $("#chartBox"+this.id).height();
+    var tempwidth = $("#chartBox"+this.id).width();
+    // granularity statesaving 
+    var grantouse = $('input[name=boxGranularity'+this.id+']:checked').val();
+
+    if (i.type == "request") {
+      var sent = $('input:checkbox[name=bytessent'+this.id+']:checked').val(); 
+      var received = $('input:checkbox[name=bytesreceived'+this.id+']:checked').val(); 
+      if ( sent == "on" ) {
+        this.sent = true; 
+      } 
+      else {
+        this.sent = false; 
+      }
+      if ( received = "on" ) {
+        this.received = true;  
+      }
+      else {
+        this.received = false; 
+      }
+    }
+ 
+    // edit obj
+    this.top = tempcss.top;
+    this.left = tempcss.left;
+    this.width = tempwidth; 
+    this.height = tempheight; 
+    this.granularity = grantouse;  
+  });
+  //write obj into local storage
+  localStorage.setItem("statobj", JSON.stringify(existingCharts)); 
+  localStorage.setItem("statDivCount", statDivCount); 
+}
+
+function stateReading () {
+
+  try { 
+    existingCharts = JSON.parse(localStorage.getItem("statobj"));  
+    statDivCount = localStorage.getItem("statDivCount");  
+    if (existingCharts != null) {
+    }
+    else {
+      existingCharts = [];
+      statDivCount = 0;  
+    }
+  }
+
+  catch (e) {
+    alert("no data:" +e); 
+  }
+}
+ 
+function createChartBoxes () {
+  $.each(existingCharts, function(v, i ) {
+    var boxCount = i.id; 
+    $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>');
+    $("#chartBox"+boxCount).css({top: i.top, left: i.left}); 
+    $("#chartBox"+boxCount).css({width: i.width, height: i.height}); 
+    $("#chartBox"+boxCount).append('<div class="greydiv"/>');
+    $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
+    $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsClose"><img width="16" height="16" src="/_admin/html/media/icons/whitedelete_icon16.png"></button>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsSettings"><img width="16" height="16" src="/_admin/html/media/icons/settings_icon16.png"></button>');
+    $("#chartBox"+boxCount+" .greydiv").append('<button class="statsCharts"><img width="16" height="16" src="/_admin/html/media/icons/whitechart_icon16.png"></button>');
+
+    $("#chartBox"+boxCount+" .placeholderBoxSettings").append('<form action="#" id="graphForm'+boxCount+'" class="radioFormat">' +
+      '<input type="radio" id="chartBox'+boxCount+'minutes" name="boxGranularity'+boxCount+'" value="minutes" checked/>' +
+      '<label for="chartBox'+boxCount+'minutes" class="cb-enable selected">Minutes</label>' +
+      '<input type="radio" id="chartBox'+boxCount+'hours" name="boxGranularity'+boxCount+'" value="hours"/>' +
+      '<label for="chartBox'+boxCount+'hours" class="cb-disable">Hours</label>' +
+      '<input type="radio" id="chartBox'+boxCount+'days" name="boxGranularity'+boxCount+'" value="days"/>' +
+      '<label for="chartBox'+boxCount+'days" class="cb-disable">Days</label>'+ 
+    '</form>'); 
+
+    $.each(i, function(key, val ) {
+      $('#chartBox'+boxCount+i.granularity).click();
+      var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
+      if ( key == "type" ) {
+          switch (val) {
+            case "connection":
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
+              drawConnections('#placeholderBox'+boxCount, grantouse); 
+              break; 
+            case "request":
+              $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+i.type+'</a><a class="statsHeaderGran">('+grantouse+')</a>');
+              $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
+                '<input id="sent'+boxCount+'" type="checkbox" name="bytessent'+boxCount+'">'+
+                '<label for="sent'+boxCount+'">Bytes sent</label>'+
+                '<br>'+
+                '<input id="received'+boxCount+'" type="checkbox" name="bytesreceived'+boxCount+'">'+
+                '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
+              '</p>');
+
+              if (i.sent == true) {
+                $('#sent'+boxCount).click(); 
+              }
+              if (i.received == true) {
+                $('#received'+boxCount).click(); 
+              } 
+
+              drawRequests('#placeholderBox'+boxCount, grantouse); 
+              break; 
+          }
+      } 
+    });
+  });
+  makeDraggableAndResizable (); 
+  $(".radioFormat").buttonset();
+}
+
+function updateChartBoxes () {
+  var boxCount; 
+  $.each(existingCharts, function(v, i ) {
+    boxCount = i.id;  
+    $.each(i, function(key, val ) {
+      var grantouse = $('input[name=boxGranularity'+boxCount+']:checked').val(); 
+      if ( key == "type" ) {
+        switch(val) { 
+          case "connection":
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
+            drawConnections('#placeholderBox'+boxCount, grantouse); 
+            break; 
+          case "request": 
+            $('#chartBox'+boxCount+' .statsHeaderGran').html("("+grantouse+")"); 
+            drawRequests('#placeholderBox'+boxCount, grantouse); 
+            break;
+        }
+      }
+    });
+  });
+}
+
+function makeDraggableAndResizable () {
+      $( ".resizable" ).resizable({
+        grid: 10, 
+        stop: function (event, ui) {
+          stateSaving(); 
+        } 
+      }); 
+      $( ".draggable" ).draggable({
+        grid: [ 10,10 ],  
+        containment: "#centerView",  
+        stop: function (event, ui) {
+          stateSaving(); 
+        }
+      }); 
+}
+
+var temptop = 150; 
+var templeft = 20; 
+
+function createSingleBox (id, val, question) {
+  var boxCount = id;  
+
+  $("#graphBox").append('<div id="chartBox'+boxCount+'" class="chartContainer resizable draggable"/>'); 
+  $("#chartBox"+boxCount).css({top: temptop, left: templeft}); 
+  $("#chartBox"+boxCount).append('<div class="greydiv"/>');
+  $("#chartBox"+boxCount).append('<div class="placeholderBox" id="placeholderBox'+boxCount+'"/>');
+  $("#chartBox"+boxCount).append('<div class="placeholderBoxSettings" id="placeholderBoxSettings'+boxCount+'" style="display:none"/>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsClose"><img width="16" height="16" src="/_admin/html/media/icons/whitedelete_icon16.png"></button>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsSettings"><img width="16" height="16" src="/_admin/html/media/icons/settings_icon16.png"></button>');
+  $("#chartBox"+boxCount+" .greydiv").append('<button class="statsCharts"><img width="16" height="16" src="/_admin/html/media/icons/whitechart_icon16.png"></button>');
+
+  $("#chartBox"+boxCount+" .placeholderBoxSettings").append('<form action="#" id="graphForm'+boxCount+'" class="radioFormat">' +
+    '<input type="radio" id="chartBox'+boxCount+'minutes" name="boxGranularity'+boxCount+'" value="minutes" checked/>' +
+    '<label for="chartBox'+boxCount+'minutes" class="cb-enable selected">Minutes</label>' +
+    '<input type="radio" id="chartBox'+boxCount+'hours" name="boxGranularity'+boxCount+'" value="hours"/>' +
+    '<label for="chartBox'+boxCount+'hours" class="cb-disable">Hours</label>' +
+    '<input type="radio" id="chartBox'+boxCount+'days" name="boxGranularity'+boxCount+'" value="days"/>' +
+    '<label for="chartBox'+boxCount+'days" class="cb-disable">Days</label>'+ 
+    '</form>'); 
+
+    switch (val) {
+      case "connection":
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
+        drawConnections('#placeholderBox'+boxCount, "minutes"); 
+        break; 
+      case "request":
+        $("#chartBox"+boxCount+" .greydiv").append('<a class="statsHeader">'+val+'</a><a class="statsHeaderGran">(minutes)</a>');
+        $("#placeholderBoxSettings"+boxCount).append('<p class="requestChoices" >' +
+          '<input id="sent'+boxCount+'" type="checkbox" checked="checked" name="bytessent'+boxCount+'">'+
+          '<label for="sent'+boxCount+'">Bytes sent</label>'+
+          '<br>'+
+          '<input id="received'+boxCount+'" checked="checked" type="checkbox" name="bytesreceived'+boxCount+'">'+
+          '<label for="idreceived'+boxCount+'" >Bytes received</label>'+          
+        '</p>');
+
+        if (question == true) {
+
+        }
+        else {
+          $('#sent'+boxCount).click(); 
+          $('#received'+boxCount).click(); 
+        }
+        drawRequests('#placeholderBox'+boxCount, "minutes"); 
+        break; 
+    }
+  $('#placeholderBoxSettings'+boxCount).append('<button id="saveChanges'+boxCount+'" class="saveChanges"></button>');
+  makeDraggableAndResizable(); 
+  $(".radioFormat").buttonset();
+  templeft = templeft + 10; 
+  temptop = temptop + 10;
+  stateSaving();  
+}
+
+function highlightNavButton (buttonID) {
+  $("#Collections").css('background-color', '#E3E3E3'); 
+  $("#Collections").css('color', '#333333'); 
+  $("#Query").css('background-color', '#E3E3E3'); 
+  $("#Query").css('color', '#333333'); 
+  $("#AvocSH").css('background-color', '#E3E3E3'); 
+  $("#AvocSH").css('color', '#333333'); 
+  $("#Logs").css('background-color', '#E3E3E3'); 
+  $("#Logs").css('color', '#333333'); 
+  $("#Status").css('background-color', '#E3E3E3'); 
+  $("#Status").css('color', '#333333'); 
+  $(buttonID).css('background-color', '#9EAF5A'); 
+  $(buttonID).css('color', 'white'); 
+}
+
+function getCollectionInfo (identifier) {
+  var collectionInfo = { };
+
+  $.ajax({
+    type: "GET",
+    url: "/_api/collection/" + identifier,
+    contentType: "application/json",
+    processData: false,
+    async: false,  
+    success: function(data) {
+      collectionInfo = data;
+    },
+    error: function(data) {
+    }
+  });
+
+  return collectionInfo;
+}
+  
+function loadDocuments (collectionName, currentPage) {
+  var documentsPerPage = 10;
+  var documentCount = 0;
+  var totalPages;
+
+  $.ajax({
+    type: "GET",
+    url: "/_api/collection/" + collectionName + "/count", 
+    contentType: "application/json",
+    processData: false,
+    async: false,  
+    success: function(data) {
+      globalCollectionName = data.name;
+      totalPages = Math.ceil(data.count / documentsPerPage);
+      documentCount = data.count; 
+      $('#nav2').text(globalCollectionName);
+    },
+    error: function(data) {
+    }
+  });
+
+  if (isNaN(currentPage) || currentPage == undefined || currentPage < 1) {
+    currentPage = 1;
+  }
+
+  if (totalPages == 0) {
+    totalPages = 1;
+  }
+
+  // set the global variables, argl!
+  collectionCurrentPage = currentPage; 
+  collectionTotalPages = totalPages;
+
+  var offset = (currentPage - 1) * documentsPerPage; // skip this number of documents
+  $('#documentsTableID').dataTable().fnClearTable();
+
+  $.ajax({
+    type: 'PUT',
+    url: '/_api/simple/all/',
+    data: '{"collection":"' + collectionName + '","skip":' + offset + ',"limit":' + String(documentsPerPage) + '}', 
+    contentType: "application/json",
+    success: function(data) {
+      $.each(data.result, function(k, v) {
+        $('#documentsTableID').dataTable().fnAddData(['<button class="enabled" id="deleteDoc"><img src="/_admin/html/media/icons/doc_delete_icon16.png" width="16" height="16"></button><button class="enabled" id="editDoc"><img src="/_admin/html/media/icons/doc_edit_icon16.png" width="16" height="16"></button>', v._id, v._rev, '<pre class="prettify" id="editDoc">' + cutByResolution(JSON.stringify(v)) + '</pre>' ]);  
+      });
+      $(".prettify").snippet("javascript", {style: "nedit", menu: false, startText: false, transparent: true, showNum: false});
+      $('#documents_status').text(String(documentCount) + " document(s), showing page " + currentPage + " of " + totalPages); 
+    },
+    error: function(data) {
+      
+    }
+  });
+
+  showCursor();
+}
+
+function systemAttributes () {
+  return {
+    '_id'            : true, 
+    '_rev'           : true, 
+    '_from'          : true, 
+    '_to'            : true, 
+    '$id'            : true 
+  };
+}
+
+function isSystemAttribute (val) {
+  var a = systemAttributes();
+  return a[val];
+}
+
+function isSystemCollection (val) {
+  return val && val.name && val.name.substr(0, 1) === '_';
+}
+
+function collectionApiType (identifier) {
+  if (CollectionTypes[identifier] == undefined) {
+    CollectionTypes[identifier] = getCollectionInfo(identifier).type;
+  }
+
+  if (CollectionTypes[identifier] == 3) {
+    return "edge";
+  }
+  return "document";
+}
+
+function collectionType (val) {
+  if (! val || val.name == '') {
+    return "-";
+  }
+
+  var type;
+  if (val.type == 2) {
+    type = "document";
+  }
+  else if (val.type == 3) {
+    type = "edge";
+  }
+  else {
+    type = "unknown";
+  }
+
+  if (isSystemCollection(val)) {
+    type += " (system)";
+  }
+
+  return type;
+}
+
+function getErrorMessage (data) {
+  if (data && data.responseText) {
+    // HTTP error
+    try {
+      var json = JSON.parse(data.responseText);
+      if (json.errorMessage) {
+        return json.errorMessage;
+      }
+    }
+    catch (e) {
+    }
+
+    return data.responseText;
+  }
+    
+  if (data && data.responseText === '') {
+    return "Could not connect to server";
+  }
+
+  if (typeof data == 'string') {
+    // other string error
+    return data;
+  }
+
+  if (data != undefined) {
+    // some other data type
+    return JSON.stringify(data);
+  }
+
+  // fallback
+  return "an unknown error occurred";
 }

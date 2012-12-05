@@ -80,7 +80,7 @@
       }
     }
 
-    if (typeof(internal.COLOR_OUTPUT) !== "undefined") {
+    if (internal.COLOR_OUTPUT) {
       internal.output(internal.COLOR_OUTPUT_RESET);
     }
 
@@ -270,8 +270,8 @@
 
         internal.printIndent(newLevel);
 
-        if (typeof(internal.COLOR_OUTPUT) !== "undefined") {
-          internal.output(internal.COLOR_OUTPUT,
+        if (internal.COLOR_OUTPUT) {
+          internal.output(internal.COLOR_OUTPUT_DEFAULT,
                           k,
                           internal.COLOR_OUTPUT_RESET, 
                           " : ");
