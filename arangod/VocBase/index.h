@@ -109,9 +109,9 @@ typedef struct TRI_index_s {
   TRI_idx_type_e _type;
   struct TRI_primary_collection_s* _collection;
 
+  TRI_vector_string_t _fields;
   bool _unique;
   bool _ignoreNull;
-  TRI_vector_string_t _fields;
 
   TRI_json_t* (*json) (struct TRI_index_s*, struct TRI_primary_collection_s const*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
@@ -123,6 +123,10 @@ typedef struct TRI_index_s {
   int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*);
   int (*update) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, struct TRI_shaped_json_s const*);
+
+  // a garbage collection function for the index
+  // NULL by default. will only be called if non-NULL
+  int (*cleanup) (struct TRI_index_s*);
 
   
   // .........................................................................................

@@ -315,9 +315,10 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
         // update old index-2 entry to insert new letter
         ZStrCxClear(&zcdelt, &ctx2a);
         ZStrCxClear(&zcdelt, &ctx2b);
-        i=ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+        i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+        // TODO: check i
         ZStrClear(zstr2b);
-        x64=ZStrBitsOut(zstr2a, 1);
+        x64 = ZStrBitsOut(zstr2a, 1);
         ZStrBitsIn(x64, 1, zstr2b);
         if(x64 == 1) { 
           // copy over the B-key into index 3 
@@ -383,6 +384,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
       ZStrCxClear(&zcdelt, &ctx2a);
       ZStrCxClear(&zcdelt, &ctx2b);
       i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
+      // TODO: check i
       ZStrClear(zstr2b);
       x64 = ZStrBitsOut(zstr2a, 1);
       ZStrBitsIn(1, 1, zstr2b);
@@ -477,6 +479,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
             ZStrCxClear(&zcdelt, &ctx2a);
             ZStrCxClear(&zcdelt, &ctx2b);
             i = ZStrTuberRead(ix->_index1, kkey1[j2 + 1], zstr2a);
+            // TODO: check i
             ZStrClear(zstr2b);
             newlet = 0;
             while (1) {

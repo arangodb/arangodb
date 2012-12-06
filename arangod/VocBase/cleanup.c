@@ -44,10 +44,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compactify interval in microseconds
+/// @brief clean interval in microseconds
 ////////////////////////////////////////////////////////////////////////////////
 
 static int const CLEANUP_INTERVAL = (1 * 1000 * 1000);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief how many cleanup iterations until shadows are cleaned
+////////////////////////////////////////////////////////////////////////////////
+
+static int const CLEANUP_SHADOW_ITERATIONS = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief how many cleanup iterations until indexes are cleaned
+////////////////////////////////////////////////////////////////////////////////
+
+static int const CLEANUP_INDEX_ITERATIONS = 5;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -174,9 +186,12 @@ static void CleanupShadows (TRI_vocbase_t* const vocbase, bool force) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CleanupVocBase (void* data) {
-  TRI_vocbase_t* vocbase = data;
+  TRI_vocbase_t* vocbase;
   TRI_vector_pointer_t collections;
+  uint64_t iterations = 0;
   
+  vocbase = data;
+  assert(vocbase);
   assert(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
@@ -187,6 +202,8 @@ void TRI_CleanupVocBase (void* data) {
     TRI_col_type_e type;
     // keep initial _state value as vocbase->_state might change during compaction loop
     int state = vocbase->_state; 
+
+    ++iterations;
 
     if (state == 2) {
       // shadows must be cleaned before collections are handled
@@ -223,15 +240,27 @@ void TRI_CleanupVocBase (void* data) {
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-      // now release the lock and maybe unload the collection or some datafiles
+      // we're the only ones that can unload the collection, so using
+      // the collection pointer outside the lock is ok
+
+      // maybe cleanup indexes, unload the collection or some datafiles
       if (TRI_IS_DOCUMENT_COLLECTION(type)) {
-        CleanupDocumentCollection((TRI_document_collection_t*) primary);
+        TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+
+        // clean indexes?
+        if (iterations % CLEANUP_INDEX_ITERATIONS == 0) {
+          document->cleanupIndexes(document);
+        }
+
+        CleanupDocumentCollection(document);
       }
     }
 
     if (vocbase->_state >= 1) {
       // server is still running, clean up unused shadows
-      CleanupShadows(vocbase, false);
+      if (iterations % CLEANUP_SHADOW_ITERATIONS == 0) {
+        CleanupShadows(vocbase, false);
+      }
 
       TRI_LockCondition(&vocbase->_cleanupCondition);
       TRI_TimedWaitCondition(&vocbase->_cleanupCondition, CLEANUP_INTERVAL);
