@@ -1628,6 +1628,7 @@ UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMM
 ################################################################################
 GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 DOXYGEN_TOC = \
+	Documentation/InstallationManual/InstallationManual.md \
 	Documentation/Manual/Home.md \
 	Documentation/UserManual/UserManual.md
 
@@ -5401,12 +5402,10 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 .PHONY: doxygen-toc
 
 doxygen-toc:
-	rm -f Doxygen/toc.doxy
-	$(MAKE) Doxygen/toc.doxy
-
-Doxygen/toc.doxy:
 	python @top_srcdir@/Documentation/Scripts/generateTOC.py $(DOXYGEN_TOC) >> Doxygen/toc.doxy.tmp
 	cmp -s Doxygen/toc.doxy Doxygen/toc.doxy.tmp || mv Doxygen/toc.doxy.tmp Doxygen/toc.doxy
+
+Doxygen/toc.doxy: doxygen-toc
 
 ################################################################################
 ### @brief doxygen

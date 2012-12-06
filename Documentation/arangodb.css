@@ -90,23 +90,6 @@
 }
 
 /* ************************************************************************** */
-/* pre                                                                        */
-/* ************************************************************************** */
-
-#content div.arangodb pre {
-  background-color: #FBFCFD !important;
-  border: 1px solid #C4CFE5 !important;
-  font-family: monospace,fixed;
-  font-size: 105%;
-  font-size: 15px;
-  line-height: 21px;
-  margin: 4px 8px 24px 2px;
-  overflow: auto;
-  padding: 4px 6px;
-  word-wrap: break-word;
-}
-
-/* ************************************************************************** */
 /* function signature                                                         */
 /* ************************************************************************** */
 
@@ -154,8 +137,34 @@
 }
 
 /* ************************************************************************** */
-/* code                                                                       */
+/* pre & code                                                                 */
 /* ************************************************************************** */
+
+#content div.arangodb pre {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
+}
+
+#content div.arangodb div.fragment {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
+}
 
 #content div.arangodb code {
   background-color: #FFFFFF !important;
@@ -166,18 +175,6 @@
   line-height: 100%;
   font-size: 16px;
   font-family: monospace,fixed;
-}
-
-#content div.arangodb div.fragment {
-  background-color: #FFFFFF !important;
-  border: 1px solid #C4CFE5 !important;
-  margin: 0px 0px 0px 0px;
-  padding: 8px 8px;
-  overflow: auto;
-  line-height: 11px;
-  font-size: 15px;
-  font-family: monospace,fixed;
-  white-space: pre;
 }
 
 /* ************************************************************************** */
