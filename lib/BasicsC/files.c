@@ -504,8 +504,22 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
 int TRI_RenameFile (char const* old, char const* filename) {
   int res;
-
+  
+#ifdef _WIN32
+  BOOL moveResult = 0; 
+  moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING); 
+  if (!moveResult) {
+    DWORD errorCode = GetLastError();
+    printf("oreste:%s:%s:%d:MoveFileA=%d\n",__FILE__,__FUNCTION__,__LINE__,errorCode);
+    printf("oreste:%s:%s:%d:old=%s:new=%s\n",__FILE__,__FUNCTION__,__LINE__,old,filename);
+    res = -1;
+  }
+  else {
+    res = 0;
+  }
+#else
   res = rename(old, filename);
+#endif
 
   if (res != 0) {
     LOG_TRACE("cannot rename file from '%s' to '%s': %s", old, filename, TRI_LAST_ERROR_STR);
@@ -541,8 +555,10 @@ bool TRI_ReadPointer (int fd, void* buffer, size_t length) {
 
   ptr = buffer;
 
+
   while (0 < length) {
     ssize_t n = TRI_READ(fd, ptr, length);
+
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -976,6 +992,7 @@ int TRI_DestroyLockFile (char const* filename) {
     return false;
   }
 
+  
   fd = TRI_OPEN(filename, O_RDWR);
 
   // ..........................................................................

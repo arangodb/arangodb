@@ -21,6 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Dr. O
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////

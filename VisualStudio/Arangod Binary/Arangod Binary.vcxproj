@@ -5,9 +5,17 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -20,12 +28,29 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -33,35 +58,82 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>arangod</TargetName>
+    <OutDir>$(SolutionDir)..\bin\windows7\</OutDir>
+    <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>arangod</TargetName>
+    <OutDir>$(SolutionDir)..\bin\windows7\</OutDir>
+    <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>arangod</TargetName>
-    <LibraryPath>Z:\local2\arango\dev\3rdParty\VisualStudio\V8\lib32;Z:\local2\arango\dev\VisualStudio\Release;Z:\local2\arango\dev\3rdParty\VisualStudio\openssl-0.9.8k-lib\lib32;Z:\local2\arango\dev\3rdParty\VisualStudio\readline-5.0-1-lib\lib;$(LibraryPath)</LibraryPath>
-    <OutDir>C:\local2\learning\c++\vc++\</OutDir>
+    <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Release;$(SSolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)..\bin\windows7\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>arangod</TargetName>
+    <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Release;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)..\bin\windows7\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl\x86\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>FD_SETSIZE=128;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\3rdParty\VisualStudio\v8\lib32;..\VisualStudio\Release;..\..\3rdParty\VisualStudio\openssl\x86\lib\static;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;history.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;getopt.lib;v8_base.lib;v8_nosnapshot.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=128;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MTd.lib;ssleay32MTd.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base_MTd.lib;v8_nosnapshot_MTd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -72,17 +144,50 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;%(PreprocessorDefinitions))</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl\x86\include;..\..\3rdParty\VisualStudio\mygetopt;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FD_SETSIZE=128;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <CompileAs>Default</CompileAs>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <StructMemberAlignment>Default</StructMemberAlignment>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;history.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\dev\3rdParty\VisualStudio\V8\lib32\;..\..\dev\3rdParty\VisualStudio\openssl\x86\lib\static\;..\..\dev\VisualStudio\Release;..\VisualStudio\Release;..\..\3rdParty\VisualStudio\openssl\x86\lib\static;..\..\3rdParty\VisualStudio\V8\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32\;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(SolutionDir)Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ShowProgress>NotSet</ShowProgress>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=128;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\mygetopt;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <CompileAs>Default</CompileAs>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <StructMemberAlignment>Default</StructMemberAlignment>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>crypt32.lib;WINMM.LIB;Ws2_32.lib;readline.lib;libeay32MT.lib;ssleay32MT.lib;arango_fe.lib;arango_v8.lib;arango.lib;regex.lib;v8_base.lib;v8_nosnapshot.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ShowProgress>NotSet</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
@@ -148,6 +253,7 @@
     <ClCompile Include="..\..\arangod\VocBase\compactor.c" />
     <ClCompile Include="..\..\arangod\VocBase\datafile.c" />
     <ClCompile Include="..\..\arangod\VocBase\document-collection.c" />
+    <ClCompile Include="..\..\arangod\VocBase\edge-collection.c" />
     <ClCompile Include="..\..\arangod\VocBase\general-cursor.c" />
     <ClCompile Include="..\..\arangod\VocBase\headers.c" />
     <ClCompile Include="..\..\arangod\VocBase\index.c" />
@@ -226,40 +332,6 @@
     <ClInclude Include="..\..\arangod\VocBase\synchroniser.h" />
     <ClInclude Include="..\..\arangod\VocBase\voc-shaper.h" />
     <ClInclude Include="..\..\arangod\VocBase\vocbase.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\3rdParty\VisualStudio\regex-2.7\regex-2.7.vcxproj">
-      <Project>{23313837-c0f8-46e2-8f16-6396d72fbf08}</Project>
-      <Private>false</Private>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
-    </ProjectReference>
-    <ProjectReference Include="..\Arango Front End Library\Arango Front End Library.vcxproj">
-      <Project>{4e48a2a8-9f42-41da-8def-6548198e8964}</Project>
-      <Private>false</Private>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
-    </ProjectReference>
-    <ProjectReference Include="..\Arango V8 Library\Arango V8 Library.vcxproj">
-      <Project>{8985f67a-a9cc-41c8-80d4-364678550f2f}</Project>
-      <Private>false</Private>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
-    </ProjectReference>
-    <ProjectReference Include="..\ArangoDB\ArangoDB.vcxproj">
-      <Project>{9fb69e35-6ade-4aad-9766-b5409c1d2595}</Project>
-      <Private>false</Private>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

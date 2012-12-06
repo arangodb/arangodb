@@ -52,11 +52,13 @@ function CompactionSuite () {
       var n = 400;
       var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
 
+      
       for (var i = 0; i < 5; ++i) {
         payload += payload;
       }
 
       internal.db._drop(cn);
+      
       internal.wait(5);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
       internal.wait(2);
@@ -77,6 +79,7 @@ function CompactionSuite () {
       assertTrue(0 < fig["journals"]["count"]);
 
       c1.truncate();
+            
       c1.unload();
       internal.wait(2);
 

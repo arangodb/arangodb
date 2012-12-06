@@ -149,8 +149,10 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
+ //printf("oreste:8000:DDDDDDDDDDDDD:actions.cpp:TRI_LookupActionVocBase:%d:[%ul]\n",__LINE__, (uint64_t)(&(ActionsLock._rwlock)));
   READ_LOCKER(ActionsLock);
 
+ //printf("oreste:8001:DDDDDDDDDDDDD:actions.cpp:TRI_LookupActionVocBase:%d:[]\n",__LINE__);
   // check if we know a callback
   vector<string> suffix = request->suffix();
 
@@ -158,12 +160,16 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
   string name = StringUtils::join(suffix, '/');
   map<string, TRI_action_t*>::iterator i = Actions.find(name);
 
+ //printf("oreste:8010:DDDDDDDDDDDDD:actions.cpp:TRI_LookupActionVocBase:%d:[]\n",__LINE__);
+
   if (i != Actions.end()) {
     return i->second;
   }
 
+ //printf("oreste:8020:DDDDDDDDDDDDD:actions.cpp:TRI_LookupActionVocBase:%d:[]\n",__LINE__);
   // find longest prefix match
   while (true) {
+ //printf("oreste:8030:DDDDDDDDDDDDD:actions.cpp:TRI_LookupActionVocBase:%d:[]\n",__LINE__);
     name = StringUtils::join(suffix, '/');
     i = PrefixActions.find(name);
 
@@ -178,6 +184,7 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
     suffix.pop_back();
   }
 
+ //printf("oreste:8040:DDDDDDDDDDDDD:actions.cpp:TRI_LookupActionVocBase:%d:[]\n",__LINE__);
   return 0;
 }
 

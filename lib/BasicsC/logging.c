@@ -407,12 +407,14 @@ static size_t GenerateMessage (char* buffer,
 
   TRI_LockSpin(&OutputPrefixLock);
 
+
   if (OutputPrefix && *OutputPrefix) {
     n = snprintf(buffer + m, size - m, "%s %s ", s, OutputPrefix);
   }
   else {
     n = snprintf(buffer + m, size - m, "%s ", s);
   }
+
 
   TRI_UnlockSpin(&OutputPrefixLock);
 
@@ -454,7 +456,7 @@ static size_t GenerateMessage (char* buffer,
   switch (level) {
     case TRI_LOG_LEVEL_FATAL: ll = "FATAL"; break;
     case TRI_LOG_LEVEL_ERROR: ll = "ERROR"; break;
-    case TRI_LOG_LEVEL_WARNING: ll = "WARNING"; break;
+    case TRI_LOG_LEVEL_WARNING: { ll = "WARNING"; break; }
     case TRI_LOG_LEVEL_INFO: ll = "INFO"; break;
     case TRI_LOG_LEVEL_DEBUG: ll = "DEBUG"; break;
     case TRI_LOG_LEVEL_TRACE: ll = "TRACE"; break;
@@ -532,6 +534,7 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t length,
                            bool copy) {
   size_t i;
+  
 
   if (! LoggingActive) {
     if (! copy) {
@@ -695,9 +698,11 @@ static void LogThread (char const* func,
   char buffer[4096];   // try a static buffer first
   int n;
 
+
   va_copy(ap2, ap);
   n = GenerateMessage(buffer, sizeof(buffer), func, file, line, level, processId, threadId, fmt, ap2);
   va_end(ap2);
+
 
   if (n == -1) {
     TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");

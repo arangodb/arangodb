@@ -55,6 +55,25 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+// .............................................................................
+// Called before anything else starts - initialises whatever is required to be
+// initalised.
+// .............................................................................
+typedef enum {
+  TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
+  TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
+}
+TRI_win_finalise_e;
+
+typedef enum {
+  TRI_WIN_INITIAL_SET_DEBUG_FLAG,
+  TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
+  TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
+}
+TRI_win_initialise_e;
+
+int finaliseWindows (const TRI_win_finalise_e, const char*);
+int initialiseWindows (const TRI_win_initialise_e, const char*);
 
 // .............................................................................
 // windows equivalent of ftruncate (the truncation of an open file) is
@@ -70,6 +89,15 @@ int ftruncate (int, long);
 
 int getpagesize (void);
 
+
+// .............................................................................
+// This function uses the CreateFile windows method rather than _open which
+// then will allow the application to rename files on the fly.
+// .............................................................................
+
+int TRI_createFile (const char* filename, int openFlags, int modeFlags);
+
+int TRI_openFile (const char* filename, int openFlags);
 
 // .............................................................................
 // the sleep function in windows is for milliseconds, on linux it is for seconds

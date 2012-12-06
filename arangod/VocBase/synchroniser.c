@@ -99,7 +99,9 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* sim) {
 
     if (synced < written) {
       worked = true;
+  //printf("oreste:CheckSyncDocumentCollection  1000:BEFORE:#############################:file=%d\n",journal->_fd);
       ok = TRI_msync(journal->_fd, journal->_mmHandle, synced, written);
+  //printf("oreste:CheckSyncDocumentCollection  1000:AFTER:#############################:file=%d\n",journal->_fd);
       ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
@@ -232,7 +234,9 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* sim
 
     if (synced < written) {
       worked = true;
+  printf("CheckSyncCompactorDocumentCollection  2000:BEFORE:#############################:file=%d\n",journal->_fd);
       ok = TRI_msync(journal->_fd, journal->_mmHandle, synced, written);
+  printf("CheckSyncCompactorDocumentCollection  2000:AFTER:#############################:file=%d\n",journal->_fd);
       ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
@@ -349,6 +353,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
+
   while (true) {
     size_t n;
     size_t i;
@@ -423,6 +428,7 @@ void TRI_SynchroniserVocBase (void* data) {
     if (state == 2) {
       break;
     }
+    
   }
 
   TRI_DestroyVectorPointer(&collections);

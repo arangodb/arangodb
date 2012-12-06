@@ -35,7 +35,11 @@
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
+var console = require("console");
+
+
 var actions = require("org/arangodb/actions");
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

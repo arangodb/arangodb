@@ -1,3 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LocalDebuggerCommandArguments>--server.endpoint tcp://127.0.0.1:9000 --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-authentication true --server.disable-admin-interface true --log.level info  --javascript.action-directory "Z:\local2\arango\dev\js\actions\system"  --javascript.modules-path "Z:\local2\arango\dev\js\server\modules;Z:\local2\arango\dev\js\common\modules"</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LocalDebuggerCommandArguments>--server.endpoint tcp://127.0.0.1:9000 --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-authentication true --server.disable-admin-interface true --log.level info  --javascript.action-directory "Z:\local2\arango\dev\js\actions\system"  --javascript.modules-path "Z:\local2\arango\dev\js\server\modules;Z:\local2\arango\dev\js\common\modules" --server.threads 1 --scheduler.threads 1</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>$(TargetDir)</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerDebuggerType>Auto</LocalDebuggerDebuggerType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LocalDebuggerCommandArguments>--log.level debug --server.endpoint tcp://127.0.0.1:9000 --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-authentication true --server.disable-admin-interface true  --javascript.action-directory "Z:\local2\arango\dev\js\actions\system"  --javascript.modules-path "Z:\local2\arango\dev\js\server\modules;Z:\local2\arango\dev\js\common\modules" --server.threads 16 --scheduler.threads 16</LocalDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LocalDebuggerWorkingDirectory>$(TargetDir)</LocalDebuggerWorkingDirectory>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>

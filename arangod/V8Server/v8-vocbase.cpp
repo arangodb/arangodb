@@ -1245,6 +1245,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     TRI_InitParameterCollection(vocbase, &parameter, name.c_str(), collectionType, effectiveSize);
   }
 
+
   TRI_voc_cid_t cid = 0;
   
   // extract collection id
@@ -1267,6 +1268,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, cid);
 
   if (collection == 0) {
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_errno(), "cannot create collection", true)));
   }
 
@@ -2467,7 +2469,8 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("expecting string for <querystring>")));
   }
   string queryString = TRI_ObjectToString(queryArg);
-
+  printf("oreste:queryString=%s\n",queryString.c_str());
+  
   AhuacatlContextGuard context(vocbase, queryString);
   if (! context.valid()) {
     v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY);
@@ -2970,15 +2973,55 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 ///
 /// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
 ///
-/// Creates a bitarray index on all documents using attributes as paths to
-/// the fields. At least one attribute and one set of possible values must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
+/// Creates a bitarray index on documents using attributes as paths to
+/// the fields (field1,..., fieldn). A value (value1,...,valuen) consists of
+/// an array of possible values that the field can take. At least one field 
+/// and one set of possible values must be given. 
+
+/// All documents, which do not have <b>all</b> of the attribute paths are 
+/// ignored (that is, are not part of the bitarray index, they are however 
+/// stored within the collection). A document which contains all of the attribute 
+/// paths yet has one or more values which are <b>not</b> part of the defined 
+/// range of values will be rejected and the document will not inserted 
+/// within the collection. Note that, if a bitarray index is created subsequent to 
+/// any documents inserted in the given collection, then the creation of the
+/// index will fail if one or more documents are rejected (due to
+/// attribute values being outside the designated range).
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// @verbinclude fluent14
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either 0 or 1. Any document which has the 
+/// attribute "x" defined and does not have a value of 0 or 1 will be rejected
+/// and therefore not inserted within the collection. Documents without the
+/// attribute "x" defined will not take part in the index.
+/// @verbinclude shell_index-bitarray-01
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either 0,1 or 'other'. Any document which has the 
+/// attribute "x" defined will take part in the index. Documents without the
+/// attribute "x" defined will not take part in the index.
+/// @verbinclude shell_index-bitarray-02
+///
+/// In the example below we create a bitarray index with two fields. Field "x"
+/// can have the values of either 0 or 1; while field "y" can have the values
+/// of 2 or "a" . A document which does not have <b>both</b> attributes "x" and "y" 
+/// will not take part within the index.  A document which does have both attributes 
+/// "x" and "y" defined must have the values 0 or 1 for attribute "x" and 
+/// 2 or "a" for attribute "y", otherwise the document will not be inserted
+/// within the collection.
+/// @verbinclude shell_index-bitarray-03
+///
+/// In the example below we create a bitarray index with two fields. Field "x"
+/// can have the values of either 0 or 1; while field "y" can have the values
+/// of 2, "a" or 'other' . A document which does not have <b>both</b> attributes "x" and "y" 
+/// will not take part within the index.  A document which does have both attributes 
+/// "x" and "y" defined must have the values 0 or 1 for attribute "x" and 
+/// any value for attribute "y" will be acceptable, otherwise the document will not be inserted
+/// within the collection.
+/// @verbinclude shell_index-bitarray-04
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {

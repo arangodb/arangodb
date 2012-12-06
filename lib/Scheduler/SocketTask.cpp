@@ -80,7 +80,7 @@ SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
 
 SocketTask::~SocketTask () {
   if (commSocket != -1) {
-    TRI_CLOSE(commSocket);
+    TRI_CLOSE_SOCKET(commSocket);
     //close(commSocket);
   }
 
@@ -149,11 +149,12 @@ void SocketTask::setKeepAliveTimeout (double timeout) {
 bool SocketTask::fillReadBuffer (bool& closed) {
   closed = false;
 
-  int nr = TRI_READ(commSocket, tmpReadBuffer, READ_BLOCK_SIZE);
+
+  int nr = TRI_READ_SOCKET(commSocket, tmpReadBuffer, READ_BLOCK_SIZE, 0);
+
 
   if (nr > 0) {
     _readBuffer->appendText(tmpReadBuffer, nr);
-
     return true;
   }
   else if (nr == 0) {
@@ -164,6 +165,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
     return false;
   }
   else {
+  
     if (errno == EINTR) {
       return fillReadBuffer(closed);
     }
@@ -204,7 +206,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
     int nr = 0;
 
     if (0 < len) {
-      nr = TRI_WRITE(commSocket, _writeBuffer->begin() + writeLength, (int) len);
+      nr = TRI_WRITE_SOCKET(commSocket, _writeBuffer->begin() + writeLength, (int) len, 0);
 
       if (nr < 0) {
         if (errno == EINTR) {
@@ -406,20 +408,23 @@ bool SocketTask::hasWriteBuffer () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool SocketTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
 
   watcher = scheduler->installAsyncEvent(loop, this);
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, commSocket);
   writeWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, commSocket);
-
+  if (readWatcher == -1 || writeWatcher == -1) {
+    return false;
+  }
   // install timer for keep-alive timeout with some high default value
   keepAliveWatcher = scheduler->installTimerEvent(loop, this, 60.0);
   // and stop it immediately so it's not actively at the start
   scheduler->clearTimer(keepAliveWatcher);
 
   tid = Thread::currentThreadId();
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

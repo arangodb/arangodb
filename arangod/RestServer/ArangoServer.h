@@ -28,6 +28,10 @@
 #ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
+#ifdef _WIN32
+  #include "BasicsC/win-utils.h"
+#endif
+
 #include "Rest/AnyServer.h"
 #include "Rest/OperationMode.h"
 

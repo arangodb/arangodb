@@ -238,14 +238,20 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   }
 #endif
 
+ //printf("oreste:5000:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
+
   map<string, create_fptr> const& ii = _constructors;
   string path = request->requestPath();
   map<string, create_fptr>::const_iterator i = ii.find(path);
   void* data = 0;
 
+ //printf("oreste:5010:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[%s]\n",__LINE__,path.c_str());
+ //printf("oreste:5012:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[%d]\n",__LINE__,(i == ii.end()));
+
   // no direct match, check prefix matches
   if (i == ii.end()) {
     LOGGER_TRACE << "no direct handler found, trying prefixes";
+//printf("oreste:5300:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
 
     // find longest match
     string prefix;
@@ -267,6 +273,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
     if (prefix.empty()) {
       LOGGER_TRACE << "no prefix handler found, trying catch all";
+//printf("oreste:5400:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
 
       i = ii.find("/");
       if (i != ii.end()) {
@@ -276,6 +283,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
         size_t n = path.find_first_of('/', l);
 
         while (n != string::npos) {
+ //printf("oreste:6100:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
           request->addSuffix(path.substr(l, n - l).c_str());
           l = n + 1;
           n = path.find_first_of('/', l);
@@ -292,11 +300,13 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
     else {
       LOGGER_TRACE << "found prefix match '" << prefix << "'";
+ //printf("oreste:5500:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
 
       size_t l = prefix.size() + 1;
       size_t n = path.find_first_of('/', l);
 
       while (n != string::npos) {
+ //printf("oreste:6200:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
         request->addSuffix(path.substr(l, n - l).c_str());
         l = n + 1;
         n = path.find_first_of('/', l);
@@ -315,6 +325,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 
   // no match
   if (i == ii.end()) {
+ //printf("oreste:5800:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
     if (_notFound != 0) {
       HttpHandler* notFoundHandler = _notFound(request, data);
       notFoundHandler->setServer(this);
@@ -327,18 +338,25 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     }
   }
 
+ //printf("oreste:5900:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
+
   // look up data
   map<string, void*> const& jj = _datas;
   map<string, void*>::const_iterator j = jj.find(path);
+ //printf("oreste:5910:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
 
   if (j != jj.end()) {
     data = j->second;
+ //printf("oreste:5920:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
   }
 
   LOGGER_TRACE << "found handler for path '" << path << "'";
+ //printf("oreste:5930:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
   HttpHandler* handler = i->second(request, data);
 
+ //printf("oreste:5940:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
   handler->setServer(this);
+ //printf("oreste:5999:CCCCCCCCCCCCC:HttpHandlerFactory::createHandler:%d:[]\n",__LINE__);
 
   return handler;
 }

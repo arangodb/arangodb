@@ -1,19 +1,19 @@
 /*
  * libev select fd activity backend
  *
- * Copyright (c) 2007,2008,2009,2010 Marc Alexander Lehmann <libev@schmorp.de>
+ * Copyright (c) 2007,2008,2009,2010,2011 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
- * 
+ *
  *   1.  Redistributions of source code must retain the above copyright notice,
  *       this list of conditions and the following disclaimer.
- * 
+ *
  *   2.  Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
  * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
@@ -39,8 +39,11 @@
 
 #ifndef _WIN32
 /* for unix systems */
-# include <sys/select.h>
 # include <inttypes.h>
+# ifndef __hpux
+/* for REAL unix systems */
+#  include <sys/select.h>
+# endif
 #endif
 
 #ifndef EV_SELECT_USE_FD_SET
@@ -79,27 +82,41 @@ select_modify (EV_P_ int fd, int oev, int nev)
     int handle = fd;
     #endif
 
+    //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
     assert (("libev: fd >= FD_SETSIZE passed to fd_set-based select backend", fd < FD_SETSIZE));
 
     /* FD_SET is broken on windows (it adds the fd to a set twice or more,
      * which eventually leads to overflows). Need to call it only on changes.
      */
     #if EV_SELECT_IS_WINSOCKET
-    if ((oev ^ nev) & EV_READ)
+    if ((oev ^ nev) & EV_READ) 
     #endif
-      if (nev & EV_READ)
+    { 
+      if (nev & EV_READ) {
+      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
         FD_SET (handle, (fd_set *)vec_ri);
-      else
+      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
+      }
+      else {
+      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
         FD_CLR (handle, (fd_set *)vec_ri);
+      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
+      }
+      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
+    }
 
     #if EV_SELECT_IS_WINSOCKET
     if ((oev ^ nev) & EV_WRITE)
     #endif
-      if (nev & EV_WRITE)
+    {
+      if (nev & EV_WRITE) {
         FD_SET (handle, (fd_set *)vec_wi);
-      else
+      }
+      else {
         FD_CLR (handle, (fd_set *)vec_wi);
-
+      }
+      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
+    }
 #else
 
     int     word = fd / NFDBITS;
@@ -192,7 +209,12 @@ select_poll (EV_P_ ev_tstamp timeout)
        */
       if (errno == EINVAL)
         {
-          ev_sleep (timeout);
+          if (timeout)
+            {
+              unsigned long ms = timeout * 1e3;
+              Sleep (ms ? ms : 1);
+            }
+
           return;
         }
       #endif
@@ -266,9 +288,9 @@ select_poll (EV_P_ ev_tstamp timeout)
 int inline_size
 select_init (EV_P_ int flags)
 {
-  backend_fudge  = 0.; /* posix says this is zero */
-  backend_modify = select_modify;
-  backend_poll   = select_poll;
+  backend_mintime = 1e-6;
+  backend_modify  = select_modify;
+  backend_poll    = select_poll;
 
 #if EV_SELECT_USE_FD_SET
   vec_ri  = ev_malloc (sizeof (fd_set)); FD_ZERO ((fd_set *)vec_ri);
@@ -280,10 +302,10 @@ select_init (EV_P_ int flags)
   #endif
 #else
   vec_max = 0;
-  vec_ri  = 0; 
-  vec_ro  = 0;   
-  vec_wi  = 0; 
-  vec_wo  = 0; 
+  vec_ri  = 0;
+  vec_ro  = 0;
+  vec_wi  = 0;
+  vec_wo  = 0;
   #ifdef _WIN32
   vec_eo  = 0;
   #endif
@@ -303,5 +325,4 @@ select_destroy (EV_P)
   ev_free (vec_eo);
   #endif
 }
-
 

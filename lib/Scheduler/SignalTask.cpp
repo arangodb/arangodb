@@ -82,7 +82,7 @@ bool SignalTask::addSignal (int signal) {
 // Task methods
 // -----------------------------------------------------------------------------
 
-void SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool SignalTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
 
@@ -91,6 +91,7 @@ void SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
   for (set<int>::iterator i = signals.begin();  i != signals.end() && pos < MAX_SIGNALS;  ++i, ++pos) {
     watcher[pos] = scheduler->installSignalEvent(loop, this, *i);
   }
+  return true;
 }
 
 

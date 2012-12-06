@@ -87,7 +87,7 @@ function indexSuite() {
 
       assertEqual(3, res.length);
     },
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: get index
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +134,7 @@ function indexSuite() {
       res = internal.db._dropIndex(id);
       assertEqual(false, res);
     }
+*/    
   };
 }
 
