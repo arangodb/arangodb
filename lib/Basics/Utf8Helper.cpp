@@ -31,6 +31,7 @@
 #ifdef TRI_HAVE_ICU
 #include "unicode/normalizer2.h"
 #include "unicode/ucasemap.h"
+#include "unicode/brkiter.h"
 #else
 #include "string.h"
 #endif
@@ -66,39 +67,6 @@ Utf8Helper::~Utf8Helper () {
     delete _coll;
   }
 }
-
-/*
-int Utf8Helper::compareUtf8 (const char* left, size_t leftLength, const char* right, size_t rightLength) {
-#ifdef TRI_HAVE_ICU  
-  if (!_coll) {
-    LOGGER_ERROR << "no Collator in Utf8Helper::compareUtf8()!";
-    return 0;
-  }
-  
-  UErrorCode status = U_ZERO_ERROR;
-  int result = _coll->compareUTF8(StringPiece(left, leftLength), StringPiece(right, rightLength), status);
-  if(U_FAILURE(status)) {
-    LOGGER_ERROR << "error in Collator::compareUTF8(...): " << u_errorName(status);
-    return 0;
-  }
-  return result;  
-#else
-  if (leftLength == rightLength) {
-    return memcmp((const void*)left, (const void*)right, leftLength);
-  }
-  
-  int result = memcmp((const void*)left, (const void*)right, leftLength < rightLength ? leftLength : rightLength);
-  
-  if (result == 0) {
-    if (leftLength < rightLength) {
-      return -1;
-    }
-    return 1;
-  }
-  return result;
-#endif
-}
-*/
 
 int Utf8Helper::compareUtf8 (const char* left, const char* right) {
 #ifdef TRI_HAVE_ICU  
