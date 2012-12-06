@@ -7,6 +7,7 @@ test -d stable || mkdir stable || exit 1
 mv download/repositories/home:/fceller/* stable || exit 1
 
 rm -rf 'download'
+rm -rf 'stable/xUbuntu_10.04'
 rm -rf 'stable/CentOS_CentOS-5'
 rm -rf 'stable/RedHat_RHEL-5'
 rm -rf 'stable/SLE_10_SDK'
