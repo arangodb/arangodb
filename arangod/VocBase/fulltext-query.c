@@ -28,6 +28,7 @@
 #include "fulltext-query.h"
 
 #include "BasicsC/common.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/utf8-helper.h"
 
 // -----------------------------------------------------------------------------
@@ -59,7 +60,7 @@ char* TRI_NormaliseWordFulltextIndex (const char* word, const size_t wordLength)
   copy2 = TR_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
 
- return copy2; 
+  return copy2; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
