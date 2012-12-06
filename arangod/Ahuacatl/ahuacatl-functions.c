@@ -448,7 +448,7 @@ void TRI_FreeFunctionsAql (TRI_associative_pointer_t* functions) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_function_t* TRI_GetFunctionAql (TRI_associative_pointer_t* functions,
-                                        const char* const internalName) {
+                                        const char* internalName) {
   TRI_aql_function_t* function;
   
   function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) internalName);

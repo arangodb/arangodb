@@ -867,6 +867,7 @@ function reloadRouting () {
     defineRoute(route, storage, url, callback);
   };
 
+  
   // .............................................................................
   // loop over the routes or routes bundle
   // .............................................................................
@@ -904,6 +905,7 @@ function reloadRouting () {
   // compute the flat routes
   // .............................................................................
 
+  
   RoutingCache.flat = {};
 
   for (i = 0;  i < exports.ALL_METHODS.length;  ++i) {
@@ -917,6 +919,8 @@ function reloadRouting () {
 
     RoutingCache.flat[method] = b.concat(a);
   }
+  
+  
 }
 
 ////////////////////////////////////////////////////////////////////////////////

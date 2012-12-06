@@ -43,6 +43,46 @@ var internal = require("internal");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the graph collection
+///
+/// @FUN{@FA{graph}.create()}
+///
+/// Creates the graph system collection. 
+////////////////////////////////////////////////////////////////////////////////
+
+function createGraphCollection () {
+    var graphs = db._collection("_graphs");
+
+    if (graphs == null) {
+      try {      
+        graphs = db._create("_graphs", { isSystem: true, waitForSync: true });
+      
+        if (graphs == null) {
+          console.error("creating graphs collection '_graphs' failed");
+          return false;
+        }
+      }
+      catch (err) {
+        console.error("creating graphs collection '_graphs' exception " + err.message);
+        return false;
+      }      
+    }
+    
+    try {
+      graphs.ensureUniqueConstraint("name");
+    }
+    catch (err) {
+      console.error("creating a unique constraint failed for the _graphs collection with the message " + err.message);
+      return false;
+    }    
+
+    return true;
+    
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,6 +94,23 @@ function GraphCreationSuite() {
 /// @brief test: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      // we create the system _graph collection
+      createGraphCollection();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      // we drop the system _graph collection
+    },
+
     testCreation : function () {
       var Graph = require("graph").Graph,
         graph_name = "UnitTestsCollectionGraph",
@@ -61,8 +118,11 @@ function GraphCreationSuite() {
         edge = "UnitTestsCollectionEdge",
         graph = null;
 
+      print("oreste:shell-graph.js:testCreation:1000");
       graph = new Graph(graph_name, vertex, edge);
-
+      
+      print("oreste:shell-graph.js:testCreation:2000");
+      
       assertEqual(graph_name, graph._properties.name);
       assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
       assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
@@ -553,9 +613,9 @@ function EdgeSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(GraphCreationSuite);
-jsunity.run(GraphBasicsSuite);
-jsunity.run(VertexSuite);
-jsunity.run(EdgeSuite);
+//jsunity.run(GraphBasicsSuite);
+//jsunity.run(VertexSuite);
+//jsunity.run(EdgeSuite);
 
 return jsunity.done();
 

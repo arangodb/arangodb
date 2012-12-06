@@ -125,8 +125,10 @@ namespace triagens {
       OpenSSL_add_all_algorithms();
       ERR_load_crypto_strings();
 
+#ifdef TRI_OPENSSL_VERSION
       revision = "$Revision: OPENSSL " TRI_OPENSSL_VERSION " $";
       LOGGER_TRACE << revision;
+#endif
 
 #ifdef TRI_LIBEV_VERSION
       revision = "$Revision: LIBEV " TRI_LIBEV_VERSION " $";

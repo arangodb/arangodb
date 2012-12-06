@@ -204,6 +204,27 @@ Info::Info ()
     _prefix() {
 }
 
+Info::Info (const Info& originalInfo) {
+  _messageIdentifier._name = originalInfo._messageIdentifier._name;
+  _level                   = originalInfo._level;
+  _category                = originalInfo._category;
+  _severity                = originalInfo._severity;
+  _functional._name        = originalInfo._functional._name;
+  _peg._name               = originalInfo._peg._name;
+  _task._name              = originalInfo._task._name;
+  _position._file          = originalInfo._position._file;
+  _position._function      = originalInfo._position._function;
+  _position._line          = originalInfo._position._line;
+  _measure._unit           = originalInfo._measure._unit;
+  _measure._value          = originalInfo._measure._value;   
+  _extras.clear();
+  for (vector<Extra>::const_iterator i = originalInfo._extras.begin(); i != originalInfo._extras.end(); ++i) {
+    _extras.push_back(Extra((*i)._position, (*i)._name));  
+  } 
+  _userIdentifier._user    = originalInfo._userIdentifier._user;
+  _prefix                  = originalInfo._prefix;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////

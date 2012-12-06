@@ -50,6 +50,30 @@ using namespace triagens::arango;
 int main (int argc, char* argv[]) {
   int res = 0;
 
+#ifdef _WIN32
+
+  // ...........................................................................
+  // Call this function to do various initialistions for windows only
+  // ...........................................................................
+
+  
+  // ...........................................................................
+  // Uncomment this to call this for extended debug information.
+  // If you familiar with valgrind ... then this is not like that, however
+  // you do get some similar functionality.
+  // ...........................................................................
+  /* res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); */
+
+  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  if (res != 0) {
+    _exit(1);
+  }
+  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  if (res != 0) {
+    _exit(1);
+  }
+#endif
+
   TRIAGENS_RESULT_GENERATOR_INITIALISE(argc, argv);
   TRI_InitialiseVocBase();
 
@@ -59,10 +83,19 @@ int main (int argc, char* argv[]) {
   
   res = server.start();
 
-
+  
   // shutdown
   TRI_ShutdownVocBase();
   TRIAGENS_RESULT_GENERATOR_SHUTDOWN;
+
+#ifdef _WIN32
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // TODO: find the memory deallocation/allocation error
+  // ...........................................................................
+  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+#endif  
 
   return res;
 }

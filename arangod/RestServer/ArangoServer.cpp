@@ -70,10 +70,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
 
-#ifndef _WIN32
 #include "V8/V8LineEditor.h"
-#endif
-
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -245,15 +242,22 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(string(".arango") + string(1,TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
   // .............................................................................
-  // multi-threading scheduler and dispatcher
+  // multi-threading scheduler 
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
   _applicationScheduler->allowMultiScheduler(true);
+  
   _applicationServer->addFeature(_applicationScheduler);
+
+
+  // .............................................................................
+  // dispatcher
+  // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   _applicationServer->addFeature(_applicationDispatcher);
+
 
   // .............................................................................
   // V8 engine
@@ -302,6 +306,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
+
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
@@ -378,6 +383,7 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
+
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
@@ -394,6 +400,7 @@ void ArangoServer::buildApplicationServer () {
     exit(EXIT_FAILURE);
   }
   
+
 #ifdef TRI_HAVE_ICU  
   // .............................................................................
   // set language of default collator
@@ -494,6 +501,7 @@ void ArangoServer::buildApplicationServer () {
       exit(EXIT_FAILURE);
     }
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,8 +514,8 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // open the database
   // .............................................................................
-
   openDatabase();
+
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -546,6 +554,7 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
 
+
   // create the server
   _applicationEndpointServer->buildServers();
     
@@ -575,13 +584,16 @@ int ArangoServer::startupServer () {
   LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
   LOGGER_INFO << "Have Fun!";
 
+
   _applicationServer->wait();
+
 
   // .............................................................................
   // and cleanup
   // .............................................................................
 
   _applicationServer->stop();
+
   closeDatabase();
 
   return 0;
@@ -789,7 +801,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-#ifndef _WIN32      
         context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
         context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
         V8LineEditor console(context->_context, ".arango");
@@ -825,7 +836,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           }
         }
 
-#endif
         break;
       }
 
@@ -848,7 +858,11 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   closeDatabase();
   Random::shutdown();
 
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (!ok) {
+    EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

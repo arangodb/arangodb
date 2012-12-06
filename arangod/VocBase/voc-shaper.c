@@ -569,6 +569,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   voc_shaper_t* s;
   void* f;
 
+
   s = (voc_shaper_t*) shaper;
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
 
@@ -924,13 +925,17 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   // override wait for sync for shapes
   parameter._waitForSync = waitForSync;
 
+  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
+  
   collection = TRI_CreateShapeCollection(vocbase, path, &parameter);
+
+  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   if (collection == NULL) {
     return NULL;
   }
 
-  shaper = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false);
+  shaper = (voc_shaper_t*)(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false));
   // TODO: memory allocation might fail
   TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
   InitVocShaper(shaper, collection);

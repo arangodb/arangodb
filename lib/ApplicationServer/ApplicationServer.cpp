@@ -284,7 +284,6 @@ void ApplicationServer::setupLogging () {
       // the user specified a log file to use but it could not be created. bail out
       std::cerr << "failed to create logfile " << _logFile << std::endl;
       exit(EXIT_FAILURE);      
-
     }
   }
 #ifdef TRI_ENABLE_SYSLOG
@@ -382,6 +381,7 @@ bool ApplicationServer::parse (int argc,
   // UID and GID
   // .............................................................................
 
+
   storeRealPrivileges();
   extractPrivileges();
   dropPrivileges();
@@ -472,7 +472,7 @@ bool ApplicationServer::parse (int argc,
 
 void ApplicationServer::prepare () {
 
-  // prepare all features
+  // prepare all features - why reverse?
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
@@ -573,13 +573,11 @@ void ApplicationServer::wait () {
 
   // wait until we receive a stop signal
   while (running && _stopping == 0) {
-
     // check the parent and wait for a second
     if (! checkParent()) {
       running = false;
       break;
     }
-
     sleep(1);
   }
 }
@@ -603,6 +601,8 @@ void ApplicationServer::beginShutdown () {
 void ApplicationServer::stop () {
   beginShutdown();
 
+
+
   // close all features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
@@ -611,6 +611,7 @@ void ApplicationServer::stop () {
 
     LOGGER_TRACE << "closed server feature '" << feature->getName() << "'";
   }
+
 
   // stop all features
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
@@ -899,7 +900,8 @@ bool ApplicationServer::readConfigurationFile () {
     LOGGER_DEBUG << "no init file has been specified";
   }
 
-  // nothing has been specified on the command line regarding configuration file
+
+  // nothing has been specified on the command line regarding the user's configuration file
   if (! _userConfigFile.empty()) {
 
     // .........................................................................
@@ -973,13 +975,16 @@ bool ApplicationServer::readConfigurationFile () {
         return ok;
       }
       else {
+
         LOGGER_INFO << "no user init file '" << homeDir << "' found";
+
       }
     }
     else {
       LOGGER_DEBUG << "no user init file, " << homeEnv << " is empty";
     }
   }
+
 
   if (_systemConfigPath.empty()) {
 

@@ -401,7 +401,6 @@ int AnyServer::start () {
       WritePidFile(_pidFile, TRI_CurrentProcessId());
     }
 
-    prepareServer();
     int res = startupServer();
 
     if (! _pidFile.empty()) {

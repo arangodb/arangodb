@@ -140,7 +140,7 @@ static inline bool AddRow (TRI_aql_explain_t* const explain, TRI_json_t* value) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_json_t* GetRowProtoType (TRI_aql_explain_t* const explain,
-                                           const TRI_aql_node_type_e const type) {
+                                           const TRI_aql_node_type_e type) {
   TRI_json_t* row;
 
   row = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);

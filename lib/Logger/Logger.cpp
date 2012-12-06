@@ -189,8 +189,7 @@ static void OutputMachine (string const& text, LoggerData::Info const& info) {
             switch (info._category) {
               case TRI_LOG_CATEGORY_FATAL: line.appendText("FATAL"); break;
               case TRI_LOG_CATEGORY_ERROR: line.appendText("ERROR"); break;
-              case TRI_LOG_CATEGORY_WARNING: line.appendText("WARNING"); break;
-
+              case TRI_LOG_CATEGORY_WARNING: { line.appendText("WARNING"); break; }
               case TRI_LOG_CATEGORY_REQUEST_IN_START: line.appendText("REQUEST-IN-START"); break;
               case TRI_LOG_CATEGORY_REQUEST_IN_END: line.appendText("REQUEST-IN-END"); break;
               case TRI_LOG_CATEGORY_REQUEST_OUT_START: line.appendText("REQUEST-OUT-START"); break;

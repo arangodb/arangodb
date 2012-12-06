@@ -500,6 +500,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
   
+
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
@@ -518,7 +519,6 @@ bool ApplicationV8::prepare () {
   // set up the startup loader
   if (_startupPath.empty()) {
     LOGGER_INFO << "using built-in JavaScript startup files";
-
     _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
     _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
     _startupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
@@ -544,6 +544,7 @@ bool ApplicationV8::prepare () {
       _actionLoader.setDirectory(_actionPath);
     }
   }
+
 
   if (_v8Options.size() > 0) {
     LOGGER_INFO << "using V8 options '" << _v8Options << "'";
@@ -656,6 +657,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   TRI_InitV8VocBridge(context->_context, _vocbase);
   TRI_InitV8Queries(context->_context);
 
+
   if (_useActions) {
     TRI_InitV8Actions(context->_context, this);
   }
@@ -678,6 +680,7 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
       return false;
     }
   }
+
 
   // load all actions
   if (_useActions) {

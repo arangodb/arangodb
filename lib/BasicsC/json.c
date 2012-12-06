@@ -26,7 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "json.h"
-
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"

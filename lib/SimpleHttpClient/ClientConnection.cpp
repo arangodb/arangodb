@@ -196,7 +196,7 @@ bool ClientConnection::write (void* buffer, size_t length, size_t* bytesWritten)
   int status = ::send(_socket, buffer, length, 0);
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
-  int status = ::send(_socket, (const char*)(buffer), length, 0);
+  int status = ::send(_socket, (const char*)(buffer), (int)(length), 0);
 #else
   int status = ::send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif

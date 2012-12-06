@@ -21,6 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Dr. O
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,15 +118,15 @@ EndpointIp::~EndpointIp () {
 socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTimeout, double requestTimeout) {
   // set address and port
   char host[NI_MAXHOST], serv[NI_MAXSERV];
-  if (getnameinfo(aip->ai_addr, aip->ai_addrlen,
+  if (::getnameinfo(aip->ai_addr, aip->ai_addrlen,
                   host, sizeof(host),
                   serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
     
     LOGGER_TRACE << "bind to address '" << string(host) << "' port '" << _port << "'";
   }
   
-  int listenSocket = socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
-  if (listenSocket == -1) {
+  socket_t listenSocket = ::socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
+  if (listenSocket == INVALID_SOCKET) {
     return 0;
   }
   
@@ -134,7 +135,7 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
   if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
     LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
 
-    TRI_CLOSE(listenSocket);
+    TRI_CLOSE_SOCKET(listenSocket);
 
     return 0;
   }
@@ -142,21 +143,21 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
  
   if (_type == ENDPOINT_SERVER) {
     // server needs to bind to socket
-    int result = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
+    int result = ::bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
     if (result != 0) {
       // error 
-      TRI_CLOSE(listenSocket);
-
+      TRI_CLOSE_SOCKET(listenSocket);
+      
       return 0;
     }
 
     // listen for new connection, executed for server endpoints only
     LOGGER_TRACE << "using backlog size " << _listenBacklog;
-    result = listen(listenSocket, _listenBacklog);
+    result = ::listen(listenSocket, _listenBacklog);
 
-    if (result < 0) {
-      TRI_CLOSE(listenSocket);
-
+    if (result == SOCKET_ERROR) {
+      TRI_CLOSE_SOCKET(listenSocket);
+      // todo: get the correct error code using WSAGetLastError for windows
       LOGGER_ERROR << "listen failed with " << errno << " (" << strerror(errno) << ")";
 
       return 0;
@@ -168,15 +169,16 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     // set timeout
     setTimeout(listenSocket, connectTimeout);
 
-    if (::connect(listenSocket, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen) != 0) {
-      TRI_CLOSE(listenSocket);
+    int result = ::connect(listenSocket, (const struct sockaddr*) aip->ai_addr, aip->ai_addrlen); 
+    if ( result == SOCKET_ERROR) {
+      TRI_CLOSE_SOCKET(listenSocket);
 
       return 0;
     }
   }
     
-  if (!setSocketFlags(listenSocket)) {
-    TRI_CLOSE(listenSocket);
+  if (!setSocketFlags(listenSocket)) { // set some common socket flags for a server
+    TRI_CLOSE_SOCKET(listenSocket);
 
     return 0;
   }
@@ -238,7 +240,7 @@ socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
     return 0;
   }
 
-  int listenSocket = 0;
+  socket_t listenSocket = 0;
   
   // Try all returned addresses until one works
   for (aip = result; aip != NULL; aip = aip->ai_next) {
@@ -264,7 +266,7 @@ void EndpointIp::disconnect () {
     assert(_socket);
 
     _connected = false;
-    TRI_CLOSE(_socket);
+    TRI_CLOSE_SOCKET(_socket);
 
     _socket = 0;
   }
@@ -280,6 +282,7 @@ bool EndpointIp::initIncoming (socket_t incoming) {
   int res = setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*) &n, sizeof(n));
     
   if (res != 0 ) {
+    // todo: get correct windows error code
     LOGGER_WARNING << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
       
     return false;

@@ -454,6 +454,7 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
 
 bool PQIndex_update(PQIndex* idx, const PQIndexElement* oldElement, const PQIndexElement* newElement) {
   assert(false);
+  return false;
 }  
 
 

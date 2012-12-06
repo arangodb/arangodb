@@ -205,6 +205,7 @@ void TRI_JoinThread (TRI_thread_t* thread) {
 
 bool TRI_SignalThread (TRI_thread_t* thread, int signum) {
   // TODO:  NO NATIVE implementation of signals
+  return false;
 }
 
 

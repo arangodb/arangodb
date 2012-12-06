@@ -93,15 +93,20 @@ bool ListenTask::isBound () const {
 // Task methods
 // -----------------------------------------------------------------------------
 
-void ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool ListenTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
   if (! isBound()) {
-    return;
+    return true;
   }
   
   this->scheduler = scheduler;
   this->loop = loop;
   
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, listenSocket);
+  
+  if (readWatcher == -1) {
+    return false;
+  }
+  return true;
 }
 
 
@@ -114,6 +119,7 @@ void ListenTask::cleanup () {
 
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
+    //printf("oreste:AAAAAAAAAAAAAAAAAA:%s:%s:%d:%d\n",__FILE__,__FUNCTION__,__LINE__,++acceptFailures);
   if (token == readWatcher) {
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
@@ -127,6 +133,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     // accept connection
     socket_t connfd = accept(listenSocket, (sockaddr*) &addr, &len);
     
+    //printf("oreste:AAAAAAAAAAAAAAAAAA:%s:%s:%d:%d\n",__FILE__,__FUNCTION__,__LINE__,++acceptFailures);
     if (connfd == INVALID_SOCKET) {
       ++acceptFailures;
       
@@ -150,7 +157,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     int res = getsockname(connfd, (sockaddr*) &addr_out, &len_out);
 
     if (res != 0) {
-      TRI_CLOSE(connfd);
+      TRI_CLOSE_SOCKET(connfd);
       
       LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
 
@@ -162,7 +169,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     // disable nagle's algorithm, set to non-blocking and close-on-exec  
     bool result = _endpoint->initIncoming(connfd); 
     if (!result) {
-      TRI_CLOSE(connfd);
+      TRI_CLOSE_SOCKET(connfd);
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
 

@@ -352,7 +352,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         collection->_lastError = datafile->_lastError;
         stop = true;
 
-        LOG_ERROR("cannot rename sealed log-file to %s, this should not happen: %s", filename, TRI_errno());
+        LOG_ERROR("cannot rename sealed log-file to %s, this should not happen: %d", filename, TRI_errno());
 
         break;
       }
@@ -608,7 +608,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   InitCollection(vocbase, collection, filename, parameter);
-
+  /* PANAIA: 1) the parameter file if it exists must be removed
+             2) if collection 
+  */
   // return collection
   return collection;
 }

@@ -119,7 +119,7 @@ namespace triagens {
 /// belongs to the loop parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void setup (Scheduler*, EventLoop) = 0;
+        virtual bool oreste_setup (Scheduler*, EventLoop) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to clear the callback information
