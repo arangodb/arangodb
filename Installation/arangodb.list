@@ -32,6 +32,8 @@ l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}
 
 f 0755 ${susr} ${sgrp} ${bindir}/arangoimp ${project_dir}/bin/arangoimp
 f 0755 ${susr} ${sgrp} ${bindir}/arangosh ${project_dir}/bin/arangosh
+f 0755 ${susr} ${sgrp} ${bindir}/arango-password ${project_dir}/bin/arango-password
+f 0755 ${susr} ${sgrp} ${bindir}/arango-dfdb ${project_dir}/bin/arango-dfdb
 
 # database directory
 d 0755 ${rusr} ${rgrp} ${data_dir} -
