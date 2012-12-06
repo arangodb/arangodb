@@ -101,6 +101,9 @@ typedef struct {
   TUBER*                _index2;
   TUBER*                _index3;
 
+  int64_t               _maxDocuments;
+  int64_t               _numDocuments;
+
   FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
   void (*freeWordlist)(FTS_texts_t*);
 } 
@@ -521,6 +524,8 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
   ZStrDest(zstr2b);
   ZStrDest(x3zstr);
   ZStrDest(x3zstrb);
+
+  ix->_numDocuments++;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,6 +553,7 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   }
 
   ix->_handlesFree[i] = 1;
+  ix->_numDocuments--;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -915,13 +921,17 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
     return NULL;
   }
-  
-  ix->_colid   = coll;
-  ix->_context = context;
-  ix->_options = options;
+ 
+  ix->_maxDocuments = (int64_t) sizes[0]; 
+  ix->_numDocuments = 0;
+  ix->_colid        = coll;
+  ix->_context      = context;
+  ix->_options      = options;
 
-  ix->getTexts = getTexts;
-  ix->freeWordlist = freeWordlist;
+  // wordlists retrieval function
+  ix->getTexts      = getTexts;
+  // free function for wordlists
+  ix->freeWordlist  = freeWordlist;
 
   // set up free chain of document handles
   for (i = 1; i < sizes[0]; i++) {
