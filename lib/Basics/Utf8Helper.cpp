@@ -409,11 +409,11 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
 extern "C" {
 #endif
 
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {  
+int TRI_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {  
   return Utf8Helper::DefaultUtf8Helper.compareUtf16(left, leftLength, right, rightLength);  
 }
 
@@ -421,7 +421,7 @@ int TR_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* r
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TR_compare_utf8 (const char* left, const char* right) {  
+int TRI_compare_utf8 (const char* left, const char* right) {  
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);  
 }
 
@@ -429,7 +429,7 @@ int TR_compare_utf8 (const char* left, const char* right) {
 /// @brief Lowercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TR_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
+char* TRI_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.tolower(zone, src, srcLength, *dstLength);
 }
 
@@ -437,7 +437,7 @@ char* TR_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLeng
 /// @brief Uppercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TR_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
+char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.toupper(zone, src, srcLength, *dstLength);  
 }
 

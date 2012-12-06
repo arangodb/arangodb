@@ -51,13 +51,13 @@ char* TRI_NormaliseWordFulltextIndex (const char* word, const size_t wordLength)
   int32_t outLength2;
 
   // normalise string
-  copy = TR_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
+  copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
   if (copy == NULL) {
     return NULL;
   }
 
   // lower case string
-  copy2 = TR_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
+  copy2 = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
 
   return copy2; 

@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE (tst_1) {
     };    
   
   size_t len = 0;
-  char* result = TR_normalize_utf8_to_NFC(TRI_CORE_MEM_ZONE, (const char*) decomposed, strlen((const char*) decomposed),&len);
+  char* result = TRI_normalize_utf8_to_NFC(TRI_CORE_MEM_ZONE, (const char*) decomposed, strlen((const char*) decomposed),&len);
 /*
   size_t outLength;
   char* uni = TRI_EscapeUtf8StringZ (TRI_CORE_MEM_ZONE, (const char*) decomposed, strlen((const char*) decomposed), true, &outLength);
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE (tst_2) {
     };    
   
   int32_t len = 0;
-  char* result = TR_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott1, strlen((const char*) gruessgott1), &len);
+  char* result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott1, strlen((const char*) gruessgott1), &len);
 
 
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE (tst_2) {
   BOOST_CHECK_EQUAL(expectString, resultString);
   
   len = 0;
-  result = TR_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott2, strlen((const char*) gruessgott2), &len);
+  result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott2, strlen((const char*) gruessgott2), &len);
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott2, result, len);
   BOOST_CHECK_EQUAL((const char*) lower, (const char*) result);
   TRI_FreeString(TRI_CORE_MEM_ZONE, result);    

@@ -419,7 +419,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           }         
           
 #ifdef TRI_HAVE_ICU  
-          result = TR_compare_utf8(leftString,rightString);
+          result = TRI_compare_utf8(leftString,rightString);
 #else
           result = strcmp(leftString,rightString);
 #endif
