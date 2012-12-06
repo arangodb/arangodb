@@ -218,11 +218,34 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
   // put the words into a STEX 
 
   stex    = ZStrSTCons(2);  /* format 2=uint16 is all that there is! */
+  if (stex == NULL) {
+    // TODO: out of memory
+  }
+
   zstrwl  = ZStrCons(25);  /* 25 enough for word list  */
+  if (zstrwl == NULL) {
+    // TODO: out of memory
+  }
+
   zstr2a  = ZStrCons(30);  /* 30 uint64's is always enough for ix2  */
+  if (zstr2a == NULL) {
+    // TODO: out of memory
+  }
+
   zstr2b  = ZStrCons(30);
+  if (zstr2b == NULL) {
+    // TODO: out of memory
+  }
+
   x3zstr  = ZStrCons(35);
+  if (x3zstr == NULL) {
+    // TODO: out of memory
+  }
+
   x3zstrb = ZStrCons(35);
+  if (x3zstrb == NULL) {
+    // TODO: out of memory
+  }
 
   for (i = 0; i < nowords; i++) {
     uint64_t unicode;
@@ -233,7 +256,9 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
     ZStrClear(zstrwl);
     unicode = GetUnicode(&utf);
     while (unicode != 0) {
-      ZStrEnc(zstrwl, &zcutf, unicode);
+      if (ZStrEnc(zstrwl, &zcutf, unicode) != 0) {
+        // TODO: out of memory
+      }
       unicode = GetUnicode(&utf);
       j++;
       if (j > MAX_WORD_LENGTH) {
@@ -241,9 +266,13 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
       }
     }
     // terminate the word and insert into STEX
-    ZStrEnc(zstrwl, &zcutf, 0);
+    if (ZStrEnc(zstrwl, &zcutf, 0) != 0) {
+      // TODO: out of memory
+    }
     ZStrNormalize(zstrwl);
-    ZStrSTAppend(stex, zstrwl);
+    if (ZStrSTAppend(stex, zstrwl) != 0) {
+      // TODO: out of memory
+    }
   }
 
   // sort them
@@ -256,7 +285,9 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
   wpt = (uint16_t*) stex->list;
   for (wdx = 0; wdx < nowords; wdx++) {
     // get it out as a word  
-    ZStrInsert(zstrwl, wpt, 2);
+    if (ZStrInsert(zstrwl, wpt, 2) != 0) {
+      // TODO: out of memory
+    }
     len = 0;
     while (1) {
       letters[len] = ZStrDec(zstrwl, &zcutf);
@@ -316,11 +347,15 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
         // TODO: check i
         ZStrClear(zstr2b);
         x64 = ZStrBitsOut(zstr2a, 1);
-        ZStrBitsIn(x64, 1, zstr2b);
-        if(x64 == 1) { 
+        if (ZStrBitsIn(x64, 1, zstr2b) != 0) {
+          // TODO: out of memory
+        }
+        if (x64 == 1) { 
           // copy over the B-key into index 3 
           docb = ZStrDec(zstr2a, &zcbky);
-          ZStrEnc(zstr2b, &zcbky, docb);
+          if (ZStrEnc(zstr2b, &zcbky, docb) != 0) {
+            // TODO: out of memory
+          }
         }
 
         newlet = 0;
@@ -333,27 +368,45 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
           if (newlet > tran) {
             break;
           }
-          ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+          if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+            // TODO: out of memory
+          }
           x64 = ZStrDec(zstr2a, &zcbky);
-          ZStrEnc(zstr2b, &zcbky, x64);
+          if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
+            // TODO: out of memory
+          }
         }
-        ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
-        ZStrEnc(zstr2b, &zcbky, bkey);
+        if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
+          // TODO: out of memory
+        }
+        if (ZStrEnc(zstr2b, &zcbky, bkey) != 0) {
+          // TODO: out of memory
+        }
         if (newlet == oldlet) {
-          ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
+          if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
+            // TODO: out of memory
+          }
         }
         else {
           while (newlet != oldlet) {
             oldlet = newlet;
-            ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+            if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+              // TODO: out of memory
+            }
             x64 = ZStrDec(zstr2a, &zcbky);
-            ZStrEnc(zstr2b, &zcbky, x64);
+            if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
+              // TODO: out of memory
+            }
             newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
           }
-          ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+          if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+            // TODO: out of memory
+          }
         }
         ZStrNormalize(zstr2b);
-        ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b);
+        if (ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b) != 0) {
+          // TODO: out of memory
+        }
       }
       else {
         // if it is, get its KKey and put in (next) slot 
@@ -384,8 +437,13 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
       // TODO: check i
       ZStrClear(zstr2b);
       x64 = ZStrBitsOut(zstr2a, 1);
-      ZStrBitsIn(1, 1, zstr2b);
-      ZStrEnc(zstr2b, &zcbky, docb);
+      if (ZStrBitsIn(1, 1, zstr2b) != 0) {
+        // TODO: out of memory
+      }
+
+      if (ZStrEnc(zstr2b, &zcbky, docb) != 0) {
+        // TODO: out of memory
+      }
       newlet = 0;
       while (1) {
         oldlet = newlet;
@@ -393,12 +451,18 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
         if (newlet == oldlet) {
           break;
         }
-        ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+        if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+          // TODO: out of memory
+        }
         x64 = ZStrDec(zstr2a, &zcbky);
-        ZStrEnc(zstr2b,&zcbky, x64);
+        if (ZStrEnc(zstr2b,&zcbky, x64) != 0) {
+          // TODO: out of memory
+        }
       }
       ZStrNormalize(zstr2b);
-      ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b); 
+      if (ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b) != 0) {
+        // TODO: out of memory
+      } 
     }
     dock = ZStrTuberK(ix->_index3, kkey[j], 0, docb);
     // insert doc handle into index 3
@@ -420,22 +484,34 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
       if (newhan > handle) {
         break;
       }
-      ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan);
+      if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan) != 0) {
+        // TODO: out of memory
+      }
     }
-    ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle);
+    if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle) != 0) {
+      // TODO: out of memory
+    }
     if (newhan == oldhan) {
-      ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle);
+      if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle) != 0) {
+        // TODO: out of memory
+      }
     }
     else {
-      ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan);
+      if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan) != 0) {
+        // TODO: out of memory
+      }
       while (newhan != oldhan) {
         oldhan = newhan;
         newhan = ZStrCxDec(x3zstr, &zcdoc, &x3ctx);
-        ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan);
+        if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan) != 0) {
+          // TODO: out of memory
+        }
       }
     }
     ZStrNormalize(x3zstrb);
-    ZStrTuberUpdate(ix->_index3, dock, x3zstrb); 
+    if (ZStrTuberUpdate(ix->_index3, dock, x3zstrb) != 0) {
+      // TODO: out of memory
+    }
     // copy the word into ix
     ixlen = len;
     for (j = 0; j < len; j++) {
@@ -488,27 +564,45 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
               if (newlet > tran) {
                 break;
               }
-              ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+              if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+                // TODO: out of memory
+              }
               x64 = ZStrDec(zstr2a, &zcbky);
-              ZStrEnc(zstr2b, &zcbky, x64);
+              if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
+                // TODO: out of memory
+              }
             }
-            ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
-            ZStrEnc(zstr2b, &zcbky, bkey);
+            if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
+              // TODO: out of memory
+            }
+            if (ZStrEnc(zstr2b, &zcbky, bkey) != 0) {
+              // TODO: out of memory
+            }
             if (newlet == oldlet) {
-              ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran);
+              if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
+                // TODO: out of memory
+              }
             }
             else {
               while (newlet != oldlet) {
                 oldlet = newlet;
-                ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+                if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+                  // TODO: out of memory
+                }
                 x64 = ZStrDec(zstr2a, &zcbky);
-                ZStrEnc(zstr2b, &zcbky, x64);
+                if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
+                  // TODO: out of memory
+                }
                 newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
               }
-              ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet);
+              if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
+                // TODO: out of memory
+              }
             }
             ZStrNormalize(zstr2b);
-            ZStrTuberUpdate(ix->_index1, kkey1[j2 + 1], zstr2b);
+            if (ZStrTuberUpdate(ix->_index1, kkey1[j2 + 1], zstr2b) != 0) {
+              // TODO: out of memory
+            }
           }
           else {
             kkey1[j2] = ZStrTuberK(ix->_index1, kkey1[j2 + 1], tran, bkey);
@@ -549,7 +643,7 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 
   if (i > ix->_lastSlot) {
     /* TBD - what to do if a document is deleted that isn't there?  */
-    printf("tried to delete nonexistent document\n");
+    assert(false);
   }
 
   ix->_handlesFree[i] = 1;
@@ -567,6 +661,10 @@ static uint64_t FindKKey1 (FTS_real_index* ix, uint64_t* word) {
   uint64_t bkey, kk1;
 
   zstr = ZStrCons(10);
+  if (zstr == NULL) {
+    // TODO: out of memory
+  }
+
   wd = word;
 
   while (*wd != 0) {
@@ -631,6 +729,10 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
   uint64_t kk2;
 
   zstr = ZStrCons(10);
+  if (zstr == NULL) {
+    // TODO: out of memory
+  }
+
   kk2 = ZStrTuberK(ix->_index2, 0, 0, 0);
 
   while (1) {
@@ -708,10 +810,21 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
 
   // index 2 entry for this prefix 
   zstr2 = ZStrCons(10); 
+  if (zstr2 == NULL) {
+    // TODO: out of memory
+  }
+
   // index 3 entry for this prefix (if any)
   zstr3 = ZStrCons(10); 
+  if (zstr3 == NULL) {
+    // TODO: out of memory
+  }
+
   // single doc handle work area 
   zstr = ZStrCons(2);  
+  if (zstr == NULL) {
+    // TODO: out of memory
+  }
 
   if (ZStrTuberRead(ix->_index2, kk2, zstr2) == 1) {
     // TODO: change to return code
@@ -749,8 +862,12 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
 
       if (ix->_handlesFree[newhan] == 0) {
         ZStrClear(zstr);
-        ZStrEnc(zstr, &zcdh, newhan);
-        ZStrSTAppend(dochan, zstr);
+        if (ZStrEnc(zstr, &zcdh, newhan) != 0) {
+          // TODO: out of memory
+        }
+        if (ZStrSTAppend(dochan, zstr) != 0) {
+          // TODO: out of memory
+        }
       }
     }
   }
@@ -795,6 +912,10 @@ static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t*
 
   // index 1 entry for this prefix 
   zstr = ZStrCons(10);  
+  if (zstr == NULL) {
+    // TODO: out of memory
+  }
+
   if (ZStrTuberRead(ix->_index1, kk1, zstr) == 1) {
     // TODO: make this return an error instead
     printf("recursion failed to read kk1\n");
@@ -903,7 +1024,7 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
                               uint64_t sizes[10]) {
   FTS_real_index* ix;
   int i;
-        
+  
   ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
   if (ix == NULL) {
     return NULL;
@@ -939,27 +1060,79 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
     ix->_handlesFree[i]      = 1;
   }
 
-  ix->_handles[sizes[0]]     = 0;  // end of free chain  
+  // end of free chain  
+  ix->_handles[sizes[0]]     = 0;  
   ix->_handlesFree[sizes[0]] = 1;
   ix->_firstFree             = 1;
   ix->_lastSlot              = sizes[0];
 
   // create index 2 
+  // ---------------------------------------------------
+
   ix->_index2 = ZStrTuberCons(sizes[2], TUBER_BITS_8);
+  if (ix->_index2 == NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
+
   if (ZStrTuberIns(ix->_index2, 0, 0) != 0) {
-    // TODO: free memory and return an error instead
-    printf("Help - Can't insert root of index 2\n");
+    ZStrTuberDest(ix->_index2);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
   }
 
   // create index 3
-  ix->_index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
+  // ---------------------------------------------------
 
-  // create index 1 if needed
+  ix->_index3 = ZStrTuberCons(sizes[3], TUBER_BITS_32);
+  if (ix->_index3 == NULL) {
+    ZStrTuberDest(ix->_index2);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
+  }
+  
+  // create index 1
+  // ---------------------------------------------------
+
   if (ix->_options == FTS_INDEX_SUBSTRINGS) {
     ix->_index1 = ZStrTuberCons(sizes[1], TUBER_BITS_8);
+    if (ix->_index1 == NULL) {
+      ZStrTuberDest(ix->_index3);
+      ZStrTuberDest(ix->_index2);
+    
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return NULL;
+    }
+
     if (ZStrTuberIns(ix->_index1, 0, 0) != 0) {
-      // TODO: free memory and return an error instead
-      printf("Help - Can't insert root of index 1\n");
+      ZStrTuberDest(ix->_index1);
+      ZStrTuberDest(ix->_index3);
+      ZStrTuberDest(ix->_index2);
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
+
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return NULL;
     }
   }
   
@@ -988,7 +1161,6 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handlesFree);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix->_handles);
-  
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, ix);
 }
 
@@ -1079,10 +1251,29 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
   uint64_t ndocs = 0;
 
   zstr2  = ZStrCons(10);  /* from index-2 tuber */
+  if (zstr2 == NULL) {
+    // TODO: out of memory
+  }
+
   zstr3  = ZStrCons(10);  /* from index-3 tuber  */
+  if (zstr3 == NULL) {
+    // TODO: out of memory
+  }
+
   zstra1 = ZStrCons(10); /* current list of documents */
+  if (zstra1 == NULL) {
+    // TODO: out of memory
+  }
+
   zstra2 = ZStrCons(10); /* new list of documents  */
+  if (zstra2 == NULL) {
+    // TODO: out of memory
+  }
+
   zstr   = ZStrCons(4);  /* work zstr from stex  */
+  if (zstr == NULL) {
+    // TODO: out of memory
+  }
     
   ix = (FTS_real_index*) ftx;
   TRI_ReadLockReadWriteLock(&ix->_lock);
@@ -1150,7 +1341,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             break;
           }
           if (ix->_handlesFree[newhan] == 0) {
-            ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+            if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
+              // TODO: out of memory
+            }
             lasthan = newhan;
             ndocs++;
           }
@@ -1177,7 +1370,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           }
           if (newhan == nhand1) {
             if (ix->_handlesFree[newhan] == 0) {
-              ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+              if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
+                // TODO: out of memory
+              }
               lasthan = newhan;
               ndocs++;
             }
@@ -1196,7 +1391,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           }
         }
       }
-      ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan);
+      if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan) != 0) {
+        // TODO: out of memory
+      }
       ZStrNormalize(zstra2);
       ztemp = zstra1;
       zstra1 = zstra2;
@@ -1211,6 +1408,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
       // make STEX to contain new list of handles 
       dochan = ZStrSTCons(2);
+      if (dochan == NULL) {
+        // TODO: out of memory
+      }
 
       FillWordBuffer(&word[MAX_WORD_LENGTH + SPACING], query->_texts[queryterm]);
       
@@ -1254,11 +1454,15 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         for (i = 0; i < odocs; i++) {
           uint64_t newhan;
 
-          ZStrInsert(zstr, docpt, 2);
+          if (ZStrInsert(zstr, docpt, 2) != 0) {
+            // TODO: out of memory
+          }
           newhan = ZStrDec(zstr, &zcdh);
           docpt += ZStrExtLen(docpt, 2);
           if (ix->_handlesFree[newhan] == 0) {
-            ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+            if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
+              // TODO: out of memory
+            }
             lasthan = newhan;
             ndocs++;
           }
@@ -1277,7 +1481,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         }
 
         nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
-        ZStrInsert(zstr, docpt, 2);
+        if (ZStrInsert(zstr, docpt, 2) != 0) {
+          // TODO: out of memory
+        }
         newhan = ZStrDec(zstr, &zcdh);
         docpt += ZStrExtLen(docpt, 2);
         odocs--;
@@ -1290,14 +1496,18 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           }
           if (newhan == nhand1) {
             if (ix->_handlesFree[newhan] == 0) {
-              ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan);
+              if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
+                // TODO: out of memory
+              }
               lasthan = newhan;
               ndocs++;
             }
             if (odocs == 0) {
               break;
             }
-            ZStrInsert(zstr, docpt, 2);
+            if (ZStrInsert(zstr, docpt, 2) != 0) {
+              // TODO: out of memory
+            }
             newhan = ZStrDec(zstr, &zcdh);
             docpt += ZStrExtLen(docpt, 2);
             odocs--;
@@ -1312,14 +1522,18 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
             if (odocs == 0) {
               break;
             }
-            ZStrInsert(zstr, docpt, 2);
+            if (ZStrInsert(zstr, docpt, 2) != 0) {
+              // TODO: out of memory
+            }
             newhan = ZStrDec(zstr, &zcdh);
             docpt += ZStrExtLen(docpt, 2);
             odocs--;
           }
         }
       }
-      ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan);
+      if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan) != 0) {
+        // TODO: out of memory
+      }
       ZStrNormalize(zstra2);
       ztemp = zstra1;
       zstra1 = zstra2;
