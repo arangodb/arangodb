@@ -1009,7 +1009,7 @@ void HttpRequest::addSuffix (char const* part) {
 #ifdef TRI_HAVE_ICU  
   string decoded = StringUtils::urlDecode(part);  
   size_t tmpLength = 0;
-  char* utf8_nfc = TR_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
+  char* utf8_nfc = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
   if (utf8_nfc) {
     _suffix.push_back(utf8_nfc);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);

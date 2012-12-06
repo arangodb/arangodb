@@ -1418,7 +1418,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
 
 #ifdef TRI_HAVE_ICU
   if (*outLength > 0) {
-    utf8_nfc = TR_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
+    utf8_nfc = TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
     if (utf8_nfc) {
       *outLength = tmpLength;
       TRI_Free(zone, buffer);
