@@ -4206,6 +4206,22 @@ static TRI_vector_string_t* ParseWordsFulltextIndex (const char* const text,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief free function for word list, fulltext index
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeWordlistFulltextIndex (FTS_texts_t* wordlist) {
+  size_t i;
+
+  assert(wordlist);
+
+  for (i = 0; i < wordlist->_len; i++) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_texts[i]);
+  }
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_texts);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
 ////////////////////////////////////////////////////////////////////////////////
@@ -4454,7 +4470,12 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
   
-  fts = FTS_CreateIndex(collection->base._info._cid, (void*) fulltextIndex, &GetTextsFulltextIndex, options, sizes);
+  fts = FTS_CreateIndex(collection->base._info._cid, 
+                        (void*) fulltextIndex, 
+                        &GetTextsFulltextIndex, 
+                        &FreeWordlistFulltextIndex, 
+                        options, 
+                        sizes);
   if (fts == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);
     return NULL;

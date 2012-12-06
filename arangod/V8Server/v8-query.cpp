@@ -2260,6 +2260,8 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
 
   TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx; 
   if (isSubstringQuery && ! fulltextIndex->_indexSubstrings) {
+    TRI_FreeQueryFulltextIndex(query);
+
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index does not support substring matching")));
   }
 

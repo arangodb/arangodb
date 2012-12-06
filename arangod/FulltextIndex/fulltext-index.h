@@ -132,6 +132,7 @@ FTS_texts_t;
 FTS_index_t* FTS_CreateIndex (FTS_collection_id_t,
                               void*,
                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
+                              void (*freeWordlist)(FTS_texts_t*),
                               int options, 
                               uint64_t sizes[10]);
 

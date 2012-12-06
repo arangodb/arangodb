@@ -30,7 +30,7 @@
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 
-#include "FulltextIndex/zstr.h"
+#include "FulltextIndex/zstr-include.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           externs
@@ -102,6 +102,7 @@ typedef struct {
   TUBER*                _index3;
 
   FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
+  void (*freeWordlist)(FTS_texts_t*);
 } 
 FTS_real_index;
 
@@ -164,9 +165,8 @@ static uint64_t GetUnicode (uint8_t** ptr) {
 /// @brief add a document to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* rawwords) {
   FTS_real_index* ix;
-  FTS_texts_t* rawwords;
   CTX ctx2a, ctx2b, x3ctx, x3ctxb;
   STEX* stex;
   ZSTR* zstrwl;
@@ -211,12 +211,6 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   ix->_handles[handle]     = docid;
   ix->_handlesFree[handle] = 0;
     
-  // get the actual words from the caller 
-  rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
-  if (rawwords == NULL) {
-    return;
-  }
-
   nowords = rawwords->_len;
   // put the words into a STEX 
 
@@ -898,6 +892,7 @@ static void AddResultDocuments (FTS_document_ids_t* result,
 FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
                               void* context,
                               FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
+                              void (*freeWordlist)(FTS_texts_t*),
                               int options, 
                               uint64_t sizes[10]) {
   FTS_real_index* ix;
@@ -926,6 +921,7 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
   ix->_options = options;
 
   ix->getTexts = getTexts;
+  ix->freeWordlist = freeWordlist;
 
   // set up free chain of document handles
   for (i = 1; i < sizes[0]; i++) {
@@ -992,10 +988,19 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
 
 void FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
+  FTS_texts_t* rawwords;
+
+  // get the actual words from the caller 
+  rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
+  if (rawwords == NULL) {
+    return;
+  }
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
-  RealAddDocument(ftx,docid);
+  RealAddDocument(ftx, docid, rawwords);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
+
+  ix->freeWordlist(rawwords);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1006,7 +1011,7 @@ void FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
-  RealDeleteDocument(ftx,docid);
+  RealDeleteDocument(ftx, docid);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
 }
 
@@ -1016,11 +1021,20 @@ void FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 
 void FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix = (FTS_real_index*) ftx;
+  FTS_texts_t* rawwords;
+
+  // get the actual words from the caller 
+  rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
+  if (rawwords == NULL) {
+    return;
+  }
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
-  RealDeleteDocument(ftx,docid);
-  RealAddDocument(ftx,docid);
+  RealDeleteDocument(ftx, docid);
+  RealAddDocument(ftx, docid, rawwords);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
+  
+  ix->freeWordlist(rawwords);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1196,6 +1210,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
         kkey = FindKKey2(ix, word + MAX_WORD_LENGTH + SPACING);
         if (kkey == NOTFOUND) {
+          ZStrSTDest(dochan); 
           break;
         }
 
@@ -1208,6 +1223,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
         kkey = FindKKey1(ix, word + MAX_WORD_LENGTH + SPACING);
         if (kkey == NOTFOUND) {
+          ZStrSTDest(dochan); 
           break;
         }
         // call routine to recursively put handles to STEX
@@ -1246,6 +1262,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
         ZStrCxClear(&zcdoc, &ctxa1);
         if (odocs == 0) {
+          ZStrSTDest(dochan); 
           continue;
         }
 
