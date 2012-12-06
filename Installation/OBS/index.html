@@ -49,6 +49,7 @@
 
     // try to detect distro via user agent
     if (navigator.userAgent.indexOf('Mac OS X') > 0 ) $('#soo_button_MacOSX').click();
+    if (navigator.userAgent.indexOf('Microsoft') > 0 ) $('#soo_button_Windows').click();
     if (navigator.userAgent.indexOf('CentOS') > 0 ) $('#soo_button_CentOS').click();
     if (navigator.userAgent.indexOf('Debian') > 0 ) $('#soo_button_Debian').click();
     if (navigator.userAgent.indexOf('Fedora') > 0 ) $('#soo_button_Fedora').click();
@@ -159,6 +160,7 @@
     <p class="soo_line soo_line_visible">Select Your Operating System</p>
     <div class="soo_flavour_line">
         <div class="soo_button" id="soo_button_MacOSX"><img src="/repositories/images/distributions/macosx.png" alt="MacOSX" /><p>Mac OS X</p></div>
+        <div class="soo_button" id="soo_button_Windows"><img src="/repositories/images/distributions/win8.png" alt="Windows" /><p>Windows</p></div>
         <div class="soo_button" id="soo_button_CentOS"><img src="/repositories/images/distributions/centos.png" alt="CentOS" /><p>CentOS</p></div>
         <div class="soo_button" id="soo_button_Debian"><img src="/repositories/images/distributions/debian.png" alt="Debian" /><p>Debian</p></div>
         <div class="soo_button" id="soo_button_Fedora"><img src="/repositories/images/distributions/fedora.png" alt="Fedora" /><p>Fedora</p></div>
@@ -346,11 +348,16 @@ apt-key add - < Release.key  </pre>
 wget http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/arangodb.repo
 yum install arangodb</pre>
 
-
       </div>
       <div class="soo_repoinfo soo_distro soo_distro_MacOSX soo_distro_MacOSX_MacOSX-10">
         <p>For <strong>Mac OS X</strong> you can use use homebrew to install ArangoDB. Run the following:</p>
         <pre>brew install arangodb</pre>
+
+      </div>
+
+      </div>
+      <div class="soo_repoinfo soo_distro soo_distro_Windows soo_distro_Windows-Win8">
+        <p>A first version of ArangoDB for Windows is available. Please contact us, if you are interested in trying it.</pre>
 
       </div>
   </div>
@@ -391,95 +398,95 @@ yum install arangodb</pre>
         <tr class="soo_pkginfo soo_distro soo_distro_openSUSE soo_distro_openSUSE_Tumbleweed">
           <td>Packages for <strong>openSUSE&nbsp;Tumbleweed</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Tumbleweed/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Tumbleweed/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Tumbleweed/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Tumbleweed/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Tumbleweed/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Tumbleweed/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_openSUSE soo_distro_openSUSE_Factory">
           <td>Packages for <strong>openSUSE&nbsp;Factory</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Factory/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Factory/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Factory/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Factory/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Factory/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_Factory/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_openSUSE soo_distro_openSUSE_12.2">
           <td>Packages for <strong>openSUSE&nbsp;12.2</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.2/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.2/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.2/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.2/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.2/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.2/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_openSUSE soo_distro_openSUSE_12.1">
           <td>Packages for <strong>openSUSE&nbsp;12.1</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.1/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.1/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.1/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.1/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.1/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_12.1/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_openSUSE soo_distro_openSUSE_11.4">
           <td>Packages for <strong>openSUSE&nbsp;11.4</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_11.4/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_11.4/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_11.4/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_11.4/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_11.4/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/openSUSE_11.4/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_SLE soo_distro_SLE_11_SP2">
           <td>Packages for <strong>SLE&nbsp;11&nbsp;SP2</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP2/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP2/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP2/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP2/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP2/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP2/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_SLE soo_distro_SLE_11_SP1">
           <td>Packages for <strong>SLE&nbsp;11&nbsp;SP1</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP1/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP1/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP1/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP1/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP1/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11_SP1/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_SLE soo_distro_SLE_11">
           <td>Packages for <strong>SLE&nbsp;11</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11/i586/arangodb-1.1.0-34.1.i586.rpm">arangodb-1.1.0-34.1.i586.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11/i586/arangodb-1.1.0-35.1.i586.rpm">arangodb-1.1.0-35.1.i586.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/SLE_11/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_RHEL soo_distro_RedHat_RHEL-6">
           <td>Packages for <strong>RedHat&nbsp;RHEL-6</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/RedHat_RHEL-6/i686/arangodb-1.1.0-34.1.i686.rpm">arangodb-1.1.0-34.1.i686.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/RedHat_RHEL-6/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/RedHat_RHEL-6/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/RedHat_RHEL-6/i686/arangodb-1.1.0-35.1.i686.rpm">arangodb-1.1.0-35.1.i686.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/RedHat_RHEL-6/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/RedHat_RHEL-6/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_Mandriva soo_distro_Mandriva_2011">
           <td>Packages for <strong>Mandriva&nbsp;2011</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/Mandriva_2011/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Mandriva_2011/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_Fedora soo_distro_Fedora_17">
           <td>Packages for <strong>Fedora&nbsp;17</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_17/i686/arangodb-1.1.0-34.1.i686.rpm">arangodb-1.1.0-34.1.i686.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_17/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_17/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_17/i686/arangodb-1.1.0-35.1.i686.rpm">arangodb-1.1.0-35.1.i686.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_17/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_17/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_Fedora soo_distro_Fedora_16">
           <td>Packages for <strong>Fedora&nbsp;16</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_16/i686/arangodb-1.1.0-34.1.i686.rpm">arangodb-1.1.0-34.1.i686.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_16/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_16/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_16/i686/arangodb-1.1.0-35.1.i686.rpm">arangodb-1.1.0-35.1.i686.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_16/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/Fedora_16/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_Debian soo_distro_Debian_6.0">
@@ -492,13 +499,19 @@ yum install arangodb</pre>
         <tr class="soo_pkginfo soo_distro soo_distro_CentOS soo_distro_CentOS_CentOS-6">
           <td>Packages for <strong>CentOS&nbsp;CentOS-6</strong>:</td>
           <td><ul>
-              <li><a href="http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/i686/arangodb-1.1.0-34.1.i686.rpm">arangodb-1.1.0-34.1.i686.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/src/arangodb-1.1.0-34.1.src.rpm">arangodb-1.1.0-34.1.src.rpm</a></li>
-              <li><a href="http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/x86_64/arangodb-1.1.0-34.1.x86_64.rpm">arangodb-1.1.0-34.1.x86_64.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/i686/arangodb-1.1.0-35.1.i686.rpm">arangodb-1.1.0-35.1.i686.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/src/arangodb-1.1.0-35.1.src.rpm">arangodb-1.1.0-35.1.src.rpm</a></li>
+              <li><a href="http://www.arangodb.org/repositories/stable/CentOS_CentOS-6/x86_64/arangodb-1.1.0-35.1.x86_64.rpm">arangodb-1.1.0-35.1.x86_64.rpm</a></li>
           </ul></td>
         </tr>
         <tr class="soo_pkginfo soo_distro soo_distro_MacOSX soo_distro_MacOSX_MacOSX-10">
           <td>Packages for <strong>Mac OS X</strong>:</td>
+          <td><ul>
+              <li>Coming Soon</li>
+          </ul></td>
+        </tr>
+        <tr class="soo_pkginfo soo_distro soo_distro_Windows soo_distro_Windows-Win8">
+          <td>Packages for <strong>Windows</strong>:</td>
           <td><ul>
               <li>Coming Soon</li>
           </ul></td>
