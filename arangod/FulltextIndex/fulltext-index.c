@@ -227,7 +227,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   x3zstr  = ZStrCons(35);
   x3zstrb = ZStrCons(35);
 
-  for (i = 0; i< nowords; i++) {
+  for (i = 0; i < nowords; i++) {
     uint64_t unicode;
     uint8_t* utf;
 
@@ -636,7 +636,7 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
     uint64_t bkey;
 
     tran = *(word++);
-    if (tran==0) {
+    if (tran == 0) {
       break;
     }
     // get the Z-string for the index-2 entry of this key
@@ -1264,7 +1264,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
               lasthan = newhan;
               ndocs++;
             }
-            if (odocs==0) {
+            if (odocs == 0) {
               break;
             }
             ZStrInsert(zstr, docpt, 2);
