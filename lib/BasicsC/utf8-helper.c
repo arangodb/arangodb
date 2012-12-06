@@ -71,7 +71,7 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
   }
   
   status = U_ZERO_ERROR;
-  utf16 = (UChar *) malloc((utf16_length+1) * sizeof(UChar));  
+  utf16 = (UChar *) TRI_Allocate(zone, (utf16_length+1) * sizeof(UChar), false);  
   if (utf16 == NULL) {
     return 0;
   }
@@ -79,13 +79,13 @@ char * TR_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, const char* utf8, size
   // now convert
   u_strFromUTF8(utf16, utf16_length+1, NULL, utf8, inLength, &status);  
   if (status != U_ZERO_ERROR) {
-    free(utf16);
+    TRI_Free(zone, utf16);
     return 0;
   }
   
   // continue in TR_normalize_utf16_to_NFC
   utf8_dest = TR_normalize_utf16_to_NFC(zone, utf16, utf16_length, outLength);
-  free(utf16);
+  TRI_Free(zone, utf16);
   
   return utf8_dest;  
 }
@@ -119,14 +119,14 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
 
   // 2. normalize UChar (UTF-16)
 
-  utf16_dest = (UChar *) malloc((inLength+1) * sizeof(UChar));  
+  utf16_dest = (UChar *) TRI_Allocate(zone, (inLength+1) * sizeof(UChar), false);  
   if (utf16_dest == NULL) {
     return 0;
   }
   
   utf16_dest_length = unorm2_normalize(norm2, (UChar*) utf16, inLength, utf16_dest, inLength+1, &status);
   if (status != U_ZERO_ERROR) {
-    free(utf16_dest);    
+    TRI_Free(zone, utf16_dest);    
     return 0;
   }
   
@@ -135,29 +135,28 @@ char * TR_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, const uint16_t* utf16
   // calculate utf8 string length
   u_strToUTF8(NULL, 0, &out_length, utf16_dest, utf16_dest_length+1, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
-    free(utf16_dest);    
+    TRI_Free(zone, utf16_dest);    
     return 0;
   }
   
   status = U_ZERO_ERROR;  
-  // utf8_dest = (char *) malloc((out_length+1) * sizeof(char));  
   utf8_dest = TRI_Allocate(zone, (out_length+1) * sizeof(char), false);
   if (utf8_dest == NULL) {
-    free(utf16_dest);    
+    TRI_Free(zone, utf16_dest);    
     return 0;
   }
 
   // convert to utf8  
   u_strToUTF8(utf8_dest, out_length+1, NULL, utf16_dest, utf16_dest_length+1, &status);
   if (status != U_ZERO_ERROR) {
-    free(utf16_dest);
+    TRI_Free(zone, utf16_dest);
     TRI_Free(zone, utf8_dest);    
     return 0;
   }
   
   *outLength = out_length - 1; // ?
   
-  free(utf16_dest);
+  TRI_Free(zone, utf16_dest);
   
   return utf8_dest;  
 }
