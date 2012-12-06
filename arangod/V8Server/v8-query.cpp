@@ -2194,7 +2194,6 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubst
     }
     else {
       // search mode : search term
-      std::cout << "parts:" << parts.size() << "\n";
       string command = parts[0];
       StringUtils::trimInPlace(command, "\t\r\n\b\f ");
       StringUtils::tolowerInPlace(&command);
