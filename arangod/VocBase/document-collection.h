@@ -191,11 +191,20 @@ typedef struct TRI_document_collection_s {
 
   TRI_vector_pointer_t _allIndexes;
 
+  // whether or not any of the indexes may need to be garbage-collected
+  // this flag may be modifying when an index is added to a collection
+  // if true, the cleanup thread will periodically call the cleanup functions of
+  // the collection's indexes that support cleanup
+  bool _cleanupIndexes;
+
   // .............................................................................
   // this condition variable protects the _journalsCondition
   // .............................................................................
 
   TRI_condition_t _journalsCondition;
+  
+  // function that is called to garbage-collect the collection's indexes
+  int (*cleanupIndexes)(struct TRI_document_collection_s*);
 }
 TRI_document_collection_t;
 

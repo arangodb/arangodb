@@ -892,6 +892,97 @@ static int UpdateJson (TRI_doc_operation_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the index cleanup flag for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void SetIndexCleanupFlag (TRI_document_collection_t* document, bool value) {
+  document->_cleanupIndexes = value;
+
+  LOG_DEBUG("setting cleanup indexes flag for collection '%s' to %d", 
+             document->base.base._info._name,
+             (int) value);
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an index to the collection
+///
+/// The caller must hold the index lock for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void AddIndex (TRI_document_collection_t* document, TRI_index_t* idx) {
+  LOG_DEBUG("adding index of type %s for collection '%s'", 
+            TRI_TypeNameIndex(idx),
+            document->base.base._info._name);
+
+  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+
+  if (idx->cleanup != NULL) {
+    SetIndexCleanupFlag(document, true);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gather aggregate information about the collection's indexes
+///
+/// The caller must hold the index lock for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void RebuildIndexInfo (TRI_document_collection_t* document) {
+  size_t i, n;
+  bool result;
+
+  result = false;
+
+  n = document->_allIndexes._length;
+  for (i = 0 ; i < n ; ++i) {
+    TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
+ 
+    if (idx->cleanup != NULL) {
+      result = true;
+      break;
+    }
+  }
+
+  SetIndexCleanupFlag(document, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief garbage-collect a collection's indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int CleanupIndexes (TRI_document_collection_t* document) {
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
+
+  // cleaning indexes is expensive, so only do it if the flag is set for the 
+  // collection
+  if (document->_cleanupIndexes) {
+    TRI_primary_collection_t* primary;
+    size_t i, n;
+
+    primary = &document->base;
+
+    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+    n = document->_allIndexes._length;
+    for (i = 0 ; i < n ; ++i) {
+      TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
+
+      if (idx->cleanup != NULL) {
+        res = idx->cleanup(idx);
+        if (res != TRI_ERROR_NO_ERROR) {
+          break;
+        }
+      }
+    }
+
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief debug output for datafile information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1693,6 +1784,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   TRI_index_t* primary;
   int res;
   
+  collection->_cleanupIndexes = false;
+  
   res = TRI_InitPrimaryCollection(&collection->base, shaper);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyPrimaryCollection(&collection->base);
@@ -1717,8 +1810,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
 
     return false;
   }
-  TRI_PushBackVectorPointer(&collection->_allIndexes, primary);
 
+  AddIndex(collection, primary);
 
   // create edges index
   if (collection->base.base._info._type == TRI_COL_TYPE_EDGE) {
@@ -1732,7 +1825,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
       return false;
     }
 
-    TRI_PushBackVectorPointer(&collection->_allIndexes, edges);
+    AddIndex(collection, edges);
   }
 
   TRI_InitCondition(&collection->_journalsCondition);
@@ -1751,6 +1844,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* collection,
   
   collection->base.createJson = CreateJson;
   collection->base.updateJson = UpdateJson;
+
+  collection->cleanupIndexes  = CleanupIndexes;
 
   return true;
 }
@@ -2196,7 +2291,6 @@ static int CreateImmediateIndexes (TRI_document_collection_t* document,
   // .............................................................................
 
   // add a new header
-  // found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, &header->_did, header, false);
   found = TRI_InsertKeyAssociativePointer(&primary->_primaryIndex, header->_key, header, false);
 
   // TODO: if TRI_InsertKeyAssociativePointer fails with OOM, it returns NULL. 
@@ -2369,6 +2463,7 @@ static int DeleteImmediateIndexes (TRI_document_collection_t* collection,
     res = idx->remove(idx, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred
       result = res;
     }
   }
@@ -2851,11 +2946,15 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   n = document->_allIndexes._length;
-
   for (i = 0;  i < n;  ++i) {
     TRI_index_t* idx;
 
     idx = document->_allIndexes._buffer[i];
+
+    if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX || idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+      // cannot remove these index types
+      continue;
+    }
 
     if (idx->_iid == iid) {
       found = TRI_RemoveVectorPointer(&document->_allIndexes, i);
@@ -2868,6 +2967,8 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
     }
   }
 
+  RebuildIndexInfo(document);
+
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
   // .............................................................................
@@ -2879,6 +2980,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document, TRI_i
 
     removeResult = TRI_RemoveIndexFile(primary, found);
     TRI_FreeIndex(found);
+
     return removeResult;
   }
   
@@ -3036,7 +3138,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
   primary->_capConstraint = (TRI_cap_constraint_t*) idx;
 
   if (created != NULL) {
@@ -3256,7 +3358,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
   
   // and store index
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
 
   if (created != NULL) {
     *created = true;
@@ -3641,7 +3743,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
 
   if (created != NULL) {
     *created = true;
@@ -3849,7 +3951,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
   
   if (created != NULL) {
     *created = true;
@@ -4065,7 +4167,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
   
   // store index and return
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
   
   if (created != NULL) {
     *created = true;
@@ -4318,7 +4420,7 @@ static TRI_index_t* CreatePriorityQueueIndexDocumentCollection (TRI_document_col
   // store index
   // ...........................................................................
 
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
   
   // ...........................................................................
   // release memory allocated to vector
@@ -4596,7 +4698,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   // store index within the collection and return
   // ...........................................................................
   
-  TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  AddIndex(document, idx);
   
   if (created != NULL) {
     *created = true;

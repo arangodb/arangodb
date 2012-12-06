@@ -46,6 +46,38 @@
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocBase
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise basic index properties
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitIndex (TRI_index_t* idx, 
+                       const TRI_idx_type_e type, 
+                       struct TRI_primary_collection_s* collection,
+                       bool unique) {
+  idx->_iid            = TRI_NewTickVocBase();
+  idx->_type           = type;
+  idx->_collection     = collection;
+  idx->_unique         = unique;
+  
+  // init common functions
+  idx->cleanup         = NULL;
+
+  LOG_TRACE("initialising index of type %s", TRI_TypeNameIndex(idx));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -398,9 +430,9 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* collection
   TRI_InitVectorString(&primary->_fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&primary->_fields, id);
   
+  InitIndex(primary, TRI_IDX_TYPE_PRIMARY_INDEX, collection, true);
+  // override iid
   primary->_iid = 0;
-  primary->_type = TRI_IDX_TYPE_PRIMARY_INDEX;
-  primary->_unique = true;
 
   primary->insert = InsertPrimary;
   primary->remove = RemovePrimary;
@@ -643,12 +675,12 @@ static TRI_json_t* JsonEdge (TRI_index_t* idx, TRI_primary_collection_t const* c
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
-  TRI_edge_index_t* idx;
+  TRI_edge_index_t* edgeIndex;
   char* id;
 
   // create index
-  idx = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_index_t), false);
-  if (idx == NULL) {
+  edgeIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_index_t), false);
+  if (edgeIndex == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return NULL;
@@ -656,32 +688,29 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* collection) {
   
   id = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "_from");
   if (id == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, edgeIndex);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return NULL;
   }
   
-  TRI_InitVectorString(&idx->base._fields, TRI_UNKNOWN_MEM_ZONE);
-  TRI_PushBackVectorString(&idx->base._fields, id);
-  
-  idx->base._iid = 0;
-  idx->base._type = TRI_IDX_TYPE_EDGE_INDEX;
-  idx->base._unique = false;
+  TRI_InitVectorString(&edgeIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBackVectorString(&edgeIndex->base._fields, id);
+ 
+  InitIndex(&edgeIndex->base, TRI_IDX_TYPE_EDGE_INDEX, collection, false); 
+  edgeIndex->base.insert  = InsertEdge;
+  edgeIndex->base.remove  = RemoveEdge;
+  edgeIndex->base.update  = UpdateEdge;
+  edgeIndex->base.json    = JsonEdge;
 
-  idx->base.insert = InsertEdge;
-  idx->base.remove = RemoveEdge;
-  idx->base.update = UpdateEdge;
-  idx->base.json = JsonEdge;
-
-  TRI_InitMultiPointer(&idx->_edges,
+  TRI_InitMultiPointer(&edgeIndex->_edges,
                        TRI_UNKNOWN_MEM_ZONE, 
                        HashElementEdge,
                        HashElementEdge,
                        IsEqualKeyEdge,
                        IsEqualElementEdge);
 
-  return &idx->base;
+  return &edgeIndex->base;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,11 +873,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* collectio
     return NULL;
   }
   
-  cap->base._iid = TRI_NewTickVocBase();
-  cap->base._type = TRI_IDX_TYPE_CAP_CONSTRAINT;
-  cap->base._collection = collection;
-  cap->base._unique = false;
-
+  InitIndex(&cap->base, TRI_IDX_TYPE_CAP_CONSTRAINT, collection, false); 
   cap->base.json = JsonCapConstraint;
   cap->base.removeIndex = RemoveIndexCapConstraint;
 
@@ -1462,10 +1487,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* collection,
 
   TRI_InitVectorString(&geo->base._fields, TRI_UNKNOWN_MEM_ZONE);
 
-  geo->base._iid = TRI_NewTickVocBase();
-  geo->base._type = TRI_IDX_TYPE_GEO1_INDEX;
-  geo->base._collection = collection;
-  geo->base._unique = false;
+  InitIndex(&geo->base, TRI_IDX_TYPE_GEO1_INDEX, collection, false); 
   geo->base._ignoreNull = ignoreNull;
 
   geo->base.json = JsonGeo1Index;
@@ -1551,10 +1573,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* collection,
 
   TRI_InitVectorString(&geo->base._fields, TRI_UNKNOWN_MEM_ZONE);
 
-  geo->base._iid = TRI_NewTickVocBase();
-  geo->base._type = TRI_IDX_TYPE_GEO2_INDEX;
-  geo->base._collection = collection;
-  geo->base._unique = false;
+  InitIndex(&geo->base, TRI_IDX_TYPE_GEO2_INDEX, collection, false); 
   geo->base._ignoreNull = ignoreNull;
 
   geo->base.json = JsonGeo2Index;
@@ -2194,11 +2213,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* collection,
     return NULL;
   }
   
-  hashIndex->base._iid = TRI_NewTickVocBase();
-  hashIndex->base._type = TRI_IDX_TYPE_HASH_INDEX;
-  hashIndex->base._collection = collection;
-  hashIndex->base._unique = unique;
-
+  InitIndex(&hashIndex->base, TRI_IDX_TYPE_HASH_INDEX, collection, unique); 
   hashIndex->base.json = JsonHashIndex;
   hashIndex->base.removeIndex = RemoveIndexHashIndex;
 
@@ -2914,11 +2929,7 @@ TRI_index_t* TRI_CreatePriorityQueueIndex (struct TRI_primary_collection_s* coll
     return NULL;
   }
   
-  pqIndex->base._iid = TRI_NewTickVocBase();
-  pqIndex->base._type = TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX;
-  pqIndex->base._collection = collection;
-  pqIndex->base._unique = unique;
-
+  InitIndex(&pqIndex->base, TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, collection, unique); 
   pqIndex->base.json = JsonPriorityQueueIndex;
   pqIndex->base.removeIndex = RemoveIndexPriorityQueueIndex;
 
@@ -3925,11 +3936,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
   
-  skiplistIndex->base._iid = TRI_NewTickVocBase();
-  skiplistIndex->base._type = TRI_IDX_TYPE_SKIPLIST_INDEX;
-  skiplistIndex->base._collection = collection;
-  skiplistIndex->base._unique = unique;
-
+  InitIndex(&skiplistIndex->base, TRI_IDX_TYPE_SKIPLIST_INDEX, collection, unique); 
   skiplistIndex->base.json = JsonSkiplistIndex;
   skiplistIndex->base.removeIndex = RemoveIndexSkiplistIndex;
 
@@ -4384,6 +4391,17 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function for the fulltext index
+/// currently does nothing
+////////////////////////////////////////////////////////////////////////////////
+
+static int CleanupFulltextIndex (TRI_index_t* idx) {
+  LOG_DEBUG("fulltext cleanup called");
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4442,17 +4460,14 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
 
-  fulltextIndex->base._iid = TRI_NewTickVocBase();
-  fulltextIndex->base._type = TRI_IDX_TYPE_FULLTEXT_INDEX;
-  fulltextIndex->base._collection = collection;
-  fulltextIndex->base._unique = false;
-
+  InitIndex(&fulltextIndex->base, TRI_IDX_TYPE_FULLTEXT_INDEX, collection, false); 
   fulltextIndex->base.json = JsonFulltextIndex;
   fulltextIndex->base.removeIndex = RemoveIndexFulltextIndex;
 
-  fulltextIndex->base.insert = InsertFulltextIndex;
-  fulltextIndex->base.remove = RemoveFulltextIndex;
-  fulltextIndex->base.update = UpdateFulltextIndex;
+  fulltextIndex->base.insert  = InsertFulltextIndex;
+  fulltextIndex->base.remove  = RemoveFulltextIndex;
+  fulltextIndex->base.update  = UpdateFulltextIndex;
+  fulltextIndex->base.cleanup = CleanupFulltextIndex;
  
   fulltextIndex->_fulltextIndex = fts;
   fulltextIndex->_indexSubstrings = indexSubstrings;
@@ -5299,11 +5314,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
   
-  baIndex->base._iid        = TRI_NewTickVocBase();
-  baIndex->base._type       = TRI_IDX_TYPE_BITARRAY_INDEX;
-  baIndex->base._collection = collection;
-  baIndex->base._unique     = false;
-
+  InitIndex(&baIndex->base, TRI_IDX_TYPE_BITARRAY_INDEX, collection, false); 
   baIndex->base.json        = JsonBitarrayIndex;
   baIndex->base.removeIndex = RemoveIndexBitarrayIndex;
 
