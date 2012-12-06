@@ -7,28 +7,28 @@
 /* bugfix use firstix not z->firstix  */
 /* bugfix page turn */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include "zstr.h"
 
 ZSTR * ZStrCons(int elts)
 {
     ZSTR * z;
     z=malloc(sizeof(ZSTR));
-    if(z==NULL)
-    {
-        printf("malloc failed on ZSTR structure\n");
-        exit(1);
-    }
+    if(z==NULL) return NULL;
     z->dat=malloc(elts*sizeof(uint64_t));
     if(z->dat==NULL)
     {
-        printf("malloc failed on ZSTR structure (dat[%d])\n",elts);
-        exit(2);
+        free(z);
+        return NULL;
     }
     z->dlen=malloc(elts*sizeof(long));
     if(z->dlen==NULL)
     {
-        printf("malloc failed on ZSTR structure (dlen[%d])\n",elts);
-        exit(3);
+        free(z->dat);
+        free(z);
+        return NULL;
     }
     z->alloc=elts;
     z->firstix=0;
@@ -53,9 +53,10 @@ void ZStrClear(ZSTR * z)
     z->dlen[0]=0;
 }
 
-void ZStrBitsIn(uint64_t a, long bits, ZSTR * z)
+int ZStrBitsIn(uint64_t a, long bits, ZSTR * z)
 {
     long clen;
+    void * ptr;
     clen=z->dlen[z->lastix];
     if(clen+bits <= 64)
     {
@@ -67,23 +68,18 @@ void ZStrBitsIn(uint64_t a, long bits, ZSTR * z)
         if(z->lastix+1 >= z->alloc)
         {
             z->alloc=(z->alloc + z->alloc/4 + 2);
-            z->dat=realloc(z->dat,z->alloc*sizeof(uint64_t));
-            if(z->dat==NULL)
-            {
-                printf("realloc on ZSTR failed (dat[%d])\n",z->alloc);
-                exit(4);
-            }
-            z->dlen=realloc(z->dlen,z->alloc*sizeof(long));
-            if(z->dlen==NULL)
-            {
-                printf("realloc on ZSTR failed (dlen[%d])\n",z->alloc);
-                exit(5);
-            } 
+            ptr=realloc(z->dat,z->alloc*sizeof(uint64_t));
+            if(ptr==NULL) return 1;
+            z->dat=ptr;
+            ptr=realloc(z->dlen,z->alloc*sizeof(long));
+            if(ptr==NULL) return 1;
+            z->dlen=ptr;
         }
         z->lastix++;
         z->dat[z->lastix]=a;
         z->dlen[z->lastix]=bits;
     }
+    return 0;
 }
 
 uint64_t ZStrBitsOut(ZSTR * z, long bits)
@@ -169,7 +165,7 @@ void ZStrNormalize(ZSTR * z)
     }
 }
 
-void ZStrEnc(ZSTR * z, ZCOD * zc, uint64_t a)
+int ZStrEnc(ZSTR * z, ZCOD * zc, uint64_t a)
 {
     int seg;
     switch (zc->t)
@@ -178,15 +174,13 @@ void ZStrEnc(ZSTR * z, ZCOD * zc, uint64_t a)
         for(seg=1;seg<=zc->s;seg++)
             if(a<zc->X[seg]) break;
         seg--;
-        ZStrBitsIn(a-zc->X[seg]+zc->C[seg],zc->L[seg],z);
-        return;
+        return ZStrBitsIn(a-zc->X[seg]+zc->C[seg],zc->L[seg],z);
       case 2:
         if(a<=zc->tmax) a=zc->TX[a];
         for(seg=1;seg<=zc->s;seg++)
             if(a<zc->X[seg]) break;
         seg--;
-        ZStrBitsIn(a-zc->X[seg]+zc->C[seg],zc->L[seg],z);
-        return;
+        return ZStrBitsIn(a-zc->X[seg]+zc->C[seg],zc->L[seg],z);
       default:
         printf("invalid ZCOD type %d\n",zc->t);
         exit(16);
@@ -229,11 +223,11 @@ uint64_t ZStrUnXl(ZCOD * zc, uint64_t a)
     return a;
 }
 
-void ZStrLastEnc(ZSTR * z, uint64_t a)
+int ZStrLastEnc(ZSTR * z, uint64_t a)
 {
     uint64_t b;
     long len;
-    if(a==0) return;
+    if(a==0) return 0;
     b=a;
     len=1;
     while(b>1)
@@ -242,7 +236,7 @@ void ZStrLastEnc(ZSTR * z, uint64_t a)
         b>>=1;
     }
     a-=b<<(len-1);
-    ZStrBitsIn(1+(a<<1),len,z);
+    return ZStrBitsIn(1+(a<<1),len,z);
 }
 
 uint64_t ZStrLastDec(ZSTR * z)
@@ -267,7 +261,7 @@ void ZStrCxClear(ZCOD * zc, CTX * ctx)
     ctx->x1=0;
 }
 
-void ZStrCxEnc(ZSTR * z, ZCOD * zc, CTX * ctx, uint64_t a)
+int ZStrCxEnc(ZSTR * z, ZCOD * zc, CTX * ctx, uint64_t a)
 {
     int seg;
     uint64_t b;
@@ -275,16 +269,14 @@ void ZStrCxEnc(ZSTR * z, ZCOD * zc, CTX * ctx, uint64_t a)
     {
       case 1:
       case 2:
-        ZStrEnc(z,zc,a);
-        return;
+        return ZStrEnc(z,zc,a);
       case 3:
         b=a-ctx->x1;
         ctx->x1=a;
         for(seg=1;seg<=zc->s;seg++)
             if(b<zc->X[seg]) break;
         seg--;
-        ZStrBitsIn(b-zc->X[seg]+zc->C[seg],zc->L[seg],z);
-        return;
+        return ZStrBitsIn(b-zc->X[seg]+zc->C[seg],zc->L[seg],z);
       default:
         printf("invalid ZCOD type %d\n",zc->t);
         exit(17);
@@ -365,10 +357,11 @@ int ZStrExtract(ZSTR * z, void * x, int fmt)
     return 0;
 }
 
-void ZStrInsert(ZSTR * z, void * x, int fmt)
+int ZStrInsert(ZSTR * z, void * x, int fmt)
 {
     uint16_t * x2;
     uint64_t s;
+    int r;
     if(fmt==2)
     {
         x2=(uint16_t *)x;
@@ -378,18 +371,20 @@ void ZStrInsert(ZSTR * z, void * x, int fmt)
             s=*(x2++);
             if( (s&3)==0 )
             {
-                ZStrBitsIn(s>>2,14,z);
+                r=ZStrBitsIn(s>>2,14,z);
+                if(r!=0) return r;
                 ZStrNormalize(z);
-                return;
+                return 0;
             }
             if( (s&3)==3 )
-                ZStrBitsIn(s>>1,15,z);
+                r=ZStrBitsIn(s>>1,15,z);
             else
-                ZStrBitsIn(s-1,16,z);
+                r=ZStrBitsIn(s-1,16,z);
+            if(r!=0) return r;
         }
     }
-    printf("Format %d not known in ZStrExtract\n",fmt);
-}
+    return 1;
+}            
 
 int ZStrExtLen(void * x, int fmt)
 {
@@ -406,34 +401,36 @@ STEX * ZStrSTCons(int fmt)
     STEX * st;
     int i;
     st=malloc(sizeof(STEX));
-    if(st==NULL)
-    {
-        printf("malloc failed on STEX structure\n");
-        exit(51);
-    }
+    if(st==NULL) return NULL;
     st->pst=malloc(1281*sizeof(uint16_t *));
     if(st->pst==NULL)
     {
-        printf("malloc failed on STEX pst\n");
-        exit(52);
+        free(st);
+        return NULL;
     }
     st->ptp=malloc(1281*sizeof(uint16_t *));
     if(st->ptp==NULL)
     {
-        printf("malloc failed on STEX ptp\n");
-        exit(53);
+        free(st->pst);
+        free(st);
+        return NULL;
     }
     st->mal=malloc(1281*sizeof(uint64_t));
     if(st->mal==NULL)
     {
-        printf("malloc failed on STEX mal\n");
-        exit(55);
+        free(st->ptp);
+        free(st->pst);
+        free(st);
+        return NULL;
     }
     st->stcnt=malloc(1281*sizeof(uint64_t));
     if(st->stcnt==NULL)
     {
-        printf("malloc failed on STEX stcnt\n");
-        exit(56);
+        free(st->mal);
+        free(st->ptp);
+        free(st->pst);
+        free(st);
+        return NULL;
     }
     for(i=0;i<1281;i++)
         st->mal[i]=0;
@@ -641,14 +638,14 @@ void * ZStrSTFind(STEX * st, void * x)
     return w1;
 }
 
-static void merge(STEX * st, int layer)
+static int merge(STEX * st, int layer)
 {
     uint16_t sfst,slst,snpl,ssc,i;
     uint16_t *wout, *w1;
     SICH si;
     size_t mem;
     int hcur,r;
-    if(st->inuse[layer]==0) return;
+    if(st->inuse[layer]==0) return 0;
     si.st=st;
     sfst=256*layer;
     slst=sfst+st->inuse[layer];    /* one more than last  */
@@ -667,11 +664,7 @@ static void merge(STEX * st, int layer)
     {
         if(st->mal[snpl]!=0) free(st->pst[snpl]);
         st->pst[snpl]=malloc(mem);
-        if(st->pst[snpl]==NULL)
-        {
-            printf("malloc in merge failed\n");
-            exit(44);
-        }
+        if(st->pst[snpl]==NULL) return 1;
         st->mal[snpl]=mem;
     }
     st->stcnt[snpl]=0;
@@ -709,10 +702,11 @@ static void merge(STEX * st, int layer)
     st->ptp[snpl]=wout;
     st->inuse[layer]=0;
     st->inuse[layer+1]++;
-    if(st->inuse[layer+1] == 255) merge(st,layer+1);
+    if(st->inuse[layer+1] == 255) return merge(st,layer+1);
+    return 0;
 }
 
-void ZStrSTAppend(STEX * st, ZSTR * z)
+int ZStrSTAppend(STEX * st, ZSTR * z)
 {
     size_t len;
     int sno;
@@ -722,23 +716,20 @@ void ZStrSTAppend(STEX * st, ZSTR * z)
     {
         if(st->mal[sno]!=0) free(st->pst[sno]);
         st->pst[sno]=malloc(len);
-        if(st->pst[sno]==NULL)
-        {
-            printf("malloc in Append failed\n");
-            exit(45);
-        }
+        if(st->pst[sno]==NULL) return 1;
         st->mal[sno]=len;
     }
     len=ZStrExtract(z,st->pst[sno],2);
     st->ptp[sno]=st->pst[sno]+len;
     st->stcnt[sno]=1;
     st->inuse[0]++;
-    if(st->inuse[0]>=255) merge(st,0);
+    if(st->inuse[0]>=255) return merge(st,0);
+    return 0;
 }
 
-void ZStrSTSort(STEX * st)
+int ZStrSTSort(STEX * st)
 {
-    int lev,lev2,mxlev;
+    int lev,lev2,mxlev,r;
     uint16_t sans;
     lev=0;
     mxlev=0;
@@ -748,7 +739,8 @@ void ZStrSTSort(STEX * st)
         for(lev2=0;lev2<6;lev2++)
             if(st->inuse[lev2]!=0) mxlev=lev2;
         if( (lev==mxlev) && (st->inuse[lev]==1) ) break;
-        merge(st,lev);
+        r=merge(st,lev);
+        if(r!=0) return r;
         lev++;
         continue;
     }
@@ -757,7 +749,7 @@ void ZStrSTSort(STEX * st)
     {
         st->listw=0;
         st->listm=0;
-        return;
+        return 0;
     }
     sans=256*lev;
     st->list=st->pst[sans];
@@ -765,6 +757,7 @@ void ZStrSTSort(STEX * st)
     st->listm=st->mal[sans];
     st->cnt=st->stcnt[sans];
     st->mal[sans]=0;
+    return 0;
 }
 
 TUBER * ZStrTuberCons(size_t size, int options)
@@ -772,11 +765,7 @@ TUBER * ZStrTuberCons(size_t size, int options)
     TUBER * t;
     int i;
     t=malloc(sizeof(TUBER));
-    if(t==NULL)
-    {
-        printf("failed to malloc TUBER struct\n");
-        exit(34);
-    }
+    if(t==NULL) return NULL;
 /* compute number of K-keys per word from options */
     i=options&7;
     t->kperw=0;
@@ -805,8 +794,8 @@ TUBER * ZStrTuberCons(size_t size, int options)
     t->tub = malloc(8*t->wct);
     if(t->tub == NULL)
     {
-        printf("Unable to malloc tuber data\n");
-        exit(36);
+        free(t);
+        return NULL;
     }
     for(i=0;i<t->wct;i++) t->tub[i]=0x8000000000000000ll;
     t->lenlen=3;
@@ -1005,12 +994,15 @@ static void locate(TUBER * t, uint64_t kkey, BlK * blk, CuR * cur)
 }
 
 /* grabs specified number of kkeys from cur*/
+/* returns number of free bits, or -1 if memory allocation occurs */ 
 long grabrest(CuR * cur, BlK * blk, uint64_t kkeys, ZSTR * z)
 {
     uint64_t i,b;
     long j,k,freeb;
+    int r;
     TUBER * t;
     CuR cur1;
+
     t = blk->tub;
     for(i=0;i<kkeys;i++)
     {
@@ -1020,21 +1012,25 @@ long grabrest(CuR * cur, BlK * blk, uint64_t kkeys, ZSTR * z)
         while(k>63)
         {
             b=getbits(cur,63);
-            ZStrBitsIn(b,63,z);
+            r=ZStrBitsIn(b,63,z);
+            if(r!=0) return -1;
             k-=63;
         }
         b=getbits(cur,k);
-        ZStrBitsIn(b,k,z);
+        r=ZStrBitsIn(b,k,z);
+        if(r!=0) return -1;
         while(j>63)
         {
             b=getbits(cur,63);
-            ZStrBitsIn(b,63,z);
+            r=ZStrBitsIn(b,63,z);
+            if(r!=0) return -1;
             j-=63;
         }
         if(j>0)
         {
             b=getbits(cur,j);
-            ZStrBitsIn(b,j,z);
+            r=ZStrBitsIn(b,j,z);
+            if(r!=0) return -1;
         };
     }
 /* bugfix page turn  */
@@ -1095,6 +1091,7 @@ void movebits(ZSTR * z, long bits, CuR * cur)
 int ZStrTuberRead(TUBER * t, uint64_t kkey, ZSTR * z)
 {
     long i;
+    int r;
     uint64_t j;
     BlK blk;
     CuR cur;
@@ -1106,15 +1103,18 @@ int ZStrTuberRead(TUBER * t, uint64_t kkey, ZSTR * z)
     while(i>60)
     {
         j=getbits(&cur,60);
-        ZStrBitsIn(j,60,z);
+        r=ZStrBitsIn(j,60,z);
+        if(r!=0) return 2;
         i-=60;
     }
     if(i>0)
     {
         j=getbits(&cur,i);
-        ZStrBitsIn(j,i,z);
+        r=ZStrBitsIn(j,i,z);
+        if(r!=0) return 2;
     }
-    ZStrBitsIn(1,1,z);
+    r=ZStrBitsIn(1,1,z);
+    if(r!=0) return 2;
     return 0;  
 }
 
@@ -1145,7 +1145,7 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
     CuR cur;
     CuR cur1;
     ZSTR * z1;
-    long i1,i2,i3,j,k,b1,sparebits,bitlen;
+    long i1,i2,i3,j,k,b1,sparebits,bitlen,spb1;
     int i;
     uint64_t kkeys;
     uint64_t w,m1,m2;
@@ -1184,15 +1184,20 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
     if(kkeys>=kkey) kkeys=kkeys-kkey;
           else      kkeys=t->tiptop+kkeys-kkey;
     z1=ZStrCons(kkeys/t->wct+7);  /* first shot  */
+    if(z1==NULL) return 1;
     sparebits=grabrest(&cur1,&blk,kkeys,z1);
+    if(sparebits==-1) return 1;
     fuseflag=0;
     while(sparebits+i1<i2)
     {
-        sparebits += blkfuse(&blk,&cur1,z1);
+        spb1=blkfuse(&blk,&cur1,z1);
+        if(spb1==-1) return 2;
+        sparebits += spb1;
         fuseflag=1;
-        if(blk.words > (t->wct/3)) return 1;
+        if(blk.words > (t->wct/3)) return 2;
     }
     sparebits=sparebits+i1-i2;
+
     if(fuseflag==1)
     {
         m1=0x7fffffffffffffffull;
@@ -1219,12 +1224,13 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
     return 0;
 }
 
-void ZStrTuberDelete(TUBER * t, uint64_t kkey)
+int ZStrTuberDelete(TUBER * t, uint64_t kkey)
 {
     BlK blk;
     CuR cur;
     CuR cur1;
     ZSTR * z;
+    int r;
     long i1,bitlen;
     uint64_t kkeys;
 
@@ -1237,10 +1243,13 @@ void ZStrTuberDelete(TUBER * t, uint64_t kkey)
     if(kkeys>=kkey) kkeys=kkeys-kkey;
           else      kkeys=t->tiptop+kkeys-kkey;
     z=ZStrCons(kkeys/t->wct+7);  /* about right  */
-    grabrest(&cur1,&blk,kkeys,z);
+    if(z==NULL) return 1;
+    r=grabrest(&cur1,&blk,kkeys,z);
+    if(r!=0) return 1;
     bitlen=ZStrLen(z);  /* probably should compute in grabrest */
     putbits(&cur,0,t->lenlen+1);  /* put in key-not-present */
     movebits(z,bitlen,&cur);
+    return 0;
 }
 
 /* end of zstr.c */
