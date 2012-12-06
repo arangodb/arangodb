@@ -2172,38 +2172,44 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubst
 
   for (size_t i = 0; i < words.size(); ++i) {
     StringUtils::trimInPlace(words[i], "\t\r\n\b\f ");
+    if (words[i].size() == 0) {
+      continue;
+    }
+
+    const size_t pos = query->_len;
 
     // default search option
-    query->_localOptions[i] = FTS_MATCH_COMPLETE;
-    query->_texts[i] = 0;
+    query->_localOptions[pos] = FTS_MATCH_COMPLETE;
+    query->_texts[pos] = 0;
 
     // check if there is a search instruction contained
     vector<string> parts = StringUtils::split(words[i], ':');
     if (parts.size() == 1) {
       // no, just a single word
-      query->_texts[i] = (uint8_t*) TRI_NormaliseWordFulltextIndex(parts[0].c_str(), parts[0].size());
-      if (query->_texts[i] == 0) {
+      query->_texts[pos] = (uint8_t*) TRI_NormaliseWordFulltextIndex(parts[0].c_str(), parts[0].size());
+      if (query->_texts[pos] == 0) {
         TRI_FreeQueryFulltextIndex(query);
         return 0;
       }
     }
     else {
       // search mode : search term
+      std::cout << "parts:" << parts.size() << "\n";
       string command = parts[0];
       StringUtils::trimInPlace(command, "\t\r\n\b\f ");
       StringUtils::tolowerInPlace(&command);
       if (command == "prefix") {
-        query->_localOptions[i] = FTS_MATCH_PREFIX;
+        query->_localOptions[pos] = FTS_MATCH_PREFIX;
       }
       else if (command == "substring") {
-        query->_localOptions[i] = FTS_MATCH_SUBSTRING;
+        query->_localOptions[pos] = FTS_MATCH_SUBSTRING;
         *isSubstringQuery = true;
       }
       
       string word = parts[1];
       StringUtils::trimInPlace(word, "\t\r\n\b\f ");
-      query->_texts[i] = (uint8_t*) TRI_NormaliseWordFulltextIndex(word.c_str(), word.size());
-      if (query->_texts[i] == 0) {
+      query->_texts[pos] = (uint8_t*) TRI_NormaliseWordFulltextIndex(word.c_str(), word.size());
+      if (query->_texts[pos] == 0) {
         TRI_FreeQueryFulltextIndex(query);
         return 0; 
       }
