@@ -384,7 +384,7 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
-/*
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test duplicate entries
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,7 +407,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test duplicate entries
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testDuplicatesDocuments: function () {
       var text1 = "this is a short document text";
       var text2 = "Some longer document text is put in here just to validate whats going on";
@@ -423,7 +423,7 @@ function fulltextQuerySuite () {
       assertEqual(10000, collection.FULLTEXT(idx, "some").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test similar entries
 ////////////////////////////////////////////////////////////////////////////////
@@ -806,7 +806,6 @@ function fulltextQuerySuite () {
       }
     },
 
-/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 4 byte sequences
 ////////////////////////////////////////////////////////////////////////////////
@@ -847,6 +846,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "타이승려들은,수호사원으로서").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:타이승려,prefix:수호사원으").documents.length);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:조상숭배로").documents.length);
+      /*
       require("console").log(4);
       assertEqual(1, collection.FULLTEXT(idx, "教材教辅考试").documents.length);
 //      "图书简介 亚马逊图书，中国最大的网上书店。拥有文学，经济管理，少儿，人文社科，生活，艺术，科技，进口原版，期刊杂志等大类,教材教辅考试,历史，国学古籍，法律，军事，宗教，心理学，哲学，健康与养生，旅游与地图，娱乐，两性婚恋，时尚，家居休闲，孕产育儿，文学，小说，传记，青春与动漫绘本，家庭百科，外语，工具书，教育，心理励志，心灵读物，建筑，计算机与网络，科学与自然等数十小类共计300多万种中外图书
@@ -880,8 +880,8 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.FULLTEXT(idx, "síðu,rættar,ritstjórni").documents.length);
       require("console").log(73);
       assertEqual(1, collection.FULLTEXT(idx, "prefix:læt").documents.length);
+      */
     }
-    */
   };
 };
 

@@ -4115,7 +4115,7 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
   } 
 
   // parse the document text
-  words = TRI_get_words(text, textLength, 2, true);
+  words = TRI_get_words(text, textLength, (uint8_t) fulltextIndex->_minWordLength, true);
   if (words == NULL) {
     return NULL;
   }
@@ -4149,23 +4149,31 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rebuilds a fulltext index by resizing it and re-adding documents
+/// @brief creates a new fulltext index with the properties of an existing one,
+/// but with adjusted (potentially bigger) sizes. The documents from the old
+/// index will be added into the new index.
+/// doc will not be re-inserted into the new index. It's the caller's
+/// responsibility to add it later. This prevents duplicate document entries
+/// in case document insertion has failed at a certain place. In this case, doc
+/// might have been in the old index already, and copying the old index and
+/// inserting doc again will lead to duplicates. So we exclude doc when copying
+/// the old documents and make it the caller's responsibility to add doc later
 /// the caller must have write-locked the index 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ResizeFulltextIndex (TRI_index_t* idx) {
+static int ResizeFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_fulltext_index_t* fulltextIndex;
   FTS_index_t* newIndex;
   uint64_t sizes[4];
   
-  LOG_INFO("fulltext index resize was triggered");
+  LOG_DEBUG("resizing fulltext index");
     
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   // this call will populate the sizes array
   FTS_HealthIndex(fulltextIndex->_fulltextIndex, sizes);
 
-  newIndex = FTS_CloneIndex(fulltextIndex->_fulltextIndex, sizes);
+  newIndex = FTS_CloneIndex(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc), sizes);
 
   if (newIndex == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -4191,16 +4199,22 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     LOG_WARNING("internal error in InsertFulltextIndex");
     return TRI_ERROR_INTERNAL;
   }
-
+    
   TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
   res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
-
+  
   if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
-    // rebuild the index with adjusted (bigger) size
-    res = ResizeFulltextIndex(idx);
+    // rebuild the index with adjusted (bigger) sizes
+    res = ResizeFulltextIndex(idx, doc);
     if (res == TRI_ERROR_NO_ERROR) {
       // insert the document again because previous insert failed
       res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_ERROR("adding document to fulltext index failed: %s", TRI_errno_string(res));
+      }
+    }
+    else {
+      LOG_ERROR("resizing fulltext index failed: %s", TRI_errno_string(res));
     }
   }
 
@@ -4245,6 +4259,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, idx->_unique));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minWordLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) fulltextIndex->_minWordLength));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
     
   return json;
@@ -4273,11 +4288,7 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   
   if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
     // rebuild the index with adjusted (bigger) size
-    res = ResizeFulltextIndex(idx);
-    if (res == TRI_ERROR_NO_ERROR) {
-      // delete the document again because previous delete failed
-      res = FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
-    }
+    res = ResizeFulltextIndex(idx, doc);
   }
 
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
@@ -4304,10 +4315,10 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
   
   if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
     // rebuild the index with adjusted (bigger) size
-    res = ResizeFulltextIndex(idx);
+    res = ResizeFulltextIndex(idx, newDoc);
     if (res == TRI_ERROR_NO_ERROR) {
-      // update the document again because previous update failed
-      res = FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+      // insert just the new version of the document
+      res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
     }
   }
 
@@ -4322,7 +4333,33 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CleanupFulltextIndex (TRI_index_t* idx) {
-  LOG_DEBUG("fulltext cleanup called");
+  TRI_fulltext_index_t* fulltextIndex;
+  int res;
+
+  LOG_TRACE("fulltext cleanup called");
+
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+
+  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
+
+  while (1) {
+    // this will scan 100.000 document/word pairs at a time
+    // TODO: check if this number is reasonable
+    res = FTS_BackgroundTask(fulltextIndex->_fulltextIndex, 100000);
+    // 0 = ok, but unfinished
+    // 1 = oom
+    // 2 = needs resize
+    // 3 = finished
+    if (res == 3) {
+      // finished cleaning
+      break;
+    }
+    // TODO: maybe we want to clean more
+    break;
+  }
+  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+
+  LOG_TRACE("finished cleaning up");
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4346,7 +4383,8 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collection,
                                       const char* attributeName,
-                                      const bool indexSubstrings) {
+                                      const bool indexSubstrings,
+                                      int minWordLength) {
   TRI_fulltext_index_t* fulltextIndex;
   FTS_index_t* fts;
   TRI_shaper_t* shaper;
@@ -4354,8 +4392,8 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   TRI_shape_pid_t attribute;
   int options;
   // default sizes for index. TODO: adjust these
-  //uint64_t sizes[4] = { 20050, 100000, 570000, 10000000 };
-  uint64_t sizes[4] = { 50, 1000, 5700, 10000 };
+  //uint64_t sizes[4] = { 50, 100000, 5000, 1000 };
+  uint64_t sizes[4] = { 500, 1000000, 50000, 10000 };
     
   // look up the attribute
   shaper = collection->_shaper;
@@ -4403,6 +4441,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   fulltextIndex->_fulltextIndex = fts;
   fulltextIndex->_indexSubstrings = indexSubstrings;
   fulltextIndex->_attribute = attribute;
+  fulltextIndex->_minWordLength = minWordLength;
   
   TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 

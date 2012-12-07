@@ -75,19 +75,30 @@ extern ZCOD zcdh;
 /// @brief maximum number of Unicode characters for an indexed word
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MAX_WORD_LENGTH  (40)
+#define MAX_WORD_LENGTH      (40)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gap between two words in a temporary search buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#define SPACING          (10)
+#define SPACING              (10)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum tolerable occupancy of the index (e.g. 60 %)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define HEALTH_THRESHOLD (75)
+#define HEALTH_THRESHOLD     (75)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index extra growth factor
+/// if 1.0, the index will be resized to the values originally suggested. As
+/// resizing is expensive, one might want to decrease the overall number of
+/// resizings. This can be done by setting this number to a value bigger than 
+/// 1.0
+/// TODO: find a good default value for this
+////////////////////////////////////////////////////////////////////////////////
+
+#define EXTRA_GROWTH_FACTOR  (1.0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual index struct used
@@ -104,9 +115,10 @@ typedef struct {
   TUBER*                _index1;
   TUBER*                _index2;
   TUBER*                _index3;
+  uint64_t              _ix3KKey;
 
-  int64_t               _maxDocuments;
-  int64_t               _numDocuments;
+  uint64_t              _maxDocuments;
+  uint64_t              _numDocuments;
 
   FTS_texts_t* (*getTexts)(FTS_document_id_t, void*);
   void (*freeWordlist)(FTS_texts_t*);
@@ -169,6 +181,20 @@ static uint64_t GetUnicode (uint8_t** ptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief translate zstr error code into TRI_error code
+////////////////////////////////////////////////////////////////////////////////
+
+static int TranslateZStrErrorCode (int zstrErrorCode) {
+  assert(zstrErrorCode != 0);
+
+  if (zstrErrorCode == 2) {
+    return TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
+  }
+
+  return TRI_ERROR_OUT_OF_MEMORY;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a document to the index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -195,6 +221,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
   uint64_t bkey = 0;
   uint64_t docb, dock;
   int res;
+  int res2;
 
   ix = (FTS_real_index*) ftx;
   
@@ -202,6 +229,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
   handle = ix->_firstFree;
   if (handle == 0) {
     // no more document handles free
+    LOG_ERROR("fail on %d", __LINE__);
     return TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
   }
   
@@ -227,7 +255,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
 
   // check for out of memory
   if (zstrwl == NULL || zstr2a == NULL || zstr2b == NULL || x3zstr == NULL || x3zstrb == NULL) {
-    LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+    res = TRI_ERROR_OUT_OF_MEMORY;
     goto oom;
   }
   
@@ -243,7 +271,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
     unicode = GetUnicode(&utf);
     while (unicode != 0) {
       if (ZStrEnc(zstrwl, &zcutf, unicode) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
         goto oom;
       }
 
@@ -256,13 +284,13 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
 
     // terminate the word and insert into STEX
     if (ZStrEnc(zstrwl, &zcutf, 0) != 0) {
-      LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+      res = TRI_ERROR_OUT_OF_MEMORY;
       goto oom;
     }
 
     ZStrNormalize(zstrwl);
     if (ZStrSTAppend(stex, zstrwl) != 0) {
-      LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+      res = TRI_ERROR_OUT_OF_MEMORY;
       goto oom;
     }
   }
@@ -279,7 +307,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
   for (wdx = 0; wdx < nowords; wdx++) {
     // get it out as a word  
     if (ZStrInsert(zstrwl, wpt, 2) != 0) {
-      LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+      res = TRI_ERROR_OUT_OF_MEMORY;
       goto oom;
     }
 
@@ -307,7 +335,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
       // get the Z-string for the index-2 entry before this letter 
       i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
       if (i == 1) {
-        res = TRI_ERROR_INTERNAL; // TODO: check with Richard
+        res = TRI_ERROR_INTERNAL; 
         goto oom;
       }
 
@@ -335,6 +363,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
       if (newlet != tran) {
         // if not there, create a new index-2 entry for it  
         bkey = ZStrTuberIns(ix->_index2, kkey[j], tran);
+        // TODO: check bkey for INSFAIL
         kkey[j + 1] = ZStrTuberK(ix->_index2, kkey[j], tran, bkey); 
         // update old index-2 entry to insert new letter
         ZStrCxClear(&zcdelt, &ctx2a);
@@ -344,14 +373,14 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
         ZStrClear(zstr2b);
         x64 = ZStrBitsOut(zstr2a, 1);
         if (ZStrBitsIn(x64, 1, zstr2b) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+          res = TRI_ERROR_OUT_OF_MEMORY;
           goto oom;
         }
         if (x64 == 1) { 
           // copy over the B-key into index 3 
           docb = ZStrDec(zstr2a, &zcbky);
           if (ZStrEnc(zstr2b, &zcbky, docb) != 0) {
-            LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+            res = TRI_ERROR_OUT_OF_MEMORY;
             goto oom;
           }
         }
@@ -364,27 +393,27 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
             break;
           }
           if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-            LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+            res = TRI_ERROR_OUT_OF_MEMORY;
             goto oom;
           }
           x64 = ZStrDec(zstr2a, &zcbky);
           if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
-            LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+            res = TRI_ERROR_OUT_OF_MEMORY;
             goto oom;
           }
         }
         if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+          res = TRI_ERROR_OUT_OF_MEMORY;
           goto oom;
         }
 
         if (ZStrEnc(zstr2b, &zcbky, bkey) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+          res = TRI_ERROR_OUT_OF_MEMORY;
           goto oom;
         }
         if (newlet == oldlet) {
           if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
-            LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+            res = TRI_ERROR_OUT_OF_MEMORY;
             goto oom;
           }
         }
@@ -392,24 +421,25 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
           while (newlet != oldlet) {
             oldlet = newlet;
             if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-              LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+              res = TRI_ERROR_OUT_OF_MEMORY;
               goto oom;
             }
             x64 = ZStrDec(zstr2a, &zcbky);
             if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
-              LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+              res = TRI_ERROR_OUT_OF_MEMORY;
               goto oom;
             }
             newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
           }
           if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-            LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+            res = TRI_ERROR_OUT_OF_MEMORY;
             goto oom;
           }
         }
         ZStrNormalize(zstr2b);
-        if (ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res2 =  ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b);
+        if (res2 != 0) {
+          res = TranslateZStrErrorCode(res2);
           goto oom;
         }
       }
@@ -424,7 +454,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
     // so read the zstr from index2 
     i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
     if (i == 1) {
-      res = TRI_ERROR_INTERNAL; // TODO: check with Richard
+      res = TRI_ERROR_INTERNAL;
       goto oom;
     }
     // is there already an index-3 entry available? 
@@ -435,6 +465,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
     }
     else {
       docb = ZStrTuberIns(ix->_index3, kkey[j], 0);
+      // TODO: check docb
       // put it into index 2 
       ZStrCxClear(&zcdelt, &ctx2a);
       ZStrCxClear(&zcdelt, &ctx2b);
@@ -443,12 +474,12 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
       ZStrClear(zstr2b);
       x64 = ZStrBitsOut(zstr2a, 1);
       if (ZStrBitsIn(1, 1, zstr2b) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
         goto oom;
       }
 
       if (ZStrEnc(zstr2b, &zcbky, docb) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
         goto oom;
       }
 
@@ -461,18 +492,19 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
         }
 
         if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+          res = TRI_ERROR_OUT_OF_MEMORY;
           goto oom;
         }
         x64 = ZStrDec(zstr2a, &zcbky);
         if (ZStrEnc(zstr2b,&zcbky, x64) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+          res = TRI_ERROR_OUT_OF_MEMORY;
           goto oom;
         }
       }
       ZStrNormalize(zstr2b);
-      if (ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+      res2 = ZStrTuberUpdate(ix->_index2, kkey[j], zstr2b);
+      if (res2 != 0) {
+        res = TranslateZStrErrorCode(res2);
         goto oom;
       } 
     }
@@ -481,7 +513,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
     i = ZStrTuberRead(ix->_index3, dock, x3zstr);
     ZStrClear(x3zstrb);
     if (i == 1) {
-      res = TRI_ERROR_INTERNAL; // TODO: check with Richard
+      res = TRI_ERROR_INTERNAL; 
       goto oom;
     }
 
@@ -496,37 +528,38 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
       }
       
       if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
         goto oom;
       }
     }
     if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle) != 0) {
-      LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+      res = TRI_ERROR_OUT_OF_MEMORY;
       goto oom;
     }
     if (newhan == oldhan) {
       if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, handle) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
         goto oom;
       }
     }
     else {
       if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan) != 0) {
-        LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+        res = TRI_ERROR_OUT_OF_MEMORY;
         goto oom;
       }
       while (newhan != oldhan) {
         oldhan = newhan;
         newhan = ZStrCxDec(x3zstr, &zcdoc, &x3ctx);
         if (ZStrCxEnc(x3zstrb, &zcdoc, &x3ctxb, newhan) != 0) {
-          LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+          res = TRI_ERROR_OUT_OF_MEMORY;
           goto oom;
         }
       }
     }
     ZStrNormalize(x3zstrb);
-    if (ZStrTuberUpdate(ix->_index3, dock, x3zstrb) != 0) {
-      LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+    res2 = ZStrTuberUpdate(ix->_index3, dock, x3zstrb);
+    if (res2 != 0) {
+      res = TranslateZStrErrorCode(res2);
       goto oom;
     }
 
@@ -545,7 +578,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
           tran = ZStrXlate(&zcutf, ixlet[j2]);
           i = ZStrTuberRead(ix->_index1, kkey1[j2 + 1], zstr2a);
           if (i == 1) {
-            res = TRI_ERROR_INTERNAL; // TODO: check with Richard
+            res = TRI_ERROR_INTERNAL; 
             goto oom;
           }
           // look to see if the letter is there  
@@ -565,6 +598,7 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
           if (newlet != tran) {
             // if not there, create a new index-1 entry for it  
             bkey = ZStrTuberIns(ix->_index1, kkey1[j2 + 1], tran);
+            // TODO: check bkey
             kkey1[j2] = ZStrTuberK(ix->_index1, kkey1[j2 + 1], tran, bkey); 
             // update old index-1 entry to insert new letter
             ZStrCxClear(&zcdelt, &ctx2a);
@@ -580,26 +614,26 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
                 break;
               }
               if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-                LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+                res = TRI_ERROR_OUT_OF_MEMORY;
                 goto oom;
               }
               x64 = ZStrDec(zstr2a, &zcbky);
               if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
-                LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+                res = TRI_ERROR_OUT_OF_MEMORY;
                 goto oom;
               }
             }
             if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
-              LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+              res = TRI_ERROR_OUT_OF_MEMORY;
               goto oom;
             }
             if (ZStrEnc(zstr2b, &zcbky, bkey) != 0) {
-              LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+              res = TRI_ERROR_OUT_OF_MEMORY;
               goto oom;
             }
             if (newlet == oldlet) {
               if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, tran) != 0) {
-                LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+                res = TRI_ERROR_OUT_OF_MEMORY;
                 goto oom;
               }
             }
@@ -607,24 +641,25 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
               while (newlet != oldlet) {
                 oldlet = newlet;
                 if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-                  LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+                  res = TRI_ERROR_OUT_OF_MEMORY;
                   goto oom;
                 }
                 x64 = ZStrDec(zstr2a, &zcbky);
                 if (ZStrEnc(zstr2b, &zcbky, x64) != 0) {
-                  LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+                  res = TRI_ERROR_OUT_OF_MEMORY;
                   goto oom;
                 }
                 newlet = ZStrCxDec(zstr2a, &zcdelt, &ctx2a);
               }
               if (ZStrCxEnc(zstr2b, &zcdelt, &ctx2b, newlet) != 0) {
-                LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+                res = TRI_ERROR_OUT_OF_MEMORY;
                 goto oom;
               }
             }
             ZStrNormalize(zstr2b);
-            if (ZStrTuberUpdate(ix->_index1, kkey1[j2 + 1], zstr2b) != 0) {
-              LOG_INFO("oom triggered in %d", __LINE__); res = TRI_ERROR_OUT_OF_MEMORY;
+            res2 = ZStrTuberUpdate(ix->_index1, kkey1[j2 + 1], zstr2b);
+            if (res2 != 0) {
+              res = TranslateZStrErrorCode(res2);
               goto oom;
             }
           }
@@ -685,11 +720,15 @@ static int RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   }
 
   if (i > ix->_lastSlot) {
+    LOG_ERROR("fail on %d", __LINE__);
     return TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
   }
 
   ix->_handlesFree[i] = 1;
-  ix->_numDocuments--;
+  if (ix->_numDocuments > 0) {
+    // should never underflow
+    ix->_numDocuments--;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -946,11 +985,17 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
 /// @brief index recursion, prefix matching
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t* wd) {
+static int Ix1Recurs (STEX* dochan, 
+                      FTS_real_index* ix, 
+                      uint64_t kk1, 
+                      uint64_t* wd) {
   ZSTR* zstr;
   CTX ctx;
   uint64_t newlet;
   uint64_t kk2;
+  int res;
+
+  res = TRI_ERROR_NO_ERROR;
 
   kk2 = FindKKey2(ix,wd);
 
@@ -961,13 +1006,11 @@ static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t*
   // index 1 entry for this prefix 
   zstr = ZStrCons(10);  
   if (zstr == NULL) {
-    // TODO: out of memory
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   if (ZStrTuberRead(ix->_index1, kk1, zstr) == 1) {
-    // TODO: make this return an error instead
-    printf("recursion failed to read kk1\n");
-    exit(1);
+    return TRI_ERROR_INTERNAL;
   }
 
   ZStrCxClear(&zcdelt, &ctx);
@@ -986,10 +1029,16 @@ static void Ix1Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk1, uint64_t*
     bkey = ZStrDec(zstr, &zcbky);
     newkk1 = ZStrTuberK(ix->_index1, kk1, newlet, bkey);
     *(wd - 1) = newlet;
-    Ix1Recurs(dochan, ix, newkk1, wd - 1);
+
+    res = Ix1Recurs(dochan, ix, newkk1, wd - 1);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
   }
 
   ZStrDest(zstr);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,15 +1121,9 @@ int FTS_HealthIndex (FTS_index_t* ftx, uint64_t* stats) {
   ix = (FTS_real_index*) ftx;
 
   health = (ix->_numDocuments * 100) / ix->_maxDocuments;
-  stats[0] = (health * (ix->_numDocuments + 5)) / 50;
-
-  if (stats[0] < 5) {
-    stats[0] = 5;
-  }
 
   if (ix->_options == FTS_INDEX_SUBSTRINGS) {
     ZStrTuberStats(ix->_index1, st);
-    // LOG_TRACE("index 1 health %d size %d", (int) st[0], (int) st[1]);
     stats[1] = st[1];
     if (health < st[0]) {
       health = st[0];
@@ -1091,17 +1134,28 @@ int FTS_HealthIndex (FTS_index_t* ftx, uint64_t* stats) {
   }
 
   ZStrTuberStats(ix->_index2, st);
-  // LOG_TRACE("index 2 health %d size %d", (int) st[0], (int) st[1]);
   stats[2] = st[1];
   if (health < st[0]) {
     health = st[0];
   }
 
   ZStrTuberStats(ix->_index3, st);
-  // LOG_TRACE("index 3 health %d size %d", (int) st[0], (int) st[1]);
   stats[3] = st[1];
   if (health < st[0]) {
     health = st[0];
+  }
+
+  stats[0] = (health * (ix->_numDocuments + 5)) / 50; 
+  if (stats[0] < (ix->_numDocuments + 5)) {
+    stats[0] = (ix->_numDocuments + 5);
+  }
+
+  if (EXTRA_GROWTH_FACTOR > 1.0) {
+    size_t i;
+
+    for (i = 0; i < 4; ++i) {
+      stats[i] = (uint64_t) ((double) stats[i] * (double) EXTRA_GROWTH_FACTOR);
+    }
   }
 
   return (int) health;
@@ -1115,6 +1169,7 @@ int FTS_HealthIndex (FTS_index_t* ftx, uint64_t* stats) {
 ////////////////////////////////////////////////////////////////////////////////
 
 FTS_index_t* FTS_CloneIndex (FTS_index_t* ftx,
+                             FTS_document_id_t excludeDocument,
                              uint64_t sizes[4]) {
   FTS_real_index* old;
   FTS_index_t* clone;
@@ -1126,15 +1181,24 @@ FTS_index_t* FTS_CloneIndex (FTS_index_t* ftx,
   if (clone != NULL) {
     // copy documents
     FTS_document_id_t i;
+    uint64_t count = 0;
 
     for (i = 1; i <= old->_lastSlot; i++) {
+      FTS_document_id_t found;
       int res;
 
       if (old->_handlesFree[i] == 1) {
+        // document is marked as deleted
         continue;
       }
 
-      res = FTS_AddDocument(clone, old->_handles[i]);
+      found = old->_handles[i];
+      if (found == excludeDocument) {
+        // do not insert this document, because the caller will insert it later
+        continue;
+      }
+
+      res = FTS_AddDocument(clone, found);
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
         // if resize fails, everything's ruined
         LOG_ERROR("resizing the fulltext index failed with %d, sizes were: %llu %llu %llu %llu",
@@ -1147,7 +1211,11 @@ FTS_index_t* FTS_CloneIndex (FTS_index_t* ftx,
         FTS_FreeIndex(clone);
         return NULL;
       }
+
+      ++count;
     }
+
+    LOG_DEBUG("cloned %llu documents", (unsigned long long) count);
   }
   
   return clone;
@@ -1170,11 +1238,11 @@ FTS_index_t* FTS_CreateIndex (void* context,
   FTS_real_index* ix;
   int i;
     
-  LOG_INFO("creating fulltext index with sizes %llu %llu %llu %llu", 
-           (unsigned long long) sizes[0],
-           (unsigned long long) sizes[1],
-           (unsigned long long) sizes[2],
-           (unsigned long long) sizes[3]);
+  LOG_TRACE("creating fulltext index with sizes %llu %llu %llu %llu", 
+            (unsigned long long) sizes[0],
+            (unsigned long long) sizes[1],
+            (unsigned long long) sizes[2],
+            (unsigned long long) sizes[3]);
   
   ix = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_real_index), false);
   if (ix == NULL) {
@@ -1194,10 +1262,11 @@ FTS_index_t* FTS_CreateIndex (void* context,
     return NULL;
   }
  
-  ix->_maxDocuments = (int64_t) sizes[0]; 
+  ix->_maxDocuments = sizes[0]; 
   ix->_numDocuments = 0;
   ix->_context      = context;
   ix->_options      = options;
+  ix->_ix3KKey      = 0;
 
   // wordlists retrieval function
   ix->getTexts      = getTexts;
@@ -1335,11 +1404,11 @@ int FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 
   health = FTS_HealthIndex(ftx, sizes);
   if (health > HEALTH_THRESHOLD || res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
-    LOG_INFO("Add document: health exceeds threshold. suggested sizes are: %llu %llu %llu %llu",
-             (unsigned long long) sizes[0],
-             (unsigned long long) sizes[1],
-             (unsigned long long) sizes[2],
-             (unsigned long long) sizes[3]);
+    LOG_TRACE("fulltext index health threshold exceeded. new suggested sizes are: %llu %llu %llu %llu",
+              (unsigned long long) sizes[0],
+              (unsigned long long) sizes[1],
+              (unsigned long long) sizes[2],
+              (unsigned long long) sizes[3]);
     res = TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
   }
 
@@ -1392,13 +1461,110 @@ int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief current not called. TODO: find out what its intention is
+/// @brief read index3 and remove handles of unused documents. stop after docs
+/// deletions. the scan & cleanup is incremental
+/// the caller must have write-locked the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_BackgroundTask (FTS_index_t* ftx) {
-  /* obtain LOCKMAIN */
-  /* remove deleted handles from index3 not done QQQ  */
-  /* release LOCKMAIN */
+int FTS_BackgroundTask (FTS_index_t * ftx, int docs) {
+  FTS_real_index * ix;
+  int dleft,i;
+  CTX cold, cnew;
+  int cd;
+  uint64_t newterm,oldhan,han;
+  ZSTR *zold, *znew;
+  ix = (FTS_real_index *)ftx;
+  dleft=docs;
+  cd=0;
+
+  znew=ZStrCons(100);
+  if(znew==NULL) return 1;
+  zold=ZStrCons(100);
+  if(zold==NULL)
+  {
+    ZStrDest(znew);
+    return 1;
+  }
+
+  while(dleft>0)
+  {
+    uint64_t numDeletions;
+
+    assert(ix->_ix3KKey < (ix->_index3)->kmax);
+
+    numDeletions = 0;
+    i=ZStrTuberRead(ix->_index3,ix->_ix3KKey,zold);
+    if(i==2)
+    {
+      cd=1;
+      break;
+    }
+    if(i==0)
+    {
+      ZStrCxClear(&zcdoc,&cold);
+      ZStrCxClear(&zcdoc,&cnew);
+      ZStrClear(znew);
+      oldhan=0;
+      newterm=0;
+      while(1)
+      {
+        han=ZStrCxDec(zold,&zcdoc,&cold);
+        if(han==oldhan) {
+           break;
+        }
+        oldhan=han;
+        dleft--;
+        if(ix->_handlesFree[han]==0)
+        {
+          i=ZStrCxEnc(znew,&zcdoc,&cnew,han);
+          if(i!=0) {
+            ix->_ix3KKey = 0;
+            ZStrDest(znew);
+            ZStrDest(zold);
+            return 1;
+          }
+          newterm=han;
+        }
+        else {
+          // something was deleted
+          ++numDeletions;
+        }
+      }
+
+      if (numDeletions > 0) {
+        // update existing entry in tuber
+        // but only if there's something to update
+
+        i=ZStrCxEnc(znew,&zcdoc,&cnew,newterm);
+        if(i!=0) {
+          ix->_ix3KKey = 0;
+          ZStrDest(znew);
+          ZStrDest(zold);
+          return 1;
+        }
+        ZStrNormalize(znew);
+        i=ZStrTuberUpdate(ix->_index3,ix->_ix3KKey,znew);
+      }
+
+      if(i!=0) {
+        ix->_ix3KKey = 0;
+        ZStrDest(znew);
+        ZStrDest(zold);
+        return i;
+      }
+    }
+    ix->_ix3KKey++;
+    if(ix->_ix3KKey >= (ix->_index3)->kmax)
+    {
+      ix->_ix3KKey = 0;
+      cd=3; // finished iterating over all document handles
+      break;
+    }
+  }
+
+  ZStrDest(znew);
+  ZStrDest(zold);
+  return cd;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1423,34 +1589,53 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
   uint64_t word[2 * (MAX_WORD_LENGTH + SPACING)];
   uint64_t ndocs = 0;
 
-  zstr2  = ZStrCons(10);  /* from index-2 tuber */
+  // initialise 
+  dc = NULL;
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+  zstr2 = ZStrCons(10);  /* from index-2 tuber */
   if (zstr2 == NULL) {
-    // TODO: out of memory
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return NULL;
   }
 
-  zstr3  = ZStrCons(10);  /* from index-3 tuber  */
+  zstr3 = ZStrCons(10);  /* from index-3 tuber  */
   if (zstr3 == NULL) {
-    // TODO: out of memory
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    ZStrDest(zstr2);
+    return NULL;
   }
 
   zstra1 = ZStrCons(10); /* current list of documents */
   if (zstra1 == NULL) {
-    // TODO: out of memory
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    ZStrDest(zstr3);
+    ZStrDest(zstr2);
+    return NULL;
   }
 
   zstra2 = ZStrCons(10); /* new list of documents  */
   if (zstra2 == NULL) {
-    // TODO: out of memory
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    ZStrDest(zstra1);
+    ZStrDest(zstr3);
+    ZStrDest(zstr2);
+    return NULL;
   }
 
-  zstr   = ZStrCons(4);  /* work zstr from stex  */
+  zstr = ZStrCons(4);  /* work zstr from stex  */
   if (zstr == NULL) {
-    // TODO: out of memory
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    ZStrDest(zstra2);
+    ZStrDest(zstra1);
+    ZStrDest(zstr3);
+    ZStrDest(zstr2);
+    return NULL;
   }
-    
+
   ix = (FTS_real_index*) ftx;
 
-/*     - for each term in the query */
+  // for each term in the query 
   for (queryterm = 0; queryterm < query->_len; queryterm++) {
     if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING &&
         ix->_options != FTS_INDEX_SUBSTRINGS) {
@@ -1512,7 +1697,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           }
           if (ix->_handlesFree[newhan] == 0) {
             if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
-              // TODO: out of memory
+              TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+              goto oom;
             }
             lasthan = newhan;
             ndocs++;
@@ -1541,7 +1727,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           if (newhan == nhand1) {
             if (ix->_handlesFree[newhan] == 0) {
               if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
-                // TODO: out of memory
+                TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+                goto oom;
               }
               lasthan = newhan;
               ndocs++;
@@ -1561,9 +1748,12 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           }
         }
       }
+
       if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan) != 0) {
-        // TODO: out of memory
+        TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+        goto oom;
       }
+
       ZStrNormalize(zstra2);
       ztemp = zstra1;
       zstra1 = zstra2;
@@ -1579,7 +1769,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       // make STEX to contain new list of handles 
       dochan = ZStrSTCons(2);
       if (dochan == NULL) {
-        // TODO: out of memory
+        TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+        goto oom;
       }
 
       FillWordBuffer(&word[MAX_WORD_LENGTH + SPACING], query->_texts[queryterm]);
@@ -1607,7 +1798,10 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           break;
         }
         // call routine to recursively put handles to STEX
-        Ix1Recurs(dochan, ix, kkey, word + MAX_WORD_LENGTH + SPACING);
+        if (Ix1Recurs(dochan, ix, kkey, word + MAX_WORD_LENGTH + SPACING) != TRI_ERROR_NO_ERROR) {
+          TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+          goto oom;
+        }
       }
 
       ZStrSTSort(dochan);
@@ -1625,13 +1819,17 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           uint64_t newhan;
 
           if (ZStrInsert(zstr, docpt, 2) != 0) {
-            // TODO: out of memory
+            TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+            ZStrSTDest(dochan); 
+            goto oom;
           }
           newhan = ZStrDec(zstr, &zcdh);
           docpt += ZStrExtLen(docpt, 2);
           if (ix->_handlesFree[newhan] == 0) {
             if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
-              // TODO: out of memory
+              TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+              ZStrSTDest(dochan); 
+              goto oom;
             }
             lasthan = newhan;
             ndocs++;
@@ -1652,7 +1850,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
 
         nhand1 = ZStrCxDec(zstra1, &zcdoc, &ctxa1);
         if (ZStrInsert(zstr, docpt, 2) != 0) {
-          // TODO: out of memory
+          TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+          ZStrSTDest(dochan); 
+          goto oom;
         }
         newhan = ZStrDec(zstr, &zcdh);
         docpt += ZStrExtLen(docpt, 2);
@@ -1667,8 +1867,11 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
           if (newhan == nhand1) {
             if (ix->_handlesFree[newhan] == 0) {
               if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, newhan) != 0) {
-                // TODO: out of memory
+                TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+                ZStrSTDest(dochan); 
+                goto oom;
               }
+
               lasthan = newhan;
               ndocs++;
             }
@@ -1676,8 +1879,11 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
               break;
             }
             if (ZStrInsert(zstr, docpt, 2) != 0) {
-              // TODO: out of memory
+              TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+              ZStrSTDest(dochan); 
+              goto oom;
             }
+
             newhan = ZStrDec(zstr, &zcdh);
             docpt += ZStrExtLen(docpt, 2);
             odocs--;
@@ -1693,7 +1899,9 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
               break;
             }
             if (ZStrInsert(zstr, docpt, 2) != 0) {
-              // TODO: out of memory
+              TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+              ZStrSTDest(dochan); 
+              goto oom;
             }
             newhan = ZStrDec(zstr, &zcdh);
             docpt += ZStrExtLen(docpt, 2);
@@ -1702,7 +1910,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         }
       }
       if (ZStrCxEnc(zstra2, &zcdoc, &ctxa2, lasthan) != 0) {
-        // TODO: out of memory
+        TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+        goto oom;
       }
       ZStrNormalize(zstra2);
       ztemp = zstra1;
@@ -1737,6 +1946,8 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       }
     }
   }
+
+oom:
     
   ZStrDest(zstra1);
   ZStrDest(zstra2);

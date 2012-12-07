@@ -952,10 +952,11 @@ void ZStrTuberStats(TUBER * t, uint64_t * stats)
     d2=100-d2;
     if(d2>d1) d1=d2;
     d2=((t->wct*8)*(d1+1))/50;
+    /*
 printf("fuse %d freebit %d freekey %d kmax %d wct %d lenlen %d\n",
      (int)t->fuses, (int)t->freebit, (int)t->freekey, (int)t->kmax,
         (int)t->wct, (int)t->lenlen);
-
+*/
     if(d2<72*t->fuses)d2=72*t->fuses;
     stats[0]=d1;
     stats[1]=d2;

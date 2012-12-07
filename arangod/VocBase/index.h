@@ -235,6 +235,7 @@ typedef struct TRI_fulltext_index_s {
   FTS_index_t* _fulltextIndex;
   TRI_shape_pid_t _attribute;
   TRI_read_write_lock_t _lock;
+  int _minWordLength;
 
   bool _indexSubstrings;
 }
@@ -683,7 +684,8 @@ struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, const char* query
 
 TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
                                       const char*,
-                                      const bool);
+                                      const bool, 
+                                      int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
