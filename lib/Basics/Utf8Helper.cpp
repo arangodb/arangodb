@@ -32,12 +32,14 @@
 #include "unicode/normalizer2.h"
 #include "unicode/ucasemap.h"
 #include "unicode/brkiter.h"
+#include "unicode/ustdio.h"
 #else
 #include "string.h"
 #endif
 
 #include "Logger/Logger.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/utf8-helper.h"
 
 using namespace triagens::basics;
 using namespace std;
@@ -373,6 +375,89 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   return utf8_dest;
 }
 
+TRI_vector_string_t* Utf8Helper::getWords (const char* const text, 
+                                                const size_t textLength,
+                                                uint8_t minimalLength,
+                                                bool lowerCase) {
+  TRI_vector_string_t* words;
+  UErrorCode status = U_ZERO_ERROR;
+  UnicodeString word;
+  size_t utf8WordLength = 0;
+  char* utf8Word;
+
+  words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
+  if (words == NULL) {
+    return NULL;
+  }
+
+  TRI_InitVectorString(words, TRI_UNKNOWN_MEM_ZONE);    
+
+#ifdef TRI_HAVE_ICU  
+  
+  size_t textUtf16Length = 0;
+  UChar* textUtf16 = NULL;
+
+  if (lowerCase) {
+    // lower case string
+    int32_t lowerLength = 0;
+    char* lower = tolower(TRI_UNKNOWN_MEM_ZONE, text, (int32_t) textLength, lowerLength);
+  
+    if (lowerLength == 0) {
+      TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+      return NULL;
+    }
+    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, lower, lowerLength, &textUtf16Length);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);    
+  }
+  else {
+    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text, (int32_t) textLength, &textUtf16Length);    
+  }
+  
+  ULocDataLocaleType type = ULOC_VALID_LOCALE;  
+  const Locale& locale = _coll->getLocale(type, status);
+  if(U_FAILURE(status)) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
+    LOGGER_ERROR << "error in Collator::getLocale(...): " << u_errorName(status);
+    return NULL;
+  }
+
+  size_t tempUtf16Length = 0;
+  UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);  
+  
+  BreakIterator *wordIterator = BreakIterator::createWordInstance(locale, status);
+  UnicodeString utext(textUtf16);
+  
+  wordIterator->setText(utext);
+  int32_t start = wordIterator->first();
+  for(int32_t end = wordIterator->next(); end != BreakIterator::DONE; 
+    start = end, end = wordIterator->next()) {
+    
+    tempUtf16Length = end - start;
+    // end - start = word length
+    if (tempUtf16Length >= minimalLength) {
+      utext.extractBetween(start, end, tempUtf16, 0);      
+      utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, tempUtf16Length, &utf8WordLength);
+      TRI_PushBackVectorString(words, utf8Word);
+    }
+  }
+  
+  delete wordIterator;
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
+
+#else
+  // TODO
+#endif
+  
+  if (words->_length == 0) {
+    // no words found
+    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+    return NULL;
+  }
+
+  return words;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -407,6 +492,17 @@ char* TRI_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLen
 
 char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.toupper(zone, src, srcLength, *dstLength);  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t* TRI_get_words (const char* const text, 
+                                    const size_t textLength,
+                                    uint8_t minimalWordLength,
+                                    bool lowerCase) {
+  return Utf8Helper::DefaultUtf8Helper.getWords(text, textLength, minimalWordLength, lowerCase);    
 }
 
 #ifdef __cplusplus

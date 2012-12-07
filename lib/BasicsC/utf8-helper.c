@@ -25,12 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "utf8-helper.h"
 
 #ifdef TRI_HAVE_ICU
 
-#include "unicode/ustring.h"
 #include "unicode/unorm2.h"
 
 // -----------------------------------------------------------------------------
@@ -46,7 +44,7 @@
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-static UChar* Utf8ToUChar (TRI_memory_zone_t* zone, 
+UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone, 
                            const char* utf8, 
                            const size_t inLength, 
                            size_t* outLength) {
@@ -85,7 +83,7 @@ static UChar* Utf8ToUChar (TRI_memory_zone_t* zone,
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* UCharToUtf8 (TRI_memory_zone_t* zone,
+char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
                           const UChar* uchar,
                           const size_t inLength,
                           size_t* outLength) {
@@ -154,7 +152,7 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
     return utf8Dest;
   }
 
-  utf16 = Utf8ToUChar(zone, utf8, inLength, &utf16Length); 
+  utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length); 
   if (utf16 == NULL) {
     return NULL;
   }
@@ -211,7 +209,7 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   }
   
   // Convert data back from UChar (UTF-16) to UTF-8 
-  utf8Dest = UCharToUtf8(zone, utf16Dest, utf16DestLength, outLength);
+  utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, utf16DestLength, outLength);
   TRI_Free(zone, utf16Dest);
   
   return utf8Dest;  
