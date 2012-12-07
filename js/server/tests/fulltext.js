@@ -384,7 +384,7 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.FULLTEXT(idx, "no,cats,allowed").documents.length);
       assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test duplicate entries
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,6 +404,26 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test duplicate entries
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDuplicatesDocuments: function () {
+      var text1 = "this is a short document text";
+      var text2 = "Some longer document text is put in here just to validate whats going on";
+
+      for (var i = 0; i < 10000; ++i) {
+        collection.save({ text: text1 });
+        collection.save({ text: text2 });
+      }
+     
+      assertEqual(20000, collection.FULLTEXT(idx, "document").documents.length);
+      assertEqual(20000, collection.FULLTEXT(idx, "text").documents.length);
+      assertEqual(10000, collection.FULLTEXT(idx, "this").documents.length);
+      assertEqual(10000, collection.FULLTEXT(idx, "some").documents.length);
+      assertEqual(0, collection.FULLTEXT(idx, "banana").documents.length);
+    },
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test similar entries
 ////////////////////////////////////////////////////////////////////////////////
