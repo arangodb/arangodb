@@ -28,4 +28,3 @@ ArangoDB's User Manual (@VERSION) {#UserManual}
 @CHAPTER_REF{UserManualActions}
 @CHAPTER_REF{CommandLine}
 @endif
-
