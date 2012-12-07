@@ -84,6 +84,9 @@ typedef struct
     long lenlen;     /* length of length string */
     uint64_t mult;   /* length bits per initial 1-bit */
     uint64_t * tub;  /* tuber data pointer */
+    uint64_t freekey;   /* free keys  */
+    uint64_t freebit;   /* free bits  */
+    uint64_t fuses;     /* number of block fuses  */
 }   TUBER;
 
 #define TUBER_BITS_8  1
@@ -93,7 +96,7 @@ typedef struct
 
 TUBER * ZStrTuberCons(size_t size, int options);
 void ZStrTuberDest(TUBER * t);
-void ZStrTuberStats(TUBER * t, int query, uint64_t * stats);
+void ZStrTuberStats(TUBER * t, uint64_t * stats);
 int ZStrTuberRead(TUBER * t, uint64_t kkey, ZSTR * z);
 int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z);
 int ZStrTuberDelete(TUBER * t, uint64_t kkey);

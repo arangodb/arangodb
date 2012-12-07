@@ -29,6 +29,7 @@
 #define TRIAGENS_VOC_BASE_FULLTEXT_QUERY_H 1
 
 #include "FulltextIndex/fulltext-index.h"
+#include "VocBase/index.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,7 +60,7 @@ void TRI_FreeQueryFulltextIndex (FTS_query_t*);
 /// @brief query the fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-FTS_document_ids_t* TRI_FindDocumentsFulltextIndex (FTS_index_t*,
+FTS_document_ids_t* TRI_FindDocumentsFulltextIndex (TRI_fulltext_index_t*,
                                                     FTS_query_t*);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -92,9 +92,15 @@ void TRI_FreeQueryFulltextIndex (FTS_query_t* query) {
 /// @brief query the fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-FTS_document_ids_t* TRI_FindDocumentsFulltextIndex (FTS_index_t* fulltextIndex,
+FTS_document_ids_t* TRI_FindDocumentsFulltextIndex (TRI_fulltext_index_t* fulltextIndex,
                                                     FTS_query_t* query) {
-  return FTS_FindDocuments(fulltextIndex, query);
+  FTS_document_ids_t* result;
+
+  TRI_ReadLockReadWriteLock(&fulltextIndex->_lock);
+  result = FTS_FindDocuments(fulltextIndex->_fulltextIndex, query);
+  TRI_ReadUnlockReadWriteLock(&fulltextIndex->_lock);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
