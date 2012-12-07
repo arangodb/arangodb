@@ -4115,8 +4115,7 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
   } 
 
   // parse the document text
-  //words = ParseWordsFulltextIndex(text, textLength);
-  words = TRI_get_words (text, textLength, 2, true);
+  words = TRI_get_words(text, textLength, 2, true);
   if (words == NULL) {
     return NULL;
   }
