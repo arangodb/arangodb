@@ -779,9 +779,9 @@ TUBER * ZStrTuberCons(size_t size, int options)
         exit(35);
     }
 /* compute maximum K-key from suggested size  */
-    t->kmax=(size*8)/t->kperw;
-    t->kmax--;
-    if( (t->kmax%2) == 0) t->kmax--;
+    t->kmax=(size*t->kperw)/8;
+    t->kmax++;
+    if( (t->kmax%2) == 0) t->kmax++;
     while(1)
     {
         t->kmax+=2;
@@ -810,6 +810,9 @@ TUBER * ZStrTuberCons(size_t size, int options)
         t->lenlen=5;
         t->mult=32;
     }
+    t->freekey=t->kmax;
+    t->freebit=(t->wct*63)-(t->kmax*(t->lenlen+1));
+    t->fuses=0;
     return t;
 }
 
@@ -938,11 +941,22 @@ static long gethdr(CuR * cur)
     return dlen;
 }
 
-void ZStrTuberStats(TUBER * t, int query, uint64_t * stats)
+void ZStrTuberStats(TUBER * t, uint64_t * stats)
 {
-    stats[0]=t->kmax;
-    stats[1]=t->wct*8;
-    stats[2]=200;
+    uint64_t d1,d2;
+    d1=(t->fuses*100)/t->wct;
+    d2=(t->freebit*100)/( (t->wct*63)-(t->kmax*(t->lenlen+1)) );
+    d2=100-d2;
+    if(d2>d1) d1=d2;
+    d2=(100*t->freekey)/t->kmax;
+    d2=100-d2;
+    if(d2>d1) d1=d2;
+    d2=((t->wct*8)*(d1+1))/50;
+printf("fuse %d freebit %d freekey %d kmax %d wct %d lenlen %d\n",
+     (int)t->fuses, (int)t->freebit, (int)t->freekey, (int)t->kmax,
+        (int)t->wct, (int)t->lenlen);
+    stats[0]=d1;
+    stats[1]=d2;
 }
 
 typedef struct
@@ -1136,6 +1150,7 @@ uint64_t ZStrTuberIns(TUBER * t, uint64_t d1, uint64_t d2)
     if(keyb==65536) return INSFAIL;
 /* equal size so change from key-not-found to zero */
     putbits(&cur1,1,(cur.tub)->lenlen+1);
+    t->freekey--;
     return keyb;
 }
 
@@ -1179,6 +1194,8 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
         if(j>1)movebits(z,j-1,&cur);
         return 0;
     }
+    t->freebit-=i2;
+    t->freebit+=i1;
     skipbits(&cur1,i3);
     kkeys=((blk.last+1)*t->kperw)-1;
     if(kkeys>=kkey) kkeys=kkeys-kkey;
@@ -1190,6 +1207,7 @@ int ZStrTuberUpdate(TUBER * t, uint64_t kkey, ZSTR * z)
     fuseflag=0;
     while(sparebits+i1<i2)
     {
+        t->fuses++;
         spb1=blkfuse(&blk,&cur1,z1);
         if(spb1==-1) return 2;
         sparebits += spb1;
@@ -1237,6 +1255,7 @@ int ZStrTuberDelete(TUBER * t, uint64_t kkey)
     locate(t,kkey,&blk, &cur);
     copycur(&cur,&cur1);
     i1=gethdr(&cur1);
+    t->freebit+=cur1.hdrlen;
 
     skipbits(&cur1,i1);
     kkeys=((blk.last+1)*t->kperw)-1;
@@ -1249,6 +1268,10 @@ int ZStrTuberDelete(TUBER * t, uint64_t kkey)
     bitlen=ZStrLen(z);  /* probably should compute in grabrest */
     putbits(&cur,0,t->lenlen+1);  /* put in key-not-present */
     movebits(z,bitlen,&cur);
+    t->freekey++;
+    t->freebit+=i1;
+
+    t->freebit-=t->lenlen;
     return 0;
 }
 

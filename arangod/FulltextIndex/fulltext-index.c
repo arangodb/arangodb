@@ -84,11 +84,16 @@ extern ZCOD zcdh;
 #define SPACING          (10)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum tolerable occupancy of the index (e.g. 60 %)
+////////////////////////////////////////////////////////////////////////////////
+
+#define HEALTH_THRESHOLD (60)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual index struct used
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct { 
-  TRI_read_write_lock_t _lock;
   void*                 _context; // arbitrary context info the index passed to getTexts
   int                   _options;
 
@@ -1051,6 +1056,74 @@ static void AddResultDocuments (FTS_document_ids_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the health of the index
+/// the health will be returned as an integer with range 0..100 
+/// 0 means the index is 0% full and 100 means the index is 100% full
+/// values above 60 should trigger an index resize elsewhere
+/// the stats array will be populated with appropriate index sizes when the
+/// index is going to be resized
+////////////////////////////////////////////////////////////////////////////////
+
+int FTS_HealthIndex (FTS_index_t* ftx, uint64_t* stats) {
+  FTS_real_index* ix;
+  uint64_t st[2];
+  uint64_t health;
+
+  ix = (FTS_real_index*) ftx;
+
+  health = (ix->_numDocuments / ix->_maxDocuments) * 100;
+  stats[0] = (health * ix->_numDocuments) / 50;
+
+  // min value is 5
+  if (stats[0] < 5) {
+    stats[0] = 5;
+  }
+
+  if (ix->_options == FTS_INDEX_SUBSTRINGS) {
+    ZStrTuberStats(ix->_index1, st);
+    // LOG_TRACE("index 1 health %d size %d", (int) st[0], (int) st[1]);
+    stats[1] = st[1];
+    if (health < st[0]) {
+      health = st[0];
+    }
+  }
+
+  ZStrTuberStats(ix->_index2, st);
+  // LOG_TRACE("index 2 health %d size %d", (int) st[0], (int) st[1]);
+  stats[2] = st[1];
+  if (health < st[0]) {
+    health = st[0];
+  }
+
+  ZStrTuberStats(ix->_index3, st);
+  // LOG_TRACE("index 3 health %d size %d", (int) st[0], (int) st[1]);
+  stats[3] = st[1];
+  if (health < st[0]) {
+    health = st[0];
+  }
+
+  return (int) health;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone an existing index
+/// this will copy the properties of the old index, but will take different
+/// sizes. This function is called when the index is resized
+////////////////////////////////////////////////////////////////////////////////
+
+FTS_index_t* FTS_CloneIndex (FTS_index_t* ftx,
+                             uint64_t sizes[4]) {
+  FTS_real_index* old;
+  FTS_index_t* clone;
+
+  old = (FTS_real_index*) ftx;
+
+  clone = FTS_CreateIndex(old->_context, old->getTexts, old->freeWordlist, old->_options, sizes);
+  
+  return clone;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new fulltext index
 ///
 /// sizes[0] = size of handles table to start with
@@ -1063,7 +1136,7 @@ FTS_index_t* FTS_CreateIndex (void* context,
                               FTS_texts_t* (*getTexts)(FTS_document_id_t, void*),
                               void (*freeWordlist)(FTS_texts_t*),
                               int options, 
-                              uint64_t sizes[10]) {
+                              uint64_t sizes[4]) {
   FTS_real_index* ix;
   int i;
   
@@ -1177,8 +1250,6 @@ FTS_index_t* FTS_CreateIndex (void* context,
     }
   }
   
-  TRI_InitReadWriteLock(&ix->_lock);
-
   return (FTS_index_t*) ix;
 }
 
@@ -1190,8 +1261,6 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
   FTS_real_index* ix;
 
   ix = (FTS_real_index*) ftx;
-
-  TRI_DestroyReadWriteLock(&ix->_lock);
 
   if (ix->_options == FTS_INDEX_SUBSTRINGS) {
     ZStrTuberDest(ix->_index1);
@@ -1207,11 +1276,14 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a document to the index
+/// the caller must have write-locked the index
 ////////////////////////////////////////////////////////////////////////////////
 
 int FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix;
   FTS_texts_t* rawwords;
+  uint64_t sizes[4];
+  int health;
   int res;
    
   ix = (FTS_real_index*) ftx;
@@ -1223,9 +1295,12 @@ int FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_WriteLockReadWriteLock(&ix->_lock);
   res = RealAddDocument(ftx, docid, rawwords);
-  TRI_WriteUnlockReadWriteLock(&ix->_lock);
+
+  health = FTS_HealthIndex(ftx, sizes);
+  if (health > HEALTH_THRESHOLD || res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
+    res = TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
+  }
 
   ix->freeWordlist(rawwords);
 
@@ -1234,6 +1309,7 @@ int FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
+/// the caller must have write-locked the index
 ////////////////////////////////////////////////////////////////////////////////
 
 int FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
@@ -1242,15 +1318,14 @@ int FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   
   ix = (FTS_real_index*) ftx;
 
-  TRI_WriteLockReadWriteLock(&ix->_lock);
   res = RealDeleteDocument(ftx, docid);
-  TRI_WriteUnlockReadWriteLock(&ix->_lock);
 
   return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update an existing document in the index
+/// the caller must have write-locked the index
 ////////////////////////////////////////////////////////////////////////////////
 
 int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
@@ -1267,10 +1342,8 @@ int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_WriteLockReadWriteLock(&ix->_lock);
   res = RealDeleteDocument(ftx, docid);
   res = RealAddDocument(ftx, docid, rawwords);
-  TRI_WriteUnlockReadWriteLock(&ix->_lock);
   
   ix->freeWordlist(rawwords);
 
@@ -1289,6 +1362,7 @@ void FTS_BackgroundTask (FTS_index_t* ftx) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform a search in the index
+/// The caller must have read-locked the index
 ////////////////////////////////////////////////////////////////////////////////
 
 FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
@@ -1334,15 +1408,12 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
   }
     
   ix = (FTS_real_index*) ftx;
-  TRI_ReadLockReadWriteLock(&ix->_lock);
 
 /*     - for each term in the query */
   for (queryterm = 0; queryterm < query->_len; queryterm++) {
     if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING &&
         ix->_options != FTS_INDEX_SUBSTRINGS) {
       // substring search but index does not contain substrings
-      TRI_ReadUnlockReadWriteLock(&ix->_lock);
-
       ZStrDest(zstra1);
       ZStrDest(zstra2);
       ZStrDest(zstr); 
@@ -1626,8 +1697,6 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
     }
   }
     
-  TRI_ReadUnlockReadWriteLock(&ix->_lock);
-
   ZStrDest(zstra1);
   ZStrDest(zstra2);
   ZStrDest(zstr); 
