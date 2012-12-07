@@ -4392,8 +4392,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   TRI_shape_pid_t attribute;
   int options;
   // default sizes for index. TODO: adjust these
-  //uint64_t sizes[4] = { 50, 100000, 5000, 1000 };
-  uint64_t sizes[4] = { 500, 1000000, 50000, 10000 };
+  uint64_t sizes[4] = { 5000, 1000000, 50000, 10000 };
     
   // look up the attribute
   shaper = collection->_shaper;

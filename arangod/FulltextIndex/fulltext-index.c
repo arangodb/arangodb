@@ -98,7 +98,7 @@ extern ZCOD zcdh;
 /// TODO: find a good default value for this
 ////////////////////////////////////////////////////////////////////////////////
 
-#define EXTRA_GROWTH_FACTOR  (1.0)
+#define EXTRA_GROWTH_FACTOR  (1.5)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual index struct used
@@ -108,14 +108,14 @@ typedef struct {
   void*                 _context; // arbitrary context info the index passed to getTexts
   int                   _options;
 
-  FTS_document_id_t*    _handles;    /* array converting handles to docid */
+  FTS_document_id_t*    _handles; // array converting handles to docid 
   uint8_t*              _handlesFree;
-  FTS_document_id_t     _firstFree;   /* Start of handle free chain.  */
+  FTS_document_id_t     _firstFree; // start of handle free chain
   FTS_document_id_t     _lastSlot;
   TUBER*                _index1;
   TUBER*                _index2;
   TUBER*                _index3;
-  uint64_t              _ix3KKey;
+  uint64_t              _ix3KKey; // current key in background cleanup iteration
 
   uint64_t              _maxDocuments;
   uint64_t              _numDocuments;
@@ -1466,64 +1466,69 @@ int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 /// the caller must have write-locked the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int FTS_BackgroundTask (FTS_index_t * ftx, int docs) {
-  FTS_real_index * ix;
-  int dleft,i;
-  CTX cold, cnew;
+int FTS_BackgroundTask (FTS_index_t* ftx, int docs) {
+  FTS_real_index* ix;
+  int dleft, i;
+  CTX cold;
+  CTX cnew;
   int cd;
-  uint64_t newterm,oldhan,han;
-  ZSTR *zold, *znew;
-  ix = (FTS_real_index *)ftx;
-  dleft=docs;
-  cd=0;
+  uint64_t newterm;
+  uint64_t oldhan;
+  uint64_t han;
+  ZSTR* zold;
+  ZSTR* znew;
 
-  znew=ZStrCons(100);
-  if(znew==NULL) return 1;
-  zold=ZStrCons(100);
-  if(zold==NULL)
-  {
+  ix = (FTS_real_index*) ftx;
+  dleft = docs;
+  cd = 0;
+
+  znew = ZStrCons(100);
+  if (znew == NULL) {
+    return 1;
+  }
+
+  zold = ZStrCons(100);
+  if (zold == NULL) {
     ZStrDest(znew);
     return 1;
   }
 
-  while(dleft>0)
-  {
+  while (dleft>0) {
     uint64_t numDeletions;
 
     assert(ix->_ix3KKey < (ix->_index3)->kmax);
 
     numDeletions = 0;
-    i=ZStrTuberRead(ix->_index3,ix->_ix3KKey,zold);
-    if(i==2)
-    {
+    i = ZStrTuberRead(ix->_index3, ix->_ix3KKey, zold);
+    if (i==2) {
       cd=1;
       break;
     }
-    if(i==0)
-    {
-      ZStrCxClear(&zcdoc,&cold);
-      ZStrCxClear(&zcdoc,&cnew);
+
+    if (i==0) {
+      ZStrCxClear(&zcdoc, &cold);
+      ZStrCxClear(&zcdoc, &cnew);
       ZStrClear(znew);
-      oldhan=0;
-      newterm=0;
-      while(1)
-      {
-        han=ZStrCxDec(zold,&zcdoc,&cold);
-        if(han==oldhan) {
-           break;
+      oldhan = 0;
+      newterm =0;
+      while (1) {
+        han = ZStrCxDec(zold, &zcdoc, &cold);
+        if (han == oldhan) {
+          break;
         }
-        oldhan=han;
+
+        oldhan = han;
         dleft--;
-        if(ix->_handlesFree[han]==0)
-        {
-          i=ZStrCxEnc(znew,&zcdoc,&cnew,han);
-          if(i!=0) {
+
+        if (ix->_handlesFree[han] == 0) {
+          i = ZStrCxEnc(znew, &zcdoc, &cnew, han);
+          if (i != 0) {
             ix->_ix3KKey = 0;
             ZStrDest(znew);
             ZStrDest(zold);
             return 1;
           }
-          newterm=han;
+          newterm = han;
         }
         else {
           // something was deleted
@@ -1535,18 +1540,18 @@ int FTS_BackgroundTask (FTS_index_t * ftx, int docs) {
         // update existing entry in tuber
         // but only if there's something to update
 
-        i=ZStrCxEnc(znew,&zcdoc,&cnew,newterm);
-        if(i!=0) {
+        i = ZStrCxEnc(znew, &zcdoc, &cnew, newterm);
+        if (i != 0) {
           ix->_ix3KKey = 0;
           ZStrDest(znew);
           ZStrDest(zold);
           return 1;
         }
         ZStrNormalize(znew);
-        i=ZStrTuberUpdate(ix->_index3,ix->_ix3KKey,znew);
+        i = ZStrTuberUpdate(ix->_index3, ix->_ix3KKey, znew);
       }
 
-      if(i!=0) {
+      if (i != 0) {
         ix->_ix3KKey = 0;
         ZStrDest(znew);
         ZStrDest(zold);
@@ -1554,10 +1559,10 @@ int FTS_BackgroundTask (FTS_index_t * ftx, int docs) {
       }
     }
     ix->_ix3KKey++;
-    if(ix->_ix3KKey >= (ix->_index3)->kmax)
-    {
+
+    if (ix->_ix3KKey >= (ix->_index3)->kmax) {
       ix->_ix3KKey = 0;
-      cd=3; // finished iterating over all document handles
+      cd = 3; // finished iterating over all document handles
       break;
     }
   }
