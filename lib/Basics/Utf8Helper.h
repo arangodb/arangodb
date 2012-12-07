@@ -30,6 +30,7 @@
 #define TRIAGENS_BASICS_UTF8_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "BasicsC/vector.h"
 
 #ifdef TRI_HAVE_ICU
 #include "unicode/coll.h"
@@ -147,6 +148,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         char* toupper (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength);
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the words of a UTF-8 string.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vector_string_t* getWords (const char* const text, 
+                                                   const size_t textLength,
+                                                   uint8_t minimalWordLength,
+                                                   bool lowerCase);
         
       private:
 #ifdef TRI_HAVE_ICU      
