@@ -4285,6 +4285,36 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds a fulltext index by resizing it and re-adding documents
+/// the caller must have write-locked the index 
+////////////////////////////////////////////////////////////////////////////////
+
+static int ResizeFulltextIndex (TRI_index_t* idx) {
+  TRI_fulltext_index_t* fulltextIndex;
+  FTS_index_t* newIndex;
+  uint64_t sizes[4];
+  
+  LOG_INFO("fulltext index resize was triggered");
+    
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
+
+  // this call will populate the sizes array
+  FTS_HealthIndex(fulltextIndex->_fulltextIndex, sizes);
+
+  newIndex = FTS_CloneIndex(fulltextIndex->_fulltextIndex, sizes);
+
+  if (newIndex == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  // switch the indexes
+  FTS_FreeIndex(fulltextIndex->_fulltextIndex);
+  fulltextIndex->_fulltextIndex = newIndex;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document into the fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4302,27 +4332,12 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
 
   if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
-    // rebuild the index because the old one is too small 
-    // when we get here, the old index is still write-locked 
-    FTS_index_t* newIndex;
-    uint64_t sizes[4];
-    int health;
-    
-    health = FTS_HealthIndex(fulltextIndex->_fulltextIndex, sizes);
-
-    LOG_INFO("triggering index resize");
-
-    newIndex = FTS_CloneIndex(fulltextIndex->_fulltextIndex, sizes);
-
-    if (newIndex == NULL) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
+    // rebuild the index with adjusted (bigger) size
+    res = ResizeFulltextIndex(idx);
+    if (res == TRI_ERROR_NO_ERROR) {
+      // insert the document again because previous insert failed
+      res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
     }
-    else {
-      // switch the indexes
-      FTS_FreeIndex(fulltextIndex->_fulltextIndex);
-      fulltextIndex->_fulltextIndex = newIndex;
-    }
-   
   }
 
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
@@ -4391,6 +4406,16 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
   res = FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+  
+  if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
+    // rebuild the index with adjusted (bigger) size
+    res = ResizeFulltextIndex(idx);
+    if (res == TRI_ERROR_NO_ERROR) {
+      // delete the document again because previous delete failed
+      res = FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+    }
+  }
+
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
   return res;
@@ -4412,6 +4437,16 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 
   TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
   res = FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+  
+  if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
+    // rebuild the index with adjusted (bigger) size
+    res = ResizeFulltextIndex(idx);
+    if (res == TRI_ERROR_NO_ERROR) {
+      // update the document again because previous update failed
+      res = FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+    }
+  }
+
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
   return res;
@@ -4455,7 +4490,8 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   TRI_shape_pid_t attribute;
   int options;
   // default sizes for index. TODO: adjust these
-  uint64_t sizes[4] = { 20050, 100000, 570000, 10000000 };
+  //uint64_t sizes[4] = { 20050, 100000, 570000, 10000000 };
+  uint64_t sizes[4] = { 50, 1000, 5700, 10000 };
     
   // look up the attribute
   shaper = collection->_shaper;
