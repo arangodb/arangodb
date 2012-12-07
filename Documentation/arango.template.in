@@ -720,10 +720,11 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = @srcdir@/Documentation/UserManual \
-                         @srcdir@/Documentation/DbaManual \
+INPUT                  = @srcdir@/Documentation/DbaManual \
+                         @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/Manual \
-			 @srcdir@/Doxygen/js \
+			 @srcdir@/Documentation/UserManual \
+                         @srcdir@/Doxygen/js \
                          @srcdir@/arangod \
                          @srcdir@/lib
 

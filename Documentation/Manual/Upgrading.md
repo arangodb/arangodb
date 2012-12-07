@@ -18,7 +18,8 @@ downwards-compatible to ArangoDB 1.0.
 
 Existing users of ArangoDB 1.0 should read the list carefully and make
 sure they have undertaken all necessary steps and precautions before
-upgrading from ArangoDB 1.0 to ArangoDB 1.1.
+upgrading from ArangoDB 1.0 to ArangoDB 1.1. Also check
+@ref UpgradingTroubleshooting.
 
 New Dependencies {#UpgradingNewDependencies}
 --------------------------------------------
@@ -262,6 +263,60 @@ any other logging that was configured. In 1.1, this has changed. Log
 messages will be sent to the syslog only if the server is started with
 the `--log.syslog` option and a non-empty string (the log facility) is
 given to it. This is in accordance with the 1.0 documentation.
+
+Troubleshooting {#UpgradingTroubleshooting}
+===========================================
+
+If you cannot find a solution here, please ask the Google-Group at 
+http://groups.google.com/group/arangodb
+
+Problem: ArangoDB does not start after upgrade
+----------------------------------------------
+
+- Check the logfile `/var/log/arangodb/arangod.log`
+
+- Check the permissions of these directories:
+
+  - `/var/lib/arangodb/`
+  - `/var/run/arangodb/`
+  - `/var/log/arangodb/`
+
+  These directories and all files have to be readable and writable for the user
+  "arangodb" and group "arangodb" (not for MacOSX). Double check that the user
+  is "arangodb" not "arango".
+
+  Change the permissions using:
+
+      unix> chown -R arangodb:arangodb /var/lib/arangodb/ /var/run/arangodb/ /var/log/arangodb/
+
+- Check the configuration file in:
+
+      /etc/arangodb/arangod.conf
+
+Problem: Packet manager finds no upgrade
+----------------------------------------
+
+- Check the name of the repository here:
+
+    http://www.arangodb.org/download
+
+Problem: Database is empty
+--------------------------
+
+Check that the database file 
+
+    /var/lib/arangodb
+
+contains your collections. If it is empty, check the old location
+of the database at
+
+    /var/arangodb
+
+If necessary, stop the server, copy the files using
+
+    cp /var/arangodb/* /var/lib/arangodb
+
+and start the server agaib.
 
 Removed Features {#UpgradingRemovedFeatures}
 ============================================

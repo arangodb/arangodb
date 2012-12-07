@@ -9,5 +9,6 @@ TOC {#UpgradingTOC}
   - @ref UpgradingCollectionTypes
   - @ref UpgradingShellImport
   - @ref UpgradingSyslog
+- @ref UpgradingTroubleshooting
 - @ref UpgradingRemovedFeatures
   - @ref UpgradingRemovedDependencies
