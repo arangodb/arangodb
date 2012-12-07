@@ -396,8 +396,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   
   size_t textUtf16Length = 0;
   UChar* textUtf16 = NULL;
-  size_t tempUtf16Length = 0;
-  UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);  
 
   if (lowerCase) {
     // lower case string
@@ -419,10 +417,12 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   const Locale& locale = _coll->getLocale(type, status);
   if(U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
     LOGGER_ERROR << "error in Collator::getLocale(...): " << u_errorName(status);
     return NULL;
   }
+
+  size_t tempUtf16Length = 0;
+  UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);  
   
   BreakIterator *wordIterator = BreakIterator::createWordInstance(locale, status);
   UnicodeString utext(textUtf16);
