@@ -92,7 +92,6 @@ typedef struct {
   void*                 _context; // arbitrary context info the index passed to getTexts
   int                   _options;
 
-  FTS_collection_id_t   _colid;   /* collection ID for this index  */
   FTS_document_id_t*    _handles;    /* array converting handles to docid */
   uint8_t*              _handlesFree;
   FTS_document_id_t     _firstFree;   /* Start of handle free chain.  */
@@ -104,7 +103,7 @@ typedef struct {
   int64_t               _maxDocuments;
   int64_t               _numDocuments;
 
-  FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*);
+  FTS_texts_t* (*getTexts)(FTS_document_id_t, void*);
   void (*freeWordlist)(FTS_texts_t*);
 } 
 FTS_real_index;
@@ -168,7 +167,7 @@ static uint64_t GetUnicode (uint8_t** ptr) {
 /// @brief add a document to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* rawwords) {
+int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* rawwords) {
   FTS_real_index* ix;
   CTX ctx2a, ctx2b, x3ctx, x3ctxb;
   STEX* stex;
@@ -207,7 +206,7 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
   if (handle == 0) {
     // TODO: what to do if no more handles
     printf("Run out of document handles!\n");
-    return;
+    return TRI_ERROR_INTERNAL;
   }
 
   ix->_firstFree           = ix->_handles[handle];
@@ -620,13 +619,15 @@ static void RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_text
   ZStrDest(x3zstrb);
 
   ix->_numDocuments++;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+static int RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
   FTS_real_index* ix;
   FTS_document_id_t i;
 
@@ -648,6 +649,8 @@ static void RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 
   ix->_handlesFree[i] = 1;
   ix->_numDocuments--;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1016,9 +1019,8 @@ static void AddResultDocuments (FTS_document_ids_t* result,
 /// sizes[3] = number of bytes for index 3
 ////////////////////////////////////////////////////////////////////////////////
 
-FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
-                              void* context,
-                              FTS_texts_t* (*getTexts)(FTS_collection_id_t, FTS_document_id_t, void*),
+FTS_index_t* FTS_CreateIndex (void* context,
+                              FTS_texts_t* (*getTexts)(FTS_document_id_t, void*),
                               void (*freeWordlist)(FTS_texts_t*),
                               int options, 
                               uint64_t sizes[10]) {
@@ -1045,7 +1047,6 @@ FTS_index_t* FTS_CreateIndex (FTS_collection_id_t coll,
  
   ix->_maxDocuments = (int64_t) sizes[0]; 
   ix->_numDocuments = 0;
-  ix->_colid        = coll;
   ix->_context      = context;
   ix->_options      = options;
 
@@ -1168,55 +1169,72 @@ void FTS_FreeIndex (FTS_index_t* ftx) {
 /// @brief add a document to the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
-  FTS_real_index* ix = (FTS_real_index*) ftx;
+int FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix;
   FTS_texts_t* rawwords;
+  int res;
+   
+  ix = (FTS_real_index*) ftx;
 
   // get the actual words from the caller 
-  rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
+  rawwords = ix->getTexts(docid, ix->_context);
   if (rawwords == NULL) {
-    return;
+    // document does not contain words
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
-  RealAddDocument(ftx, docid, rawwords);
+  res = RealAddDocument(ftx, docid, rawwords);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
 
   ix->freeWordlist(rawwords);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
-  FTS_real_index* ix = (FTS_real_index*) ftx;
+int FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix;
+  int res;
+  
+  ix = (FTS_real_index*) ftx;
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
-  RealDeleteDocument(ftx, docid);
+  res = RealDeleteDocument(ftx, docid);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update an existing document in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
-  FTS_real_index* ix = (FTS_real_index*) ftx;
+int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
+  FTS_real_index* ix;
   FTS_texts_t* rawwords;
+  int res;
+
+  ix = (FTS_real_index*) ftx;
 
   // get the actual words from the caller 
-  rawwords = ix->getTexts(ix->_colid, docid, ix->_context);
+  rawwords = ix->getTexts(docid, ix->_context);
   if (rawwords == NULL) {
-    return;
+    // document does not contain words
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_WriteLockReadWriteLock(&ix->_lock);
-  RealDeleteDocument(ftx, docid);
-  RealAddDocument(ftx, docid, rawwords);
+  res = RealDeleteDocument(ftx, docid);
+  res = RealAddDocument(ftx, docid, rawwords);
   TRI_WriteUnlockReadWriteLock(&ix->_lock);
   
   ix->freeWordlist(rawwords);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
