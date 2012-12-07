@@ -161,6 +161,67 @@ BOOST_AUTO_TEST_CASE (tst_3) {
   BOOST_CHECK_EQUAL(expectString, resultString);
 }
 
+BOOST_AUTO_TEST_CASE (tst_4) {
+  std::string testString   = "Der Müller geht in die Post.";
+  
+  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, true);
+  BOOST_CHECK(words != NULL);
+  
+  BOOST_CHECK_EQUAL(5, words->_length);
+  BOOST_CHECK_EQUAL("der", words->_buffer[0]);
+  BOOST_CHECK_EQUAL("müller", words->_buffer[1]);
+  BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
+  BOOST_CHECK_EQUAL("die", words->_buffer[3]);
+  BOOST_CHECK_EQUAL("post", words->_buffer[4]);
+    
+  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+  
+
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, true);
+  BOOST_CHECK(words != NULL);
+  
+  BOOST_CHECK_EQUAL(3, words->_length);
+  BOOST_CHECK_EQUAL("müller", words->_buffer[0]);
+  BOOST_CHECK_EQUAL("geht", words->_buffer[1]);
+  BOOST_CHECK_EQUAL("post", words->_buffer[2]);
+    
+  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, true);
+  BOOST_CHECK(words == NULL);
+}
+
+BOOST_AUTO_TEST_CASE (tst_5) {
+  std::string testString   = "Der Müller geht in die Post.";
+  
+  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, false);
+  BOOST_CHECK(words != NULL);
+  
+  BOOST_CHECK_EQUAL(5, words->_length);
+  BOOST_CHECK_EQUAL("Der", words->_buffer[0]);
+  BOOST_CHECK_EQUAL("Müller", words->_buffer[1]);
+  BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
+  BOOST_CHECK_EQUAL("die", words->_buffer[3]);
+  BOOST_CHECK_EQUAL("Post", words->_buffer[4]);
+    
+  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+  
+
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, false);
+  BOOST_CHECK(words != NULL);
+  
+  BOOST_CHECK_EQUAL(3, words->_length);
+  BOOST_CHECK_EQUAL("Müller", words->_buffer[0]);
+  BOOST_CHECK_EQUAL("geht", words->_buffer[1]);
+  BOOST_CHECK_EQUAL("Post", words->_buffer[2]);
+    
+  TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, false);
+  BOOST_CHECK(words == NULL);
+}
+
+
 #endif
 
 BOOST_AUTO_TEST_SUITE_END ()

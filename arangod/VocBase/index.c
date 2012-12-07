@@ -34,6 +34,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
+#include "BasicsC/utf8-helper.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
@@ -4060,143 +4061,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add an identified word to the word vector 
-////////////////////////////////////////////////////////////////////////////////
-
-static bool AddWord (TRI_vector_string_t* const words,
-                     const char* const wordStart,
-                     const size_t wordLength,
-                     const bool containsUtf8) {
-  char* copy;
-
-  if (containsUtf8) {
-    // UTF-8 string
-    copy = TRI_NormaliseWordFulltextIndex(wordStart, wordLength);
-  }
-  else {
-    // ASCII string 
-    char* src;
-    char* end;
-    char* dst;
-
-    copy = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (wordLength + 1) * sizeof(char), false);
-    if (copy == NULL) {
-      return false;
-    }
-
-    src = (char*) wordStart;
-    end = src + wordLength;
-    dst = copy;
-
-    for (; src < end; ++src, ++dst) {
-      char c = *src;
-
-      // lower case the text so it is normalised in the index
-      if (c >= 'A' && c <= 'Z') {
-        *dst = (char) (((unsigned char) c) + 32);
-      }
-      else {
-        *dst = c;
-      }
-    }
-
-    *dst = '\0';
-  }
-
-  TRI_PushBackVectorString(words, copy);
-  LOG_DEBUG("found word '%s'", copy);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a document string value into the individual words that should
-/// be indexed
-/// words returned are all lower cased
-///
-/// This function is very naive and currently does not handle lower-casing of 
-/// unicode characters, normalisation of unicode characters, and exclusion of
-/// unicode punctuation characters
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_vector_string_t* ParseWordsFulltextIndex (const char* const text, 
-                                                     const size_t textLength) {
-  TRI_vector_string_t* words;
-  char* ptr;
-  char* end;
-  char* wordStart;
-  bool containsUtf8;
-
-  words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
-  if (words == NULL) {
-    return NULL;
-  }
-
-  TRI_InitVectorString(words, TRI_UNKNOWN_MEM_ZONE);
-
-  ptr = (char*) text;
-  end = ptr + textLength;
-  wordStart = NULL;
-  containsUtf8 = false;
-
-  while (ptr < end) {
-    char c = *ptr;
-
-    if ((c >= 'A' && c <= 'Z') ||
-        (c >= 'a' && c <= 'z')) {
-      if (wordStart == NULL) {
-        wordStart = ptr;
-      }
-    }
-    else if ((unsigned char) c >= 128) {
-      // UTF-8
-      if (wordStart == NULL) {
-        wordStart = ptr;
-      }
-      containsUtf8 = true;
-    }
-    else {
-      if (wordStart != NULL) {
-        size_t wordLength = ptr - wordStart;
-
-        // check the length of the word
-        if (wordLength >= 2) {
-          if (! AddWord(words, wordStart, wordLength, containsUtf8)) {
-            TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-            return NULL;
-          }
-        }
-        wordStart = NULL;
-        containsUtf8 = false;
-      }
-    }
-
-    ++ptr;
-  }
-
-  // check if we have something left to index
-  if (wordStart != NULL) {
-    size_t wordLength = ptr - wordStart;
-
-    // check the length of the word
-    if (wordLength >= 2) {
-      if (! AddWord(words, wordStart, wordLength, containsUtf8)) {
-        TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-        return NULL;
-      }
-    }
-  }
-
-  if (words->_length == 0) {
-    // no words found
-    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-    return NULL;
-  }
-
-  return words;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free function for word list, fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4251,7 +4115,8 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
   } 
 
   // parse the document text
-  words = ParseWordsFulltextIndex(text, textLength);
+  //words = ParseWordsFulltextIndex(text, textLength);
+  words = TRI_get_words (text, textLength, 2, true);
   if (words == NULL) {
     return NULL;
   }
