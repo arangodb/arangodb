@@ -250,6 +250,9 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
   else {    
     utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
+    if (utf8_dest == 0) {
+      return 0;
+    }
       
     dstLength = ucasemap_utf8ToLower(csm.getAlias(),
                     utf8_dest, 
@@ -285,7 +288,9 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
 #endif
 
   utf8_dest = TRI_LowerAsciiStringZ(zone, src);
-  dstLength = strlen(utf8_dest);
+  if (utf8_dest != 0) {
+    dstLength = strlen(utf8_dest);
+  }
   return utf8_dest;
 }
 
@@ -371,14 +376,16 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
 #endif
 
   utf8_dest = TRI_UpperAsciiStringZ(zone, src);
-  dstLength = strlen(utf8_dest);
+  if (utf8_dest != NULL) {
+    dstLength = strlen(utf8_dest);
+  }
   return utf8_dest;
 }
 
 TRI_vector_string_t* Utf8Helper::getWords (const char* const text, 
-                                                const size_t textLength,
-                                                uint8_t minimalLength,
-                                                bool lowerCase) {
+                                           const size_t textLength,
+                                           uint8_t minimalLength,
+                                           bool lowerCase) {
   TRI_vector_string_t* words;
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString word;
@@ -401,16 +408,28 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
     // lower case string
     int32_t lowerLength = 0;
     char* lower = tolower(TRI_UNKNOWN_MEM_ZONE, text, (int32_t) textLength, lowerLength);
-  
-    if (lowerLength == 0) {
+
+    if (lower == NULL) {
+      // out of memory
       TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
       return NULL;
     }
+
+    if (lowerLength == 0) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
+      TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
+      return NULL;
+    }
+
     textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, lower, lowerLength, &textUtf16Length);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);    
   }
   else {
     textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text, (int32_t) textLength, &textUtf16Length);    
+  }
+
+  if (textUtf16 == NULL) {
+    return NULL;
   }
   
   ULocDataLocaleType type = ULOC_VALID_LOCALE;  
@@ -437,7 +456,9 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
     if (tempUtf16Length >= minimalLength) {
       utext.extractBetween(start, end, tempUtf16, 0);      
       utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, tempUtf16Length, &utf8WordLength);
-      TRI_PushBackVectorString(words, utf8Word);
+      if (utf8Word != 0) {
+        TRI_PushBackVectorString(words, utf8Word);
+      }
     }
   }
   

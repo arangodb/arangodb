@@ -34,6 +34,7 @@
 #include "BasicsC/strings.h"
 #include "ShapedJson/shape-accessor.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/fulltext-query.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
@@ -4091,7 +4092,8 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
   
 static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                            const char* attributeName,
-                                                           const bool indexSubstrings) {
+                                                           const bool indexSubstrings,
+                                                           int minWordLength) {
   size_t i;
 
   assert(attributeName);
@@ -4104,6 +4106,10 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
       char* fieldName;
 
       if (fulltext->_indexSubstrings != indexSubstrings) {
+        continue;
+      }
+
+      if (fulltext->_minWordLength != minWordLength) {
         continue;
       }
 
@@ -4129,6 +4135,7 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
 static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                            const char* attributeName,
                                                            const bool indexSubstrings,
+                                                           int minWordLength,
                                                            TRI_idx_iid_t iid,
                                                            bool* created) {
   TRI_index_t* idx;
@@ -4140,7 +4147,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings);
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
   if (idx != NULL) {
     LOG_TRACE("fulltext-index already created");
 
@@ -4151,7 +4158,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the fulltext index
-  idx = TRI_CreateFulltextIndex(&document->base, attributeName, indexSubstrings);
+  idx = TRI_CreateFulltextIndex(&document->base, attributeName, indexSubstrings, minWordLength);
 
   // If index id given, use it otherwise use the default.
   if (iid) {
@@ -4187,9 +4194,11 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   TRI_json_t* attribute;
   TRI_json_t* fld;
   TRI_json_t* indexSubstrings;
+  TRI_json_t* minWordLength;
   char* attributeName;
   size_t fieldCount;
   bool doIndexSubstrings;
+  int minWordLengthValue;
   
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
@@ -4214,13 +4223,19 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   if (indexSubstrings != NULL && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
     doIndexSubstrings = indexSubstrings->_value._boolean;
   }
+  
+  minWordLength = TRI_LookupArrayJson(definition, "minLength");
+  minWordLengthValue = TRI_FULLTEXT_WORDLENGTH_DEFAULT;
+  if (minWordLength != NULL && minWordLength->_type == TRI_JSON_NUMBER) {
+    minWordLengthValue = (int) minWordLength->_value._number;
+  }
 
   // create the index
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings);
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue);
   
   if (idx == NULL) {
     bool created;
-    idx = CreateFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, iid, &created);
+    idx = CreateFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue, iid, &created);
   }
 
   if (idx == NULL) {
@@ -4250,7 +4265,8 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
 TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                         const char* attributeName,
-                                                        const bool indexSubstrings) {
+                                                        const bool indexSubstrings,
+                                                        int minWordLength) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
   
@@ -4262,7 +4278,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings);
+  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
   
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
@@ -4280,6 +4296,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                         const char* attributeName,
                                                         const bool indexSubstrings,
+                                                        int minWordLength,
                                                         bool* created) {
   TRI_index_t* idx;
   TRI_primary_collection_t* primary;
@@ -4292,7 +4309,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   
-  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, 0, created);
+  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, 0, created);
   
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
   

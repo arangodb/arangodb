@@ -553,7 +553,8 @@ struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_coll
 
 struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t*,
                                                                const char*,
-                                                               const bool);
+                                                               const bool,
+                                                               int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
@@ -562,6 +563,7 @@ struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_coll
 struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
                                                                const char*,
                                                                const bool,
+                                                               int,
                                                                bool*);
 
 ////////////////////////////////////////////////////////////////////////////////

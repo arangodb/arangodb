@@ -61,6 +61,7 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/fulltext-query.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
@@ -614,8 +615,8 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
                                                   const bool create) {
   v8::HandleScope scope;
   
-  if (argv.Length() != 1 && argv.Length() != 2) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>)")));
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>, <minWordLength>)")));
   }
   
   string attributeName = TRI_ObjectToString(argv[0]);
@@ -624,8 +625,13 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   }
 
   bool indexSubstrings = false;
-  if (argv.Length() == 2) {
+  if (argv.Length() > 1) {
     indexSubstrings = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  int minWordLength = TRI_FULLTEXT_WORDLENGTH_DEFAULT;
+  if (argv.Length() == 3) {
+    minWordLength = (int) TRI_ObjectToInt64(argv[2]);
   }
 
   // .............................................................................
@@ -661,14 +667,14 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
   if (create) {
-    idx = TRI_EnsureFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, &created);
+    idx = TRI_EnsureFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, minWordLength, &created);
 
     if (idx == 0) {
       res = TRI_errno();
     }
   }
   else {
-    idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings);
+    idx = TRI_LookupFulltextIndexDocumentCollection(document, attributeName.c_str(), indexSubstrings, minWordLength);
   }
 
   if (idx == 0) {
