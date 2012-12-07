@@ -29,6 +29,11 @@
 #define TRIAGENS_BASICS_C_UTF8_HELPER_H 1
 
 #include "BasicsC/common.h"
+#include "BasicsC/vector.h"
+
+#ifdef TRI_HAVE_ICU
+#include "unicode/ustring.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +50,24 @@ extern "C" {
 
 #ifdef TRI_HAVE_ICU
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a utf-8 string to a uchar (utf-16)
+////////////////////////////////////////////////////////////////////////////////
+
+UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone, 
+                           const char* utf8, 
+                           const size_t inLength, 
+                           size_t* outLength);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uchar (utf-16) to a utf-8 string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
+                          const UChar* uchar,
+                          const size_t inLength,
+                          size_t* outLength);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +120,15 @@ char* TRI_toupper_utf8 (TRI_memory_zone_t* zone,
                         const char *src, 
                         int32_t srcLength, 
                         int32_t* dstLength);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t* TRI_get_words (const char* const text, 
+                                    const size_t textLength,
+                                    uint8_t minimalWordLength,
+                                    bool lowerCase);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
