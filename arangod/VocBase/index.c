@@ -4060,15 +4060,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback function called by the fulltext index to free the word list
-/// that was determined for a document (i.e. by GetDocumentFulltextIndex)
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeDocumentFulltextIndex (void* doc) {
-  // TODO: this function is currently not called
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add an identified word to the word vector 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4217,6 +4208,7 @@ static void FreeWordlistFulltextIndex (FTS_texts_t* wordlist) {
   for (i = 0; i < wordlist->_len; i++) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_texts[i]);
   }
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_texts);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
 }
@@ -4226,8 +4218,7 @@ static void FreeWordlistFulltextIndex (FTS_texts_t* wordlist) {
 /// words to index for a specific document
 ////////////////////////////////////////////////////////////////////////////////
   
-static FTS_texts_t* GetTextsFulltextIndex (FTS_collection_id_t collection, 
-                                           FTS_document_id_t document,
+static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
                                            void* context) {
   FTS_texts_t* result;
   TRI_fulltext_index_t* fulltextIndex;
@@ -4241,8 +4232,6 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_collection_id_t collection,
   size_t i;
   bool ok;
   
-  LOG_TRACE("fulltext callback was called");
-
   // unpack the context
   fulltextIndex = (TRI_fulltext_index_t*) context;
   doc = (TRI_doc_mptr_t*) ((intptr_t) document);
@@ -4285,9 +4274,7 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_collection_id_t collection,
   result->_len = words->_length;
   result->_texts = (uint8_t**) words->_buffer;
 
-  result->free = &FreeDocumentFulltextIndex;
-
-  // this really is a hack:
+  // this really is a hack, but it works well:
   // make the word list vector think it's empty and free it
   // this does not free the word list, that we have already over the result
   words->_length = 0;
@@ -4311,10 +4298,7 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     return TRI_ERROR_INTERNAL;
   }
 
-  res = TRI_ERROR_NO_ERROR;
- 
-  // TODO: change FTS to return a status code
-  FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+  res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
 
   return res;
 }
@@ -4335,7 +4319,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
     return NULL;
   }
   
-  // convert location to string
+  // convert attribute to string
   path = collection->_shaper->lookupAttributePathByPid(collection->_shaper, fulltextIndex->_attribute);
   if (path == 0) {
     return NULL;
@@ -4378,9 +4362,7 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   assert(idx);
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  res = TRI_ERROR_NO_ERROR; 
-  // TODO: change FTS to return a status code
-  FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
+  res = FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
 
   return res;
 }
@@ -4399,9 +4381,7 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
   assert(idx);
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  res = TRI_ERROR_NO_ERROR;
- 
-  FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+  res = FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
 
   return res;
 }
@@ -4470,8 +4450,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
   
-  fts = FTS_CreateIndex(collection->base._info._cid, 
-                        (void*) fulltextIndex, 
+  fts = FTS_CreateIndex((void*) fulltextIndex, 
                         &GetTextsFulltextIndex, 
                         &FreeWordlistFulltextIndex, 
                         options, 
