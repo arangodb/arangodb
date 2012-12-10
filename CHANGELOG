@@ -123,8 +123,14 @@ v1.2.alpha (XXXX-XX-XX)
   figure out these edges' roles. Additionally, bidirectional edges return the
   `_bidirectional` attribute with a value of `true`.
 
+v1.1.1 (xxxx-xx-xx)
+-------------------
 
-v1.1.0 (XXXX-XX-XX)
+* fixed some log errors on startup / shutdown due to pid file handling and changing
+  of directories
+
+
+v1.1.0 (2012-12-05)
 -------------------
 
 * added AQL function DOCUMENT() to retrieve a document by its _id value
