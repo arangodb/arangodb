@@ -371,6 +371,8 @@ actions.defineHttp({
 ///
 /// - @LIT{limit}: The maximal amount of documents to return. (optional)
 ///
+/// - @LIT{geo}: If given, the identifier of the fulltext-index to use. (optional)
+///
 /// Returns a cursor containing the result, see @ref HttpCursor for details.
 ///
 /// @EXAMPLES
@@ -398,6 +400,7 @@ actions.defineHttp({
         var skip = body.skip;
         var attribute = body.attribute;
         var query = body.query;
+        var iid = body.index || undefined; 
         var name = body.collection;
         var collection = internal.db._collection(name);
 
@@ -411,7 +414,7 @@ actions.defineHttp({
           actions.badParameter(req, res, "query");
         }
         else {
-          var result = collection.fulltext(attribute, query);
+          var result = collection.fulltext(attribute, query, iid);
           
           if (skip !== null && skip !== undefined) {
             result = result.skip(skip);

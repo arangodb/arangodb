@@ -426,6 +426,10 @@ SQ.SimpleQueryFulltext.prototype.execute = function (batchSize) {
     if (this._limit !== null) {
       data.limit = this._limit;
     }
+    
+    if (this._index !== null) {
+      data.index = this._index;
+    }
 
     if (this._skip !== null) {
       data.skip = this._skip;

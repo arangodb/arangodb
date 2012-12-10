@@ -1629,7 +1629,8 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
     for (var i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
 
-      if (index.type === "fulltext" && index.fields[0] == attribute) {
+      if (index.type === "fulltext" && 
+          index.fields[0] == attribute) {
         if (this._index === null) {
           this._index = index.id;
         }
@@ -1672,8 +1673,8 @@ SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
 /// @TINYEXAMPLE{simple-query-fulltext,complete match query}
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.fulltext = function (attribute, query) {
-  return new SimpleQueryFulltext(this, attribute, query);
+ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
+  return new SimpleQueryFulltext(this, attribute, query, iid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

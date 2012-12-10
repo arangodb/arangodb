@@ -95,7 +95,6 @@ extern ZCOD zcdh;
 /// resizing is expensive, one might want to decrease the overall number of
 /// resizings. This can be done by setting this number to a value bigger than 
 /// 1.0
-/// TODO: find a good default value for this
 ////////////////////////////////////////////////////////////////////////////////
 
 #define EXTRA_GROWTH_FACTOR  (1.5)
@@ -119,6 +118,7 @@ typedef struct {
 
   uint64_t              _maxDocuments;
   uint64_t              _numDocuments;
+  uint64_t              _numDeletions;
 
   FTS_texts_t* (*getTexts)(FTS_document_id_t, void*);
   void (*freeWordlist)(FTS_texts_t*);
@@ -363,13 +363,19 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
       if (newlet != tran) {
         // if not there, create a new index-2 entry for it  
         bkey = ZStrTuberIns(ix->_index2, kkey[j], tran);
-        // TODO: check bkey for INSFAIL
+        if (bkey == INSFAIL) {
+          res = TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
+          goto oom;
+        }
         kkey[j + 1] = ZStrTuberK(ix->_index2, kkey[j], tran, bkey); 
         // update old index-2 entry to insert new letter
         ZStrCxClear(&zcdelt, &ctx2a);
         ZStrCxClear(&zcdelt, &ctx2b);
         i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
-        // TODO: check i
+        if (i == 1) {
+          res = TRI_ERROR_INTERNAL;
+          goto oom;
+        }
         ZStrClear(zstr2b);
         x64 = ZStrBitsOut(zstr2a, 1);
         if (ZStrBitsIn(x64, 1, zstr2b) != 0) {
@@ -465,12 +471,18 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
     }
     else {
       docb = ZStrTuberIns(ix->_index3, kkey[j], 0);
-      // TODO: check docb
+      if (docb == INSFAIL) {
+        res = TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
+        goto oom;
+      }
       // put it into index 2 
       ZStrCxClear(&zcdelt, &ctx2a);
       ZStrCxClear(&zcdelt, &ctx2b);
       i = ZStrTuberRead(ix->_index2, kkey[j], zstr2a);
-      // TODO: check i
+      if (i == 1) {
+        res = TRI_ERROR_OUT_OF_MEMORY;
+        goto oom;
+      }
       ZStrClear(zstr2b);
       x64 = ZStrBitsOut(zstr2a, 1);
       if (ZStrBitsIn(1, 1, zstr2b) != 0) {
@@ -598,13 +610,19 @@ int RealAddDocument (FTS_index_t* ftx, FTS_document_id_t docid, FTS_texts_t* raw
           if (newlet != tran) {
             // if not there, create a new index-1 entry for it  
             bkey = ZStrTuberIns(ix->_index1, kkey1[j2 + 1], tran);
-            // TODO: check bkey
+            if (bkey == INSFAIL) {
+              res = TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE;
+              goto oom;
+            }
             kkey1[j2] = ZStrTuberK(ix->_index1, kkey1[j2 + 1], tran, bkey); 
             // update old index-1 entry to insert new letter
             ZStrCxClear(&zcdelt, &ctx2a);
             ZStrCxClear(&zcdelt, &ctx2b);
             i = ZStrTuberRead(ix->_index1, kkey1[j2 + 1], zstr2a);
-            // TODO: check i
+            if (i == 1) {
+              res = TRI_ERROR_INTERNAL;
+              goto oom;
+            }
             ZStrClear(zstr2b);
             newlet = 0;
             while (1) {
@@ -729,6 +747,8 @@ static int RealDeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     // should never underflow
     ix->_numDocuments--;
   }
+
+  ix->_numDeletions++;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -888,36 +908,43 @@ static uint64_t FindKKey2 (FTS_real_index* ix, uint64_t* word) {
 /// also recursive index 2 handles kk2 to dochan STEX using zcdh 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
+static int Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
   ZSTR* zstr2;
   ZSTR* zstr3;
   ZSTR* zstr;
   CTX ctx2, ctx3;
   uint64_t newlet;
+  int res;
 
   // index 2 entry for this prefix 
   zstr2 = ZStrCons(10); 
   if (zstr2 == NULL) {
-    // TODO: out of memory
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // index 3 entry for this prefix (if any)
   zstr3 = ZStrCons(10); 
   if (zstr3 == NULL) {
-    // TODO: out of memory
+    ZStrDest(zstr2);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // single doc handle work area 
   zstr = ZStrCons(2);  
   if (zstr == NULL) {
-    // TODO: out of memory
+    ZStrDest(zstr3);
+    ZStrDest(zstr2);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   if (ZStrTuberRead(ix->_index2, kk2, zstr2) == 1) {
-    // TODO: change to return code
-    printf("recursion failed to read kk2\n");
-    exit(1);
+    ZStrDest(zstr);
+    ZStrDest(zstr3);
+    ZStrDest(zstr2);
+    return TRI_ERROR_INTERNAL;
   }
+
+  res = TRI_ERROR_NO_ERROR;
 
   if (ZStrBitsOut(zstr2, 1) == 1) {
     // process the documents into the STEX  
@@ -932,8 +959,8 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
     dock = ZStrTuberK(ix->_index3, kk2, 0, docb);
     i = ZStrTuberRead(ix->_index3, dock, zstr3);
     if (i == 1) {
-      // TODO: make this return an error instead
-      printf("Kkey not in ix3 - we're doomed\n");
+      res = TRI_ERROR_OUT_OF_MEMORY;
+      goto oom;
     }
     ZStrCxClear(&zcdoc, &ctx3);
 
@@ -950,10 +977,12 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
       if (ix->_handlesFree[newhan] == 0) {
         ZStrClear(zstr);
         if (ZStrEnc(zstr, &zcdh, newhan) != 0) {
-          // TODO: out of memory
+          res = TRI_ERROR_OUT_OF_MEMORY;
+          goto oom;
         }
         if (ZStrSTAppend(dochan, zstr) != 0) {
-          // TODO: out of memory
+          res = TRI_ERROR_OUT_OF_MEMORY;
+          goto oom;
         }
       }
     }
@@ -971,14 +1000,21 @@ static void Ix2Recurs (STEX* dochan, FTS_real_index* ix, uint64_t kk2) {
     if (newlet == oldlet) {
       break;
     }
+
     bkey = ZStrDec(zstr2, &zcbky);
     newkk2 = ZStrTuberK(ix->_index2, kk2, newlet, bkey);
-    Ix2Recurs(dochan, ix, newkk2);
+    res = Ix2Recurs(dochan, ix, newkk2);
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
   }
 
+oom:
   ZStrDest(zstr2);
   ZStrDest(zstr3);
   ZStrDest(zstr);    
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1000,7 +1036,10 @@ static int Ix1Recurs (STEX* dochan,
   kk2 = FindKKey2(ix,wd);
 
   if (kk2 != NOTFOUND) {
-    Ix2Recurs(dochan, ix, kk2);
+    res = Ix2Recurs(dochan, ix, kk2);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
   }
 
   // index 1 entry for this prefix 
@@ -1264,6 +1303,7 @@ FTS_index_t* FTS_CreateIndex (void* context,
  
   ix->_maxDocuments = sizes[0]; 
   ix->_numDocuments = 0;
+  ix->_numDeletions = 0;
   ix->_context      = context;
   ix->_options      = options;
   ix->_ix3KKey      = 0;
@@ -1461,9 +1501,28 @@ int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read index3 and remove handles of unused documents. stop after docs
-/// deletions. the scan & cleanup is incremental
-/// the caller must have write-locked the index
+/// @brief whether or not the index should be cleaned up
+////////////////////////////////////////////////////////////////////////////////
+
+bool FTS_ShouldCleanupIndex (FTS_index_t* ftx) {
+  FTS_real_index* ix;
+
+  ix = (FTS_real_index*) ftx;
+
+  return (ix->_numDeletions > FTS_CLEANUP_THRESHOLD);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Incremental scan and cleanup routine, called from a background task
+/// This reads index3 and removes handles of unused documents. Will stop after
+/// stop after scanning <docs> document/word pair scans. 
+/// The caller must have write-locked the index
+/// 
+/// The function may return the following values:
+/// 0 = cleanup done, but not finished
+/// 1 = out of memory
+/// 2 = index needs a resize
+/// 3 = cleanup finished
 ////////////////////////////////////////////////////////////////////////////////
 
 int FTS_BackgroundTask (FTS_index_t* ftx, int docs) {
@@ -1471,16 +1530,12 @@ int FTS_BackgroundTask (FTS_index_t* ftx, int docs) {
   int dleft, i;
   CTX cold;
   CTX cnew;
-  int cd;
   uint64_t newterm;
   uint64_t oldhan;
   uint64_t han;
   ZSTR* zold;
   ZSTR* znew;
-
-  ix = (FTS_real_index*) ftx;
-  dleft = docs;
-  cd = 0;
+  int result;
 
   znew = ZStrCons(100);
   if (znew == NULL) {
@@ -1492,20 +1547,24 @@ int FTS_BackgroundTask (FTS_index_t* ftx, int docs) {
     ZStrDest(znew);
     return 1;
   }
+  
+  dleft = docs;
+  result = 0;
+  ix = (FTS_real_index*) ftx;
 
-  while (dleft>0) {
+  while (dleft > 0) {
     uint64_t numDeletions;
 
     assert(ix->_ix3KKey < (ix->_index3)->kmax);
 
     numDeletions = 0;
     i = ZStrTuberRead(ix->_index3, ix->_ix3KKey, zold);
-    if (i==2) {
-      cd=1;
+    if (i == 2) {
+      result = 1;
       break;
     }
 
-    if (i==0) {
+    if (i == 0) {
       ZStrCxClear(&zcdoc, &cold);
       ZStrCxClear(&zcdoc, &cnew);
       ZStrClear(znew);
@@ -1547,6 +1606,11 @@ int FTS_BackgroundTask (FTS_index_t* ftx, int docs) {
           ZStrDest(zold);
           return 1;
         }
+  
+        if (ix->_numDeletions >= numDeletions) {
+          ix->_numDeletions -= numDeletions;
+        }
+
         ZStrNormalize(znew);
         i = ZStrTuberUpdate(ix->_index3, ix->_ix3KKey, znew);
       }
@@ -1558,18 +1622,21 @@ int FTS_BackgroundTask (FTS_index_t* ftx, int docs) {
         return i;
       }
     }
+
+    // next
     ix->_ix3KKey++;
 
     if (ix->_ix3KKey >= (ix->_index3)->kmax) {
       ix->_ix3KKey = 0;
-      cd = 3; // finished iterating over all document handles
+      result = 3; // finished iterating over all document handles
       break;
     }
   }
 
   ZStrDest(znew);
   ZStrDest(zold);
-  return cd;  
+
+  return result;  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1791,7 +1858,11 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         }
 
         // call routine to recursively put handles to STEX
-        Ix2Recurs(dochan, ix, kkey);
+        if (Ix2Recurs(dochan, ix, kkey) != TRI_ERROR_NO_ERROR) {
+          ZStrSTDest(dochan); 
+          TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+          goto oom;
+        }
       }
       else if (query->_localOptions[queryterm] == FTS_MATCH_SUBSTRING) {
         // substring matching
@@ -1804,6 +1875,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
         }
         // call routine to recursively put handles to STEX
         if (Ix1Recurs(dochan, ix, kkey, word + MAX_WORD_LENGTH + SPACING) != TRI_ERROR_NO_ERROR) {
+          ZStrSTDest(dochan); 
           TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
           goto oom;
         }
