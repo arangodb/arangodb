@@ -4217,6 +4217,9 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
       LOG_ERROR("resizing fulltext index failed: %s", TRI_errno_string(res));
     }
   }
+  else if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("adding document to fulltext index failed: %s", TRI_errno_string(res));
+  }
 
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
@@ -4341,17 +4344,19 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
+  // try to acquire the write lock to clean up
+  // but don't block if the index is busy
+  if (TRI_TryWriteLockReadWriteLock(&fulltextIndex->_lock)) {
+    // check whether we should do a cleanup at all
+    if (FTS_ShouldCleanupIndex(fulltextIndex->_fulltextIndex)) {
+      // this will scan FTS_CLEANUP_SCAN_AMOUNT document/word pairs at a time
+      FTS_BackgroundTask(fulltextIndex->_fulltextIndex, FTS_CLEANUP_SCAN_AMOUNT);
+    }
 
-  // check whether we should do a cleanup at all
-  if (FTS_ShouldCleanupIndex(fulltextIndex->_fulltextIndex)) {
-    // this will scan FTS_CLEANUP_SCAN_AMOUNT document/word pairs at a time
-    FTS_BackgroundTask(fulltextIndex->_fulltextIndex, FTS_CLEANUP_SCAN_AMOUNT);
+    TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+
+    LOG_TRACE("finished cleaning up");
   }
-
-  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
-
-  LOG_TRACE("finished cleaning up");
 
   return TRI_ERROR_NO_ERROR;
 }
