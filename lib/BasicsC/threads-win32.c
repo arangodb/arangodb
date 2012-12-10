@@ -214,7 +214,13 @@ bool TRI_SignalThread (TRI_thread_t* thread, int signum) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSelfThread (TRI_thread_t* thread) {
-  return ( GetCurrentThreadId() == GetThreadId(thread) );
+  return false;
+  // ...........................................................................
+  // The GetThreadID(...) function is only available in Windows Vista or Higher
+  // TODO: Change the TRI_thread_t into a structure which stores the thread id
+  // as well as the thread handle. This can then be passed around
+  // ...........................................................................
+  //return ( GetCurrentThreadId() == GetThreadId(thread) );
 }
 
 

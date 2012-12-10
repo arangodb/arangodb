@@ -245,8 +245,10 @@ namespace RandomHelper {
 #else 
     public:
       RandomDeviceWin32 () : cryptoHandle(0), pos(0)  {
-        CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, 0); 
-        if (cryptoHandle == 0) {
+        BOOL result;
+        result = CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT); 
+        if (cryptoHandle == 0 || result == FALSE) {
+          printf("%s:%s:%d:%d",__FILE__,__FUNCTION__,__LINE__,GetLastError());
           THROW_INTERNAL_ERROR("cannot create cryptographic windows handle");
         }
         fillBuffer();
@@ -575,10 +577,14 @@ namespace triagens {
           }
 
           case RAND_WIN32: {
+            // printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             if (RandomHelper::win32Device == 0) {
               RandomHelper::win32Device = new RandomHelper::RandomDeviceWin32<1024>();
+              //printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             }
+            //printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             uniformInteger = new UniformIntegerWin32(RandomHelper::win32Device);
+            //printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             break;
           }
 
