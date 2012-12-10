@@ -1,3 +1,10 @@
+v1.1.1 (xxxx-xx-xx)
+-------------------
+
+* fixed some log errors on startup / shutdown due to pid file handling and changing
+  of directories
+
+
 v1.1.0 (2012-12-05)
 -------------------
 

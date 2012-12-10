@@ -1038,6 +1038,56 @@ int TRI_DestroyLockFile (char const* filename) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the absolute path of a file
+/// in contrast to realpath() this function can also be used to determine the
+/// full path for files & directories that do not exist. realpath() would fail
+/// for those cases.
+/// It is the caller's responsibility to free the string created by this 
+/// function
+/// TODO: this may be simplified on Windows to use GetFullPathName()
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
+  char* result;
+  char* ptr;
+  size_t length;
+  bool isAbsolute;
+
+  if (file == NULL || *file == '\0') {
+    return NULL;
+  }
+
+  // name is absolute if starts with either forward or backslash
+  isAbsolute = (*file == '/' || *file == '\\');
+
+  // file is also absolute if contains a colon
+  for (ptr = (char*) file; *ptr; ++ptr) {
+    if (*ptr == ':') {
+      isAbsolute = true;
+      break;
+    }
+  }
+
+  if (isAbsolute){
+    return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, file);
+  }
+
+  length = strlen(cwd) + strlen(file) + 2;
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, length * sizeof(char), false);
+  if (result != NULL) {
+    ptr = result;
+    memcpy(ptr, cwd, strlen(cwd));
+    ptr += strlen(cwd);
+    *(ptr++) = '/';
+    memcpy(ptr, file, strlen(file));
+    ptr += strlen(file);
+    *ptr = '\0';
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program
 ////////////////////////////////////////////////////////////////////////////////
 

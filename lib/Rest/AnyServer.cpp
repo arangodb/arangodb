@@ -200,11 +200,11 @@ static int forkProcess (string const& workingDirectory, string& current, Applica
   // change the current working directory (TODO must be configurable)
   if (! workingDirectory.empty()) {
     if (! FileUtils::changeDirectory(workingDirectory)) {
-      cerr << "cannot change into directory '" << workingDirectory << "'\n";
+      cerr << "cannot change into working directory '" << workingDirectory << "'\n";
       exit(EXIT_FAILURE);
     }
     else {
-      LOGGER_INFO << "changed into directory '" << workingDirectory << "'";
+      LOGGER_INFO << "changed into working directory '" << workingDirectory << "'";
     }
   }
 
@@ -405,7 +405,7 @@ int AnyServer::start () {
 
     if (! _pidFile.empty()) {
       if (! FileUtils::remove(_pidFile)) {
-        LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
+        LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
       }
     }
 
@@ -553,14 +553,8 @@ int AnyServer::startupSupervisor () {
 
         // remove pid file
         if (horrible) {
-          if (FileUtils::changeDirectory(current)) {
-            if (! FileUtils::remove(_pidFile)) {
-              LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
-            }
-          }
-          else {
-            LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
-                         << current << "' is missing";
+          if (! FileUtils::remove(_pidFile)) {
+            LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
           }
         }
       }
@@ -585,14 +579,8 @@ int AnyServer::startupSupervisor () {
         result = startupServer();
         
         // remove pid file
-        if (FileUtils::changeDirectory(current)) {
-          if (! FileUtils::remove(_pidFile)) {
-            LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
-          }
-        }
-        else {
-          LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
-                       << current << "' is missing";
+        if (! FileUtils::remove(_pidFile)) {
+          LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
         }
 
         // and stop
@@ -633,14 +621,8 @@ int AnyServer::startupDaemon () {
     result = startupServer();
     
     // remove pid file
-    if (FileUtils::changeDirectory(current)) {
-      if (! FileUtils::remove(_pidFile)) {
-        LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "'";
-      }
-    }
-    else {
-      LOGGER_ERROR << "cannot unlink pid file '" << _pidFile << "', because directory '"
-                   << current << "' is missing";
+    if (! FileUtils::remove(_pidFile)) {
+      LOGGER_DEBUG << "cannot remove pid file '" << _pidFile << "'";
     }
   }
   
