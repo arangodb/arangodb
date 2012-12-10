@@ -1044,13 +1044,14 @@ int TRI_DestroyLockFile (char const* filename) {
 /// for those cases.
 /// It is the caller's responsibility to free the string created by this 
 /// function
-/// TODO: this may be simplified on Windows to use GetFullPathName()
+/// TODO: the implementation is naive and may be simplified greatly on Windows
+/// by using GetFullPathName() 
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   char* result;
   char* ptr;
-  size_t length;
+  size_t cwdLength;
   bool isAbsolute;
 
   if (file == NULL || *file == '\0') {
@@ -1072,13 +1073,29 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
     return TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, file);
   }
 
-  length = strlen(cwd) + strlen(file) + 2;
-  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, length * sizeof(char), false);
+  if (cwd == NULL || *cwd == '\0') {
+    // no absolute path given, must abort
+    return NULL;
+  }
+
+  cwdLength = strlen(cwd);
+  assert(cwdLength > 0);
+
+  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + strlen(file) + 2) * sizeof(char), false);
   if (result != NULL) {
     ptr = result;
-    memcpy(ptr, cwd, strlen(cwd));
-    ptr += strlen(cwd);
-    *(ptr++) = '/';
+    memcpy(ptr, cwd, cwdLength);
+    ptr += cwdLength;
+
+#ifdef _WIN32
+    if (cwd[cwdLength - 1] != '\\') {
+      *(ptr++) = '\\';
+    }
+#else
+    if (cwd[cwdLength - 1] != '/') {
+      *(ptr++) = '/';
+    }
+#endif    
     memcpy(ptr, file, strlen(file));
     ptr += strlen(file);
     *ptr = '\0';
