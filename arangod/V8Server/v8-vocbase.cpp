@@ -616,7 +616,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   v8::HandleScope scope;
   
   if (argv.Length() < 1 || argv.Length() > 3) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>, <minWordLength>)")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "usage: ensureFulltext(<attribute>, <indexSubstrings>, <minLength>)")));
   }
   
   string attributeName = TRI_ObjectToString(argv[0]);
@@ -630,7 +630,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
   }
 
   int minWordLength = TRI_FULLTEXT_WORDLENGTH_DEFAULT;
-  if (argv.Length() == 3) {
+  if (argv.Length() == 3 && argv[2]->IsNumber()) {
     minWordLength = (int) TRI_ObjectToInt64(argv[2]);
   }
 

@@ -471,6 +471,9 @@ function POST_api_index_skiplist (req, res, collection, body) {
 ///   This will enable substring searching via the index but will make the index
 ///   consume more memory.
 ///
+/// - @LIT{minLength}: Minimum character length of words to index. Will default
+///   to a server-defined value if unspecified.
+///
 /// If the index does not already exist and could be created, then a @LIT{HTTP
 /// 201} is returned.  If the index already exists, then a @LIT{HTTP 200} is
 /// returned.
@@ -497,7 +500,7 @@ function POST_api_index_fulltext (req, res, collection, body) {
                       "fields must contain exactly one attribute name");
   }
 
-  var index = collection.ensureFulltextIndex.call(collection, fields, body.indexSubstrings || false);
+  var index = collection.ensureFulltextIndex.call(collection, fields, body.indexSubstrings || false, body.minLength || undefined);
 
   if (index.isNewlyCreated) {
     actions.resultOk(req, res, actions.HTTP_CREATED, index);

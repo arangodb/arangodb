@@ -4259,7 +4259,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, idx->_unique));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "fulltext"));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexSubstrings", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, fulltextIndex->_indexSubstrings));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minWordLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) fulltextIndex->_minWordLength));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) fulltextIndex->_minWordLength));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fields);
     
   return json;
@@ -4329,12 +4329,13 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function for the fulltext index
-/// currently does nothing
+///
+/// This will incrementally clean the index by removing document/word pairs
+/// for deleted documents
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CleanupFulltextIndex (TRI_index_t* idx) {
   TRI_fulltext_index_t* fulltextIndex;
-  int res;
 
   LOG_TRACE("fulltext cleanup called");
 
@@ -4342,21 +4343,12 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
 
   TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
 
-  while (1) {
-    // this will scan 100.000 document/word pairs at a time
-    // TODO: check if this number is reasonable
-    res = FTS_BackgroundTask(fulltextIndex->_fulltextIndex, 100000);
-    // 0 = ok, but unfinished
-    // 1 = oom
-    // 2 = needs resize
-    // 3 = finished
-    if (res == 3) {
-      // finished cleaning
-      break;
-    }
-    // TODO: maybe we want to clean more
-    break;
+  // check whether we should do a cleanup at all
+  if (FTS_ShouldCleanupIndex(fulltextIndex->_fulltextIndex)) {
+    // this will scan FTS_CLEANUP_SCAN_AMOUNT document/word pairs at a time
+    FTS_BackgroundTask(fulltextIndex->_fulltextIndex, FTS_CLEANUP_SCAN_AMOUNT);
   }
+
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
   LOG_TRACE("finished cleaning up");
@@ -4392,7 +4384,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   TRI_shape_pid_t attribute;
   int options;
   // default sizes for index. TODO: adjust these
-  uint64_t sizes[4] = { 5000, 1000000, 50000, 10000 };
+  uint64_t sizes[4] = { 10000, 1000000, 50000, 200000 };
     
   // look up the attribute
   shaper = collection->_shaper;
@@ -4440,7 +4432,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   fulltextIndex->_fulltextIndex = fts;
   fulltextIndex->_indexSubstrings = indexSubstrings;
   fulltextIndex->_attribute = attribute;
-  fulltextIndex->_minWordLength = minWordLength;
+  fulltextIndex->_minWordLength = (minWordLength > 0 ? minWordLength : 1);
   
   TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 
