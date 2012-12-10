@@ -501,9 +501,17 @@ void ArangoServer::buildApplicationServer () {
     if (absoluteFile != 0) {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
+    
+      LOGGER_DEBUG << "using absolute pid file '" << _pidFile << "'";
     }
+    else {
+      cerr << "cannot determine current directory, giving up\n";
 
-    LOGGER_DEBUG << "using absolute pid file '" << _pidFile << "'";
+      LOGGER_FATAL << "cannot determine current directory";
+
+      TRI_FlushLogging();
+      exit(EXIT_FAILURE);
+    }
   }
 }
 
