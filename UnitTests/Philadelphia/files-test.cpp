@@ -140,6 +140,50 @@ BOOST_AUTO_TEST_CASE (tst_filesize_non) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test absolute path
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_absolute_paths) {
+  char* path;
+
+  path = TRI_GetAbsolutePath("the-fox", "/tmp");
+  BOOST_CHECK_EQUAL("/tmp/the-fox", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+
+  path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
+  BOOST_CHECK_EQUAL("/tmp/the-fox.lol", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
+  BOOST_CHECK_EQUAL("/tmp/the-fox/the-fox.lol", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("file", "/");
+  BOOST_CHECK_EQUAL("/file", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("./file", "/");
+  BOOST_CHECK_EQUAL("/./file", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("/file", "/tmp");
+  BOOST_CHECK_EQUAL("/file", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
+  BOOST_CHECK_EQUAL("/file/to/file", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("file/to/file", "/tmp");
+  BOOST_CHECK_EQUAL("/tmp/file/to/file", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  
+  path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
+  BOOST_CHECK_EQUAL("c:file/to/file", path);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
 
