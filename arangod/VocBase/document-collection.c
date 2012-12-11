@@ -3230,7 +3230,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3602,7 +3602,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return idx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3646,9 +3646,8 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return idx;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -3863,7 +3862,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return idx;
 }                                                
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4070,7 +4069,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return idx;
 }                                                
                                                 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4329,7 +4328,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return idx;
 }                                                
                                                 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4573,9 +4572,8 @@ TRI_index_t* TRI_EnsurePriorityQueueIndexDocumentCollection(TRI_document_collect
 
     return res == TRI_ERROR_NO_ERROR ? idx : NULL;
   }
-  else {
-    return TRI_ERROR_NO_ERROR;
-  }
+
+  return idx;
 }                                                
 
 ////////////////////////////////////////////////////////////////////////////////
