@@ -738,7 +738,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   TRI_vocbase_col_t const* col = 0;
 
   if (useCollection) {
-    // called as db.collection.replace()
+    // called as db.collection.document()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
     if (col == 0) {
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
@@ -747,7 +747,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
     vocbase = col->_vocbase;
   }
   else {
-    // called as db._replace()
+    // called as db._document()
     vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   }
 
@@ -1121,7 +1121,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   TRI_vocbase_col_t const* col = 0;
 
   if (useCollection) {
-    // called as db.collection.replace()
+    // called as db.collection.update()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
     if (col == 0) {
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
@@ -1130,7 +1130,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
     vocbase = col->_vocbase;
   }
   else {
-    // called as db._replace()
+    // called as db._update()
     vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   }
 
@@ -1228,7 +1228,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (const bool useCollection,
   TRI_vocbase_col_t const* col = 0;
 
   if (useCollection) {
-    // called as db.collection.replace()
+    // called as db.collection.remove()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
     if (col == 0) {
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
@@ -1237,7 +1237,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (const bool useCollection,
     vocbase = col->_vocbase;
   }
   else {
-    // called as db._replace()
+    // called as db._remove()
     vocbase = TRI_UnwrapClass<TRI_vocbase_t>(argv.Holder(), WRP_VOCBASE_TYPE);
   }
 
@@ -3514,7 +3514,7 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
   ResourceHolder holder;
 
   TRI_json_t* json = idx->json(idx, primary);
-  if (! holder.registerJson(TRI_CORE_MEM_ZONE, json)) {
+  if (! holder.registerJson(TRI_UNKNOWN_MEM_ZONE, json)) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
   }
@@ -5490,9 +5490,7 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 
 static void WeakBarrierCallback (v8::Persistent<v8::Value> object, void* parameter) {
   TRI_barrier_t* barrier;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
   barrier = (TRI_barrier_t*) parameter;
 
   LOG_TRACE("weak-callback for barrier called");
@@ -6031,10 +6029,9 @@ v8::Handle<v8::Object> TRI_WrapCollection (TRI_vocbase_col_t const* collection) 
 v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
                                           TRI_doc_mptr_t const* document,
                                           TRI_barrier_t* barrier) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // create the new handle to return, and set its template type
   v8::Handle<v8::Object> result = v8g->ShapedJsonTempl->NewInstance();
@@ -6056,7 +6053,6 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
     result->SetInternalField(SLOT_BARRIER, persistent);
 
     v8g->JSBarriers[barrier] = persistent;
-
     persistent.MakeWeak(barrier, WeakBarrierCallback);
   }
   else {
