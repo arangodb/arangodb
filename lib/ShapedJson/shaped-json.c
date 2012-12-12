@@ -1053,7 +1053,7 @@ static TRI_json_t* JsonShapeDataShortString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
-  return TRI_CreateString2CopyJson(shaper->_memoryZone, data, l - 1);
+  return TRI_CreateString2CopyJson(shaper->_memoryZone, data, (size_t) (l - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1507,19 +1507,21 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
     return false;
   }
 
-  unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, data, l - 1, true, &out);
+  if (l > 1) {
+    unicoded = TRI_EscapeUtf8StringZ(shaper->_memoryZone, data, (size_t) (l - 1), true, &out);
 
-  if (unicoded == NULL) {
-    return false;
+    if (unicoded == NULL) {
+      return false;
+    }
+
+    res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    TRI_FreeString(shaper->_memoryZone, unicoded);
   }
-
-  res = TRI_AppendString2StringBuffer(buffer, unicoded, out);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
-
-  TRI_FreeString(shaper->_memoryZone, unicoded);
 
   res = TRI_AppendCharStringBuffer(buffer, '"');
 

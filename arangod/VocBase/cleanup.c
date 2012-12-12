@@ -248,7 +248,7 @@ void TRI_CleanupVocBase (void* data) {
         TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
         // clean indexes?
-        if (iterations % CLEANUP_INDEX_ITERATIONS == 0) {
+        if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
           document->cleanupIndexes(document);
         }
 
@@ -263,7 +263,7 @@ void TRI_CleanupVocBase (void* data) {
       }
 
       TRI_LockCondition(&vocbase->_cleanupCondition);
-      TRI_TimedWaitCondition(&vocbase->_cleanupCondition, CLEANUP_INTERVAL);
+      TRI_TimedWaitCondition(&vocbase->_cleanupCondition, (uint64_t) CLEANUP_INTERVAL);
       TRI_UnlockCondition(&vocbase->_cleanupCondition);
     }
 

@@ -212,7 +212,8 @@ static int createMasterTable(MasterTable_t** mt, TRI_memory_zone_t* memoryZone, 
   TRI_InitVector(&((*mt)->_freeBlockPosition), memoryZone, sizeof(size_t)); 
   
   for (j = 0; j < (*mt)->_numBlocks; ++j) {
-    MasterTableBlock_t* block = (*mt)->_blocks + j;     
+    MasterTableBlock_t* block = (*mt)->_blocks + j;    
+    // TODO: negative integer implicitly converted to unsigned type [-Wsign-conversion] 
     block->_free = ~((bit_column_int_t)(0));
     TRI_PushBackVector(&((*mt)->_freeBlockPosition), &j);      
   }
@@ -277,6 +278,7 @@ static int extendMasterTable(MasterTable_t* mt) {
   
   for (j = mt->_numBlocks; j < newNumBlocks; ++j) {
     MasterTableBlock_t* block = mt->_blocks + j;     
+    // TODO: negative integer implicitly converted to unsigned type [-Wsign-conversion]
     block->_free = ~((bit_column_int_t)(0));
     TRI_PushBackVector(&(mt->_freeBlockPosition), &j);      
   }

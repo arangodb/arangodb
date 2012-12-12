@@ -1275,7 +1275,7 @@ FTS_index_t* FTS_CreateIndex (void* context,
                               int options, 
                               uint64_t sizes[4]) {
   FTS_real_index* ix;
-  int i;
+  uint64_t i;
     
   LOG_TRACE("creating fulltext index with sizes %llu %llu %llu %llu", 
             (unsigned long long) sizes[0],
@@ -1463,11 +1463,8 @@ int FTS_AddDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int FTS_DeleteDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
-  FTS_real_index* ix;
   int res;
   
-  ix = (FTS_real_index*) ftx;
-
   res = RealDeleteDocument(ftx, docid);
 
   return res;
@@ -1492,7 +1489,7 @@ int FTS_UpdateDocument (FTS_index_t* ftx, FTS_document_id_t docid) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  res = RealDeleteDocument(ftx, docid);
+  RealDeleteDocument(ftx, docid);
   res = RealAddDocument(ftx, docid, rawwords);
   
   ix->freeWordlist(rawwords);
@@ -1890,7 +1887,7 @@ FTS_document_ids_t* FTS_FindDocuments (FTS_index_t* ftx,
       lasthan = 0;
       
       if (queryterm == 0) {
-        int i;
+        uint64_t i;
 
         for (i = 0; i < odocs; i++) {
           uint64_t newhan;

@@ -95,7 +95,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
                      void* masterTable) {
   MasterTable_t* mt;
   int result;
-  int j;
+  size_t j;
   bool ok;
   
     
@@ -238,7 +238,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
 
 int TRI_DestroyBitarray(TRI_bitarray_t* ba) {
   MasterTable_t* mt = (MasterTable_t*)(ba->_masterTable);
-  int j;  
+  size_t j;  
   
   // ..........................................................................
   // if the master table is NOT shared, then delete it as well
@@ -582,7 +582,8 @@ int TRI_RemoveElementBitarray(TRI_bitarray_t* ba, void* element) {
   // that we are fortunate and it is the last used block.
   // ...........................................................................
   block = &(mt->_blocks[position->_blockNum]);
-  
+ 
+  // TODO: comparison is always false due to limited range of data type [-Wtype-limits] 
   if (block->_free ==  ~((bit_column_int_t)(0))) {
     if (ba->_lastBlockUsed == position->_blockNum) {
       --ba->_lastBlockUsed;
@@ -649,7 +650,7 @@ int TRI_ReplaceBitMaskElementBitarray (TRI_bitarray_t* ba ,
 
 int extendColumns(TRI_bitarray_t* ba, size_t newBlocks) {
   bool ok = true;
-  int j;
+  size_t j;
   char* newColumns;
  
 

@@ -752,7 +752,6 @@ void* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
-  int compareResult;
 
   // ...........................................................................  
   // Just in case
@@ -823,6 +822,7 @@ void* TRI_LeftLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
     // .........................................................................  
     
     else { // nextNode != &(skiplist->_endNode
+      int compareResult;
     
       // .......................................................................
       // Use the callback to determine if the element is less or greater than
@@ -899,7 +899,6 @@ void* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
-  int compareResult;
   
   // ...........................................................................  
   // Just in case
@@ -971,6 +970,8 @@ void* TRI_LookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
     // .........................................................................  
     
     else { // nextNode != &(skiplist->_endNode
+      int compareResult;
+
       // .......................................................................
       // Use the callback to determine if the element is less or greater than
       // the next node element.

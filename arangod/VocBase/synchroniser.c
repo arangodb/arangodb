@@ -414,7 +414,7 @@ void TRI_SynchroniserVocBase (void* data) {
       TRI_LOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);
 
       if (vocbase->_syncWaiters == 0) {
-        TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(vocbase, SYNCHRONISER_INTERVAL);
+        TRI_WAIT_SYNCHRONISER_WAITER_VOC_BASE(vocbase, (uint64_t) SYNCHRONISER_INTERVAL);
       }
 
       TRI_UNLOCK_SYNCHRONISER_WAITER_VOC_BASE(vocbase);

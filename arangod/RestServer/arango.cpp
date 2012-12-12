@@ -48,7 +48,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  int res = 0;
+  int res;
 
   TRIAGENS_RESULT_GENERATOR_INITIALISE(argc, argv);
   TRI_InitialiseVocBase();

@@ -537,7 +537,7 @@ bool RestImportHandler::createByKeyValueList () {
 
     if (values) {
       // got a json document or list
-      TRI_json_t* json = 0;
+      TRI_json_t* json;
       
       // build the json object from the list
       json = createJsonObject(keys, values, line);

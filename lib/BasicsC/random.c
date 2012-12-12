@@ -131,8 +131,8 @@ uint32_t TRI_UInt32Random (void) {
   uint32_t l1;
   uint32_t l2;
 
-  l1 = rand();
-  l2 = rand();
+  l1 = (uint32_t) rand();
+  l2 = (uint32_t) rand();
 
   return ((l1 & 0xFFFF) << 16) | (l2 & 0xFFFF);
 

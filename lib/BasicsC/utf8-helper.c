@@ -84,9 +84,9 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
-                          const UChar* uchar,
-                          const size_t inLength,
-                          size_t* outLength) {
+                       const UChar* uchar,
+                       const size_t inLength,
+                       size_t* outLength) {
   UErrorCode status;
   char* utf8;
   int32_t utf8Length;
@@ -209,7 +209,7 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   }
   
   // Convert data back from UChar (UTF-16) to UTF-8 
-  utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, utf16DestLength, outLength);
+  utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, (size_t) utf16DestLength, outLength);
   TRI_Free(zone, utf16Dest);
   
   return utf8Dest;  

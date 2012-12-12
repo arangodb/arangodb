@@ -51,7 +51,7 @@ static void AppendChar (TRI_string_buffer_t * self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t Remaining (TRI_string_buffer_t * self) {
-  return self->_len - (self->_current - self->_buffer);
+  return (size_t) (self->_len - (self->_current - self->_buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +281,7 @@ void TRI_ClearStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * source) {
-  return TRI_ReplaceStringStringBuffer(self, source->_buffer, source->_current - source->_buffer);
+  return TRI_ReplaceStringStringBuffer(self, source->_buffer, (size_t) (source->_current - source->_buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +289,7 @@ int TRI_CopyStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const 
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
-  size_t off = self->_current - self->_buffer;
+  size_t off = (size_t) (self->_current - self->_buffer);
 
   if (off <= len) {
     TRI_ClearStringBuffer(self); 
@@ -318,7 +318,7 @@ int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t * self, char const * str,
 int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
   self->_current = self->_buffer;
 
-  return TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
+  return TRI_AppendString2StringBuffer(self, text->_buffer, (size_t) (text->_current - text->_buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +400,7 @@ int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_buffer_t const * text) {
-  return TRI_AppendString2StringBuffer(self, text->_buffer, text->_current - text->_buffer);
+  return TRI_AppendString2StringBuffer(self, text->_buffer, (size_t) (text->_current - text->_buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1097,11 +1097,11 @@ int TRI_AppendTimeStringBuffer (TRI_string_buffer_t * self, int32_t attr) {
     return res;
   }
 
-  TRI_AppendInteger2StringBuffer(self, hour);
+  TRI_AppendInteger2StringBuffer(self, (uint32_t) hour);
   AppendChar(self, ':');
-  TRI_AppendInteger2StringBuffer(self, minute);
+  TRI_AppendInteger2StringBuffer(self, (uint32_t) minute);
   AppendChar(self, ':');
-  TRI_AppendInteger2StringBuffer(self, second);
+  TRI_AppendInteger2StringBuffer(self, (uint32_t) second);
 
   return TRI_ERROR_NO_ERROR;
 }

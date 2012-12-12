@@ -1901,7 +1901,7 @@ void TRI_InitialiseVocBase () {
   TRI_GlobalInitStatementListAql();
 
   ServerIdentifier = TRI_UInt16Random();
-  PageSize = getpagesize();
+  PageSize = (size_t) getpagesize();
 
   TRI_InitSpin(&TickLock);
 
