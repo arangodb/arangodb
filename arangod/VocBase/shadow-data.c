@@ -184,7 +184,7 @@ static bool EqualKeyId (TRI_associative_pointer_t* array, void const* k, void co
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashKeyData (TRI_associative_pointer_t* array, void const* k) {
-  uint64_t key = 0;
+  uint64_t key;
   
   key = (uint64_t) (uintptr_t) k;
   return key;

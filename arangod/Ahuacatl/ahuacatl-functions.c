@@ -619,7 +619,7 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
                                       const size_t checkArg) {
   const char* pattern;
   char c;
-  size_t i = 0;
+  size_t i;
   bool foundArg = false;
 
   assert(function);
@@ -689,7 +689,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
     else {
       // last argument is not repeated
       bool parse = true;
-      bool foundArg = false;
+      bool foundArg;
 
       allowed = InitParam();
 

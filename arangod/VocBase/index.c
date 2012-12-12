@@ -4456,6 +4456,7 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
   if (idx == NULL) {
     return;
   }
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
       
   TRI_DestroyReadWriteLock(&fulltextIndex->_lock);
   TRI_DestroyVectorString(&idx->_fields);

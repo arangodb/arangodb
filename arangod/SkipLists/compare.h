@@ -154,7 +154,7 @@ static int compareShapeTypeJsonArrayHelper(const TRI_shape_t* shape, const TRI_s
   char* charShape = (char*)(shape);
   TRI_shape_size_t fixedEntries;     // the number of entries in the JSON array whose value is of a fixed size
   TRI_shape_size_t variableEntries;  // the number of entries in the JSON array whose value is not of a known fixed size
-  int j;
+  TRI_shape_size_t j;
   int jj;
   const TRI_shape_aid_t* aids;
   const TRI_shape_sid_t* sids;

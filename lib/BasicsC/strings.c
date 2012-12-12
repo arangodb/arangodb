@@ -822,7 +822,7 @@ TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
     if (*q == delim) {
       *p = '\0';
 
-      TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+      TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, (size_t) (p - buffer)));
 
       p = buffer;
     }
@@ -833,7 +833,7 @@ TRI_vector_string_t TRI_SplitString (char const* source, char delim) {
 
   *p = '\0';
 
-  TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+  TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, (size_t) (p - buffer)));
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, buffer);
 
@@ -880,7 +880,7 @@ TRI_vector_string_t TRI_Split2String (char const* source, char const* delim) {
       if (*q == delim[i]) {
         *p = '\0';
 
-        TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, p - buffer));
+        TRI_PushBackVectorString(&result, TRI_DuplicateString2(buffer, (size_t) (p - buffer)));
 
         p = buffer;
         found = true;
@@ -1065,7 +1065,7 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
   }
 
   *qtr = '\0';
-  *outLength = qtr - buffer;
+  *outLength = (size_t) (qtr - buffer);
 
   qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1, false);
   memcpy(qtr, buffer, *outLength + 1);
@@ -1122,7 +1122,7 @@ char* TRI_EscapeControlsCString (char const* in, size_t inLength, size_t* outLen
   }
 
   *qtr = '\0';
-  *outLength = qtr - buffer;
+  *outLength = (size_t) (qtr - buffer);
 
   qtr = TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1, false);
   memcpy(qtr, buffer, *outLength + 1);
@@ -1286,7 +1286,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
   }
 
   *qtr = '\0';
-  *outLength = qtr - buffer;
+  *outLength = (size_t) (qtr - buffer);
 
   qtr = TRI_Allocate(zone, *outLength + 1, false);
 
@@ -1414,7 +1414,7 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   }
 
   *qtr = '\0';
-  *outLength = qtr - buffer;
+  *outLength = (size_t) (qtr - buffer);
 
 #ifdef TRI_HAVE_ICU
   if (*outLength > 0) {

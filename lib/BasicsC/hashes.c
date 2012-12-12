@@ -434,7 +434,7 @@ static uint32_t ReflectCrc32 (uint32_t value, const int size) {
 
   for (i = 1; i < (size + 1); ++i) {
     if (value & 1) {
-      reflected = reflected | (1 << (size - i));
+      reflected = reflected | (1 << (uint32_t) (size - i));
     }
 
     value = value >> 1;

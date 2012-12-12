@@ -239,7 +239,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
   // add 0 byte
   *current = '\0';
 
-  if (current - outBuffer > maxLength) {
+  if (current - outBuffer > (int) maxLength) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
  

@@ -370,16 +370,16 @@ static int LidCompare (void const* l, void const* r) {
 /// @brief generates a message string
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t GenerateMessage (char* buffer,
-                               size_t size,
-                               char const* func,
-                               char const* file,
-                               int line,
-                               TRI_log_level_e level,
-                               TRI_pid_t currentProcessId,
-                               TRI_tid_t currentThreadId,
-                               char const* fmt,
-                               va_list ap) {
+static int GenerateMessage (char* buffer,
+                            size_t size,
+                            char const* func,
+                            char const* file,
+                            int line,
+                            TRI_log_level_e level,
+                            TRI_pid_t currentProcessId,
+                            TRI_tid_t currentThreadId,
+                            char const* fmt,
+                            va_list ap) {
   int m;
   int n;
 
@@ -699,7 +699,7 @@ static void LogThread (char const* func,
   }
   if (n < (int) (sizeof(buffer) - len)) {
     // static buffer was big enough
-    OutputMessage(level, severity, buffer, n + len, true);
+    OutputMessage(level, severity, buffer, (size_t) (n + len), true);
     return;
   }
 
@@ -737,7 +737,9 @@ static void LogThread (char const* func,
     }
     else {
       // finally got a buffer big enough. p is freed in OutputMessage
-      OutputMessage(level, severity, p, m + len - 1, false);
+      if (m + len - 1 > 0) {
+        OutputMessage(level, severity, p, (size_t) (m + len - 1), false);
+      }
       return;
     }
   }

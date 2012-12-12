@@ -411,7 +411,8 @@ static bool CheckPQSize(TRI_pqueue_t* pq) {
   if (newItems == NULL) {
     return false;    
   }
-  
+ 
+  // TODO: this memset is at least partly superfluous as the buffer is overwritten directly afterwards 
   memset(newItems, 0, pq->_base._itemSize * pq->_base._capacity);
   memcpy(newItems, pq->_base._items, (pq->_base._count * pq->_base._itemSize) );
   

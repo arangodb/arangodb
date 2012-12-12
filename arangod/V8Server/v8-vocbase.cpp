@@ -2872,10 +2872,10 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_voc_size_t bodySize = oldMarker->base._size - sizeof(doc_document_marker_t_deprecated); 
             TRI_voc_size_t bodySizePadded = paddedSize - sizeof(doc_document_marker_t_deprecated); 
             
-            char* keyBody = 0;
-            TRI_voc_size_t keyBodySize = 0; 
+            char* keyBody;
+            TRI_voc_size_t keyBodySize; 
             
-            TRI_voc_size_t keySize = 0;
+            TRI_voc_size_t keySize;
             char didBuffer[33];  
 
             memset(&newMarker, 0, newMarkerSize); 
@@ -2921,12 +2921,12 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_voc_size_t bodySize = oldMarker->base.base._size - sizeof(doc_edge_marker_t_deprecated); 
             TRI_voc_size_t bodySizePadded = paddedSize - sizeof(doc_edge_marker_t_deprecated); 
             
-            char* keyBody = 0;
-            TRI_voc_size_t keyBodySize = 0;
+            char* keyBody;
+            TRI_voc_size_t keyBodySize;
             
-            size_t keySize = 0;
-            size_t toSize = 0;
-            size_t fromSize = 0;            
+            size_t keySize;
+            size_t toSize;
+            size_t fromSize;            
             
             char didBuffer[33];  
             char toDidBuffer[33];  
@@ -2987,9 +2987,9 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             TRI_doc_deletion_key_marker_t newMarker;
             TRI_voc_size_t newMarkerSize = sizeof(TRI_doc_deletion_key_marker_t);
             
-            TRI_voc_size_t keyBodySize = 0; 
-            char* keyBody = 0;
-            TRI_voc_size_t keySize = 0;
+            TRI_voc_size_t keyBodySize; 
+            char* keyBody;
+            TRI_voc_size_t keySize;
             char didBuffer[33];  
 
             memset(&newMarker, 0, newMarkerSize); 
@@ -5616,7 +5616,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   TRI_shape_aid_t const* aids;
   TRI_shape_size_t i;
   TRI_shape_size_t n;
-  char const* qtr = 0;
+  char const* qtr;
   uint32_t count = 0;
 
   // shape is an array

@@ -363,7 +363,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           numEq = 0;
         }
 
-        TRI_index_operator_t* current = 0;
+        TRI_index_operator_t* current;
 
         // create the operator for the current condition
         current = TRI_CreateIndexOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
@@ -1297,12 +1297,12 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // occur when some catastrophic error occurs.
   // .............................................................................
   
-  TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
   bool error = false;
 
   if (indexIterator != NULL) {
+    TRI_barrier_t* barrier = 0;
 
   
     while (true) {
@@ -1718,7 +1718,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
                                                "usage: ALL(<skip>, <limit>)")));
   }
   
-  TRI_vocbase_col_t const* col = 0;
+  TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
   if (col == 0) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
@@ -2142,7 +2142,7 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubst
 
   vector<string> words = StringUtils::split(queryString, ',');
 
-  if (words.size() == 0) {
+  if (words.empty()) {
     return 0;
   }
 

@@ -43,7 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static void PrintIndent (TRI_aql_dump_t* const state) {
-  size_t i;
+  int64_t i;
   
   for (i = 0; i < state->_indent; ++i) {
     printf("  ");

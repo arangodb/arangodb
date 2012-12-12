@@ -88,7 +88,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
   assert(context->_query);
   assert(message);
 
-  region = TRI_GetContextErrorAql(context->_query, line, column);
+  region = TRI_GetContextErrorAql(context->_query, (size_t) line, (size_t) column);
 
   if (!region) {
     // OOM
