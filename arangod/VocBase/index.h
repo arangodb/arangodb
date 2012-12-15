@@ -232,7 +232,7 @@ TRI_skiplist_index_t;
 typedef struct TRI_fulltext_index_s {
   TRI_index_t base;
   
-  FTS_index_t* _fulltextIndex;
+  TRI_fts_index_t* _fulltextIndex;
   TRI_shape_pid_t _attribute;
   TRI_read_write_lock_t _lock;
   int _minWordLength;

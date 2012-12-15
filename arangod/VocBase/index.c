@@ -35,11 +35,12 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "FulltextIndex/fulltext-index.h"
+#include "FulltextIndex/fulltext-wordlist.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/fulltext-query.h"
 #include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
@@ -4061,31 +4062,14 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free function for word list, fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeWordlistFulltextIndex (FTS_texts_t* wordlist) {
-  size_t i;
-
-  assert(wordlist);
-
-  for (i = 0; i < wordlist->_len; i++) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_texts[i]);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_texts);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
 ////////////////////////////////////////////////////////////////////////////////
   
-static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
-                                           void* context) {
-  FTS_texts_t* result;
+static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx, 
+                                             const TRI_doc_mptr_t* const document) {
   TRI_fulltext_index_t* fulltextIndex;
+  TRI_fulltext_wordlist_t* wordlist;
   TRI_shaped_json_t shaped;
   TRI_shaped_json_t json;
   TRI_shape_t const* shape;
@@ -4093,11 +4077,9 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
   char* text;
   size_t textLength;
   TRI_vector_string_t* words;
-  size_t i;
   bool ok;
   
-  // unpack the context
-  fulltextIndex = (TRI_fulltext_index_t*) context;
+  fulltextIndex = (TRI_fulltext_index_t*) idx;
   doc = (TRI_doc_mptr_t*) ((intptr_t) document);
 
   // extract the shape
@@ -4115,28 +4097,16 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
   } 
 
   // parse the document text
-  words = TRI_get_words(text, textLength, (uint8_t) fulltextIndex->_minWordLength, true);
+  words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
   if (words == NULL) {
     return NULL;
   }
 
-  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_texts_t), false);
-  if (result == NULL) {
-    if (words != NULL) {
-      TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-    }
+  wordlist = TRI_CreateWordlistFulltextIndex(words->_buffer, words->_length);
+  if (wordlist == NULL) {
+    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
     return NULL;
   }
-
-  for (i = 0; i < words->_length; ++i) {
-    char* word = words->_buffer[i];
-
-    LOG_DEBUG("indexing word '%s' for document %p", word, doc);
-  }
-
-  // register the word list in the result
-  result->_len = words->_length;
-  result->_texts = (uint8_t**) words->_buffer;
 
   // this really is a hack, but it works well:
   // make the word list vector think it's empty and free it
@@ -4145,45 +4115,7 @@ static FTS_texts_t* GetTextsFulltextIndex (FTS_document_id_t document,
   words->_buffer = NULL;
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
 
-  return result; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new fulltext index with the properties of an existing one,
-/// but with adjusted (potentially bigger) sizes. The documents from the old
-/// index will be added into the new index.
-/// doc will not be re-inserted into the new index. It's the caller's
-/// responsibility to add it later. This prevents duplicate document entries
-/// in case document insertion has failed at a certain place. In this case, doc
-/// might have been in the old index already, and copying the old index and
-/// inserting doc again will lead to duplicates. So we exclude doc when copying
-/// the old documents and make it the caller's responsibility to add doc later
-/// the caller must have write-locked the index 
-////////////////////////////////////////////////////////////////////////////////
-
-static int ResizeFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
-  TRI_fulltext_index_t* fulltextIndex;
-  FTS_index_t* newIndex;
-  uint64_t sizes[4];
-  
-  LOG_DEBUG("resizing fulltext index");
-    
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
-
-  // this call will populate the sizes array
-  FTS_HealthIndex(fulltextIndex->_fulltextIndex, sizes);
-
-  newIndex = FTS_CloneIndex(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc), sizes);
-
-  if (newIndex == NULL) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // switch the indexes
-  FTS_FreeIndex(fulltextIndex->_fulltextIndex);
-  fulltextIndex->_fulltextIndex = newIndex;
-
-  return TRI_ERROR_NO_ERROR;
+  return wordlist; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4192,6 +4124,7 @@ static int ResizeFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
 static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_fulltext_index_t* fulltextIndex;
+  TRI_fulltext_wordlist_t* wordlist;
   int res;
   
   fulltextIndex = (TRI_fulltext_index_t*) idx;
@@ -4200,28 +4133,26 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
     return TRI_ERROR_INTERNAL;
   }
     
-  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
-  res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
-  
-  if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
-    // rebuild the index with adjusted (bigger) sizes
-    res = ResizeFulltextIndex(idx, doc);
-    if (res == TRI_ERROR_NO_ERROR) {
-      // insert the document again because previous insert failed
-      res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("adding document to fulltext index failed: %s", TRI_errno_string(res));
-      }
-    }
-    else {
-      LOG_ERROR("resizing fulltext index failed: %s", TRI_errno_string(res));
-    }
-  }
-  else if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("adding document to fulltext index failed: %s", TRI_errno_string(res));
+  res = TRI_ERROR_NO_ERROR;
+
+  wordlist = GetWordlist(idx, doc);
+  if (wordlist == NULL) {
+    // TODO: distinguish the cases "empty wordlist" and "out of memory"
+    // LOG_WARNING("could not build wordlist");
+    return res;
   }
 
-  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+  if (wordlist->_numWords > 0) {
+    TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
+    // TODO: use status codes
+    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc), wordlist)) {
+      LOG_ERROR("adding document to fulltext index failed");
+      res = TRI_ERROR_INTERNAL;
+    }
+    TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+  }
+
+  TRI_FreeWordlistFulltextIndex(wordlist);
 
   return res;
 }
@@ -4281,22 +4212,14 @@ static void RemoveIndexFulltextIndex (TRI_index_t* idx, TRI_primary_collection_t
 
 static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_fulltext_index_t* fulltextIndex;
-  int res;
 
-  assert(idx);
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
-  res = FTS_DeleteDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) doc));
-  
-  if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
-    // rebuild the index with adjusted (bigger) size
-    res = ResizeFulltextIndex(idx, doc);
-  }
-
+  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc));
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4306,26 +4229,30 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 static int UpdateFulltextIndex (TRI_index_t* idx, 
                                 const TRI_doc_mptr_t* newDoc, 
                                 const TRI_shaped_json_t* oldDoc) {
-                             
   TRI_fulltext_index_t* fulltextIndex;
+  TRI_fulltext_wordlist_t* wordlist;
   int res;  
-
+    
   assert(idx);
+  
+  wordlist = GetWordlist(idx, newDoc);
+
+  res = TRI_ERROR_NO_ERROR;
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
-  res = FTS_UpdateDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc));
   
-  if (res == TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE) {
-    // rebuild the index with adjusted (bigger) size
-    res = ResizeFulltextIndex(idx, newDoc);
-    if (res == TRI_ERROR_NO_ERROR) {
-      // insert just the new version of the document
-      res = FTS_AddDocument(fulltextIndex->_fulltextIndex, (FTS_document_id_t) ((intptr_t) newDoc));
+  if (wordlist != NULL && wordlist->_numWords > 0) {
+    // TODO: use status codes
+    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc), wordlist)) {
+      res = TRI_ERROR_INTERNAL;
     }
   }
 
   TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+
+  TRI_FreeWordlistFulltextIndex(wordlist);
 
   return res;
 }
@@ -4339,26 +4266,26 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
 
 static int CleanupFulltextIndex (TRI_index_t* idx) {
   TRI_fulltext_index_t* fulltextIndex;
+  int res;
 
   LOG_TRACE("fulltext cleanup called");
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
+  res = TRI_ERROR_NO_ERROR;
 
   // try to acquire the write lock to clean up
   // but don't block if the index is busy
   if (TRI_TryWriteLockReadWriteLock(&fulltextIndex->_lock)) {
     // check whether we should do a cleanup at all
-    if (FTS_ShouldCleanupIndex(fulltextIndex->_fulltextIndex)) {
-      // this will scan FTS_CLEANUP_SCAN_AMOUNT document/word pairs at a time
-      FTS_BackgroundTask(fulltextIndex->_fulltextIndex, FTS_CLEANUP_SCAN_AMOUNT);
-    }
+    // TODO: fix compaction later
+    // if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
+    //   res = TRI_ERROR_INTERNAL;
+    // }
 
     TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
-
-    LOG_TRACE("finished cleaning up");
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4383,13 +4310,10 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
                                       const bool indexSubstrings,
                                       int minWordLength) {
   TRI_fulltext_index_t* fulltextIndex;
-  FTS_index_t* fts;
+  TRI_fts_index_t* fts;
   TRI_shaper_t* shaper;
   char* copy;
   TRI_shape_pid_t attribute;
-  int options;
-  // default sizes for index. TODO: adjust these
-  uint64_t sizes[4] = { 10000, 1000000, 50000, 200000 };
     
   // look up the attribute
   shaper = collection->_shaper;
@@ -4399,11 +4323,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     return NULL;
   }
 
-  options = 0;
-  if (indexSubstrings) {
-    options = FTS_INDEX_SUBSTRINGS;
-  } 
-                               
   copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, attributeName);
   if (copy == NULL) {
     return NULL;
@@ -4414,12 +4333,10 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
     return NULL;
   }
-  
-  fts = FTS_CreateIndex((void*) fulltextIndex, 
-                        &GetTextsFulltextIndex, 
-                        &FreeWordlistFulltextIndex, 
-                        options, 
-                        sizes);
+
+  // TODO: indexSubstrings
+  // TODO: minWordLength 
+  fts = TRI_CreateFtsIndex(2048, 1, 1); 
   if (fts == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, fulltextIndex);
     return NULL;
@@ -4456,6 +4373,7 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
   if (idx == NULL) {
     return;
   }
+
   fulltextIndex = (TRI_fulltext_index_t*) idx;
       
   TRI_DestroyReadWriteLock(&fulltextIndex->_lock);
@@ -4465,7 +4383,7 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  FTS_FreeIndex(fulltextIndex->_fulltextIndex);
+  TRI_FreeFtsIndex(fulltextIndex->_fulltextIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

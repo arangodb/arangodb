@@ -42,6 +42,7 @@
 #include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+#include "FulltextIndex/fulltext-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
@@ -61,7 +62,6 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/fulltext-query.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
 #include "v8.h"
@@ -629,7 +629,7 @@ static v8::Handle<v8::Value> EnsureFulltextIndex (v8::Arguments const& argv,
     indexSubstrings = TRI_ObjectToBoolean(argv[1]);
   }
 
-  int minWordLength = TRI_FULLTEXT_WORDLENGTH_DEFAULT;
+  int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
   if (argv.Length() == 3 && argv[2]->IsNumber()) {
     minWordLength = (int) TRI_ObjectToInt64(argv[2]);
   }

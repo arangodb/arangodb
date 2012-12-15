@@ -249,7 +249,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
     LOGGER_ERROR << "error in ucasemap_open(...): " << u_errorName(status);
   }
   else {    
-    utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
+    utf8_dest = (char*) TRI_Allocate(zone, (srcLength + 1) * sizeof(char), false);
     if (utf8_dest == 0) {
       return 0;
     }
@@ -382,9 +382,14 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   return utf8_dest;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Extract the words from a UTF-8 string.
+////////////////////////////////////////////////////////////////////////////////
+
 TRI_vector_string_t* Utf8Helper::getWords (const char* const text, 
                                            const size_t textLength,
-                                           uint8_t minimalLength,
+                                           const size_t minimalLength,
+                                           const size_t maximalLength,
                                            bool lowerCase) {
   TRI_vector_string_t* words;
   UErrorCode status = U_ZERO_ERROR;
@@ -392,12 +397,15 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   size_t utf8WordLength = 0;
   char* utf8Word;
 
-  words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
-  if (words == NULL) {
+  if (textLength == 0) {
+    // input text is empty
     return NULL;
   }
 
-  TRI_InitVectorString(words, TRI_UNKNOWN_MEM_ZONE);    
+  if (textLength < minimalLength) {
+    // input text is shorter than required minimum length
+    return NULL;
+  }
 
 #ifdef TRI_HAVE_ICU  
   
@@ -411,13 +419,11 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
 
     if (lower == NULL) {
       // out of memory
-      TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
       return NULL;
     }
 
     if (lowerLength == 0) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
-      TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
       return NULL;
     }
 
@@ -429,7 +435,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   }
 
   if (textUtf16 == NULL) {
-    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
     return NULL;
   }
   
@@ -445,11 +450,28 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);  
   if (tempUtf16 == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
     return NULL;
   }
   
-  BreakIterator *wordIterator = BreakIterator::createWordInstance(locale, status);
+  words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
+  if (words == NULL) {
+    return NULL;
+  }
+
+  // estimate an initial vector size. this is not accurate, but setting the initial size to some
+  // value in the correct order of magnitude will save a lot of vector reallocations later
+  size_t initialWordCount = textLength / (2 * (minimalLength + 1));
+  if (initialWordCount < 32) {
+    // alloc at least 32 pointers (= 256b)
+    initialWordCount = 32;
+  } 
+  else if (initialWordCount > 8192) {
+    // alloc at most 8192 pointers (= 64kb)
+    initialWordCount = 8192;
+  }
+  TRI_InitVectorString2(words, TRI_UNKNOWN_MEM_ZONE, initialWordCount);
+  
+  BreakIterator* wordIterator = BreakIterator::createWordInstance(locale, status);
   UnicodeString utext(textUtf16);
   
   wordIterator->setText(utext);
@@ -457,18 +479,23 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   for(int32_t end = wordIterator->next(); end != BreakIterator::DONE; 
     start = end, end = wordIterator->next()) {
     
-    tempUtf16Length = end - start;
+    tempUtf16Length = (size_t) (end - start);
     // end - start = word length
     if (tempUtf16Length >= minimalLength) {
-      utext.extractBetween(start, end, tempUtf16, 0);      
-      utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, tempUtf16Length, &utf8WordLength);
+      size_t chunkLength = tempUtf16Length;
+      if (chunkLength > maximalLength) {
+        chunkLength = maximalLength;
+      }
+      utext.extractBetween(start, start + chunkLength, tempUtf16, 0);      
+      utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, chunkLength, &utf8WordLength);
       if (utf8Word != 0) {
         TRI_PushBackVectorString(words, utf8Word);
       }
     }
   }
-  
+
   delete wordIterator;
+  
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
 
@@ -527,9 +554,10 @@ char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLen
 
 TRI_vector_string_t* TRI_get_words (const char* const text, 
                                     const size_t textLength,
-                                    uint8_t minimalWordLength,
+                                    const size_t minimalWordLength,
+                                    const size_t maximalWordLength,
                                     bool lowerCase) {
-  return Utf8Helper::DefaultUtf8Helper.getWords(text, textLength, minimalWordLength, lowerCase);    
+  return Utf8Helper::DefaultUtf8Helper.getWords(text, textLength, minimalWordLength, maximalWordLength, lowerCase);    
 }
 
 #ifdef __cplusplus

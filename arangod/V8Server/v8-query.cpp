@@ -31,6 +31,8 @@
 
 #include "BasicsC/logging.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "FulltextIndex/fulltext-result.h"
+#include "FulltextIndex/fulltext-query.h"
 #include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utilities/ResourceHolder.h"
@@ -41,7 +43,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/fulltext-query.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -1388,23 +1389,25 @@ static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left,
   }
 }
 
+#define FSRT_INSTANCE SortGeo
 #define FSRT_NAME SortGeoCoordinates
 #define FSRT_NAM2 SortGeoCoordinatesTmp
 #define FSRT_TYPE geo_coordinate_distance_t
 
 #define FSRT_COMP(l,r,s) CompareGeoCoordinateDistance(l,r)
 
-uint32_t FSRT_Rand = 0;
+uint32_t SortGeoFSRT_Rand = 0;
 
-static uint32_t RandomGeoCoordinateDistance (void) {
-  return (FSRT_Rand = FSRT_Rand * 31415 + 27818);
+static uint32_t SortGeoRandomGenerator (void) {
+  return (SortGeoFSRT_Rand = SortGeoFSRT_Rand * 31415 + 27818);
 }
 
-#define FSRT__RAND \
-  ((fs_b) + FSRT__UNIT * (RandomGeoCoordinateDistance() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
+#define FSRT__RAND ((fs_b) + FSRT__UNIT * (SortGeoRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 
 #include "BasicsC/fsrt.inc"
-#include "strings.h"
+
+#undef FSRT__RAND
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo result
@@ -2137,7 +2140,7 @@ static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
 /// @brief build the fulltext search query options from a query string 
 ////////////////////////////////////////////////////////////////////////////////
   
-static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubstringQuery) {
+static TRI_fulltext_query_t* BuildQueryFulltext (const string& queryString, bool* isSubstringQuery) {
   *isSubstringQuery = false;
 
   vector<string> words = StringUtils::split(queryString, ',');
@@ -2146,50 +2149,27 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubst
     return 0;
   }
 
-  FTS_query_t* query = (FTS_query_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(FTS_query_t), false);
+  TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(words.size());
   if (query == 0) {
     return 0;
   }
-
-  // init
-  query->_len = 0;
-  query->_localOptions = 0;
-  query->_texts = 0;
-
-  // allocate memory for search options
-  query->_localOptions = (int*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, words.size() * sizeof(uint64_t), false);
-  if (query->_localOptions == 0) {
-    TRI_FreeQueryFulltextIndex(query);
-    return 0;
-  }
-
-  // allocate memory for search texts
-  query->_texts = (uint8_t**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, words.size() * sizeof(uint8_t*), false);
-  if (query->_texts == 0) {
-    TRI_FreeQueryFulltextIndex(query);
-    return 0;
-  }
-
+ 
+  size_t j = 0;
   for (size_t i = 0; i < words.size(); ++i) {
     StringUtils::trimInPlace(words[i], "\t\r\n\b\f ");
     if (words[i].size() == 0) {
       continue;
     }
 
-    const size_t pos = query->_len;
-
-    // default search option
-    query->_localOptions[pos] = FTS_MATCH_COMPLETE;
-    query->_texts[pos] = 0;
+    TRI_fulltext_query_option_e option = TRI_FULLTEXT_COMPLETE;
 
     // check if there is a search instruction contained
     vector<string> parts = StringUtils::split(words[i], ':');
     if (parts.size() == 1) {
       // no, just a single word
-      query->_texts[pos] = (uint8_t*) TRI_NormaliseWordFulltextIndex(parts[0].c_str(), parts[0].size());
-      if (query->_texts[pos] == 0) {
-        TRI_FreeQueryFulltextIndex(query);
-        return 0;
+      if (! TRI_SetQueryFulltextIndex(query, j, parts[0].c_str(), parts[0].size(), option)) {
+        // normalisation failed
+        continue;
       }
     }
     else {
@@ -2198,23 +2178,22 @@ static FTS_query_t* BuildQueryFulltext (const string& queryString, bool* isSubst
       StringUtils::trimInPlace(command, "\t\r\n\b\f ");
       StringUtils::tolowerInPlace(&command);
       if (command == "prefix") {
-        query->_localOptions[pos] = FTS_MATCH_PREFIX;
+        option = TRI_FULLTEXT_PREFIX; 
       }
       else if (command == "substring") {
-        query->_localOptions[pos] = FTS_MATCH_SUBSTRING;
+        option = TRI_FULLTEXT_SUBSTRING; 
         *isSubstringQuery = true;
       }
       
       string word = parts[1];
       StringUtils::trimInPlace(word, "\t\r\n\b\f ");
-      query->_texts[pos] = (uint8_t*) TRI_NormaliseWordFulltextIndex(word.c_str(), word.size());
-      if (query->_texts[pos] == 0) {
-        TRI_FreeQueryFulltextIndex(query);
-        return 0; 
+      if (! TRI_SetQueryFulltextIndex(query, j, word.c_str(), word.size(), option)) {
+        // normalisation failed
+        continue;
       }
     }
 
-    query->_len++;
+    ++j;
   }
 
   return query;
@@ -2253,7 +2232,7 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   const string queryString = TRI_ObjectToString(argv[1]);
   bool isSubstringQuery = false;
 
-  FTS_query_t* query = BuildQueryFulltext(queryString, &isSubstringQuery);
+  TRI_fulltext_query_t* query = BuildQueryFulltext(queryString, &isSubstringQuery);
   if (! query) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "invalid value for <query>")));
   }
@@ -2265,16 +2244,14 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "index does not support substring matching")));
   }
 
-  FTS_document_ids_t* queryResult = TRI_FindDocumentsFulltextIndex(fulltextIndex, query);
-
-  TRI_FreeQueryFulltextIndex(query);
+  TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->_fulltextIndex, query);  
 
   if (! queryResult) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "internal error in fulltext index query")));
   }
   
   TRI_barrier_t* barrier = 0;
-  if (queryResult->_len > 0) {
+  if (queryResult->_numDocuments > 0) {
     barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
   }
 
@@ -2284,11 +2261,11 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  for (uint32_t i = 0; i < queryResult->_len; ++i) {
-    documents->Set(i, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) queryResult->_docs[i], barrier));
+  for (uint32_t i = 0; i < queryResult->_numDocuments; ++i) {
+    documents->Set(i, TRI_WrapShapedJson(collection, (TRI_doc_mptr_t const*) queryResult->_documents[i], barrier));
   }
 
-  TRI_FreeResultsFulltextIndex(queryResult);
+  TRI_FreeResultFulltextIndex(queryResult);
 
   return scope.Close(result);
 }

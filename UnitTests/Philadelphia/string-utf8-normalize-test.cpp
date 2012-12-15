@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE (tst_3) {
 BOOST_AUTO_TEST_CASE (tst_4) {
   std::string testString   = "Der Müller geht in die Post.";
   
-  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, true);
+  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, true);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(5, words->_length);
@@ -173,11 +173,11 @@ BOOST_AUTO_TEST_CASE (tst_4) {
   BOOST_CHECK_EQUAL("geht", words->_buffer[2]);
   BOOST_CHECK_EQUAL("die", words->_buffer[3]);
   BOOST_CHECK_EQUAL("post", words->_buffer[4]);
-    
+  
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
   
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, true);
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, true);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(3, words->_length);
@@ -187,14 +187,14 @@ BOOST_AUTO_TEST_CASE (tst_4) {
     
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, true);
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, true);
   BOOST_CHECK(words == NULL);
 }
 
 BOOST_AUTO_TEST_CASE (tst_5) {
   std::string testString   = "Der Müller geht in die Post.";
   
-  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, false);
+  TRI_vector_string_t* words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 3, UINT32_MAX, false);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(5, words->_length);
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE (tst_5) {
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
   
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, false);
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(testString.c_str(), testString.length(), 4, UINT32_MAX, false);
   BOOST_CHECK(words != NULL);
   
   BOOST_CHECK_EQUAL(3, words->_length);
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE (tst_5) {
     
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
 
-  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, false);
+  words = triagens::basics::Utf8Helper::DefaultUtf8Helper.getWords(NULL, 0, 4, UINT32_MAX, false);
   BOOST_CHECK(words == NULL);
 }
 

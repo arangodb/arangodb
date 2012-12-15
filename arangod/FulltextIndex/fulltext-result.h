@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fulltext query functionality
+/// @brief full text search, result list handling
 ///
 /// @file
 ///
@@ -25,96 +25,74 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "fulltext-query.h"
+#ifndef TRIAGENS_FULLTEXT_FULLTEXT_RESULT_H
+#define TRIAGENS_FULLTEXT_FULLTEXT_RESULT_H 1
 
-#include "BasicsC/common.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/utf8-helper.h"
+#include "fulltext-common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
+/// @addtogroup Fulltext
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalise a word for a fulltext search query
+/// @brief typedef for a fulltext result list
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_NormaliseWordFulltextIndex (const char* word, const size_t wordLength) {
-  char* copy;
-  char* copy2;
-  size_t outLength;
-  int32_t outLength2;
-
-  // normalise string
-  copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength, &outLength);
-  if (copy == NULL) {
-    return NULL;
-  }
-
-  // lower case string
-  copy2 = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t) outLength, &outLength2);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
-
-  return copy2; 
+typedef struct TRI_fulltext_result_s {
+  uint32_t             _numDocuments;
+  TRI_fulltext_doc_t*  _documents;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free fulltext search query options
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeQueryFulltextIndex (FTS_query_t* query) {
-  if (query == 0) {
-    return;
-  }
-
-  if (query->_localOptions != 0) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_localOptions);
-  }
-  if (query->_texts != 0) {
-    size_t i;
-
-    for (i = 0; i < query->_len; ++i) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_texts[i]);
-    }
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_texts);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief query the fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-FTS_document_ids_t* TRI_FindDocumentsFulltextIndex (TRI_fulltext_index_t* fulltextIndex,
-                                                    FTS_query_t* query) {
-  FTS_document_ids_t* result;
-
-  TRI_ReadLockReadWriteLock(&fulltextIndex->_lock);
-  result = FTS_FindDocuments(fulltextIndex->_fulltextIndex, query);
-  TRI_ReadUnlockReadWriteLock(&fulltextIndex->_lock);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free the results of a fulltext query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeResultsFulltextIndex (FTS_document_ids_t* result) {
-  assert(result);
-  FTS_Free_Documents(result);
-}
+TRI_fulltext_result_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief create a result
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a result
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyResultFulltextIndex (TRI_fulltext_result_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a result
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeResultFulltextIndex (TRI_fulltext_result_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 
 // Local Variables:
 // mode: outline-minor
