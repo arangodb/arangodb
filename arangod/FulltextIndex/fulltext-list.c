@@ -167,10 +167,21 @@ static inline void SetNumAllocated (TRI_fulltext_list_t* const list,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a new list
+////////////////////////////////////////////////////////////////////////////////
+
+static void InitList (TRI_fulltext_list_t* const list, const uint32_t size) {
+  uint32_t* head = (uint32_t*) list;
+
+  *(head++) = size;
+  *(head) = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sort a list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SortList (TRI_fulltext_list_t* list) {
+static void SortList (TRI_fulltext_list_t* const list) {
   uint32_t numEntries;
  
   if (IsSorted(list)) { 
@@ -251,8 +262,7 @@ TRI_fulltext_list_t* TRI_CreateListFulltextIndex (const uint32_t size) {
     return NULL;
   }
 
-  SetNumAllocated(list, size);
-  SetNumEntries(list, 0);
+  InitList(list, size);
 
   return list;
 }
