@@ -1447,6 +1447,87 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of characters in a UTF-8 string
+/// the UTF-8 string must be well-formed and end with a NUL terminator
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_CharLengthUtf8String (const char* in) {
+  size_t length;
+  unsigned char* p;
+
+  p = (unsigned char*) in;
+  length = 0;
+
+  while (*p) {
+    unsigned char c = *p;
+  
+    if (c < 128) {
+      // single byte
+      p++;
+    }
+    else if (c < 224) {
+      p += 2;
+    }
+    else if (c < 240) {
+      p += 3;
+    }
+    else if (c < 248) {
+      p += 4;
+    }
+    else {
+      printf("invalid utf\n");
+      // invalid UTF-8 sequence
+      break;
+    }
+
+    ++length;
+  }
+
+  return length;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the string end position for a leftmost prefix of a UTF-8 string
+/// eg. when specifying (müller, 2), the return value will be a pointer to the
+/// first "l".
+/// the UTF-8 string must be well-formed and end with a NUL terminator
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_PrefixUtf8String (const char* in, const uint32_t maximumLength) {
+  uint32_t length;
+  unsigned char* p;
+
+  p = (unsigned char*) in;
+  length = 0;
+
+  while (*p && length < maximumLength) {
+    unsigned char c = *p;
+  
+    if (c < 128) {
+      // single byte
+      p++;
+    }
+    else if (c < 224) {
+      p += 2;
+    }
+    else if (c < 240) {
+      p += 3;
+    }
+    else if (c < 248) {
+      p += 4;
+    }
+    else {
+      // invalid UTF-8 sequence
+      break;
+    }
+
+    ++length;
+  }
+
+  return (char*) p;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

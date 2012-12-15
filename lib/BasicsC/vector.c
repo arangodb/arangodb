@@ -706,7 +706,7 @@ void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initialises a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone) {
@@ -714,6 +714,27 @@ void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone)
   vector->_buffer = NULL;
   vector->_length = 0;
   vector->_capacity = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a string vector, with user-definable settings
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitVectorString2 (TRI_vector_string_t* vector, 
+                           TRI_memory_zone_t* zone, 
+                           size_t initialCapacity) {
+  TRI_InitVectorString(vector, zone);
+
+  if (initialCapacity != 0) {
+    vector->_buffer = (char**) TRI_Allocate(vector->_memoryZone, initialCapacity * sizeof(char*), false); 
+    if (vector->_buffer == NULL) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  
+  vector->_capacity = initialCapacity;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

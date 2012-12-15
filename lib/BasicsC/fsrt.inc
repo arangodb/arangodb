@@ -73,7 +73,7 @@
 /// use a 2-way partitioning of the elements into <= and >=. The default
 /// alogorithm is a 3-way partitioning of the elements into <, = and >.
 ///
-/// Define this directive when know that the number of repetitions is small.
+/// Define this directive when it is known that the number of repetitions is small.
 ///
 /// @section Pre-processor directive FSRT_INSR
 ///
@@ -440,12 +440,10 @@ FSRT__TYPE * FSRT_PREFIX(FSRT_INSTANCE,FSRT_NAM2) (
 /// to avoid a redeclaration error
 ////////////////////////////////////////////////////////////////////////////////
 
-#if FSRT_HAS_PREFIX 
-uint32_t FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand);
-#else
 #ifndef FSRT__RAND
-uint32_t FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand);
-#endif
+#define FSRT_HAS_RAND 0
+#else
+#define FSRT_HAS_RAND 1
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,6 +512,11 @@ void FSRT_NAME (
 
 #ifndef FSRT_LT
   int                 fs_c;
+#endif
+
+#if FSRT_HAS_RAND
+#else
+  uint32_t FSRT_PREFIX(FSRT_INSTANCE,FSRT_Rand) = 0;
 #endif
 
   // iterate while the number of elements in the range is large enough
@@ -833,6 +836,7 @@ void FSRT_NAME (
 #undef FSRT_CONCAT
 #undef FSRT_PREFIX
 #undef FSRT_HAS_PREFIX
+#undef FSRT_HAS_RAND
 
 #undef FSRT__TYPE
 #undef FSRT__UNIT

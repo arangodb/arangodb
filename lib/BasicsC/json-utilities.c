@@ -110,14 +110,16 @@ static int CompareJson (TRI_json_t*, TRI_json_t*, size_t);
 #define FSRT_COMP(l,r,s) CompareJson(l,r,s)
 
 uint32_t SortJsonFSRT_Rand = 0;
+
 static uint32_t SortJsonRandomGenerator (void) {
   return (SortJsonFSRT_Rand = SortJsonFSRT_Rand * 31415 + 27818);
 }
-#define FSRT__RAND \
-  ((fs_b) + FSRT__UNIT * (SortJsonRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 
-#include <BasicsC/fsrt.inc>
+#define FSRT__RAND ((fs_b) + FSRT__UNIT * (SortJsonRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
 
+#include "BasicsC/fsrt.inc"
+
+#undef FSRT__RAND
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get type weight of a json value usable for comparison and sorting

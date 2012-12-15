@@ -32,9 +32,10 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/strings.h"
+
+#include "FulltextIndex/fulltext-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/fulltext-query.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/voc-shaper.h"
@@ -4224,7 +4225,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   }
   
   minWordLength = TRI_LookupArrayJson(definition, "minLength");
-  minWordLengthValue = TRI_FULLTEXT_WORDLENGTH_DEFAULT;
+  minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
   if (minWordLength != NULL && minWordLength->_type == TRI_JSON_NUMBER) {
     minWordLengthValue = (int) minWordLength->_value._number;
   }

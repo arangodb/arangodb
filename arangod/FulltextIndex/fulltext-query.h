@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief utf8 helper functions
+/// @brief fulltext query functionality 
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,115 +21,99 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012 triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_UTF8_HELPER_H
-#define TRIAGENS_BASICS_C_UTF8_HELPER_H 1
+#ifndef TRIAGENS_FULLTEXT_FULLTEXT_QUERY_H
+#define TRIAGENS_FULLTEXT_FULLTEXT_QUERY_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/vector.h"
-
-#ifdef TRI_HAVE_ICU
-#include "unicode/ustring.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fulltext query options
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_FULLTEXT_COMPLETE,
+  TRI_FULLTEXT_PREFIX,
+  TRI_FULLTEXT_SUBSTRING   // TODO: currently not implemented
+}
+TRI_fulltext_query_option_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_fulltext_query_s {
+  size_t                       _numWords;
+  char**                       _words;
+  TRI_fulltext_query_option_e* _options; 
+}
+TRI_fulltext_query_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex (size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeQueryFulltextIndex (TRI_fulltext_query_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Helper functions
+/// @addtogroup Fulltext
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_ICU
-  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a utf-8 string to a uchar (utf-16)
-////////////////////////////////////////////////////////////////////////////////
-
-UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone, 
-                           const char* utf8, 
-                           const size_t inLength, 
-                           size_t* outLength);
-  
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uchar (utf-16) to a utf-8 string
+/// @brief set a search word & option for a query
+/// the query will take ownership of the search word
+/// the caller must not free the word itself
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
-                          const UChar* uchar,
-                          const size_t inLength,
-                          size_t* outLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize an utf8 string (NFC)
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone, 
-                                 const char* utf8, 
-                                 const size_t inLength, 
-                                 size_t* outLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize an utf16 string (NFC) and export it to utf8
-////////////////////////////////////////////////////////////////////////////////
-
-char * TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone, 
-                                   const uint16_t* utf16, 
-                                   size_t inLength, 
-                                   size_t* outLength);
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf16 strings (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf16 (const uint16_t* left, 
-                       size_t leftLength, 
-                       const uint16_t* right, 
-                       size_t rightLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two utf8 strings (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_compare_utf8 (const char* left, const char* right);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Lowercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_tolower_utf8 (TRI_memory_zone_t* zone, 
-                        const char *src, 
-                        int32_t srcLength, 
-                        int32_t* dstLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Uppercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, 
-                        const char *src, 
-                        int32_t srcLength, 
-                        int32_t* dstLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t* TRI_get_words (const char* const text, 
-                                    const size_t textLength,
-                                    const size_t minimalWordLength,
-                                    const size_t maximalWordLength,
-                                    bool lowerCase);
+bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const, 
+                                const size_t, 
+                                const char* const,
+                                const size_t, 
+                                TRI_fulltext_query_option_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
