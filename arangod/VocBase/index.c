@@ -4278,9 +4278,9 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
   if (TRI_TryWriteLockReadWriteLock(&fulltextIndex->_lock)) {
     // check whether we should do a cleanup at all
     // TODO: fix compaction later
-    // if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
-    //   res = TRI_ERROR_INTERNAL;
-    // }
+    if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
+      res = TRI_ERROR_INTERNAL;
+    }
 
     TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
   }

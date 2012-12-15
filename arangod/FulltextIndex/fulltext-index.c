@@ -55,7 +55,7 @@
 /// @brief enable debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-#undef FULLTEXT_DEBUG 
+#undef FULLTEXT_DEBUG  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of an indexed word in bytes
@@ -222,6 +222,7 @@ static inline void FreeMemory (index_t* const idx,
                                const size_t size) {
 #if FULLTEXT_DEBUG
   assert(size > 0);
+  assert(idx->_memoryAllocated >= size);
 #endif 
 
   idx->_memoryAllocated -= size;
@@ -244,9 +245,9 @@ static inline void SetNodeNumFollowers (index_t* const idx,
   assert(value <= 255);
 
   // note: value must be <= current number of followers
-  if (value == 0) {
+  if (value == 0 && node->_followers != NULL) {
     // new value is 0, now free old sub-nodes list (if any)
-    FreeFollowers(idx, node);
+    FreeMemory(idx, node->_followers, sizeof(followers_t));
     node->_followers = NULL;
   }
   else {
@@ -517,10 +518,11 @@ static bool CleanupNodes (index_t* idx,
 #endif
 
   numFollowers = NodeNumFollowers(node);
+
   if (numFollowers > 0) {
     // recurse into sub-nodes
-    node_t** followerNodes = NodeFollowersNodes(node);
     node_char_t* followerKeys = NodeFollowersKeys(node);
+    node_t** followerNodes    = NodeFollowersNodes(node);
     uint32_t i, j; 
    
     j = 0;
@@ -540,6 +542,7 @@ static bool CleanupNodes (index_t* idx,
       if (! CleanupNodes(idx, follower, map)) {
         // the sub-node is empty, kill it!
         FreeNode(idx, follower);
+        // and go to next follower
         continue;
       }
 
@@ -547,6 +550,10 @@ static bool CleanupNodes (index_t* idx,
       isActive = true; 
 
       if (i != j) {
+#if FULLTEXT_DEBUG
+        assert(i > j);
+#endif
+
         // move nodes
         followerKeys[j]  = followerKeys[i];
         followerNodes[j] = followerNodes[i];
@@ -561,7 +568,7 @@ static bool CleanupNodes (index_t* idx,
       SetNodeNumFollowers(idx, node, j);
     }
   }
-
+  
   // rewrite the node's handle list if present
   if (node->_handles != NULL) {
     uint32_t remain;
@@ -579,7 +586,7 @@ static bool CleanupNodes (index_t* idx,
       node->_handles = NULL;
     }
   }
-
+  
   return isActive;
 }
 
@@ -947,6 +954,8 @@ static bool InsertHandle (index_t* const idx,
                           node_t* const node, 
                           const TRI_fulltext_handle_t handle) {
   TRI_fulltext_list_t* list;
+  TRI_fulltext_list_t* oldList;
+  size_t oldAlloc;
 
 #if FULLTEXT_DEBUG
   assert(node != NULL);
@@ -962,6 +971,9 @@ static bool InsertHandle (index_t* const idx,
     // out of memory
     return false;
   }
+  
+  oldList  = node->_handles;  
+  oldAlloc = TRI_MemoryListFulltextIndex(oldList);
 
   // adding to the list might change the list pointer!
   list = TRI_InsertListFulltextIndex(node->_handles, handle);
@@ -970,8 +982,11 @@ static bool InsertHandle (index_t* const idx,
     return false;
   }
 
-  // the insert might have changed the pointer
-  node->_handles = list;
+  if (list != oldList) {
+    // the insert might have changed the pointer
+    node->_handles = list;
+    idx->_memoryAllocated += TRI_MemoryListFulltextIndex(list) - oldAlloc;
+  }
 
   return true;
 }
@@ -1557,11 +1572,12 @@ bool TRI_CompactFulltextIndex (TRI_fts_index_t* const ftx) {
   if (clone == NULL) {
     return false;
   }
-  
+ 
   CleanupNodes(idx, idx->_root, clone->_map);
 
   // delete the original handle list
   TRI_FreeHandlesFulltextIndex(idx->_handles);
+  
   // free the rewrite map
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, clone->_map);
   clone->_map = NULL;
