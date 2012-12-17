@@ -2211,10 +2211,10 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
     var subEdge = subEdges[i];
     var targets = [ ];
 
-    if (searchAttributes.direction & 1) {
+    if ((searchAttributes.direction & 1) && (subEdge._to !== vertexId)) {
       targets.push(subEdge._to);
     }
-    if (searchAttributes.direction & 2) {
+    if ((searchAttributes.direction & 2) && (subEdge._from !== vertexId)) {
       targets.push(subEdge._from);
     }
 
