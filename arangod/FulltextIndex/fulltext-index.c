@@ -240,9 +240,8 @@ static inline void SetNodeNumFollowers (index_t* const idx,
 #if FULLTEXT_DEBUG
   assert(node != NULL);
   assert(node->_followers != NULL);
-  assert(value <= 256);
-#endif  
   assert(value <= 255);
+#endif  
 
   // note: value must be <= current number of followers
   if (value == 0 && node->_followers != NULL) {
@@ -381,44 +380,40 @@ static inline size_t MemorySubNodeList (const uint32_t numEntries) {
 /// size if it is too small to hold another node
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtendSubNodeList (index_t* const idx, node_t* const node) {
-  uint32_t numFollowers;
-  uint32_t numAllocated;
+static bool ExtendSubNodeList (index_t* const idx, 
+                               node_t* const node, 
+                               const uint32_t numFollowers, 
+                               const uint32_t numAllocated) {
+  followers_t* followers;
+  uint32_t nextAllocated;
 
 #if FULLTEXT_DEBUG
   assert(node != NULL);
 #endif
 
-  numFollowers = NodeNumFollowers(node);
-  numAllocated = NodeNumAllocated(node);
-
-  if (numFollowers >= numAllocated) {
-    // current list has reached its limit, we must increase it
-    followers_t* followers;
-    uint32_t nextAllocated;
+  // current list has reached its limit, we must increase it
   
-    nextAllocated = numAllocated + idx->_nodeChunkSize;
-    // allocate a new list
-    followers = AllocateMemory(idx, MemorySubNodeList(nextAllocated));
-    if (followers == NULL) {
-      // out of memory
-      return false;
-    }
-
-    // initialise the chunk of memory we just got
-    InitialiseSubNodeList(followers, nextAllocated, numFollowers);
-
-    if (numFollowers > 0) {
-      // copy existing sub-nodes into the new sub-nodes list
-      memcpy(FollowersKeys(followers), NodeFollowersKeys(node), sizeof(node_char_t) * numFollowers);
-      memcpy(FollowersNodes(followers), NodeFollowersNodes(node), sizeof(node_t*) * numFollowers);
-      // free the old list
-      FreeMemory(idx, node->_followers, MemorySubNodeList(numAllocated));
-    }
-
-    // note the new pointer
-    node->_followers = followers;
+  nextAllocated = numAllocated + idx->_nodeChunkSize;
+  // allocate a new list
+  followers = AllocateMemory(idx, MemorySubNodeList(nextAllocated));
+  if (followers == NULL) {
+    // out of memory
+    return false;
   }
+
+  // initialise the chunk of memory we just got
+  InitialiseSubNodeList(followers, nextAllocated, numFollowers);
+
+  if (numFollowers > 0) {
+    // copy existing sub-nodes into the new sub-nodes list
+    memcpy(FollowersKeys(followers), NodeFollowersKeys(node), sizeof(node_char_t) * numFollowers);
+    memcpy(FollowersNodes(followers), NodeFollowersNodes(node), sizeof(node_t*) * numFollowers);
+    // free the old list
+    FreeMemory(idx, node->_followers, MemorySubNodeList(numAllocated));
+  }
+
+  // note the new pointer
+  node->_followers = followers;
 
   return true;
 }
@@ -898,6 +893,8 @@ static node_t* EnsureSubNode (index_t* const idx,
                               node_t* node, 
                               const node_char_t c) {
   uint32_t numFollowers;
+  uint32_t numAllocated;
+  uint32_t start;
   uint32_t i;
 
 #if FULLTEXT_DEBUG
@@ -906,6 +903,8 @@ static node_t* EnsureSubNode (index_t* const idx,
  
   // search the node and find the correct insert position if it does not exist
   numFollowers = NodeNumFollowers(node);
+  numAllocated = NodeNumAllocated(node);
+
   if (numFollowers > 0) {
     // linear search
     // TODO: optimise this search
@@ -913,7 +912,15 @@ static node_t* EnsureSubNode (index_t* const idx,
 
     followerKeys = NodeFollowersKeys(node);
 
-    for (i = 0; i < numFollowers; ++i) {
+    // divide the search space in 2 halves
+    if (numFollowers > 16 && followerKeys[numFollowers / 2] < c) {
+      start = numFollowers / 2;
+    }
+    else {
+      start = 0;
+    }
+
+    for (i = start; i < numFollowers; ++i) {
       node_char_t followerKey;
     
       followerKey = followerKeys[i];
@@ -938,9 +945,11 @@ static node_t* EnsureSubNode (index_t* const idx,
  
   // we'll be doing an insert. make sure the node has enough space for containing
   // a list with one element more
-  if (! ExtendSubNodeList(idx, node)) {
-    // out of memory
-    return NULL;
+  if (numFollowers >= numAllocated) {
+    if (! ExtendSubNodeList(idx, node, numFollowers, numAllocated)) {
+      // out of memory
+      return NULL;
+    }
   }
 
   return InsertSubNode(idx, node, i, c);
