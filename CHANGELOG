@@ -1,6 +1,8 @@
 v1.1.1 (xxxx-xx-xx)
 -------------------
 
+* fixed issue #315: Strange result in PATH
+
 * fixed issue #323: Wrong function returned in error message of AQL CHAR_LENGTH()
 
 * fixed some log errors on startup / shutdown due to pid file handling and changing
