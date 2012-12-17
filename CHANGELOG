@@ -126,6 +126,8 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.1 (xxxx-xx-xx)
 -------------------
 
+* fixed issue #323: Wrong function returned in error message of AQL CHAR_LENGTH()
+
 * fixed some log errors on startup / shutdown due to pid file handling and changing
   of directories
 
