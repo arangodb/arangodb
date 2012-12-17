@@ -1426,8 +1426,8 @@ function AHUACATL_STRING_CONCAT_SEPARATOR () {
 /// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_STRING_LENGTH (value) {
-  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "STRING_LENGTH");
+function AHUACATL_CHAR_LENGTH (value) {
+  AHUACATL_ARG_CHECK(value, AHUACATL_TYPEWEIGHT_STRING, "CHAR_LENGTH");
 
   return value.length;
 }

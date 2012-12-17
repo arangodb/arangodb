@@ -452,7 +452,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // string functions
   REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+", NULL); 
   REGISTER_FUNCTION("CONCAT_SEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+", NULL); 
-  REGISTER_FUNCTION("CHAR_LENGTH", "STRING_LENGTH", true, false, "s", NULL); 
+  REGISTER_FUNCTION("CHAR_LENGTH", "CHAR_LENGTH", true, false, "s", NULL); 
   REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s", NULL); 
   REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s", NULL); 
   REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n", NULL);
