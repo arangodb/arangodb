@@ -29,6 +29,12 @@ Follow the instructions on the download page to use your favorite package manage
 for the major distributions. After setting up the ArangoDB repository you can then
 easily install ArangoDB using yum, aptitude, urpmi, or zypper.
 
+### Gentoo
+
+Please use the 
+@EXTREF_S{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
+provided by @@mgiken.
+
 ### Linux-Mint {#InstallingDebian}
 
 Download and import GPG-PublicKey
@@ -52,11 +58,12 @@ In order to install arangodb:
 
     aptitude install arangodb
 
-### Gentoo
+Using Vagrant and Chef
+----------------------
 
-Please use the 
-@EXTREF_S{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
-provided by @@mgiken.
+A Chef recipe is available from jbianquetti at
+
+    https://github.com/jbianquetti/chef-arangodb
 
 Mac OS X {#InstallingMacOSX}
 ============================
