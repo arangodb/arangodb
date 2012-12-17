@@ -2404,7 +2404,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context) {
     // put everything together
     code = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, generator->_functionBuffer._buffer, generator->_buffer._buffer);
     if (code) {
-      LOG_TRACE("generated code: %s\n", code);
+      LOG_TRACE("generated code: %s", code);
     }
     else {
       generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
