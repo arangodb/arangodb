@@ -148,7 +148,6 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   
   if (hint->_ranges == NULL) {
     // no ranges found to be used as indexes
-
     return;
   }
 
@@ -209,7 +208,7 @@ static TRI_string_buffer_t* RelationCode (const char* const name,
                                           const TRI_aql_node_t* const rhs) {
   TRI_string_buffer_t* buffer = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
-  if (!lhs || !rhs) {
+  if (! lhs || ! rhs) {
     return NULL;
   }
   
@@ -228,7 +227,7 @@ static TRI_string_buffer_t* RelationCode (const char* const name,
     return NULL;
   }
     
-  if (!TRI_NodeJavascriptAql(buffer, lhs)) {
+  if (! TRI_NodeJavascriptAql(buffer, lhs)) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -238,7 +237,7 @@ static TRI_string_buffer_t* RelationCode (const char* const name,
     return NULL;
   }
   
-  if (!TRI_NodeJavascriptAql(buffer, rhs)) {
+  if (! TRI_NodeJavascriptAql(buffer, rhs)) {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
     return NULL;
   }
@@ -261,7 +260,7 @@ static TRI_string_buffer_t* FcallCode (const char* const name,
   size_t i;
   size_t n;
 
-  if (!buffer) {
+  if (! buffer) {
     return NULL;
   }
   
@@ -290,7 +289,7 @@ static TRI_string_buffer_t* FcallCode (const char* const name,
       }
     }
 
-    if (!TRI_NodeJavascriptAql(buffer, arg)) {
+    if (! TRI_NodeJavascriptAql(buffer, arg)) {
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
       return NULL;
     }
@@ -322,7 +321,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   assert(function);
 
   // check if function is deterministic
-  if (!function->_isDeterministic) {
+  if (! function->_isDeterministic) {
     return node;
   }
 
@@ -331,7 +330,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* arg = (TRI_aql_node_t*) args->_members._buffer[i];
 
-    if (!arg || !TRI_IsConstantValueNodeAql(arg)) {
+    if (! arg || ! TRI_IsConstantValueNodeAql(arg)) {
       return node;
     }
   }
@@ -339,7 +338,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   // all arguments are constants
   // create the function code
   code = FcallCode(function->_internalName, args);
-  if (!code) {
+  if (! code) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
@@ -348,14 +347,14 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   execContext = TRI_CreateExecutionContext(code->_buffer);
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
 
-  if (!execContext) {
+  if (! execContext) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
-  if (!json) {
+  if (! json) {
     // cannot optimise the function call due to an internal error
 
     // TODO: check whether we can validate the arguments here already and return an error early
@@ -365,7 +364,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   // use the constant values instead of the function call node
   node = TRI_JsonNodeAql(context, json);
-  if (!node) {
+  if (! node) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
@@ -378,6 +377,8 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a FOR statement
+/// this will remove the complete statement if the value to iterate over is
+/// an empty list
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
@@ -399,6 +400,8 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a SORT statement
+/// this will remove constant sort expressions (which should not have 
+/// any impact on the result)
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
@@ -406,7 +409,7 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
   TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(node, 0);
   size_t i, n;
     
-  if (!list) {
+  if (! list) {
     return node;
   }
 
@@ -418,7 +421,7 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
     TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(element, 0);
 
     // check if the sort element is constant
-    if (!expression || !TRI_IsConstantValueNodeAql(expression)) {
+    if (! expression || ! TRI_IsConstantValueNodeAql(expression)) {
       ++i;
       continue;
     }
@@ -441,7 +444,31 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise a LIMIT statement
+/// optimise away a limit x, 0 statement
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
+                                     TRI_aql_node_t* node) {
+  TRI_aql_node_t* offset = TRI_AQL_NODE_MEMBER(node, 0);
+  int64_t limitValue;
+
+  limitValue = TRI_AQL_NODE_INT(limit);
+
+  if (limitValue == 0) {
+    // LIMIT x, 0
+    LOG_TRACE("optimised away limit");
+    return TRI_GetDummyReturnEmptyNodeAql();
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a constant FILTER expression
+/// constant filters that evaluate to true will be replaced by a NOP node
+/// constant filters that evaluate to false will be replaced by an empty node
+/// that will remove the complete scope on statement list compaction
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseConstantFilter (TRI_aql_node_t* const node) {
@@ -472,7 +499,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
     TRI_vector_pointer_t* newRanges;
     bool changed;
 
-    if (!expression) {
+    if (! expression) {
       return node;
     }
 
@@ -491,7 +518,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
       TRI_SetCurrentRangesStatementWalkerAql(walker, newRanges);
     }
     
-    if (!changed) {
+    if (! changed) {
       break;
     }
 
@@ -560,11 +587,11 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
   assert(node->_type == TRI_AQL_NODE_OPERATOR_UNARY_PLUS ||
          node->_type == TRI_AQL_NODE_OPERATOR_UNARY_MINUS);
 
-  if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
+  if (! operand || ! TRI_IsConstantValueNodeAql(operand)) {
     return node;
   }
 
-  if (!TRI_IsNumericValueNodeAql(operand)) {
+  if (! TRI_IsNumericValueNodeAql(operand)) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
@@ -595,12 +622,12 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
   
   assert(node->_type == TRI_AQL_NODE_OPERATOR_UNARY_NOT);
 
-  if (!operand || !TRI_IsConstantValueNodeAql(operand)) {
+  if (! operand || ! TRI_IsConstantValueNodeAql(operand)) {
     // node is not a constant value
     return node;
   }
 
-  if (!TRI_IsBooleanValueNodeAql(operand)) {
+  if (! TRI_IsBooleanValueNodeAql(operand)) {
     // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
@@ -608,7 +635,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
   
   // ! (bool value) => evaluate and replace with result
   node = TRI_CreateNodeValueBoolAql(context, ! TRI_GetBooleanNodeValueAql(operand));
-  if (!node) {
+  if (! node) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
@@ -629,26 +656,26 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
   bool isEligibleRhs;
   bool lhsValue;
 
-  if (!lhs || !rhs) {
+  if (! lhs || ! rhs) {
     return node;
   } 
 
   isEligibleLhs = TRI_IsConstantValueNodeAql(lhs);
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
 
-  if (isEligibleLhs && !TRI_IsBooleanValueNodeAql(lhs)) {
+  if (isEligibleLhs && ! TRI_IsBooleanValueNodeAql(lhs)) {
     // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
-  if (isEligibleRhs && !TRI_IsBooleanValueNodeAql(rhs)) {
+  if (isEligibleRhs && ! TRI_IsBooleanValueNodeAql(rhs)) {
     // value type is not boolean => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
 
-  if (!isEligibleLhs || !isEligibleRhs) {
+  if (! isEligibleLhs || ! isEligibleRhs) {
     // node is not a constant value
     return node;
   }
@@ -697,7 +724,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   TRI_json_t* json;
   char* func;
   
-  if (!lhs || !TRI_IsConstantValueNodeAql(lhs) || !rhs || !TRI_IsConstantValueNodeAql(rhs)) {
+  if (! lhs || ! TRI_IsConstantValueNodeAql(lhs) || ! rhs || ! TRI_IsConstantValueNodeAql(rhs)) {
     return node;
   } 
   
@@ -728,7 +755,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   }
   
   code = RelationCode(func, lhs, rhs); 
-  if (!code) {
+  if (! code) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
@@ -737,21 +764,21 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   execContext = TRI_CreateExecutionContext(code->_buffer);
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
 
-  if (!execContext) {
+  if (! execContext) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
 
   json = TRI_ExecuteResultContext(execContext);
   TRI_FreeExecutionContext(execContext);
-  if (!json) {
+  if (! json) {
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_SCRIPT, NULL);
     return NULL;
   }
   
   // use the constant values instead of the function call node
   node = TRI_JsonNodeAql(context, json);
-  if (!node) {
+  if (! node) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
     
@@ -774,28 +801,28 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   bool isEligibleRhs;
   double value;
   
-  if (!lhs || !rhs) {
+  if (! lhs || ! rhs) {
     return node;
   } 
 
   isEligibleLhs = TRI_IsConstantValueNodeAql(lhs);
   isEligibleRhs = TRI_IsConstantValueNodeAql(rhs);
 
-  if (isEligibleLhs && !TRI_IsNumericValueNodeAql(lhs)) {
+  if (isEligibleLhs && ! TRI_IsNumericValueNodeAql(lhs)) {
     // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
 
   
-  if (isEligibleRhs && !TRI_IsNumericValueNodeAql(rhs)) {
+  if (isEligibleRhs && ! TRI_IsNumericValueNodeAql(rhs)) {
     // node is not a numeric value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, NULL);
     return node;
   }
   
 
-  if (!isEligibleLhs || !isEligibleRhs) {
+  if (! isEligibleLhs || ! isEligibleRhs) {
     return node;
   }
   
@@ -836,7 +863,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
   
   node = TRI_CreateNodeValueDoubleAql(context, value);
 
-  if (!node) {
+  if (! node) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
@@ -858,18 +885,18 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
   
   assert(node->_type == TRI_AQL_NODE_OPERATOR_TERNARY);
 
-  if (!condition || !TRI_IsConstantValueNodeAql(condition)) {
+  if (! condition || ! TRI_IsConstantValueNodeAql(condition)) {
     // node is not a constant value
     return node;
   }
 
-  if (!TRI_IsBooleanValueNodeAql(condition)) {
+  if (! TRI_IsBooleanValueNodeAql(condition)) {
     // node is not a boolean value => error
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE, NULL);
     return node;
   }
   
-  if (!truePart || !falsePart) {
+  if (! truePart || ! falsePart) {
     // true or false parts not defined
     //  should not happen but we must not continue in this case
     return node;
@@ -939,6 +966,7 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise statement, first iteration
+/// this will only recurse into certain top-level statements
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walker, 
@@ -954,6 +982,8 @@ static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walk
       return OptimiseSort(walker, node);
     case TRI_AQL_NODE_FILTER:
       return OptimiseFilter(walker, node);
+    case TRI_AQL_NODE_LIMIT:
+      return OptimiseLimit(walker, node);
     default: {
     }
   }
