@@ -139,10 +139,9 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   assert(collectionName);
   
   hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
-
+    
   if (hint == NULL) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-
     return;
   }
   
@@ -187,6 +186,8 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
   aql_optimiser_t* optimiser;
+  TRI_aql_collection_hint_t* hint;
+  TRI_aql_scope_t* scope;
   
   if (node->_type != TRI_AQL_NODE_COLLECTION) {
     return node;
@@ -195,6 +196,18 @@ static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
   optimiser = (aql_optimiser_t*) walker->_data;
 
   AttachCollectionHint(optimiser->_context, node);
+  
+  // check if we can apply a scope limit
+  scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+  if (scope != NULL && scope->_limit._status == TRI_AQL_LIMIT_USE) {
+    // yes!
+    hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
+    if (hint != NULL) {
+      hint->_limit._offset = scope->_limit._offset;
+      hint->_limit._limit  = scope->_limit._limit;
+      hint->_limit._use    = true;
+    }
+  }
 
   return node;
 }
@@ -408,7 +421,7 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
   TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(node, 0);
   size_t i, n;
-    
+  
   if (! list) {
     return node;
   }
@@ -449,18 +462,19 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
-                                     TRI_aql_node_t* node) {
-  TRI_aql_node_t* offset = TRI_AQL_NODE_MEMBER(node, 0);
+                                      TRI_aql_node_t* node) {
+  TRI_aql_node_t* limit = TRI_AQL_NODE_MEMBER(node, 1);
   int64_t limitValue;
 
-  limitValue = TRI_AQL_NODE_INT(limit);
+  limitValue  = TRI_AQL_NODE_INT(limit);
 
   if (limitValue == 0) {
     // LIMIT x, 0
     LOG_TRACE("optimised away limit");
+
     return TRI_GetDummyReturnEmptyNodeAql();
   }
-
+  
   return node;
 }
 
@@ -973,17 +987,17 @@ static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walk
                                           TRI_aql_node_t* node) {
   assert(walker);
   assert(node);
-   
+  
   // node optimisations
   switch (node->_type) {
     case TRI_AQL_NODE_FOR:
       return OptimiseFor(walker, node);
     case TRI_AQL_NODE_SORT:
       return OptimiseSort(walker, node);
-    case TRI_AQL_NODE_FILTER:
-      return OptimiseFilter(walker, node);
     case TRI_AQL_NODE_LIMIT:
       return OptimiseLimit(walker, node);
+    case TRI_AQL_NODE_FILTER:
+      return OptimiseFilter(walker, node);
     default: {
     }
   }
@@ -1093,6 +1107,20 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
 static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
                                          TRI_aql_node_t* node) {
   if (node) {
+    if (node->_type == TRI_AQL_NODE_SORT || node->_type == TRI_AQL_NODE_FILTER) {
+      // FILTER or SORT mean we must not push a following LIMIT clause up
+      TRI_RemoveCurrentLimitStatementWalkerAql(walker);
+    }
+    else if (node->_type == TRI_AQL_NODE_LIMIT) {
+      // note the current limit, we might use it later, pushing it up
+      TRI_aql_node_t* offset  = TRI_AQL_NODE_MEMBER(node, 0);
+      TRI_aql_node_t* limit  = TRI_AQL_NODE_MEMBER(node, 1);
+      int64_t offsetValue = TRI_AQL_NODE_INT(offset);
+      int64_t limitValue = TRI_AQL_NODE_INT(limit);
+     
+      TRI_SetCurrentLimitStatementWalkerAql(walker, offsetValue, limitValue);
+    }
+
     // this may change the node pointer
     node = OptimiseStatement(walker, node);
 
@@ -1111,7 +1139,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 
 static bool OptimiseAst (aql_optimiser_t* const optimiser) {
   TRI_aql_statement_walker_t* walker;
-
+  
   walker = TRI_CreateStatementWalkerAql((void*) optimiser, 
                                         true,
                                         &OptimiseNode,
@@ -1124,7 +1152,6 @@ static bool OptimiseAst (aql_optimiser_t* const optimiser) {
   }
 
   TRI_WalkStatementsAql(walker, optimiser->_context->_statements); 
-
   TRI_FreeStatementWalkerAql(walker);
 
   return true;

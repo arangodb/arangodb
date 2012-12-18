@@ -115,10 +115,11 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  scope->_id = NextId(context);
-  scope->_type = NextType(context, type);
-  scope->_ranges = NULL;
-  scope->_selfContained = true;
+  scope->_id             = NextId(context);
+  scope->_type           = NextType(context, type);
+  scope->_ranges         = NULL;
+  scope->_selfContained  = true;
+  scope->_limit._status  = TRI_AQL_LIMIT_UNDEFINED;
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 

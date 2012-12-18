@@ -100,6 +100,12 @@ typedef struct TRI_aql_collection_hint_s {
   TRI_vector_pointer_t* _ranges;
   TRI_aql_index_t* _index;
   TRI_aql_collection_t* _collection;
+  struct {
+    int64_t _offset;
+    int64_t _limit;
+    bool _use;
+  }
+  _limit;
 }
 TRI_aql_collection_hint_t;
 

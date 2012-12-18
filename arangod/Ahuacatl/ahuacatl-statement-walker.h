@@ -28,9 +28,9 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H
 #define TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/vector.h>
+#include "BasicsC/common.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/vector.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
@@ -90,6 +90,20 @@ typedef TRI_aql_node_t* (*TRI_aql_visit_f)(TRI_aql_statement_walker_t* const, TR
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove an offset/limit combination for the top scope
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note an offset/limit combination for the top scope
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const,
+                                            const int64_t,
+                                            const int64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get current ranges in top scope of statement walker

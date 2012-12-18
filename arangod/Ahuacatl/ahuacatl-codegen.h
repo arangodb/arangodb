@@ -28,12 +28,12 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_CODEGEN_H
 #define TRIAGENS_DURHAM_AHUACATL_CODEGEN_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
+#include "BasicsC/common.h"
+#include "BasicsC/associative.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/vector.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
@@ -64,7 +64,7 @@ typedef uint32_t TRI_aql_codegen_register_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_variable_s {
-  char* _name; // variable name
+  char* _name;                          // variable name
   TRI_aql_codegen_register_t _register; // the assigned register
 }
 TRI_aql_codegen_variable_t;
@@ -74,8 +74,8 @@ TRI_aql_codegen_variable_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_codegen_scope_s {
-  TRI_string_buffer_t* _buffer; // generated code
-  TRI_aql_scope_e _type; // scope type
+  TRI_string_buffer_t* _buffer;   // generated code
+  TRI_aql_scope_e _type;          // scope type
   TRI_aql_codegen_register_t _listRegister;
   TRI_aql_codegen_register_t _keyRegister;
   TRI_aql_codegen_register_t _ownRegister;
