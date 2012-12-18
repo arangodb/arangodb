@@ -90,13 +90,13 @@ static char* NormaliseWord (const char* const word, const size_t wordLength) {
   prefixEnd = TRI_PrefixUtf8String(copy2, TRI_FULLTEXT_MAX_WORD_LENGTH);
   prefixLength = prefixEnd - copy2;
 
-  copy3 = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * (prefixLength + 1), false);
+  copy3 = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char) * ((size_t) prefixLength + 1), false);
   if (copy3 == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
     return NULL;
   }
   
-  memcpy(copy3, copy2, prefixLength * sizeof(char));
+  memcpy(copy3, copy2, ((size_t) prefixLength) * sizeof(char));
   copy3[prefixLength] = '\0';
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
 
@@ -273,10 +273,12 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const query,
       start = split;
     }
 
-    if (! TRI_SetQueryFulltextIndex(query, i++, start, end - start, match, operation)) {
+    if (! TRI_SetQueryFulltextIndex(query, (size_t) i, start, end - start, match, operation)) {
       // normalisation failed
       return TRI_ERROR_OUT_OF_MEMORY;
     }
+
+    ++i;
 
     if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
       break;
