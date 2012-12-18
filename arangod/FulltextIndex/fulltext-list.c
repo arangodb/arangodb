@@ -315,8 +315,11 @@ TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t* lhs,
   uint32_t numLhs, numRhs;
   uint32_t listPos;
   
-  if (lhs == NULL || rhs == NULL) {
-    return NULL;
+  if (lhs == NULL) {
+    return rhs;
+  }
+  if (rhs == NULL) {
+    return lhs;
   }
 
   numLhs = GetNumEntries(lhs);
@@ -496,15 +499,20 @@ again:
 /// this will modify list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* const list, 
-                                                   const TRI_fulltext_list_t* const exclude) {
+TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* list, 
+                                                   TRI_fulltext_list_t* exclude) {
   TRI_fulltext_list_entry_t* listEntries;
   TRI_fulltext_list_entry_t* excludeEntries;
   uint32_t numEntries;
   uint32_t numExclude;
   uint32_t i, j, listPos;
 
-  if (list == NULL || exclude == NULL) {
+  if (list == NULL) {
+    TRI_FreeListFulltextIndex(exclude);
+    return list;
+  }
+
+  if (exclude == NULL) {
     return list;
   }
 
@@ -513,6 +521,7 @@ TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* const li
   
   if (numEntries == 0 || numExclude == 0) {
     // original list or exclusion list are empty
+    TRI_FreeListFulltextIndex(exclude);
     return list;
   }
 
@@ -544,6 +553,7 @@ TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* const li
 
   // we may have less results in the list of exclusion
   SetNumEntries(list, listPos);
+  TRI_FreeListFulltextIndex(exclude);
 
   return list;
 }
@@ -634,21 +644,59 @@ uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const list,
   j = 0;
 
   for (i = 0; i < numEntries; ++i) {
-    TRI_fulltext_list_entry_t entry = listEntries[i];
-    TRI_fulltext_list_entry_t mapped = map[entry];
+    TRI_fulltext_list_entry_t entry;
+    TRI_fulltext_list_entry_t mapped;
 
+    entry = listEntries[i];
+    if (entry == 0) {
+      continue;
+    }
+
+    mapped = map[entry];
     if (mapped == 0) {
-      // original value is deleted
+      // original value has been deleted
       continue;
     }
 
     listEntries[j++] = mapped;
   }
 
-  SetNumEntries(list, j);
+  if (j != numEntries) {
+    SetNumEntries(list, j);
+  }
 
   return j;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the contents of a list
+////////////////////////////////////////////////////////////////////////////////
+
+#if TRI_FULLTEXT_DEBUG
+void TRI_DumpListFulltextIndex (const TRI_fulltext_list_t* const list) {
+  TRI_fulltext_list_entry_t* listEntries;
+  uint32_t numEntries;
+  uint32_t i;
+ 
+  numEntries = GetNumEntries(list);
+  listEntries = GetStart(list); 
+
+  printf("(");
+
+  for (i = 0; i < numEntries; ++i) {
+    TRI_fulltext_list_entry_t entry;
+
+    if (i > 0) {
+      printf(", ");
+    }
+
+    entry = listEntries[i];
+    printf("%lu", (unsigned long) entry);
+  }
+
+  printf(")");
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of entries

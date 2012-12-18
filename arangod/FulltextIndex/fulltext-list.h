@@ -126,8 +126,8 @@ TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t*,
 /// this will modify the result in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t* const, 
-                                                   const TRI_fulltext_list_t* const);
+TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t*, 
+                                                   TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert an element into a list
@@ -144,6 +144,14 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t*,
     
 uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const, 
                                        const void* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump a list
+////////////////////////////////////////////////////////////////////////////////
+
+#if TRI_FULLTEXT_DEBUG
+void TRI_DumpListFulltextIndex (const TRI_fulltext_list_t* const);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of entries

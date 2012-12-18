@@ -292,6 +292,63 @@ function fulltextQuerySuite () {
     tearDown : function () {
       internal.db._drop(cn);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyQueries: function () {
+      collection.save({ text: "hello world"});
+
+      var queries = [
+        "",
+        " ",
+        "   ",
+        "                             ",
+        "\0",
+        "\t  ",
+        "\r\n"
+      ];
+
+      for (var i = 0; i < queries.length; ++i) {
+        try {
+          assertEqual(0, collection.fulltext("text", queries[i], idx).toArray().length);
+          fail();
+        }
+        catch (e) {
+          assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whitespace
+////////////////////////////////////////////////////////////////////////////////
+
+    testWhitespace: function () {
+      var texts = [
+        "some rubbish text",
+        "More rubbish test data. The index should be able to handle all this.",
+        "even MORE rubbish. Nevertheless this should be handled well, too."
+      ];
+      
+      for (var i = 0; i < texts.length; ++i) {
+        collection.save({ text: texts[i] });
+      }
+
+      assertEqual(1, collection.fulltext("text", "   some   ", idx).toArray().length);
+      assertEqual(3, collection.fulltext("text", "   rubbish   ", idx).toArray().length);
+      assertEqual(3, collection.fulltext("text", "\t\t\t\r\nrubbish\r\n\t", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "\rdata\r\nrubbish \rindex\t ", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "rubbish,test,data", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", " rubbish , test , data ", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", " rubbish, test, data", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "rubbish ,test ,data ", idx).toArray().length);
+
+      assertEqual(0, collection.fulltext("text", "\rdata\r\nfuxxbau", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "  fuxxbau", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "never theless", idx).toArray().length);
+    }, 
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries
@@ -343,9 +400,35 @@ function fulltextQuerySuite () {
     }, 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief logical operators
+////////////////////////////////////////////////////////////////////////////////
+
+    testLogicalOperators: function () {
+      for (var i = 0; i < 100; ++i) {
+        collection.save({ text: "prefix" + i });
+      }
+
+      assertEqual(1, collection.fulltext("text", "prefix1", idx).toArray().length);
+      assertEqual(11, collection.fulltext("text", "prefix:prefix1", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "prefix1,prefix2", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "prefix1,prefix2,prefix3", idx).toArray().length);
+      assertEqual(3, collection.fulltext("text", "prefix1,|prefix2,|prefix3", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "prefix1,|prefix2,prefix3", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "prefix1,prefix2,|prefix3", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "prefix1,|prefix2,prefix:prefix3", idx).toArray().length);
+      assertEqual(13, collection.fulltext("text", "prefix1,|prefix2,|prefix:prefix3", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "prefix:prefix1,prefix:prefix2", idx).toArray().length);
+      assertEqual(22, collection.fulltext("text", "prefix:prefix1,|prefix:prefix2", idx).toArray().length);
+      assertEqual(21, collection.fulltext("text", "prefix:prefix1,|prefix:prefix2,-prefix2", idx).toArray().length);
+      assertEqual(20, collection.fulltext("text", "prefix:prefix1,|prefix:prefix2,-prefix2,-prefix1", idx).toArray().length);
+      assertEqual(11, collection.fulltext("text", "prefix:prefix1,|prefix:prefix2,-prefix:prefix1", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "prefix:prefix1,|prefix:prefix2,-prefix:prefix", idx).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test updates
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testUpdates: function () {
       var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
       var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
@@ -376,9 +459,52 @@ function fulltextQuerySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test updates
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdates2: function () {
+      var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
+      var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
+
+      assertEqual(1, collection.fulltext("text", "like,bananas", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "like,tomatoes", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "oranges,hate", idx).toArray().length);
+      assertEqual(2, collection.fulltext("text", "people", idx).toArray().length);
+      assertEqual(2, collection.fulltext("text", "but", idx).toArray().length);
+
+      var d3 = collection.update(d1, { text: "bananas are delicious" });
+      assertEqual(1, collection.fulltext("text", "bananas", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "delicious", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "like,bananas", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "like,tomatoes", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "oranges,hate", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "people", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "but", idx).toArray().length);
+      
+      var d4 = collection.update(d2, { text: "seems that some where still left!" });
+      assertEqual(1, collection.fulltext("text", "bananas", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "delicious", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "bananas,delicious", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "bananas,like", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "seems,left", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "oranges", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
+      
+      collection.remove(d3);
+      assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "delicious", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "seems,left", idx).toArray().length);
+      
+      collection.remove(d4);
+      assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "delicious", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "seems,left", idx).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test deletes
 ////////////////////////////////////////////////////////////////////////////////
-    
+ 
     testDeletes: function () {
       var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
       var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
@@ -418,6 +544,57 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "unrelated", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "text", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test deletes
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDeletesWithCompact: function () {
+      var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
+      var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
+      var d3 = collection.save({ text: "A totally unrelated text is inserted into the index, too" });
+
+      collection.remove(d1);
+      assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "some", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "tomatoes", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "others", idx).toArray().length);
+
+      require("console").log("waiting for compaction");
+      internal.wait(7);
+
+      assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "some", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "tomatoes", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "others", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "several", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "index", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "oranges,hate", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "people", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
+
+      collection.remove(d2);
+      
+      require("console").log("waiting for compaction");
+      internal.wait(7);
+      
+      assertEqual(0, collection.fulltext("text", "several", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "oranges,hate", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
+      assertEqual(1, collection.fulltext("text", "index", idx).toArray().length);
+      
+      collection.remove(d3);
+      
+      require("console").log("waiting for compaction");
+      internal.wait(7);
+      
+      assertEqual(0, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
+      
+      require("console").log("waiting for compaction");
+      internal.wait(7);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -641,16 +818,51 @@ function fulltextQuerySuite () {
     testDuplicatesDocuments: function () {
       var text1 = "this is a short document text";
       var text2 = "Some longer document text is put in here just to validate whats going on";
-
+      
       for (var i = 0; i < 2500; ++i) {
         collection.save({ text: text1 });
         collection.save({ text: text2 });
       }
-     
+
       assertEqual(5000, collection.fulltext("text", "document", idx).toArray().length);
       assertEqual(5000, collection.fulltext("text", "text", idx).toArray().length);
       assertEqual(2500, collection.fulltext("text", "this", idx).toArray().length);
       assertEqual(2500, collection.fulltext("text", "some", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test duplicate entries
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDuplicatesDocuments2: function () {
+      var text1 = "this is a short document text";
+      var text2 = "Some longer document text is put in here just to validate whats going on";
+
+      var docs = [ ];
+      
+      for (var i = 0; i < 500; ++i) {
+        docs[i] = collection.save({ text: text1 });
+        collection.save({ text: text2 });
+      }
+
+      assertEqual(1000, collection.fulltext("text", "document", idx).toArray().length);
+      assertEqual(1000, collection.fulltext("text", "text", idx).toArray().length);
+      assertEqual(500, collection.fulltext("text", "this", idx).toArray().length);
+      assertEqual(500, collection.fulltext("text", "some", idx).toArray().length);
+      assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
+
+      for (var i = 0; i < 250; ++i) {
+        collection.remove(docs[i]);
+      }
+
+      require("console").log("waiting for compaction");
+      internal.wait(7);
+      
+      assertEqual(750, collection.fulltext("text", "document", idx).toArray().length);
+      assertEqual(750, collection.fulltext("text", "text", idx).toArray().length);
+      assertEqual(250, collection.fulltext("text", "this", idx).toArray().length);
+      assertEqual(500, collection.fulltext("text", "some", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
     },
 
