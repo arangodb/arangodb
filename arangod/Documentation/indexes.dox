@@ -32,6 +32,7 @@
 /// @copydetails IndexGeoTOC
 /// @copydetails IndexHashTOC
 /// @copydetails IndexSkiplistTOC
+/// @copydetails IndexBitArrayTOC
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
