@@ -1620,13 +1620,13 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
       }
       else {
         LOG_ERROR("SUBSTRING MATCHING IS NOT IMPLEMENTED");
-        list = TRI_CreateResultFulltextIndex(0);
+        list = TRI_CreateListFulltextIndex(0);
       }
     }
     else {
-      list = TRI_CreateResultFulltextIndex(0);
+      list = TRI_CreateListFulltextIndex(0);
     }
-     
+   
     if (operation == TRI_FULLTEXT_AND) {
       // perform a logical AND of current and previous result (if any)
       result = TRI_IntersectListFulltextIndex(result, list);
