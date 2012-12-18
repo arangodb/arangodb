@@ -262,7 +262,9 @@ bool V8LineEditor::open (const bool autoComplete) {
     // rl_variable_bind("horizontal-scroll-mode", "1");
 
     // show matching parentheses
+#if RL_READLINE_VERSION >= 0x0500
     rl_set_paren_blink_timeout(1 * 1000 * 1000);
+#endif
     rl_variable_bind("blink-matching-paren", "1");
 
     // show selection list when completion is ambiguous. not setting this
