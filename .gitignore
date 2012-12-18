@@ -4,6 +4,7 @@ mr-*.h
 .dirstamp
 *.o
 *.a
+*~
 
 .libev-build-64
 .v8-build-64
