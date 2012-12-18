@@ -51,7 +51,7 @@ static void AppendChar (TRI_string_buffer_t * self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t Remaining (TRI_string_buffer_t * self) {
-  return (size_t) (self->_len - (self->_current - self->_buffer));
+  return (size_t) (self->_len - (size_t) (self->_current - self->_buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +256,7 @@ char const * TRI_EndStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_LengthStringBuffer (TRI_string_buffer_t const * self) {
-  return self->_current - self->_buffer;
+  return (size_t) (self->_current - self->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -284,7 +284,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
            
             // check for separator
             checkLength = parser->_separatorLength;
-            if (parser->_stop - ptr >= checkLength) { 
+            if ((size_t) (parser->_stop - ptr) >= checkLength) { 
               // must have at least as much chars as length of separator
               if (0 == memcmp(ptr, parser->_separator, checkLength)) {
                 // found separator
@@ -294,7 +294,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
             // check for eol
             checkLength = parser->_eolLength;
-            if (parser->_stop - ptr >= checkLength) { 
+            if ((size_t) (parser->_stop - ptr) >= checkLength) { 
               // must have at least as much chars as length of eol
               if (0 == memcmp(ptr, parser->_eol, checkLength)) {
                 // found eol
@@ -338,7 +338,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
            
             // check for separator
             checkLength = parser->_separatorLength;
-            if (parser->_stop - ptr >= checkLength) { 
+            if ((size_t) (parser->_stop - ptr) >= checkLength) { 
               // must have at least as much chars as length of separator
               if (0 == memcmp(ptr, parser->_separator, checkLength)) {
                 // found separator
@@ -348,7 +348,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
             // check for eol
             checkLength = parser->_eolLength;
-            if (parser->_stop - ptr >= checkLength) { 
+            if ((size_t) (parser->_stop - ptr) >= checkLength) { 
               // must have at least as much chars as length of eol
               if (0 == memcmp(ptr, parser->_eol, checkLength)) {
                 // found eol
