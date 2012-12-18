@@ -407,13 +407,12 @@ static bool CheckPQSize(TRI_pqueue_t* pq) {
   }
   
   pq->_base._capacity = pq->_base._capacity * 2;
-  newItems = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._capacity * pq->_base._itemSize, false);
+  // allocate and fill with NUL bytes
+  newItems = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pq->_base._capacity * pq->_base._itemSize, true);
   if (newItems == NULL) {
     return false;    
   }
  
-  // TODO: this memset is at least partly superfluous as the buffer is overwritten directly afterwards 
-  memset(newItems, 0, pq->_base._itemSize * pq->_base._capacity);
   memcpy(newItems, pq->_base._items, (pq->_base._count * pq->_base._itemSize) );
   
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, pq->_base._items);

@@ -1219,7 +1219,6 @@ void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* prevNode;
-  int compareResult;
   
   // ...........................................................................  
   // Just in case
@@ -1290,12 +1289,11 @@ void* TRI_RightLookupByKeySkipList (TRI_skiplist_t* skiplist, void* key) {
     // .........................................................................  
     
     else { // nextNode != &(skiplist->_endNode
-    
       // .......................................................................
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = IndexStaticCompareKeyElement(skiplist, key, &(prevNode->_element), 1);
+      int compareResult = IndexStaticCompareKeyElement(skiplist, key, &(prevNode->_element), 1);
       
 
       // .......................................................................    
@@ -1568,7 +1566,6 @@ void* TRI_LeftLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* nextNode;
-  int compareResult;
 
   // ...........................................................................  
   // Just in case
@@ -1644,7 +1641,7 @@ void* TRI_LeftLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* key
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(nextNode->_element), -1);
+      int compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(nextNode->_element), -1);
       
       
       // .......................................................................    
@@ -2198,7 +2195,6 @@ void* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* ke
   int32_t currentLevel;
   TRI_skiplist_node_t* currentNode;
   TRI_skiplist_node_t* prevNode;
-  int compareResult;
   
   // ...........................................................................  
   // Just in case
@@ -2273,7 +2269,7 @@ void* TRI_RightLookupByKeySkipListMulti(TRI_skiplist_multi_t* skiplist, void* ke
       // Use the callback to determine if the element is less or greater than
       // the next node element.
       // .......................................................................    
-      compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(prevNode->_element), 1);
+      int compareResult = IndexStaticMultiCompareKeyElement(skiplist,key,&(prevNode->_element), 1);
       
       
       // .......................................................................    
