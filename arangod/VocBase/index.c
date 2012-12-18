@@ -3240,7 +3240,7 @@ static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_primary_co
         }
 
         // check and see that entries are non-increasing
-        if (jsonObject->_value._objects._length > maxEntries) {
+        if ((int) jsonObject->_value._objects._length > maxEntries) {
           if (maxEntries > 0) {
             result = -3;
             break;

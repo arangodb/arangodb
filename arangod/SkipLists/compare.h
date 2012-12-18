@@ -265,6 +265,7 @@ static int attributeWeightCompareFunction(const void* leftItem, const void* righ
 static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_json_t* right, TRI_shaper_t* leftShaper, TRI_shaper_t* rightShaper) {
   
   int result;
+  int i;
   size_t j;
   TRI_shape_type_t leftType;
   TRI_shape_type_t rightType;
@@ -642,24 +643,24 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
           
           numWeightedList = (leftNumWeightedList < rightNumWeightedList ? leftNumWeightedList: rightNumWeightedList);          
           
-          for (j = 0; j < numWeightedList; ++j) {
+          for (i = 0; i < numWeightedList; ++i) {
           
-            if (leftWeightedList[j]._weight != rightWeightedList[j]._weight) {
-              result = (leftWeightedList[j]._weight < rightWeightedList[j]._weight ? -1: 1);
+            if (leftWeightedList[i]._weight != rightWeightedList[i]._weight) {
+              result = (leftWeightedList[i]._weight < rightWeightedList[i]._weight ? -1: 1);
               break;
             }
             
-            result = CompareShapeTypes (&(leftWeightedList[j]._value), &(rightWeightedList[j]._value), leftShaper, rightShaper);
+            result = CompareShapeTypes (&(leftWeightedList[i]._value), &(rightWeightedList[i]._value), leftShaper, rightShaper);
             if (result != 0) { 
               break;
             }  
             
             // the attributes are equal now check for the values 
             /* start oreste debug
-            const char* name = leftShaper->lookupAttributeId(leftShaper,leftWeightedList[j]._aid);
-            printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,leftWeightedList[j]._weight,name);
-            const char* name = rightShaper->lookupAttributeId(rightShaper,rightWeightedList[j]._aid);
-            printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,rightWeightedList[j]._weight,name);
+            const char* name = leftShaper->lookupAttributeId(leftShaper,leftWeightedList[i]._aid);
+            printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,leftWeightedList[i]._weight,name);
+            const char* name = rightShaper->lookupAttributeId(rightShaper,rightWeightedList[i]._aid);
+            printf("%s:%u:w=%ld:%s\n",__FILE__,__LINE__,rightWeightedList[i]._weight,name);
             end oreste debug */
           }        
           
