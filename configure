@@ -2458,6 +2458,18 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 
+CURRENT_DIR=`pwd`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: configure started in '$CURRENT_DIR" >&5
+$as_echo "$as_me: configure started in '$CURRENT_DIR" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: with CPPFLAGS='$CPPFLAGS'" >&5
+$as_echo "$as_me: with CPPFLAGS='$CPPFLAGS'" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: with CFLAGS='$CFLAGS'" >&5
+$as_echo "$as_me: with CFLAGS='$CFLAGS'" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: with CXXFLAGS='$CXXFLAGS'" >&5
+$as_echo "$as_me: with CXXFLAGS='$CXXFLAGS'" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: with LDFLAGS='$LDFLAGS'" >&5
+$as_echo "$as_me: with LDFLAGS='$LDFLAGS'" >&6;}
+
 
 
 # Check whether --enable-all-in-one-libev was given.
@@ -5277,8 +5289,6 @@ $as_echo "no" >&6; }
 fi
 
 
-LDFLAGS=-g
-
 # Check whether --enable-error-on-warning was given.
 if test "${enable_error_on_warning+set}" = set; then :
   enableval=$enable_error_on_warning; tr_WERROR="${enableval:-yes}"
@@ -5553,7 +5563,7 @@ fi
 
 
 if test "x$tr_STATIC_PROGRAMS" = xyes;  then
-  LDFLAGS="-static"
+  LDFLAGS="$LDFLAGS -static"
 fi
 
 
