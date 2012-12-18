@@ -1,7 +1,7 @@
 New Features in ArangoDB 1.1 {#NewFeatures11}
 =============================================
 
-@NAVIGATE_FIRST{Home,Upgrading}
+@NAVIGATE_NewFeatures11
 @EMBEDTOC{NewFeatures11TOC}
 
 Features and Improvements {#NewFeatures11Introduction}
@@ -401,3 +401,13 @@ _arangoimp_ also supports importing input files in TSV format. TSV is
 a simple separated format such as CSV, but with the tab character as
 the separator, no quoting for values and thus no support for line
 breaks inside the values.
+
+### libicu
+
+ArangoDb uses ICU - International Components for Unicode (icu-project.org)
+for string sorting and string normalization.
+
+ArangoDB 1.1 adds the option `--default-language` to select a locale for
+sorting and comparing strings. The default locale is set to be the system 
+locale on that platform. 
+

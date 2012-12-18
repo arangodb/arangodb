@@ -26,45 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       USER MANUAL
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @page UserManual ArangoDB's User Manual (@VERSION)
-///
-/// @NAVIGATE{Upgrading,Home,DbaManual}
-///
-/// @if LATEX
-/// <ul>
-///  <li>@ref FirstStepsArangoDB</li>
-///  <li>@ref UserManualArangosh</li>
-///  <li>@ref UserManualWebInterface</li>
-///  <li>@ref ShellCollection</li>
-///  <li>@ref ShellDocument</li>
-///  <li>@ref ShellEdge</li>
-///  <li>@ref SimpleQueries</li>
-///  <li>@ref Aql</li>
-///  <li>@ref UserManualActions</li>
-///
-///  @latexonly\appendix@endlatexonly
-///  <li>@ref CommandLine</li>
-///  <li>@ref Glossary</li>
-/// </ul>
-/// @else
-/// @copydetails FirstStepsArangoDBTOC
-/// @copydetails UserManualArangoshTOC
-/// @copydetails UserManualWebInterfaceTOC
-/// @copydetails ShellCollectionTOC
-/// @copydetails ShellDocumentTOC
-/// @copydetails ShellEdgeTOC
-/// @copydetails SimpleQueriesTOC
-/// @copydetails AqlTOC
-/// @copydetails UserManualActionsTOC
-/// @copydetails CommandLineTOC
-/// @endif
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                              USER MANUAL ARANGOSH
 // -----------------------------------------------------------------------------
 
@@ -80,6 +41,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualArangosh The Arango Shell
 ///
+/// @NAVIGATE_UserManualArangosh
 /// @EMBEDTOC{UserManualArangoshTOC}
 ///
 /// @section UserManualArangoshOutput Arango Shell Output
@@ -188,6 +150,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page UserManualActions Arango Actions
 ///
+/// @NAVIGATE_UserManualActions
+///
 /// Please note, that user Actions in ArangoDB are still preliminary and details
 /// are subject to change.
 ///
@@ -250,7 +214,7 @@
 //////////////////////////////////////////////////////////////
 ///
 /// The client API or browser sends a HTTP request to the ArangoDB server and
-/// the server returns a HTTP response to the client. A HTTP requests consists
+/// the server returns a HTTP response to the client. A HTTP request consists
 /// of a method, normally @LIT{GET} or @LIT{POST} when using a browser, and a
 /// request path like @LIT{/hello/world}. For a real Web server there are a zillion
 /// of other thing to consider, we will ignore this for the moment. The HTTP
@@ -725,7 +689,7 @@
 ///         ...
 ///     },
 ///     "options": {
-///         "Hallo": "world"
+///         "Hallo": "World"
 ///     }
 /// }
 /// @endcode
@@ -846,7 +810,7 @@
 /// arangosh> db._routing.save({ 
 /// ........>   url: "/",
 /// ........>   action: {
-/// ........>     controller: "org/arangodb/actions", 
+/// ........>     controller: "org/arangodb/actions",
 /// ........>     do: "redirectRequest", 
 /// ........>     options: { 
 /// ........>       permanently: true,

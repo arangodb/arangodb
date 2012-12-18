@@ -76,6 +76,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Aql ArangoDB Query Language (AQL)
 ///
+/// @NAVIGATE_Aql
 /// @EMBEDTOC{AqlTOC}
 ///
 /// @section AqlPurpose Introduction
