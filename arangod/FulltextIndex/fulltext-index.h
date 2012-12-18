@@ -88,7 +88,13 @@ struct TRI_fulltext_wordlist_s;
 
 typedef struct TRI_fulltext_stats_s {
   size_t    _memoryTotal;
+#if TRI_FULLTEXT_DEBUG
   size_t    _memoryOwn;
+  size_t    _memoryBase;
+  size_t    _memoryNodes;
+  size_t    _memoryFollowers;
+  size_t    _memoryDocuments;
+#endif  
   size_t    _memoryHandles;
   uint32_t  _numNodes;
   uint32_t  _numDocuments;
@@ -211,10 +217,20 @@ struct TRI_fulltext_result_s* TRI_QueryFulltextIndex (TRI_fts_index_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump index tree
+////////////////////////////////////////////////////////////////////////////////
+
+#if TRI_FULLTEXT_DEBUG
+void TRI_DumpTreeFtsIndex (const TRI_fts_index_t* const);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpFtsIndex (const TRI_fts_index_t* const);
+#if TRI_FULLTEXT_DEBUG
+void TRI_DumpStatsFtsIndex (const TRI_fts_index_t* const);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return stats about the index

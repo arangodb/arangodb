@@ -2135,70 +2135,7 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
   return EdgesQuery(TRI_EDGE_IN, argv);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build the fulltext search query options from a query string 
-////////////////////////////////////////////////////////////////////////////////
-  
-static TRI_fulltext_query_t* BuildQueryFulltext (const string& queryString, bool* isSubstringQuery) {
-  *isSubstringQuery = false;
-
-  vector<string> words = StringUtils::split(queryString, ',');
-
-  if (words.empty()) {
-    return 0;
-  }
-
-  TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(words.size());
-  if (query == 0) {
-    return 0;
-  }
- 
-  size_t j = 0;
-  for (size_t i = 0; i < words.size(); ++i) {
-    StringUtils::trimInPlace(words[i], "\t\r\n\b\f ");
-    if (words[i].size() == 0) {
-      continue;
-    }
-
-    TRI_fulltext_query_option_e option = TRI_FULLTEXT_COMPLETE;
-
-    // check if there is a search instruction contained
-    vector<string> parts = StringUtils::split(words[i], ':');
-    if (parts.size() == 1) {
-      // no, just a single word
-      if (! TRI_SetQueryFulltextIndex(query, j, parts[0].c_str(), parts[0].size(), option)) {
-        // normalisation failed
-        continue;
-      }
-    }
-    else {
-      // search mode : search term
-      string command = parts[0];
-      StringUtils::trimInPlace(command, "\t\r\n\b\f ");
-      StringUtils::tolowerInPlace(&command);
-      if (command == "prefix") {
-        option = TRI_FULLTEXT_PREFIX; 
-      }
-      else if (command == "substring") {
-        option = TRI_FULLTEXT_SUBSTRING; 
-        *isSubstringQuery = true;
-      }
       
-      string word = parts[1];
-      StringUtils::trimInPlace(word, "\t\r\n\b\f ");
-      if (! TRI_SetQueryFulltextIndex(query, j, word.c_str(), word.size(), option)) {
-        // normalisation failed
-        continue;
-      }
-    }
-
-    ++j;
-  }
-
-  return query;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
 ///
@@ -2232,9 +2169,15 @@ static v8::Handle<v8::Value> FulltextQuery (TRI_document_collection_t* document,
   const string queryString = TRI_ObjectToString(argv[1]);
   bool isSubstringQuery = false;
 
-  TRI_fulltext_query_t* query = BuildQueryFulltext(queryString, &isSubstringQuery);
+  TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS);
   if (! query) {
-    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "invalid value for <query>")));
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_OUT_OF_MEMORY)));
+  }
+
+  int res = TRI_ParseQueryFulltextIndex(query, queryString.c_str(), &isSubstringQuery);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeQueryFulltextIndex(query);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "invalid value for <query>")));
   }
 
   TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx; 

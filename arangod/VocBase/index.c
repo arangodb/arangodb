@@ -4143,13 +4143,11 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   }
 
   if (wordlist->_numWords > 0) {
-    TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
     // TODO: use status codes
     if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc), wordlist)) {
       LOG_ERROR("adding document to fulltext index failed");
       res = TRI_ERROR_INTERNAL;
     }
-    TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
   }
 
   TRI_FreeWordlistFulltextIndex(wordlist);
@@ -4215,9 +4213,7 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
   TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc));
-  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4240,7 +4236,6 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
   res = TRI_ERROR_NO_ERROR;
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
   TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc));
   
   if (wordlist != NULL && wordlist->_numWords > 0) {
@@ -4249,8 +4244,6 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
       res = TRI_ERROR_INTERNAL;
     }
   }
-
-  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
   TRI_FreeWordlistFulltextIndex(wordlist);
 
@@ -4273,16 +4266,9 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
   fulltextIndex = (TRI_fulltext_index_t*) idx;
   res = TRI_ERROR_NO_ERROR;
 
-  // try to acquire the write lock to clean up
-  // but don't block if the index is busy
-  if (TRI_TryWriteLockReadWriteLock(&fulltextIndex->_lock)) {
-    // check whether we should do a cleanup at all
-    // TODO: fix compaction later
-    if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+  // check whether we should do a cleanup at all
+  if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   return res;
@@ -4358,7 +4344,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   
   TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 
-  TRI_InitReadWriteLock(&fulltextIndex->_lock);
 
   return &fulltextIndex->base;
 }
@@ -4376,7 +4361,6 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
       
-  TRI_DestroyReadWriteLock(&fulltextIndex->_lock);
   TRI_DestroyVectorString(&idx->_fields);
   
   LOG_TRACE("destroying fulltext index");

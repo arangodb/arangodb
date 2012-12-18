@@ -35,6 +35,25 @@ extern "C" {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Fulltext
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of search words in a query
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
@@ -44,7 +63,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fulltext query options
+/// @brief fulltext query match options
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
@@ -52,16 +71,28 @@ typedef enum {
   TRI_FULLTEXT_PREFIX,
   TRI_FULLTEXT_SUBSTRING   // TODO: currently not implemented
 }
-TRI_fulltext_query_option_e;
+TRI_fulltext_query_match_e;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fulltext query logical operators
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_FULLTEXT_AND,
+  TRI_FULLTEXT_OR,
+  TRI_FULLTEXT_EXCLUDE
+}
+TRI_fulltext_query_operation_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_fulltext_query_s {
-  size_t                       _numWords;
-  char**                       _words;
-  TRI_fulltext_query_option_e* _options; 
+  size_t                          _numWords;
+  char**                          _words;
+  TRI_fulltext_query_match_e*     _matches;
+  TRI_fulltext_query_operation_e* _operations;
 }
 TRI_fulltext_query_t;
 
@@ -104,6 +135,14 @@ void TRI_FreeQueryFulltextIndex (TRI_fulltext_query_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a fulltext query from a query string
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const,
+                                 const char* const,
+                                 bool*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set a search word & option for a query
 /// the query will take ownership of the search word
 /// the caller must not free the word itself
@@ -113,7 +152,8 @@ bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const,
                                 const size_t, 
                                 const char* const,
                                 const size_t, 
-                                TRI_fulltext_query_option_e);
+                                TRI_fulltext_query_match_e,
+                                TRI_fulltext_query_operation_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
