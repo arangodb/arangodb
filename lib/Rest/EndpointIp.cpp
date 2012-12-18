@@ -129,18 +129,19 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
     return 0;
   }
   
-  // try to reuse address
-  int opt = 1;
-  if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-    LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
-
-    TRI_CLOSE(listenSocket);
-
-    return 0;
-  }
-  LOGGER_TRACE << "reuse address flag set";
  
   if (_type == ENDPOINT_SERVER) {
+    // try to reuse address
+    int opt = 1;
+    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
+      LOGGER_ERROR << "setsockopt failed with " << errno << " (" << strerror(errno) << ")";
+
+      TRI_CLOSE(listenSocket);
+
+      return 0;
+    }
+    LOGGER_TRACE << "reuse address flag set";
+
     // server needs to bind to socket
     int result = bind(listenSocket, aip->ai_addr, aip->ai_addrlen);
     if (result != 0) {
