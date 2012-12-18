@@ -453,6 +453,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
     // no password given on command-line
     if (! _hasPassword) {
+      TRI_FlushLogging();
       cout << "Please specify a password: " << flush;
 
       // now prompt for it
@@ -464,6 +465,7 @@ void ArangoClient::parse (ProgramOptions& options,
 #else
       getline(cin, _password);
 #endif
+      cout << "\n";
     }
   }
 }

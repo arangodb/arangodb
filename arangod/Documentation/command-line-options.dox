@@ -115,6 +115,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page CommandLine Command-Line Options
 ///
+/// @NAVIGATE_CommandLine
 /// @EMBEDTOC{CommandLineTOC}
 ///
 /// @section CommandLineGeneralOptions General Options

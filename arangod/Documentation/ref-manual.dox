@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page RefManual ArangoDB's Reference Manual (@VERSION)
 ///
-/// @NAVIGATE_LAST{ImplementorManual,Home}
+/// @NAVIGATE_RefManual
 ///
 /// @if LATEX
 /// <ul>

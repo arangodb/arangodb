@@ -1,4 +1,6 @@
-# ArangoDB
+ArangoDB
+========
+
 [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png)](http://travis-ci.org/triAGENS/ArangoDB)
 
 ArangoDB is a universal open-source database with flexible data model for documents, graphs, and key-values. Build high performance application using a convenient sql-like query language or JavaScript/Ruby extensions. 
@@ -20,65 +22,66 @@ For more in-depth information
 
 * read more on the [design goals of ArangoDB](http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives)
 * [watch the video](http://vimeo.com/36411892) - Martin Schoenert, architect of ArangoDB, gives an introduction of what the ArangoDB project is about.
-* or  give it a try.
+* or give it a [try](http://www.arangodb.org/try).
 
-## Compilation
+
+For the Impatient
+-----------------
+
+For Mac OSX execute
+
+    brew install arangodb
+
+For Linux use the distribution dependend package manager, see 
+[Installation Manual](http://www.arangodb.org/manuals/current/Installing.html)
+for details.
+
+For Windows users: we are working hard on a Windows version. A first version will become available soon.
+
+If the package manager has not already started the ArangoDB server, use
+
+    unix> /path/to/sbin/arangod
+    2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 1.x.y) is ready for business
+    2012-03-30T12:54:19Z [11794] INFO Have Fun!
+
+`/path/to/sbin` is OS dependent. It will normally by either `/usr/sbin` or `/user/local/sbin`. Point your browser to
+
+    http://localhost:8529/
+
+and select the tab `Shell`. You can now use the Arango shell from within your browser. Alternative, it is available as command-line tool _arangosh_.
+
+    arangosh> db._create("hallo");
+    arangosh> db.hallo.save({ world: "earth" });
+
+Congratulations! You have created your first collection called `hallo` and your first document. To verify your achievements
+
+    arangosh> db.hallo.toArray();
+
+
+More Information
+----------------
 
 Please check the
 [Installation Manual](http://www.arangodb.org/manuals/current/InstallManual.html)
 for installation and compilation instructions.
 
-### Mac OS X Hints
+The
+[User Manual](http://www.arangodb.org/manuals/current/UserManual.html)
+has an introductory chapter showing the basic operations of ArangoDB.
 
-On Mac OS X you can install ArangoDB using the packagemanager [Homebrew](http://mxcl.github.com/homebrew/):
+Or you can use the 
+[online tutorial](http://www.arangodb.org/try)
+to play with ArangoDB without installing it locally.
 
-* `brew install arangodb` (use `--HEAD` in order to build ArangoDB from current master)
 
-This will install ArangoDB and all dependencies. Note that the server will be installed as
+Stay in Contact
+---------------
 
-    /usr/local/sbin/arangod
+Please note that there will be bugs and we'd really appreciate it if
+you report them:
 
-The ArangoDB shell will be install as
+    https://github.com/triAGENS/ArangoDB/issues
 
-    /usr/local/bin/arangosh
+You can use the Google group for improvements, feature requests, comments 
 
-## First Steps
-
-Start the server:
-
-    > /usr/sbin/arangod
-    2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 1.x.y) is ready for business
-    2012-03-30T12:54:19Z [11794] INFO Have Fun!
-
-Start the shell in another windows:
-
-    > /usr/bin/arangosh
-                                           _     
-      __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
-     / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
-    | (_| | | | (_| | | | | (_| | (_) \__ \ | | |
-     \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
-                           |___/                 
-
-    Welcome to arangosh 1.x.y. Copyright (c) 2012 triAGENS GmbH.
-    Using Google V8 3.9.4.0 JavaScript engine.
-    Using READLINE 6.1.
-
-    Connected to Arango DB 127.0.0.1:8529 Version 1.x.y
-
-    arangosh> db._create("examples")
-    [ArangoCollection 106097, "examples]
-
-    arangosh> db.examples.save({ Hallo: "World" });
-    {"error":false,"_id":"106097/2333739","_rev":2333739}
-
-    arangosh> db.examples.all().toArray();
-    [{ _id : "82883/1524675", _rev : 1524675, Hallo : "World" }]
-
-## Caveat
-
-Please note that this is an early version of ArangoDB. There will be
-bugs and we'd really appreciate it if you [report](https://github.com/triAGENS/ArangoDB/issues")
-them:
-
-  https://github.com/triAGENS/ArangoDB/issues
+    http://www.arangodb.org/connect

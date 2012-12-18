@@ -111,8 +111,6 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
-LDFLAGS=-g
-
 AC_ARG_ENABLE(error-on-warning,
   AS_HELP_STRING([--enable-error-on-warning], [treat warnings as errors (default: no)]),
   [tr_WERROR="${enableval:-yes}"],

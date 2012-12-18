@@ -15,6 +15,13 @@ dnl ----------------------------------------------------------------------------
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
+CURRENT_DIR=`pwd`
+AC_MSG_NOTICE([configure started in '$CURRENT_DIR])
+AC_MSG_NOTICE([with CPPFLAGS='$CPPFLAGS'])
+AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
+AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
+AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
+
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================
