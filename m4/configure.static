@@ -17,7 +17,7 @@ dnl enable static programs if possible
 dnl -----------------------------------------------------------------------------------------
 
 if test "x$tr_STATIC_PROGRAMS" = xyes;  then
-  LDFLAGS="-static"
+  LDFLAGS="$LDFLAGS -static"
 fi
 
 dnl -----------------------------------------------------------------------------------------
