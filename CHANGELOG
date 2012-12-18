@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #324: add limit optimisation to AQL
+
 * removed arango-password script and added Javascript functionality to add/delete
   users instead. The functionality is contained in module `users` and can be invoked
   as follows from arangosh and arangod:
