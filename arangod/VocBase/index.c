@@ -5326,7 +5326,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // attempt to create a new bitarray index
   // ...........................................................................
    
-  result = BitarrayIndex_new(&(baIndex->_bitarrayIndex),TRI_UNKNOWN_MEM_ZONE, cardinality, 
+  result = BitarrayIndex_new(&(baIndex->_bitarrayIndex), TRI_UNKNOWN_MEM_ZONE, (size_t) cardinality, 
                              &baIndex->_values, supportUndef, createContext);  
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&baIndex->_paths);
