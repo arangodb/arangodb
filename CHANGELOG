@@ -1,5 +1,7 @@
-v1.1.1 (xxxx-xx-xx)
+v1.1.1 (2012-12-18)
 -------------------
+
+* fixed issue #321: Problem upgrading arangodb 1.0.4 to 1.1.0 with Homebrew (OSX 10.8.2)
 
 * fixed issue #230: add navigation and search for online documentation
 
