@@ -280,9 +280,6 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_t* vocbase;
   regmatch_t matches[3];
   regex_t re;
-  char* tmp1;
-  char* tmp2;
-  char* tmp3;
   char* newFilename;
   int res;
   size_t i;
@@ -365,6 +362,10 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       
       char const* second = collection->_path + matches[2].rm_so;
       size_t secondLen = matches[2].rm_eo - matches[2].rm_so;
+      
+      char* tmp1;
+      char* tmp2;
+      char* tmp3;
       
       tmp1 = TRI_DuplicateString2(first, firstLen);
       tmp2 = TRI_DuplicateString2(second, secondLen);
@@ -832,7 +833,6 @@ static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 
 static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* collection) {
   TRI_col_type_e type;
-  int res;
 
   // .............................................................................
   // read lock
@@ -906,6 +906,8 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* col
 
   // new born, manifest collection, release the WRITE lock and try again
   if (collection->_status == TRI_VOC_COL_STATUS_NEW_BORN) {
+    int res;
+
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     res = ManifestCollectionVocBase(vocbase, collection);
