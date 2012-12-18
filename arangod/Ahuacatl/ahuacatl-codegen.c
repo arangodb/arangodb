@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/logging.h>
+#include "BasicsC/logging.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
@@ -425,13 +425,13 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
     return;
   }
 
-  scope->_buffer = buffer;
-  scope->_type = NextScopeType(generator, type);
-  scope->_listRegister = listRegister;
-  scope->_keyRegister = keyRegister;
-  scope->_ownRegister = ownRegister;
+  scope->_buffer         = buffer;
+  scope->_type           = NextScopeType(generator, type);
+  scope->_listRegister   = listRegister;
+  scope->_keyRegister    = keyRegister;
+  scope->_ownRegister    = ownRegister;
   scope->_resultRegister = resultRegister;
-  scope->_prefix = NULL;
+  scope->_prefix         = NULL;
 
   // init symbol table
   TRI_InitAssociativePointer(&scope->_variables, 
@@ -1382,14 +1382,31 @@ static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for collection access (full table scan)
+/// offset & limit values might be applied here if they were collected by the
+/// optimiser during the optimisation phase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCollectionFull (TRI_aql_codegen_js_t* const generator,
                                    const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS(");
   ProcessNode(generator, nameNode);
+  
+  if (hint != NULL && hint->_limit._use) {
+    // print limit values
+    ScopeOutput(generator, ", ");
+    
+    // we'll always use an offset of 0 instead of the actual offset value used in the
+    // query. otherwise we would need to filter out the following LIMIT statement as well
+    ScopeOutputUInt(generator, (uint64_t) 0); 
+    
+    ScopeOutput(generator, ", ");
+    // now the limit value
+    ScopeOutputUInt(generator, (uint64_t) (hint->_limit._offset + hint->_limit._limit));
+  }
+  
   ScopeOutput(generator, ")");
 }
 
@@ -1820,7 +1837,8 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
   TRI_string_buffer_t* buffer;
-  bool isList = TRI_IsListNodeAql(expressionNode); // TODO: generalize this for collections etc.
+  bool isList = (TRI_IsListNodeAql(expressionNode) || 
+                 expressionNode->_type == TRI_AQL_NODE_COLLECTION); 
  
   buffer = scope->_buffer; // inherit buffer from current scope
 

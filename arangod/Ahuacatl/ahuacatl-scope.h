@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_SCOPE_H
 #define TRIAGENS_DURHAM_AHUACATL_SCOPE_H 1
 
-#include <BasicsC/associative.h>
+#include "BasicsC/associative.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -45,6 +45,18 @@ extern "C" {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scope limit status
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_AQL_LIMIT_UNDEFINED, 
+  TRI_AQL_LIMIT_USE,
+  TRI_AQL_LIMIT_IGNORE
+}
+TRI_aql_limit_status_e;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scope types used by various components
@@ -68,6 +80,12 @@ typedef struct TRI_aql_scope_s {
   TRI_associative_pointer_t _variables;
   TRI_vector_pointer_t* _ranges;
   TRI_aql_scope_e _type;
+  struct {
+    int64_t _offset;
+    int64_t _limit;
+    TRI_aql_limit_status_e _status;
+  } 
+  _limit;
   bool _selfContained;
   size_t _id;
 }

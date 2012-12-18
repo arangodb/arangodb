@@ -80,7 +80,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
    
     member = (TRI_aql_node_t*) TRI_AtVectorPointer(&node->_members, i);
 
-    if (!member) {
+    if (! member) {
       continue;
     }
 
@@ -113,7 +113,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
    
     node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, i);
 
-    if (!node) {
+    if (! node) {
       continue;
     }
 
@@ -163,6 +163,43 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove an offset/limit combination for the top scope
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RemoveCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
+  TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+
+  assert(scope);
+  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
+    LOG_TRACE("setting limit status to ignorable");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note an offset/limit combination for the top scope
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker,
+                                            const int64_t offset,
+                                            const int64_t limit) { 
+  TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+
+  assert(scope);
+
+  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    scope->_limit._limit  = limit;
+    scope->_limit._offset = offset;
+    scope->_limit._status = TRI_AQL_LIMIT_USE;
+    LOG_TRACE("setting limit status to used");
+  }
+  else {
+    scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
+    LOG_TRACE("setting limit status to ignorable");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get current ranges in top scope of statement walker
@@ -283,11 +320,11 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
     return NULL;
   }
 
-  walker->_data = data;
-  walker->_canModify = canModify;
+  walker->_data              = data;
+  walker->_canModify         = canModify;
 
-  walker->visitMember = visitMember;
-  walker->preVisitStatement = preVisitStatement;
+  walker->visitMember        = visitMember;
+  walker->preVisitStatement  = preVisitStatement;
   walker->postVisitStatement = postVisitStatement;
 
   TRI_InitVectorPointer(&walker->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
@@ -303,7 +340,6 @@ void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   assert(walker);
 
   TRI_DestroyVectorPointer(&walker->_currentScopes);
-
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
 }
 

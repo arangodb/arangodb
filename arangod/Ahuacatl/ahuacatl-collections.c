@@ -261,6 +261,13 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
                          indexDescription);
   }
 
+  if (hint->_limit._use) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                         result,
+                         "limit", 
+                         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) hint->_limit._limit));
+  }
+
   return result;
 }
 
@@ -277,9 +284,10 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
     return NULL;
   }
 
-  hint->_ranges = NULL;
-  hint->_index = NULL;
-  hint->_collection = NULL;
+  hint->_ranges      = NULL;
+  hint->_index       = NULL;
+  hint->_collection  = NULL;
+  hint->_limit._use  = false;
 
   return hint;
 }

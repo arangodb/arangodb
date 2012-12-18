@@ -442,8 +442,14 @@ function AHUACATL_DOCUMENT (collection, id) {
 /// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_GET_DOCUMENTS (collection) {
-  return AHUACATL_COLLECTION(collection).ALL(0, null).documents;
+function AHUACATL_GET_DOCUMENTS (collection, offset, limit) {
+  if (offset == undefined) {
+    offset = 0;
+  }
+  if (limit == undefined) {
+    limit = null;
+  }
+  return AHUACATL_COLLECTION(collection).ALL(offset, limit).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
