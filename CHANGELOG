@@ -123,8 +123,11 @@ v1.2.alpha (XXXX-XX-XX)
   figure out these edges' roles. Additionally, bidirectional edges return the
   `_bidirectional` attribute with a value of `true`.
 
-v1.1.1 (xxxx-xx-xx)
+
+v1.1.1 (2012-12-18)
 -------------------
+
+* fixed issue #321: Problem upgrading arangodb 1.0.4 to 1.1.0 with Homebrew (OSX 10.8.2)
 
 * fixed issue #230: add navigation and search for online documentation
 
@@ -139,14 +142,28 @@ v1.1.1 (xxxx-xx-xx)
 v1.1.0 (2012-12-05)
 -------------------
 
+* WARNING:
+  arangod now performs a database version check at startup. It will look for a file
+  named "VERSION" in its database directory. If the file is not present, arangod will
+  perform an automatic upgrade of the database directory. This should be the normal
+  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
+
+  If the VERSION file is present but is from an older version of ArangoDB, arangod 
+  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
+  can be performed by starting arangod with the option `--upgrade`. 
+
+  This upgrade procedure shall ensure that users have full control over when they 
+  perform any updates/upgrades of their data, and can plan backups accordingly. The
+  procedure also guarantees that the server is not run without any required system
+  collections or with in incompatible data state.
+
 * added AQL function DOCUMENT() to retrieve a document by its _id value
 
 * fixed issue #311: fixed segfault on unload 
 
 * fixed issue #309: renamed stub "import" button from web interface
 
-* fixed issue #307: show waitForSync in collections overview in web interface,
-  make waitForSync and journalSize editable in web interface 
+* fixed issue #307: added WaitForSync column in collections list in in web interface 
 
 * fixed issue #306: naming in web interface 
 
@@ -160,6 +177,8 @@ v1.1.0 (2012-12-05)
 # fixed issue #269: fix make distclean & clean
 
 * fixed issue #296: system collections not usable from AQL
+
+* fixed issue #295: deadlock on shutdown
 
 * added collection type label to web interface
 
@@ -188,21 +207,6 @@ v1.1.0 (2012-12-05)
 
 * added UPGRADING help text
 
-* WARNING:
-  arangod now performs a database version check at startup. It will look for a file
-  named "VERSION" in its database directory. If the file is not present, arangod will
-  perform an automatic upgrade of the database directory. This should be the normal
-  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
-
-  If the VERSION file is present but is from an older version of ArangoDB, arangod 
-  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
-  can be performed by starting arangod with the option `--upgrade`. 
-
-  This upgrade procedure shall ensure that users have full control over when they 
-  perform any updates/upgrades of their data, and can plan backups accordingly. The
-  procedure also guarantees that the server is not run without any required system
-  collections or with in incompatible data state.
-
 * fixed issue #284: fixed Javascript errors when adding edges/vertices without own
   attributes
 
@@ -217,6 +221,7 @@ v1.1.0 (2012-12-05)
   the fix of this issue also implies validation of collection names / ids passed to
   the REST edge create method. edges with invalid collection ids or names in the
   "from" or "to" values will be rejected and not saved
+
 
 v1.1.beta2 (2012-11-13)
 -----------------------
@@ -422,10 +427,11 @@ v1.1.beta1 (2012-10-24)
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
+
 v1.0.4 (2012-11-12)
 -------------------
 
-* strange error message in arangosh 1.0.3 at startup
+* issue #275: strange error message in arangosh 1.0.3 at startup
 
 
 v1.0.3 (2012-11-08)
@@ -454,6 +460,7 @@ v1.0.2 (2012-10-22)
 * added autoload for modules
 
 * added AQL function TO_LIST
+
 
 v1.0.1 (2012-09-30)
 -------------------

@@ -1074,7 +1074,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   bool isAbsolute;
 
 #ifdef _WIN32
-#error please validate this function for Windows 
+#error please validate if this works on Windows
 #endif
 
   if (file == NULL || *file == '\0') {
