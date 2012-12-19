@@ -280,7 +280,6 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   TRI_vocbase_t* vocbase;
   regmatch_t matches[3];
   regex_t re;
-  char* newFilename;
   int res;
   size_t i;
   
@@ -366,6 +365,8 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
       char* tmp1;
       char* tmp2;
       char* tmp3;
+   
+      char* newFilename;
       
       tmp1 = TRI_DuplicateString2(first, firstLen);
       tmp2 = TRI_DuplicateString2(second, secondLen);
