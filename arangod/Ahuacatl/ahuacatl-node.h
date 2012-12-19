@@ -28,8 +28,8 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_NODE_H
 #define TRIAGENS_DURHAM_AHUACATL_NODE_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
+#include "BasicsC/common.h"
+#include "BasicsC/vector.h"
 
 #ifdef __cplusplus
 extern "C" {

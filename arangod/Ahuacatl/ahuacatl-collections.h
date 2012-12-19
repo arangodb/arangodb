@@ -28,20 +28,20 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_COLLECTIONS_H
 #define TRIAGENS_DURHAM_AHUACATL_COLLECTIONS_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/logging.h>
+#include "BasicsC/common.h"
+#include "BasicsC/vector.h"
 
 #include "VocBase/vocbase.h"
 #include "VocBase/barrier.h"
-#include "VocBase/primary-collection.h"
 
-#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-index.h"
+#include "Ahuacatl/ahuacatl-scope.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           defines
@@ -98,14 +98,9 @@ TRI_aql_collection_t;
 
 typedef struct TRI_aql_collection_hint_s {
   TRI_vector_pointer_t* _ranges;
-  TRI_aql_index_t* _index;
+  TRI_aql_index_t*      _index;
   TRI_aql_collection_t* _collection;
-  struct {
-    int64_t _offset;
-    int64_t _limit;
-    bool _use;
-  }
-  _limit;
+  TRI_aql_limit_t       _limit;
 }
 TRI_aql_collection_hint_t;
 
@@ -144,50 +139,50 @@ void TRI_FreeCollectionHintAql (TRI_aql_collection_hint_t* const);
 /// @brief lookup a collection in the internal vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* const,
+TRI_aql_collection_t* TRI_GetCollectionAql (const struct TRI_aql_context_s* const,
                                             const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCollectionsAql (TRI_aql_context_t* const);
+void TRI_UnlockCollectionsAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LockCollectionsAql (TRI_aql_context_t* const);
+bool TRI_LockCollectionsAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock all collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadLockCollectionsAql (TRI_aql_context_t* const);
+bool TRI_ReadLockCollectionsAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-unlocks all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadUnlockCollectionsAql (TRI_aql_context_t* const);
+void TRI_ReadUnlockCollectionsAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a gc marker for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* const);
+bool TRI_AddBarrierCollectionsAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes the gc markers for all collections used in a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* const);
+void TRI_RemoveBarrierCollectionsAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection name to the list of collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddCollectionAql (TRI_aql_context_t* const, const char* const);
+bool TRI_AddCollectionAql (struct TRI_aql_context_s* const, const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

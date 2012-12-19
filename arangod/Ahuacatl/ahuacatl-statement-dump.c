@@ -26,7 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-statement-dump.h"
+
 #include "Ahuacatl/ahuacatl-functions.h"
+#include "Ahuacatl/ahuacatl-node.h"
+#include "Ahuacatl/ahuacatl-statementlist.h"
 #include "Ahuacatl/ahuacatl-statement-walker.h"
 
 // -----------------------------------------------------------------------------

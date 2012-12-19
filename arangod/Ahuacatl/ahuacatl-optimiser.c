@@ -26,11 +26,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-optimiser.h"
+
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+
+#include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-statement-walker.h"
+#include "Ahuacatl/ahuacatl-variable.h"
+
+#include "VocBase/document-collection.h"
 
 #include "V8/v8-execution.h"
 
@@ -185,30 +194,74 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
 static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
-  aql_optimiser_t* optimiser;
-  TRI_aql_scope_t* scope;
-  
-  if (node->_type != TRI_AQL_NODE_COLLECTION) {
-    return node;
-  }
+  if (node->_type == TRI_AQL_NODE_COLLECTION) {
+    aql_optimiser_t* optimiser;
+    TRI_aql_scope_t* scope;
 
-  optimiser = (aql_optimiser_t*) walker->_data;
+    optimiser = (aql_optimiser_t*) walker->_data;
 
-  AttachCollectionHint(optimiser->_context, node);
-  
-  // check if we can apply a scope limit
-  scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  if (scope != NULL && scope->_limit._status == TRI_AQL_LIMIT_USE) {
-    // yes!
-    TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
+    AttachCollectionHint(optimiser->_context, node);
+    
+    // check if we can apply a scope limit and push it into the collection
+    
+    scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+    assert(scope);
 
-    if (hint != NULL) {
-      hint->_limit._offset = scope->_limit._offset;
-      hint->_limit._limit  = scope->_limit._limit;
-      hint->_limit._use    = true;
+    if (scope->_limit._status == TRI_AQL_LIMIT_USE && 
+        ! scope->_limit._hasFilter) {
+      // yes!
+      TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
+      
+      LOG_TRACE("using limit hint for collection");
+
+      if (hint != NULL) {
+        hint->_limit._offset = scope->_limit._offset;
+        hint->_limit._limit  = scope->_limit._limit;
+        hint->_limit._status = TRI_AQL_LIMIT_USE;
+      }
+      
+      // deactive this limit for any further tries
+      scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
     }
   }
+  
+  return node;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief annotate a statement with context information
+///
+/// this is a callback function used by the statement walker
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
+                                     TRI_aql_node_t* node) {
+  if (node->_type == TRI_AQL_NODE_FOR) {
+    TRI_aql_scope_t* scope;
+
+    scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+    assert(scope);
+
+    // check if we can apply a scope limit and push it into the for loop
+    if (scope->_limit._status == TRI_AQL_LIMIT_USE) {
+      // yes!
+      TRI_aql_for_hint_t* hint = (TRI_aql_for_hint_t*) TRI_AQL_NODE_DATA(node);
+
+      if (hint != NULL) {
+        // we'll now modify the hint for the for loop
+        hint->_limit._offset    = scope->_limit._offset;
+        hint->_limit._limit     = scope->_limit._limit;
+        hint->_limit._status    = TRI_AQL_LIMIT_USE;
+        hint->_limit._hasFilter = scope->_limit._hasFilter;
+      
+        LOG_TRACE("using limit hint for for loop");
+      }
+      
+      // deactive this limit for any further tries
+      scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
+    }
+  }
+  
   return node;
 }
 
@@ -398,14 +451,12 @@ static TRI_aql_node_t* OptimiseFor (TRI_aql_statement_walker_t* const walker,
                                     TRI_aql_node_t* node) {
   TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 1);
 
-  if (expression->_type == TRI_AQL_NODE_LIST) {
+  if (expression->_type == TRI_AQL_NODE_LIST && expression->_members._length == 0) {
     // for statement with a list expression
-    if (expression->_members._length == 0) {
-      // list is empty => we can eliminate the for statement
-      LOG_TRACE("optimised away empty for loop");
+    // list is empty => we can eliminate the for statement
+    LOG_TRACE("optimised away empty for loop");
 
-      return TRI_GetDummyReturnEmptyNodeAql();
-    }
+    return TRI_GetDummyReturnEmptyNodeAql();
   }
 
   return node;
@@ -463,18 +514,45 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
 
 static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
                                       TRI_aql_node_t* node) {
-  TRI_aql_node_t* limit = TRI_AQL_NODE_MEMBER(node, 1);
+  TRI_aql_scope_t* scope; 
+  TRI_aql_node_t* limit;
   int64_t limitValue;
+  
+  assert(node);
 
-  limitValue  = TRI_AQL_NODE_INT(limit);
+  scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+  assert(scope);
+    
+  limit = TRI_AQL_NODE_MEMBER(node, 1);
+  limitValue = TRI_AQL_NODE_INT(limit);
 
+  // check for the easy case, a limit value of 0, e.g. LIMIT 10, 0
   if (limitValue == 0) {
-    // LIMIT x, 0
+    // LIMIT x, 0 makes the complete scope useless
     LOG_TRACE("optimised away limit");
 
     return TRI_GetDummyReturnEmptyNodeAql();
   }
-  
+
+  // we will not optimise in the main scope, e.g. LIMIT 5 RETURN 1
+  if (scope->_type == TRI_AQL_SCOPE_MAIN) {
+    return node;
+  }
+      
+  // now for the more complex checks
+  // is a limit optimisation allowed in the scope?
+  if (scope->_limit._status == TRI_AQL_LIMIT_USE || scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    // we have found a limit that we can potentially use
+
+    // we'll only push up the first limit in a scope, as there might be queries such as LIMIT 10 LIMIT 2
+    if (++scope->_limit._found == 1) {
+      // we can push the limit up, into the for loop or the collection access
+      LOG_TRACE("pushed up limit");
+
+      return TRI_GetDummyNopNodeAql();
+    }
+  }
+
   return node;
 }
 
@@ -507,7 +585,8 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
                                        TRI_aql_node_t* node) {
   aql_optimiser_t* optimiser = (aql_optimiser_t*) walker->_data;
   TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 0);
- 
+  TRI_aql_scope_t* scope;
+
   while (true) {
     TRI_vector_pointer_t* oldRanges;
     TRI_vector_pointer_t* newRanges;
@@ -542,6 +621,13 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
 
     // next iteration
   }
+  
+  // in case we got here, the filter was not optimised away completely
+  scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+  assert(scope);
+
+  // mark in the scope that we found a filter
+  scope->_limit._hasFilter = true;
 
   return node;
 }
@@ -1107,9 +1193,13 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
 static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
                                          TRI_aql_node_t* node) {
   if (node) {
-    if (node->_type == TRI_AQL_NODE_SORT || node->_type == TRI_AQL_NODE_FILTER) {
-      // FILTER or SORT mean we must not push a following LIMIT clause up
-      TRI_RemoveCurrentLimitStatementWalkerAql(walker);
+    if (node->_type == TRI_AQL_NODE_SORT) {
+      // SORT means we must not push a following LIMIT clause up
+      TRI_IgnoreCurrentLimitStatementWalkerAql(walker);
+    }
+    else if (node->_type == TRI_AQL_NODE_FILTER) {
+      // FILTER means we can push a following LIMIT clause up to the for loop, but not into the collection accessor
+      TRI_RestrictCurrentLimitStatementWalkerAql(walker);
     }
     else if (node->_type == TRI_AQL_NODE_LIMIT) {
       // note the current limit, we might use it later, pushing it up
@@ -1117,8 +1207,13 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_aql_node_t* limit  = TRI_AQL_NODE_MEMBER(node, 1);
       int64_t offsetValue = TRI_AQL_NODE_INT(offset);
       int64_t limitValue = TRI_AQL_NODE_INT(limit);
-     
-      TRI_SetCurrentLimitStatementWalkerAql(walker, offsetValue, limitValue);
+      TRI_aql_scope_t* scope;
+      
+      scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+      if (scope->_type != TRI_AQL_SCOPE_MAIN) {
+        // will not optimise limit in main scope, e.g. LIMIT 5, 0 RETURN 1 ?
+        TRI_SetCurrentLimitStatementWalkerAql(walker, offsetValue, limitValue);
+      }
     }
 
     // this may change the node pointer
@@ -1166,8 +1261,8 @@ static bool DetermineIndexes (aql_optimiser_t* const optimiser) {
 
   walker = TRI_CreateStatementWalkerAql((void*) optimiser, 
                                         false,
-                                        &AnnotateNode, 
-                                        NULL, 
+                                        &AnnotateNode,
+                                        &AnnotateLoop, 
                                         NULL);
   if (walker == NULL) {
     TRI_SetErrorContextAql(optimiser->_context, TRI_ERROR_OUT_OF_MEMORY, NULL);

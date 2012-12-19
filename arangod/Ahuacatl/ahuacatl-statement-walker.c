@@ -27,6 +27,12 @@
 
 #include "Ahuacatl/ahuacatl-statement-walker.h"
 
+#include "BasicsC/logging.h"
+
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
+#include "Ahuacatl/ahuacatl-scope.h"
+#include "Ahuacatl/ahuacatl-variable.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             statement list walker
 // -----------------------------------------------------------------------------
@@ -165,16 +171,35 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove an offset/limit combination for the top scope
+/// @brief mark the scope so it ignores following offset/limit statement
+/// optimisations.
+/// this is necessary if we find a SORT statement, followed by a LIMIT
+/// statement. we must not optimise that because we would modify results then.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
+void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
   assert(scope);
   if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
     scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
     LOG_TRACE("setting limit status to ignorable");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restrict a offset/limit combination for the top scope to not apply
+/// a limit optimisation on collection access, but to apply it on for loop 
+/// traversal
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RestrictCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
+  TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+
+  assert(scope);
+  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    scope->_limit._hasFilter = true;
+    LOG_TRACE("setting limit status to use-in-for-loop");
   }
 }
 
@@ -190,14 +215,10 @@ void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const wa
   assert(scope);
 
   if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
-    scope->_limit._limit  = limit;
-    scope->_limit._offset = offset;
-    scope->_limit._status = TRI_AQL_LIMIT_USE;
-    LOG_TRACE("setting limit status to used");
-  }
-  else {
-    scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
-    LOG_TRACE("setting limit status to ignorable");
+    // never overwrite a previously picked up limit
+    scope->_limit._limit   = limit;
+    scope->_limit._offset  = offset;
+    scope->_limit._status  = TRI_AQL_LIMIT_USE;
   }
 }
 

@@ -80,8 +80,11 @@ typedef struct TRI_aql_codegen_scope_s {
   TRI_aql_codegen_register_t _keyRegister;
   TRI_aql_codegen_register_t _ownRegister;
   TRI_aql_codegen_register_t _resultRegister;
+  TRI_aql_codegen_register_t _offsetRegister; // limit offset, limit
+  TRI_aql_codegen_register_t _limitRegister;  // limit offset, limit
   TRI_associative_pointer_t _variables; // list of variables in scope
-  char* _prefix; // prefix for variable names, used in FUNCTION scopes only
+  char* _prefix;                        // prefix for variable names, used in FUNCTION scopes only
+  TRI_aql_for_hint_t* _hint;            // generic hint
 }
 TRI_aql_codegen_scope_t;
 

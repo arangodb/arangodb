@@ -28,12 +28,7 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_ERROR_H
 #define TRIAGENS_DURHAM_AHUACATL_ERROR_H 1 
 
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/associative.h>
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {

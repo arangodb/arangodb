@@ -28,20 +28,20 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_BIND_PARAMETER_H
 #define TRIAGENS_DURHAM_AHUACATL_BIND_PARAMETER_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/json.h>
+#include "BasicsC/common.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/hashes.h"
+#include "BasicsC/vector.h"
+#include "BasicsC/associative.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-conversions.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
+struct TRI_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -58,7 +58,7 @@ extern "C" {
 
 typedef struct TRI_aql_bind_parameter_s {
   char* _name;
-  TRI_json_t* _value;
+  struct TRI_json_s* _value;
 }
 TRI_aql_bind_parameter_t;
 
@@ -93,26 +93,26 @@ bool TRI_EqualBindParameterAql (TRI_associative_pointer_t*,
 /// @brief free bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBindParametersAql (TRI_aql_context_t* const);
+void TRI_FreeBindParametersAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddParameterValuesAql (TRI_aql_context_t* const, 
-                                const TRI_json_t* const);
+bool TRI_AddParameterValuesAql (struct TRI_aql_context_s* const, 
+                                const struct TRI_json_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate bind parameters passed
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const);
+bool TRI_ValidateBindParametersAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inject values of bind parameters into query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InjectBindParametersAql (TRI_aql_context_t* const);
+bool TRI_InjectBindParametersAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
