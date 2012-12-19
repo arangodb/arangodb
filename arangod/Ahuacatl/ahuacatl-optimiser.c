@@ -186,7 +186,6 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
   aql_optimiser_t* optimiser;
-  TRI_aql_collection_hint_t* hint;
   TRI_aql_scope_t* scope;
   
   if (node->_type != TRI_AQL_NODE_COLLECTION) {
@@ -201,7 +200,8 @@ static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
   if (scope != NULL && scope->_limit._status == TRI_AQL_LIMIT_USE) {
     // yes!
-    hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
+    TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
+
     if (hint != NULL) {
       hint->_limit._offset = scope->_limit._offset;
       hint->_limit._limit  = scope->_limit._limit;
