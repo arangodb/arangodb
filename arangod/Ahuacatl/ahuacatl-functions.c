@@ -27,7 +27,13 @@
 
 #include "Ahuacatl/ahuacatl-functions.h"
 
+#include "BasicsC/associative.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-collections.h"
+#include "Ahuacatl/ahuacatl-context.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -375,6 +381,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   if (len > 0 && 
       n > fieldAccess->_variableNameLength + len && 
       memcmp((void*) lookFor, (void*) name, len) == 0) {
+    // we'll now patch the collection hint
     TRI_aql_collection_hint_t* hint;
 
     // field name is collection.source.XXX, e.g. users.source._id

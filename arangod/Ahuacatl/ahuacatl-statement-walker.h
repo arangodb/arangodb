@@ -29,19 +29,17 @@
 #define TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_WALKER_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/strings.h"
 #include "BasicsC/vector.h"
 
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
-#include "Ahuacatl/ahuacatl-variable.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_scope_s;
+struct TRI_aql_variable_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                  modifiying statement list walker
@@ -92,10 +90,22 @@ typedef TRI_aql_node_t* (*TRI_aql_visit_f)(TRI_aql_statement_walker_t* const, TR
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove an offset/limit combination for the top scope
+/// @brief mark the scope so it ignores following offset/limit statement
+/// optimisations.
+/// this is necessary if we find a SORT statement, followed by a LIMIT
+/// statement. we must not optimise that because we would modify results then.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const);
+void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restrict a offset/limit combination for the top scope to not apply
+/// a limit optimisation on collection access, but to apply it on for loop 
+/// traversal. this is applied when a FILTER statement is found in a scope
+/// and that is later followed by a LIMIT statement
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RestrictCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief note an offset/limit combination for the top scope
@@ -122,15 +132,15 @@ void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const,
 /// @brief get current top scope of statement walker
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_scope_t* TRI_GetCurrentScopeStatementWalkerAql (TRI_aql_statement_walker_t* const);
+struct TRI_aql_scope_s* TRI_GetCurrentScopeStatementWalkerAql (TRI_aql_statement_walker_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to a variable, identified by its name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const,
-                                                       const char* const,
-                                                       size_t*);
+struct TRI_aql_variable_s* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_t* const,
+                                                              const char* const,
+                                                              size_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a statement walker

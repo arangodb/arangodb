@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
+
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-parser-functions.h"
@@ -190,12 +191,15 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
                                       const char* const name,
                                       const TRI_aql_node_t* const expression) {
   CREATE_NODE(TRI_AQL_NODE_FOR)
+
+  // initialise
+  TRI_AQL_NODE_DATA(node) = NULL;
   
   if (name == NULL) {
     ABORT_OOM
   }
 
-  if (!TRI_IsValidVariableNameAql(name)) { 
+  if (! TRI_IsValidVariableNameAql(name)) { 
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
     return NULL;
   }
@@ -204,6 +208,20 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
     TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
+  }
+  
+  {
+    TRI_aql_for_hint_t* hint;
+    
+    // init for hint
+    hint = TRI_CreateForHintScopeAql(context);
+
+    // attach the hint to the loop
+    TRI_AQL_NODE_DATA(node) = hint;
+
+    if (hint == NULL) {
+      return NULL;
+    }
   }
  
   return node;
@@ -222,7 +240,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
   
-  if (!TRI_IsValidVariableNameAql(name)) { 
+  if (! TRI_IsValidVariableNameAql(name)) { 
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name); 
     return NULL;
   }
@@ -354,7 +372,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
     ABORT_OOM
   }
   
-  if (!TRI_AddVariableScopeAql(context, name, definingNode)) {
+  if (! TRI_AddVariableScopeAql(context, name, definingNode)) {
     // duplicate variable name 
     TRI_SetErrorContextAql(context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name); 
     return NULL;
@@ -780,7 +798,7 @@ TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
                                          const TRI_aql_node_t* const expansion) {
   CREATE_NODE(TRI_AQL_NODE_EXPAND)
 
-  if (!varname) {
+  if (! varname) {
     ABORT_OOM
   }
 
@@ -918,6 +936,9 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
                                         const TRI_aql_node_t* const parameters) {
   CREATE_NODE(TRI_AQL_NODE_FCALL)
 
+  // initialise
+  TRI_AQL_NODE_DATA(node) = NULL;
+
   if (name == NULL) {
     ABORT_OOM
   }
@@ -978,7 +999,7 @@ bool TRI_PushArrayAql (TRI_aql_context_t* const context,
   assert(node);
   
   element = TRI_CreateNodeArrayElementAql(context, name, value);
-  if (!element) {
+  if (! element) {
     ABORT_OOM
   }
 

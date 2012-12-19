@@ -28,18 +28,17 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_QUERY_FUNCTIONS_H
 #define TRIAGENS_DURHAM_AHUACATL_QUERY_FUNCTIONS_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/strings.h>
+#include "BasicsC/common.h"
 
-#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
+struct TRI_aql_field_access_s;
+struct TRI_associative_pointer_s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Ahuacatl
@@ -58,7 +57,7 @@ typedef struct TRI_aql_function_s {
   const char* _argPattern;
   size_t _minArgs;
   size_t _maxArgs;
-  void (*optimise)(const TRI_aql_node_t* const, TRI_aql_context_t* const, TRI_aql_field_access_t*);
+  void (*optimise)(const TRI_aql_node_t* const, struct TRI_aql_context_s* const, struct TRI_aql_field_access_s*);
 }
 TRI_aql_function_t;
 
@@ -66,19 +65,19 @@ TRI_aql_function_t;
 /// @brief initialise the array with the function declarations 
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void);
+struct TRI_associative_pointer_s* TRI_InitialiseFunctionsAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the array with the function declarations 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeFunctionsAql (TRI_associative_pointer_t*);
+void TRI_FreeFunctionsAql (struct TRI_associative_pointer_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a function, looked up by its external name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t*,
+TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (struct TRI_associative_pointer_s*,
                                                       const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,13 +90,13 @@ const char* TRI_GetInternalNameFunctionAql (const TRI_aql_function_t* const);
 /// @brief register a function name
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterFunctionAql (TRI_associative_pointer_t*, 
+bool TRI_RegisterFunctionAql (struct TRI_associative_pointer_s*,
                               const char* const, 
                               const char* const, 
                               const bool,
                               const bool,
                               const char* const,
-                              void (*)(const TRI_aql_node_t* const, TRI_aql_context_t* const, TRI_aql_field_access_t*));
+                              void (*)(const TRI_aql_node_t* const, struct TRI_aql_context_s* const, struct TRI_aql_field_access_s*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a function argument must be converted to another type
@@ -110,7 +109,7 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const,
 /// @brief validate the arguments passed to a function
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const,
+bool TRI_ValidateArgsFunctionAql (struct TRI_aql_context_s* const,
                                   const TRI_aql_function_t* const,
                                   const TRI_aql_node_t* const);
 

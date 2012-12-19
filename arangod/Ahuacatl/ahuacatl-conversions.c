@@ -26,6 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-conversions.h"
+
+#include "BasicsC/conversions.h"
+#include "BasicsC/json.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
+
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-node.h"
 

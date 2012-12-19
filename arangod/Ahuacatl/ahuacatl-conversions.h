@@ -28,16 +28,16 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_CONVERSIONS_H
 #define TRIAGENS_DURHAM_AHUACATL_CONVERSIONS_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/json.h>
-#include <BasicsC/string-buffer.h>
+#include "BasicsC/common.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
+struct TRI_string_buffer_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -52,21 +52,21 @@ extern "C" {
 /// @brief create a json struct from a value node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const,
-                             const TRI_aql_node_t* const);
+struct TRI_json_s* TRI_NodeJsonAql (struct TRI_aql_context_s* const,
+                                    const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a value node from a json struct
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const,
-                                 const TRI_json_t* const);
+TRI_aql_node_t* TRI_JsonNodeAql (struct TRI_aql_context_s* const,
+                                 const struct TRI_json_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a value node to its Javascript representation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const, 
+bool TRI_ValueJavascriptAql (struct TRI_string_buffer_s* const, 
                              const TRI_aql_value_t* const,
                              const TRI_aql_value_type_e);
 
@@ -74,14 +74,14 @@ bool TRI_ValueJavascriptAql (TRI_string_buffer_t* const,
 /// @brief convert a node to its Javascript representation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const, 
+bool TRI_NodeJavascriptAql (struct TRI_string_buffer_s* const, 
                             const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a value node to a string representation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValueStringAql (TRI_string_buffer_t* const, 
+bool TRI_ValueStringAql (struct TRI_string_buffer_s* const, 
                          const TRI_aql_value_t* const,
                          const TRI_aql_value_type_e);
 
@@ -89,7 +89,7 @@ bool TRI_ValueStringAql (TRI_string_buffer_t* const,
 /// @brief convert a node to its string representation, used for printing it
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_NodeStringAql (TRI_string_buffer_t* const , 
+bool TRI_NodeStringAql (struct TRI_string_buffer_s* const, 
                         const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////

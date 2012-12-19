@@ -28,15 +28,13 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_STATEMENT_DUMP_H
 #define TRIAGENS_DURHAM_AHUACATL_STATEMENT_DUMP_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-
-#include "Ahuacatl/ahuacatl-node.h"
-#include "Ahuacatl/ahuacatl-statementlist.h"
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_statement_list_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -73,7 +71,7 @@ TRI_aql_dump_t;
 /// @brief dump statement list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpStatementsAql (TRI_aql_statement_list_t* const);
+void TRI_DumpStatementsAql (struct TRI_aql_statement_list_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

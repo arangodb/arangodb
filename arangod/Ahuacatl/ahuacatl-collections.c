@@ -26,9 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-collections.h"
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
 
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
 #include "VocBase/index.h"
+#include "VocBase/primary-collection.h"
+
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
+#include "Ahuacatl/ahuacatl-context.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -261,7 +266,7 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
                          indexDescription);
   }
 
-  if (hint->_limit._use) {
+  if (hint->_limit._status == TRI_AQL_LIMIT_USE) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
                          result,
                          "limit", 
@@ -284,10 +289,13 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
     return NULL;
   }
 
-  hint->_ranges      = NULL;
-  hint->_index       = NULL;
-  hint->_collection  = NULL;
-  hint->_limit._use  = false;
+  hint->_ranges        = NULL;
+  hint->_index         = NULL;
+  hint->_collection    = NULL;
+
+  hint->_limit._offset = 0;
+  hint->_limit._limit  = INT64_MAX;
+  hint->_limit._status = TRI_AQL_LIMIT_UNDEFINED;
 
   return hint;
 }

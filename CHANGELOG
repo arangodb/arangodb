@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #326: use limit optimisation with filters
+
 * issue #324: add limit optimisation to AQL
 
 * removed arango-password script and added Javascript functionality to add/delete

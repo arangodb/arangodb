@@ -28,8 +28,13 @@
 #include "ahuacatl-access-optimiser.h"
 
 #include "BasicsC/json.h"
+#include "BasicsC/json-utilities.h"
+#include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
 
+#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 
 // -----------------------------------------------------------------------------

@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_PARSER_FUNCTIONS_H
 #define TRIAGENS_DURHAM_AHUACATL_PARSER_FUNCTIONS_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-error.h"
