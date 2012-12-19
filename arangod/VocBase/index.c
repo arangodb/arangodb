@@ -4365,8 +4365,6 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
   
   LOG_TRACE("destroying fulltext index");
 
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
-
   TRI_FreeFtsIndex(fulltextIndex->_fulltextIndex);
 }
 
