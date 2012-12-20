@@ -202,8 +202,7 @@ static bool IsSortContained (const TRI_vector_pointer_t* const lhs,
   for (i = 0; i < rhs->_length; ++i) {
     char* lhsName = (char*) TRI_AtVectorPointer(lhs, i);
     char* rhsName = (char*) TRI_AtVectorPointer(rhs, i);
-   
-    LOG_INFO("%s = %s", lhsName, rhsName);
+  
     if (! TRI_EqualString(lhsName, rhsName)) {
       return false;
     }
@@ -488,10 +487,30 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     }
   }
   else if (node->_type == TRI_AQL_NODE_SORT) {
+    // we have found a SORT statement
+    // now check if we can avoid it. this will be the case if we access the
+    // collection via a sorted index (skiplist)
+    TRI_aql_scope_t* scope;
+      
     if (CanAvoidSort(walker, node)) {
       LOG_TRACE("removing unnecessary sort statement");
 
       return TRI_GetDummyNopNodeAql();
+    }
+
+    // we have found a SORT statement, but it must be preserved
+
+    // we must now free the sort criteria we collected for the scope
+    // otherwise we would get potentially invalid SORT results
+    scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+    assert(scope);
+
+    while (scope->_sorts._length > 0) {
+      char* criterion = TRI_RemoveVectorPointer(&scope->_sorts, (size_t) (scope->_sorts._length - 1));
+
+      if (criterion != NULL) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
+      }
     }
   }
 
