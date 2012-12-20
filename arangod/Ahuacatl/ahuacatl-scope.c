@@ -41,14 +41,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the next scope id
-////////////////////////////////////////////////////////////////////////////////
-
-static inline size_t NextId (TRI_aql_context_t* const context) {
-  return ++context->_scopeIndex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +109,6 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  scope->_id               = NextId(context);
   scope->_type             = NextType(context, type);
   scope->_ranges           = NULL;
   scope->_selfContained    = true;
@@ -127,6 +118,8 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   scope->_limit._status    = TRI_AQL_LIMIT_UNDEFINED;
   scope->_limit._hasFilter = false;
   scope->_limit._found     = 0;
+
+  TRI_InitVectorPointer(&scope->_sorts, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
@@ -161,6 +154,14 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
     // free ranges if set
     TRI_FreeAccessesAql(scope->_ranges);
   }
+
+  for (i = 0; i < scope->_sorts._length; ++i) {
+    char* criterion = (char*) TRI_AtVectorPointer(&scope->_sorts, i);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
+  }
+  
+  TRI_DestroyVectorPointer(&scope->_sorts);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }

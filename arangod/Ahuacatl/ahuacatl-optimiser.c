@@ -40,11 +40,22 @@
 #include "Ahuacatl/ahuacatl-variable.h"
 
 #include "VocBase/document-collection.h"
+#include "VocBase/index.h"
 
 #include "V8/v8-execution.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
+// -----------------------------------------------------------------------------
+
+static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const, 
+                                     TRI_aql_node_t*);
+
+static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const, 
+                                         TRI_aql_node_t*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,18 +64,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a node recursively
+/// @brief maximum buffer length when comparing sort conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const, 
-                                     TRI_aql_node_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimise a statement
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const, 
-                                         TRI_aql_node_t*);
+#define COMPARE_LENGTH 128
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -131,6 +134,134 @@ static void FreeOptimiser (aql_optimiser_t* const optimiser) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a vector of sort criteria from a SORT statement in stringified
+/// format (e.g. ["u.name", "u._id"]
+////////////////////////////////////////////////////////////////////////////////
+
+static bool GetSorts (TRI_aql_statement_walker_t* const walker,
+                      const TRI_aql_node_t* const node,
+                      TRI_vector_pointer_t* const sorts) {
+  TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_string_buffer_t buffer;
+  size_t i;
+
+  if (! list || list->_members._length == 0) {
+    // no sorts defined. this should not happen if we get here
+    return false;
+  }
+  
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+
+  for (i = 0; i < list->_members._length; ++i) { 
+    // sort element
+    TRI_aql_node_t* element    = TRI_AQL_NODE_MEMBER(list, i);
+    TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(element, 0);
+  
+    if (! expression) {
+      TRI_DestroyStringBuffer(&buffer);
+      return false;
+    }
+
+    // check sort order. we can only optimise ascending sorts
+    if (TRI_AQL_NODE_BOOL(element)) {
+      // order is ascending
+      char* copy;
+      
+      TRI_ClearStringBuffer(&buffer);
+      TRI_NodeStringAql(&buffer, expression);
+
+      copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
+      if (copy == NULL) {
+        // out of memory
+        TRI_DestroyStringBuffer(&buffer);
+        return false;
+      }
+      TRI_PushBackVectorPointer(sorts, copy);
+    }
+    else {
+      // order is descending
+      TRI_DestroyStringBuffer(&buffer);
+      return false;
+    }
+  }
+  
+  TRI_DestroyStringBuffer(&buffer);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if the rhs vector of sort conditions is fully contained in the
+/// lhs vector of sort conditions
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsSortContained (const TRI_vector_pointer_t* const lhs,
+                             const TRI_vector_pointer_t* const rhs) {
+  size_t i;
+
+  for (i = 0; i < rhs->_length; ++i) {
+    char* lhsName = (char*) TRI_AtVectorPointer(lhs, i);
+    char* rhsName = (char*) TRI_AtVectorPointer(rhs, i);
+   
+    LOG_INFO("%s = %s", lhsName, rhsName);
+    if (! TRI_EqualString(lhsName, rhsName)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a sort can be avoided. this compares sort criteria
+/// implicitly introduced by using an index with explicit sort criteria defined
+/// by a SORT statement. If the SORT criteria is fully covered by using the
+/// index, the SORT statement can be avoided
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CanAvoidSort (TRI_aql_statement_walker_t* const walker,
+                          const TRI_aql_node_t* const node) {
+  TRI_aql_scope_t* scope;
+  TRI_vector_pointer_t nodeSorts;
+  size_t i;
+  bool canUse;
+  bool result;
+
+  scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+  assert(scope);
+
+  if (scope->_type == TRI_AQL_SCOPE_MAIN) {
+    // will not optimise main scope
+    return false;
+  }
+
+  if (scope->_sorts._length == 0) {
+    // no sort criteria collected
+    return false;
+  }
+
+  TRI_InitVectorPointer(&nodeSorts, TRI_UNKNOWN_MEM_ZONE);
+  result = false;
+
+  // get all sort criteria from the SORT statement
+  canUse = GetSorts(walker, node, &nodeSorts);
+  if (canUse && nodeSorts._length > 0 && nodeSorts._length <= scope->_sorts._length) {
+    result = IsSortContained(&scope->_sorts, &nodeSorts);
+  }
+  
+  // free all sort criteria fetched from the node
+  for (i = 0; i < nodeSorts._length; ++i) {
+    char* criterion = (char*) TRI_AtVectorPointer(&nodeSorts, i);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
+  }
+
+  TRI_DestroyVectorPointer(&nodeSorts);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief pick an index for the ranges found
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -182,8 +313,97 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
                               availableIndexes, 
                               collectionName, 
                               hint->_ranges);
-  
+
   hint->_index = idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy the sort criteria implicitly introduced by using an index to
+/// the current scope. when we encounter a SORT statement, we'll compare the
+/// sort criteria in the statement and in the scope, and if they match, we
+/// can avoid the extra sorting
+////////////////////////////////////////////////////////////////////////////////
+    
+static void AttachSort (TRI_aql_scope_t* const scope, 
+                        const TRI_aql_collection_hint_t* const hint) {
+  TRI_index_t* idx;
+  char tmp[COMPARE_LENGTH + 2];
+  size_t offset;
+  size_t i;
+
+  assert(hint);
+  assert(scope);
+  
+  if (scope->_type == TRI_AQL_SCOPE_MAIN) {
+    // will not optimise sort in main scope
+    return;
+  }
+
+  if (scope->_sorts._length > 0) {
+    // sorts already defined for the scope. do not overwrite
+    return;
+  }
+  
+  if (hint->_variableName == NULL) {
+    // no variable name set up for the hint. we don't know enough about it to use it
+    return;
+  }
+  
+  if (hint->_index == NULL || hint->_index->_idx == NULL) {
+    return;
+  }
+
+  idx = hint->_index->_idx;
+
+  // got a valid index access for the collection
+
+  // we are looking for skiplist indexes only, as they are sorted
+  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    // not a skiplist
+    return;
+  }
+  
+  // offset for variable name, containing the dot (e.g. 2 for "u")
+  offset = strlen(hint->_variableName);
+  if (offset > COMPARE_LENGTH) {
+    // variable name is too long
+    return;
+  }
+  
+  // copy variable name into buffer for comparisions
+  memcpy(tmp, hint->_variableName, offset);
+  tmp[offset++] = '.';
+  
+  for (i = 0; i < idx->_fields._length; ++i) {
+    char* indexName = (char*) idx->_fields._buffer[i];
+    char* copy;
+    size_t len;
+   
+    len = strlen(indexName);
+    if (len + offset > COMPARE_LENGTH) {
+      // name is too long
+      return;
+    }
+    memcpy(tmp + offset, indexName, len);
+    tmp[offset + len] = '\0'; 
+
+    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp, offset + len);
+    if (copy == NULL) {
+      // out of memory. now free all criteria we have collected
+      size_t j;
+
+      for (j = 0; j < scope->_sorts._length; ++j) {
+        char* criterion = (char*) scope->_sorts._buffer[j];
+
+        if (criterion != NULL) {
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
+        }
+      }
+      return;
+    }
+
+    TRI_PushBackVectorPointer(&scope->_sorts, copy);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,21 +417,27 @@ static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
   if (node->_type == TRI_AQL_NODE_COLLECTION) {
     aql_optimiser_t* optimiser;
     TRI_aql_scope_t* scope;
+    TRI_aql_collection_hint_t* hint;
 
     optimiser = (aql_optimiser_t*) walker->_data;
 
     AttachCollectionHint(optimiser->_context, node);
-    
-    // check if we can apply a scope limit and push it into the collection
+
+    hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
     
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
     assert(scope);
 
+    // check if an index is to be used
+    if (hint != NULL) {
+      AttachSort(scope, hint);
+    }
+    
+    // check if we can apply a scope limit and push it into the collection
+
     if (scope->_limit._status == TRI_AQL_LIMIT_USE && 
         ! scope->_limit._hasFilter) {
       // yes!
-      TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
-      
       LOG_TRACE("using limit hint for collection");
 
       if (hint != NULL) {
@@ -261,7 +487,14 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
       scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
     }
   }
-  
+  else if (node->_type == TRI_AQL_NODE_SORT) {
+    if (CanAvoidSort(walker, node)) {
+      LOG_TRACE("removing unnecessary sort statement");
+
+      return TRI_GetDummyNopNodeAql();
+    }
+  }
+
   return node;
 }
 
@@ -481,9 +714,9 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
   n = list->_members._length;
   while (i < n) {
     // sort element
-    TRI_aql_node_t* element = TRI_AQL_NODE_MEMBER(list, i);
+    TRI_aql_node_t* element    = TRI_AQL_NODE_MEMBER(list, i);
     TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(element, 0);
-
+  
     // check if the sort element is constant
     if (! expression || ! TRI_IsConstantValueNodeAql(expression)) {
       ++i;
@@ -503,6 +736,8 @@ static TRI_aql_node_t* OptimiseSort (TRI_aql_statement_walker_t* const walker,
 
     return TRI_GetDummyNopNodeAql();
   }
+  
+  // if we got here, at least one sort criterion remained
 
   return node;
 }
@@ -1132,14 +1367,15 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     isReference = (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE);
 
     variable = TRI_GetVariableStatementWalkerAql(walker, variableName, &scopeCount);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
 
     if (variable == NULL) {
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
       continue;
     }
 
     if (isReference && scopeCount > 0) {
       // unfortunately, the referenced variable is in an outer scope, so we cannot use it
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
       continue;
     }
 
@@ -1176,18 +1412,46 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
 
       if (expressionNode->_type == TRI_AQL_NODE_COLLECTION) {
         TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(expressionNode));
+        if (hint->_variableName == NULL) {
+          // note the variable name used for the collection (e.g. "u" for "FOR u IN users")
+          hint->_variableName = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, variableName);
+        }
 
         // set new value
         hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
       }
     }
+    
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, variableName);
   } 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note LIMIT values for the current scope
+/// these values may be used later for pushing a LIMIT into a for-loop or a 
+/// collection accessor
+////////////////////////////////////////////////////////////////////////////////
+
+static void NoteLimit (TRI_aql_statement_walker_t* const walker,
+                       const TRI_aql_node_t* const node) {
+  TRI_aql_node_t* offset  = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_node_t* limit  = TRI_AQL_NODE_MEMBER(node, 1);
+  int64_t offsetValue = TRI_AQL_NODE_INT(offset);
+  int64_t limitValue = TRI_AQL_NODE_INT(limit);
+  TRI_aql_scope_t* scope;
+      
+  scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+  if (scope->_type != TRI_AQL_SCOPE_MAIN) {
+    // will not optimise limit in main scope, e.g. "LIMIT 5, 0 RETURN 1"
+    TRI_SetCurrentLimitStatementWalkerAql(walker, offsetValue, limitValue);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise a statement
 ///
 /// this is a callback function used by the statement walker
+/// it is called after the node is initially optimised
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
@@ -1196,6 +1460,10 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     if (node->_type == TRI_AQL_NODE_SORT) {
       // SORT means we must not push a following LIMIT clause up
       TRI_IgnoreCurrentLimitStatementWalkerAql(walker);
+    } 
+    else if (node->_type == TRI_AQL_NODE_COLLECT) {
+      // COLLECT means we must not push a following LIMIT clause up
+      TRI_IgnoreCurrentLimitStatementWalkerAql(walker);
     }
     else if (node->_type == TRI_AQL_NODE_FILTER) {
       // FILTER means we can push a following LIMIT clause up to the for loop, but not into the collection accessor
@@ -1203,17 +1471,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     }
     else if (node->_type == TRI_AQL_NODE_LIMIT) {
       // note the current limit, we might use it later, pushing it up
-      TRI_aql_node_t* offset  = TRI_AQL_NODE_MEMBER(node, 0);
-      TRI_aql_node_t* limit  = TRI_AQL_NODE_MEMBER(node, 1);
-      int64_t offsetValue = TRI_AQL_NODE_INT(offset);
-      int64_t limitValue = TRI_AQL_NODE_INT(limit);
-      TRI_aql_scope_t* scope;
-      
-      scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-      if (scope->_type != TRI_AQL_SCOPE_MAIN) {
-        // will not optimise limit in main scope, e.g. LIMIT 5, 0 RETURN 1 ?
-        TRI_SetCurrentLimitStatementWalkerAql(walker, offsetValue, limitValue);
-      }
+      NoteLimit(walker, node);
     }
 
     // this may change the node pointer
@@ -1260,7 +1518,7 @@ static bool DetermineIndexes (aql_optimiser_t* const optimiser) {
   TRI_aql_statement_walker_t* walker;
 
   walker = TRI_CreateStatementWalkerAql((void*) optimiser, 
-                                        false,
+                                        true,
                                         &AnnotateNode,
                                         &AnnotateLoop, 
                                         NULL);

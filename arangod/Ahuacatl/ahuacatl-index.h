@@ -49,7 +49,7 @@ struct TRI_aql_context_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_index_s {
-  TRI_index_t* _idx;
+  TRI_index_t*          _idx;
   TRI_vector_pointer_t* _fieldAccesses;
 }
 TRI_aql_index_t;
