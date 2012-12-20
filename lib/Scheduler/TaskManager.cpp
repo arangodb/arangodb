@@ -50,9 +50,9 @@ void TaskManager::deleteTask (Task* task) {
 
 void TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
   string name = task->getName();
-  bool ok;
-  ok = task->setup(scheduler, loop);
-  // todo: respond when not ok
+  bool ok = task->setup(scheduler, loop);
+  // TODO: respond when not ok
+  (void) ok;
 }
 
 

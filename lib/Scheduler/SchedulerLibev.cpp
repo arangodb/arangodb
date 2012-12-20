@@ -702,7 +702,7 @@ void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
 void* SchedulerLibev::lookupWatcher (EventToken token) {
   SCHEDULER_LOCK(&_watcherLock);
 
-  if (token >= _watchers.size()) {
+  if (token >= (EventToken) _watchers.size()) {
     SCHEDULER_UNLOCK(&_watcherLock);
     return 0;
   }
@@ -720,7 +720,7 @@ void* SchedulerLibev::lookupWatcher (EventToken token) {
 void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
   SCHEDULER_LOCK(&_watcherLock);
   
-  if (token >= _watchers.size()) {
+  if (token >= (EventToken) _watchers.size()) {
     SCHEDULER_UNLOCK(&_watcherLock);
     return 0;
   }
