@@ -292,7 +292,9 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
   hint->_ranges        = NULL;
   hint->_index         = NULL;
   hint->_collection    = NULL;
-
+  hint->_variableName  = NULL;
+ 
+  // init limit
   hint->_limit._offset = 0;
   hint->_limit._limit  = INT64_MAX;
   hint->_limit._status = TRI_AQL_LIMIT_UNDEFINED;
@@ -307,12 +309,16 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
 void TRI_FreeCollectionHintAql (TRI_aql_collection_hint_t* const hint) {
   assert(hint);
 
-  if (hint->_ranges) {
+  if (hint->_ranges != NULL) {
     TRI_FreeAccessesAql(hint->_ranges);
   }
 
-  if (hint->_index) {
+  if (hint->_index != NULL) {
     TRI_FreeIndexAql(hint->_index);
+  }
+
+  if (hint->_variableName != NULL) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, hint->_variableName);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, hint);

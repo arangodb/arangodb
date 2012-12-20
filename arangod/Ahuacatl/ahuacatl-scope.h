@@ -29,6 +29,7 @@
 #define TRIAGENS_DURHAM_AHUACATL_SCOPE_H 1
 
 #include "BasicsC/associative.h"
+#include "BasicsC/vector.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -89,12 +90,12 @@ TRI_aql_limit_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_scope_s {
-  TRI_associative_pointer_t _variables;
-  TRI_vector_pointer_t* _ranges;
-  TRI_aql_scope_e _type;
-  TRI_aql_limit_t _limit;
-  bool _selfContained;
-  size_t _id;
+  TRI_associative_pointer_t  _variables;     // variables contained in the scope
+  TRI_vector_pointer_t*      _ranges;        // filter conditions, used for optimisation
+  TRI_aql_limit_t            _limit;         // scope limit, used for optimisation
+  TRI_vector_pointer_t       _sorts;         // scope sort criteria, used for optimisation
+  TRI_aql_scope_e            _type;          // type of scope
+  bool                       _selfContained; // means: scope doesn't refer the exterior variables
 }
 TRI_aql_scope_t;
 

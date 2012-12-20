@@ -1142,7 +1142,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
                                     const TRI_aql_collection_t* const collection,
                                     const char* const collectionName) {
   size_t i, n;
-  
+
   n = idx->_fieldAccesses->_length;
   assert(n >= 1);
 

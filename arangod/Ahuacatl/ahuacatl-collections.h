@@ -80,10 +80,10 @@ struct TRI_aql_context_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_collection_s {
-  char* _name;
-  bool _readLocked;
   TRI_vocbase_col_t* _collection;
-  TRI_barrier_t* _barrier;
+  TRI_barrier_t*     _barrier;
+  char*              _name;
+  bool               _readLocked;
 }
 TRI_aql_collection_t;
 
@@ -101,6 +101,7 @@ typedef struct TRI_aql_collection_hint_s {
   TRI_aql_index_t*      _index;
   TRI_aql_collection_t* _collection;
   TRI_aql_limit_t       _limit;
+  char*                 _variableName;
 }
 TRI_aql_collection_hint_t;
 
