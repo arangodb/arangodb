@@ -77,7 +77,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>arangod64</TargetName>
-    <OutDir>c:\local2\learning\c++\vc++</OutDir>
+    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -98,7 +98,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>FD_SETSIZE=128;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FD_SETSIZE=1024;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -120,7 +120,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=128;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -144,7 +144,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FD_SETSIZE=128;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FD_SETSIZE=1024;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>Default</CompileAs>
@@ -172,7 +172,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=128;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\mygetopt;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>Default</CompileAs>

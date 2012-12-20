@@ -510,8 +510,6 @@ int TRI_RenameFile (char const* old, char const* filename) {
   moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING); 
   if (!moveResult) {
     DWORD errorCode = GetLastError();
-    printf("oreste:%s:%s:%d:MoveFileA=%d\n",__FILE__,__FUNCTION__,__LINE__,errorCode);
-    printf("oreste:%s:%s:%d:old=%s:new=%s\n",__FILE__,__FUNCTION__,__LINE__,old,filename);
     res = -1;
   }
   else {

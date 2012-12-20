@@ -5,11 +5,21 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief TOC files
+################################################################################
+
+DOXYGEN_TOC = \
+	Documentation/InstallationManual/InstallationManual.md \
+	Documentation/Manual/Home.md \
+	Documentation/UserManual/UserManual.md
+
+################################################################################
 ### @brief JavaScript files
 ################################################################################
 
 DOXYGEN = \
 	Doxygen/js/actions/system/api-collection.c \
+	Doxygen/js/actions/system/api-blueprints.c \
 	Doxygen/js/actions/system/api-cursor.c \
 	Doxygen/js/actions/system/api-edges.c \
 	Doxygen/js/actions/system/api-explain.c \
@@ -33,6 +43,8 @@ DOXYGEN = \
 
 WIKI = \
 	ArangoErrors \
+        Aql \
+        AqlExamples \
 	CommandLine \
 	Communication \
 	Compiling \
@@ -47,6 +59,7 @@ WIKI = \
 	Graphs \
 	Home \
 	HttpBatch \
+	HttpBlueprints \
 	HttpCollection \
 	HttpCursor \
 	HttpImport \
@@ -59,6 +72,7 @@ WIKI = \
 	ImplementorManual \
 	ImpManual \
 	ImpManualBasics \
+	IndexBitArray \
 	IndexCap \
 	IndexCapHttp \
 	IndexGeo \
@@ -77,6 +91,7 @@ WIKI = \
 	JSModules \
 	Key-Value \
 	NamingConventions \
+	NewFeatures11 \
 	RefManual \
 	RestDocument \
 	RestEdge \
@@ -86,12 +101,11 @@ WIKI = \
 	ShellEdge \
 	ShellIndex \
 	SimpleQueries \
+	Upgrading \
 	UserManual \
-	UserManualBasics \
 	UserManualArangosh \
+	UserManualWebInterface \
 	UserManualActions \
-        Aql \
-        AqlExamples \
 	jsUnity
 
 ## -----------------------------------------------------------------------------
@@ -111,6 +125,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions/system || mkdir -p Doxygen/js/actions/system
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
+	@test -d Doxygen/js/common/modules || mkdir -p Doxygen/js/common/modules
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images
@@ -137,22 +152,36 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
 
 ################################################################################
+### @brief doxygen toc
+################################################################################
+
+.PHONY: doxygen-toc
+
+doxygen-toc:
+	python @top_srcdir@/Documentation/Scripts/generateTOC.py $(DOXYGEN_TOC) >> Doxygen/toc.doxy.tmp
+	cmp -s Doxygen/toc.doxy Doxygen/toc.doxy.tmp || mv Doxygen/toc.doxy.tmp Doxygen/toc.doxy
+
+Doxygen/toc.doxy: doxygen-toc
+
+################################################################################
 ### @brief doxygen
 ################################################################################
 
 .PHONY: doxygen
 
-Doxygen/arango-html.doxy: Documentation/arango.template
+Doxygen/arango-html.doxy: Documentation/arango.template Doxygen/toc.doxy
 	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
+	cat Doxygen/toc.doxy >> $@
 
 doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
+	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-html.doxy > /dev/null
 
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/images
+	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/website
 
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
+	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
 	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/images
 	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
 
@@ -160,18 +189,19 @@ doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
 ### @brief wiki
 ################################################################################
 
-.PHONY: wiki wiki2
+.PHONY: wiki wiki-raw
 
-Doxygen/arango-xml.doxy: Documentation/arango.template
+Doxygen/arango-xml.doxy: Documentation/arango.template Doxygen/toc.doxy
 	sed -e 's:GENERATE_XML *= *NO:GENERATE_XML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = XML:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
+	cat Doxygen/toc.doxy >> $@
 
-wiki: wiki2 
+wiki: wiki-raw
 	@test -d Doxygen/wiki || mkdir Doxygen/wiki
 	@for w in $(WIKI); do python @top_srcdir@/Documentation/Scripts/xml2md.py Doxygen/xml/$$w.xml > Doxygen/xml/$$w.md; done
 	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/fixmd.sh Doxygen/xml/$$w.md; done
 
-wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
+wiki-raw: Doxygen/arango-xml.doxy $(DOXYGEN)
+	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-xml.doxy > /dev/null
 
 ################################################################################
@@ -180,11 +210,12 @@ wiki2: Doxygen/arango-xml.doxy $(DOXYGEN)
 
 .PHONY: latex
 
-Doxygen/arango-latex.doxy: Documentation/arango.template
+Doxygen/arango-latex.doxy: Documentation/arango.template Doxygen/toc.doxy
 	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
-	$(MAKE) lib/BasicsC/voc-errors.h
+	cat Doxygen/toc.doxy >> $@
 
 latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
+	$(MAKE) lib/BasicsC/voc-errors.h
 	doxygen Doxygen/arango-latex.doxy > /dev/null
 
 	echo "\def\arangodbversion{@PACKAGE_VERSION@}" > Doxygen/latex/version.tex
@@ -229,8 +260,7 @@ dist_man_MANS += \
         Documentation/man/man8/rcarangod.8 \
         Documentation/man/man8/arangod.8 \
         Documentation/man/man8/arango-dfdb.8 \
-        Documentation/man/man8/arango-password.8 \
-        Documentation/man/man8/arango-upgrade.8 
+        Documentation/man/man8/arango-password.8 
 
 
 if ENABLE_ARANGOB        
@@ -245,12 +275,7 @@ endif
 ################################################################################
 
 CLEANUP += \
-	$(DOXYGEN) \
-	Doxygen/doc \
-	Doxygen/latex \
-	Doxygen/website \
-	Doxygen/wiki \
-	Doxygen/xml
+	Doxygen/*
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

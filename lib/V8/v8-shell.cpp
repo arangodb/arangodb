@@ -110,9 +110,9 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
 /// @FUN{processCsvFile(@FA{filename}, @FA{callback})}
 ///
 /// Processes a CSV file. The @FA{callback} function is called for line in the
-/// file. The seperator is @CODE{\,} and the quote is @CODE{"}.
+/// file. The seperator is @LIT{\,} and the quote is @LIT{"}.
 ///
-/// Create the input file @CODE{csv.txt}
+/// Create the input file @LIT{csv.txt}
 ///
 /// @verbinclude fluent48
 ///
@@ -124,7 +124,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t r
 ///
 /// Processes a CSV file. The @FA{callback} function is called for line in the
 /// file. The @FA{options} argument must be an object. The value of
-/// @CODE{seperator} sets the seperator character and @CODE{quote} the quote
+/// @LIT{seperator} sets the seperator character and @LIT{quote} the quote
 /// character.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -232,7 +232,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 /// Processes a JSON file. The file must contain the JSON objects each on its
 /// own line. The @FA{callback} function is called for each object.
 ///
-/// Create the input file @CODE{json.txt}
+/// Create the input file @LIT{json.txt}
 ///
 /// @verbinclude fluent49
 ///

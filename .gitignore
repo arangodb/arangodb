@@ -20,6 +20,7 @@ mr-*.h
 
 Doxygen/doc/
 Doxygen/manuals/
+Doxygen/man/
 Doxygen/website/
 Doxygen/wiki/
 Doxygen/xml/
@@ -67,3 +68,5 @@ lib/BasicsC/voc-errors.c
 lib/BasicsC/voc-errors.h
 lib/JsonParser/json-parser.c
 lib/V8/v8-json.cpp
+
+Installation/epm/arangodb.sublist

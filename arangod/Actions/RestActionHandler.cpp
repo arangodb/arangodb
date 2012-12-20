@@ -55,7 +55,6 @@ RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* da
     _queue(),
     _allowed(false) {
 
- //printf("oreste:7000:CCCCCCCCCCCCC:RestActionHandler::RestActionHandler:%d:[]\n",__LINE__);
 
   _action = TRI_LookupActionVocBase(request);
 

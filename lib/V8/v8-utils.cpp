@@ -432,7 +432,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
 
   if (content == 0) {
-    LOG_TRACE("cannot loaded java script file '%s': %s", filename, TRI_last_error());
+    LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
     return false;
   }
 
@@ -532,6 +532,54 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
 /// @addtogroup V8Utils
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a Javascript snippet, but do not execute it
+///
+/// @FUN{internal.parse(@FA{script})}
+///
+/// Parses the @FA{script} code, but does not execute it.
+/// Will return @LIT{true} if the code does not have a parse error, and throw
+/// an exception otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  if (argv.Length() < 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: parse(<script>)")));
+  }
+  
+  v8::Handle<v8::Value> source = argv[0];
+  v8::Handle<v8::Value> filename;
+
+  if (argv.Length() > 1) {
+    filename = argv[1];
+  }
+  else {
+    filename = v8::String::New("(snippet)");
+  }
+  
+  if (! source->IsString()) {
+    return scope.Close(v8::ThrowException(v8::String::New("<script> must be a string")));
+  }
+
+  v8::Handle<v8::Script> script = v8::Script::Compile(source->ToString(), filename);
+
+  // compilation failed, we have caught an exception
+  if (tryCatch.HasCaught()) {
+    string err = TRI_StringifyV8Exception(&tryCatch);
+    return scope.Close(v8::ThrowException(v8::String::New(err.c_str())));
+  }
+  
+  // compilation failed, we don't know why
+  if (script.IsEmpty()) {
+    return scope.Close(v8::False());
+  }
+
+  return scope.Close(v8::True());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a script
@@ -1605,6 +1653,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // .............................................................................
   // create the global functions
   // .............................................................................
+
+  context->Global()->Set(v8::String::New("SYS_PARSE"),
+                         v8::FunctionTemplate::New(JS_Parse)->GetFunction(),
+                         v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_EXECUTE"),
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),

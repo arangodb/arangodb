@@ -1,5 +1,99 @@
-v1.1.beta1 (2012-XX-XX)
+v1.1.0 (2012-12-05)
+-------------------
+
+* WARNING:
+  arangod now performs a database version check at startup. It will look for a file
+  named "VERSION" in its database directory. If the file is not present, arangod will
+  perform an automatic upgrade of the database directory. This should be the normal
+  case when upgrading from ArangoDB 1.0 to ArangoDB 1.1.
+
+  If the VERSION file is present but is from an older version of ArangoDB, arangod 
+  will refuse to start and ask the user to run a manual upgrade first. A manual upgrade
+  can be performed by starting arangod with the option `--upgrade`. 
+
+  This upgrade procedure shall ensure that users have full control over when they 
+  perform any updates/upgrades of their data, and can plan backups accordingly. The
+  procedure also guarantees that the server is not run without any required system
+  collections or with in incompatible data state.
+
+* added AQL function DOCUMENT() to retrieve a document by its _id value
+
+* fixed issue #311: fixed segfault on unload 
+
+* fixed issue #309: renamed stub "import" button from web interface
+
+* fixed issue #307: added WaitForSync column in collections list in in web interface 
+
+* fixed issue #306: naming in web interface 
+
+* fixed issue #304: do not clear AQL query text input when switching tabs in
+  web interface
+
+* fixed issue #303: added documentation about usage of var keyword in web interface
+
+* fixed issue #301: PATCH does not work in web interface
+
+# fixed issue #269: fix make distclean & clean
+
+* fixed issue #296: system collections not usable from AQL
+
+* fixed issue #295: deadlock on shutdown
+
+* added collection type label to web interface
+
+* fixed issue #290: the web interface now disallows creating non-edges in edge collections
+  when creating collections via the web interface, the collection type must also be
+  specified (default is document collection)
+
+* fixed issue #289: tab-completion does not insert any spaces
+
+* fixed issue #282: fix escaping in web interface
+
+* made AQL function NOT_NULL take any number of arguments. Will now return its
+  first argument that is not null, or null if all arguments are null. This is downwards
+  compatible.
+
+* changed misleading AQL function name NOT_LIST() to FIRST_LIST() and slightly changed
+  the behavior. The function will now return its first argument that is a list, or null 
+  if none of the arguments are lists.
+  This is mostly downwards-compatible. The only change to the previous implementation in
+  1.1-beta will happen if two arguments were passed and the 1st and 2nd arguments were 
+  both no lists. In previous 1.1, the 2nd argument was returned as is, but now null 
+  will be returned.
+
+* add AQL function FIRST_DOCUMENT(), with same behavior as FIRST_LIST(), but working
+  with documents instead of lists.
+
+* added UPGRADING help text
+
+* fixed issue #284: fixed Javascript errors when adding edges/vertices without own
+  attributes
+
+* fixed issue #283: AQL LENGTH() now works on documents, too
+
+* fixed issue #281: documentation for skip lists shows wrong example
+
+* fixed AQL optimiser bug, related to OR-combined conditions that filtered on the
+  same attribute but with different conditions
+
+* fixed issue #277: allow usage of collection names when creating edges
+  the fix of this issue also implies validation of collection names / ids passed to
+  the REST edge create method. edges with invalid collection ids or names in the
+  "from" or "to" values will be rejected and not saved
+
+
+v1.1.beta2 (2012-11-13)
 -----------------------
+
+* fixed arangoirb compilation
+
+* fixed doxygen
+
+
+v1.1.beta1 (2012-10-24)
+-----------------------
+
+* fixed AQL optimiser bug
 
 * WARNING:
   - the user has changed from "arango" to "arangodb", the start script has changed from
@@ -14,6 +108,12 @@ v1.1.beta1 (2012-XX-XX)
     And there's of course also db._createDocumentCollection(). 
     db._create() is also still there and will create a document collection by default, 
     whereas edges._create() will create an edge collection.
+
+  - the admin web interface that was previously available via the simple URL suffix / 
+    is now available via a dedicated URL suffix only: /_admin/html
+    The reason for this is that routing and URLs are now subject to changes by the end user,
+    and only URLs parts prefixed with underscores (e.g. /_admin or /_api) are reserved
+    for ArangoDB's internal usage.
 
 * the server now handles requests with invalid Content-Length header values as follows:
   - if Content-Length is negative, the server will respond instantly with HTTP 411
@@ -32,7 +132,10 @@ v1.1.beta1 (2012-XX-XX)
   - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
     the server will fail with HTTP 431 (request header fields too large)
 
-* issue #252: create _modules collection using arango-upgrade
+* issue #265: allow optional base64 encoding/decoding of action response data
+
+* issue #252: create _modules collection using arango-upgrade (note: arango-upgrade was
+  finally replaced by the `--upgrade` option for arangod)
 
 * issue #251: allow passing arbitrary options to V8 engine using new command line option:
   --javascript.v8-options. Using this option, the Harmony features or other settings in
@@ -111,7 +214,8 @@ v1.1.beta1 (2012-XX-XX)
 
 * issue #189: key store should use ISO datetime format bug 
 
-* issue #187: run arango-upgrade on server start 
+* issue #187: run arango-upgrade on server start (note: arango-upgrade was finally
+  replaced by the `--upgrade` option for arangod)n
 
 * fixed issue #183: strange unittest error
 
@@ -144,6 +248,7 @@ v1.1.beta1 (2012-XX-XX)
   and after upgrading from a previous version of ArangoDB. The arango-upgrade script
   will ensure all system collections are created and present in the correct state.
   It will also perform any necessary data updates.
+  Note: arango-upgrade was finally replaced by the `--upgrade` option for arangod.
 
 * issue #153: edge collection should be a flag for a collection
   collections now have a type so that the distinction between document and edge 
@@ -164,9 +269,9 @@ v1.1.beta1 (2012-XX-XX)
   INCOMPATIBLE CHANGE: Client code might still need to be changed in the following aspect:
   Previously, collections did not have a type so documents and edges could be inserted
   in the same collection. This is now disallowed. Edges can only be inserted into
-  edge collections now. As there were no collection types in 1.0, the upgrade script
-  arango-upgrade must be run when migrating to 1.1. This script will check every 
-  collection and determine its type as follows:
+  edge collections now. As there were no collection types in 1.0, ArangoDB will perform
+  an automatic upgrade when migrating from 1.0 to 1.1.
+  The automatic upgrade will check every collection and determine its type as follows:
   - if among the first 50 documents in the collection there are documents with
     attributes "_from" and "_to", the collection is typed as an edge collection
   - if among the first 50 documents in the collection there are no documents with
@@ -180,6 +285,25 @@ v1.1.beta1 (2012-XX-XX)
   documents. Overwriting/replacing documents is still available via the HTTP PUT method
   as before. The Javascript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
+
+
+v1.0.4 (2012-11-12)
+-------------------
+
+* issue #275: strange error message in arangosh 1.0.3 at startup
+
+
+v1.0.3 (2012-11-08)
+-------------------
+
+* fixed AQL optimiser bug
+
+* issue #273: fixed segfault in arangosh on HTTP 40x 
+
+* issue #265: allow optional base64 encoding/decoding of action response data
+
+* issue #252: _modules collection not created automatically
+
 
 v1.0.2 (2012-10-22)
 -------------------
@@ -195,6 +319,7 @@ v1.0.2 (2012-10-22)
 * added autoload for modules
 
 * added AQL function TO_LIST
+
 
 v1.0.1 (2012-09-30)
 -------------------

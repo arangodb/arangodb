@@ -127,14 +127,12 @@ namespace triagens {
 
         bool processRead () {
           if (this->_requestPending || this->_readBuffer->c_str() == 0) {
-  //printf("oreste:4000:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[%s]\n",__LINE__,this->_readBuffer->c_str());
 
             return true;
           }
 
           bool handleRequest = false;
 
-  //printf("oreste:3000:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[%s]\n",__LINE__,this->_readBuffer->c_str());
           
           if (! this->_readRequestBody) {
 #ifdef TRI_ENABLE_FIGURES
@@ -158,8 +156,6 @@ namespace triagens {
 
             size_t headerLength = ptr - this->_readBuffer->c_str();
 
-   string oreste = string(this->_readBuffer->c_str(),headerLength);
-   //printf("oreste:3010:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[%s]\n",__LINE__,oreste.c_str());
 
             if (headerLength > this->_maximalHeaderSize) {
               LOGGER_WARNING << "maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength;
@@ -178,19 +174,16 @@ namespace triagens {
 
               // check that we know, how to serve this request
               this->_request = this->_server->getHandlerFactory()->createRequest(this->_readBuffer->c_str(), this->_readPosition);
-   //printf("oreste:3020:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[%s]\n",__LINE__,oreste.c_str());
 
               if (this->_request == 0) {
                 LOGGER_ERROR << "cannot generate request";
                 // internal server error
                 HttpResponse response(HttpResponse::SERVER_ERROR);
-   //printf("oreste:3030:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[%s]\n",__LINE__,oreste.c_str());
                 this->handleResponse(&response);
 
                 return false;
               }
 
-   //printf("oreste:3040:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[%s]\n",__LINE__,oreste.c_str());
               // update the connection information, i. e. client and server addresses and ports
               this->_request->setConnectionInfo(this->_connectionInfo);
 
@@ -213,7 +206,7 @@ namespace triagens {
                 case HttpRequest::HTTP_REQUEST_PATCH: {
                   const bool expectContentLength = (this->_requestType == HttpRequest::HTTP_REQUEST_POST ||
                                                     this->_requestType == HttpRequest::HTTP_REQUEST_PUT ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_DELETE);
+                                                    this->_requestType == HttpRequest::HTTP_REQUEST_PATCH);
 
                   if (! checkContentLength(expectContentLength)) {
                     return true;
@@ -306,7 +299,6 @@ namespace triagens {
             this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
 
             if (this->_readBuffer->length() > 0) {
-   //printf("oreste:4010:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
               // we removed the front of the read buffer, but it still contains data. 
               // this means that the content-length header of the request must have been wrong 
               // (value in content-length header smaller than actual body size)
@@ -361,39 +353,30 @@ namespace triagens {
             // .............................................................................
             // authenticate
             // .............................................................................
-   //printf("oreste:3050:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
 
             bool auth = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
 
             // authenticated
             if (auth) {
 
-   //printf("oreste:3060:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
               HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
               bool ok = false;
 
-   //printf("oreste:3062:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
               if (handler == 0) {
-   //printf("oreste:3064:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
                 LOGGER_TRACE << "no handler is known, giving up";
                 delete this->_request;
                 this->_request = 0;
 
                 HttpResponse response(HttpResponse::NOT_FOUND);
-   //printf("oreste:3066:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
                 this->handleResponse(&response);
-   //printf("oreste:3068:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
               }
               else {
-   //printf("oreste:3070:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
                 this->RequestStatisticsAgent::transfer(handler);
 
                 this->_request = 0;
                 ok = this->_server->handleRequest(this, handler);
-   //printf("oreste:3080:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
 
                 if (! ok) {
-   //printf("oreste:3090:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
                   HttpResponse response(HttpResponse::SERVER_ERROR);
                   this->handleResponse(&response);
                 }
@@ -402,7 +385,6 @@ namespace triagens {
 
             // not authenticated
             else {
-   //printf("oreste:3100:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
               string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
               delete this->_request;
@@ -414,7 +396,6 @@ namespace triagens {
               this->handleResponse(&response);
             }
 
-   //printf("oreste:3200:BBBBBBBBBBBBB:HttpCommTask::processRead:%d:[]\n",__LINE__);
             return processRead();
           }
 

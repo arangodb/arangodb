@@ -82,7 +82,7 @@ bool SignalTask::addSignal (int signal) {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool SignalTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
+bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
 

@@ -1030,6 +1030,17 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     }
 
     if (expressionNode != NULL) {
+      if (expressionNode->_type == TRI_AQL_NODE_FCALL) {
+        // the defining node is a function call
+        // get the function name
+        TRI_aql_function_t* function = TRI_AQL_NODE_DATA(expressionNode);
+
+        if (function->optimise != NULL) {
+          // call the function's optimise callback
+          function->optimise(expressionNode, context, fieldAccess);
+        }
+      }
+
       if (expressionNode->_type == TRI_AQL_NODE_COLLECTION) {
         TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(expressionNode));
 

@@ -925,11 +925,9 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   // override wait for sync for shapes
   parameter._waitForSync = waitForSync;
 
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
   
   collection = TRI_CreateShapeCollection(vocbase, path, &parameter);
 
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   if (collection == NULL) {
     return NULL;

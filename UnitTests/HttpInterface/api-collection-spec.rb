@@ -39,17 +39,28 @@ describe ArangoDB do
 	collections = doc.parsed_response['collections']
 	names = doc.parsed_response['names']
 
-        found = 0
-        for n in names do
-          if n[0] == "units" or n[0] == "employees" or n[0] == "locations"
-            found = found + 1
+        # filter out system collections
+        realCollections = [ ]
+
+        collections.each { |collection|
+          if collection['name'].slice(0, 1) != "_"
+            realCollections.push(collection)
+          end
+        }
+
+	realNames = { }
+
+        names.each do |name, collection| 
+          if name.slice(0, 1) != '_'
+            realNames[name] = collection
           end
         end
 
-        found.should eq(3)
+	realCollections.length.should eq(3)
+	realNames.length.should eq(3)
 
-	for collection in collections do
-	  names[collection['name']].should eq(collection)
+	for collection in realCollections do
+	  realNames[collection['name']].should eq(collection)
 	end
       end
     end

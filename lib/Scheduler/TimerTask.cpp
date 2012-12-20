@@ -54,7 +54,7 @@ TimerTask::~TimerTask () {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool TimerTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
+bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
 

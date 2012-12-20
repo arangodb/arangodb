@@ -5,7 +5,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>--server.endpoint tcp://127.0.0.1:9000 --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-authentication true --server.disable-admin-interface true --log.level info  --javascript.action-directory "Z:\local2\arango\dev\js\actions\system"  --javascript.modules-path "Z:\local2\arango\dev\js\server\modules;Z:\local2\arango\dev\js\common\modules" --server.threads 1 --scheduler.threads 1</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--server.endpoint tcp://127.0.0.1:9000 --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-authentication true --server.disable-admin-interface false --log.level info  --javascript.action-directory "Z:\local2\arango\dev\js\actions\system"  --javascript.modules-path "Z:\local2\arango\dev-win\js\server\modules;Z:\local2\arango\dev-win\js\common\modules" --server.threads 4 --scheduler.threads 4  --database.maximal-journal-size 1048576 --server.admin-directory "Z:\local2\arango\dev-win\html\admin"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>$(TargetDir)</LocalDebuggerWorkingDirectory>
     <LocalDebuggerDebuggerType>Auto</LocalDebuggerDebuggerType>

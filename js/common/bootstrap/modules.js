@@ -56,6 +56,12 @@
 ModuleCache = {};
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief file exists cache
+////////////////////////////////////////////////////////////////////////////////
+
+ExistsCache = {};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -87,23 +93,33 @@ Module.prototype.require = function (path) {
   // locate file and read content
   raw = ModuleCache["/internal"].exports.readFile(path);
 
+  // test for parse errors first and fail early if a parse error detected
+  if (! SYS_PARSE(raw.content, path)) {
+    throw "Javascript parse error in file '" + path + "'";
+  }
+
   // create a new sandbox and execute
   module = ModuleCache[path] = new Module(path);
 
   content = "(function (module, exports, require, print) {"
           + raw.content 
           + "\n});";
-
+  
   f = SYS_EXECUTE(content, undefined, path);
 
   if (f === undefined) {
     throw "cannot create context function";
   }
-
-  f(module,
-    module.exports,
-    function(path) { return module.require(path); },
-    ModuleCache["/internal"].exports.print);
+ 
+  try {
+    f(module,
+      module.exports,
+      function(path) { return module.require(path); },
+      ModuleCache["/internal"].exports.print);
+  }
+  catch (err) {
+    throw "Javascript exception in file '" + path + "': " + err.stack;
+  }
 
   return module.exports;
 };
@@ -206,11 +222,11 @@ module = ModuleCache["/"] = new Module("/");
 ///
 /// @FN{require} checks if the file specified by @FA{path} has already been
 /// loaded.  If not, the content of the file is executed in a new
-/// context. Within the context you can use the global variable @CODE{exports}
+/// context. Within the context you can use the global variable @LIT{exports}
 /// in order to export variables and functions. This variable is returned by
 /// @FN{require}.
 ///
-/// Assume that your module file is @CODE{test1.js} and contains
+/// Assume that your module file is @LIT{test1.js} and contains
 ///
 /// @verbinclude modules-require-1
 ///
@@ -379,6 +395,8 @@ ModuleCache["/internal"] = new Module("/internal");
     var mc;
     var n;
 
+    var existsCache = ExistsCache;
+
     // try to load the file
     var paths = internal.MODULES_PATH;
 
@@ -393,6 +411,7 @@ ModuleCache["/internal"] = new Module("/internal");
       }
 
       if (fs.exists(n)) {
+        existsCache[path] = true;
         return { path : n, content : internal.read(n) };
       }
     }
@@ -400,11 +419,12 @@ ModuleCache["/internal"] = new Module("/internal");
     // try to load the module from the database
     mc = internal.db._collection("_modules");
 
-    if (mc !== null) {
+    if (mc !== null && ("firstExample" in mc)) {
       n = mc.firstExample({ path: path });
 
       if (n !== null) {
         if (n.hasOwnProperty('content')) {
+          existsCache[path] = true;
           return { path : "_collection/" + path, content : n.content };
         }
         else {
@@ -413,6 +433,7 @@ ModuleCache["/internal"] = new Module("/internal");
       }
     }
 
+    existsCache[path] = false;
     throw "cannot find a file named '"
         + path
         + "' using the module path(s) '" 

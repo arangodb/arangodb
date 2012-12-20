@@ -324,7 +324,7 @@ SimpleQuery.prototype.execute = function () {
 /// @FUN{@FA{query}.limit(@FA{number})}
 ///
 /// Limits a result to the first @FA{number} documents. Specifying a limit of
-/// @CODE{0} returns no documents at all. If you do not need a limit, just do
+/// @LIT{0} returns no documents at all. If you do not need a limit, just do
 /// not add the limit operator. The limit must be non-negative.
 ///
 /// In general the input to @FN{limit} should be sorted. Otherwise it will be
@@ -944,6 +944,10 @@ SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 ///
 /// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
 /// not as attribute.
+///
+/// For range queries it is required that a skiplist index is present for the
+/// queried attribute. If no skiplist index is present on the attribute, an
+/// error will be thrown.
 ///
 /// @EXAMPLES
 ///

@@ -81,7 +81,7 @@ SocketTask::SocketTask (socket_t fd, double keepAliveTimeout)
 SocketTask::~SocketTask () {
   if (commSocket != -1) {
     TRI_CLOSE_SOCKET(commSocket);
-    //close(commSocket);
+    commSocket = -1;
   }
 
   if (_writeBuffer != 0) {
@@ -408,7 +408,7 @@ bool SocketTask::hasWriteBuffer () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
+bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
 

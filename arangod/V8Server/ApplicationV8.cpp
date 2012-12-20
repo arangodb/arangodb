@@ -44,10 +44,12 @@ using namespace triagens::arango;
 using namespace std;
 
 #include "js/common/bootstrap/js-modules.h"
+#include "js/common/bootstrap/js-monkeypatches.h"
 #include "js/common/bootstrap/js-print.h"
 #include "js/common/bootstrap/js-errors.h"
 #include "js/server/js-ahuacatl.h"
 #include "js/server/js-server.h"
+#include "js/server/js-version-check.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class V8GcThread
@@ -177,6 +179,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _startupModules(),
     _actionPath(),
     _useActions(true),
+    _performUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -226,6 +229,14 @@ void ApplicationV8::setConcurrency (size_t n) {
 
 void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
   _vocbase = vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform a database upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::performUpgrade () {
+  _performUpgrade = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,6 +531,7 @@ bool ApplicationV8::prepare () {
   if (_startupPath.empty()) {
     LOGGER_INFO << "using built-in JavaScript startup files";
     _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
+    _startupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
     _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
     _startupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
     _startupLoader.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
@@ -622,8 +634,9 @@ void ApplicationV8::stop () {
 /// @brief prepares a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::prepareV8Instance (size_t i) {
+bool ApplicationV8::prepareV8Instance (const size_t i) {
   static char const* files[] = { "common/bootstrap/modules.js",
+                                 "common/bootstrap/monkeypatches.js",
                                  "common/bootstrap/print.js",
                                  "common/bootstrap/errors.js",
                                  "server/ahuacatl.js",
@@ -667,11 +680,11 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
   TRI_InitV8Shell(context->_context);
 
   // load all init files
-  for (i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
-    bool ok = _startupLoader.loadScript(context->_context, files[i]);
+  for (size_t j = 0;  j < sizeof(files) / sizeof(files[0]);  ++j) {
+    bool ok = _startupLoader.loadScript(context->_context, files[j]);
 
     if (! ok) {
-      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[i] << "'";
+      LOGGER_FATAL << "cannot load JavaScript utilities from file '" << files[j] << "'";
 
       context->_context->Exit();
       context->_isolate->Exit();
@@ -681,6 +694,37 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
     }
   }
 
+
+  if (i == 0) {
+    LOGGER_DEBUG << "running database version check";
+
+    const string script = _startupLoader.buildScript(JS_server_version_check);
+
+    // special check script to be run just once in first thread (not in all)
+    v8::HandleScope scope;
+    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context->_context,
+                                                               v8::String::New(script.c_str()),
+                                                               v8::String::New("version-check.js"),
+                                                               false);
+  
+    if (! TRI_ObjectToBoolean(result)) {
+      if (_performUpgrade) {
+        LOGGER_FATAL << "Database upgrade failed. Please inspect the logs from the upgrade procedure";
+      }
+      else {
+        LOGGER_FATAL << "Database version check failed. Please start the server with the --upgrade option";
+      }
+
+      context->_context->Exit();
+      context->_isolate->Exit();
+      delete context->_locker;
+
+      return false;
+    }
+
+    LOGGER_DEBUG << "database version check passed";
+  }
 
   // load all actions
   if (_useActions) {
@@ -712,8 +756,6 @@ bool ApplicationV8::prepareV8Instance (size_t i) {
 
   context->_lastGcStamp = TRI_microtime();
   
-  context->_lastGcStamp = TRI_microtime();
-
   LOGGER_TRACE << "initialised V8 context #" << i;
 
   _freeContexts.push_back(context);

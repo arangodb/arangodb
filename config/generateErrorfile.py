@@ -86,7 +86,7 @@ def genCHeaderFile(errors):
   
   for e in errors:
     wiki = wiki\
-         + "/// - " + e[1] + ": @CODE{" + e[2].replace("%", "\%").replace("<", "\<").replace(">", "\>") + "}\n"\
+         + "/// - " + e[1] + ": @LIT{" + e[2].replace("%", "\%").replace("<", "\<").replace(">", "\>") + "}\n"\
          + wrap(e[3], 80, 0, 0, "///   ") + "\n"
 
   wiki = wiki\

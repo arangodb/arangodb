@@ -1,158 +1,186 @@
-/*
-CSS: ArangoDB Manual
-*/
-
-
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, font, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td {
-	background: transparent;
-	border: 0;
-	margin: 0;
-	padding: 0;
-	vertical-align: baseline;
+.keyf .hentry h2, #fullsize .hentry h2 {
+  margin-bottom: 14px;
+  padding: 14px 0 3px;
 }
 
+/* ************************************************************************** */
+/* global                                                                     */
+/* ************************************************************************** */
 
-body {
-    background: none repeat scroll 0 0 #FFFFFF;
-    box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
-    margin-bottom: 24px;
-    padding: 24px;
-    font-family: "Helvetica",sans-serif;
-    font-weight: 300;
-   	color: #333333;
-    font-size: 16px;
-    line-height: 1.4em;
+#content div.arangodb {
+  background: none repeat scroll 0 0 transparent;
+  border: 0 none;
+  color: #666666;
+  font-family: "Helvetica",sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.4em;
+  margin: 0;
+  padding: 0px;
+  vertical-align: baseline;
 }
 
-.clearfix:after {
-  content: ".";
-  display: block;
-  clear: both;
-  font-size: 0; 
-  height: 0;
-  visibility: hidden;
+#content div.offlineview {
+  width: 980px;
 }
 
-/* IE-Patch für IE 7*/
-*:first-child+html .clearfix { min-height: 0; } 
-
-/* IE-Patch für IE 6*/
-* html .clearfix { height: 1%; }
-
-
-
-h1, h2, h3, h4, h5, h6 {
-	font-family:Helvetica;
-	font-weight:lighter;
-	line-height:1.0em;
-	text-align: left;
+#content div.arangodb p, #content div.arangodb ul, #content div.arangodb ol, #content div.arangodb dd, #content div.arangodb pre, #content div.arangodb hr {
+  margin-bottom: 24px;
 }
 
-h1 {
-    font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
-    font-size: 2em;
-    margin-bottom: 48px;
-    padding-top: 5px;
+/* ************************************************************************** */
+/* title                                                                      */
+/* ************************************************************************** */
+
+#content div.arangodb div.headertitle, #content div.arangodb h1, #content div.arangodb h2, #content div.arangodb h3, #content div.arangodb h4, #content div.arangodb h5, #content div.arangodb h6 {
+    color: #000000;
+    font-family: Helvetica;
+    font-weight: lighter;
+    line-height: 1em;
+    margin: 0 0 20px;
+    text-align: left;
 }
 
-h2 {
-    border-bottom: 1px solid #EFECE9;
-    color: #404040;
-    font-family: Helvetica,Times New Roman;
-    font-size: 26px;
-    margin-bottom: 14px;
-    padding: 14px 0  by 4px;
+#content div.arangodb div.headertitle {
+  border-bottom: 1px solid #EFECE9;
+  font-family: Rockwell,Georgia,"Times New Roman",Times,serif;
+  font-size: 2em;
+  margin-bottom: 38px;
+  padding: 14px 0 3px;
 }
 
-a:link, a:visited {
-    color: #7E9246;
+#content div.arangodb h2 {
+  border-bottom: 1px solid #EFECE9;
+  color: #404040;
+  font-family: Helvetica,Times New Roman;
+  font-size: 26px;
+  margin-bottom: 14px;
+  padding: 14px 0 3px;
 }
 
-p, ul, ol, dd, pre, hr {
-    margin-bottom: 24px;
+/* ************************************************************************** */
+/* navigation bar                                                             */
+/* ************************************************************************** */
+
+#content div.arangodb div.navigate {
+  height: 0px;
+  position: relative;
+  text-align: right;
+  top: -70px;
 }
 
-ul {
-    list-style: square outside none;
-    margin: 0 0 18px 1.5em;
+/* ************************************************************************** */
+/* table of contents                                                          */
+/* ************************************************************************** */
+
+#content div.arangodb div.toc {
+  border-width: thin;
+  border-style: solid;
+  background-color: #F8F8F8;
+  margin-bottom: 14px;
 }
 
-hr {
-    background-color: #E7E7E7;
-    border: 0 none;
-    clear: both;
-    height: 1px;
+#content div.arangodb div.toc ul {
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 
-code {
-    font-family: Monaco, Consolas, "Andale Mono", "DejaVu Sans Mono", monospace;
-    font-family: monospace,fixed;
-    font-size: 105%;
-    line-height: 175%;
-    overflow: auto;
-    word-wrap: break-word;
+#content div.arangodb ul ul {
+  margin-bottom: 0px;
 }
 
+/* ************************************************************************** */
+/* function signature                                                         */
+/* ************************************************************************** */
 
-pre {
-	font-family: "Courier 10 Pitch", Courier, monospace;
-	background: #f7f7f7;
-	color: #222;
-	line-height: 18px;
-	margin-bottom: 18px;
-	padding: 1.5em;
+#content div.arangodb div.functionsignature {
+  font-family: monospace,fixed;
+  margin-top: 14px;
+  margin-bottom: 14px;
 }
 
-pre, pre.fragment {
-    background-color: #FBFCFD !important;
-    border: 1px solid #C4CFE5 !important;
-    font-family: monospace,fixed;
-    font-size: 105%;
-    line-height: 125%;
-    margin: 4px 8px 24px 2px;
-    overflow: auto;
-    padding: 4px 6px;
-    word-wrap: break-word;
+/* ************************************************************************** */
+/* command line options                                                       */
+/* ************************************************************************** */
+
+#content div.arangodb div.commandlineoption {
+  font-family: monospace,fixed;
+  margin-bottom: 14px;
 }
 
-abbr,
-acronym {
-	border-bottom: 1px dotted #666;
-	cursor: help;
+#content div.arangodb span.commandlineargument {
+  font-style: italic;
 }
 
-sup,
-sub {
-	height: 0;
-	line-height: 1;
-	position: relative;
-	vertical-align: baseline;
+/* ************************************************************************** */
+/* rest call                                                                  */
+/* ************************************************************************** */
+
+#content div.arangodb div.restheader {
+  font-family: monospace,fixed;
+  border-bottom: 1px dotted;
+  margin-bottom: 14px;
 }
 
-sup {
-	bottom: 1ex;
+#content div.arangodb div.restheaderremark {
+  float: right;
+  font-family: "Helvetica",sans-serif;
 }
 
-sub {
-	top: .5ex;
+/* ************************************************************************** */
+/* examples                                                                   */
+/* ************************************************************************** */
+
+#content div.arangodb div.example {
+  margin-top: 14px;
+  margin-bottom: 14px;
 }
 
-input[type="text"],
-input[type="email"],
-textarea {
-	background: #f9f9f9;
-	border: 1px solid #ccc;
-	box-shadow: inset 1px 1px 1px rgba(0,0,0,0.1);
-	-moz-box-shadow: inset 1px 1px 1px rgba(0,0,0,0.1);
-	-webkit-box-shadow: inset 1px 1px 1px rgba(0,0,0,0.1);
-	padding:7px;
-	border-radius:3px 3px 3px 3px;
+/* ************************************************************************** */
+/* pre & code                                                                 */
+/* ************************************************************************** */
+
+#content div.arangodb pre {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
+}
+
+#content div.arangodb div.fragment {
+  background-color: #FBFCFD !important;
+  border: 1px solid #C4CFE5 !important;
+  font-family: monospace,fixed;
+  font-size: 105%;
+  font-size: 15px;
+  line-height: 21px;
+  margin: 4px 8px 24px 2px;
+  overflow: auto;
+  padding: 4px 6px;
+  word-wrap: break-word;
+}
+
+#content div.arangodb code {
+  background-color: #FFFFFF !important;
+  border: 0px !important;
+  margin: 0px 0px 0px 0px;
+  padding: 0px 0px;
+  overflow: auto;
+  line-height: 100%;
+  font-size: 16px;
+  font-family: monospace,fixed;
+}
+
+/* ************************************************************************** */
+/* other                                                                      */
+/* ************************************************************************** */
+
+#content hr {
+  margin-bottom: 2px;
 }

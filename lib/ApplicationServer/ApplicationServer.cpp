@@ -279,15 +279,17 @@ void ApplicationServer::setupLogging () {
     TRI_SetFileToLog(i->c_str());
   }
 
-  if (NULL == TRI_CreateLogAppenderFile(_logFile)) {
+  if (NULL == TRI_CreateLogAppenderFile(_logFile.c_str())) {
     if (_logFile.length() > 0) {
       // the user specified a log file to use but it could not be created. bail out
-      std::cerr << "failed to create logfile " << _logFile << std::endl;
+      std::cerr << "failed to create logfile '" << _logFile << "'. Please check the path and permissions." << std::endl;
       exit(EXIT_FAILURE);      
     }
   }
 #ifdef TRI_ENABLE_SYSLOG
-  TRI_CreateLogAppenderSyslog(_logPrefix, _logSyslog);
+  if (_logSyslog != "") {
+    TRI_CreateLogAppenderSyslog(_logPrefix.c_str(), _logSyslog.c_str());
+  }
 #endif  
 }
 
@@ -440,9 +442,7 @@ bool ApplicationServer::parse (int argc,
         break;
       }
       case 5: {
-            printf("oreste:1000:%s:%s:%d",__FILE__,__FUNCTION__,__LINE__);
         Random::selectVersion(Random::RAND_WIN32);  
-            printf("oreste:1000:%s:%s:%d",__FILE__,__FUNCTION__,__LINE__);
         break;
       }
       default: {
@@ -592,7 +592,6 @@ void ApplicationServer::beginShutdown () {
   if (_stopping != 0) {
     return;
   }
-
   _stopping = 1;
 }
 
@@ -602,7 +601,6 @@ void ApplicationServer::beginShutdown () {
 
 void ApplicationServer::stop () {
   beginShutdown();
-
 
 
   // close all features
@@ -625,6 +623,7 @@ void ApplicationServer::stop () {
 
     LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

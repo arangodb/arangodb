@@ -51,7 +51,7 @@
 ///
 /// Assume that your file live in a directory called @LIT{lib}. Use
 ///
-/// @CODE{node-jscoverage lib lib-cov}
+/// @LIT{node-jscoverage lib lib-cov}
 ///
 /// to create a copy of the JavaScript files with coverage information.  Start
 /// the ArangoDB with these files and use @FN{jsunity.runCoverage} instead of

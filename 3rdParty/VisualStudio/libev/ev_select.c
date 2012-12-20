@@ -82,7 +82,6 @@ select_modify (EV_P_ int fd, int oev, int nev)
     int handle = fd;
     #endif
 
-    //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
     assert (("libev: fd >= FD_SETSIZE passed to fd_set-based select backend", fd < FD_SETSIZE));
 
     /* FD_SET is broken on windows (it adds the fd to a set twice or more,
@@ -93,16 +92,11 @@ select_modify (EV_P_ int fd, int oev, int nev)
     #endif
     { 
       if (nev & EV_READ) {
-      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
         FD_SET (handle, (fd_set *)vec_ri);
-      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
       }
       else {
-      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
         FD_CLR (handle, (fd_set *)vec_ri);
-      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
       }
-      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
     }
 
     #if EV_SELECT_IS_WINSOCKET
@@ -115,7 +109,6 @@ select_modify (EV_P_ int fd, int oev, int nev)
       else {
         FD_CLR (handle, (fd_set *)vec_wi);
       }
-      //printf("oreste:%s:%d:FD_SETSIZE = %d:%d\n",__FUNCTION__,__LINE__,FD_SETSIZE,fd);
     }
 #else
 
@@ -150,9 +143,7 @@ select_modify (EV_P_ int fd, int oev, int nev)
   }
 }
 
-static void
-select_poll (EV_P_ ev_tstamp timeout)
-{
+static void select_poll (EV_P_ ev_tstamp timeout) {
   struct timeval tv;
   int res;
   int fd_setsize;
@@ -160,7 +151,7 @@ select_poll (EV_P_ ev_tstamp timeout)
   EV_RELEASE_CB;
   EV_TV_SET (tv, timeout);
 
-#if EV_SELECT_USE_FD_SET
+#ifdef EV_SELECT_USE_FD_SET
   fd_setsize = sizeof (fd_set);
 #else
   fd_setsize = vec_max * NFDBYTES;
@@ -185,47 +176,53 @@ select_poll (EV_P_ ev_tstamp timeout)
 #endif
   EV_ACQUIRE_CB;
 
-  if (expect_false (res < 0))
-    {
-      #if EV_SELECT_IS_WINSOCKET
-      errno = WSAGetLastError ();
-      #endif
-      #ifdef WSABASEERR
-      /* on windows, select returns incompatible error codes, fix this */
-      if (errno >= WSABASEERR && errno < WSABASEERR + 1000)
-        if (errno == WSAENOTSOCK)
-          errno = EBADF;
-        else
-          errno -= WSABASEERR;
+  if (expect_false (res < 0)) {
+
+      #ifdef EV_SELECT_IS_WINSOCKET
+        errno = WSAGetLastError ();
       #endif
 
-      #ifdef _WIN32
-      /* select on windows erroneously returns EINVAL when no fd sets have been
-       * provided (this is documented). what microsoft doesn't tell you that this bug
-       * exists even when the fd sets _are_ provided, so we have to check for this bug
-       * here and emulate by sleeping manually.
-       * we also get EINVAL when the timeout is invalid, but we ignore this case here
-       * and assume that EINVAL always means: you have to wait manually.
-       */
-      if (errno == EINVAL)
-        {
-          if (timeout)
-            {
-              unsigned long ms = timeout * 1e3;
-              Sleep (ms ? ms : 1);
-            }
-
-          return;
+      #if WSABASEERR
+        /* on windows, select returns incompatible error codes, fix this */
+        if (errno >= WSABASEERR && errno < WSABASEERR + 1000) {
+          if (errno != WSAENOTSOCK) {
+            errno -= WSABASEERR;
+          }
+          else {
+            //errno = EBADF;
+          }
         }
       #endif
 
-      if (errno == EBADF)
-        fd_ebadf (EV_A);
-      else if (errno == ENOMEM && !syserr_cb)
-        fd_enomem (EV_A);
-      else if (errno != EINTR)
-        ev_syserr ("(libev) select");
+      #ifdef _WIN32
+        /* select on windows erroneously returns EINVAL when no fd sets have been
+         * provided (this is documented). what microsoft doesn't tell you that this bug
+         * exists even when the fd sets _are_ provided, so we have to check for this bug
+         * here and emulate by sleeping manually.
+         * we also get EINVAL when the timeout is invalid, but we ignore this case here
+         * and assume that EINVAL always means: you have to wait manually.
+         */
+        if (errno == EINVAL) {
+            if (timeout) {
+                unsigned long ms = timeout * 1e3;
+                Sleep (ms ? ms : 1);
+            }
+            return;
+        }
+      #endif
 
+      if (errno == EBADF) {
+        fd_ebadf (EV_A);
+      }
+      else if (errno == WSAENOTSOCK) {
+        fd_WS (EV_A);
+      }
+      else if (errno == ENOMEM && !syserr_cb) {
+        fd_enomem (EV_A);
+      }
+      else if (errno != EINTR) {
+        ev_syserr ("(libev) select");
+      }
       return;
     }
 

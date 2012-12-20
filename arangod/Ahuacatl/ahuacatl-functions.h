@@ -35,6 +35,7 @@
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +58,7 @@ typedef struct TRI_aql_function_s {
   const char* _argPattern;
   size_t _minArgs;
   size_t _maxArgs;
+  void (*optimise)(const TRI_aql_node_t* const, TRI_aql_context_t* const, TRI_aql_field_access_t*);
 }
 TRI_aql_function_t;
 
@@ -101,7 +103,8 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t*,
                               const char* const, 
                               const bool,
                               const bool,
-                              const char* const);
+                              const char* const,
+                              void (*)(const TRI_aql_node_t* const, TRI_aql_context_t* const, TRI_aql_field_access_t*));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a function argument must be converted to another type

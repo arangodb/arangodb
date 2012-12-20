@@ -91,7 +91,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FD_SETSIZE=1024;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -106,7 +106,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WIN64;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -122,7 +122,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FD_SETSIZE=1024;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -138,7 +138,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\regex\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>_WIN64;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;_UNICODE;UNICODE;%(PreprocessorDefinitions);REGEX_STATIC=1</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

@@ -13,9 +13,9 @@ $release=${arangodb_release}
 %product ArangoDB
 %copyright 2012 by triAGENS GmbH
 %vendor triAGENS GmbH
-%license COPYING
-%readme README
-%description ArangoDB Software
+%license ${project_dir}/LICENSE
+%readme ${project_dir}/README
+%description ArangoDB is a durable, reliable, transactional multi-model database. It's key-features are: Schema-free schemata, an integrated application server, flexible data modelling, free index choice, and configurable durability.
 %version ${version}
 %release ${release}
 
@@ -33,6 +33,8 @@ l 000 ${rusr} ${rgrp} ${sbindir}/arangod ${sbindir}/arangod-${arangodb_version}
 
 f 0755 ${susr} ${sgrp} ${bindir}/arangoimp ${project_dir}/bin/arangoimp
 f 0755 ${susr} ${sgrp} ${bindir}/arangosh ${project_dir}/bin/arangosh
+f 0755 ${susr} ${sgrp} ${bindir}/arango-password ${project_dir}/bin/arango-password
+f 0755 ${susr} ${sgrp} ${bindir}/arango-dfdb ${project_dir}/bin/arango-dfdb
 
 # database directory
 d 0755 ${rusr} ${rgrp} ${data_dir} -
@@ -50,6 +52,10 @@ d 0755 ${susr} ${sgrp} /var/run/arangodb -
 # logfile directory
 d 0755 ${susr} ${sgrp} /var/log/arangodb -
 
+d 0755 ${rusr} ${rgrp} ${mandir} -
+d 0755 ${rusr} ${rgrp} ${mandir}/man1 -
+d 0755 ${rusr} ${rgrp} ${mandir}/man8 -
+
 %include ${project_dir}/Installation/epm/arangodb.sublist
 
 ################################################################################
@@ -66,8 +72,14 @@ f 0755 ${rusr} ${rgrp} /Library/LaunchDaemons/org.arangodb.plist.template ${proj
 %postinstall <<EOF
 sed -e 's%@BINARY@%${sbindir}/arangod-${version}%g' -e 's%@CONFIGDIR@%/etc/arangodb%g' /Library/LaunchDaemons/org.arangodb.plist.template > /Library/LaunchDaemons/org.arangodb.plist
 launchctl unload /Library/LaunchDaemons/org.arangodb.plist
+
+# change user of 1.0 version
+/usr/sbin/chown -R ${susr}:${sgrp} /var/run/arangodb
+/usr/sbin/chown -R ${susr}:${sgrp} /var/log/arangodb
+/usr/sbin/chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
 launchctl load /Library/LaunchDaemons/org.arangodb.plist
-# we do not need this: launchctl start de.triagens.arango
+
 EOF
 
 %preremove <<EOF
@@ -95,6 +107,14 @@ f 0755 ${rusr} ${rgrp} ${initdir}/arangodb ${project_dir}/Installation/Linux/${S
 
 %postinstall <<EOF
 chkconfig --level ${runlevels} arangodb on
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
+echo "${install_message}"
+
 exit 0
 EOF
 
@@ -113,6 +133,14 @@ f 0755 ${rusr} ${rgrp} ${initdir}/arangodb ${project_dir}/Installation/Linux/${S
 
 %postinstall <<EOF
 test -x /sbin/insserv && /sbin/insserv /etc/init.d/arangodb 2&>1 > /dev/null
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
+echo "${install_message}"
+
 exit 0
 EOF
 
@@ -123,6 +151,51 @@ exit 0
 EOF
 
 ## -----------------------------------------------------------------------------
+## use_systemd
+## -----------------------------------------------------------------------------
+
+%elseifdef use_systemd
+f 0544 ${rusr} ${rgrp} ${systemddir}/arangodb.service ${project_dir}/etc/systemd/arangodb.service
+
+%postinstall <<EOF
+/bin/systemctl daemon-reload > /dev/null 2>&1
+/bin/systemctl preset arangodb.service > /dev/null 2>&1
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
+echo "${install_message}"
+
+exit 0
+EOF
+
+%preremove <<EOF
+test -n "$$FIRST_ARG" || FIRST_ARG=$$1
+if [ $$FIRST_ARG -eq 0 ]; then
+# Package removal, not upgrade                                                          
+ /bin/systemctl --no-reload disable arangodb.service > /dev/null 2>&1 || :
+ /bin/systemctl stop arangodb.service > /dev/null 2>&1 || :
+fi
+exit 0
+EOF
+
+%postremove <<EOF
+test -n "$$FIRST_ARG" || FIRST_ARG=$$1
+if [ $$FIRST_ARG -ge 1 ]; then
+# Package upgrade, not uninstall                                                        
+  /bin/systemctl try-restart arangodb.service >/dev/null 2>&1 || :
+else # package uninstall                                                                
+  for service in arangodb.service ; do
+    sysv_service=$${service%.*}
+    rm -f "/var/lib/systemd/migrated/$$sysv_service" 2> /dev/null || :
+  done
+  /bin/systemctl daemon-reload >/dev/null 2>&1 || :
+fi
+EOF
+
+## -----------------------------------------------------------------------------
 ## EPM
 ## -----------------------------------------------------------------------------
 
@@ -130,6 +203,18 @@ EOF
 
 %system linux
 i 0755 ${rusr} ${rgrp} arangodb ${project_dir}/Installation/Linux/${START_SCRIPT} runlevel(${runlevels})
+
+%postinstall <<EOF
+
+# change user of 1.0 version
+chown -R ${susr}:${sgrp} /var/run/arangodb
+chown -R ${susr}:${sgrp} /var/log/arangodb
+chown -R ${susr}:${sgrp} ${data_dir}/arangodb
+
+echo "${install_message}"
+
+exit 0
+EOF
 
 %endif
 

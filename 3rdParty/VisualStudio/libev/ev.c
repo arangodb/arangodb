@@ -206,7 +206,7 @@
 # include <winsock2.h>
 # include <windows.h>
 # ifndef EV_SELECT_IS_WINSOCKET
-#  define EV_SELECT_IS_WINSOCKET 1
+# define EV_SELECT_IS_WINSOCKET 1
 # endif
 # undef EV_AVOID_STDIO
 #endif
@@ -1564,7 +1564,9 @@ fd_reify (EV_P)
       if (anfd->reify & EV__IOFDSET && anfd->head)
         {
           SOCKET handle;
+          //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,fd);
           handle = EV_FD_TO_WIN32_HANDLE (fd);
+          //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,fd);
 
           if (handle != anfd->handle)
             {
@@ -1638,13 +1640,14 @@ fd_kill (EV_P_ int fd)
     }
 }
 
+
 /* check whether the given fd is actually valid, for error recovery */
-inline_size int ecb_cold
-fd_valid (int fd)
-{
+inline_size int ecb_cold fd_valid (int fd) {
 #ifdef _WIN32
   SOCKET ss;
+  //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,fd);
   ss = EV_FD_TO_WIN32_HANDLE (fd);
+  //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:fd=%d:ss=%d\n",__FILE__,__LINE__,fd,(uint64_t)(ss));
   return ss != -1;
 /*
   return EV_FD_TO_WIN32_HANDLE (fd) != -1;
@@ -1655,16 +1658,48 @@ fd_valid (int fd)
 }
 
 /* called on EBADF to verify fds */
-static void noinline ecb_cold
-fd_ebadf (EV_P)
-{
+static void noinline ecb_cold fd_ebadf (EV_P) {
   int fd;
 
-  for (fd = 0; fd < anfdmax; ++fd)
-    if (anfds [fd].events)
-      if (!fd_valid (fd) && errno == EBADF)
+  for (fd = 0; fd < anfdmax; ++fd) {
+
+    if (anfds [fd].events) {
+      
+      int validFileDescriptor = fd_valid (fd);
+      if (!validFileDescriptor && errno == EBADF) {
         fd_kill (EV_A_ fd);
+      }
+    }
+  }
+
 }
+
+static void noinline ecb_cold fd_WS (EV_P) {
+  int fd;
+  struct sockaddr addr;
+  int addr_size;
+  fd_set exceptfds;
+  struct timeval timeout;
+  int result;
+  
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 0;
+  
+  for (fd = 0; fd < anfdmax; ++fd) {
+    if (anfds [fd].events) {
+      SOCKET handle = anfds [fd].handle;
+      FD_ZERO(&exceptfds);
+      FD_SET(handle,&exceptfds);
+      result = select(0, NULL, NULL, &exceptfds, &timeout);
+      if (result == SOCKET_ERROR) {
+        result = WSAGetLastError();
+        //printf("oreste:::::::%s:%d:handle=%d:result=%d\n",__FILE__,__LINE__,(uint64_t)(handle),result);        
+        fd_kill (EV_A_ fd);
+      }
+    }
+  }
+}
+
 
 /* called on ENOMEM in select/poll to kill some fds and retry */
 static void noinline ecb_cold
@@ -1705,10 +1740,6 @@ fd_intern (int fd)
   SOCKET ss;
   ss = EV_FD_TO_WIN32_HANDLE (fd);
   ioctlsocket (ss, FIONBIO, &arg);
-
-/*
-  ioctlsocket (EV_FD_TO_WIN32_HANDLE (fd), FIONBIO, &arg);
-*/
 #else
   fcntl (fd, F_SETFD, FD_CLOEXEC);
   fcntl (fd, F_SETFL, O_NONBLOCK);
@@ -1947,7 +1978,9 @@ evpipe_write (EV_P_ EV_ATOMIC_T *flag) {
           SOCKET ss;
           buf.buf = &buf;
           buf.len = 1;
+          //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[1]);
           ss = EV_FD_TO_WIN32_HANDLE (evpipe [1]);
+          //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[1]);
           WSASend (ss, &buf, 1, &sent, 0, 0, 0);
           //WSASend (EV_FD_TO_WIN32_HANDLE (evpipe [1]), &buf, 1, &sent, 0, 0, 0);
 #else
@@ -1985,7 +2018,9 @@ pipecb (EV_P_ ev_io *iow, int revents)
           SOCKET ss;
           buf.buf = dummy;
           buf.len = sizeof (dummy);
+          //printf("BEFORE:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[0]);
           ss = EV_FD_TO_WIN32_HANDLE (evpipe [0]);
+          //printf("AFTER:$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$:oreste:%s:%d:%d\n",__FILE__,__LINE__,evpipe[0]);
           WSARecv (ss, &buf, 1, &recvd, &flags, 0, 0);
           //WSARecv (EV_FD_TO_WIN32_HANDLE (evpipe [0]), &buf, 1, &recvd, &flags, 0, 0);
 #else
@@ -2446,8 +2481,6 @@ void ecb_cold ev_loop_destroy (EV_P) {
     #endif
 
     if (evpipe [0] >= 0) {
-      //printf("oreste:%s:%s:%d:evpipe[0]=%d\n",__FILE__,__FUNCTION__,__LINE__,evpipe [0]);
-      //printf("oreste:%s:%s:%d:evpipe[1]=%d\n",__FILE__,__FUNCTION__,__LINE__,evpipe [1]);
       EV_WIN32_CLOSE_FD (evpipe [0]);
       EV_WIN32_CLOSE_FD (evpipe [1]);
     }
@@ -2589,11 +2622,10 @@ loop_fork (EV_P)
         close (evfd);
 #endif
 
-      if (evpipe [0] >= 0)
-        {
-          EV_WIN32_CLOSE_FD (evpipe [0]);
-          EV_WIN32_CLOSE_FD (evpipe [1]);
-        }
+      if (evpipe [0] >= 0) {
+        EV_WIN32_CLOSE_FD (evpipe [0]);
+        EV_WIN32_CLOSE_FD (evpipe [1]);
+      }
 
 #if EV_SIGNAL_ENABLE || EV_ASYNC_ENABLE
       evpipe_init (EV_A);

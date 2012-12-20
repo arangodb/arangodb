@@ -63,7 +63,7 @@ void PeriodicTask::resetTimer (double offset, double intervall) {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool PeriodicTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
+bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
   

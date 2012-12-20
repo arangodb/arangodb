@@ -116,29 +116,13 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
 ////////////////////////////////////////////////////////////////////////////////
   
 static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
-  char* data;
   char* table;
-  size_t offset;
 
-  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, CACHE_LINE_SIZE + (array->_elementSize * numElements), true);
-  if (data == NULL) {
+  table = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, CACHE_LINE_SIZE + (array->_elementSize * numElements), true);
+  if (table == NULL) {
     return false;
   }
 
-  // check if memory was aligned on a cache line boundary
-  offset = ((uint64_t) data) % CACHE_LINE_SIZE;
-
-  if (offset == 0) {
-    // we're already on a cache line boundary
-    table = data;
-  }
-  else {
-    // move to start of a cache line boundary
-    table = data + (CACHE_LINE_SIZE - offset);
-  }
-  assert(((uint64_t) table) % CACHE_LINE_SIZE == 0);
-
-  array->_data = data;
   array->_table = table;
   array->_nrAlloc = numElements;
 
@@ -150,12 +134,10 @@ static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ResizeHashArray (TRI_hasharray_t* array) {
-  char* oldData;
   char* oldTable;
   uint64_t oldAlloc;
   uint64_t j;
 
-  oldData = array->_data;
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
  
@@ -174,7 +156,7 @@ static bool ResizeHashArray (TRI_hasharray_t* array) {
     }
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldData);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
   return true;
 }
 
@@ -276,7 +258,7 @@ void TRI_DestroyHashArray (TRI_hasharray_t* array) {
       IndexStaticDestroyElement(array, p);
     }
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_data);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
   }
 }
 

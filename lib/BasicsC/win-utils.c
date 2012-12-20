@@ -59,7 +59,6 @@ _invalid_parameter_handler newInvalidHandleHandler;
 
 int ftruncate(int fd, long newSize) {
   int result = _chsize(fd, newSize);
-  //printf("oreste: ftruncate result = %d:%d\n",result,errno);
   return result;
 }
 
@@ -122,7 +121,7 @@ void TRI_usleep(unsigned long waitTime) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Sets up a handler when invalid (win) handles passed to a windows function.
+// Sets up a handler when invalid (win) handles are passed to a windows function.
 // This is not of much use since no values can be returned. All we can do
 // for now is to ignore error and hope it goes away!
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +154,7 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
   } 
   printf("oreste:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
   /* end oreste -debug */
-  abort();
+  //abort();
   // TODO: use the wcstombs_s function to convert wchar to char - since all the above
   // wchar never will contain 2 byte chars
 }
@@ -257,6 +256,13 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
 
 }
 
+
+int TRI_WIN_closesocket(SOCKET s) {
+  int res;
+  res = shutdown(s,2);
+  res = closesocket(s);
+  return res;
+}
 
 int TRI_createFile (const char* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;

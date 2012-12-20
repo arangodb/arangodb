@@ -43,8 +43,6 @@ var internal = require("internal"),
   findOrCreateCollectionByName,
   findOrCreateEdgeCollectionByName;
 
-  require("monkeypatches");
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,7 +440,7 @@ Vertex.prototype.edges = function () {
 /// @FUN{@FA{vertex}.getId()}
 ///
 /// Returns the identifier of the @FA{vertex}. If the vertex was deleted, then
-/// @CODE{undefined} is returned.
+/// @LIT{undefined} is returned.
 ///
 /// @EXAMPLES
 ///
@@ -638,6 +636,10 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
     return neighbor.id;
   };
 
+  if (typeof(target_vertex) != 'object') {
+    throw "<target_vertex> must be a vertex object";
+  }
+
   neighbor_set_one = this.getNeighbors(options).map(id_only);
   neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
 
@@ -701,6 +703,9 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.pathTo = function (target_vertex, options) {
+  if (typeof(target_vertex) != 'object') {
+    throw "<target_vertex> must be an object";
+  }
   var predecessors = target_vertex.determinePredecessors(this, options || {});
   return (predecessors ? target_vertex.pathesForTree(predecessors) : []);
 };
@@ -857,8 +862,13 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 Vertex.prototype.getNeighbors = function (options) {
   var current_vertex,
     target_array = [],
-    addNeighborToList,
-    direction = options.direction || 'both',
+    addNeighborToList;
+
+  if (! options) {
+    options = { };
+  }
+
+  var direction = options.direction || 'both',
     labels = options.labels,
     weight = options.weight,
     weight_function = options.weight_function,
@@ -1083,7 +1093,7 @@ function Graph(name, vertices, edges) {
     graphPropertiesId;
 
   if (gdb === null) {
-    throw "_graphs collection does not exist. please run arango-upgrade";
+    throw "_graphs collection does not exist.";
   }
 
   if (typeof name !== "string" || name === "") {
@@ -1105,7 +1115,6 @@ function Graph(name, vertices, edges) {
       if (graphProperties === null) {
         throw "no graph named '" + name + "' found";
       }
-      throw "no graph named '" + name + "' found";
     }
 
     vertices = internal.db._collection(graphProperties.vertices);
@@ -1129,9 +1138,9 @@ function Graph(name, vertices, edges) {
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
 
-    // Currently buggy:
-    // edges.ensureUniqueConstraint("$id");
-    // vertices.ensureUniqueConstraint("$id");
+    // Currently buggy?
+    edges.ensureUniqueConstraint("$id");
+    vertices.ensureUniqueConstraint("$id");
 
     graphProperties = gdb.firstExample('name', name);
 
@@ -1259,10 +1268,11 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
   }
 
   if (data === null || typeof data !== "object") {
-    data = {};
+    shallow = {};
   }
-
-  shallow = data.shallowCopy;
+  else {
+    shallow = data.shallowCopy || {};
+  }
 
   shallow.$id = id || null;
   shallow.$label = label || null;
@@ -1301,10 +1311,11 @@ Graph.prototype.addVertex = function (id, data) {
     shallow;
 
   if (data === null || typeof data !== "object") {
-    data = {};
+    shallow = {};
   }
-
-  shallow = data.shallowCopy;
+  else {
+    shallow = data.shallowCopy || {};
+  }
 
   shallow.$id = id || null;
 
@@ -1401,6 +1412,37 @@ Graph.prototype.getVertices = function () {
   };
 
   return new Iterator();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an edge given its id
+///
+/// @FUN{@FA{graph}.getEdge(@FA{id})}
+///
+/// Returns the edge identified by @FA{id} or @LIT{null}.
+///
+/// @EXAMPLES
+///
+/// @verbinclude graph-graph-get-edge
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getEdge = function (id) {
+  var ref,
+    edge;
+
+  ref = this._edges.firstExample('$id', id);
+
+  if (ref !== null) {
+    edge = this.constructEdge(ref._id);
+  } else {
+    try {
+      edge = this.constructEdge(id);
+    } catch (e) {
+      edge = null;
+    }
+  }
+
+  return edge;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
