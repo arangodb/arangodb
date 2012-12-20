@@ -232,9 +232,7 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* sim
 
     if (synced < written) {
       worked = true;
-  printf("CheckSyncCompactorDocumentCollection  2000:BEFORE:#############################:file=%d\n",journal->_fd);
       ok = TRI_msync(journal->_fd, journal->_mmHandle, synced, written);
-  printf("CheckSyncCompactorDocumentCollection  2000:AFTER:#############################:file=%d\n",journal->_fd);
       ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(sim);
