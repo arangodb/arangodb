@@ -58,11 +58,15 @@ void AsyncTask::signal () {
 // Task methods
 // -----------------------------------------------------------------------------
 
-void AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
   
   watcher = scheduler->installAsyncEvent(loop, this);
+  if (watcher == -1) {
+    return false;
+  }
+  return true;
 }
 
 

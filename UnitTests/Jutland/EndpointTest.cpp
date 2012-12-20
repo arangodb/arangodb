@@ -28,6 +28,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Rest/Endpoint.h"
+#include "Rest/EndpointUnixDomain.h"
+#include "Rest/EndpointIp.h"
+#include "Rest/EndpointIpV4.h"
+#include "Rest/EndpointIpV6.h"
 
 using namespace triagens;
 using namespace triagens::basics;

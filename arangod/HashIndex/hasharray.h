@@ -50,15 +50,6 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_hasharray_s {
-  uint64_t (*hashKey) (struct TRI_hasharray_s*, void*);
-  uint64_t (*hashElement) (struct TRI_hasharray_s*, void*);
-
-  void (*clearElement) (struct TRI_hasharray_s*, void*);
-
-  bool (*isEmptyElement) (struct TRI_hasharray_s*, void*);
-  bool (*isEqualKeyElement) (struct TRI_hasharray_s*, void*, void*);
-  bool (*isEqualElementElement) (struct TRI_hasharray_s*, void*, void*);
-
   size_t _numFields; // the number of fields indexes
   uint64_t _elementSize;
   uint64_t _nrAlloc; // the size of the table
@@ -105,13 +96,7 @@ TRI_hasharray_t;
 bool TRI_InitHashArray (TRI_hasharray_t*,
                         size_t initialDocumentCount,
                         size_t numFields,
-                        size_t elementSize,
-                        uint64_t (*hashKey) (TRI_hasharray_t*, void*),
-                        uint64_t (*hashElement) (TRI_hasharray_t*, void*),
-                        void (*clearElement) (TRI_hasharray_t*, void*),
-                        bool (*isEmptyElement) (TRI_hasharray_t*, void*),
-                        bool (*isEqualKeyElement) (TRI_hasharray_t*, void*, void*),
-                        bool (*isEqualElementElement) (TRI_hasharray_t*, void*, void*));
+                        size_t elementSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer

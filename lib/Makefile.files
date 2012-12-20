@@ -13,13 +13,13 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ConditionVariable.cpp \
 	lib/Basics/Exceptions.cpp \
 	lib/Basics/FileUtils.cpp \
-	lib/Basics/Initialise.cpp \
+	lib/Basics/InitialiseBasics.cpp \
 	lib/Basics/LibraryLoader.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
-	lib/Basics/Random.cpp \
+	lib/Basics/RandomGenerator.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
@@ -70,10 +70,14 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \
+	lib/Rest/EndpointIp.cpp \
+	lib/Rest/EndpointIpV4.cpp \
+	lib/Rest/EndpointIpV6.cpp \
+	lib/Rest/EndpointUnixDomain.cpp \
 	lib/Rest/Handler.cpp \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp \
-	lib/Rest/Initialise.cpp \
+	lib/Rest/InitialiseRest.cpp \
 	lib/Rest/JsonContainer.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Url.cpp \
@@ -141,7 +145,7 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/RedirectHandler.cpp \
 	lib/HttpServer/ServiceUnavailableHandler.cpp \
 	lib/ResultGenerator/HtmlResultGenerator.cpp \
-	lib/ResultGenerator/Initialise.cpp \
+	lib/ResultGenerator/InitialiseGenerator.cpp \
 	lib/ResultGenerator/JsonResultGenerator.cpp \
 	lib/ResultGenerator/JsonXResultGenerator.cpp \
 	lib/ResultGenerator/OutputGenerator.cpp \

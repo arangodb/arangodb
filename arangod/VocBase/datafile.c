@@ -25,6 +25,10 @@
 /// @author Copyright 2011, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include <BasicsC/win-utils.h>
+#endif
+
 #include "datafile.h"
 
 #include <BasicsC/hashes.h>
@@ -32,6 +36,7 @@
 #include <BasicsC/memory-map.h>
 #include <BasicsC/strings.h>
 #include <BasicsC/files.h>
+
 
 // #define DEBUG_DATAFILE 1
 
@@ -121,11 +126,11 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t vocSize) {
   }
 
   // create sparse file
-  offset = lseek(fd, maximalSize - 1, SEEK_SET);
+  offset = TRI_LSEEK(fd, maximalSize - 1, SEEK_SET);
 
   if (offset == (off_t) -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    close(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
@@ -135,11 +140,11 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t vocSize) {
   }
 
   zero = 0;
-  res = write(fd, &zero, 1);
+  res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    close(fd);
+    TRI_CLOSE(fd);
     
     // remove empty file
     TRI_UnlinkFile(filename);
@@ -149,11 +154,11 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t vocSize) {
   }
 
   // memory map the data
-  res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, &fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
   
   if (res != TRI_ERROR_NO_ERROR) {  
     TRI_set_errno(res);
-    close(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
@@ -166,15 +171,21 @@ static int TruncateDatafile (TRI_datafile_t* datafile, TRI_voc_size_t vocSize) {
   memcpy(data, datafile->_data, vocSize);
 
   // patch the datafile structure
-  res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &(datafile->_fd), &(datafile->_mmHandle));
+  res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
 
   if (res < 0) {
     LOG_ERROR("munmap failed with: %d", res);
     return res;
   }
 
-  close(datafile->_fd);
-  // the datafile->_mmHandle object has been closed in the underlying TRI_UNMMFile(...) call above
+  // .............................................................................................
+  // For windows: Mem mapped files use handles
+  // the datafile->_mmHandle handle object has been closed in the underlying 
+  // TRI_UNMMFile(...) call above so we do not need to close it for the associated file below
+  // .............................................................................................
+  
+  TRI_CLOSE(datafile->_fd);
+
   
   datafile->_data = data;
   datafile->_next = (char*)(data) + vocSize;
@@ -422,8 +433,11 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   struct stat status;
   TRI_df_header_marker_t header;
   void* mmHandle;
-  
-  // open the file
+
+  // ..........................................................................  
+  // attempt to open a datafile file
+  // ..........................................................................  
+
   fd = TRI_OPEN(filename, O_RDWR);
 
   if (fd < 0) {
@@ -434,12 +448,14 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
     return NULL;
   }
 
+  
+
   // compute the size of the file
   res = fstat(fd, &status);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    close(fd);
+    TRI_CLOSE(fd);
 
     LOG_ERROR("cannot get status of datafile '%s': %s", filename, TRI_last_error());
 
@@ -451,7 +467,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   if (size < sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t)) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-    close(fd);
+    TRI_CLOSE(fd);
 
     LOG_ERROR("datafile '%s' is corrupted, size is only %u", filename, (unsigned int) size);
 
@@ -467,7 +483,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   if (! ok) {
     LOG_ERROR("cannot read datafile header from '%s': %s", filename, TRI_last_error());
 
-    close(fd);
+    TRI_CLOSE(fd);
     return NULL;
   }
 
@@ -480,7 +496,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
     LOG_ERROR("corrupted datafile header read from '%s'", filename);
 
     if (! ignoreErrors) {
-      close(fd);
+      TRI_CLOSE(fd);
       return NULL;
     }
   }
@@ -495,7 +511,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
                 filename);
 
       if (! ignoreErrors) {
-        close(fd);
+        TRI_CLOSE(fd);
         return NULL;
       }
     }
@@ -509,11 +525,11 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
   }
 
   // map datafile into memory
-  res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, &fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    close(fd);
+    TRI_CLOSE(fd);
     LOG_ERROR("cannot memory map file '%s': '%d'", filename, res);
     return NULL;
   }
@@ -589,12 +605,12 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   }
 
   // create sparse file
-  offset = lseek(fd, maximalSize - 1, SEEK_SET);
+  offset = TRI_LSEEK(fd, maximalSize - 1, SEEK_SET);
 
   if (offset == (off_t) -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    close(fd);
-
+    TRI_CLOSE(fd);
+    
     // remove empty file
     TRI_UnlinkFile(filename);
 
@@ -603,11 +619,11 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   }
 
   zero = 0;
-  res = write(fd, &zero, 1);
+  res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    close(fd);
+    TRI_CLOSE(fd);
     
     // remove empty file
     TRI_UnlinkFile(filename);
@@ -617,11 +633,11 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   }
 
   // memory map the data
-  res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, &fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    close(fd);
+    TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
@@ -630,19 +646,21 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     return NULL;
   }
 
+
   // get next tick
   tick = TRI_NewTickVocBase();
 
   // create datafile structure
-  datafile = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
+  datafile = (TRI_datafile_t*)(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
   if (datafile == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    close(fd);
+    TRI_CLOSE(fd);
 
     LOG_ERROR("out-of-memory");
     return NULL;
   }
+
 
   InitDatafile(datafile,
                TRI_DuplicateString(filename),
@@ -652,6 +670,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
                0,
                tick,
                data);
+
 
   datafile->_state = TRI_DF_STATE_WRITE;
 
@@ -666,6 +685,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   header._maximalSize = maximalSize;
   header._fid = tick;
 
+
   // create CRC
   TRI_FillCrcMarkerDatafile(&header.base, sizeof(TRI_df_header_marker_t), 0, 0);
 
@@ -677,10 +697,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot write header to datafile '%s'",
-              filename);
-    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &fd, &mmHandle);
-    close(fd);
+    LOG_ERROR("cannot write header to datafile '%s'",filename);
+    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, fd, &mmHandle);
+    TRI_CLOSE(fd);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, datafile->_filename);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
@@ -688,10 +707,12 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
     return NULL;
   }
 
+
   LOG_DEBUG("created datafile '%s' of size %u and page-size %u",
             filename,
             (unsigned int) maximalSize,
             (unsigned int) PageSize);
+
 
   return datafile;
 }
@@ -948,8 +969,8 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   ok = CheckDatafile(datafile);
 
   if (!ok) {
-    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &(datafile->_fd), &(datafile->_mmHandle));
-    close(datafile->_fd);
+    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
+    TRI_CLOSE(datafile->_fd);
 
     LOG_ERROR("datafile '%s' is corrupt", datafile->_filename);
     // must free datafile here
@@ -961,7 +982,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   // change to read-write if no footer has been found
   if (! datafile->_isSealed) {
     datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, &(datafile->_fd), &(datafile->_mmHandle)); 
+    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle)); 
   }
 
   return datafile;
@@ -992,7 +1013,7 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
   else {
     if (! datafile->_isSealed) {
       datafile->_state = TRI_DF_STATE_WRITE;
-      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, &(datafile->_fd), &(datafile->_mmHandle)); 
+      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle)); 
     }
   }
 
@@ -1006,7 +1027,7 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
 bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
   int res;
   if (datafile->_state == TRI_DF_STATE_READ || datafile->_state == TRI_DF_STATE_WRITE) {
-    res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, &(datafile->_fd), &(datafile->_mmHandle));
+    res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("munmap failed with: %d", res);
@@ -1016,7 +1037,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
     }
     
     else {
-      close(datafile->_fd);
+      TRI_CLOSE(datafile->_fd);
 
       datafile->_state = TRI_DF_STATE_CLOSED;
       datafile->_data = 0;
@@ -1114,6 +1135,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   ok = TRI_msync(datafile->_fd, datafile->_mmHandle, datafile->_data, ((char*) datafile->_data) + datafile->_currentSize);
 
   if (! ok) {
+    abort(); 
     datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
     if (errno == ENOSPC) {
@@ -1130,14 +1152,28 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   datafile->_synced = datafile->_written;
   datafile->_nSynced = datafile->_nWritten;
 
-  // change the datafile to read-only
-  TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ, &(datafile->_fd), &(datafile->_mmHandle)); 
+  /* 
+    TODO: do we have to unmap file? That is, release the memory which has been allocated for
+          this file? At the moment the windows of function TRI_ProtectMMFile does nothing.
+  */
+  TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ, datafile->_fd, &(datafile->_mmHandle)); 
 
   // truncate datafile
   if (ok) {
-    res = ftruncate(datafile->_fd, datafile->_currentSize);
-
+    #ifdef _WIN32
+      res = 0;
+      /* 
+      res = ftruncate(datafile->_fd, datafile->_currentSize);
+      Linux centric problems:
+        Under windows can not reduce size of the memory mapped file without unmappping it! 
+        However, apparently we may have users
+      */
+    #else
+      res = ftruncate(datafile->_fd, datafile->_currentSize);
+    #endif
+  
     if (res < 0) {
+      abort();
       LOG_ERROR("cannot truncate datafile '%s': %s", datafile->_filename, TRI_last_error());
       datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
       ok = false;
@@ -1147,7 +1183,11 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     datafile->_state = TRI_DF_STATE_READ;
   }
 
-  return ok ? TRI_ERROR_NO_ERROR : datafile->_lastError;
+  if (!ok) {
+    return datafile->_lastError;
+  }
+ 
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

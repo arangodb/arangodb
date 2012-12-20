@@ -26,7 +26,7 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Random.h"
+#include "RandomGenerator.h"
 
 #include "BasicsC/mersenne.h"
 #include "BasicsC/socket-utils.h"
@@ -235,11 +235,66 @@ namespace RandomHelper {
       uint32_t rseed;
   };
 
+  template<int N>
+  class RandomDeviceWin32 : public RandomDevice {
+#ifndef _WIN32
+    public: 
+      RandomDeviceWin32 () { assert(false); }
+      ~RandomDeviceWin32 () {}
+      uint32_t random () { return 0;}
+#else 
+    public:
+      RandomDeviceWin32 () : cryptoHandle(0), pos(0)  {
+        BOOL result;
+        result = CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT); 
+        if (cryptoHandle == 0 || result == FALSE) {
+          printf("%s:%s:%d:%d",__FILE__,__FUNCTION__,__LINE__,GetLastError());
+          THROW_INTERNAL_ERROR("cannot create cryptographic windows handle");
+        }
+        fillBuffer();
+      }
 
+
+      ~RandomDeviceWin32 () {
+        if (cryptoHandle != 0) {
+          CryptReleaseContext(cryptoHandle, 0);
+        }
+      }
+
+
+      uint32_t random () {
+        if (pos >= N) {
+          fillBuffer();
+        }
+
+        return buffer[pos++];
+      }
+
+    private:
+      void fillBuffer () {
+        size_t n = sizeof(buffer);
+        BYTE* ptr = reinterpret_cast<BYTE*>(&buffer);
+
+        // fill the buffer with random characters
+        int result = CryptGenRandom(cryptoHandle, n, ptr);
+        if (result == 0) {
+          LOGGER_FATAL << "read on random device failed: nothing read";
+          THROW_INTERNAL_ERROR("read on random device failed");
+        }
+        pos = 0;
+      }
+
+    private:
+      HCRYPTPROV cryptoHandle;
+      uint32_t buffer[N];
+      size_t pos;
+#endif
+  };
 
   RandomDevice* randomDevice = 0;
   RandomDevice* urandomDevice = 0;
   RandomDevice* combinedDevice = 0;
+  RandomDevice* win32Device = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -391,6 +446,17 @@ namespace triagens {
       };
 
 
+      // RANDOM DEVICE
+      struct UniformIntegerWin32 : public UniformIntegerImpl, private RandomHelper::UniformGenerator {
+        UniformIntegerWin32 (RandomHelper::RandomDevice* device) : RandomHelper::UniformGenerator(device) {
+        }
+
+        int32_t random (int32_t left, int32_t right) {
+          return RandomHelper::UniformGenerator::random(left, right);
+        }
+      };
+
+
 
       // current implementation (see version at the top of the file)
       UniformIntegerImpl * uniformInteger = new UniformIntegerMersenne;
@@ -461,6 +527,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       random_e selectVersion (random_e newVersion) {
+
         MUTEX_LOCKER(RandomLock);
 
         random_e oldVersion = version;
@@ -471,12 +538,15 @@ namespace triagens {
           uniformInteger = 0;
         }
 
+
         switch (version) {
-          case RAND_MERSENNE:
+
+          case RAND_MERSENNE: {
             uniformInteger = new UniformIntegerMersenne;
             break;
+           }
 
-          case RAND_RANDOM:
+          case RAND_RANDOM: {
             if (RandomHelper::randomDevice == 0) {
               RandomHelper::randomDevice = new RandomHelper::RandomDeviceDirect<1024>("/dev/random");
             }
@@ -484,8 +554,9 @@ namespace triagens {
             uniformInteger = new UniformIntegerRandom(RandomHelper::randomDevice);
 
             break;
+          }
 
-          case RAND_URANDOM:
+          case RAND_URANDOM: {
             if (RandomHelper::urandomDevice == 0) {
               RandomHelper::urandomDevice = new RandomHelper::RandomDeviceDirect<1024>("/dev/urandom");
             }
@@ -493,8 +564,9 @@ namespace triagens {
             uniformInteger = new UniformIntegerRandom(RandomHelper::urandomDevice);
 
             break;
+          }
 
-          case RAND_COMBINED:
+          case RAND_COMBINED: {
             if (RandomHelper::combinedDevice == 0) {
               RandomHelper::combinedDevice = new RandomHelper::RandomDeviceCombined<600>("/dev/random");
             }
@@ -502,9 +574,20 @@ namespace triagens {
             uniformInteger = new UniformIntegerRandom(RandomHelper::combinedDevice);
 
             break;
+          }
 
-          default: 
+          case RAND_WIN32: {
+            if (RandomHelper::win32Device == 0) {
+              RandomHelper::win32Device = new RandomHelper::RandomDeviceWin32<1024>();
+            }
+            uniformInteger = new UniformIntegerWin32(RandomHelper::win32Device);
+            break;
+          }
+
+          default: {
             THROW_INTERNAL_ERROR("unknown random generator");
+          }
+
         }
 
         return oldVersion;

@@ -25,7 +25,7 @@
 /// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Initialise.h"
+#include "InitialiseRest.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -40,7 +40,7 @@
 
 #include "build.h"
 
-#include "Basics/Initialise.h"
+#include "Basics/InitialiseBasics.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Url.h"
@@ -125,8 +125,10 @@ namespace triagens {
       OpenSSL_add_all_algorithms();
       ERR_load_crypto_strings();
 
+#ifdef TRI_OPENSSL_VERSION
       revision = "$Revision: OPENSSL " TRI_OPENSSL_VERSION " $";
       LOGGER_TRACE << revision;
+#endif
 
 #ifdef TRI_LIBEV_VERSION
       revision = "$Revision: LIBEV " TRI_LIBEV_VERSION " $";

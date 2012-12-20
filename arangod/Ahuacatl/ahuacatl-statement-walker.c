@@ -322,7 +322,7 @@ void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker, 
-                            TRI_aql_statement_list_t* const list) {
+                            TRI_aql_statement_list_t* list) {
   assert(walker);
   assert(list);
 

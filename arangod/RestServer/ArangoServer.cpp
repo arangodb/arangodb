@@ -48,7 +48,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
-#include "Basics/Random.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
@@ -61,7 +61,7 @@
 #include "HttpServer/RedirectHandler.h"
 
 #include "Logger/Logger.h"
-#include "Rest/Initialise.h"
+#include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
 #include "RestHandler/ConnectionStatisticsHandler.h"
 #include "RestHandler/RequestStatisticsHandler.h"
@@ -70,6 +70,7 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
+
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -239,18 +240,25 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", TRIAGENS_VERSION);
   _applicationServer->setSystemConfigFile("arangod.conf");
-  _applicationServer->setUserConfigFile(".arango/arangod.conf");
+  _applicationServer->setUserConfigFile(string(".arango") + string(1,TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
   // .............................................................................
-  // multi-threading scheduler and dispatcher
+  // multi-threading scheduler 
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
   _applicationScheduler->allowMultiScheduler(true);
+  
   _applicationServer->addFeature(_applicationScheduler);
+
+
+  // .............................................................................
+  // dispatcher
+  // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   _applicationServer->addFeature(_applicationDispatcher);
+
 
   // .............................................................................
   // V8 engine
@@ -299,6 +307,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // daemon and supervisor mode
   // .............................................................................
+
 
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
@@ -376,6 +385,7 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
+
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
@@ -392,6 +402,7 @@ void ArangoServer::buildApplicationServer () {
     exit(EXIT_FAILURE);
   }
   
+
 #ifdef TRI_HAVE_ICU  
   // .............................................................................
   // set language of default collator
@@ -411,6 +422,7 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
   }
 #endif  
+
  
   // .............................................................................
   // disable access to the HTML admin interface
@@ -513,6 +525,7 @@ void ArangoServer::buildApplicationServer () {
       exit(EXIT_FAILURE);
     }
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,8 +538,8 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // open the database
   // .............................................................................
-
   openDatabase();
+
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -570,6 +583,7 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
 
+
   // create the server
   _applicationEndpointServer->buildServers();
     
@@ -599,13 +613,16 @@ int ArangoServer::startupServer () {
   LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
   LOGGER_INFO << "Have Fun!";
 
+
   _applicationServer->wait();
+  
 
   // .............................................................................
   // and cleanup
   // .............................................................................
 
   _applicationServer->stop();
+
   closeDatabase();
 
   return 0;
@@ -678,6 +695,10 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
         
+    context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
+    context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
+    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
+
     context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
     context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
     context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
@@ -845,7 +866,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
             cout << TRI_StringifyV8Exception(&tryCatch);
           }
         }
-        
+
         break;
       }
 
@@ -868,7 +889,11 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   closeDatabase();
   Random::shutdown();
 
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (!ok) {
+    return EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

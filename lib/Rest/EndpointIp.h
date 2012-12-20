@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoints
+/// @brief connection endpoint, ip-based
 ///
 /// @file
 ///
@@ -21,6 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
+/// @author Dr. O
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,23 +29,17 @@
 #ifndef TRIAGENS_FYN_REST_ENDPOINT_IP_H
 #define TRIAGENS_FYN_REST_ENDPOINT_IP_H 1
 
-#include <Basics/Common.h>
-#include <Basics/StringUtils.h>
-#include "EndpointBase.h"
+#include "Rest/Endpoint.h"
 
 
 namespace triagens {
   namespace rest {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint specification
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EndpointIp
 // -----------------------------------------------------------------------------
 
-    class EndpointIp : public EndpointBase {
+    class EndpointIp : public Endpoint {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -61,11 +56,12 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIp (const Endpoint::Type, 
-                    const Endpoint::DomainType, 
-                    const Endpoint::Protocol,
-                    const Endpoint::Encryption,
+        EndpointIp (const EndpointType, 
+                    const DomainType, 
+                    const ProtocolType,
+                    const EncryptionType,
                     const std::string&, 
+                    int,
                     const std::string&, 
                     const uint16_t);
 
@@ -171,7 +167,7 @@ namespace triagens {
 /// @brief get host 
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHost () const {
+        std::string getHost () const {
           return _host;
         }
 
@@ -194,7 +190,7 @@ namespace triagens {
 /// @brief host name / address (IPv4 or IPv6)
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _host;
+        std::string _host;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief port number
@@ -207,7 +203,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     };
-
 
   }
 }

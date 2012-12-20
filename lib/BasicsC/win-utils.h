@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_BASICS_C_WIN_UTILS_H
 #define TRIAGENS_BASICS_C_WIN_UTILS_H 1
 
+#include <WinSock2.h>
 
 /* Constants rounded for 21 decimals.
 #define M_E 2.71828182845904523536
@@ -56,11 +57,51 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
+// Called before anything else starts - initialises whatever is required to be
+// initalised.
+// .............................................................................
+typedef enum {
+  TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
+  TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
+}
+TRI_win_finalise_e;
+
+typedef enum {
+  TRI_WIN_INITIAL_SET_DEBUG_FLAG,
+  TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
+  TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
+}
+TRI_win_initialise_e;
+
+int finaliseWindows (const TRI_win_finalise_e, const char*);
+int initialiseWindows (const TRI_win_initialise_e, const char*);
+
+// .............................................................................
+// windows equivalent of ftruncate (the truncation of an open file) is
+// _chsize
+// .............................................................................
+
+int ftruncate (int, long);
+
+
+// .............................................................................
 // windows does not have a function called getpagesize -- create one here
 // .............................................................................
 
 int getpagesize (void);
 
+
+
+int TRI_WIN_closesocket (SOCKET); 
+
+// .............................................................................
+// This function uses the CreateFile windows method rather than _open which
+// then will allow the application to rename files on the fly.
+// .............................................................................
+
+int TRI_createFile (const char* filename, int openFlags, int modeFlags);
+
+int TRI_openFile (const char* filename, int openFlags);
 
 // .............................................................................
 // the sleep function in windows is for milliseconds, on linux it is for seconds

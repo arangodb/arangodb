@@ -199,7 +199,7 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
   
   
   // ...........................................................................  
-  // Sime simple checks
+  // Some simple checks
   // ...........................................................................  
   
   if (baIndex == NULL) {
@@ -891,7 +891,9 @@ static bool isEqualJson(TRI_json_t* left, TRI_json_t* right) {
     default: {
       assert(false);
     }  
-  }        
+  }  
+  
+  return false; // shut the vc++ up      
 }
 
 

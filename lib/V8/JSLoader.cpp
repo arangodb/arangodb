@@ -80,7 +80,8 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
   map<string, string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
-    LOGGER_ERROR << "unknown script '" << name << "'";
+    // correct the path/name 
+    LOGGER_ERROR << "unknown script '" << StringUtils::correctPath(name) << "'";
     return false;
   }
 
@@ -157,12 +158,15 @@ bool JSLoader::executeScript (v8::Persistent<v8::Context> context, string const&
 bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
+  bool ok;
 
   if (_directory.empty()) {
     return true;
   }
 
-  return TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
+  ok = TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
+
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

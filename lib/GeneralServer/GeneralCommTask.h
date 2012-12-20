@@ -29,6 +29,10 @@
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_COMM_TASK_H
 #define TRIAGENS_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
+#ifdef _WIN32
+  #include "BasicsC/win-utils.h"
+#endif
+
 #include "Basics/Common.h"
 
 #include "Basics/StringBuffer.h"
@@ -100,6 +104,7 @@ namespace triagens {
                        << ", client ip " <<  _connectionInfo.clientAddress
                        << ", client port " <<  _connectionInfo.clientPort;
 
+                    
           pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
 
           _maximalHeaderSize = p.first;
@@ -169,7 +174,8 @@ namespace triagens {
 
         void beginShutdown ()  {
           if (commSocket != -1) {
-            TRI_CLOSE(commSocket);
+            TRI_CLOSE_SOCKET(commSocket);
+            commSocket = -1;
           }
         }
 

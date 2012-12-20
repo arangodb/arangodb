@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,33 +22,33 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_INITIALISE_H
-#define TRIAGENS_BASICS_INITIALISE_H 1
+#ifndef TRIAGENS_FYN_REST_INITIALISE_REST_H
+#define TRIAGENS_FYN_REST_INITIALISE_REST_H 1
 
-#include "Basics/Common.h"
+#include <Basics/Common.h>
 
 namespace triagens {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the namespace containing the basic classes and functions
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief rest server
+  ////////////////////////////////////////////////////////////////////////////////
 
-  namespace basics {
+  namespace rest {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief initialise function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitialiseBasics (int argv, char* argc[]);
+    extern void InitialiseRest (int argc, char* argv[]);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown function
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief shutdown function
+    ////////////////////////////////////////////////////////////////////////////////
 
-    extern void ShutdownBasics ();
+    extern void ShutdownRest ();
   }
 }
 
@@ -56,18 +56,18 @@ namespace triagens {
 /// @brief initialise
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_BASICS_INITIALISE(a,b)                 \
-  do {                                                  \
-    triagens::basics::InitialiseBasics((a), (b));       \
+#define TRIAGENS_REST_INITIALISE(a,b)           \
+  do {                                          \
+    triagens::rest::InitialiseRest((a), (b));   \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_BASICS_SHUTDOWN                \
-  do {                                          \
-    triagens::basics::ShutdownBasics();         \
+#define TRIAGENS_REST_SHUTDOWN           \
+  do {                                   \
+    triagens::rest::ShutdownRest();      \
   } while (0)
 
 #endif

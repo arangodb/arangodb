@@ -323,7 +323,7 @@ char* TRI_Dirname (char const* path) {
   m = 0;
 
   if (1 < n) {
-    if (path[n - 1] == '/') {
+    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
       m = 1;
     }
   }
@@ -331,8 +331,8 @@ char* TRI_Dirname (char const* path) {
   if (n == 0) {
     return TRI_DuplicateString(".");
   }
-  else if (n == 1 && *path == '/') {
-    return TRI_DuplicateString("/");
+  else if (n == 1 && *path == TRI_DIR_SEPARATOR_CHAR) {
+    return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
   }
   else if (n - m == 1 && *path == '.') {
     return TRI_DuplicateString(".");
@@ -342,14 +342,14 @@ char* TRI_Dirname (char const* path) {
   }
 
   for (p = path + (n - m - 1); path < p; --p) {
-    if (*p == '/') {
+    if (*p == TRI_DIR_SEPARATOR_CHAR) {
       break;
     }
   }
 
   if (path == p) {
-    if (*p == '/') {
-      return TRI_DuplicateString("/");
+    if (*p == TRI_DIR_SEPARATOR_CHAR) {
+      return TRI_DuplicateString(TRI_DIR_SEPARATOR_STR);
     }
     else {
       return TRI_DuplicateString(".");
@@ -374,7 +374,7 @@ char* TRI_Basename (char const* path) {
   m = 0;
 
   if (1 < n) {
-    if (path[n - 1] == '/') {
+    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
       m = 1;
     }
   }
@@ -382,7 +382,7 @@ char* TRI_Basename (char const* path) {
   if (n == 0) {
     return TRI_DuplicateString("");
   }
-  else if (n == 1 && *path == '/') {
+  else if (n == 1 && *path == TRI_DIR_SEPARATOR_CHAR) {
     return TRI_DuplicateString("");
   }
   else if (n - m == 1 && *path == '.') {
@@ -393,13 +393,13 @@ char* TRI_Basename (char const* path) {
   }
 
   for (p = path + (n - m - 1); path < p; --p) {
-    if (*p == '/') {
+    if (*p == TRI_DIR_SEPARATOR_CHAR) {
       break;
     }
   }
 
   if (path == p) {
-    if (*p == '/') {
+    if (*p == TRI_DIR_SEPARATOR_CHAR) {
       return TRI_DuplicateString2(path + 1, n - m);
     }
   }
@@ -414,7 +414,7 @@ char* TRI_Basename (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate2File (char const* path, char const* name) {
-  return TRI_Concatenate3String(path, "/", name);
+  return TRI_Concatenate3String(path, TRI_DIR_SEPARATOR_STR, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +422,7 @@ char* TRI_Concatenate2File (char const* path, char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate3File (char const* path1, char const* path2, char const* name) {
-  return TRI_Concatenate5String(path1, "/", path2, "/", name);
+  return TRI_Concatenate5String(path1, TRI_DIR_SEPARATOR_STR, path2, TRI_DIR_SEPARATOR_STR, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -504,8 +504,20 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
 int TRI_RenameFile (char const* old, char const* filename) {
   int res;
-
+  
+#ifdef _WIN32
+  BOOL moveResult = 0; 
+  moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING); 
+  if (!moveResult) {
+    DWORD errorCode = GetLastError();
+    res = -1;
+  }
+  else {
+    res = 0;
+  }
+#else
   res = rename(old, filename);
+#endif
 
   if (res != 0) {
     LOG_TRACE("cannot rename file from '%s' to '%s': %s", old, filename, TRI_LAST_ERROR_STR);
@@ -541,8 +553,10 @@ bool TRI_ReadPointer (int fd, void* buffer, size_t length) {
 
   ptr = buffer;
 
+
   while (0 < length) {
     ssize_t n = TRI_READ(fd, ptr, length);
+
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -976,6 +990,7 @@ int TRI_DestroyLockFile (char const* filename) {
     return false;
   }
 
+  
   fd = TRI_OPEN(filename, O_RDWR);
 
   // ..........................................................................
@@ -1118,10 +1133,10 @@ char* TRI_LocateBinaryPath (char const* argv0) {
   char* binaryPath = NULL;
   size_t i;
 
-  // check if name contains a '/'
+  // check if name contains a '/' ( or '\' for windows)
   p = argv0;
 
-  for (;  *p && *p != '/';  ++p) {
+  for (;  *p && *p != TRI_DIR_SEPARATOR_CHAR;  ++p) {
   }
 
   // contains a path

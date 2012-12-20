@@ -42,7 +42,7 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_BYE_MESSAGE "Auf Wiedersehen! Bye Bye! Arrivederci! Na shledanou! Au revoir! ¡Hasta luego! Εις το επανιδείν! До свидания! さようなら"
+#define TRI_BYE_MESSAGE "Auf Wiedersehen! Bye Bye! Arrivederci! Na shledanou! Au revoir! ¡Hasta luego! Εις το επανιδείν! Adjö! До свидания! さようなら"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Dr. Oreste Costa-Panaia
+/// @author Dr. O
 /// @author Copyright 2005-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -740,6 +740,13 @@ namespace triagens {
       // ADDITIONAL STRING UTILITIES
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @ingroup Utilities
+/// @brief replaces incorrect path delimiter character for window and linux
+////////////////////////////////////////////////////////////////////////////////
+
+      string correctPath (const string& incorrectPath);
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @ingroup Utilities
 /// @brief finds n.th entry

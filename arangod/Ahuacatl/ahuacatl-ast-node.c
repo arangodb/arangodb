@@ -1011,7 +1011,7 @@ bool TRI_PushArrayAql (TRI_aql_context_t* const context,
 /// @brief get the boolean value of a node
 ////////////////////////////////////////////////////////////////////////////////
 
-inline bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
+bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
   assert(node);
   assert(node->_type == TRI_AQL_NODE_VALUE);
     

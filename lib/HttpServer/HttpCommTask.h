@@ -127,11 +127,13 @@ namespace triagens {
 
         bool processRead () {
           if (this->_requestPending || this->_readBuffer->c_str() == 0) {
+
             return true;
           }
 
           bool handleRequest = false;
 
+          
           if (! this->_readRequestBody) {
 #ifdef TRI_ENABLE_FIGURES
 
@@ -151,7 +153,9 @@ namespace triagens {
               }
             }
 
+
             size_t headerLength = ptr - this->_readBuffer->c_str();
+
 
             if (headerLength > this->_maximalHeaderSize) {
               LOGGER_WARNING << "maximal header size is " << this->_maximalHeaderSize << ", request header size is " << headerLength;
@@ -354,6 +358,7 @@ namespace triagens {
 
             // authenticated
             if (auth) {
+
               HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
               bool ok = false;
 

@@ -25,7 +25,7 @@
 /// @author Copyright 2009-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Initialise.h"
+#include "Basics/InitialiseBasics.h"
 
 #include "BasicsC/init.h"
 #include "BasicsC/error.h"
@@ -33,7 +33,7 @@
 #include "BasicsC/random.h"
 
 #include "Logger/Logger.h"
-#include "Basics/Random.h"
+#include "Basics/RandomGenerator.h"
 
 #ifdef TRI_BROKEN_CXA_GUARD
 #include <pthread.h>

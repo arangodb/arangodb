@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory mapped files in windows
+/// @brief connection endpoint, ipv4-based
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2011 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,73 +21,54 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. O
+/// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_MEMORY_MAP_WIN32_H
-#define TRIAGENS_BASICS_C_MEMORY_MAP_WIN32_H 1
+#include "EndpointIpV4.h"
 
-#include "BasicsC/common.h"
+#include "Rest/Endpoint.h"
 
-#ifdef TRI_HAVE_WIN32_MMAP
+using namespace triagens::basics;
+using namespace triagens::rest;
 
-#include <Windows.h>
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      EndpointIpV4
+// -----------------------------------------------------------------------------
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Flags used when we create a memory map -- dummy flags for windows for now
-////////////////////////////////////////////////////////////////////////////////
-
-#define MAP_SHARED      0x01            /* Share changes */
-#define MAP_PRIVATE     0x02            /* Changes are private */
-#define MAP_TYPE        0x0f            /* Mask for type of mapping */
-#define MAP_FIXED       0x10            /* Interpret addr exactly */
-#define MAP_ANONYMOUS   0x20            /* don't use a file */
-
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-// Define some dummy flags which are ignored under windows.
-// Under windows only the MS_SYNC flag makes sense, that is, all memory map
-// file flushes are synchronous.
-////////////////////////////////////////////////////////////////////////////////
-
-#define MS_ASYNC        1             /* sync memory asynchronously */
-#define MS_INVALIDATE   2             /* invalidate the caches */
-#define MS_SYNC         4             /* synchronous memory sync */
-
-
-
-#define PROT_READ       0x1             /* Page can be read.  */
-#define PROT_WRITE      0x2             /* Page can be written.  */
-#define PROT_EXEC       0x4             /* Page can be executed.  */
-#define PROT_NONE       0x0             /* Page can not be accessed.  */
-#define PROT_GROWSDOWN  0x01000000      /* Extend change to start of growsdown vma (mprotect only).  */
-#define PROT_GROWSUP    0x02000000      /* Extend change to start of growsup vma (mprotect only).  */
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Memory_map
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IPv4 socket endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
+                            const Endpoint::ProtocolType protocol,
+                            const Endpoint::EncryptionType encryption,
+                            const std::string& specification, 
+                            int listenBacklog,
+                            const std::string& host, 
+                            const uint16_t port) :
+    EndpointIp(type, DOMAIN_IPV4, protocol, encryption, specification, listenBacklog, host, port) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an IPv4 socket endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+EndpointIpV4::~EndpointIpV4 () {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

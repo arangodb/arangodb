@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force symbols into programm
+/// @brief connection endpoint, ipv6-based
 ///
 /// @file
 ///
@@ -21,77 +21,54 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2009-2011, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_FYN_REST_INITIALISE2_H
-#define TRIAGENS_FYN_REST_INITIALISE2_H 1
+#include "EndpointIpV6.h"
 
-#include <Basics/Common.h>
+#include "Rest/Endpoint.h"
+
+using namespace triagens::basics;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
+// --SECTION--                                                      EndpointIpV6
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ResultGenerator
+/// @addtogroup Rest
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise
+/// @brief creates an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_RESULT_GENERATOR_INITIALISE(a,b)               \
-  do {                                                          \
-    triagens::rest::InitialiseResultGenerator((a), (b));        \
-  } while (0)
+EndpointIpV6::EndpointIpV6 (const Endpoint::EndpointType type,
+                            const Endpoint::ProtocolType protocol, 
+                            const Endpoint::EncryptionType encryption,
+                            const std::string& specification,
+                            int listenBacklog, 
+                            const std::string& host, 
+                            const uint16_t port) :
+    EndpointIp(type, DOMAIN_IPV6, protocol, encryption, specification, listenBacklog, host, port) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown
+/// @brief destroys an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_RESULT_GENERATOR_SHUTDOWN     \
-  do {                                         \
-    triagens::rest::ShutdownResultGenerator(); \
-  } while (0)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ResultGenerator
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-namespace triagens {
-  namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function
-////////////////////////////////////////////////////////////////////////////////
-
-    extern void InitialiseResultGenerator (int argc, char* argv[]);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown function
-////////////////////////////////////////////////////////////////////////////////
-
-    extern void ShutdownResultGenerator ();
-  }
+EndpointIpV6::~EndpointIpV6 () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#endif
 
 // Local Variables:
 // mode: outline-minor

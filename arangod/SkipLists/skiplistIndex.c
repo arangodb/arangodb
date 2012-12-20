@@ -987,6 +987,7 @@ bool SkiplistIndex_update(SkiplistIndex* skiplistIndex, const SkiplistIndexEleme
   // then adds the afterElement -- should never be called here
   // call SkiplistIndex_remove first and then SkiplistIndex_add
   assert(false);
+  return false; // shuts the VC++ up
 }
 
 
@@ -1390,6 +1391,7 @@ int MultiSkiplistIndex_remove(SkiplistIndex* skiplistIndex, SkiplistIndexElement
 
 bool MultiSkiplistIndex_update(SkiplistIndex* skiplistIndex, SkiplistIndexElement* beforeElement, SkiplistIndexElement* afterElement) {
   assert(false); // should never be called directly
+  return false; // shuts the VC++ up
 }
 
 

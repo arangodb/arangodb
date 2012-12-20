@@ -31,6 +31,7 @@
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::rest;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors

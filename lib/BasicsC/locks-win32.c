@@ -186,17 +186,40 @@ void TRI_UnlockSpin (TRI_spin_t* spin) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
+  
+  // ...........................................................................
+  // set the number of readers reading on the read_write lock to 0
+  // ...........................................................................
+  
   lock->_readers = 0;
 
+  
+  // ...........................................................................
   // Signaled:     writer has no access
   // Non-Signaled: writer has access, block readers
+  // Creates an event which allows a thread to wait on it (perhaps should use
+  // a mutux rather than an event here). The writer event is set to signalled
+  // when CreateEvent is called with these parameters.
+  // ...........................................................................
 
   lock->_writerEvent = CreateEvent(0, TRUE, TRUE, 0);
 
+  
+  
+  // ...........................................................................
   // Signaled:     no readers
   // Non-Signaled: some readers have access, block writer
+  // Same as the writer event above except this is the reader event
+  // ...........................................................................
 
   lock->_readersEvent = CreateEvent(0, TRUE, TRUE, 0);
+
+  
+  // ...........................................................................
+  // Creates critical sections for writer and readers.
+  // Waits for ownership of the specified critical section object. 
+  // The function returns when the calling thread is granted ownership.
+  // ...........................................................................
 
   InitializeCriticalSection(&lock->_lockWriter);
   InitializeCriticalSection(&lock->_lockReaders);
@@ -232,8 +255,18 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void IncrementReaders (TRI_read_write_lock_t* lock) {
+
+  // ...........................................................................
+  // increment the number of readers we have on the read_write lock
+  // ...........................................................................
+
   lock->_readers++;
 
+  
+  // ...........................................................................
+  // Since the number of readers must be positive, set the readers event to
+  // non-signalled so that any write event will have to wait.
+  // ...........................................................................
   ResetEvent(lock->_readersEvent);
 }
 
@@ -242,7 +275,18 @@ static void IncrementReaders (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DecrementReaders (TRI_read_write_lock_t* lock) {
+
+  // ...........................................................................
+  // reduce the number of readers using the read_write lock by 1
+  // ...........................................................................
+  
   lock->_readers--;
+
+
+  // ...........................................................................
+  // When the number of readers is 0, set the event to signalled which allows
+  // a writer to use the read_write lock.
+  // ...........................................................................
 
   if (lock->_readers == 0) {
     SetEvent(lock->_readersEvent);
@@ -292,13 +336,34 @@ bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+
   while (true) {
+  
+    // ........................................................................
+    // Waits for a writer to finish if there is one. This function only
+    // returns when the writer event is in a signalled state
+    // ........................................................................
+    
     WaitForSingleObject(lock->_writerEvent, INFINITE);
 
+
+    // .........................................................................
+    // This thread will wait here until this resource becomes excusively available
+    // .........................................................................
+    
     EnterCriticalSection(&lock->_lockReaders);
     IncrementReaders(lock);
+
+    // .........................................................................
+    // allows some other thread to use this resource
+    // .........................................................................
+
     LeaveCriticalSection(&lock->_lockReaders);
 
+    
+    // it could have happened that the writer event is no longer in a signalled
+    // state. Between leaving the crtical section and here a writer sneaked in.
+    // 
     if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
       EnterCriticalSection(&lock->_lockReaders);
       DecrementReaders(lock);
@@ -317,12 +382,13 @@ void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   EnterCriticalSection(&lock->_lockReaders);
 
+  /* this is wrong since it is possible for the write locker to block this event
   // a write lock eists
   if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
     LOG_FATAL("write lock, but trying to unlock read");
     exit(EXIT_FAILURE);
   }
-
+  
   // at least one reader exists
   else if (0 < lock->_readers) {
     DecrementReaders(lock);
@@ -330,56 +396,128 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 
   // ups, no writer and no reader
   else {
-    LeaveCriticalSection(&lock->_lockWriter);
+    LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("no reader and no writer, but trying to unlock");
     exit(EXIT_FAILURE);
   }
+*/
+ 
+ if (0 < lock->_readers) {
+    DecrementReaders(lock);
+  }
 
-  LeaveCriticalSection(&lock->_lockWriter);
+  // oops no reader
+  else {
+    LeaveCriticalSection(&lock->_lockReaders);
+    LOG_FATAL("no reader, but trying to unlock read lock");
+    exit(EXIT_FAILURE);
+  }
+ 
+  LeaveCriticalSection(&lock->_lockReaders);
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
+
+  // ...........................................................................
+  // Lock so no other thread can access this
+  // EnterCriticalSection(&lock->_lockWriter) will block this thread until
+  // it has been released by the other thread.
+  // ...........................................................................
+  
   EnterCriticalSection(&lock->_lockWriter);
 
+  
+  // ...........................................................................
+  // Wait until the lock->_writerEvent is in a 'signalled' state
+  // ...........................................................................
+  
   WaitForSingleObject(lock->_writerEvent, INFINITE);
 
-  ResetEvent(lock->_writerEvent);
+  
+  // ...........................................................................
+  // Set _writeEvent as nonsignalled -- this will block other read/write 
+  // lockers
+  // ...........................................................................
 
+  ResetEvent(lock->_writerEvent); 
+
+  
+  // ...........................................................................
+  // If there are ANY read locks outstanding, then  wait until these are cleared
+  // ...........................................................................
+  
   WaitForSingleObject(lock->_readersEvent, INFINITE);
+
+  
+  // ...........................................................................
+  // Allow other threads to access this function
+  // ...........................................................................
 
   LeaveCriticalSection(&lock->_lockWriter);
 }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
+
+  // ...........................................................................
+  // Write lock this _lockReader so no other threads can access this
+  // This will block this thread until it is released by the other thread
+  // We do not need to lock the _lockWriter SINCE the TRI_WriteLockReadWriteLock 
+  // function above will lock (due to the ResetEvent(lock->_writerEvent); )
+  // ...........................................................................
+
   EnterCriticalSection(&lock->_lockReaders);
 
-  // a write lock eists
+
+  // ...........................................................................
+  // In the function TRI_WriteLockReadWriteLock we set the _writerEvent to 
+  // 'nonsignalled'. So if a write lock  exists clear it by setting it to 
+  // 'signalled'
+  // ...........................................................................
+  
   if (WaitForSingleObject(lock->_writerEvent, 0) != WAIT_OBJECT_0) {
     SetEvent(lock->_writerEvent);
   }
 
-  // at least one reader exists
+  // ...........................................................................
+  // Oops at least one reader exists - something terrible happened.
+  // ...........................................................................
+  
   else if (0 < lock->_readers) {
+    LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("read lock, but trying to unlock write");
     exit(EXIT_FAILURE);
   }
 
-  // ups, no writer and no reader
+  
+  // ...........................................................................
+  // Oops we are trying to unlock a write lock, but there isn't one! Something
+  // terrible happend.
+  // ...........................................................................
+  
   else {
-    LeaveCriticalSection(&lock->_lockWriter);
+    LeaveCriticalSection(&lock->_lockReaders);
     LOG_FATAL("no reader and no writer, but trying to unlock");
     exit(EXIT_FAILURE);
   }
 
-  LeaveCriticalSection(&lock->_lockWriter);
+
+  // ...........................................................................
+  // Allow read locks to be applied now.
+  // ...........................................................................
+  
+  LeaveCriticalSection(&lock->_lockReaders);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,7 +723,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for a signal with a timeout in milli-seconds
+/// @brief waits for a signal with a timeout in micro-seconds
 ///
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
@@ -593,6 +731,13 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   bool lastWaiter;
   DWORD res;
+
+  // ...........................................................................
+  // The POSIX threads function pthread_cond_timedwait accepts microseconds 
+  // while the the function SignalObjectAndWait  accepts milliseconds
+  // ...........................................................................
+
+  delay = delay / 1000;
 
   // avoid race conditions
   EnterCriticalSection(&cond->_lockWaiters);

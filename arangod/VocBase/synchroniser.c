@@ -349,6 +349,7 @@ void TRI_SynchroniserVocBase (void* data) {
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
+
   while (true) {
     size_t n;
     size_t i;
@@ -423,6 +424,7 @@ void TRI_SynchroniserVocBase (void* data) {
     if (state == 2) {
       break;
     }
+    
   }
 
   TRI_DestroyVectorPointer(&collections);

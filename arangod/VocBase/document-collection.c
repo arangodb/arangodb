@@ -1762,6 +1762,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   info._waitForSync = parameter->_waitForSync;
   info._maximalSize = parameter->_maximalSize;
 
+
   // first create the simple collection
   sim = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false);
 
@@ -1769,6 +1770,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("cannot create document");
     return NULL;
   }
+
 
   collection = TRI_CreateCollection(vocbase, &sim->base.base, path, &info);
 
@@ -3457,6 +3459,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* sim,
   else {
     assert(false);
   }
+
+  return 0; // shut the vc++ up
 }
 
 ////////////////////////////////////////////////////////////////////////////////
