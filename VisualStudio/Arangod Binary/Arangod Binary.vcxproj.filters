@@ -90,9 +90,6 @@
     <ClCompile Include="..\..\arangod\RestServer\ArangoServer.cpp">
       <Filter>RestServer Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\arangod\Actions\ActionDispatcherThread.cpp">
-      <Filter>Actions Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\arangod\Actions\actions.cpp">
       <Filter>Actions Source</Filter>
     </ClCompile>
@@ -288,13 +285,13 @@
     <ClCompile Include="..\..\arangod\VocBase\voc-shaper.c">
       <Filter>VocBase Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\edge-collection.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h">
       <Filter>RestServer Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\Actions\ActionDispatcherThread.h">
-      <Filter>Actions Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\Actions\actions.h">
       <Filter>Actions Header</Filter>
@@ -424,9 +421,6 @@
     </ClInclude>
     <ClInclude Include="..\..\arangod\RestHandler\StatisticsBaseHandler.h">
       <Filter>RestHandler Header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\arangod\SkipLists\compare.h">
-      <Filter>Skiplists Header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\arangod\SkipLists\skiplist.h">
       <Filter>Skiplists Header</Filter>

@@ -384,6 +384,7 @@ AnyServer::~AnyServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::start () {
+
   if (_applicationServer == 0) {
     buildApplicationServer();
   }
@@ -400,7 +401,6 @@ int AnyServer::start () {
       WritePidFile(_pidFile, TRI_CurrentProcessId());
     }
 
-    prepareServer();
     int res = startupServer();
 
     if (! _pidFile.empty()) {

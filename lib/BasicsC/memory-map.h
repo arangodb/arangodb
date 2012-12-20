@@ -67,7 +67,7 @@ extern "C" {
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (void* fileHandle, 
+int TRI_FlushMMFile (int fileDescriptor, 
                      void** mmHandle,
                      void* startingAddress, 
                      size_t numOfBytesToFlush, 
@@ -82,7 +82,7 @@ int TRI_MMFile (void* memoryAddress,
                 size_t numOfBytesToInitialise, 
                 int memoryProtection, 
                 int flags,
-                void* fileHandle, 
+                int fileDescriptor, 
                 void** mmHandle,
                 int64_t offset,
                 void** result); 
@@ -94,7 +94,7 @@ int TRI_MMFile (void* memoryAddress,
                 
 int TRI_UNMMFile (void* memoryAddress, 
                   size_t numOfBytesToUnMap, 
-                  void* fileHandle,
+                  int fileDescriptor,
                   void** mmHandle); 
 
                   
@@ -105,7 +105,7 @@ int TRI_UNMMFile (void* memoryAddress,
 int TRI_ProtectMMFile (void* memoryAddress,
                        size_t numOfBytesToProtect, 
                        int flags,
-                       void* fileHandle,
+                       int fileDescriptor,
                        void** mmHandle);                       
                   
 ////////////////////////////////////////////////////////////////////////////////

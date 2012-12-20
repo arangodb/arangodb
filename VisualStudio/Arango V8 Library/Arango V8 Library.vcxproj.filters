@@ -24,13 +24,13 @@
     <ClCompile Include="..\..\lib\V8\v8-json.cpp">
       <Filter>V8 Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\V8\V8LineEditor.cpp">
-      <Filter>V8 Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\V8\v8-shell.cpp">
       <Filter>V8 Source</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\V8\v8-utils.cpp">
+      <Filter>V8 Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\V8\V8LineEditor.cpp">
       <Filter>V8 Source</Filter>
     </ClCompile>
   </ItemGroup>

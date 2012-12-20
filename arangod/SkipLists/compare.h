@@ -692,6 +692,8 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
   } // end of switch (leftType)
   
   assert(false);
+
+  return 0; //shut the vc++ up
 }
 
 

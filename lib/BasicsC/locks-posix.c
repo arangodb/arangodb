@@ -343,7 +343,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
   rc = pthread_rwlock_wrlock(lock);
 
   if (rc != 0) {
-    LOG_ERROR("could not read-lock the read-write lock: %s", strerror(rc));
+    LOG_ERROR("could not write-lock the read-write lock: %s", strerror(rc));
     if (rc == EDEADLK) {
       LOG_ERROR("rw-lock deadlock detected"); 
     }

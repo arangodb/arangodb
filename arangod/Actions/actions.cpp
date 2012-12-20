@@ -158,6 +158,7 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
   string name = StringUtils::join(suffix, '/');
   map<string, TRI_action_t*>::iterator i = Actions.find(name);
 
+
   if (i != Actions.end()) {
     return i->second;
   }

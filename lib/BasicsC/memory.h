@@ -102,6 +102,12 @@ extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
+///
+/// This will not add the memory zone information even when compiled with 
+/// --enable-zone-debug.
+/// Internally, this will call just malloc, and probably memset. 
+/// Using this function instead of malloc/memset allows us to track all memory 
+/// allocations easier.
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_SystemAllocate (uint64_t, bool);
@@ -140,10 +146,12 @@ void TRI_Free (TRI_memory_zone_t*, void*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free memory allocated by some low-level functions
+/// @brief free memory allocated by low-level system functions
 ///
 /// this can be used to free memory that was not allocated by TRI_Allocate, but
-/// by malloc et al
+/// by system functions as malloc et al. This memory must not be passed to 
+/// TRI_Free because TRI_Free might subtract the memory zone from the original
+/// pointer if compiled with --enable-zone-debug.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_ZONE_DEBUG

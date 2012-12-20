@@ -454,6 +454,7 @@ PQIndexElements* PQIndex_top(PQIndex* idx, uint64_t numElements) {
 
 bool PQIndex_update(PQIndex* idx, const PQIndexElement* oldElement, const PQIndexElement* newElement) {
   assert(false);
+  return false;
 }  
 
 
@@ -978,6 +979,7 @@ static int CompareShapeTypes (const TRI_shaped_json_t* left, const TRI_shaped_js
     
   }
   assert(false);
+  return 0; // shut the vc++ up
 }
 
 

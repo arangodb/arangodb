@@ -53,7 +53,7 @@
 #include "MRuby/MRLoader.h"
 #include "MRuby/mr-utils.h"
 #include "Rest/Endpoint.h"
-#include "Rest/Initialise.h"
+#include "Rest/InitialiseRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 

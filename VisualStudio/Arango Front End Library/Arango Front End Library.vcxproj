@@ -5,9 +5,17 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -21,11 +29,24 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -33,19 +54,58 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <TargetName>arango_fe</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>arango_fe</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <TargetName>arango_fe</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetName>arango_fe</TargetName>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\lib;..\;..\..\;..\..\VisualStudio;%(AdditionalIncludeDirectories);..\..\3rdParty\VisualStudio\openssl-0.9.8k-lib\include;..\..\3rdParty\boost_1_48_0\include;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\libev-4.01;..\..\3rdParty\VisualStudio\readline-5.0-1-lib\include;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>FD_SETSIZE=1024;WIN32;_DEBUG;_LIB;TRI_OPENSSL_VERSION;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt\src;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\libev;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;WIN32;_DEBUG;_LIB;TRI_OPENSSL_VERSION;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt\src;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\libev;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -60,7 +120,30 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FD_SETSIZE=1024;WIN32;NDEBUG;_LIB;TRI_OPENSSL_VERSION;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt\src;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\libev;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;WIN32;NDEBUG;_LIB;TRI_OPENSSL_VERSION;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt\src;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\libev;$(SolutionDir)..\3rdParty\VisualStudio\V8\include;$(SolutionDir)..</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -89,6 +172,16 @@
     <ClInclude Include="..\..\lib\Dispatcher\DispatcherThread.h" />
     <ClInclude Include="..\..\lib\Dispatcher\Job.h" />
     <ClInclude Include="..\..\lib\Dispatcher\JobObserver.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\EndpointServer.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralAsyncCommTask.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralCommTask.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralListenTask.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralServer.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralServerDispatcher.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralServerJob.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralSslServer.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\SpecificCommTask.h" />
+    <ClInclude Include="..\..\lib\GeneralServer\SslAsyncCommTask.h" />
     <ClInclude Include="..\..\lib\HttpServer\ApplicationEndpointServer.h" />
     <ClInclude Include="..\..\lib\HttpServer\GeneralHttpServer.h" />
     <ClInclude Include="..\..\lib\HttpServer\HttpCommTask.h" />
@@ -100,7 +193,7 @@
     <ClInclude Include="..\..\lib\HttpServer\RedirectHandler.h" />
     <ClInclude Include="..\..\lib\HttpServer\ServiceUnavailableHandler.h" />
     <ClInclude Include="..\..\lib\ResultGenerator\HtmlResultGenerator.h" />
-    <ClInclude Include="..\..\lib\ResultGenerator\Initialise.h" />
+    <ClInclude Include="..\..\lib\ResultGenerator\InitialiseGenerator.h" />
     <ClInclude Include="..\..\lib\ResultGenerator\JsonResultGenerator.h" />
     <ClInclude Include="..\..\lib\ResultGenerator\JsonXResultGenerator.h" />
     <ClInclude Include="..\..\lib\ResultGenerator\OutputGenerator.h" />
@@ -122,7 +215,7 @@
     <ClInclude Include="..\..\lib\Scheduler\TimerTask.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\3rdParty\VisualStudio\libev-4.01\evwrap.c" />
+    <ClCompile Include="..\..\3rdParty\VisualStudio\libev\evwrap.c" />
     <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminBaseHandler.cpp" />
     <ClCompile Include="..\..\lib\Admin\RestAdminFeConfigurationHandler.cpp" />
@@ -143,7 +236,7 @@
     <ClCompile Include="..\..\lib\HttpServer\RedirectHandler.cpp" />
     <ClCompile Include="..\..\lib\HttpServer\ServiceUnavailableHandler.cpp" />
     <ClCompile Include="..\..\lib\ResultGenerator\HtmlResultGenerator.cpp" />
-    <ClCompile Include="..\..\lib\ResultGenerator\Initialise.cpp" />
+    <ClCompile Include="..\..\lib\ResultGenerator\InitialiseGenerator.cpp" />
     <ClCompile Include="..\..\lib\ResultGenerator\JsonResultGenerator.cpp" />
     <ClCompile Include="..\..\lib\ResultGenerator\JsonXResultGenerator.cpp" />
     <ClCompile Include="..\..\lib\ResultGenerator\OutputGenerator.cpp" />
@@ -159,6 +252,7 @@
     <ClCompile Include="..\..\lib\Scheduler\SchedulerThread.cpp" />
     <ClCompile Include="..\..\lib\Scheduler\SignalTask.cpp" />
     <ClCompile Include="..\..\lib\Scheduler\SocketTask.cpp" />
+    <ClCompile Include="..\..\lib\Scheduler\Task.cpp" />
     <ClCompile Include="..\..\lib\Scheduler\TaskManager.cpp" />
     <ClCompile Include="..\..\lib\Scheduler\TimerTask.cpp" />
   </ItemGroup>

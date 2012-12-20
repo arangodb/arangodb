@@ -38,7 +38,7 @@
 
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Random.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/delete_object.h"
 #include "BasicsC/conversions.h"
@@ -106,7 +106,44 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
+#ifdef _WIN32
+ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+  : _options(),
+    _description(),
+    _descriptionFile(),
+    _arguments(),
+    _features(),
+    _exitOnParentDeath(false),
+    _watchParent(0),
+    _stopping(0),
+    _name(name),
+    _title(title),
+    _version(version),
+    _configFile(),
+    _userConfigFile(),
+    _systemConfigFile(),
+    _systemConfigPath(),
+    _uid(),
+    _realUid(0),
+    _effectiveUid(0),
+    _gid(),
+    _realGid(0),
+    _effectiveGid(0),
+    _logApplicationName("triagens"),
+    _logHostName("-"),
+    _logFacility("-"),
+    _logLevel("info"),
+    _logFormat(),
+    _logSeverity("human"),
+    _logFile("+"),
+    _logPrefix(),
+    _logSyslog(),
+    _logThreadId(false),
+    _logLineNumber(false),
+    _randomGenerator(5) {
+}
+#else
+ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -141,6 +178,7 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logLineNumber(false),
     _randomGenerator(3) {
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -246,7 +284,6 @@ void ApplicationServer::setupLogging () {
       // the user specified a log file to use but it could not be created. bail out
       std::cerr << "failed to create logfile '" << _logFile << "'. Please check the path and permissions." << std::endl;
       exit(EXIT_FAILURE);      
-
     }
   }
 #ifdef TRI_ENABLE_SYSLOG
@@ -346,6 +383,7 @@ bool ApplicationServer::parse (int argc,
   // UID and GID
   // .............................................................................
 
+
   storeRealPrivileges();
   extractPrivileges();
   dropPrivileges();
@@ -387,11 +425,29 @@ bool ApplicationServer::parse (int argc,
 
   try {
     switch (_randomGenerator) {
-      case 1: Random::selectVersion(Random::RAND_MERSENNE);  break;
-      case 2: Random::selectVersion(Random::RAND_RANDOM);  break;
-      case 3: Random::selectVersion(Random::RAND_URANDOM);  break;
-      case 4: Random::selectVersion(Random::RAND_COMBINED);  break;
-      default: break;
+      case 1: {
+        Random::selectVersion(Random::RAND_MERSENNE);  
+        break;
+      }
+      case 2: {
+        Random::selectVersion(Random::RAND_RANDOM);  
+        break;
+      }
+      case 3: {
+        Random::selectVersion(Random::RAND_URANDOM);  
+        break;
+      }
+      case 4: {
+        Random::selectVersion(Random::RAND_COMBINED);  
+        break;
+      }
+      case 5: {
+        Random::selectVersion(Random::RAND_WIN32);  
+        break;
+      }
+      default: {
+        break;
+      }
     }
   }
   catch (...) {
@@ -399,6 +455,7 @@ bool ApplicationServer::parse (int argc,
     TRI_ShutdownLogging();
     exit(EXIT_FAILURE);
   }
+
 
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ok = (*i)->parsePhase2(_options);
@@ -417,7 +474,7 @@ bool ApplicationServer::parse (int argc,
 
 void ApplicationServer::prepare () {
 
-  // prepare all features
+  // prepare all features - why reverse?
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
@@ -518,13 +575,11 @@ void ApplicationServer::wait () {
 
   // wait until we receive a stop signal
   while (running && _stopping == 0) {
-
     // check the parent and wait for a second
     if (! checkParent()) {
       running = false;
       break;
     }
-
     sleep(1);
   }
 }
@@ -537,7 +592,6 @@ void ApplicationServer::beginShutdown () {
   if (_stopping != 0) {
     return;
   }
-
   _stopping = 1;
 }
 
@@ -548,6 +602,7 @@ void ApplicationServer::beginShutdown () {
 void ApplicationServer::stop () {
   beginShutdown();
 
+
   // close all features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ApplicationFeature* feature = *i;
@@ -556,6 +611,7 @@ void ApplicationServer::stop () {
 
     LOGGER_TRACE << "closed server feature '" << feature->getName() << "'";
   }
+
 
   // stop all features
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
@@ -567,6 +623,7 @@ void ApplicationServer::stop () {
 
     LOGGER_TRACE << "shut down server feature '" << feature->getName() << "'";
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,15 +901,60 @@ bool ApplicationServer::readConfigurationFile () {
     LOGGER_DEBUG << "no init file has been specified";
   }
 
-  // nothing has been specified on the command line regarding configuration file
+
+  // nothing has been specified on the command line regarding the user's configuration file
   if (! _userConfigFile.empty()) {
 
+    // .........................................................................
     // first attempt to obtain a default configuration file from the users home directory
-    string homeDir = string(getenv("HOME"));
+    // .........................................................................
+
+    // .........................................................................
+    // Under windows there is no 'HOME' directory as such so getenv("HOME")
+    // may return NULL -- which it does under windows
+    // A safer approach below
+    // .........................................................................
+
+    string homeDir;
+    string homeEnv;
+    const char* envResult;
+
+#ifdef _WIN32
+    string homeDrive;
+    string homePath;
+
+    homeEnv = string("%HOMEDRIVE% and/or %HOMEPATH%");
+
+    envResult = getenv("HOMEDRIVE");
+    if (envResult != 0) {
+      homeDrive = string(envResult);
+    }
+    
+    envResult = getenv("HOMEPATH");
+    if (envResult != 0) {
+      homePath = string(envResult);
+    }
+    
+    if (! homeDrive.empty() && ! homePath.empty()) {
+      homeDir = homeDrive + homePath;
+    }
+    else {
+      homeDir = string("");
+    }
+#else
+    homeEnv = string("$HOME");
+    envResult = getenv("HOME");
+    if (envResult != 0) { 
+      homeDir = string(envResult);
+    }
+    else {
+      homeDir = string("");
+    }
+#endif
 
     if (! homeDir.empty()) {
-      if (homeDir[homeDir.size() - 1] != '/') {
-        homeDir += "/" + _userConfigFile;
+      if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+        homeDir += TRI_DIR_SEPARATOR_CHAR + _userConfigFile;
       }
       else {
         homeDir += _userConfigFile;
@@ -874,13 +976,16 @@ bool ApplicationServer::readConfigurationFile () {
         return ok;
       }
       else {
+
         LOGGER_INFO << "no user init file '" << homeDir << "' found";
+
       }
     }
     else {
-      LOGGER_DEBUG << "no user init file, $HOME is empty";
+      LOGGER_DEBUG << "no user init file, " << homeEnv << " is empty";
     }
   }
+
 
   if (_systemConfigPath.empty()) {
 

@@ -111,6 +111,8 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate memory for the hash table
+///
+/// the hash table memory will be aligned on a cache line boundary
 ////////////////////////////////////////////////////////////////////////////////
   
 static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
@@ -186,14 +188,7 @@ static bool ResizeHashArrayMulti (TRI_hasharray_t* array) {
 bool TRI_InitHashArray (TRI_hasharray_t* array,
                         size_t initialDocumentCount,
                         size_t numFields,
-                        size_t elementSize,
-                        uint64_t (*hashKey) (TRI_hasharray_t*, void*),
-                        uint64_t (*hashElement) (TRI_hasharray_t*, void*),
-                        void (*clearElement) (TRI_hasharray_t*, void*),
-                        bool (*isEmptyElement) (TRI_hasharray_t*, void*),
-                        bool (*isEqualKeyElement) (TRI_hasharray_t*, void*, void*),
-                        bool (*isEqualElementElement) (TRI_hasharray_t*, void*, void*)) {
-
+                        size_t elementSize) {
   size_t initialSize;
 
   // ...........................................................................
@@ -202,11 +197,6 @@ bool TRI_InitHashArray (TRI_hasharray_t* array,
 
   assert(numFields > 0);
   
-  array->clearElement          = clearElement;
-  array->isEmptyElement        = isEmptyElement;
-  array->isEqualKeyElement     = isEqualKeyElement;
-  array->isEqualElementElement = isEqualElementElement;
-
   array->_numFields = numFields;
   array->_elementSize = elementSize;
   array->_table = NULL;

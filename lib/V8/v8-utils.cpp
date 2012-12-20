@@ -401,6 +401,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
+
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str());
@@ -415,7 +416,8 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
     errorObject->SetPrototype(proto);
   }
 
-  return errorObject;
+  return scope.Close(errorObject);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,6 +502,8 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     }
 
     full = TRI_Concatenate2File(path, filename);
+
+
     ok = LoadJavaScriptFile(context, full, execute);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
@@ -1279,15 +1283,19 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   if (argv.Length() != 1) {
     return scope.Close(v8::ThrowException(v8::String::New("usage: wait(<seconds>)")));
   }
-
+  
   double n = TRI_ObjectToDouble(argv[0]);
   double until = TRI_microtime() + n;
 
   while(! v8::V8::IdleNotification()) {
   }
 
+  size_t i = 0;
   while (TRI_microtime() < until) {
-    while(! v8::V8::IdleNotification()) {
+    if (++i % 1000 == 0) {
+      // garbage collection only every x iterations, otherwise we'll use too much CPU
+      while(! v8::V8::IdleNotification()) {
+      }
     }
 
     usleep(100);
@@ -1538,6 +1546,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
 
+
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
     return scope.Close(result);
@@ -1649,6 +1658,10 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
                          v8::FunctionTemplate::New(JS_Parse)->GetFunction(),
                          v8::ReadOnly);
 
+  context->Global()->Set(v8::String::New("SYS_PARSE"),
+                         v8::FunctionTemplate::New(JS_Parse)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("SYS_EXECUTE"),
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
                          v8::ReadOnly);
@@ -1717,8 +1730,18 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global variables
   // .............................................................................
 
-  vector<string> paths = StringUtils::split(path, ";:");
 
+  // .............................................................................
+  // The spilt has been modified -- only except semicolon, previously we excepted
+  // a colon as well. So as not to break existing configurations, we only 
+  // make the modification for windows version -- since there isn't one yet!
+  // .............................................................................
+
+#ifdef _WIN32
+  vector<string> paths = StringUtils::split(path, ";",'\0');
+#else
+  vector<string> paths = StringUtils::split(path, ";:");
+#endif
   v8::Handle<v8::Array> modulesPaths = v8::Array::New();
 
   for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {

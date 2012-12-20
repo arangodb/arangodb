@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief connection endpoints
+/// @brief connection endpoint, IPv6-based
 ///
 /// @file
 ///
@@ -28,21 +28,11 @@
 #ifndef TRIAGENS_FYN_REST_ENDPOINT_IPV6_H
 #define TRIAGENS_FYN_REST_ENDPOINT_IPV6_H 1
 
-#include <Basics/Common.h>
-#include <Basics/StringUtils.h>
+#include "Rest/EndpointIp.h"
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          Endpoint
-// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint specification
-////////////////////////////////////////////////////////////////////////////////
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      EndpointIpV6
@@ -65,10 +55,11 @@ namespace triagens {
 /// @brief creates an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        EndpointIpV6 (const Endpoint::Type,
-                      const Endpoint::Protocol, 
-                      const Endpoint::Encryption,
+        EndpointIpV6 (const EndpointType,
+                      const ProtocolType, 
+                      const EncryptionType,
                       const std::string&, 
+                      int,
                       const std::string&, 
                       const uint16_t);
 
@@ -100,22 +91,20 @@ namespace triagens {
         int getDomain () const {
           return AF_INET6;
         }
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get host string for HTTP requests
 ////////////////////////////////////////////////////////////////////////////////
 
         string getHostString  () const {
-          return '[' + _host + "]:" + triagens::basics::StringUtils::itoa(_port);
+          return '[' + getHost() + "]:" + triagens::basics::StringUtils::itoa(getPort());
         }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
     };
-
   }
 }
 

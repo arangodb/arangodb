@@ -29,7 +29,7 @@
 #include "win-utils.h"
 #endif
 
-#include "logging.h"
+#include "BasicsC/logging.h"
 
 #ifdef TRI_ENABLE_SYSLOG
 #define SYSLOG_NAMES
@@ -393,9 +393,11 @@ static size_t GenerateMessage (char* buffer,
   n = 0;
   TRI_LockSpin(&OutputPrefixLock);
 
+
   if (OutputPrefix && *OutputPrefix) {
     n = snprintf(buffer, size, "%s ", OutputPrefix);
   }
+
 
   TRI_UnlockSpin(&OutputPrefixLock);
 
@@ -515,6 +517,7 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t length,
                            bool copy) {
   size_t i;
+  
 
   if (! LoggingActive) {
     if (! copy) {
@@ -689,9 +692,11 @@ static void LogThread (char const* func,
   // write time in buffer
   len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%SZ ", &tb);
 
+
   va_copy(ap2, ap);
   n = GenerateMessage(buffer + len, sizeof(buffer) - len, func, file, line, level, processId, threadId, fmt, ap2);
   va_end(ap2);
+
 
   if (n == -1) {
     TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");
