@@ -10,7 +10,6 @@
 
 BUILT_SOURCES += @ICU_BUILT@
 ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
-CLEANUP += @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
 
 @ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
 
@@ -47,7 +46,7 @@ CLEANUP += @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
 ### @brief additional files to remove
 ################################################################################
 
-CLEANUP += .icu-build-@TRI_BITS@
+CLEANUP += @srcdir@/.icu-build-@TRI_BITS@ $(ICUDIR)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

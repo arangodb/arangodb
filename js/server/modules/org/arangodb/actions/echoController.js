@@ -36,7 +36,7 @@ exports.head = function (req, res, next, options) {
 exports.do = function (req, res, next, options) {
   res.responseCode = actions.HTTP_OK;
   res.contentType = "application/json; charset=utf-8";
-  res.body = JSON.stringify(req);
+  res.body = JSON.stringify( { "request" : req, "options" : options });
 }
 
 // -----------------------------------------------------------------------------

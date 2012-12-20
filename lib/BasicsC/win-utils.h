@@ -28,6 +28,7 @@
 #ifndef TRIAGENS_BASICS_C_WIN_UTILS_H
 #define TRIAGENS_BASICS_C_WIN_UTILS_H 1
 
+#include <WinSock2.h>
 
 /* Constants rounded for 21 decimals.
 #define M_E 2.71828182845904523536
@@ -89,6 +90,9 @@ int ftruncate (int, long);
 
 int getpagesize (void);
 
+
+
+int TRI_WIN_closesocket (SOCKET); 
 
 // .............................................................................
 // This function uses the CreateFile windows method rather than _open which

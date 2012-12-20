@@ -198,14 +198,15 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
   if (result != 0 && result[0] != 0 && result[1] == 0) {
     size_t n = strlen(result[0]);
 
-    if (result[0][n-1] == ')') {
-      result[0][n-1] = '\0';
-
-#if RL_READLINE_VERSION >= 0x0500
-      rl_completion_suppress_append = 1;
-#endif
+    if (result[0][n - 1] == ')') {
+      result[0][n - 1] = '\0';
     }
   }
+
+#if RL_READLINE_VERSION >= 0x0500
+  // issue #289
+  rl_completion_suppress_append = 1;
+#endif
 
   return result;
 }
@@ -250,6 +251,9 @@ V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, std::string const& 
 
 bool V8LineEditor::open (const bool autoComplete) {
   if (autoComplete) {
+    // issue #289: do not append a space after completion
+    rl_completion_append_character = '\0';
+    
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;
 

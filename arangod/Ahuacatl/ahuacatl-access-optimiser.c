@@ -25,7 +25,34 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
+#include "ahuacatl-access-optimiser.h"
+
+#include "BasicsC/json.h"
+#include "BasicsC/string-buffer.h"
+
+#include "Ahuacatl/ahuacatl-functions.h"
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const,
+                                                   const TRI_aql_node_t* const);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief structure to contain stringified conditions, used for OR merging
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct or_element_s {
+  char*  _name;      // field name, e.g. "u.name"
+  char*  _condition; // stringified condition
+  size_t _count;     // number of times the same condition occurred
+}
+or_element_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -39,6 +66,263 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the type name for a field access type
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* TypeName (const TRI_aql_access_e type) {
+  switch (type) {
+    case TRI_AQL_ACCESS_IMPOSSIBLE:
+      return "impossible";
+    case TRI_AQL_ACCESS_EXACT:
+      return "exact match";
+    case TRI_AQL_ACCESS_LIST:
+      return "list match";
+    case TRI_AQL_ACCESS_RANGE_SINGLE:
+      return "single range";
+    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+      return "double range";
+    case TRI_AQL_ACCESS_REFERENCE:
+      return "reference";
+    case TRI_AQL_ACCESS_ALL:
+      return "all";
+  }
+
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the type name for a range access
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* RangeName (const TRI_aql_range_e type) {
+  switch (type) {
+    case TRI_AQL_RANGE_LOWER_EXCLUDED:
+      return "lower (exc)";
+    case TRI_AQL_RANGE_LOWER_INCLUDED:
+      return "lower (inc)";
+    case TRI_AQL_RANGE_UPPER_EXCLUDED:
+      return "upper (exc)";
+    case TRI_AQL_RANGE_UPPER_INCLUDED:
+      return "upper (inc)";
+  }
+
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a json value
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyFieldAccessJson (TRI_aql_context_t* const context,
+                                      const TRI_json_t* const json,
+                                      TRI_string_buffer_t* const buffer) {
+  TRI_StringifyJson(buffer, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a range access
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyFieldAccessRange (TRI_aql_context_t* const context,
+                                       const TRI_aql_range_t* const range,
+                                       TRI_string_buffer_t* const buffer) {
+  TRI_AppendStringStringBuffer(buffer, RangeName(range->_type));
+  TRI_AppendCharStringBuffer(buffer, ':');
+  StringifyFieldAccessJson(context, range->_value, buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a reference access
+////////////////////////////////////////////////////////////////////////////////
+
+static void StringifyFieldAccessReference (TRI_aql_context_t* const context,
+                                           const TRI_aql_field_access_t* const fieldAccess,
+                                           TRI_string_buffer_t* const buffer) {
+  TRI_AppendStringStringBuffer(buffer, TRI_NodeNameAql(fieldAccess->_value._reference._operator));
+  TRI_AppendCharStringBuffer(buffer, ':');
+
+  if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
+    TRI_AppendStringStringBuffer(buffer, "variable:");
+    // append variable name
+    TRI_AppendStringStringBuffer(buffer, fieldAccess->_value._reference._ref._name);
+  }
+  else if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS) {
+    TRI_aql_attribute_name_t* attributeName;
+
+    attributeName = GetAttributeName(context, fieldAccess->_value._reference._ref._node);
+    if (attributeName == NULL) {
+      // out of memory
+      return;
+    }
+
+    // append node info
+    TRI_AppendStringStringBuffer(buffer, "attribute:");
+    TRI_AppendStringStringBuffer(buffer, attributeName->_name._buffer);
+      
+    TRI_DestroyStringBuffer(&attributeName->_name);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, attributeName);
+  }
+  else {
+    assert(false);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a field access
+////////////////////////////////////////////////////////////////////////////////
+
+static char* StringifyFieldAccess (TRI_aql_context_t* const context,
+                                   const TRI_aql_field_access_t* const fieldAccess) {
+  TRI_string_buffer_t buffer;
+  char* result;
+  
+  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  if (buffer._buffer == NULL) {
+    // out of memory
+    return NULL;
+  }
+
+  TRI_AppendStringStringBuffer(&buffer, TypeName(fieldAccess->_type));
+
+  switch (fieldAccess->_type) {
+    case TRI_AQL_ACCESS_EXACT:
+    case TRI_AQL_ACCESS_LIST:
+      TRI_AppendCharStringBuffer(&buffer, ':');
+      StringifyFieldAccessJson(context, fieldAccess->_value._value, &buffer);
+      break;
+    
+    case TRI_AQL_ACCESS_RANGE_SINGLE:
+      TRI_AppendCharStringBuffer(&buffer, ':');
+      StringifyFieldAccessRange(context, &fieldAccess->_value._singleRange, &buffer);
+      break;
+
+    case TRI_AQL_ACCESS_RANGE_DOUBLE:
+      TRI_AppendCharStringBuffer(&buffer, ':');
+      StringifyFieldAccessRange(context, &fieldAccess->_value._between._lower, &buffer);
+      TRI_AppendCharStringBuffer(&buffer, ':');
+      StringifyFieldAccessRange(context, &fieldAccess->_value._between._upper, &buffer);
+      break;
+    
+    case TRI_AQL_ACCESS_REFERENCE:
+      TRI_AppendCharStringBuffer(&buffer, ':');
+      StringifyFieldAccessReference(context, fieldAccess, &buffer);
+      break;
+
+    case TRI_AQL_ACCESS_IMPOSSIBLE:
+    case TRI_AQL_ACCESS_ALL: 
+    default: {
+      // nothing to do here
+    }
+  }
+  
+  result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
+  TRI_DestroyStringBuffer(&buffer);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get an or element by field name
+////////////////////////////////////////////////////////////////////////////////
+
+static or_element_t* FindOrElement (const TRI_vector_pointer_t* const vector,
+                                    const char* const name) {
+  size_t i, n;
+
+  assert(vector);
+  assert(name);
+
+  n = vector->_length;
+  for (i = 0; i < n; ++i) {
+    or_element_t* current;
+    
+    current = (or_element_t*) TRI_AtVectorPointer(vector, i);
+
+    assert(current);
+
+    if (TRI_EqualString(name, current->_name)) {
+      return current;
+    }
+  }
+
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert all field accesses from a vector into an OR aggregation vector
+////////////////////////////////////////////////////////////////////////////////
+
+static bool InsertOrs (TRI_aql_context_t* const context,
+                       const TRI_vector_pointer_t* const source, 
+                       TRI_vector_pointer_t* const dest) {
+  size_t i, n;
+
+  if (dest == NULL) {
+    return true;
+  }
+
+  n = source->_length;
+  for (i = 0; i < n; ++i) {
+    or_element_t* orElement;
+    TRI_aql_field_access_t* fieldAccess;
+    
+    fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(source, i);
+
+    assert(fieldAccess);
+    assert(fieldAccess->_fullName);
+
+    orElement = FindOrElement(dest, fieldAccess->_fullName);
+    if (orElement == NULL) {
+      // element not found. create a new one
+      orElement = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(or_element_t), false);
+      if (orElement == NULL) {
+        // out of memory
+        return false;
+      }
+
+      orElement->_count = 1;
+      orElement->_condition = StringifyFieldAccess(context, fieldAccess);
+
+      if (orElement->_condition == NULL) {
+        // out of memory
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, orElement);
+
+        return false;
+      }
+
+      orElement->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName);
+      if (orElement->_name == NULL) {
+        // out of memory
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, orElement->_condition);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, orElement);
+
+        return false;
+      }
+
+      TRI_PushBackVectorPointer(dest, (void*) orElement);
+    }
+    else {
+      // compare previous with current condition
+      char* condition = StringifyFieldAccess(context, fieldAccess);
+
+      if (condition == NULL) {
+        // out of memory
+        return false;
+      }
+
+      if (TRI_EqualString(condition, orElement->_condition)) {
+        // conditions are identical, match!
+        orElement->_count++;
+      }
+
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, condition);
+    }
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the length of the variable name for a field access struct
@@ -1018,7 +1302,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     TRI_json_t* result;
 
     // check if values are identical
-    if ( TRI_CheckSameValueJson(lhs->_value._value, rhs->_value._value)) {
+    if (TRI_CheckSameValueJson(lhs->_value._value, rhs->_value._value)) {
       // lhs and rhs values are identical, return lhs
       TRI_FreeAccessAql(rhs);
     
@@ -1639,12 +1923,15 @@ static void MergeVector (TRI_aql_context_t* const context,
       assert(compareAccess);
       assert(compareAccess->_fullName);
 
+      // check if the current buffer element is the one we want to update
       if (TRI_EqualString(fieldAccess->_fullName, compareAccess->_fullName)) {
         // found the element
         if (mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND) {
+          // update the existing element in place
           result->_buffer[j] = MergeAttributeAccessAnd(context, fieldAccess, compareAccess);
         }
         else {
+          // update the existing element in place
           result->_buffer[j] = MergeAttributeAccessOr(context, fieldAccess, compareAccess);
         }
       
@@ -1653,7 +1940,8 @@ static void MergeVector (TRI_aql_context_t* const context,
       } 
     }
 
-    if (!found) {
+    if (! found) {
+      // element not found, now add it to the list of restrictions
       TRI_PushBackVectorPointer(result, fieldAccess);
     }
   }
@@ -1681,7 +1969,7 @@ static void InsertVector (TRI_aql_context_t* const context,
 
     copy = TRI_CloneAccessAql(context, fieldAccess);
 
-    if (!copy) {
+    if (! copy) {
       // OOM
       TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return;
@@ -1701,6 +1989,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
                                            TRI_vector_pointer_t* const rhs,
                                            const TRI_vector_pointer_t* const inheritedRestrictions) {
   TRI_vector_pointer_t* result;
+  TRI_vector_pointer_t* orElements;
 
   assert(context);
   assert(mergeType == TRI_AQL_NODE_OPERATOR_BINARY_AND || mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR);
@@ -1721,7 +2010,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
   }
 
   result = CreateEmptyVector(context);
-  if (!result) {
+  if (! result) {
     // free memory
     if (lhs) {
       TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, lhs);
@@ -1736,23 +2025,88 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
     return NULL;
   }
   
+  orElements = NULL;
+
+  if (mergeType == TRI_AQL_NODE_OPERATOR_BINARY_OR &&  lhs && rhs) {
+    // this is an OR merge
+    // we need to check which elements are contained in just one of the vectors and
+    // remove them. if we don't do this, we would probably restrict the query too much
+    orElements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+    if (orElements == NULL) {
+      TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+
+      return NULL;
+    }
+
+    TRI_InitVectorPointer(orElements, TRI_UNKNOWN_MEM_ZONE);
+  }
+  
+
   if (inheritedRestrictions) {
     // insert a copy of all restrictions first
     InsertVector(context, result, inheritedRestrictions);
   }
 
   if (lhs) {
+    // this is a no-op if there is no orElements vector
+    InsertOrs(context, lhs, orElements);
+
     // copy elements from lhs into result vector
     MergeVector(context, mergeType, result, lhs);
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, lhs);
   }
 
   if (rhs) {
+    // this is a no-op if there is no orElements vector
+    InsertOrs(context, rhs, orElements);
+
     // copy elements from rhs into result vector
     MergeVector(context, mergeType, result, rhs);
     TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, rhs);
   }
 
+
+  if (orElements) {
+    // this is an OR merge
+    // we need to check which elements are contained in just one of the vectors and
+    // remove them. if we don't do this, we would probably restrict the query too much
+    size_t i;
+
+    for (i = 0; i < result->_length; ++i) {
+      TRI_aql_field_access_t* fieldAccess;
+      or_element_t* orElement;
+      
+      fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(result, i);
+      assert(fieldAccess);
+
+      if (fieldAccess->_type == TRI_AQL_ACCESS_ALL) {
+        continue;
+      }
+
+      orElement = FindOrElement(orElements, fieldAccess->_fullName);
+      if (orElement == NULL || orElement->_count < 2) {
+        // must make the element an all access
+        FreeAccessMembers(fieldAccess);
+        fieldAccess->_type = TRI_AQL_ACCESS_ALL;
+      }
+    }
+    
+    // free all orElements
+    for (i = 0; i < orElements->_length; ++i) {
+      or_element_t* orElement;
+
+      orElement = (or_element_t*) TRI_AtVectorPointer(orElements, i); 
+      assert(orElement);
+
+      // free members
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, orElement->_name);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, orElement->_condition);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, orElement);
+    }
+
+    TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, orElements);
+  }
+    
   return result;
 }
 
@@ -1784,7 +2138,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
   assert(field);
   assert(field->_name._buffer);
   assert(node);
-
+  
   fieldAccess = (TRI_aql_field_access_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_field_access_t), false);
   if (fieldAccess == NULL) {
     // OOM
@@ -1807,8 +2161,8 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     fieldAccess->_type = TRI_AQL_ACCESS_ALL;
 
     return fieldAccess;
-  } 
-
+  }
+  
   if (node->_type == TRI_AQL_NODE_REFERENCE ||
       node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     // create the reference access
@@ -1908,13 +2262,13 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
   assert(context);
   assert(node);
 
-  if (!field || !field->_name._buffer) {
+  if (field == NULL || ! field->_name._buffer) {
     // this is ok if the node type is not supported
     return NULL;
   }
     
   fieldAccess = CreateAccessForNode(context, field, operator, node);
-  if (!fieldAccess) { 
+  if (fieldAccess == NULL) { 
     // OOM
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
@@ -1959,6 +2313,29 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
     field->_variable = TRI_AQL_NODE_STRING(node);
     TRI_InitStringBuffer(&field->_name, TRI_UNKNOWN_MEM_ZONE);
     TRI_AppendStringStringBuffer(&field->_name, TRI_AQL_NODE_STRING(node));
+
+    return field;
+  }
+  else if (node->_type == TRI_AQL_NODE_FCALL) {
+    TRI_aql_function_t* function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
+    TRI_aql_node_t* args = TRI_AQL_NODE_MEMBER(node, 0);
+    TRI_aql_attribute_name_t* field;
+
+    // if we have anything but 1 function call argument, we cannot optimise this
+    if (args->_members._length != 1) {
+      return NULL;
+    }
+
+    field = GetAttributeName(context, TRI_AQL_NODE_MEMBER(args, 0));
+
+    if (field == NULL) {
+      return NULL;
+    }
+ 
+    // name of generated attribute is XXX.FUNC(), e.g. for LENGTH(users.friends) => users.friends.LENGTH()
+    TRI_AppendCharStringBuffer(&field->_name, '.');
+    TRI_AppendStringStringBuffer(&field->_name, function->_externalName);
+    TRI_AppendStringStringBuffer(&field->_name, "()");
 
     return field;
   }
@@ -2046,28 +2423,28 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 
     useBoth = false;
 
-    if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
-        (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // collection.attribute|reference operator const value|reference|attribute access
+    if ((lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) && 
+        (TRI_IsConstantValueNodeAql(rhs) || rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL)) {
+      // collection.attribute|reference|fcall operator const value|reference|attribute access|fcall
       node1 = lhs;
       node2 = rhs;
       operator = node->_type;
       
-      if (rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
-        // expression of type reference|attribute access operator reference|attribute access
+      if (rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL) {
+        // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
         useBoth = true;
       }
     }
-    else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) && 
-             (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS)) {
-      // const value|reference|attribute access operator collection.attribute|reference
+    else if ((rhs->_type == TRI_AQL_NODE_REFERENCE || rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || rhs->_type == TRI_AQL_NODE_FCALL) && 
+             (TRI_IsConstantValueNodeAql(lhs) || lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL)) {
+      // const value|reference|attribute|fcall access operator collection.attribute|reference|fcall
       node1 = rhs;
       node2 = lhs;
       operator = TRI_ReverseOperatorRelationalAql(node->_type);
       assert(operator != TRI_AQL_NODE_NOP);
       
-      if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
-        // expression of type reference|attribute access operator reference|attribute access
+      if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) {
+        // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
         useBoth = true;
       }
     }
@@ -2090,7 +2467,7 @@ again:
     // we'll get back here for expressions of type a.x == b.y (where both sides are references)
     field = GetAttributeName(context, node1);
 
-    if (field) {
+    if (field && node2->_type != TRI_AQL_NODE_FCALL) {
       TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, operator, node2);
       TRI_vector_pointer_t* result;
 
@@ -2157,6 +2534,16 @@ again:
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump an AQL access type
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DumpAccessAql (const TRI_aql_field_access_t* const fieldAccess) {
+  LOG_INFO("info for field access. field: '%s', type: %s", 
+           fieldAccess->_fullName, 
+           TypeName(fieldAccess->_type));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an access structure of type impossible
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2191,7 +2578,6 @@ bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const fieldAccesses)
   // impossible range not found
   return false;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a vector of accesses
@@ -2403,7 +2789,7 @@ TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const context,
     TRI_aql_field_access_t* copy;
     int result;
 
-    if (!TRI_EqualString(candidate->_fullName, existing->_fullName)) {
+    if (! TRI_EqualString(candidate->_fullName, existing->_fullName)) {
       continue;
     }
     

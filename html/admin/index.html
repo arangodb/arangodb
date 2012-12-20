@@ -10,30 +10,30 @@
       @import "css/jquery-ui-1.8.19.custom.css";
       @import "css/jquery.dataTables_themeroller.css";  
     </style>
-      <script type="text/javascript" language="javascript" src="js/jquery-1.7.2.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.snippet.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.qtip.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.flot.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.flot.stack.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.flot.resize.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.flot.crosshair.js"></script>
-      <script type="text/javascript" language="javascript" src="js/json2.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.sha256.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.layout-latest.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.address-1.4.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.dataTables.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.autogrow.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.jeditable.js"></script>
-      <script type="text/javascript" language="javascript" src="js/jquery.jeditable.autogrow.js"></script>
-      <script type="text/javascript" language="javascript" src="js/master.js"></script>
-      <script type="text/javascript" language="javascript" src="js/avocsh1.js"></script>
-      <script type="text/javascript" language="javascript" src="js/print.js"></script>
-      <script type="text/javascript" language="javascript" src="js/errors.js"></script>
-      <script type="text/javascript" language="javascript" src="js/modules/simple-query-basics.js"></script>
-      <script type="text/javascript" language="javascript" src="js/modules/simple-query.js"></script>
-      <script type="text/javascript" language="javascript" src="js/modules/statement-basics.js"></script>
-      <script type="text/javascript" language="javascript" src="js/client.js"></script>
+      <script type="text/javascript" src="js/jquery-1.7.2.js"></script>
+      <script type="text/javascript" src="js/jquery.snippet.js"></script>
+      <script type="text/javascript" src="js/jquery.qtip.js"></script>
+      <script type="text/javascript" src="js/jquery.flot.js"></script>
+      <script type="text/javascript" src="js/jquery.flot.stack.js"></script>
+      <script type="text/javascript" src="js/jquery.flot.resize.js"></script>
+      <script type="text/javascript" src="js/jquery.flot.crosshair.js"></script>
+      <script type="text/javascript" src="js/json2.js"></script>
+      <script type="text/javascript" src="js/jquery.sha256.js"></script>
+      <script type="text/javascript" src="js/jquery.layout-latest.js"></script>
+      <script type="text/javascript" src="js/jquery.address-1.4.js"></script>
+      <script type="text/javascript" src="js/jquery.dataTables.js"></script>
+      <script type="text/javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
+      <script type="text/javascript" src="js/jquery.autogrow.js"></script>
+      <script type="text/javascript" src="js/jquery.jeditable.js"></script>
+      <script type="text/javascript" src="js/jquery.jeditable.autogrow.js"></script>
+      <script type="text/javascript" src="js/master.js"></script>
+      <script type="text/javascript" src="js/avocsh1.js"></script>
+      <script type="text/javascript" src="js/print.js"></script>
+      <script type="text/javascript" src="js/errors.js"></script>
+      <script type="text/javascript" src="js/modules/simple-query-basics.js"></script>
+      <script type="text/javascript" src="js/modules/simple-query.js"></script>
+      <script type="text/javascript" src="js/modules/statement-basics.js"></script>
+      <script type="text/javascript" src="js/client.js"></script>
     <style>
       a:link {color: #797979; text-decoration: none;}  
       a:visited {color: #797979; text-decoration: none;}
@@ -47,7 +47,7 @@
     <div id="menue" class="ui-layout-north">
 
       <div id="menue-left">
-        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png"></a>
+        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png" alt="ArangoDB Logo"></a>
       </div>
 
       <div id="menue-right">
@@ -56,8 +56,8 @@
         <button class="minimal" id="AvocSH">Shell</button>
         <button class="minimal" id="Logs">Logs</button>
         <button class="minimal" id="Status">Statistics</button>
-        <a href="http://www.arangodb.org/manuals/" target="_blank">
-        <img class="externalLink" src="../html/media/icons/expand16icon.png" alt=""></img>
+        <a href="http://www.arangodb.org/manuals/current" target="_blank">
+        <img class="externalLink" src="../html/media/icons/expand16icon.png" alt="External Link Icon"></img>
         <button class="minimal" id="Documentation">Documentation</button></a>
       </div>
 
@@ -86,8 +86,10 @@
             <th></th>
             <th>ID</th>
             <th>Name</th>
+            <th>Type</th>
             <th>Status</th>
-            <th>Size Documents</th>
+            <th>WaitForSync</th>
+            <th>Datafile Sizes</th>
             <th>Number of Documents</th>
           </tr>
         </thead>
@@ -130,13 +132,13 @@
           <td class="longTD">If true then the data is synchronised to disk before returning from a create or update of an document.
           </td>
           </tr>
-          <tr><td>isSystem:</td><td>
-            <form action="#" id="isSystemForm">
-              <input type="radio" name="isSystem" value=true>yes</input>
-              <input type="radio" name="isSystem" value=false checked>no</input>
+          <tr><td>type:</td><td>
+            <form action="#" id="typeForm">
+              <input type="radio" name="type" value="2" checked>document</input>
+              <input type="radio" name="type" value="3">edge</input>
             </form>
           </td> 
-          <td class="longTD">If true, create a system collection. In this case collection-name should start with an underscore.
+          <td class="longTD">The type of the collection to create.
           </td>
         </table>
 
@@ -170,11 +172,6 @@
           <a>Add Document</a>
         </button>
 
-       <form id="uploadFile" action="/_api/import/?collection=...&createCollection=false" method=POST enctype="multipart/form-data">
-         <input id="uploadFileImport" type="submit" value="Import" />
-         <input id="uploadFileSearch" type="file" name="filename" />
-       </form>
- 
         <table cellpadding="0" cellspacing="0" border="0" class="display" id="documentsTableID" width="100%" style="table-layout:fixed">
           <thead>
             <tr>
@@ -437,7 +434,7 @@
               <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
               <input type="radio" name="formatshellJSONyesno" value=false>no</input>
             </form>
-          <a href="http://www.arangodb.org/manuals/UserManual.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a>
+          <a href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br></br>
       </div>
 
       <div id="queryView" style="display: none"> 
@@ -453,7 +450,7 @@
         <form id="queryForm" method="post" onsubmit="return false">
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>
-          <a style="font-size:0.8em;" id="aqlinfo" href="http://www.arangodb.org/manuals/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
+          <a style="font-size:0.8em;" id="aqlinfo" href="http://www.arangodb.org/manuals/current/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
         <br></br>
         </form>   
         <form action="#" id="formatJSONyesno" style="font-size:0.8em;">

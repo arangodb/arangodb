@@ -62,7 +62,7 @@ int main (int argc, char* argv[]) {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  /* res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); */
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
 
   res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
   if (res != 0) {

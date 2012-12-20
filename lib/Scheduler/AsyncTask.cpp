@@ -58,7 +58,7 @@ void AsyncTask::signal () {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool AsyncTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
+bool AsyncTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
   

@@ -382,8 +382,18 @@ typedef int socket_t;
 #define TRI_DIR_SEPARATOR_CHAR              '\\'
 #define TRI_DIR_SEPARATOR_STR               "\\"
 
+// ..............................................................................
+// This directive below suppresses warnings about using the 'new' more secure CRT 
+// functions.
+// ..............................................................................
 #define _CRT_SECURE_NO_WARNINGS                     1
-// #define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1 -- oreste not sure about this
+
+// ..............................................................................
+// This directive below provides a manner in which the 'new' more secure functions
+// for example, strcpy is automatically converted to strcpy_s. This is enabled
+// by default. We have disabled it here.
+// ..............................................................................
+//#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
 #include <stdio.h>
 #include <io.h>
@@ -473,7 +483,7 @@ typedef unsigned char bool;
 #define O_RDONLY                        _O_RDONLY
 #define TRI_CHDIR                       _chdir
 #define TRI_CLOSE                       _close
-#define TRI_CLOSE_SOCKET                closesocket
+#define TRI_CLOSE_SOCKET                TRI_WIN_closesocket
 /*  #define TRI_CREATE(a,b,c)               _open((a), (b), (c)) */
 #define TRI_CREATE(a,b,c)               TRI_createFile((a), (b), (c))
 #define TRI_GETCWD                      _getcwd

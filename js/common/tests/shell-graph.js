@@ -100,7 +100,7 @@ function GraphCreationSuite() {
 
     setUp : function () {
       // we create the system _graph collection
-      createGraphCollection();
+      //createGraphCollection();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,11 +118,8 @@ function GraphCreationSuite() {
         edge = "UnitTestsCollectionEdge",
         graph = null;
 
-      print("oreste:shell-graph.js:testCreation:1000");
       graph = new Graph(graph_name, vertex, edge);
-      
-      print("oreste:shell-graph.js:testCreation:2000");
-      
+            
       assertEqual(graph_name, graph._properties.name);
       assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
       assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
@@ -264,8 +261,7 @@ function GraphBasicsSuite() {
       v1 = graph.addVertex("vertex1");
       v2 = graph.addVertex("vertex2");
 
-      edge = graph.addEdge(v1,
-        v2);
+      edge = graph.addEdge(v1, v2);
 
       assertEqual(null, edge.getId());
     },
@@ -427,9 +423,9 @@ function VertexSuite() {
         edge1,
         edge2;
 
-      v1 = graph.addVertex(graph);
-      v2 = graph.addVertex(graph);
-      v3 = graph.addVertex(graph);
+      v1 = graph.addVertex();
+      v2 = graph.addVertex();
+      v3 = graph.addVertex();
 
       edge1 = v1.addInEdge(v2);
       edge2 = v1.addOutEdge(v3);
@@ -449,8 +445,8 @@ function VertexSuite() {
         v2,
         edge;
 
-      v1 = graph.addVertex(graph);
-      v2 = graph.addVertex(graph);
+      v1 = graph.addVertex();
+      v2 = graph.addVertex();
 
       edge = graph.addEdge(v1, v2);
 
@@ -472,8 +468,8 @@ function VertexSuite() {
         edge1,
         edge2;
 
-      v1 = graph.addVertex(graph);
-      v2 = graph.addVertex(graph);
+      v1 = graph.addVertex();
+      v2 = graph.addVertex();
 
       edge1 = graph.addEdge(v1, v2, null, "label_1");
       edge2 = graph.addEdge(v1, v2, null, "label_2");

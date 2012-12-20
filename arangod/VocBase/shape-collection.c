@@ -55,26 +55,19 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   char* jname;
   char* number;
 
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
   number = TRI_StringUInt32(TRI_NewTickVocBase());
   if (!number) {
     return false;
   }
   
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
   jname = TRI_Concatenate3String("journal-", number, ".db");
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  //printf("oreste:%s:%s:%d:%s\n",__FILE__,__FUNCTION__,__LINE__,jname);
 
   filename = TRI_Concatenate2File(collection->base._directory, jname);
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
-  //printf("ZZZZZZZZZZ:oreste:%s:%s:%d:%s\n",__FILE__,__FUNCTION__,__LINE__,filename);
-  //printf("oreste:%s:%s:%d:%d\n",__FILE__,__FUNCTION__,__LINE__,collection->base._maximalSize);
   journal = TRI_CreateDatafile(filename, collection->base._maximalSize);
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   // check that a journal was created
   if (journal == NULL) {
@@ -104,9 +97,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
-  //printf("oreste:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
   ok = TRI_RenameDatafile(journal, filename);
-  //printf("oreste:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
 
   if (! ok) {
     LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
@@ -237,9 +228,7 @@ static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
   n = collection->base._journals._length;
 
   if (n == 0) {
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
     ok = CreateJournal(collection);
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
     n = collection->base._journals._length;
 
     if (! ok || n == 0) {
@@ -248,13 +237,10 @@ static TRI_datafile_t* SelectJournal (TRI_shape_collection_t* collection,
   }
 
   // select first datafile
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
   datafile = collection->base._journals._buffer[0];
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   // try to reserve space
   res = TRI_ReserveElementDatafile(datafile, size, result);
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   while (res == TRI_ERROR_ARANGO_DATAFILE_FULL) {
     ok = CloseJournal(collection, datafile);
@@ -420,7 +406,6 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   TRI_datafile_t* journal;
   int res;
 
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   // generate a new tick
   marker->_tick = TRI_NewTickVocBase();
@@ -442,7 +427,6 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   }
 
   // find and select a journal
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
   journal = SelectJournal(collection, markerSize + bodySize, result);
 
   if (journal == NULL) {
@@ -451,9 +435,7 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   }
 
   // and write marker and shape
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
   res = WriteElement(collection, journal, *result, marker, markerSize, body, bodySize);
-  //printf("oreste:%s:%s:%d:\n",__FILE__,__FUNCTION__,__LINE__);
 
   // release lock on collection
   TRI_UnlockMutex(&collection->_lock);

@@ -2441,12 +2441,12 @@ static int FillIndex (TRI_document_collection_t* collection, TRI_index_t* idx) {
         ++inserted;
 
         if (inserted % 10000 == 0) {
-          LOG_DEBUG("indexed %ld documents of collection %lu", inserted, (unsigned long) primary->base._cid);
+          LOG_DEBUG("indexed %lu documents of collection %lu", (unsigned long) inserted, (unsigned long) primary->base._cid);
         }
       }
 
       if (scanned % 10000 == 0) {
-        LOG_TRACE("scanned %ld of %ld datafile entries of collection %lu", scanned, n, (unsigned long) primary->base._cid);
+        LOG_TRACE("scanned %ld of %ld datafile entries of collection %lu", (unsigned long) scanned, (unsigned long) n, (unsigned long) primary->base._cid);
       }
     }
   }
@@ -2693,7 +2693,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* sim,
   if (idx == NULL) {
     LOG_ERROR("cannot create bitarray index %lu", (unsigned long) iid);
     if (errorStr != NULL) {
-      LOG_TRACE(errorStr);
+      LOG_TRACE("%s", errorStr);
       TRI_Free(TRI_CORE_MEM_ZONE, errorStr);  
     }  
     return errorNum;
@@ -3314,14 +3314,14 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   if (location != NULL) {
     idx = TRI_CreateGeo1Index(&sim->base, location, loc, geoJson, constraint, ignoreNull);
 
-    LOG_TRACE("created geo-index for location '%s': %d",
+    LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != NULL && latitude != NULL) {
     idx = TRI_CreateGeo2Index(&sim->base, latitude, lat, longitude, lon, constraint, ignoreNull);
 
-    LOG_TRACE("created geo-index for location '%s': %d, %d",
+    LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
               (unsigned long) lat,
               (unsigned long) lon);

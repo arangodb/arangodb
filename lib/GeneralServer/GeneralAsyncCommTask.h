@@ -110,13 +110,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool oreste_setup (Scheduler* scheduler, EventLoop loop) {
+        bool setup (Scheduler* scheduler, EventLoop loop) {
           bool ok;
-          ok = SocketTask::oreste_setup(scheduler, loop);
+          ok = SocketTask::setup(scheduler, loop);
           if (!ok) {
             return false;
           }  
-          ok = AsyncTask::oreste_setup(scheduler, loop);
+          ok = AsyncTask::setup(scheduler, loop);
           if (!ok) {
             return false;
           }

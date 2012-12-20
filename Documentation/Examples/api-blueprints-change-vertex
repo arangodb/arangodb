@@ -1,0 +1,17 @@
+> curl --data @- -X PUT --dump - http://localhost:8529/_api/blueprints/vertex/v1?graph=graph1
+{"optional1" : "val2"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "vertex": {
+    "_id": "39572966/42653158",
+    "_rev": 42849766,
+    "_key": "42653158",
+    "$id": "v1",
+    "optional1": "val2"
+  },
+  "error": false,
+  "code": 200
+}

@@ -99,7 +99,7 @@
 /// identifier identifies a collection and is managed by ArangoDB. All
 /// collections are found under the URI
 ///
-/// @LIT{http://@FA{server}:@FA{port}/_api/collection/@FA{collection-identifier}}
+/// @LIT{http://server:port/_api/collection/collection-identifier}
 ///
 /// For example: Assume that the collection identifier is @LIT{7254820},
 /// then the URL of that collection is:

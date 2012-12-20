@@ -201,6 +201,12 @@ namespace triagens {
         void setVocbase (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enable the database version check
+////////////////////////////////////////////////////////////////////////////////
+
+        void performUpgrade ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enters an context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -324,7 +330,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing alternate startup scripts
 ///
-/// @CMDOPT{\-\-javascript.directory @CA{directory}}
+/// @CMDOPT{\--javascript.directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} path to alternate startup JavaScript files.
 /// Normally, the server will start using built-in JavaScript core
@@ -337,7 +343,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of module directories
 ///
-/// @CMDOPT{\-\-javascript.modules-path @CA{directory}}
+/// @CMDOPT{\--javascript.modules-path @CA{directory}}
 ///
 /// Specifies the @CA{directory} path with user defined JavaScript modules.
 /// Multiple paths can be specified separated with commas.
@@ -348,7 +354,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the system action directory
 ///
-/// @CMDOPT{\-\-javascript.action-directory @CA{directory}}
+/// @CMDOPT{\--javascript.action-directory @CA{directory}}
 ///
 /// Specifies the @CA{directory} containg the system defined JavaScript files
 /// that can be invoked as actions.
@@ -363,9 +369,42 @@ namespace triagens {
         bool _useActions;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief perform a database upgrade
+///
+/// @CMDOPT{\--upgrade}
+///
+/// Specifying this option will make the server perform a database upgrade at
+/// start. A database upgrade will first compare the version number stored in 
+/// the file VERSION in the database directory with the current server version.
+///
+/// If the two version numbers match, the server will start normally.
+///
+/// If the version number found in the database directory is higher than the
+/// version number the server is running, the server expects this is an
+/// unintentional downgrade and will warn about this. It will however start
+/// normally. Using the server in these conditions is however not recommended 
+/// nor supported.
+///
+/// If the version number found in the database directory is lower than the
+/// version number the server is running, the server will check whether there
+/// are any upgrade tasks to perform. It will then execute all required upgrade
+/// tasks and print their statuses. If one of the upgrade tasks fails, the
+/// server will exit and refuse to start.
+/// Re-starting the server with the upgrade option will then again trigger the
+/// upgrade check and execution until the problem is fixed. If all tasks are
+/// finished, the server will start normally.
+///
+/// Whether or not this option is specified, the server will always perform a
+/// version check on startup. Running the server with a non-matching version
+/// number in the VERSION file will make the server refuse to start.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _performUpgrade;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript garbage collection interval (each x requests)
 ///
-/// @CMDOPT{\-\-javascript.gc-interval @CA{interval}}
+/// @CMDOPT{\--javascript.gc-interval @CA{interval}}
 ///
 /// Specifies the interval (approximately in number of requests) that the
 /// garbage collection for JavaScript objects will be run in each thread.
@@ -376,7 +415,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript garbage collection frequency (each x seconds)
 ///
-/// @CMDOPT{\-\-javascript.gc-frequency @CA{frequency}}
+/// @CMDOPT{\--javascript.gc-frequency @CA{frequency}}
 ///
 /// Specifies the frequency (in seconds) for the automatic garbage collection of
 /// JavaScript objects. This setting is useful to have the garbage collection 
@@ -388,7 +427,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optional arguments to pass to v8
 ///
-/// @CMDOPT{\-\-javascript.v8-options @CA{options}}
+/// @CMDOPT{\--javascript.v8-options @CA{options}}
 ///
 /// Optional arguments to pass to the V8 Javascript engine. The V8 engine will
 /// run with default settings unless explicit options are specified using this

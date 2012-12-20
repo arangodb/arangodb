@@ -557,10 +557,13 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
     // The problem we have here is that this opening of the fs handle may fail.
     // There is no mechanism to the calling function to report failure.
     // ..........................................................................
+    LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
     int fd = _open_osfhandle (socket, 0);
     if (fd == -1) {
+      LOGGER_ERROR << "could not convert socket handle to socket descriptor";
       delete watcher;
-      _exit(10); // oreste TODO: return to calling function
+      abort();
+      // Dr. O TODO: return to calling function
       return -1;
     }
   

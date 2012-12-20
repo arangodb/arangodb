@@ -1083,10 +1083,6 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
   char* e = (char*)( ((q + g - 1) / g) * g ); 
   int result;
   
-  /* start oreste 
-  return true;
-  end oreste */
-
   result = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
 
   if (result != TRI_ERROR_NO_ERROR) {
@@ -1433,10 +1429,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   char const* name;
   void const* found;
   
-  /* start oreste    */
-  static int counter = 0;
-  /* end oreste */
-
   assert(parameter);
   name = parameter->_name;
 
@@ -1800,7 +1792,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
   // collection is loaded
   // .............................................................................
 
-  else if (collection->_status != TRI_VOC_COL_STATUS_LOADED || collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
+  else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     res = TRI_RenameCollection(&collection->_collection->base, newName);
 
     if (res != TRI_ERROR_NO_ERROR) {

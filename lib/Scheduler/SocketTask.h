@@ -35,6 +35,10 @@
 #include "Basics/Thread.h"
 #include "Statistics/StatisticsAgent.h"
 
+#ifdef _WIN32
+  #include "BasicsC/win-utils.h"
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -237,7 +241,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool oreste_setup (Scheduler*, EventLoop);
+        bool setup (Scheduler*, EventLoop);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -295,7 +299,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         socket_t commSocket;
-
+        int      fileDescriptor;
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief keep-alive timeout in seconds 
 ////////////////////////////////////////////////////////////////////////////////

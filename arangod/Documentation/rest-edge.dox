@@ -93,11 +93,11 @@
 /// defines a document and is managed by ArangoDB. All documents are
 /// found under the URI
 ///
-/// @LIT{http://@FA{server}:@FA{port}/_api/document/@FA{document-handle}}
+/// @LIT{http://server:port/_api/document/document-handle}
 ///
 /// For edges you can use the special address
 ///
-/// @LIT{http://@FA{server}:@FA{port}/_api/edge/@FA{document-handle}}
+/// @LIT{http://server:port/_api/edge/document-handle}
 ///
 /// For example: Assume that the document handle, which is stored in
 /// the @LIT{_id} field of the edge, is @LIT{7254820/362549736},

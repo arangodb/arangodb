@@ -641,7 +641,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 
     // remove empty file
     TRI_UnlinkFile(filename);
-    LOG_ERROR("cannot memory map file '%s': '%d'", filename, res);
+    LOG_ERROR("cannot memory map file '%s': '%d'", filename, (int) res);
     return NULL;
   }
 

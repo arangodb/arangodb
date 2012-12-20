@@ -577,14 +577,10 @@ namespace triagens {
           }
 
           case RAND_WIN32: {
-            // printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             if (RandomHelper::win32Device == 0) {
               RandomHelper::win32Device = new RandomHelper::RandomDeviceWin32<1024>();
-              //printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             }
-            //printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             uniformInteger = new UniformIntegerWin32(RandomHelper::win32Device);
-            //printf("oreste:1000:%s:%s:%d\n",__FILE__,__FUNCTION__,__LINE__);
             break;
           }
 

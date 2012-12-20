@@ -76,6 +76,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page Aql ArangoDB Query Language (AQL)
 ///
+/// @NAVIGATE_Aql
 /// @EMBEDTOC{AqlTOC}
 ///
 /// @section AqlPurpose Introduction
@@ -834,7 +835,9 @@
 ///
 /// AQL supports the following functions to operate on list values:
 ///
-/// - @FN{LENGTH(@FA{list})}: returns the length (number of elements) of @FA{list}
+/// - @FN{LENGTH(@FA{list})}: returns the length (number of list elements) of @FA{list}. If 
+///   @FA{list} is a document, returns the number of attribute keys of the document, 
+///   regardless of their values.
 /// - @FN{MIN(@FA{list})}: returns the smallest element of @FA{list}. @LIT{null} values
 ///   are ignored. If the list is empty or only @LIT{null} are contained in the list, the
 ///   function will return @LIT{null}.
@@ -960,10 +963,12 @@
 ///
 /// AQL offers the following functions to let the user control the flow of operations:
 ///
-/// - @FN{NOT_NULL(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is not
-///   @LIT{null}, and @FA{alternative} otherwise. 
-/// - @FN{NOT_LIST(@FA{check}\, @FA{alternative})}: returns @FA{check} if it is a list,
-///   and @FA{alternative} otherwise. 
+/// - @FN{NOT_NULL(@FA{alternative}\, ...)}: returns the first alternative that is not @LIT{null}, 
+///   and @LIT{null} if all alternatives are @LIT{null} themselves.
+/// - @FN{FIRST_LIST(@FA{alternative}\, ...)}: returns the first alternative that is a list, and
+///   @LIT{null} if none of the alternatives is a list.
+/// - @FN{FIRST_DOCUMENT(@FA{alternative}\, ...)}: returns the first alternative that is a document,
+///   and @LIT{null} if none of the alternatives is a document.
 ///
 /// @subsubsection AqlFunctionsMisc Miscellaneous functions
 ///
@@ -972,6 +977,13 @@
 ///
 /// - @FN{COLLECTIONS()}: returns a list of collections. Each collection is returned as a document
 ///   with attributes @LIT{name} and @LIT{_id}.
+/// - @FN{DOCUMENT(@FA{collection}, @FA{id})}: returns the document that id uniquely identified by
+///   the @FA{id}. ArangoDB will try to find the document using the @LIT{_id} value of the document
+///   in the specified collection. If there is a mismatch between the @FA{collection} passed and
+///   the collection specified in @FA{id}, then no document will be returned. Additionally, if the
+///   @FA{collection} matches the collection value specified in @FA{id} but the document cannot be
+///   found, no document will be returned. This function also allows @FA{id} to be a list of ids.
+///   In this case, the function will return a list of all documents that could be found.
 ///
 /// @section AqlOperations High-level operations
 ///

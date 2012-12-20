@@ -41,6 +41,7 @@
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
+#include "BasicsC/win-utils.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
@@ -93,7 +94,7 @@ bool ListenTask::isBound () const {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool ListenTask::oreste_setup (Scheduler* scheduler, EventLoop loop) {
+bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   if (! isBound()) {
     return true;
   }
@@ -119,7 +120,6 @@ void ListenTask::cleanup () {
 
 
 bool ListenTask::handleEvent (EventToken token, EventType revents) {
-    //printf("oreste:AAAAAAAAAAAAAAAAAA:%s:%s:%d:%d\n",__FILE__,__FUNCTION__,__LINE__,++acceptFailures);
   if (token == readWatcher) {
     if ((revents & EVENT_SOCKET_READ) == 0) {
       return true;
@@ -132,8 +132,6 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     
     // accept connection
     socket_t connfd = accept(listenSocket, (sockaddr*) &addr, &len);
-    
-    //printf("oreste:AAAAAAAAAAAAAAAAAA:%s:%s:%d:%d\n",__FILE__,__FUNCTION__,__LINE__,++acceptFailures);
     if (connfd == INVALID_SOCKET) {
       ++acceptFailures;
       

@@ -86,6 +86,24 @@ function AHUACATL_INDEX (collection, indexTypes) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get access to a collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_COLLECTION (name) {
+  if (typeof name !== 'string') {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "internal");
+  }
+
+  if (name.substring(0, 1) === '_') {
+    // system collections need to be accessed slightly differently as they
+    // are not returned by the propertyGetter of db
+    return internal.db._collection(name);
+  }
+
+  return internal.db[name];
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a value for comparison, sorting etc.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,6 +111,7 @@ function AHUACATL_NORMALIZE (value) {
   if (value === null || value === undefined) {
     return null;
   }
+
   if (typeof(value) !== "object") {
     return value;
   }
@@ -393,11 +412,38 @@ function AHUACATL_LIST (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a document by its unique id or their unique ids
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_DOCUMENT (collection, id) {
+  if (AHUACATL_TYPEWEIGHT(id) === AHUACATL_TYPEWEIGHT_LIST) {
+    var c = AHUACATL_COLLECTION(collection);
+
+    var result = [ ];
+    for (var i = 0; i < id.length; ++i) {
+      try {
+        result.push(c.document(id[i]));
+      }
+      catch (e) {
+      }
+    }
+    return result;
+  }
+
+  try {
+    return AHUACATL_COLLECTION(collection).document(id);
+  }
+  catch (e) {
+    return undefined;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS (collection) {
-  return internal.db[collection].ALL_NL(0, null).documents;
+  return AHUACATL_COLLECTION(collection).ALL_NL(0, null).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,7 +453,7 @@ function AHUACATL_GET_DOCUMENTS (collection) {
 
 function AHUACATL_GET_DOCUMENTS_PRIMARY (collection, idx, id) {
   try {
-    return [ internal.db[collection].document_nl(id) ];
+    return [ AHUACATL_COLLECTION(collection).document_nl(id) ];
   }
   catch (e) {
     return [ ];
@@ -425,7 +471,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
   for (var i in values) {
     var id = values[i];
     try {
-      var d = internal.db[collection].document_nl(id);
+      var d = AHUACATL_COLLECTION(collection).document_nl(id);
       result.push(d);
     }
     catch (e) {
@@ -441,7 +487,7 @@ function AHUACATL_GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_HASH (collection, idx, example) {
-  return internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;
+  return AHUACATL_COLLECTION(collection).BY_EXAMPLE_HASH_NL(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,7 +504,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_HASH_NL(idx, example).documents;
+    var documents = AHUACATL_COLLECTION(collection).BY_EXAMPLE_HASH_NL(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -472,7 +518,7 @@ function AHUACATL_GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_BITARRAY (collection, idx, example) {
-  return internal.db[collection].BY_CONDITION_BITARRAY(idx, example).documents;
+  return AHUACATL_COLLECTION(collection).BY_CONDITION_BITARRAY(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,7 +535,7 @@ function AHUACATL_GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, value
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_BITARRAY(idx, example).documents;
+    var documents = AHUACATL_COLLECTION(collection).BY_EXAMPLE_BITARRAY(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -506,7 +552,7 @@ function AHUACATL_GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, value
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
-  return internal.db[collection].BY_CONDITION_SKIPLIST_NL(idx, example).documents;
+  return AHUACATL_COLLECTION(collection).BY_CONDITION_SKIPLIST_NL(idx, example).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +569,7 @@ function AHUACATL_GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, value
 
     example[attribute] = value;
 
-    var documents = internal.db[collection].BY_EXAMPLE_SKIPLIST_NL(idx, example).documents;
+    var documents = AHUACATL_COLLECTION(collection).BY_EXAMPLE_SKIPLIST_NL(idx, example).documents;
     for (var j in documents) {
       result.push(documents[j]);
     }
@@ -1735,9 +1781,15 @@ function AHUACATL_LIMIT (value, offset, count) {
 function AHUACATL_LENGTH () {
   var value = arguments[0];
 
-  AHUACATL_LIST(value);
-
-  return value.length;
+  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_LIST) {
+    return value.length;
+  }
+  else if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_DOCUMENT) {
+    return AHUACATL_KEYS(value, false).length;
+  }
+  else {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LENGTH");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1940,12 +1992,12 @@ function AHUACATL_GEO_NEAR () {
   var limit = arguments[3];
   var distanceAttribute = arguments[4];
 
-  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  var idx = AHUACATL_INDEX(AHUACATL_COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx == null) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = internal.db[collection].NEAR_NL(idx, latitude, longitude, limit);
+  var result = AHUACATL_COLLECTION(collection).NEAR_NL(idx, latitude, longitude, limit);
   if (distanceAttribute == null) {
     return result.documents;
   }
@@ -1972,12 +2024,12 @@ function AHUACATL_GEO_WITHIN () {
   var radius = arguments[3];
   var distanceAttribute = arguments[4];
 
-  var idx = AHUACATL_INDEX(internal.db[collection], [ "geo1", "geo2" ]); 
+  var idx = AHUACATL_INDEX(AHUACATL_COLLECTION(collection), [ "geo1", "geo2" ]); 
   if (idx == null) {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = internal.db[collection].WITHIN_NL(idx, latitude, longitude, radius);
+  var result = AHUACATL_COLLECTION(collection).WITHIN_NL(idx, latitude, longitude, radius);
   if (distanceAttribute == null) {
     return result.documents;
   }
@@ -2042,11 +2094,11 @@ function AHUACATL_GRAPH_PATHS () {
   }
 
   var searchAttributes = { 
-    "edgeCollection" : internal.db[edgeCollection],
-    "minLength" : minLength, 
-    "maxLength" : maxLength, 
-    "direction" : searchDirection,
-    "followCycles" : followCycles,
+    edgeCollection : AHUACATL_COLLECTION(edgeCollection),
+    minLength : minLength, 
+    maxLength : maxLength, 
+    direction : searchDirection,
+    followCycles : followCycles,
   };
 
   // TODO: restrict allEdges to edges with certain _from values etc.
@@ -2056,6 +2108,7 @@ function AHUACATL_GRAPH_PATHS () {
   for (var i = 0; i < n; ++i) {
     var vertex = vertices[i];
     var visited = { };
+
     visited[vertex._id] = true;
     var connected = AHUACATL_GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
     for (j = 0; j < connected.length; ++j) {
@@ -2075,10 +2128,10 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 
   if (level >= searchAttributes.minLength) {
     result.push({ 
-        "vertices" : vertices, 
-        "edges" : edges,
-        "source" : vertices[0],
-        "destination" : vertices[vertices.length - 1],
+        vertices : vertices, 
+        edges : edges,
+        source : vertices[0],
+        destination : vertices[vertices.length - 1],
         });
   }
 
@@ -2112,7 +2165,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
     for (var j = 0; j < targets.length; ++j) {
       var targetId = targets[j];
       
-      if (!searchAttributes.followCycles) {
+      if (! searchAttributes.followCycles) {
         if (visited[targetId]) {
           continue;
         }
@@ -2134,7 +2187,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
         result.push(connected[k]);
       }
 
-      if (!searchAttributes.followCycles) {
+      if (! searchAttributes.followCycles) {
         delete visited[targetId];
       }
     }
@@ -2157,31 +2210,63 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return value if it's not null, otherwise return alternative
+/// @brief return the first alternative that's not null until there are no more 
+/// alternatives. if neither of the alternatives is a value other than null, 
+/// then null will be returned
 ///
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_NOT_NULL (value, alternative) {
-  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_NULL) {
-    return alternative;
+function AHUACATL_NOT_NULL () {
+  for (var i in arguments) {
+    var element = arguments[i];
+  
+    if (AHUACATL_TYPEWEIGHT(element) !== AHUACATL_TYPEWEIGHT_NULL) {
+      return element;
+    }
   }
 
-  return value;
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return value if it's a list, otherwise return alternative
+/// @brief return the first alternative that's a list until there are no more
+/// alternatives. if neither of the alternatives is a list, then null will be
+/// returned
 ///
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_NOT_LIST (value, alternative) {
-  if (AHUACATL_TYPEWEIGHT(value) === AHUACATL_TYPEWEIGHT_LIST) {
-    return value;
+function AHUACATL_FIRST_LIST () {
+  for (var i in arguments) {
+    var element = arguments[i];
+  
+    if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_LIST) {
+      return element;
+    }
   }
 
-  return alternative;
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first alternative that's a document until there are no 
+/// more alternatives. if neither of the alternatives is a document, then null 
+/// will be returned
+///
+/// the operands can have any type
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FIRST_DOCUMENT () {
+  for (var i in arguments) {
+    var element = arguments[i];
+  
+    if (AHUACATL_TYPEWEIGHT(element) === AHUACATL_TYPEWEIGHT_DOCUMENT) {
+      return element;
+    }
+  }
+
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

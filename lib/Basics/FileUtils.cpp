@@ -327,8 +327,14 @@ namespace triagens {
       bool isSymbolicLink (string const& path) {
 
 #ifdef TRI_HAVE_WIN32_SYMBOLIC_LINK
-
-        return true;
+        
+        // .........................................................................  
+        // TODO: On the NTFS file system, there are the following file links: 
+        // hard links - 
+        // junctions - 
+        // symbolic links - 
+        // .........................................................................  
+        return false;
 
 #else
 

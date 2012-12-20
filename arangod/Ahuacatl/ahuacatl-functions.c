@@ -27,6 +27,8 @@
 
 #include "Ahuacatl/ahuacatl-functions.h"
 
+#include "Ahuacatl/ahuacatl-collections.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
@@ -40,8 +42,8 @@
 /// @brief shorthand to register a query function and process the result
 ////////////////////////////////////////////////////////////////////////////////
 
-#define REGISTER_FUNCTION(internalName, externalName, deterministic, group, argPattern) \
-  result &= TRI_RegisterFunctionAql(functions, internalName, "AHUACATL_" externalName, deterministic, group, argPattern);
+#define REGISTER_FUNCTION(internalName, externalName, deterministic, group, argPattern, optimiseCallback) \
+  result &= TRI_RegisterFunctionAql(functions, internalName, "AHUACATL_" externalName, deterministic, group, argPattern, optimiseCallback)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shorthand to check an argument and return an error if it is invalid
@@ -111,7 +113,6 @@ static param_t InitParam (void) {
 
   return param;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check the type of an argument for a function call
@@ -224,7 +225,6 @@ static bool CheckArgumentType (TRI_aql_node_t* parameter,
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine minimum and maximum argument number for argument pattern
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,6 +313,87 @@ static bool EqualName (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               optimiser callbacks
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimise callback function for PATHS() AQL function
+////////////////////////////////////////////////////////////////////////////////
+
+static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
+                           TRI_aql_context_t* const context,
+                           TRI_aql_field_access_t* fieldAccess) {
+  TRI_aql_collection_hint_t* hint;
+  TRI_aql_node_t* args;
+  TRI_aql_node_t* vertexCollection;
+  TRI_aql_node_t* edgeCollection;
+  TRI_aql_node_t* direction;
+  char* directionValue;
+  char* name;
+  const char* lookFor;
+  size_t len;
+  size_t n;
+  
+  args = TRI_AQL_NODE_MEMBER(fcallNode, 0);
+
+  if (args == NULL) {
+    return;
+  }
+
+  vertexCollection = TRI_AQL_NODE_MEMBER(args, 0);
+  edgeCollection = TRI_AQL_NODE_MEMBER(args, 1);
+  direction = TRI_AQL_NODE_MEMBER(args, 2);
+
+  assert(vertexCollection);
+  assert(edgeCollection);
+  assert(direction);
+  assert(fieldAccess);
+
+  n = strlen(fieldAccess->_fullName);
+  name = fieldAccess->_fullName + fieldAccess->_variableNameLength;
+
+  directionValue = TRI_AQL_NODE_STRING(direction);
+
+  // try to optimise the vertex collection access
+  if (TRI_EqualString(directionValue, "outbound")) {
+    lookFor = ".source.";
+    len = strlen(lookFor);
+  }
+  else if (TRI_EqualString(directionValue, "inbound")) {
+    lookFor = ".destination.";
+    len = strlen(lookFor);
+  }
+  else {
+    lookFor = NULL;
+    len = 0;
+  }
+
+  if (len > 0 && 
+      n > fieldAccess->_variableNameLength + len && 
+      memcmp((void*) lookFor, (void*) name, len) == 0) {
+    // field name is collection.source.XXX, e.g. users.source._id
+    LOG_DEBUG("optimising PATHS() field access %s", fieldAccess->_fullName);
+ 
+    // we can now modify this fieldaccess in place to collection.XXX, e.g. users._id
+    // copy trailing \0 byte as well
+    memmove(name, name + len - 1, n - fieldAccess->_variableNameLength - len + 2);
+    
+    // attach the modified fieldaccess to the collection
+    hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(vertexCollection));
+    hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -331,7 +412,7 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   
   functions = (TRI_associative_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_associative_pointer_t), false); 
 
-  if (!functions) {
+  if (functions == NULL) {
     return NULL;
   }
 
@@ -351,67 +432,69 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   // s = string
   // p = primitive
   // l = list
-  // a = array
+  // a = (hash) array/document
 
   // type check functions
-  REGISTER_FUNCTION("IS_NULL", "IS_NULL", true, false, ".");
-  REGISTER_FUNCTION("IS_BOOL", "IS_BOOL", true, false, ".");
-  REGISTER_FUNCTION("IS_NUMBER", "IS_NUMBER", true, false, ".");
-  REGISTER_FUNCTION("IS_STRING", "IS_STRING", true, false, ".");
-  REGISTER_FUNCTION("IS_LIST", "IS_LIST", true, false, ".");
-  REGISTER_FUNCTION("IS_DOCUMENT", "IS_DOCUMENT", true, false, ".");
+  REGISTER_FUNCTION("IS_NULL", "IS_NULL", true, false, ".", NULL);
+  REGISTER_FUNCTION("IS_BOOL", "IS_BOOL", true, false, ".", NULL);
+  REGISTER_FUNCTION("IS_NUMBER", "IS_NUMBER", true, false, ".", NULL);
+  REGISTER_FUNCTION("IS_STRING", "IS_STRING", true, false, ".", NULL);
+  REGISTER_FUNCTION("IS_LIST", "IS_LIST", true, false, ".", NULL);
+  REGISTER_FUNCTION("IS_DOCUMENT", "IS_DOCUMENT", true, false, ".", NULL);
 
   // cast functions
-  REGISTER_FUNCTION("TO_NUMBER", "CAST_NUMBER", true, false, ".");
-  REGISTER_FUNCTION("TO_STRING", "CAST_STRING", true, false, ".");
-  REGISTER_FUNCTION("TO_BOOL", "CAST_BOOL", true, false, ".");
-  REGISTER_FUNCTION("TO_LIST", "CAST_LIST", true, false, ".");
+  REGISTER_FUNCTION("TO_NUMBER", "CAST_NUMBER", true, false, ".", NULL);
+  REGISTER_FUNCTION("TO_STRING", "CAST_STRING", true, false, ".", NULL);
+  REGISTER_FUNCTION("TO_BOOL", "CAST_BOOL", true, false, ".", NULL);
+  REGISTER_FUNCTION("TO_LIST", "CAST_LIST", true, false, ".", NULL);
 
   // string functions
-  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+"); 
-  REGISTER_FUNCTION("CONCAT_SEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+"); 
-  REGISTER_FUNCTION("CHAR_LENGTH", "STRING_LENGTH", true, false, "s"); 
-  REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s"); 
-  REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s"); 
-  REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n");
-  REGISTER_FUNCTION("CONTAINS", "STRING_CONTAINS", true, false, "s,s");
+  REGISTER_FUNCTION("CONCAT", "STRING_CONCAT", true, false, "sz,sz|+", NULL); 
+  REGISTER_FUNCTION("CONCAT_SEPARATOR", "STRING_CONCAT_SEPARATOR", true, false, "s,sz,sz|+", NULL); 
+  REGISTER_FUNCTION("CHAR_LENGTH", "STRING_LENGTH", true, false, "s", NULL); 
+  REGISTER_FUNCTION("LOWER", "STRING_LOWER", true, false, "s", NULL); 
+  REGISTER_FUNCTION("UPPER", "STRING_UPPER", true, false, "s", NULL); 
+  REGISTER_FUNCTION("SUBSTRING", "STRING_SUBSTRING", true, false, "s,n|n", NULL);
+  REGISTER_FUNCTION("CONTAINS", "STRING_CONTAINS", true, false, "s,s", NULL);
 
   // numeric functions 
-  REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n");
-  REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, "n");
-  REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, "n");
-  REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, "n");
-  REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, "");
+  REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n", NULL);
+  REGISTER_FUNCTION("CEIL", "NUMBER_CEIL", true, false, "n", NULL);
+  REGISTER_FUNCTION("ROUND", "NUMBER_ROUND", true, false, "n", NULL);
+  REGISTER_FUNCTION("ABS", "NUMBER_ABS", true, false, "n", NULL);
+  REGISTER_FUNCTION("RAND", "NUMBER_RAND", false, false, "", NULL);
 
   // list functions
-  REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+");
-  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "l");
-  REGISTER_FUNCTION("MIN", "MIN", true, true, "l");
-  REGISTER_FUNCTION("MAX", "MAX", true, true, "l");
-  REGISTER_FUNCTION("SUM", "SUM", true, true, "l");
-  REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l");
-  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l");
-  REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l");
-  REGISTER_FUNCTION("LAST", "LAST", true, false, "l");
+  REGISTER_FUNCTION("UNION", "UNION", true, false, "l,l|+", NULL);
+  REGISTER_FUNCTION("LENGTH", "LENGTH", true, true, "la", NULL);
+  REGISTER_FUNCTION("MIN", "MIN", true, true, "l", NULL);
+  REGISTER_FUNCTION("MAX", "MAX", true, true, "l", NULL);
+  REGISTER_FUNCTION("SUM", "SUM", true, true, "l", NULL);
+  REGISTER_FUNCTION("UNIQUE", "UNIQUE", true, false, "l", NULL);
+  REGISTER_FUNCTION("REVERSE", "REVERSE", true, false, "l", NULL);
+  REGISTER_FUNCTION("FIRST", "FIRST", true, false, "l", NULL);
+  REGISTER_FUNCTION("LAST", "LAST", true, false, "l", NULL);
   
   // document functions
-  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s"); 
-  REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+");
-  REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+");
+  REGISTER_FUNCTION("HAS", "HAS", true, false, "az,s", NULL); 
+  REGISTER_FUNCTION("MERGE", "MERGE", true, false, "a,a|+", NULL);
+  REGISTER_FUNCTION("MERGE_RECURSIVE", "MERGE_RECURSIVE", true, false, "a,a|+", NULL);
+  REGISTER_FUNCTION("DOCUMENT", "DOCUMENT", false, false, "h,sl", NULL);
 
   // geo functions
-  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s");
-  REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s");
+  REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);
+  REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s", NULL);
 
   // graph functions
-  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b");
+  REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
   
   // misc functions
-  REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s"); // FAIL is non-deterministic, otherwise query optimisation will fail!
-  REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, "."); // simple non-deterministic wrapper to avoid optimisations at parse time
-  REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, ""); 
-  REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".,.");
-  REGISTER_FUNCTION("NOT_LIST", "NOT_LIST", true, false, ".,.");
+  REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!
+  REGISTER_FUNCTION("PASSTHRU", "PASSTHRU", false, false, ".", NULL); // simple non-deterministic wrapper to avoid optimisations at parse time
+  REGISTER_FUNCTION("COLLECTIONS", "COLLECTIONS", false, false, "", NULL); 
+  REGISTER_FUNCTION("NOT_NULL", "NOT_NULL", true, false, ".|+", NULL);
+  REGISTER_FUNCTION("FIRST_LIST", "FIRST_LIST", true, false, ".|+", NULL);
+  REGISTER_FUNCTION("FIRST_DOCUMENT", "FIRST_DOCUMENT", true, false, ".|+", NULL);
 
   if (!result) {
     TRI_FreeFunctionsAql(functions);
@@ -498,7 +581,8 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
                               const char* const internalName, 
                               const bool isDeterministic,
                               const bool isGroup,
-                              const char* const argPattern) {
+                              const char* const argPattern,
+                              void (*optimise)(const TRI_aql_node_t* const, TRI_aql_context_t* const, TRI_aql_field_access_t*)) {
   TRI_aql_function_t* function;
   
   function = (TRI_aql_function_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_function_t), false);
@@ -532,6 +616,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
   function->_isDeterministic = isDeterministic; 
   function->_isGroup = isGroup; 
   function->_argPattern = argPattern;
+  function->optimise = optimise;
 
   // set minArgs and maxArgs
   SetArgumentCount(function);
