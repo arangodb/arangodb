@@ -459,11 +459,13 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
     return false;
   }
 
-  // execute script
-  v8::Handle<v8::Value> result = script->Run();
+  if (execute) {
+    // execute script
+    v8::Handle<v8::Value> result = script->Run();
 
-  if (result.IsEmpty()) {
-    return false;
+    if (result.IsEmpty()) {
+      return false;
+    }
   }
 
   LOG_TRACE("loaded java script file: '%s'", filename);
