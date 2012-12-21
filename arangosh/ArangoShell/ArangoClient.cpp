@@ -183,6 +183,9 @@ ArangoClient::ArangoClient ()
     _pager(stdout),
     _usePager(false),
 
+    _logFile(""),
+    _logOptions(false),
+
     _serverOptions(false),
     _endpointString(),
     _endpointServer(0),
@@ -280,6 +283,18 @@ void ArangoClient::setupPrettyPrint (ProgramOptionsDescription& description) {
   ;
 
   _prettyPrintOptions = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the log options
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::setupLog (ProgramOptionsDescription& description) {
+  description
+    ("audit-log", &_logFile, "audit log file to save commands and results to")
+  ;
+
+  _logOptions = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -504,10 +519,44 @@ void ArangoClient::stopPager () {
 
 void ArangoClient::internalPrint (const char* format, const char* str) {
   if (str) {
-    fprintf(_pager, format, str);    
+    if (*str != '\x1b') {
+      fprintf(_pager, format, str);    
+      log(format, str);
+    }
   }
   else {
-    fprintf(_pager, "%s", format);    
+    if (*format != '\x1b') {
+      // do not print terminal escape sequences to pager
+      fprintf(_pager, "%s", format);    
+      log("%s", format);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief open the log file
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::openLog () {
+  if (! _logFile.empty()) {
+    _log = fopen(_logFile.c_str(), "w");
+    if (_log == 0) {
+      cerr << "Cannot open file '" << _logFile << "' for logging." << endl;
+    }
+    else {
+      cout << "Logging input and output to '" << _logFile << "'." << endl;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief close the log file
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::closeLog () {
+  if (! _logFile.empty() && _log != 0) {
+    fclose(_log);
+    _log = 0;
   }
 }
 
@@ -531,7 +580,30 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-    cout << "<ctrl-D>\n" << TRI_BYE_MESSAGE << endl;
+    cout << "<ctrl-D>" << endl << TRI_BYE_MESSAGE << endl;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log output
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::log (const char* format, const char* str) {
+  if (_log) {
+    if (*str != '\x1b') {
+      // do not print terminal escape sequences into log
+      fprintf(_log, format, str); 
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush log output
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::flushLog () {
+  if (_log) {
+    fflush(_log);
   }
 }
 
