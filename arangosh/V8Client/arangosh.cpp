@@ -123,7 +123,13 @@ static string StartupPath = "";
 /// @brief javascript files to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> Scripts;
+static vector<string> ExecuteScripts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief javascript files to syntax check
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> CheckScripts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit file test cases
@@ -422,7 +428,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription javascript("JAVASCRIPT options");
 
   javascript
-    ("javascript.execute", &Scripts, "execute Javascript code from file")
+    ("javascript.execute", &ExecuteScripts, "execute Javascript code from file")
+    ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
@@ -462,7 +469,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   }
 
   // disable excessive output in non-interactive mode
-  if (! Scripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
+  if (! ExecuteScripts.empty() || ! CheckScripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
     BaseClient.shutup();
   }
 }
@@ -931,22 +938,29 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
 /// @brief executes the Javascript files
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool RunScripts (v8::Handle<v8::Context> context) {
+static bool RunScripts (v8::Handle<v8::Context> context, 
+                        const vector<string>& scripts, 
+                        const bool execute) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
   bool ok;
 
   ok = true;
 
-  for (size_t i = 0;  i < Scripts.size();  ++i) {
-    if (! FileUtils::exists(Scripts[i])) {
-      cerr << "error: Javascript file not found: '" << Scripts[i].c_str() << "'" << endl;
-      BaseClient.log("error: Javascript file not found: '%s'\n", Scripts[i].c_str());
+  for (size_t i = 0;  i < scripts.size();  ++i) {
+    if (! FileUtils::exists(scripts[i])) {
+      cerr << "error: Javascript file not found: '" << scripts[i].c_str() << "'" << endl;
+      BaseClient.log("error: Javascript file not found: '%s'\n", scripts[i].c_str());
       ok = false;
       break;
     }
 
-    TRI_ExecuteJavaScriptFile(context, Scripts[i].c_str());
+    if (execute) {
+      TRI_ExecuteJavaScriptFile(context, scripts[i].c_str());
+    }
+    else {
+      TRI_LoadJavaScriptFile(context, scripts[i].c_str());
+    }
   
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
@@ -1327,7 +1341,7 @@ int main (int argc, char* argv[]) {
   // run normal shell
   // .............................................................................
 
-  if (Scripts.empty() && UnitTests.empty() && JsLint.empty()) {
+  if (ExecuteScripts.empty() && CheckScripts.empty() && UnitTests.empty() && JsLint.empty()) {
     RunShell(context);
   }
 
@@ -1338,9 +1352,13 @@ int main (int argc, char* argv[]) {
   else {
     bool ok = false;
 
-    if (! Scripts.empty()) {
-      // we have scripts to execute
-      ok = RunScripts(context);
+    if (! ExecuteScripts.empty()) {
+      // we have scripts to execute or syntax check
+      ok = RunScripts(context, ExecuteScripts, true);
+    }
+    else if (! CheckScripts.empty()) {
+      // we have scripts to syntax check
+      ok = RunScripts(context, CheckScripts, false);
     }
     else if (! UnitTests.empty()) {
       // we have unit tests
