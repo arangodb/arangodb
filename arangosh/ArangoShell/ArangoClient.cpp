@@ -187,6 +187,7 @@ ArangoClient::ArangoClient ()
     _logOptions(false),
 
     _serverOptions(false),
+    _disableAuthentication(false),
     _endpointString(),
     _endpointServer(0),
     _username("root"),
@@ -318,6 +319,7 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
   ProgramOptionsDescription clientOptions("CLIENT options");
 
   clientOptions
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication")
     ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
     ("server.username", &_username, "username to use when connecting")
     ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
@@ -404,7 +406,7 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   // check if have a password
-  _hasPassword = options.has("server.password");
+  _hasPassword = options.has("server.password") || options.has("server.disable-authentication");
 
   // set colors
   if (options.has("colors")) {

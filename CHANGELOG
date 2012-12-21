@@ -133,6 +133,9 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* added option '--server.disable-authentication' for arangosh as well. No more passwd
+  prompts if not needed
+
 * fixed issue #330: session logging for arangosh
 
 * fixed issue #328: 1.1 compile warnings
