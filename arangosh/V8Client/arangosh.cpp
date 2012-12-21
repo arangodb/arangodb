@@ -432,6 +432,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   BaseClient.setupAutoComplete(description);
   BaseClient.setupPrettyPrint(description);
   BaseClient.setupPager(description);
+  BaseClient.setupLog(description);
   BaseClient.setupServer(description);
 
   // and parse the command line and config file
@@ -445,6 +446,11 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   if (StartupModules.empty()) {
     LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
     exit(EXIT_FAILURE);
+  }
+  
+  // turn on paging automatically if "pager" option is set
+  if (options.has("pager") && ! options.has("use-pager")) {
+    BaseClient.setUsePager(true);
   }
 }
     
@@ -826,6 +832,8 @@ static void RunShell (v8::Handle<v8::Context> context) {
     if (*input == '\0') {
       continue;
     }
+    
+    BaseClient.log("arangosh> %s\n", input); 
 
     string i = triagens::basics::StringUtils::trim(input);
 
@@ -838,7 +846,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       input = TRI_DuplicateString("help()");
     }
-    
+   
     console.addHistory(input);
     
     v8::HandleScope scope;
@@ -850,10 +858,18 @@ static void RunShell (v8::Handle<v8::Context> context) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
+      string exception(TRI_StringifyV8Exception(&tryCatch));
+
+      cout << exception;
+      BaseClient.log("%s", exception.c_str()); 
     }
 
     BaseClient.stopPager();
+    cout << endl;
+
+    BaseClient.log("%s\n", "");
+    // make sure the last command result makes it into the log file
+    BaseClient.flushLog();
   }
 
   console.close();
@@ -1032,7 +1048,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-  
+    
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -1256,6 +1272,8 @@ int main (int argc, char* argv[]) {
     }
   }
 
+  BaseClient.openLog();
+
   // .............................................................................
   // run normal shell
   // .............................................................................
@@ -1293,6 +1311,8 @@ int main (int argc, char* argv[]) {
 
   context->Exit();
   context.Dispose();
+  
+  BaseClient.closeLog();
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
   // v8::V8::Dispose();
