@@ -34,6 +34,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
@@ -117,6 +118,12 @@ static string StartupModules = "";
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief javascript files to execute
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> Scripts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit file test cases
@@ -415,6 +422,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription javascript("JAVASCRIPT options");
 
   javascript
+    ("javascript.execute", &Scripts, "execute Javascript code from file")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
@@ -451,6 +459,11 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   // turn on paging automatically if "pager" option is set
   if (options.has("pager") && ! options.has("use-pager")) {
     BaseClient.setUsePager(true);
+  }
+
+  // disable excessive output in non-interactive mode
+  if (! Scripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
+    BaseClient.shutup();
   }
 }
     
@@ -860,7 +873,7 @@ static void RunShell (v8::Handle<v8::Context> context) {
     if (tryCatch.HasCaught()) {
       string exception(TRI_StringifyV8Exception(&tryCatch));
 
-      cout << exception;
+      cerr << exception;
       BaseClient.log("%s", exception.c_str()); 
     }
 
@@ -904,12 +917,48 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
   if (tryCatch.HasCaught()) {
-    cout << TRI_StringifyV8Exception(&tryCatch);
+    cerr << TRI_StringifyV8Exception(&tryCatch);
     ok = false;
   }
   else {
     ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
   }
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the Javascript files
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RunScripts (v8::Handle<v8::Context> context) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  bool ok;
+
+  ok = true;
+
+  for (size_t i = 0;  i < Scripts.size();  ++i) {
+    if (! FileUtils::exists(Scripts[i])) {
+      cerr << "error: Javascript file not found: '" << Scripts[i].c_str() << "'" << endl;
+      BaseClient.log("error: Javascript file not found: '%s'\n", Scripts[i].c_str());
+      ok = false;
+      break;
+    }
+
+    TRI_ExecuteJavaScriptFile(context, Scripts[i].c_str());
+  
+    if (tryCatch.HasCaught()) {
+      string exception(TRI_StringifyV8Exception(&tryCatch));
+
+      cerr << exception << endl;
+      BaseClient.log("%s\n", exception.c_str()); 
+      ok = false;
+      break;
+    }
+  }
+
+  BaseClient.flushLog();
 
   return ok;
 }
@@ -939,7 +988,7 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
   if (tryCatch.HasCaught()) {
-    cout << TRI_StringifyV8Exception(&tryCatch);
+    cerr << TRI_StringifyV8Exception(&tryCatch);
     ok = false;
   }
   else {
@@ -1048,7 +1097,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-    
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -1057,7 +1106,7 @@ int main (int argc, char* argv[]) {
   bool useServer = (BaseClient.endpointString() != "none");
 
   // if we are in jslint mode, we will not need the server at all
-  if (!JsLint.empty()) {
+  if (! JsLint.empty()) {
     useServer = false;
   }
 
@@ -1264,10 +1313,10 @@ int main (int argc, char* argv[]) {
     bool ok = StartupLoader.loadScript(context, files[i]);
     
     if (ok) {
-      LOGGER_TRACE << "loaded json file '" << files[i] << "'";
+      LOGGER_TRACE << "loaded JavaScript file '" << files[i] << "'";
     }
     else {
-      LOGGER_ERROR << "cannot load json file '" << files[i] << "'";
+      LOGGER_ERROR << "cannot load JavaScript file '" << files[i] << "'";
       exit(EXIT_FAILURE);
     }
   }
@@ -1278,7 +1327,7 @@ int main (int argc, char* argv[]) {
   // run normal shell
   // .............................................................................
 
-  if (UnitTests.empty() && JsLint.empty()) {
+  if (Scripts.empty() && UnitTests.empty() && JsLint.empty()) {
     RunShell(context);
   }
 
@@ -1287,15 +1336,17 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   else {
-    bool ok;
-   
-    if (!UnitTests.empty()) {
+    bool ok = false;
+
+    if (! Scripts.empty()) {
+      // we have scripts to execute
+      ok = RunScripts(context);
+    }
+    else if (! UnitTests.empty()) {
       // we have unit tests
       ok = RunUnitTests(context);
     }
-    else {
-      assert(!JsLint.empty());
-
+    else if (! JsLint.empty()) {
       // we don't have unittests, but we have files to jslint
       ok = RunJsLint(context);
     }
