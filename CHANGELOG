@@ -130,6 +130,14 @@ v1.2.alpha (XXXX-XX-XX)
   `_bidirectional` attribute with a value of `true`.
 
 
+v1.1.2 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #330: session logging for arangosh
+
+* fixed issue #328: 1.1 compile warnings
+
+
 v1.1.1 (2012-12-18)
 -------------------
 
