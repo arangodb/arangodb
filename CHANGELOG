@@ -138,6 +138,8 @@ v1.1.2 (XXXX-XX-XX)
 
 * fixed issue #330: session logging for arangosh
 
+* fixed issue #329: Allow passing script file(s) as parameters for arangosh to run
+
 * fixed issue #328: 1.1 compile warnings
 
 
