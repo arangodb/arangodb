@@ -1,6 +1,9 @@
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* backported issue #300: Extend arangoImp to Allow importing resultset-like 
+  (list of documents) formatted files
+
 * fixed issue #332: arangoimp --use-ids parameter seems to have no impact
 
 * added option '--server.disable-authentication' for arangosh as well. No more passwd

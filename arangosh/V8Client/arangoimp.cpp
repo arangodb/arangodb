@@ -245,7 +245,7 @@ int main (int argc, char* argv[]) {
   cout << "type:             " << TypeImport << endl;
   cout << "eol:              " << Eol << endl;
 
-  if (TypeImport != "tsv") {
+  if (TypeImport == "csv") {
     cout << "quote:            " << Quote << endl;
     cout << "separator:        " << Separator << endl;
   }
