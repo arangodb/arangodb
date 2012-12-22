@@ -74,7 +74,7 @@ function importTestSuite () {
       var keys = [ ];
       var row = result.next();
       for (var k in row) {
-        if (row.hasOwnProperty(k) && k != '_id' && k != '_rev') {
+        if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
           keys.push(k);
         }
       }
@@ -126,6 +126,29 @@ function importTestSuite () {
     testJsonImport2 : function () {
       var expected = [ { "id": 1, "value": -445.4 }, { "id": 2, "value": 34000 }, { "id": 3, "value": null } ];
       var actual = getQueryResults("FOR i IN UnitTestsImportJson2 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test json import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonImport3 : function () {
+      var expected = [ { "id": 1, "one": 1, "three": 3, "two": 2 }, { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, { "id": 3, "not": "important", "spacing": "is" }, { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, { "id": 5 } ];
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson3 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test json import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonImport4 : function () {
+      var expected = [ ];
+      for (var i = 0; i < 1000; ++i) {
+        expected.push({ "active": true, "id": i, "value": "somerandomstuff" + i });
+      }
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson4 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
 
