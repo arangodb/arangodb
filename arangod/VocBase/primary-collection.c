@@ -116,10 +116,28 @@ static TRI_doc_mptr_t CreateJson (TRI_primary_collection_t* collection,
     TRI_json_t* id = TRI_LookupArrayJson((TRI_json_t*) json, "_id");
     TRI_json_t* rev = TRI_LookupArrayJson((TRI_json_t*) json, "_rev");
 
-    if (id != NULL && id->_type == TRI_JSON_NUMBER && 
+    if (id != NULL && (id->_type == TRI_JSON_NUMBER || id->_type == TRI_JSON_STRING) && 
         rev != NULL && rev->_type == TRI_JSON_NUMBER) {
       // read existing document id and revision id from document
-      did = (TRI_voc_did_t) id->_value._number;
+
+      // did
+      if (id->_type == TRI_JSON_NUMBER) {
+        did = (TRI_voc_did_t) id->_value._number;
+      }
+      else {
+        TRI_vector_string_t parts = TRI_SplitString(id->_value._string.data, '/');
+        if (parts._length == 1) {
+          did = TRI_UInt64String(parts._buffer[0]);
+        }
+        else if (parts._length == 2) {
+          did = TRI_UInt64String(parts._buffer[1]);
+        }
+
+        LOG_INFO("using did %llu", (unsigned long long) did);
+        TRI_DestroyVectorString(&parts);
+      }
+
+      // rid
       rid = (TRI_voc_rid_t) rev->_value._number;
     }
   }
