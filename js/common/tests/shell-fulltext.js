@@ -254,7 +254,7 @@ function fulltextCreateSuite () {
       assertTrue(c.dropIndex(idx1));
       assertTrue(c.dropIndex(idx2));
       assertTrue(c.dropIndex(idx3));
-    },
+    }
 
   };
 }

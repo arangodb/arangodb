@@ -252,7 +252,7 @@ ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
 /// @brief executes a delete request
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoConnection.prototype.delete = function (url) {
+ArangoConnection.prototype._delete = function (url) {
   var msg = null; 
 
   $.ajax({
@@ -279,7 +279,7 @@ ArangoConnection.prototype.delete = function (url) {
 };
 
 
-ArangoConnection.prototype.DELETE = ArangoConnection.prototype.delete;
+ArangoConnection.prototype.DELETE = ArangoConnection.prototype._delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a post request

@@ -1163,8 +1163,7 @@ function ahuacatlArithmeticTestSuite () {
       var expected = [ 40 ];
       var actual = getQueryResults("RETURN -7 - -4 - -2 + 10 * 5 - 9");
       assertEqual(expected, actual);
-    },
-
+    }
 
   }
 }

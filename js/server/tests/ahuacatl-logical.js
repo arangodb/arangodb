@@ -409,7 +409,7 @@ function ahuacatlLogicalTestSuite () {
     
     testBinaryOrShortCircuit3 : function () {
       assertException(function() { getQueryResults("RETURN FAIL('this will fail') || true"); });
-    },
+    }
   };
 }
 
