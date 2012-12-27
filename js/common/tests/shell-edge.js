@@ -102,7 +102,7 @@ function CollectionEdgeSuiteErrorHandling () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
-    },
+    }
   };
 }
 

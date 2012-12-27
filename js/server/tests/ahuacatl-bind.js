@@ -399,7 +399,7 @@ function ahuacatlBindTestSuite () {
       assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ ] }, true); });
       assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : [ { } ] }, true); });
       assertException(function() { getQueryResults("FOR u IN @@collection RETURN 1", { "@collection" : { "name" : "collection" } }, true); });
-    },
+    }
 
   };
 }

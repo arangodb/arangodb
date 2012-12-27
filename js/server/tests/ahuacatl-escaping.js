@@ -358,7 +358,7 @@ function ahuacatlEscapingTestSuite () {
       var expected = [ 1 ];
       var actual = getQueryResults("RETURN /*'the ' \\qui\\ck\\ ''''' '' 'f\\ox'*/ 1", true);
       assertEqual(expected, actual);
-    },
+    }
   };
 }
 
