@@ -242,9 +242,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_PushBackVectorPointer(&all, datafile);
 
         // check the document header
-        ptr = datafile->_data;
-        ptr += ((sizeof(TRI_df_header_marker_t) + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;;
-        cm = (TRI_col_header_marker_t*) ptr;
+        ptr  = datafile->_data;
+        ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
+        cm   = (TRI_col_header_marker_t*) ptr;
 
         if (cm->base._type != TRI_COL_MARKER_HEADER) {
           LOG_ERROR("collection header mismatch in file '%s', expected TRI_COL_MARKER_HEADER, found %lu",
@@ -346,9 +346,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
       else {
         collection->_lastError = datafile->_lastError;
         stop = true;
-
         LOG_ERROR("cannot rename sealed log-file to %s, this should not happen: %s", filename, TRI_last_error());
-
         break;
       }
 
@@ -677,7 +675,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   InitCollection(vocbase, collection, filename, parameter);
-
+  /* PANAIA: 1) the parameter file if it exists must be removed
+             2) if collection 
+  */
   // return collection
   return collection;
 }

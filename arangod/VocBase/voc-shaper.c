@@ -404,7 +404,6 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
   
   if (weightedAttribute != NULL) {
-    
     weightedAttribute->_aid       = markerResult->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
     weightedAttribute->_attribute = (char*)(markerResult) + sizeof(TRI_df_attribute_marker_t);
@@ -568,6 +567,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   int res;
   voc_shaper_t* s;
   void* f;
+
 
   s = (voc_shaper_t*) shaper;
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
@@ -925,7 +925,9 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   // override wait for sync for shapes
   parameter._waitForSync = waitForSync;
 
+  
   collection = TRI_CreateShapeCollection(vocbase, path, &parameter);
+
 
   if (collection == NULL) {
     return NULL;

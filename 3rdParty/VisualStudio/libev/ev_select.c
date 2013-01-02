@@ -1,19 +1,19 @@
 /*
  * libev select fd activity backend
  *
- * Copyright (c) 2007,2008,2009,2010 Marc Alexander Lehmann <libev@schmorp.de>
+ * Copyright (c) 2007,2008,2009,2010,2011 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
- * 
+ *
  *   1.  Redistributions of source code must retain the above copyright notice,
  *       this list of conditions and the following disclaimer.
- * 
+ *
  *   2.  Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
  * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
@@ -39,8 +39,11 @@
 
 #ifndef _WIN32
 /* for unix systems */
-# include <sys/select.h>
 # include <inttypes.h>
+# ifndef __hpux
+/* for REAL unix systems */
+#  include <sys/select.h>
+# endif
 #endif
 
 #ifndef EV_SELECT_USE_FD_SET
@@ -85,21 +88,28 @@ select_modify (EV_P_ int fd, int oev, int nev)
      * which eventually leads to overflows). Need to call it only on changes.
      */
     #if EV_SELECT_IS_WINSOCKET
-    if ((oev ^ nev) & EV_READ)
+    if ((oev ^ nev) & EV_READ) 
     #endif
-      if (nev & EV_READ)
+    { 
+      if (nev & EV_READ) {
         FD_SET (handle, (fd_set *)vec_ri);
-      else
+      }
+      else {
         FD_CLR (handle, (fd_set *)vec_ri);
+      }
+    }
 
     #if EV_SELECT_IS_WINSOCKET
     if ((oev ^ nev) & EV_WRITE)
     #endif
-      if (nev & EV_WRITE)
+    {
+      if (nev & EV_WRITE) {
         FD_SET (handle, (fd_set *)vec_wi);
-      else
+      }
+      else {
         FD_CLR (handle, (fd_set *)vec_wi);
-
+      }
+    }
 #else
 
     int     word = fd / NFDBITS;
@@ -133,9 +143,7 @@ select_modify (EV_P_ int fd, int oev, int nev)
   }
 }
 
-static void
-select_poll (EV_P_ ev_tstamp timeout)
-{
+static void select_poll (EV_P_ ev_tstamp timeout) {
   struct timeval tv;
   int res;
   int fd_setsize;
@@ -143,7 +151,7 @@ select_poll (EV_P_ ev_tstamp timeout)
   EV_RELEASE_CB;
   EV_TV_SET (tv, timeout);
 
-#if EV_SELECT_USE_FD_SET
+#ifdef EV_SELECT_USE_FD_SET
   fd_setsize = sizeof (fd_set);
 #else
   fd_setsize = vec_max * NFDBYTES;
@@ -168,42 +176,53 @@ select_poll (EV_P_ ev_tstamp timeout)
 #endif
   EV_ACQUIRE_CB;
 
-  if (expect_false (res < 0))
-    {
-      #if EV_SELECT_IS_WINSOCKET
-      errno = WSAGetLastError ();
-      #endif
-      #ifdef WSABASEERR
-      /* on windows, select returns incompatible error codes, fix this */
-      if (errno >= WSABASEERR && errno < WSABASEERR + 1000)
-        if (errno == WSAENOTSOCK)
-          errno = EBADF;
-        else
-          errno -= WSABASEERR;
+  if (expect_false (res < 0)) {
+
+      #ifdef EV_SELECT_IS_WINSOCKET
+        errno = WSAGetLastError ();
       #endif
 
-      #ifdef _WIN32
-      /* select on windows erroneously returns EINVAL when no fd sets have been
-       * provided (this is documented). what microsoft doesn't tell you that this bug
-       * exists even when the fd sets _are_ provided, so we have to check for this bug
-       * here and emulate by sleeping manually.
-       * we also get EINVAL when the timeout is invalid, but we ignore this case here
-       * and assume that EINVAL always means: you have to wait manually.
-       */
-      if (errno == EINVAL)
-        {
-          ev_sleep (timeout);
-          return;
+      #if WSABASEERR
+        /* on windows, select returns incompatible error codes, fix this */
+        if (errno >= WSABASEERR && errno < WSABASEERR + 1000) {
+          if (errno != WSAENOTSOCK) {
+            errno -= WSABASEERR;
+          }
+          else {
+            //errno = EBADF;
+          }
         }
       #endif
 
-      if (errno == EBADF)
-        fd_ebadf (EV_A);
-      else if (errno == ENOMEM && !syserr_cb)
-        fd_enomem (EV_A);
-      else if (errno != EINTR)
-        ev_syserr ("(libev) select");
+      #ifdef _WIN32
+        /* select on windows erroneously returns EINVAL when no fd sets have been
+         * provided (this is documented). what microsoft doesn't tell you that this bug
+         * exists even when the fd sets _are_ provided, so we have to check for this bug
+         * here and emulate by sleeping manually.
+         * we also get EINVAL when the timeout is invalid, but we ignore this case here
+         * and assume that EINVAL always means: you have to wait manually.
+         */
+        if (errno == EINVAL) {
+            if (timeout) {
+                unsigned long ms = timeout * 1e3;
+                Sleep (ms ? ms : 1);
+            }
+            return;
+        }
+      #endif
 
+      if (errno == EBADF) {
+        fd_ebadf (EV_A);
+      }
+      else if (errno == WSAENOTSOCK) {
+        fd_WS (EV_A);
+      }
+      else if (errno == ENOMEM && !syserr_cb) {
+        fd_enomem (EV_A);
+      }
+      else if (errno != EINTR) {
+        ev_syserr ("(libev) select");
+      }
       return;
     }
 
@@ -266,9 +285,9 @@ select_poll (EV_P_ ev_tstamp timeout)
 int inline_size
 select_init (EV_P_ int flags)
 {
-  backend_fudge  = 0.; /* posix says this is zero */
-  backend_modify = select_modify;
-  backend_poll   = select_poll;
+  backend_mintime = 1e-6;
+  backend_modify  = select_modify;
+  backend_poll    = select_poll;
 
 #if EV_SELECT_USE_FD_SET
   vec_ri  = ev_malloc (sizeof (fd_set)); FD_ZERO ((fd_set *)vec_ri);
@@ -280,10 +299,10 @@ select_init (EV_P_ int flags)
   #endif
 #else
   vec_max = 0;
-  vec_ri  = 0; 
-  vec_ro  = 0;   
-  vec_wi  = 0; 
-  vec_wo  = 0; 
+  vec_ri  = 0;
+  vec_ro  = 0;
+  vec_wi  = 0;
+  vec_wo  = 0;
   #ifdef _WIN32
   vec_eo  = 0;
   #endif
@@ -303,5 +322,4 @@ select_destroy (EV_P)
   ev_free (vec_eo);
   #endif
 }
-
 

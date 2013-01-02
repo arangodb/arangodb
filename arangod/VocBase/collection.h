@@ -183,7 +183,7 @@ TRI_col_state_e;
 typedef uint32_t TRI_col_version_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection type
+/// @brief collection enum
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
@@ -198,10 +198,15 @@ TRI_col_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_header_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 
-  TRI_col_type_e _type;
-  TRI_voc_cid_t _cid;
+  TRI_col_type_t _type;                 //  4 bytes
+
+#ifdef TRI_PADDING_32
+  char _padding_col_header_marker[4];
+#endif
+
+  TRI_voc_cid_t _cid;                   //  8 bytes
 }
 TRI_col_header_marker_t;
 

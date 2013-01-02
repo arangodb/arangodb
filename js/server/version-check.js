@@ -95,11 +95,14 @@
     if (FS_EXISTS(versionFile)) {
       // VERSION file exists, read its contents
       var versionInfo = SYS_READ(versionFile);
+
       if (versionInfo != '') {
         var versionValues = JSON.parse(versionInfo);
+
         if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
           lastVersion = parseFloat(versionValues.version);
         }
+
         if (versionValues && versionValues.tasks && typeof(versionValues.tasks) === 'object') {
           lastTasks   = versionValues.tasks || { };
         }

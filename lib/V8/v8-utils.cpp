@@ -402,6 +402,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
   TRI_v8_global_t* v8g;
   v8::HandleScope scope;
 
+
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str());
@@ -416,16 +417,17 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
     errorObject->SetPrototype(proto);
   }
 
-  return errorObject;
+  return scope.Close(errorObject);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads/execute a file into/in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
-                                char const* filename,
-                                bool execute) {
+static bool LoadJavaScriptFile (char const* filename,
+                                bool execute,
+				bool useGlobalContext) {
   v8::HandleScope handleScope;
 
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
@@ -435,7 +437,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
     return false;
   }
 
-  if (execute) {
+  if (useGlobalContext) {
     char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, 
                                                    "(function() { ",
                                                    content,
@@ -475,7 +477,9 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path, bool execute) {
+static bool LoadJavaScriptDirectory (char const* path,
+				     bool execute,
+				     bool useGlobalContext) {
   v8::HandleScope scope;
   TRI_vector_string_t files;
   bool result;
@@ -503,7 +507,9 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     }
 
     full = TRI_Concatenate2File(path, filename);
-    ok = LoadJavaScriptFile(context, full, execute);
+
+
+    ok = LoadJavaScriptFile(full, execute, useGlobalContext);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
     result = result && ok;
@@ -1504,32 +1510,40 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
-  return LoadJavaScriptFile(context, filename, false);
+bool TRI_ExecuteGlobalJavaScriptFile (char const* filename) {
+  return LoadJavaScriptFile(filename, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path) {
-  return LoadJavaScriptDirectory(context, path, false);
+bool TRI_ExecuteGlobalJavaScriptDirectory (char const* path) {
+  return LoadJavaScriptDirectory(path, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a file in the current context
+/// @brief executes a file in a local context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
-  return LoadJavaScriptFile(context, filename, true);
+bool TRI_ExecuteLocalJavaScriptFile (char const* filename) {
+  return LoadJavaScriptFile(filename, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in the current context
+/// @brief executes all files from a directory in a local context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path) {
-  return LoadJavaScriptDirectory(context, path, true);
+bool TRI_ExecuteLocalJavaScriptDirectory (char const* path) {
+  return LoadJavaScriptDirectory(path, true, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a file
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ParseJavaScriptFile (char const* path) {
+  return LoadJavaScriptDirectory(path, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1544,6 +1558,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
 
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script = v8::Script::Compile(source, name);
+
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
@@ -1676,8 +1691,18 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global variables
   // .............................................................................
 
-  vector<string> paths = StringUtils::split(path, ";:");
 
+  // .............................................................................
+  // The spilt has been modified -- only except semicolon, previously we excepted
+  // a colon as well. So as not to break existing configurations, we only 
+  // make the modification for windows version -- since there isn't one yet!
+  // .............................................................................
+
+#ifdef _WIN32
+  vector<string> paths = StringUtils::split(path, ";",'\0');
+#else
+  vector<string> paths = StringUtils::split(path, ";:");
+#endif
   v8::Handle<v8::Array> modulesPaths = v8::Array::New();
 
   for (uint32_t i = 0;  i < (uint32_t) paths.size();  ++i) {

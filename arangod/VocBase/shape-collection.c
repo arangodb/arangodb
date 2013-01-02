@@ -62,7 +62,8 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
   
   jname = TRI_Concatenate3String("journal-", number, ".db");
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-  
+
+
   filename = TRI_Concatenate2File(collection->base._directory, jname);
   TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
@@ -79,14 +80,14 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
       collection->base._state = TRI_COL_STATE_WRITE_ERROR;
     }
 
-    LOG_ERROR("cannot create new journal '%s': %s", filename, TRI_last_error());
+    LOG_ERROR("cannot create new shape journal '%s': %s", filename, TRI_last_error());
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return false;
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-  LOG_TRACE("created a new journal '%s'", journal->_filename);
+  LOG_TRACE("created a new shape journal '%s'", journal->_filename);
 
   // and use the correct name
   number = TRI_StringUInt32(journal->_fid);
@@ -100,6 +101,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   if (! ok) {
     LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
+    exit(1);
   }
   else {
     LOG_TRACE("renamed journal to '%s'", filename);
@@ -398,6 +400,7 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
                               TRI_df_marker_t** result) {
   TRI_datafile_t* journal;
   int res;
+
 
   // generate a new tick
   marker->_tick = TRI_NewTickVocBase();

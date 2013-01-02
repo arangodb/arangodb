@@ -161,6 +161,7 @@ Doxygen/xml/%.md: Doxygen/xml/%.xml
 doxygen-toc:
 	python @top_srcdir@/Documentation/Scripts/generateTOC.py $(DOXYGEN_TOC) >> Doxygen/toc.doxy.tmp
 	cmp -s Doxygen/toc.doxy Doxygen/toc.doxy.tmp || mv Doxygen/toc.doxy.tmp Doxygen/toc.doxy
+	@rm -f Doxygen/toc.doxy.tmp
 
 Doxygen/toc.doxy: doxygen-toc
 

@@ -285,6 +285,9 @@
     <ClCompile Include="..\..\arangod\VocBase\voc-shaper.c">
       <Filter>VocBase Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\arangod\VocBase\edge-collection.c">
+      <Filter>VocBase Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\arangod\RestServer\ArangoServer.h">

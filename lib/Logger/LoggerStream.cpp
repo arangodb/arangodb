@@ -124,8 +124,7 @@ static void computeInfo (LoggerData::Info& info) {
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerStream::LoggerStream () :
-  _stream(new stringstream()),
-  _info() {
+  _stream(new stringstream()),  _info() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,8 +140,7 @@ LoggerStream::LoggerStream (LoggerData::Info const& info) :
 ////////////////////////////////////////////////////////////////////////////////
 
 LoggerStream::LoggerStream (LoggerStream const& copy) :
-  _stream(new stringstream()), _info(copy._info) {
-  _stream->str(copy._stream->str());
+  _stream(copy._stream), _info(copy._info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +152,6 @@ LoggerStream::~LoggerStream () {
 
   if (_stream != 0) {
     Logger::output(static_cast<stringstream*> (_stream)->str(), _info);
-
     delete _stream;
   }
 }
@@ -190,7 +187,6 @@ LoggerStream& LoggerStream::operator<< (std::ostream& (*fptr) (std::ostream&)) {
 
 LoggerStream& LoggerStream::operator<< (TRI_log_level_e level) {
   _info._level = level;
-
   return *this;
 }
 
@@ -200,7 +196,6 @@ LoggerStream& LoggerStream::operator<< (TRI_log_level_e level) {
 
 LoggerStream& LoggerStream::operator<< (TRI_log_category_e category) {
   _info._category = category;
-
   return *this;
 }
 
@@ -210,7 +205,6 @@ LoggerStream& LoggerStream::operator<< (TRI_log_category_e category) {
 
 LoggerStream& LoggerStream::operator<< (TRI_log_severity_e severity) {
   _info._severity = severity;
-
   return *this;
 }
 
@@ -305,6 +299,7 @@ LoggerStream& LoggerStream::operator<< (LoggerData::UserIdentifier const& userId
 
   return *this;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

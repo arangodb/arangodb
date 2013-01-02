@@ -8,7 +8,7 @@
 ### @brief source to build before compile
 ################################################################################
 
-BUILT_SOURCES = build.h
+BUILT_SOURCES = build_posix.h
 
 ################################################################################
 ### @brief man pages to install
@@ -253,8 +253,8 @@ install-data-local:
 ### @brief version number
 ################################################################################
 
-build.h: configure.ac
-	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
+build_posix.h: configure.ac
+	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build_posix.h
 
 ################################################################################
 ### @brief local modifications
@@ -323,7 +323,7 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: \
-	build.h \
+	build_posix.h \
 	@top_srcdir@/js/common/bootstrap/errors.js \
 	$(JAVASCRIPT_HEADER)
 

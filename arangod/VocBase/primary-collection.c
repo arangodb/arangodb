@@ -139,6 +139,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
   // create journal file
   journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
 
+  
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
       collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
@@ -149,14 +150,14 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
       collection->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
-    LOG_ERROR("cannot create new journal in '%s'", filename);
+    LOG_ERROR("cannot create new primary journal in '%s'", filename);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return NULL;
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-  LOG_TRACE("created a new journal '%s'", journal->_filename);
+  LOG_TRACE("created a new primary journal '%s'", journal->_filename);
 
   // and use the correct name
   number = TRI_StringUInt32(journal->_fid);

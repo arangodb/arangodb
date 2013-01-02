@@ -260,6 +260,7 @@ SchedulerLibev::SchedulerLibev (size_t concurrency, int backend)
   : Scheduler(concurrency),
     _backend(backend) {
 
+  //_backend = 1;
   // setup lock
   SCHEDULER_INIT(&_watcherLock);
 
@@ -530,28 +531,72 @@ EventToken SchedulerLibev::installSignalEvent (EventLoop loop, Task* task, int s
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, socket_t fd) {
-  SocketWatcher* watcher = new SocketWatcher;
-  watcher->loop = (struct ev_loop*) lookupLoop(loop);
-  watcher->task = task;
-  watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
+#ifdef _WIN32
 
-  int flags = 0;
+  // ..........................................................................
+  // Windows likes to operate on SOCKET types (sort of handles) while libev
+  // likes to operate on file descriptors
+  // ..........................................................................
+
+  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, socket_t socket) {
+    SocketWatcher* watcher = new SocketWatcher;
+    watcher->loop = (struct ev_loop*) lookupLoop(loop);
+    watcher->task = task;
+
+    int flags = 0;
   
-  if (type & EVENT_SOCKET_READ) {
-    flags |= EV_READ;
+    if (type & EVENT_SOCKET_READ) {
+      flags |= EV_READ;
+    }
+  
+    if (type & EVENT_SOCKET_WRITE) {
+      flags |= EV_WRITE;
+    }
+  
+    // ..........................................................................
+    // The problem we have here is that this opening of the fs handle may fail.
+    // There is no mechanism to the calling function to report failure.
+    // ..........................................................................
+    LOGGER_TRACE << "attempting to convert socket handle to socket descriptor";
+    int fd = _open_osfhandle (socket, 0);
+    if (fd == -1) {
+      LOGGER_ERROR << "could not convert socket handle to socket descriptor";
+      delete watcher;
+      abort();
+      // Dr. O TODO: return to calling function
+      return -1;
+    }
+  
+    watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
+    ev_io* w = (ev_io*) watcher;
+    ev_io_init(w, socketCallback, fd, flags);
+    ev_io_start(watcher->loop, w);
+    return watcher->token;
   }
+#else
+  EventToken SchedulerLibev::installSocketEvent (EventLoop loop, EventType type, Task* task, socket_t fd) {
+    SocketWatcher* watcher = new SocketWatcher;
+    watcher->loop = (struct ev_loop*) lookupLoop(loop);
+    watcher->task = task;
+    watcher->token = registerWatcher(watcher, EVENT_SOCKET_READ);
+
+    int flags = 0;
   
-  if (type & EVENT_SOCKET_WRITE) {
-    flags |= EV_WRITE;
+    if (type & EVENT_SOCKET_READ) {
+      flags |= EV_READ;
+    }
+  
+    if (type & EVENT_SOCKET_WRITE) {
+      flags |= EV_WRITE;
+    }
+  
+    ev_io* w = (ev_io*) watcher;
+    ev_io_init(w, socketCallback, fd, flags);
+    ev_io_start(watcher->loop, w);
+
+    return watcher->token;
   }
-  
-  ev_io* w = (ev_io*) watcher;
-  ev_io_init(w, socketCallback, fd, flags);
-  ev_io_start(watcher->loop, w);
-  
-  return watcher->token;
-}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -657,7 +702,7 @@ void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
 void* SchedulerLibev::lookupWatcher (EventToken token) {
   SCHEDULER_LOCK(&_watcherLock);
 
-  if (token >= _watchers.size()) {
+  if (token >= (EventToken) _watchers.size()) {
     SCHEDULER_UNLOCK(&_watcherLock);
     return 0;
   }
@@ -675,7 +720,7 @@ void* SchedulerLibev::lookupWatcher (EventToken token) {
 void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
   SCHEDULER_LOCK(&_watcherLock);
   
-  if (token >= _watchers.size()) {
+  if (token >= (EventToken) _watchers.size()) {
     SCHEDULER_UNLOCK(&_watcherLock);
     return 0;
   }
