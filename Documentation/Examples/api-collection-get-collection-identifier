@@ -7,8 +7,8 @@ location: /_api/collection/73482
 {
   "name": "UnitTestsCollectionBasics",
   "code": 200,
-  "waitForSync": true,
   "id": 73482,
   "status": 3,
+  "type": 2,
   "error": false
 }

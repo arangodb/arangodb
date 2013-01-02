@@ -30,5 +30,6 @@ location: /_api/collection/73482/figures
   "journalSize": 134217728,
   "count": 0,
   "status": 3,
+  "type": 2,
   "error": false
 }

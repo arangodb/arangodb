@@ -7,30 +7,30 @@ content-type: application/json
   "collections": [
     {
       "name": "employees",
-      "waitForSync": true,
       "id": 64091684,
-      "status": 3
+      "status": 3,
+      "type": 2
     },
     {
       "name": "units",
-      "waitForSync": true,
       "id": 63043108,
-      "status": 3
+      "status": 3,
+      "type": 2
     }
   ],
   "code": 200,
   "names": {
     "units": {
       "name": "units",
-      "waitForSync": true,
       "id": 63043108,
-      "status": 3
+      "status": 3,
+      "type": 2
     },
     "employees": {
       "name": "employees",
-      "waitForSync": true,
       "id": 64091684,
-      "status": 3
+      "status": 3,
+      "type": 2
     }
   },
   "error": false
