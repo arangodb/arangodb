@@ -404,7 +404,6 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
   
   if (weightedAttribute != NULL) {
-    
     weightedAttribute->_aid       = markerResult->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
     weightedAttribute->_attribute = (char*)(markerResult) + sizeof(TRI_df_attribute_marker_t);

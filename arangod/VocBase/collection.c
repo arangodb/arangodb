@@ -248,9 +248,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_PushBackVectorPointer(&all, datafile);
 
         // check the document header
-        ptr = datafile->_data;
-        ptr += ((sizeof(TRI_df_header_marker_t) + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;;
-        cm = (TRI_col_header_marker_t*) ptr;
+        ptr  = datafile->_data;
+        ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
+        cm   = (TRI_col_header_marker_t*) ptr;
 
         if (cm->base._type != TRI_COL_MARKER_HEADER) {
           LOG_ERROR("collection header mismatch in file '%s', expected TRI_COL_MARKER_HEADER, found %lu",
