@@ -135,6 +135,8 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
+
 * fixed issue #336: Collections REST API docs
 
 * fixed issue #335: mmap errors due to wrong memory address calculation 

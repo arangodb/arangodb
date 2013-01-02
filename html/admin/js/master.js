@@ -1348,7 +1348,7 @@ var lastFormatQuestion = true;
         type: "PUT",
         async: false, // sequential calls!
         url: "/_api/collection/" + newColName + "/properties",
-        data: '{"waitForSync":' + JSON.stringify(wfs) + ',"journalSize":' + JSON.stringify(journalSize) + '}',  
+        data: '{"waitForSync":' + (wfs ? "true" : "false") + ',"journalSize":' + JSON.stringify(journalSize) + '}',  
         contentType: "application/json",
         processData: false, 
         success: function(data) {
