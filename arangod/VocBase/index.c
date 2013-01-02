@@ -4080,7 +4080,7 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   bool ok;
   
   fulltextIndex = (TRI_fulltext_index_t*) idx;
-  doc = (TRI_doc_mptr_t*) ((intptr_t) document);
+  doc = (TRI_doc_mptr_t*) ((uintptr_t) document);
 
   // extract the shape
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, doc->_data);
@@ -4144,7 +4144,7 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   if (wordlist->_numWords > 0) {
     // TODO: use status codes
-    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc), wordlist)) {
+    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc), wordlist)) {
       LOG_ERROR("adding document to fulltext index failed");
       res = TRI_ERROR_INTERNAL;
     }
@@ -4213,7 +4213,7 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc));
+  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4236,11 +4236,11 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
   res = TRI_ERROR_NO_ERROR;
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc));
+  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) newDoc));
   
   if (wordlist != NULL && wordlist->_numWords > 0) {
     // TODO: use status codes
-    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc), wordlist)) {
+    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) newDoc), wordlist)) {
       res = TRI_ERROR_INTERNAL;
     }
   }

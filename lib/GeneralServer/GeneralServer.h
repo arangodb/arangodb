@@ -357,11 +357,11 @@ namespace triagens {
             }
 
             static uint32_t hashKey (GeneralHandler* key) {
-              return (uint32_t) (intptr_t) key;
+              return (uint32_t) (uintptr_t) key;
             }
 
             static uint32_t hashElement (handler_task_job_t const& element) {
-              return (uint32_t) (intptr_t) element._handler;
+              return (uint32_t) (uintptr_t) element._handler;
             }
         };
 
@@ -388,11 +388,11 @@ namespace triagens {
             }
 
             static uint32_t hashKey (Task* key) {
-              return (uint32_t) (intptr_t) key;
+              return (uint32_t) (uintptr_t) key;
             }
 
             static uint32_t hashElement (handler_task_job_t const& element) {
-              return (uint32_t) (intptr_t) element._task;
+              return (uint32_t) (uintptr_t) element._task;
             }
         };
 
