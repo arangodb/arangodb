@@ -15,6 +15,7 @@ v1.1.2 (XXXX-XX-XX)
 
 * fixed issue #328: 1.1 compile warnings
 
+* fixed issue #327: Javascript parse errors in front end
 
 v1.1.1 (2012-12-18)
 -------------------
