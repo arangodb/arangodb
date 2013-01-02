@@ -87,7 +87,7 @@ function ahuacatlVariablesTestSuite () {
 
     testRedeclare3 : function () {
       assertEqual(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, getErrorCode(function() { AHUACATL_RUN("LET a = 1 FOR a IN [ 1 ] RETURN 0"); }));
-    },
+    }
 
   };
 }

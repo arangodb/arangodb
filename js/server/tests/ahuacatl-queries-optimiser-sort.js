@@ -521,7 +521,7 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual("filter", explain[1].type); 
       assertEqual("sort", explain[2].type); // sort still there
       assertEqual("return", explain[3].type);
-    },
+    }
 
   }
 }

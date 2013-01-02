@@ -130,6 +130,19 @@ v1.2.alpha (XXXX-XX-XX)
   `_bidirectional` attribute with a value of `true`.
 
 
+v1.1.2 (XXXX-XX-XX)
+-------------------
+
+* added option '--server.disable-authentication' for arangosh as well. No more passwd
+  prompts if not needed
+
+* fixed issue #330: session logging for arangosh
+
+* fixed issue #329: Allow passing script file(s) as parameters for arangosh to run
+
+* fixed issue #328: 1.1 compile warnings
+
+
 v1.1.1 (2012-12-18)
 -------------------
 
