@@ -24,6 +24,7 @@ var printedHelp = false;
 var open = false;
 var rowCounter = 0; 
 var shArray = []; 
+var BaseUrl = "/_admin/html/index.html"; 
 
 // a static cache
 var CollectionTypes = { };
@@ -416,7 +417,7 @@ var logTable = $('#logTableID').dataTable({
       
       $.ajax({
         type: "GET",
-        url: "/_api/collection/" + collID[0],
+        url: "/_api/collection/" + collID[0] + "?" + getRandomToken(),
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -461,7 +462,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "GET",
-        url: "/_api/collection/" + collectionID,
+        url: "/_api/collection/" + collectionID + "?" + getRandomToken(),
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -481,7 +482,7 @@ var logTable = $('#logTableID').dataTable({
 
       $.ajax({
         type: "GET",
-        url: "/_api/document/" + collectiondocID,
+        url: "/_api/document/" + collectiondocID + "?" + getRandomToken(),
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -545,7 +546,7 @@ var logTable = $('#logTableID').dataTable({
  
       $.ajax({
         type: "GET",
-        url: "/_api/collection/" + collectionID,
+        url: "/_api/collection/" + collectionID + "?" + getRandomToken(),
         contentType: "application/json",
         processData: false, 
         success: function(data) {
@@ -608,110 +609,6 @@ var logTable = $('#logTableID').dataTable({
       //TODO
       createChartBoxes(); 
       updateGraphs(); 
-    }
-
-///////////////////////////////////////////////////////////////////////////////
-///  shows config view 
-///////////////////////////////////////////////////////////////////////////////
-
-    else if (location.hash == "#config") {
-      hideAllSubDivs();
-      $('#configContent').empty();  
-      $('#collectionsView').hide();
-      $('#configView').show();
-      createnav ("Configuration"); 
-      highlightNavButton("#Config"); 
-      var switcher = "primary";
-      var insertType;  
-
-      $.ajax({
-        type: "GET", url: "/_admin/config/description",contentType: "application/json", processData: false, async: false,   
-        success: function(data) {
-          $.each(data, function(key, val) {
-            if (key == "error" || key == "code") {
-            }
-            else {
-              $('#configContent').append('<div class="customToolbar">' + val.name + '</div>');
-              $.each(val, function(k, v) {
-                if (v.name != undefined) {
-                  switch(v.type) { 
-                    case 'integer':
-                      if (v.readonly == true) {
-                        insertType = '<a class="conf_integer" id="conf_' + k + '">123456</a>'; break;
-                      }
-                      else { 
-                        insertType = '<a class="conf_integer editInt" id="conf_' + k + '">123456</a>'; break;
-                      }
-                    case 'string':
-                      if (v.readonly == true) {  
-                        insertType = '<a class="conf_string" id="conf_' + k + '">string</a>'; break;
-                      }
-                      else {
-                        insertType = '<a class="editString conf_string" id="conf_' + k + '">string</a>'; break;
-                      }
-                    case 'pull-down':
-                      insertType = '<select class="conf_pulldown" id="conf_' + k + '" name="someselect" size="1">';
-                      $.each(v.values, function(KEY, VAL) {
-                        insertType += '<option>' + VAL + '</option>';
-                      }); 
-                      insertType += '</select>';
-                      break; 
-                    case 'boolean': 
-                      insertType = '<select class="conf_boolean" id="conf_' + k + '" name="someselect" size="1">';
-                      insertType += '<option>true</option><option>false</option>'; break;
-                    //TODO Section 
-                    case 'section':
-                      insertType = '<a class="conf_section" id="conf_' + k + '">someval</a>'; break;
-                  } 
-                  $('#configContent').append('<tr><td>' + v.name + '</td><td>' + insertType + '</td></tr>');
-                  makeStringEditable(); 
-                  makeIntEditable(); 
-                }
-              });
-            }
-          });
-          $.ajax({
-            type: "GET", url: "/_admin/config/configuration",contentType: "application/json", processData:false, async:false, 
-            success: function(data) {
-              var currentID;
-              var currentClass;  
-              $.each(data, function(key, val) {
-                if (key == "error" || key == "code") {
-                }
-                else {
-                  $.each(val, function(k, v) {
-                    currentID = "#conf_" + k; 
-                    currentClass = $(currentID).attr('class');
-
-                    if ($(currentID).hasClass('conf_string')) {
-                      $(currentID).text(v.value);  
-                    }
-                    else if ($(currentID).hasClass('conf_integer')) {
-                      $(currentID).text(v.value);  
-                    }
-                    else if ($(currentID).hasClass('conf_boolean')) {
-                      $(currentID).val(v.value);  
-                    }
-                    else if ($(currentID).hasClass('conf_pulldown')) {
-                      $(currentID).val(v.value);  
-                    }
-                    //TODO Section 
-                    else if ($(currentID).hasClass('conf_section')) {
-                      $(currentID).text(v.file.value);  
-                    }
-
-
-                  }); 
-                }
-              });
-            },
-            error: function(data) {
-            }
-          });
-        },
-        error: function(data) {
-        }
-      });
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1194,7 +1091,7 @@ var logTable = $('#logTableID').dataTable({
       else {
         $('#logTableID').dataTable().fnClearTable();
         $('#logTableID_status').text('Showing all entries for: "' + content + '"'); 
-        $.getJSON("/_admin/log?search=" + content + "&upto=5", function(data) {
+        $.getJSON("/_admin/log?search=" + content + "&upto=5&" + getRandomToken(), function(data) {
           var totalAmount = data.totalAmount; 
           var items=[];
           var i=0; 
@@ -1213,7 +1110,7 @@ var logTable = $('#logTableID').dataTable({
         else { 
           $(currentTableID).dataTable().fnClearTable();
           $(currentTableID + '_status').text('Showing all entries for: "' + content + '"'); 
-          $.getJSON("/_admin/log?search=" + content + "&level=" + selected, function(data) {
+          $.getJSON("/_admin/log?search=" + content + "&level=" + selected + "&" + getRandomToken(), function(data) {
             var totalAmount = data.totalAmount; 
             var items=[];
             var i=0; 
@@ -1433,7 +1330,7 @@ var lastFormatQuestion = true;
         processData: false, 
         success: function(data) {
           alert("Collection renamed"); 
-          window.location.href = ""; 
+          window.location.href = BaseUrl; 
           $('#subCenterView').hide();
           $('#centerView').show();
           drawCollectionsTable(); 
@@ -1484,7 +1381,7 @@ var lastFormatQuestion = true;
         processData: false, 
         success: function(data) {
           alert("Collection created"); 
-          window.location.href = ""; 
+          window.location.href = BaseUrl;
           $('#subCenterView').hide();
           $('#centerView').show();
           drawCollectionsTable(); 
@@ -1637,7 +1534,7 @@ function hideAllSubDivs () {
 function drawCollectionsTable () {
   var collectionsTable = $('#collectionsTableID').dataTable();
   collectionsTable.fnClearTable();
-  $.getJSON("/_api/collection/", function(data) {
+  $.getJSON("/_api/collection/?" + getRandomToken(), function(data) {
     var items=[];
     $.each(data.collections, function(key, val) {
       var tempStatus = val.status;
@@ -1657,7 +1554,7 @@ function drawCollectionsTable () {
       
         $.ajax({
           type: "GET",
-          url: "/_api/collection/" + val.id + "/figures",
+          url: "/_api/collection/" + val.id + "/figures" + "?" + getRandomToken(),
           contentType: "application/json",
           processData: false,
           async: false,   
@@ -1929,7 +1826,7 @@ function createLogTable(loglevel) {
     url = "/_admin/log?upto=4&size=10"; 
   } 
 //get first rows
-  $.getJSON(url, function(data) { 
+  $.getJSON(url + "&" + getRandomToken(), function(data) { 
     var items=[];
     var i=0; 
     currentAmount = data.totalAmount; 
@@ -1996,7 +1893,7 @@ function createPrevPagination(checked) {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
 
-  $.getJSON(url, function(data) {
+  $.getJSON(url + "&" + getRandomToken(), function(data) {
     $(currentTableID).dataTable().fnClearTable(); 
 
     var i = 0; 
@@ -2012,7 +1909,7 @@ function createPrevPagination(checked) {
 function createNextPagination(checked) { 
 
   var totalPages = Math.ceil(currentAmount / 10); 
- var offset = currentPage * 10; 
+  var offset = currentPage * 10; 
   var url = "/_admin/log?level="+currentLoglevel+"&size=10&offset="+offset;
 
   if (currentPage == totalPages || totalPages == 0 ) {
@@ -2022,7 +1919,7 @@ function createNextPagination(checked) {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
 
-  $.getJSON(url, function(data) {
+  $.getJSON(url + "&" + getRandomToken(), function(data) {
     $(currentTableID).dataTable().fnClearTable();
 
     var i = 0; 
@@ -2060,7 +1957,7 @@ function createLastLogPagination (tableid) {
     url = "/_admin/log?upto=4&size=10&offset="+offset; 
   }
 
-  $.getJSON(url, function(data) {
+  $.getJSON(url + "&" + getRandomToken(), function(data) {
     $(currentTableID).dataTable().fnClearTable();
 
     var i = 0; 
@@ -2362,7 +2259,7 @@ function drawConnections (placeholder, granularity) {
   var array = [];
   $.ajax({
     type: "GET",
-    url: "/_admin/connection-statistics?granularity=" + granularity,
+    url: "/_admin/connection-statistics?granularity=" + granularity + "&" + getRandomToken(),
     contentType: "application/json",
     processData: false, 
     success: function(data) {
@@ -2466,7 +2363,7 @@ function drawRequests (placeholder, granularity) {
  
   $.ajax({
     type: "GET",
-    url: "/_admin/request-statistics?granularity=" + granularity,
+    url: "/_admin/request-statistics?granularity=" + granularity + "&" + getRandomToken(),
     contentType: "application/json",
     processData: false, 
     success: function(data) {
@@ -2882,7 +2779,7 @@ function getCollectionInfo (identifier) {
 
   $.ajax({
     type: "GET",
-    url: "/_api/collection/" + identifier,
+    url: "/_api/collection/" + identifier + "?" + getRandomToken(),
     contentType: "application/json",
     processData: false,
     async: false,  
@@ -2903,7 +2800,7 @@ function loadDocuments (collectionName, currentPage) {
 
   $.ajax({
     type: "GET",
-    url: "/_api/collection/" + collectionName + "/count", 
+    url: "/_api/collection/" + collectionName + "/count?" + getRandomToken(), 
     contentType: "application/json",
     processData: false,
     async: false,  
@@ -3037,3 +2934,8 @@ function getErrorMessage (data) {
   // fallback
   return "an unknown error occurred";
 }
+
+function getRandomToken ()  {
+  return Math.round(new Date().getTime());
+}
+
