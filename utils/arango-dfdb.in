@@ -25,6 +25,7 @@ fi
 
 $ARANGOD \
     -c none \
+    --no-upgrade \
     --database.directory "$DATABASE" \
     --javascript.modules-path "$MODULESPATH" \
     --javascript.script "$SCRIPT"
