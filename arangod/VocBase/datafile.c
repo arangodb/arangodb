@@ -298,7 +298,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
 
     TRI_PushBackVector(&scan._entries, &entry);
 
-    size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    size = TRI_DF_ALIGN_BLOCK(marker->_size);
     currentSize += size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -396,7 +396,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
 
     TRI_UpdateTickVocBase(marker->_tick);
 
-    size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    size = TRI_DF_ALIGN_BLOCK(marker->_size);
     currentSize += size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -809,7 +809,7 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
                                 TRI_df_marker_t** position) {
   *position = 0;
-  size = ((size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+  size = TRI_DF_ALIGN_BLOCK(size);
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
@@ -942,7 +942,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
       return false;
     }
 
-    size = ((marker->_size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    size = TRI_DF_ALIGN_BLOCK(marker->_size);
     ptr += size;
   }
 
