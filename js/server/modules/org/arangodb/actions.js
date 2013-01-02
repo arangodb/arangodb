@@ -805,7 +805,7 @@ function getJsonBody (req, res, code) {
 /// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum},
 ///                          @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
 ///
-/// The functions generates an error response. The response body is an array
+/// The function generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message
 /// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code} containing
 /// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and @LIT{errorMessage}
@@ -1074,7 +1074,7 @@ function badParameter (req, res, name) {
 ///
 /// @FUN{actions.resultOk(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
 ///
-/// The functions defines a response. @FA{code} is the status code to
+/// The function defines a response. @FA{code} is the status code to
 /// return. @FA{result} is the result object, which will be returned as JSON
 /// object in the body. @LIT{headers} is an array of headers to returned.
 /// The function adds the attribute @LIT{error} with value @LIT{false}
@@ -1105,7 +1105,7 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 ///
 /// @FUN{actions.resultBad(@FA{req}, @FA{res}, @FA{error-code}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
@@ -1122,13 +1122,13 @@ function resultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for not found 
 ///
-/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
+/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{code}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultNotFound (req, res, msg, headers) {
-  resultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, String(msg), headers);
+function resultNotFound (req, res, code, msg, headers) {
+  resultError(req, res, exports.HTTP_NOT_FOUND, code, String(msg), headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1136,7 +1136,7 @@ function resultNotFound (req, res, msg, headers) {
 ///
 /// @FUN{actions.resultNotImplemented(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
@@ -1153,7 +1153,7 @@ function resultNotImplemented (req, res, msg, headers) {
 ///
 /// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
@@ -1168,7 +1168,7 @@ function resultUnsupported (req, res, headers) {
 ///
 /// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
@@ -1197,7 +1197,7 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ///
 /// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
@@ -1298,7 +1298,7 @@ function resultCursor (req, res, cursor, code, options) {
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
@@ -1320,7 +1320,7 @@ function collectionNotFound (req, res, collection, headers) {
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
@@ -1348,7 +1348,7 @@ function indexNotFound (req, res, collection, index, headers) {
 ///
 /// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers) {
