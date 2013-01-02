@@ -1068,9 +1068,9 @@ void TRI_UpdateTickVocBase (TRI_voc_tick_t tick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
-  intptr_t p = (intptr_t) begin;
-  intptr_t q = (intptr_t) end;
-  intptr_t g = (intptr_t) PageSize;
+  uintptr_t p = (intptr_t) begin;
+  uintptr_t q = (intptr_t) end;
+  uintptr_t g = (intptr_t) PageSize;
 
   char* b = (char*)( (p / g) * g );
   char* e = (char*)( ((q + g - 1) / g) * g );

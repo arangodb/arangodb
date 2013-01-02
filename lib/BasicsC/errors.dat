@@ -63,6 +63,7 @@ ERROR_ARANGO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot 
 ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
 ERROR_ARANGO_DATABASE_LOCKED,1107,"database is locked","Will be raised when the database is locked by a different process."
 ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
+ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
 
 ################################################################################
 ## ArangoDB storage errors

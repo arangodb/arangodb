@@ -67,7 +67,6 @@ int TRI_FlushMMFile(void* fileHandle, void** mmHandle, void* startingAddress, si
   
   res = msync(startingAddress, numOfBytesToFlush, flags);
   
-  
 #ifdef __APPLE__
   if (res == 0) {
     if (fileHandle != NULL) {
@@ -77,8 +76,18 @@ int TRI_FlushMMFile(void* fileHandle, void** mmHandle, void* startingAddress, si
   }
 #endif
   if (res == 0) {
+    // msync was successful
     return TRI_ERROR_NO_ERROR;
   }
+
+  if (errno == ENOMEM) {
+    // we have synced a region that was not mapped
+
+    // set a special error. ENOMEM (out of memory) is not appropriate
+    TRI_set_errno(TRI_ERROR_ARANGO_MSYNC_FAILED);
+    LOG_ERROR("msync failed for range %p - %p", startingAddress, (void*) (((char*) startingAddress) + numOfBytesToFlush));
+  }
+  
   return TRI_ERROR_SYS_ERROR;
 }
 
