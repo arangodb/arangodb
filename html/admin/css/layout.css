@@ -1,7 +1,12 @@
+img {
+  border: 0px;
+}
+
 img.externalLink {
   position:absolute;
   top:4px;
   right:8px;
+  border: 0px;
 }
 
 #graphBox {
