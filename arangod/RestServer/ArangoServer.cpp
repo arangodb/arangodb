@@ -314,6 +314,10 @@ void ArangoServer::buildApplicationServer () {
     ("upgrade", "perform a database upgrade")
   ;
 
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("no-upgrade", "skip a database upgrade")
+  ;
+
 #ifdef TRI_ENABLE_MRUBY
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("ruby-console", "do not start as server, start a Ruby emergency console instead")
@@ -556,6 +560,10 @@ int ArangoServer::startupServer () {
     _applicationV8->performUpgrade();
   }
 
+  // skip an upgrade even if VERSION is missing
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    _applicationV8->skipUpgrade();
+  }
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
@@ -659,9 +667,16 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(1);
+
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
   }
+
+  // skip an upgrade even if VERSION is missing
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    _applicationV8->skipUpgrade();
+  }
+
   _applicationV8->disableActions();
 
   ok = _applicationV8->prepare();
