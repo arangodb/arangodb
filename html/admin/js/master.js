@@ -2431,7 +2431,7 @@ function drawConnections (placeholder, granularity) {
           grid: {
             backgroundColor: { colors: ["#fff", "#eee"] },
             borderWidth: 1,
-            hoverable: true, 
+            hoverable: true 
           }
         };
 
@@ -2448,7 +2448,7 @@ function drawConnections (placeholder, granularity) {
           show: false, // We'll show it programatically, so no show event is needed
           style: {
             classes: 'ui-tooltip-tipsy',
-            tip: false, 
+            tip: false 
           }
         });
 
@@ -2523,7 +2523,7 @@ function drawRequests (placeholder, granularity) {
                      fill: true, 
                      lineWidth: 0.5,
                      fillColor: { colors: [ { opacity: 0.6 }, { opacity: 0.7 } ] } 
-            },
+            }
           }, 
           xaxis: {
             mode: "time",
@@ -2567,7 +2567,7 @@ function drawRequests (placeholder, granularity) {
           show: false, // We'll show it programatically, so no show event is needed
           style: {
             classes: 'ui-tooltip-tipsy',
-            tip: false, 
+            tip: false 
           }
         });
 

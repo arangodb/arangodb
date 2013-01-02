@@ -245,7 +245,7 @@ function ahuacatlComplexTestSuite () {
 
       var actual = getQueryResults("FOR u IN " + list + " FILTER u IN @res RETURN u", vars);
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }

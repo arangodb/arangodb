@@ -272,10 +272,10 @@
         internal.printIndent(newLevel);
 
         if (internal.COLOR_OUTPUT) {
-          internal.output(internal.COLOR_OUTPUT_DEFAULT,
-                          internal.quoteJsonString(k),
-                          internal.COLOR_OUTPUT_RESET, 
-                          " : ");
+          internal.output(internal.COLOR_OUTPUT_DEFAULT);
+          internal.output(internal.quoteJsonString(k));
+          internal.output(internal.COLOR_OUTPUT_RESET);
+          internal.output(" : ");
         }
         else {
           internal.output(internal.quoteJsonString(k), " : ");

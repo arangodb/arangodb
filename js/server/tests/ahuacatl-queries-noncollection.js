@@ -276,7 +276,7 @@ function ahuacatlQueryNonCollectionTestSuite () {
 
       var actual = getQueryResults("FOR r IN [ 1 ] LET f = (FOR x IN [ 1 ] FILTER 1 == 1 FOR y IN [ 1 ] FOR z IN [ 1 ] RETURN 1) RETURN 1", true);
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }

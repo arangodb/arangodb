@@ -694,7 +694,7 @@ function ArangoQueryCursor (database, data) {
 
   SB.ArangoStatement.prototype.parse = function () {
     var body = {
-      "query" : this._query,
+      "query" : this._query
     };
 
     var requestResult = this._database._connection.POST(
@@ -713,7 +713,7 @@ function ArangoQueryCursor (database, data) {
 
   SB.ArangoStatement.prototype.explain = function () {
     var body = {
-      "query" : this._query,
+      "query" : this._query
     };
 
     var requestResult = this._database._connection.POST(

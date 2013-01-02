@@ -100,7 +100,7 @@ function ahuacatlQueryVariablesTestSuite () {
           { "name" : "CO", "airports" : [ { "name" : "BOG" } ] }
         ] } }, 
         { "continent" : { "name" : "Asia", "countries" : [ 
-          { "name" : "JP", "airports" : [ { "name" : "NRT" }, { "name" : "HND" } , { "name" : "OKD" }, { "name" : "OKA" } ] },
+          { "name" : "JP", "airports" : [ { "name" : "NRT" }, { "name" : "HND" } , { "name" : "OKD" }, { "name" : "OKA" } ] }
         ] } } 
       ];
 
@@ -341,7 +341,7 @@ function ahuacatlQueryVariablesTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }
