@@ -1376,7 +1376,7 @@ var lastFormatQuestion = true;
       $.ajax({
         type: "POST",
         url: "/_api/collection",
-        data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + JSON.stringify(wfscheck) + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + type + '}',
+        data: '{"name":' + JSON.stringify(collName) + ',"waitForSync":' + (wfscheck ? "true" : "false") + ',"isSystem":' + JSON.stringify(isSystem) + journalSizeString + ',"type":' + type + '}',
         contentType: "application/json",
         processData: false, 
         success: function(data) {
