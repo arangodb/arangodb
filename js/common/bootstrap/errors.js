@@ -52,6 +52,7 @@
     "ERROR_ARANGO_DATAFILE_ALREADY_EXISTS" : { "code" : 1106, "message" : "cannot create/rename datafile because it already exists" }, 
     "ERROR_ARANGO_DATABASE_LOCKED" : { "code" : 1107, "message" : "database is locked" }, 
     "ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS" : { "code" : 1108, "message" : "cannot create/rename collection because directory already exists" }, 
+    "ERROR_ARANGO_MSYNC_FAILED"    : { "code" : 1109, "message" : "msync failed" }, 
     "ERROR_ARANGO_CONFLICT"        : { "code" : 1200, "message" : "conflict" }, 
     "ERROR_ARANGO_WRONG_VOCBASE_PATH" : { "code" : 1201, "message" : "wrong path for database" }, 
     "ERROR_ARANGO_DOCUMENT_NOT_FOUND" : { "code" : 1202, "message" : "document not found" }, 
