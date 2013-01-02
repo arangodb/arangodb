@@ -8,6 +8,8 @@ v1.1.2 (XXXX-XX-XX)
 
 * fixed issue #336: Collections REST API docs
 
+* fixed issue #335: mmap errors due to wrong memory address calculation 
+
 * added option '--server.disable-authentication' for arangosh as well. No more passwd
   prompts if not needed
 
