@@ -120,7 +120,7 @@ var actions = require("org/arangodb/actions");
 
 function POST_api_explain (req, res) {
   if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, internal.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
 

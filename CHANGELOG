@@ -133,6 +133,13 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.1 (2012-12-18)
 -------------------
 
+* fixed issue #339: DELETE /_api/cursor/cursor-identifier return incollect errorNum
+
+  The fix for this has led to a signature change of the function actions.resultNotFound().
+  The meaning of parameter #3 for This function has changed from the error message string
+  to the error code. The error message string is now parameter #4.
+  Any client code that uses this function in custom actions must be adjusted.
+
 * fixed issue #321: Problem upgrading arangodb 1.0.4 to 1.1.0 with Homebrew (OSX 10.8.2)
 
 * fixed issue #230: add navigation and search for online documentation
