@@ -2,14 +2,15 @@
 
 HTTP/1.1 200 OK
 content-type: application/json
-location: /_api/collection/73482/count
 
 {
   "name": "UnitTestsCollectionBasics",
   "code": 200,
   "waitForSync": true,
   "id": 73482,
+  "journalSize": 33554432,
   "count": 0,
   "status": 3,
+  "type": 2,
   "error": false
 }
