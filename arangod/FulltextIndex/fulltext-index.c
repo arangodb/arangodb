@@ -359,7 +359,7 @@ static inline uint32_t NodeNumFollowers (const node_t* const node) {
 /// sub node list
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint32_t NodeNumAllocated (const node_t* const node) {
+static uint32_t NodeNumAllocated (const node_t* const node) {
   uint8_t* head;
 
 #if TRI_FULLTEXT_DEBUG
@@ -447,7 +447,7 @@ static inline node_t** NodeFollowersNodes (const node_t* const node) {
 /// specific length
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t MemorySubNodeList (const uint32_t numEntries) {
+static size_t MemorySubNodeList (const uint32_t numEntries) {
   return sizeof(uint8_t) +  // numAllocated
          sizeof(uint8_t) +  // numEntries
          ((sizeof(node_char_t) + sizeof(node_t*)) * numEntries) +  // follower keys & nodes 
