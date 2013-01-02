@@ -505,7 +505,7 @@ actions.defineHttp({
             actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
           }
           else {
-            actions.resultNotFound(req, res, "no match");
+            actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "no match");
           }
         }
       }
