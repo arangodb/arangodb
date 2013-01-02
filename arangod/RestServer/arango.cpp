@@ -55,7 +55,6 @@ int main (int argc, char* argv[]) {
   // ...........................................................................
   // Call this function to do various initialistions for windows only
   // ...........................................................................
-
   
   // ...........................................................................
   // Uncomment this to call this for extended debug information.
@@ -72,29 +71,29 @@ int main (int argc, char* argv[]) {
   if (res != 0) {
     _exit(1);
   }
+
 #endif
 
   TRIAGENS_RESULT_GENERATOR_INITIALISE(argc, argv);
-  TRI_InitialiseVocBase();
 
   // create and start a ArangoDB server
   ArangoServer server(argc, argv);
 
-  
   res = server.start();
 
-  
   // shutdown
-  TRI_ShutdownVocBase();
   TRIAGENS_RESULT_GENERATOR_SHUTDOWN;
 
 #ifdef _WIN32
+
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
   // TODO: find the memory deallocation/allocation error
   // ...........................................................................
+
   res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+
 #endif  
 
   return res;

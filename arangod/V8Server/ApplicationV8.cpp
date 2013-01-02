@@ -180,6 +180,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _actionPath(),
     _useActions(true),
     _performUpgrade(false),
+    _skipUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -237,6 +238,14 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 
 void ApplicationV8::performUpgrade () {
   _performUpgrade = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip a database upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::skipUpgrade () {
+  _skipUpgrade = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,7 +704,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
 
-  if (i == 0) {
+  if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG << "running database version check";
 
     const string script = _startupLoader.buildScript(JS_server_version_check);
