@@ -424,9 +424,9 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber, string const& 
 /// @brief reads/execute a file into/in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
-                                char const* filename,
-                                bool execute) {
+static bool LoadJavaScriptFile (char const* filename,
+                                bool execute,
+				bool useGlobalContext) {
   v8::HandleScope handleScope;
 
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename);
@@ -436,7 +436,7 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
     return false;
   }
 
-  if (execute) {
+  if (useGlobalContext) {
     char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, 
                                                    "(function() { ",
                                                    content,
@@ -476,7 +476,9 @@ static bool LoadJavaScriptFile (v8::Handle<v8::Context> context,
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path, bool execute) {
+static bool LoadJavaScriptDirectory (char const* path,
+				     bool execute,
+				     bool useGlobalContext) {
   v8::HandleScope scope;
   TRI_vector_string_t files;
   bool result;
@@ -506,7 +508,7 @@ static bool LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const
     full = TRI_Concatenate2File(path, filename);
 
 
-    ok = LoadJavaScriptFile(context, full, execute);
+    ok = LoadJavaScriptFile(full, execute, useGlobalContext);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
     result = result && ok;
@@ -1507,32 +1509,40 @@ void TRI_LogV8Exception (v8::TryCatch* tryCatch) {
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
-  return LoadJavaScriptFile(context, filename, false);
+bool TRI_ExecuteGlobalJavaScriptFile (char const* filename) {
+  return LoadJavaScriptFile(filename, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path) {
-  return LoadJavaScriptDirectory(context, path, false);
+bool TRI_ExecuteGlobalJavaScriptDirectory (char const* path) {
+  return LoadJavaScriptDirectory(path, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a file in the current context
+/// @brief executes a file in a local context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteJavaScriptFile (v8::Handle<v8::Context> context, char const* filename) {
-  return LoadJavaScriptFile(context, filename, true);
+bool TRI_ExecuteLocalJavaScriptFile (char const* filename) {
+  return LoadJavaScriptFile(filename, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in the current context
+/// @brief executes all files from a directory in a local context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteJavaScriptDirectory (v8::Handle<v8::Context> context, char const* path) {
-  return LoadJavaScriptDirectory(context, path, true);
+bool TRI_ExecuteLocalJavaScriptDirectory (char const* path) {
+  return LoadJavaScriptDirectory(path, true, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a file
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ParseJavaScriptFile (char const* path) {
+  return LoadJavaScriptDirectory(path, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

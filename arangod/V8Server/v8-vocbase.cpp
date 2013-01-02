@@ -1067,6 +1067,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
   
   // init target document
   TRI_doc_mptr_t mptr;
+  memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
   TRI_voc_rid_t oldRid = 0;
   TRI_doc_mptr_t document = primary->read(primary, did);
