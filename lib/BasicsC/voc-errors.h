@@ -91,6 +91,8 @@ extern "C" {
 /// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
+/// - 1109: @LIT{msync failed}
+///   Will be raised when the system call msync failed.
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -695,6 +697,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS              (1108)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1109: ERROR_ARANGO_MSYNC_FAILED
+///
+/// msync failed
+///
+/// Will be raised when the system call msync failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_MSYNC_FAILED                                     (1109)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT

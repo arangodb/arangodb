@@ -75,6 +75,16 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
   if (res == 0) {
     return TRI_ERROR_NO_ERROR;
   }
+
+  if (errno == ENOMEM) {
+    // we have synced a region that was not mapped
+
+    // set a special error. ENOMEM (out of memory) is not appropriate
+    LOG_ERROR("msync failed for range %p - %p", startingAddress, (void*) (((char*) startingAddress) + numOfBytesToFlush));
+
+    return TRI_ERROR_ARANGO_MSYNC_FAILED;
+  }
+
   return TRI_ERROR_SYS_ERROR;
 }
 
