@@ -190,6 +190,30 @@ namespace triagens {
         static char const * COLOR_RESET;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore sequence used for prompt length calculation (starting point)
+///
+/// This sequence must be used before any non-visible characters in the prompt.
+///
+/// From readline/display.c:
+/// \\001 (^A) start non-visible characters
+/// \\002 (^B) end non-visible characters
+///
+/// All characters except \\001 and \\002 (following a \\001) are copied to
+/// the returned string; all characters except those between \001 and
+/// \\002 are assumed to be `visible'.
+////////////////////////////////////////////////////////////////////////////////
+        
+        static char const * PROMPT_IGNORE_START;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore sequence used for prompt length calculation (end point)
+///
+/// This sequence must be used behind any non-visible characters in the prompt.
+////////////////////////////////////////////////////////////////////////////////
+
+        static char const * PROMPT_IGNORE_END;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 

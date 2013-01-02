@@ -845,8 +845,15 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   string badPrompt;
   
   if (BaseClient.colors()) {
-    goodPrompt = ArangoClient::COLOR_BOLD_GREEN + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
-    badPrompt  = ArangoClient::COLOR_BOLD_RED   + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
+    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 string("arangosh>") + 
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 ' ';
+
+    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 string("arangosh>") + 
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 ' ';
   }
   else {
     goodPrompt = badPrompt = string("arangosh> ");

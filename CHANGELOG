@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #338: arangosh cursor positioning problems
+
 * issue #326: use limit optimisation with filters
 
 * issue #325: use index to avoid sorting

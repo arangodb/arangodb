@@ -41,8 +41,8 @@ using namespace triagens::rest;
 using namespace triagens::arango;
         
 double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
-double const ArangoClient::DEFAULT_REQUEST_TIMEOUT = 300.0;
-size_t const ArangoClient::DEFAULT_RETRIES = 2;
+double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
+size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoClient
@@ -146,6 +146,22 @@ char const * ArangoClient::COLOR_BRIGHT = "\x1b[1m";
 ////////////////////////////////////////////////////////////////////////////////
         
 char const * ArangoClient::COLOR_RESET = "\x1b[0m";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore sequence used for prompt length calculation (starting point)
+///
+/// This sequence must be used before any non-visible characters in the prompt.
+////////////////////////////////////////////////////////////////////////////////
+        
+char const * ArangoClient::PROMPT_IGNORE_START = "\001";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore sequence used for prompt length calculation (end point)
+///
+/// This sequence must be used behind any non-visible characters in the prompt.
+////////////////////////////////////////////////////////////////////////////////
+
+char const * ArangoClient::PROMPT_IGNORE_END = "\002";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
