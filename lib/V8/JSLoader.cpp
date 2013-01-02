@@ -114,7 +114,7 @@ bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
 
   bool result = true;
   for (size_t i = 0; i < parts.size(); i++) {
-    result &= TRI_LoadJavaScriptDirectory(context, parts.at(i).c_str());
+    result &= TRI_ExecuteGlobalJavaScriptDirectory(parts.at(i).c_str());
   }
 
   return result;
@@ -164,7 +164,7 @@ bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
     return true;
   }
 
-  ok = TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
+  ok = TRI_ExecuteLocalJavaScriptDirectory(_directory.c_str());
 
   return ok;
 }

@@ -1922,7 +1922,9 @@ void TRI_InitialiseVocBase () {
 #ifdef TRI_ICU_VERSION
   LOG_TRACE("%s", "$Revision: ICU " TRI_ICU_VERSION " $");
 #endif
-  
+
+  LOG_TRACE("sizeof df_header:        %d", (int) sizeof(TRI_df_marker_t));
+  LOG_TRACE("sizeof df_header_marker: %d", (int) sizeof(TRI_df_header_marker_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -538,8 +538,8 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // open the database
   // .............................................................................
-  openDatabase();
 
+  openDatabase();
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -699,10 +699,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
     context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
 
-    context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-    context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
-    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
-
     ok = true;
 
     switch (mode) {
@@ -780,7 +776,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
         v8::TryCatch tryCatch;
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-          bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+          bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
 
           if (! r) {
             LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
@@ -1075,6 +1071,8 @@ int ArangoServer::executeRubyConsole () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::openDatabase () {
+  TRI_InitialiseVocBase();
+
   _vocbase = TRI_OpenVocBase(_databasePath.c_str());
 
   if (! _vocbase) {
@@ -1101,6 +1099,7 @@ void ArangoServer::closeDatabase () {
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
+  TRI_ShutdownVocBase();
 
   LOGGER_INFO << "ArangoDB has been shut down";
 }
