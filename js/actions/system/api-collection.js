@@ -414,7 +414,7 @@
       }
 
       else {
-        actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
+        actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
       }
     }
     else {
@@ -664,7 +664,7 @@
       PUT_api_collection_rename(req, res, collection);
     }
     else {
-      actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
+      actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
     }
   }
 
