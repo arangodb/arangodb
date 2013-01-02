@@ -110,9 +110,17 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setup (Scheduler* scheduler, EventLoop loop) {
-          SocketTask::setup(scheduler, loop);
-          AsyncTask::setup(scheduler, loop);
+        bool setup (Scheduler* scheduler, EventLoop loop) {
+          bool ok;
+          ok = SocketTask::setup(scheduler, loop);
+          if (!ok) {
+            return false;
+          }  
+          ok = AsyncTask::setup(scheduler, loop);
+          if (!ok) {
+            return false;
+          }
+          return true;          
         }
 
 ////////////////////////////////////////////////////////////////////////////////

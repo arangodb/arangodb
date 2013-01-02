@@ -43,8 +43,9 @@ def genJsFile(errors):
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     out = out\
         + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
-   
+ 
     i = i + 1 
+
     if i < len(errors):
       out = out + ", \n"
     else:

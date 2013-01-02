@@ -212,7 +212,7 @@ static void CreateDoubleOption (po_double_t * desc, void const * input, void * o
 
   po = (TRI_program_options_t*) (output);
 
-  InitOptionStructure(&doubleOpt, desc->base._name, 1, 0, po->_longopts._length);
+  InitOptionStructure(&doubleOpt, desc->base._name, 1, 0, (int)(po->_longopts._length));
 
   memset(&item, 0, sizeof(item));
 

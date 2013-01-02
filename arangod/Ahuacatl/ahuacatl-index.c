@@ -290,7 +290,7 @@ void TRI_FreeIndexAql (TRI_aql_index_t* const idx) {
 TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* const availableIndexes,
                                         const char* const collectionName,
-                                        const TRI_vector_pointer_t* const candidates) {
+                                        const TRI_vector_pointer_t* candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
   size_t i, n; 

@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 shell
 ///
 /// @file
@@ -985,10 +984,10 @@ static bool RunScripts (v8::Handle<v8::Context> context,
     }
 
     if (execute) {
-      TRI_ExecuteJavaScriptFile(context, scripts[i].c_str());
+      TRI_ExecuteLocalJavaScriptFile(scripts[i].c_str());
     }
     else {
-      TRI_LoadJavaScriptFile(context, scripts[i].c_str());
+      TRI_ParseJavaScriptFile(scripts[i].c_str());
     }
   
     if (tryCatch.HasCaught()) {

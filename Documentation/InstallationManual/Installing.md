@@ -7,9 +7,8 @@ Installing ArangoDB {#Installing}
 Linux {#InstallingLinux}
 ========================
 
-You can find binary packages for various Linux distributions here:
-
-    @EXTREF{http://www.arangodb.org/download/,http://www.arangodb.org/download/}
+You can find binary packages for various Linux distributions
+@EXTREF{http://www.arangodb.org/download/,here}.
 
 We provide packages for
 

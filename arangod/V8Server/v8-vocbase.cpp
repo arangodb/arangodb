@@ -2839,7 +2839,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
           break;
         }
         
-        off_t paddedSize = ((marker._size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+        off_t paddedSize = TRI_DF_ALIGN_BLOCK(marker._size);
         
         char payload[paddedSize];
         char* p = (char*) &payload;
@@ -2882,7 +2882,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
             keySize = strlen(didBuffer) + 1;
-            keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             TRI_CopyString(keyBody, didBuffer, keySize);      
 
@@ -2942,7 +2942,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             toSize = strlen(toDidBuffer) + 1;
             fromSize = strlen(fromDidBuffer) + 1;
 
-            keyBodySize = ((keySize + toSize + fromSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;            
+            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + toSize + fromSize);            
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             
             TRI_CopyString(keyBody,                    didBuffer,     keySize);      
@@ -2996,7 +2996,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
             keySize = strlen(didBuffer) + 1;
-            keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             TRI_CopyString(keyBody, didBuffer, keySize);      
 

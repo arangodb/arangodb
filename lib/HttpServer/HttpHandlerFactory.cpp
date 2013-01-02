@@ -238,10 +238,12 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   }
 #endif
 
+
   map<string, create_fptr> const& ii = _constructors;
   string path = request->requestPath();
   map<string, create_fptr>::const_iterator i = ii.find(path);
   void* data = 0;
+
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
@@ -326,6 +328,7 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
       return 0;
     }
   }
+
 
   // look up data
   map<string, void*> const& jj = _datas;

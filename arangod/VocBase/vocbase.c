@@ -353,9 +353,21 @@ static bool DropCollectionCallback (TRI_collection_t* col, void* data) {
   // .............................................................................
 
   if (collection->_path != NULL) {
-    regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_EXTENDED);
+    int regExpResult;
 
-    if (regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+#ifdef _WIN32
+      // .........................................................................
+      // Just thank your lucky stars that there are only 4 backslashes
+      // .........................................................................
+      regcomp(&re, "^(.*)\\\\collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+#else
+      regcomp(&re, "^(.*)/collection-([0-9][0-9]*)$", REG_ICASE | REG_EXTENDED);
+#endif
+
+    
+    regExpResult = regexec(&re, collection->_path, sizeof(matches) / sizeof(matches[0]), matches, 0); 
+
+    if (regExpResult == 0) {
       char const* first = collection->_path + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
       
@@ -1073,9 +1085,11 @@ bool TRI_msync (int fd, void* mmHandle, char const* begin, char const* end) {
   uintptr_t g = (intptr_t) PageSize;
 
   char* b = (char*)( (p / g) * g );
-  char* e = (char*)( ((q + g - 1) / g) * g );
+  char* e = (char*)( ((q + g - 1) / g) * g ); 
+  int result;
+  
+  result = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
 
-  int result = TRI_FlushMMFile(&fd, &mmHandle, b, e - b, MS_SYNC);
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(result);
     return false;
@@ -1223,6 +1237,7 @@ TRI_vocbase_t* TRI_OpenVocBase (char const* path) {
     return NULL;
   }
   
+
   // .............................................................................
   // vocbase is now active
   // .............................................................................
@@ -1329,6 +1344,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // free the filename path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1432,6 +1448,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   assert(parameter);
   name = parameter->_name;
 
+
   // check that the name does not contain any strange characters
   if (! TRI_IsAllowedCollectionName(parameter->_isSystem, name)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -1480,12 +1497,14 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   col = &primary->base;
 
-  // add collection container
+
+  // add collection container -- however note that the compactor is added later which could fail!
   collection = AddCollection(vocbase,
                              col->_info._type,
                              col->_info._name,
                              col->_info._cid,
                              col->_directory);
+
 
   if (collection == NULL) {
     if (TRI_IS_DOCUMENT_COLLECTION(type)) {
@@ -1497,10 +1516,12 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
+
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = primary;
   FreeCollectionPath(collection);
   collection->_path = TRI_DuplicateString(primary->base._directory);
+
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
   return collection;
@@ -1919,7 +1940,9 @@ void TRI_InitialiseVocBase () {
 #ifdef TRI_ICU_VERSION
   LOG_TRACE("%s", "$Revision: ICU " TRI_ICU_VERSION " $");
 #endif
-  
+
+  LOG_TRACE("sizeof df_header:        %d", (int) sizeof(TRI_df_marker_t));
+  LOG_TRACE("sizeof df_header_marker: %d", (int) sizeof(TRI_df_header_marker_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

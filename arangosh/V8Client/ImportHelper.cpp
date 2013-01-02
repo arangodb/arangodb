@@ -149,9 +149,9 @@ namespace triagens {
       }
       parser._dataAdd = this;
 
-      char buffer[10240];
+      char buffer[16384];
 
-      while (!_hasError) {
+      while (! _hasError) {
         v8::HandleScope scope;
 
         ssize_t n = read(fd, buffer, sizeof(buffer));

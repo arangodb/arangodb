@@ -54,7 +54,7 @@ TimerTask::~TimerTask () {
 // Task methods
 // -----------------------------------------------------------------------------
 
-void TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->scheduler = scheduler;
   this->loop = loop;
 
@@ -65,6 +65,7 @@ void TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   else {
     watcher = 0;
   }
+  return true;
 }
 
 

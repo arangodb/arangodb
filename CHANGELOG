@@ -135,6 +135,11 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* backported issue #300: Extend arangoImp to Allow importing resultset-like 
+  (list of documents) formatted files
+
+* fixed issue #332: arangoimp --use-ids parameter seems to have no impact
+
 * fixed issue #336: Collections REST API docs
 
 * fixed issue #335: mmap errors due to wrong memory address calculation 

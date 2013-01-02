@@ -112,7 +112,7 @@ extern "C" {
 /// @brief alignment in datafile blocks
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DF_BLOCK_ALIGN      (8)
+#define TRI_DF_BLOCK_ALIGNMENT  (8)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -302,6 +302,9 @@ typedef struct TRI_df_marker_s {
 
   TRI_voc_tick_t _tick;                 // 8 bytes, will be generated
 
+#ifdef TRI_PADDING_32
+  char _padding_df_marker[4];
+#endif
 }
 TRI_df_marker_t;
 
@@ -336,11 +339,11 @@ TRI_df_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_header_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 
-  TRI_df_version_t _version;
-  TRI_voc_size_t _maximalSize;
-  TRI_voc_tick_t _fid;
+  TRI_df_version_t _version;            //  4 bytes
+  TRI_voc_size_t _maximalSize;          //  4 bytes
+  TRI_voc_tick_t _fid;                  //  8 bytes
 }
 TRI_df_header_marker_t;
 
@@ -371,10 +374,10 @@ TRI_df_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_footer_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 
-  TRI_voc_size_t _maximalSize;
-  TRI_voc_size_t _totalSize;
+  TRI_voc_size_t _maximalSize;          //  4 bytes
+  TRI_voc_size_t _totalSize;            //  4 bytes
 }
 TRI_df_footer_marker_t;
 
@@ -383,7 +386,7 @@ TRI_df_footer_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_document_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 }
 TRI_df_document_marker_t;
 
@@ -392,7 +395,7 @@ TRI_df_document_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_skip_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 }
 TRI_df_skip_marker_t;
 
@@ -447,6 +450,12 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile);
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aligns in datafile blocks
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_DF_ALIGN_BLOCK(a) ((((a) + TRI_DF_BLOCK_ALIGNMENT - 1) / TRI_DF_BLOCK_ALIGNMENT) * TRI_DF_BLOCK_ALIGNMENT)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a CRC of a marker

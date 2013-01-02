@@ -180,6 +180,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _actionPath(),
     _useActions(true),
     _performUpgrade(false),
+    _skipUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -237,6 +238,14 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 
 void ApplicationV8::performUpgrade () {
   _performUpgrade = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip a database upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::skipUpgrade () {
+  _skipUpgrade = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,6 +520,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
   
+
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
@@ -529,7 +539,6 @@ bool ApplicationV8::prepare () {
   // set up the startup loader
   if (_startupPath.empty()) {
     LOGGER_INFO << "using built-in JavaScript startup files";
-
     _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
     _startupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
     _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
@@ -556,6 +565,7 @@ bool ApplicationV8::prepare () {
       _actionLoader.setDirectory(_actionPath);
     }
   }
+
 
   if (_v8Options.size() > 0) {
     LOGGER_INFO << "using V8 options '" << _v8Options << "'";
@@ -669,6 +679,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8VocBridge(context->_context, _vocbase, i);
   TRI_InitV8Queries(context->_context);
 
+
   if (_useActions) {
     TRI_InitV8Actions(context->_context, this);
   }
@@ -693,7 +704,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
 
-  if (i == 0) {
+  if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG << "running database version check";
 
     const string script = _startupLoader.buildScript(JS_server_version_check);

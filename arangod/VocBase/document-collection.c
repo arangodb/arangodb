@@ -1138,7 +1138,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
 
     keySize += 1;
 
-    keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
     TRI_CopyString(keyBody, (char*) &keyBuffer, keySize);
 
@@ -1190,7 +1190,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
     
     keySize += 1;
 
-    keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + fromSize + toSize);
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
     TRI_CopyString(keyBody, (char*) &keyBuffer, keySize);      
 
