@@ -126,7 +126,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationServer (const std::string& name, const std::string& title, const std::string& version);
+        ApplicationServer (std::string const& name, std::string const& title, std::string const& version);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
