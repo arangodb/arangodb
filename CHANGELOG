@@ -133,6 +133,8 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #336: Collections REST API docs
+
 * added option '--server.disable-authentication' for arangosh as well. No more passwd
   prompts if not needed
 

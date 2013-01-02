@@ -118,8 +118,8 @@
 ///
 /// - @LIT{type} (optional, default is @LIT{2}): the type of the collection to
 ///   create. The following values for @FA{type} are valid:
-///   - @LIT{2}: document collections
-///   - @LIT{3}: edge collection
+///   - @LIT{2}: document collection
+///   - @LIT{3}: edges collection
 ///
 /// @EXAMPLES
 ///
@@ -430,7 +430,8 @@
 ///
 /// @REST{PUT /_api/collection/@FA{collection-name}/load}
 ///
-/// Loads a collection into memory.  On success an object with the following
+/// Loads a collection into memory. On success an object with the following
+/// attributes is returned:
 ///
 /// - @LIT{id}: The identifier of the collection.
 ///
@@ -439,6 +440,10 @@
 /// - @LIT{count}: The number of documents inside the collection.
 ///
 /// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
 ///
 /// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
@@ -471,13 +476,18 @@
 ///
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
-/// memory, again. On success an object with the following
+/// memory, again. On success an object with the following attributes is
+/// returned:
 ///
 /// - @LIT{id}: The identifier of the collection.
 ///
 /// - @LIT{name}: The name of the collection.
 ///
 /// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
 ///
 /// If the @FA{collection-name} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-name} is unknown, then a @LIT{HTTP
@@ -554,6 +564,12 @@
 ///
 /// - @LIT{journalSize}: The new value.
 ///
+/// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
+///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-identifier-properties-sync
@@ -594,6 +610,12 @@
 /// - @LIT{id}: The identifier of the collection.
 ///
 /// - @LIT{name}: The new name of the collection.
+///
+/// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
 ///
 /// @EXAMPLES
 ///
