@@ -432,15 +432,6 @@
         </div>
       </div>
 
-      <div id="configView" style="display: none">
-        <button class="minimal enabled" id="updateConfiguration" style="visibility:hidden">
-          <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
-          <a>Update configuration</a>
-        </button>
-        <div id="configContent">
-        </div>
-      </div>
-
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
         </div>
@@ -467,15 +458,15 @@
           <a>Input</a>
         </div>
         <form id="queryForm" method="post" onsubmit="return false">
-          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
+          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br />
           <button class="minimal" id="submitQuery">Execute</button>
           <a style="font-size:0.8em;" id="aqlinfo" href="http://www.arangodb.org/manuals/current/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
         <br />
         </form>   
         <form action="#" id="formatJSONyesno" style="font-size:0.8em;">
           Format JSON? 
-          <input type="radio" name="formatJSONyesno" value=true checked>yes</input>
-          <input type="radio" name="formatJSONyesno" value=false>no</input>
+          <input type="radio" name="formatJSONyesno" value="true" checked>yes</input>
+          <input type="radio" name="formatJSONyesno" value="false">no</input>
         </form>
       </div>
 
@@ -517,7 +508,7 @@
 
   </div> 
 
-  <div id="dialog-deleteCollection" title="Really delete collection?">
+  <div id="dialog-deleteCollection" title="Really delete collection?" style="display:none;">
     <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
     The collection will be permanently deleted and cannot be recovered.</p>
   </div>
