@@ -69,7 +69,7 @@ var RoutingCache;
 /// @brief function that's returned for non-implemented actions
 ////////////////////////////////////////////////////////////////////////////////
         
-function NotImplementedFunction (route, message) {
+function notImplementedFunction (route, message) {
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
@@ -85,7 +85,7 @@ function NotImplementedFunction (route, message) {
 /// @brief function that's returned for actions that produce an error
 ////////////////////////////////////////////////////////////////////////////////
 
-function ErrorFunction (route, message) {
+function errorFunction (route, message) {
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
@@ -101,7 +101,7 @@ function ErrorFunction (route, message) {
 /// @brief splits an URL into parts
 ////////////////////////////////////////////////////////////////////////////////
 
-function SplitUrl (url) {
+function splitUrl (url) {
   var cleaned;
   var i;
   var parts;
@@ -151,14 +151,14 @@ function SplitUrl (url) {
 /// @brief looks up an URL
 ////////////////////////////////////////////////////////////////////////////////
 
-function LookupUrl (prefix, url) {
+function lookupUrl (prefix, url) {
   if (url === undefined || url === '') {
     return null;
   }
 
   if (typeof url === 'string') {
     return {
-      urlParts: SplitUrl(prefix + "/" + url),
+      urlParts: splitUrl(prefix + "/" + url),
       methods: [ exports.GET, exports.HEAD ],
       constraint: {}
     };
@@ -166,7 +166,7 @@ function LookupUrl (prefix, url) {
 
   if (url.hasOwnProperty('match')) {
     return {
-      urlParts: SplitUrl(prefix + "/" + url.match),
+      urlParts: splitUrl(prefix + "/" + url.match),
       methods: url.methods || exports.ALL_METHODS,
       constraint: url.constraint || {}
     };
@@ -179,7 +179,7 @@ function LookupUrl (prefix, url) {
 /// @brief looks up a callback for static data
 ////////////////////////////////////////////////////////////////////////////////
 
-function LookupCallbackStatic (content) {
+function lookupCallbackStatic (content) {
   var type;
   var body;
   var methods;
@@ -213,7 +213,7 @@ function LookupCallbackStatic (content) {
 /// @brief looks up a callback for an action
 ////////////////////////////////////////////////////////////////////////////////
 
-function LookupCallbackAction (route, action) {
+function lookupCallbackAction (route, action) {
   var path;
   var name;
   var func;
@@ -229,7 +229,7 @@ function LookupCallbackAction (route, action) {
   };
 
   if (typeof action === 'string') {
-    return LookupCallbackAction(route, { prefixController: action });
+    return lookupCallbackAction(route, { prefixController: action });
   }
 
   if (action.hasOwnProperty('do')) {
@@ -245,24 +245,24 @@ function LookupCallbackAction (route, action) {
         func = module[name];
       }
       else {
-        func = NotImplementedFunction(route, "could not find action named '" + name + "' in module '" + joined + "'");
+        func = notImplementedFunction(route, "could not find action named '" + name + "' in module '" + joined + "'");
       }
     }
     catch (err) {
       if (! module.exists(joined)) {
-        func = NotImplementedFunction(route, 
+        func = notImplementedFunction(route, 
 				      "an error occurred while loading action named '" + name 
 				        + "' in module '" + joined + "': " + String(err));
       }
       else {
-        func = ErrorFunction(route,
+        func = errorFunction(route,
 			     "an error occurred while loading action named '" + name 
 			       + "' in module '" + joined + "': " + String(err));
       }
     }
 
     if (func === null || typeof func !== 'function') {
-      func = ErrorFunction(route, 
+      func = errorFunction(route, 
 			   "invalid definition for the action named '" + name 
 			     + "' in module '" + joined + "'");
     }
@@ -288,7 +288,7 @@ function LookupCallbackAction (route, action) {
 
             if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
               func = module[m]
-		|| ErrorFunction(route, 
+		|| errorFunction(route, 
 				 "invalid definition for " + m + " action in action controller module '" 
 				   + action.controller + "'");
 
@@ -298,7 +298,7 @@ function LookupCallbackAction (route, action) {
 
           if (module.hasOwnProperty('do')) {
             func = module['do']
-	      || ErrorFunction(route,
+	      || errorFunction(route,
 			       "invalid definition for do action in action controller module '"
 			         + action.controller + "'");
 
@@ -313,12 +313,12 @@ function LookupCallbackAction (route, action) {
     }
     catch (err) {
       if (! module.exists(action.controller)) {
-        return NotImplementedFunction(route, 
+        return notImplementedFunction(route, 
 				      "cannot load/execute action controller module '" 
 				        + action.controller + ": " + String(err));
       }
 
-      return ErrorFunction(route, 
+      return errorFunction(route, 
 			   "cannot load/execute action controller module '" 
 			     + action.controller + ": " + String(err));
     }
@@ -346,10 +346,10 @@ function LookupCallbackAction (route, action) {
           require(path);
         }
         catch (err) {
-	  efunc = ErrorFunction;
+	  efunc = errorFunction;
 
           if (! module.exists(path)) {
-	    efunc = NotImplementedFunction;
+	    efunc = notImplementedFunction;
           }
 
           return efunc(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
@@ -364,7 +364,7 @@ function LookupCallbackAction (route, action) {
 
             if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
               func = module[m]
-		|| ErrorFunction(route,
+		|| errorFunction(route,
 				 "Invalid definition for " + m + " action in prefix controller '"
 				   + action.prefixController + "'");
 
@@ -374,7 +374,7 @@ function LookupCallbackAction (route, action) {
   
           if (module.hasOwnProperty('do')) {
             func = module['do']
-	      || ErrorFunction(route, 
+	      || errorFunction(route, 
 			       "Invalid definition for do action in prefix controller '"
 			         + action.prefixController + "'");
 
@@ -382,7 +382,7 @@ function LookupCallbackAction (route, action) {
           }
         }
         catch (err) {
-          return ErrorFunction(route, 
+          return errorFunction(route, 
 			       "Cannot load/execute prefix controller '"
 			         + action.prefixController + "': " + String(err))(req, res, options, next);
         }
@@ -401,14 +401,14 @@ function LookupCallbackAction (route, action) {
 /// @brief looks up a callback
 ////////////////////////////////////////////////////////////////////////////////
 
-function LookupCallback (route) {
+function lookupCallback (route) {
   var result = null;
 
   if (route.hasOwnProperty('content')) {
-    result = LookupCallbackStatic(route.content);
+    result = lookupCallbackStatic(route.content);
   }
   else if (route.hasOwnProperty('action')) {
-    result = LookupCallbackAction(route, route.action);
+    result = lookupCallbackAction(route, route.action);
   }
 
   return result;
@@ -418,7 +418,7 @@ function LookupCallback (route) {
 /// @brief intersect methods 
 ////////////////////////////////////////////////////////////////////////////////
 
-function IntersectMethods (a, b) {
+function intersectMethods (a, b) {
   var d = {};
   var i;
   var j;
@@ -446,7 +446,7 @@ function IntersectMethods (a, b) {
 /// @brief defines a new route part
 ////////////////////////////////////////////////////////////////////////////////
 
-function DefineRoutePart (route, subwhere, parts, pos, constraint, callback) {
+function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
   var i;
   var p;
   var part;
@@ -469,7 +469,7 @@ function DefineRoutePart (route, subwhere, parts, pos, constraint, callback) {
     }
 
     if (pos + 1 < parts.length) {
-      DefineRoutePart(route, subwhere.exact[part], parts, pos + 1, constraint, callback);
+      defineRoutePart(route, subwhere.exact[part], parts, pos + 1, constraint, callback);
     }
     else {
       subwhere.exact[part].route = route;
@@ -507,7 +507,7 @@ function DefineRoutePart (route, subwhere, parts, pos, constraint, callback) {
         subsub.optional = part.optional || false;
 
         if (pos + 1 < parts.length) {
-          DefineRoutePart(route, subsub.match, parts, pos + 1, constraint, callback);
+          defineRoutePart(route, subsub.match, parts, pos + 1, constraint, callback);
         }
         else {
           subsub.match.route = route;
@@ -535,18 +535,18 @@ function DefineRoutePart (route, subwhere, parts, pos, constraint, callback) {
 /// @brief defines a new route
 ////////////////////////////////////////////////////////////////////////////////
 
-function DefineRoute (route, where, url, callback) {
+function defineRoute (route, where, url, callback) {
   var methods;
   var branch;
   var i;
   var j;
 
-  methods = IntersectMethods(url.methods, callback.methods);
+  methods = intersectMethods(url.methods, callback.methods);
 
   for (j = 0;  j < methods.length;  ++j) {
     var method = methods[j];
 
-    DefineRoutePart(route, where[method], url.urlParts, 0, url.constraint, callback);
+    defineRoutePart(route, where[method], url.urlParts, 0, url.constraint, callback);
   }
 }
 
@@ -554,7 +554,7 @@ function DefineRoute (route, where, url, callback) {
 /// @brief extracts the routing for a path and a a method
 ////////////////////////////////////////////////////////////////////////////////
 
-function FlattenRouting (routes, path, urlParameters, depth, prefix) {
+function flattenRouting (routes, path, urlParameters, depth, prefix) {
   var cur;
   var i;
   var k;
@@ -564,7 +564,7 @@ function FlattenRouting (routes, path, urlParameters, depth, prefix) {
     for (k in routes.exact) {
       if (routes.exact.hasOwnProperty(k)) {
         cur = path + "/" + k.replace(/([\.\+\*\?\^\$\(\)\[\]])/g, "\\$1");
-        result = result.concat(FlattenRouting(routes.exact[k],
+        result = result.concat(flattenRouting(routes.exact[k],
                                               cur,
                                               urlParameters.shallowCopy,
                                               depth + 1,
@@ -602,7 +602,7 @@ function FlattenRouting (routes, path, urlParameters, depth, prefix) {
 
       newUrlParameters[parameter.parameter] = depth;
 
-      result = result.concat(FlattenRouting(parameter.match,
+      result = result.concat(flattenRouting(parameter.match,
                                             cur,
                                             newUrlParameters,
                                             depth + 1,
@@ -628,7 +628,7 @@ function FlattenRouting (routes, path, urlParameters, depth, prefix) {
     }
     else {
       cur = path + "(/[^/]+)*";
-      result = result.concat(FlattenRouting(routes.prefix,
+      result = result.concat(flattenRouting(routes.prefix,
                              cur,
                              urlParameters.shallowCopy,
                              depth + 1,
@@ -719,7 +719,7 @@ function FlattenRouting (routes, path, urlParameters, depth, prefix) {
 /// - @c "string"
 ////////////////////////////////////////////////////////////////////////////////
 
-function DefineHttp (options) {
+function defineHttp (options) {
   var url = options.url;
   var contexts = options.context;
   var callback = options.callback;
@@ -922,21 +922,21 @@ function reloadRouting () {
     var url;
     var callback;
 
-    url = LookupUrl(urlPrefix, route.url);
+    url = lookupUrl(urlPrefix, route.url);
 
     if (url === null) {
       console.error("route '%s' has an unkown url, ignoring", JSON.stringify(route));
       return;
     }
 
-    callback = LookupCallback(route);
+    callback = lookupCallback(route);
 
     if (callback === null) {
       console.error("route '%s' has an unknown callback, ignoring", JSON.stringify(route));
       return;
     }
 
-    DefineRoute(route, storage, url, callback);
+    defineRoute(route, storage, url, callback);
   };
 
   // .............................................................................
@@ -984,8 +984,8 @@ function reloadRouting () {
 
     method = exports.ALL_METHODS[i];
 
-    a = FlattenRouting(RoutingCache.routes[method], "", {}, 0, false);
-    b = FlattenRouting(RoutingCache.middleware[method], "", {}, 0, false).reverse();
+    a = flattenRouting(RoutingCache.routes[method], "", {}, 0, false);
+    b = flattenRouting(RoutingCache.middleware[method], "", {}, 0, false).reverse();
 
     RoutingCache.flat[method] = b.concat(a);
   }
@@ -1498,10 +1498,10 @@ function redirectRequest (req, res, options, next) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // public functions
-exports.defineHttp              = DefineHttp;
+exports.defineHttp              = defineHttp;
 exports.getErrorMessage         = getErrorMessage;
 exports.getJsonBody             = getJsonBody;
-exports.errorFunction           = ErrorFunction;
+exports.errorFunction           = errorFunction;
 exports.reloadRouting           = reloadRouting;
 exports.firstRouting            = firstRouting;
 exports.nextRouting             = nextRouting;
