@@ -249,20 +249,30 @@ void ApplicationV8::skipUpgrade () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enters an context
+/// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext () {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  while (_freeContexts.empty()) {
+  while (_freeContexts.empty() && ! _stopping) {
     LOGGER_DEBUG << "waiting for unused V8 context";
     guard.wait();
+  }
+
+  // in case we are in the shutdown phase, do not enter a context!
+  // the context might have been deleted by the shutdown
+  if (_stopping) {
+    return 0;
   }
 
   LOGGER_TRACE << "found unused V8 context";
 
   V8Context* context = _freeContexts.back();
+
+  assert(context != 0);
+  assert(context->_isolate != 0);
+
   _freeContexts.pop_back();
   _busyContexts.insert(context);
 

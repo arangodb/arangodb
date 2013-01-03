@@ -30,6 +30,30 @@
 #include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief threshold for producing malloc warnings
+/// this is only active if zone debug is enabled. Any malloc operations that
+/// try to alloc more memory than the threshold will be logged so we can check
+/// why so much memory is needed
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -139,6 +163,11 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   char* m;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
+  // warn in the case of very big malloc operations
+  if (n >= MALLOC_WARNING_THRESHOLD) {
+    LOG_WARNING("big malloc action: %llu bytes in %s:%d", (unsigned long long) n, file, line);
+  }
+
   m = malloc((size_t) n + sizeof(uintptr_t));
 #else
   m = malloc((size_t) n);
