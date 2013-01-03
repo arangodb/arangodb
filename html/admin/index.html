@@ -42,7 +42,6 @@
   </head>
 
   <body>
-
   <div id="header" class="ui-layout-north">
     <div id="menue" class="ui-layout-north">
 
@@ -71,6 +70,11 @@
   </div>
   
   <div id="centerView" class="ui-layout-center" class="ui-layout-content">
+    <div id="dialog-deleteCollection" title="Really delete collection?" style="display:none;">
+      <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
+      The collection will be permanently deleted and cannot be recovered.</p>
+    </div>
+
     <div id="collectionsView">
       <button class="toolbar enabled" id="createCollection">
         <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
@@ -507,12 +511,6 @@
     </div>
 
   </div> 
-
-  <div id="dialog-deleteCollection" title="Really delete collection?" style="display:none;">
-    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
-    The collection will be permanently deleted and cannot be recovered.</p>
-  </div>
-
 
   </body>
 </html>
