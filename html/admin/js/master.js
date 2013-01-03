@@ -1807,23 +1807,26 @@ function createnav (menue) {
 $(function() {
   $('#footerSlideButton').click(function() {
     if(open === false) {
-      $('#footerSlideContent').animate({ height: '120px' });
+      $('#footerSlideContainer').animate({ 'height': '80px' });
+      $('#footerSlideContent').animate({ 'height': '80px' });
       $(this).css('backgroundPosition', 'bottom left');
       open = true;
       $('#movetologinButton').text("Hide");
     } 
     else {
-      $('#footerSlideContent').animate({ height: '25px' });
+      $('#footerSlideContainer').animate({ 'height': '25px' });
+      $('#footerSlideContent').animate({ 'height': '25px' });
       $(this).css('backgroundPosition', 'top left');
       open = false;
       $('#movetologinButton').text("Login");
     }
+    $('body').resizeAll();
   });
 
   $('#movetologinButton').click(function() {
     if(open === false) {
       $('#movetologinButton').text("Hide");
-      $('#footerSlideContent').animate({ height: '120px' });
+      $('#footerSlideContent').animate({ height: '80px' });
       $('#footerSlideButton').css('backgroundPosition', 'bottom left');
       open = true;
     } 
