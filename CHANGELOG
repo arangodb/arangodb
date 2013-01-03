@@ -1,6 +1,9 @@
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* reduce memory usage for the case when there are lots of small collections with few 
+  documents each
+
 * backported issue #300: Extend arangoImp to Allow importing resultset-like 
   (list of documents) formatted files
 
