@@ -73,7 +73,7 @@
     "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" }, 
     "ERROR_ARANGO_COLLECTION_TYPE_INVALID" : { "code" : 1218, "message" : "collection type invalid" }, 
     "ERROR_ARANGO_VALIDATION_FAILED" : { "code" : 1219, "message" : "validator failed" }, 
-    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1219, "message" : "parser failed" }, 
+    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parser failed" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
