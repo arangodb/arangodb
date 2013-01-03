@@ -1111,7 +1111,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (TRI_vocbase_t* vocbase,
 /// @brief deletes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
+static v8::Handle<v8::Value> RemoveVocbaseCol (TRI_vocbase_t* vocbase,
                                                TRI_vocbase_col_t const* collection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -1120,7 +1120,7 @@ static v8::Handle<v8::Value> DeleteVocbaseCol (TRI_vocbase_t* vocbase,
   if (argv.Length() < 1) {
     TRI_ReleaseCollection(collection);
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                                "usage: delete(<document>, <overwrite>, <waitForSync>)")));
+                                                                "usage: remove(<document>, <overwrite>, <waitForSync>)")));
   }
 
   TRI_voc_did_t did;
@@ -4042,7 +4042,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  return DeleteVocbaseCol(collection->_vocbase, collection, argv);
+  return RemoveVocbaseCol(collection->_vocbase, collection, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4865,7 +4865,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("corrupted vocbase")));
   }
 
-  return DeleteVocbaseCol(vocbase, 0, argv);
+  return RemoveVocbaseCol(vocbase, 0, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
