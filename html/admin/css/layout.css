@@ -402,6 +402,7 @@ pre ul li span{
 }
 
 #header {
+  min-height:78px;
   height:78px;
 }
 
@@ -416,7 +417,7 @@ pre ul li span{
 #brotkruemelnavi {
   margin-left: 10px;
   margin-right: 10px;  
-  min-width: 1024px; 
+  min-width: 600px; 
   font-size: 1em;
   height:30px;
   line-height: 30px;
@@ -589,19 +590,21 @@ form {
 
 #queryOutput {
   margin-bottom: 5px; 
-  height:35%;
+  height: 15%; 
+  position: relative;
   padding-top: 10px;  
   overflow-y: auto; 
   border: 1px solid black;
   background: white;  
   font-family: "courier";
-  text-size: 0.7em !important;  
+  text-size: 0.7em !important;
   resize: vertical !important; 
+  min-height: 10px;
 }
 
 #queryContent {
-  padding-top: 10px; 
-  height: 45%; 
+  padding-top: 10px;  
+  height: 45%;  
   font-family: "courier";
   width: 100%;
   resize: vertical; 
@@ -669,10 +672,9 @@ form {
 }
 
 #centerView {
-  min-width: 1024px; 
-  //background: #f1eee0 url(../media/images/bg.jpg);
+  min-width: 600px; 
   background-color: white;
-  overflow-y: auto; 
+  overflow-y: auto;
 }
 
 .dataTables_wrapper .ui-corner-tl { 
@@ -734,7 +736,7 @@ form {
 
 #footerSlideContainer {
 	position: fixed;
-	bottom:-1;
+	bottom: -1;
 	width: 100%;
 }
 #footerSlideButton {
@@ -919,7 +921,7 @@ form {
 }
 
 #queryForm {
-  margin-top: -3px;     
+  margin-top: -3px;      
 }
 
 #queryView {

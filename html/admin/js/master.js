@@ -375,12 +375,11 @@ var logTable = $('#logTableID').dataTable({
   $('body').layout({                                                                                               
     closable: false,             
     resizable: false,                                                                 
-    applyDefaultStyles: false,   
-    north__spacing_open:0,                                   
+    applyDefaultStyles: false, 
+    north__spacing_open: 0,                                   
     north__spacing_closed: 0,                                                                           
-    center__spacing_open:0,                                                      
-    center__spacing_open:0, 
-    south__spacing_closed: 0,  
+    center__spacing_open: 0,                                                      
+    south__spacing_open: 0, 
     south__spacing_closed: 0 
   });
 
