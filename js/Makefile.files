@@ -9,7 +9,8 @@
 ################################################################################
 
 JAVASCRIPT_JSLINT = \
-	@srcdir@/js/actions/system/api-collection.js
+	@srcdir@/js/actions/system/api-collection.js \
+	@srcdir@/js/actions/system/api-structure.js 
 
 ################################################################################
 ### @brief executes jslint

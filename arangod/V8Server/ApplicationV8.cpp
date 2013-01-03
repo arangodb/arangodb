@@ -43,14 +43,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace std;
 
-#include "js/common/bootstrap/js-modules.h"
-#include "js/common/bootstrap/js-monkeypatches.h"
-#include "js/common/bootstrap/js-print.h"
-#include "js/common/bootstrap/js-errors.h"
-#include "js/server/js-ahuacatl.h"
-#include "js/server/js-server.h"
-#include "js/server/js-version-check.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class V8GcThread
 // -----------------------------------------------------------------------------
@@ -529,7 +521,6 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
-  
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -548,17 +539,12 @@ bool ApplicationV8::prepare () {
 
   // set up the startup loader
   if (_startupPath.empty()) {
-    LOGGER_INFO << "using built-in JavaScript startup files";
-    _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
-    _startupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
-    _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
-    _startupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
-    _startupLoader.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
-    _startupLoader.defineScript("server/server.js", JS_server_server);
+    LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
   else {
     LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
-
     _startupLoader.setDirectory(_startupPath);
   }
 
@@ -576,7 +562,7 @@ bool ApplicationV8::prepare () {
     }
   }
 
-
+  // add v8 options
   if (_v8Options.size() > 0) {
     LOGGER_INFO << "using V8 options '" << _v8Options << "'";
     v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
@@ -659,7 +645,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
                                  "common/bootstrap/print.js",
                                  "common/bootstrap/errors.js",
                                  "server/ahuacatl.js",
-                                 "server/server.js"
+                                 "server/server.js",
+                                 "server/ArangoStructure.js"
   };
 
   LOGGER_TRACE << "initialising V8 context #" << i;
@@ -717,15 +704,11 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG << "running database version check";
 
-    const string script = _startupLoader.buildScript(JS_server_version_check);
-
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
     context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
-    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context->_context,
-                                                               v8::String::New(script.c_str()),
-                                                               v8::String::New("version-check.js"),
-                                                               false);
+
+    v8::Handle<v8::Value> result = _startupLoader.executeGlobalScript(context->_context, "server/version-check.js");
   
     if (! TRI_ObjectToBoolean(result)) {
       if (_performUpgrade) {

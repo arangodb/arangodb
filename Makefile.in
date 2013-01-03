@@ -1748,7 +1748,8 @@ WIKI = \
 	jsUnity
 
 JAVASCRIPT_JSLINT = \
-	@srcdir@/js/actions/system/api-collection.js
+	@srcdir@/js/actions/system/api-collection.js \
+	@srcdir@/js/actions/system/api-structure.js 
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 all: $(BUILT_SOURCES)
