@@ -1,6 +1,12 @@
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* small fix for logging of long messages: the last character of log messages longer
+  than 256 bytes was not logged.
+
+* fixed truncation of human-readable log messages for web interface: the trailing \0
+  byte was not appended for messages longer than 256 bytes
+
 * reduce memory usage for the case when there are lots of small collections with few 
   documents each
 

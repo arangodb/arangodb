@@ -96,7 +96,7 @@ namespace triagens {
 /// @brief return the payload (body) of the HTTP request to execute 
 ////////////////////////////////////////////////////////////////////////////////
       
-      virtual const char* payload (size_t*, const size_t) = 0;
+      virtual const char* payload (size_t*, const size_t, bool*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the HTTP headers for the oepration to execute

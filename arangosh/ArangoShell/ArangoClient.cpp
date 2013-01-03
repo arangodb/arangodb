@@ -358,6 +358,7 @@ void ArangoClient::parse (ProgramOptions& options,
   TRI_SetLogLevelLogging(_logLevel.c_str());
   TRI_CreateLogAppenderFile("-");
   TRI_SetLineNumberLogging(false);
+  TRI_SetThreadIdentifierLogging(false);
 
   // parse config file
   string configFile = "";
