@@ -90,11 +90,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
 
-#ifdef TRI_ENABLE_MRUBY
-#include "mr/common/bootstrap/mr-error.h"
-#include "mr/server/mr-server.h"
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
