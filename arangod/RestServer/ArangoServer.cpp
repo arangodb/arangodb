@@ -701,7 +701,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
     // run the shell
     if (mode != OperationMode::MODE_SCRIPT) {
-      printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+      printf("ArangoDB JavaScript emergency console [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
     }
     else {
       LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
@@ -1018,7 +1018,7 @@ int ArangoServer::executeRubyConsole () {
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
 
   // create a line editor
-  printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
+  printf("ArangoDB MRuby emergency console [DB version %s]\n", TRIAGENS_VERSION);
 
   MRLineEditor console(context->_mrb, ".arango-mrb");
 
