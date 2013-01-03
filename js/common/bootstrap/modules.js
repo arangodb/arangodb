@@ -5,13 +5,13 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, module, ModuleCache, SYS_EXECUTE, CONSOLE_ERROR,
- FS_MOVE, FS_REMOVE, FS_EXISTS, 
- SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT,
- SYS_PROCESS_STAT, SYS_READ, SYS_SPRINTF, SYS_TIME,
- SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUIET, MODULES_PATH,
- COLOR_OUTPUT, COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT,
- SYS_SHA256, SYS_WAIT, SYS_GETLINE */
+/*global 
+ require, module, 
+ SYS_EXECUTE, CONSOLE_ERROR, FS_MOVE, FS_REMOVE, FS_EXISTS, SYS_LOAD, SYS_LOG,
+ SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ, SYS_SPRINTF, SYS_TIME,
+ SYS_START_PAGER, SYS_STOP_PAGER, ARANGO_QUIET, MODULES_PATH, COLOR_OUTPUT,
+ COLOR_OUTPUT_RESET, COLOR_BRIGHT, PRETTY_PRINT, SYS_SHA256, SYS_WAIT, SYS_GETLINE 
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -50,18 +50,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module cache
-////////////////////////////////////////////////////////////////////////////////
-
-ModuleCache = {};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file exists cache
-////////////////////////////////////////////////////////////////////////////////
-
-ExistsCache = {};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief module constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -69,6 +57,18 @@ function Module (id) {
   this.id = id;
   this.exports = {};
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module cache
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.ModuleCache = {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief file exists cache
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.ModuleExistsCache = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a file and creates a new module descriptor
@@ -86,12 +86,12 @@ Module.prototype.require = function (path) {
   path = this.normalise(path);
 
   // check if you already know the module, return the exports
-  if (ModuleCache.hasOwnProperty(path)) {
-    return ModuleCache[path].exports;
+  if (this.ModuleCache.hasOwnProperty(path)) {
+    return this.ModuleCache[path].exports;
   }
 
   // locate file and read content
-  raw = ModuleCache["/internal"].exports.readFile(path);
+  raw = this.ModuleCache["/internal"].exports.readFile(path);
 
   // test for parse errors first and fail early if a parse error detected
   if (! SYS_PARSE(raw.content, path)) {
@@ -99,7 +99,7 @@ Module.prototype.require = function (path) {
   }
 
   // create a new sandbox and execute
-  module = ModuleCache[path] = new Module(path);
+  module = this.ModuleCache[path] = new Module(path);
 
   content = "(function (module, exports, require, print) {"
           + raw.content 
@@ -115,7 +115,7 @@ Module.prototype.require = function (path) {
     f(module,
       module.exports,
       function(path) { return module.require(path); },
-      ModuleCache["/internal"].exports.print);
+      this.ModuleCache["/internal"].exports.print);
   }
   catch (err) {
     throw "Javascript exception in file '" + path + "': " + err.stack;
@@ -123,6 +123,14 @@ Module.prototype.require = function (path) {
 
   return module.exports;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if require found a file
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.exists = function (path) {
+  return this.ModuleExistsCache[path];
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalises a path
@@ -192,7 +200,7 @@ Module.prototype.unload = function (path) {
     return;
   }
 
-  delete ModuleCache[norm];
+  delete this.ModuleCache[norm];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,8 +210,8 @@ Module.prototype.unload = function (path) {
 Module.prototype.unloadAll = function () {
   var path;
 
-  for (path in ModuleCache) {
-    if (ModuleCache.hasOwnProperty(path)) {
+  for (path in this.ModuleCache) {
+    if (this.ModuleCache.hasOwnProperty(path)) {
       this.unload(path);
     }
   }
@@ -213,7 +221,7 @@ Module.prototype.unloadAll = function () {
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
-module = ModuleCache["/"] = new Module("/");
+module = Module.prototype.ModuleCache["/"] = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global require function
@@ -259,10 +267,10 @@ function require (path) {
 /// @brief file-system module
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/fs"] = new Module("/fs");
+Module.prototype.ModuleCache["/fs"] = new Module("/fs");
 
 (function () {
-  var fs = ModuleCache["/fs"].exports;
+  var fs = Module.prototype.ModuleCache["/fs"].exports;
 
   fs.exists = FS_EXISTS;
   fs.move = FS_MOVE;
@@ -286,11 +294,11 @@ ModuleCache["/fs"] = new Module("/fs");
 /// @brief internal module
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/internal"] = new Module("/internal");
+Module.prototype.ModuleCache["/internal"] = new Module("/internal");
 
 (function () {
-  var internal = ModuleCache["/internal"].exports;
-  var fs = ModuleCache["/fs"].exports;
+  var internal = Module.prototype.ModuleCache["/internal"].exports;
+  var fs = Module.prototype.ModuleCache["/fs"].exports;
 
   // system functions
   internal.execute = SYS_EXECUTE;
@@ -387,6 +395,20 @@ ModuleCache["/internal"] = new Module("/internal");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extends a prototype
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.extend = function (target, source) {
+    Object.getOwnPropertyNames(source)
+      .forEach(function(propName) {
+        Object.defineProperty(target, propName,
+			      Object.getOwnPropertyDescriptor(source, propName));
+      });
+
+    return target;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file from the module path or the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -394,8 +416,6 @@ ModuleCache["/internal"] = new Module("/internal");
     var i;
     var mc;
     var n;
-
-    var existsCache = ExistsCache;
 
     // try to load the file
     var paths = internal.MODULES_PATH;
@@ -411,7 +431,7 @@ ModuleCache["/internal"] = new Module("/internal");
       }
 
       if (fs.exists(n)) {
-        existsCache[path] = true;
+        Module.prototype.ModuleExistsCache[path] = true;
         return { path : n, content : internal.read(n) };
       }
     }
@@ -424,7 +444,7 @@ ModuleCache["/internal"] = new Module("/internal");
 
       if (n !== null) {
         if (n.hasOwnProperty('content')) {
-          existsCache[path] = true;
+          Module.prototype.ModuleExistsCache[path] = true;
           return { path : "_collection/" + path, content : n.content };
         }
         else {
@@ -433,7 +453,8 @@ ModuleCache["/internal"] = new Module("/internal");
       }
     }
 
-    existsCache[path] = false;
+    Module.prototype.ModuleExistsCache[path] = false;
+
     throw "cannot find a file named '"
         + path
         + "' using the module path(s) '" 
@@ -520,11 +541,11 @@ ModuleCache["/internal"] = new Module("/internal");
 /// @brief console module
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/console"] = new Module("/console");
+Module.prototype.ModuleCache["/console"] = new Module("/console");
 
 (function () {
-  var internal = ModuleCache["/internal"].exports;
-  var console = ModuleCache["/console"].exports;
+  var internal = Module.prototype.ModuleCache["/internal"].exports;
+  var console = Module.prototype.ModuleCache["/console"].exports;
 
   console.getline = SYS_GETLINE;
 
