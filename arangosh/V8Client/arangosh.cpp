@@ -843,6 +843,12 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   string goodPrompt;
   string badPrompt;
   
+#ifdef __APPLE__
+  // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
+  // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
+  // we will therefore disable colorful prompts for MacOS.
+  goodPrompt = badPrompt = string("arangosh> ");
+#else
   if (BaseClient.colors()) {
     goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
                  string("arangosh>") + 
@@ -857,7 +863,8 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   else {
     goodPrompt = badPrompt = string("arangosh> ");
   }
-  
+#endif
+   
   cout << endl;
 
   while (true) {
