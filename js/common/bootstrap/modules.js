@@ -417,19 +417,21 @@ ModuleCache["/internal"] = new Module("/internal");
     }
 
     // try to load the module from the database
-    mc = internal.db._collection("_modules");
+    if (internal.db !== undefined) {
+      mc = internal.db._collection("_modules");
 
-    if (mc !== null && ("firstExample" in mc)) {
-      n = mc.firstExample({ path: path });
+      if (mc !== null && ("firstExample" in mc)) {
+	n = mc.firstExample({ path: path });
 
-      if (n !== null) {
-        if (n.hasOwnProperty('content')) {
-          existsCache[path] = true;
-          return { path : "_collection/" + path, content : n.content };
-        }
-        else {
-	  require("console").error("found empty content in '%s'", JSON.stringify(n));
-        }
+	if (n !== null) {
+          if (n.hasOwnProperty('content')) {
+            existsCache[path] = true;
+            return { path : "_collection/" + path, content : n.content };
+          }
+          else {
+	    require("console").error("found empty content in '%s'", JSON.stringify(n));
+          }
+	}
       }
     }
 

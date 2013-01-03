@@ -281,7 +281,7 @@ endif
 ### @brief unit tests
 ################################################################################
 
-include UnitTests/Makefile.files
+include UnitTests/Makefile.unittests
 
 ################################################################################
 ### @brief error code file
