@@ -256,7 +256,8 @@ namespace triagens {
             const HttpRequest::HttpRequestType type = _operation->type();
             const string url = _operation->url();
             size_t payloadLength = 0;
-            const char* payload = _operation->payload(&payloadLength, _offset + _counter++);
+            bool mustFree = false;
+            const char* payload = _operation->payload(&payloadLength, _offset + _counter++, &mustFree);
             const map<string, string>& headers = _operation->headers();
 
             // headline, e.g. POST /... HTTP/1.1
@@ -271,6 +272,10 @@ namespace triagens {
             // body
             batchPayload.appendText(payload, payloadLength);
             batchPayload.appendText("\r\n", 2);
+
+            if (mustFree) {
+              TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
+            }
           }
 
           // end of MIME
@@ -316,7 +321,8 @@ namespace triagens {
           const HttpRequest::HttpRequestType type = _operation->type();
           const string url = _operation->url();
           size_t payloadLength = 0;
-          const char* payload = _operation->payload(&payloadLength, _offset + _counter++);
+          bool mustFree = false;
+          const char* payload = _operation->payload(&payloadLength, _offset + _counter++, &mustFree);
           const map<string, string>& headers = _operation->headers();
 
           Timing timer(Timing::TI_WALLCLOCK);
@@ -326,6 +332,10 @@ namespace triagens {
                                                       payloadLength,
                                                       headers);
           _time += ((double) timer.time()) / 1000000.0;
+            
+          if (mustFree) {
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
+          }
 
           if (result == 0) {
             _operationsCounter->incFailures(1);

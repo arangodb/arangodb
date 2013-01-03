@@ -170,8 +170,10 @@ struct VersionTest : public BenchmarkOperation {
     return HttpRequest::HTTP_REQUEST_GET;
   }
   
-  const char* payload (size_t* length, const size_t counter) {
+  const char* payload (size_t* length, const size_t counter, bool* mustFree) {
     static const char* payload = "";
+
+    *mustFree = false;
     *length = 0;
     return payload;
   }
@@ -219,7 +221,6 @@ struct DocumentCreationTest : public BenchmarkOperation {
     TRI_AppendCharStringBuffer(_buffer, '}');
 
     _length = TRI_LengthStringBuffer(_buffer);
-  
   }
 
   ~DocumentCreationTest () {
@@ -242,7 +243,8 @@ struct DocumentCreationTest : public BenchmarkOperation {
     return HttpRequest::HTTP_REQUEST_POST;
   }
   
-  const char* payload (size_t* length, const size_t counter) {
+  const char* payload (size_t* length, const size_t counter, bool* mustFree) {
+    *mustFree = false;
     *length = _length;
     return (const char*) _buffer->_buffer;
   }
@@ -262,6 +264,92 @@ struct DocumentCreationTest : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            document creation test
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup V8Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+struct CollectionCreationTest : public BenchmarkOperation {
+  CollectionCreationTest () 
+    : BenchmarkOperation (),
+      _url() {
+    _url = "/_api/collection";
+
+  }
+
+  ~CollectionCreationTest () {
+  }
+  
+  BenchmarkCounter<uint64_t>* getSharedCounter () {
+    if (_counter == 0) {
+      _counter = new BenchmarkCounter<uint64_t>(0, 1024 * 1024);
+    }
+
+    return _counter;
+  }
+  
+  string collectionName () {
+    return "";
+  }
+  
+  const bool useCollection () const {
+    return false;
+  }
+
+  const string& url () {
+    return _url;
+  }
+
+  const HttpRequest::HttpRequestType type () {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+  
+  const char* payload (size_t* length, const size_t counter, bool* mustFree) {
+    BenchmarkCounter<uint64_t>* ctr = getSharedCounter();
+    TRI_string_buffer_t* buffer;
+    char* data;
+
+    ctr->next(1);
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 64);
+    if (buffer == 0) {
+      return 0;
+    }
+    TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendUInt64StringBuffer(buffer, ctr->getValue());
+    TRI_AppendStringStringBuffer(buffer, "\"}");
+
+    *length = TRI_LengthStringBuffer(buffer);
+   
+    // this will free the string buffer frame, but not the string
+    data = buffer->_buffer; 
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    *mustFree = true;
+    return (const char*) data;
+  }
+  
+  const map<string, string>& headers () {
+    static const map<string, string> headers;
+    return headers;
+  }
+
+  static BenchmarkCounter<uint64_t>* _counter;
+
+  string _url;
+};
+
+BenchmarkCounter<uint64_t>* CollectionCreationTest::_counter = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -378,6 +466,9 @@ int main (int argc, char* argv[]) {
   else if (TestCase == "document") {
     testCase = new DocumentCreationTest();
   }
+  else if (TestCase == "collection") {
+    testCase = new CollectionCreationTest();
+  }
   else {
     cerr << "invalid test case name " << TestCase << endl;
     exit(EXIT_FAILURE);
@@ -432,7 +523,7 @@ int main (int argc, char* argv[]) {
   }
 
   while (1) {
-    size_t numOperations = operationsCounter();
+    size_t numOperations = operationsCounter.getValue();
 
     if (numOperations >= (size_t) Operations) {
       break;

@@ -126,6 +126,12 @@ class v8_action_t : public TRI_action_t {
     HttpResponse* execute (TRI_vocbase_t* vocbase, HttpRequest* request) {
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext();
 
+      // note: the context might be 0 in case of shut-down
+      if (context == 0) {
+        // it is safe to return 0 as the caller checks for a 0 return value
+        return 0;
+      }
+
       READ_LOCKER(_callbacksLock);
 
       map< v8::Isolate*, v8::Persistent<v8::Function> >::iterator i = _callbacks.find(context->_isolate);
