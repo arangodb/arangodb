@@ -245,6 +245,7 @@
         sep = ", ";
       }
 
+      internal.output(" ");
       internal.printIndent(level);
 
       internal.output("]");
@@ -290,6 +291,7 @@
       }
     }
 
+    internal.output(" ");
     internal.printIndent(level);
 
     internal.output("}");
