@@ -1315,7 +1315,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
     v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
     v8::Handle<v8::String> isSystemKey = v8::String::New("isSystem");
-    v8::Handle<v8::String> volatileKey = v8::String::New("volatile");
+    v8::Handle<v8::String> volatileKey = v8::String::New("isVolatile");
     v8::Handle<v8::String> createOptionsKey = v8::String::New("createOptions");
 
     if (p->Has(journalSizeKey)) {
@@ -1324,7 +1324,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       if (s < TRI_JOURNAL_MINIMAL_SIZE) {
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "<properties>.journalSize too small")));
+                                                   "<properties>.journalSize is too small")));
       }
 
       // overwrite journal size with user-specified value
@@ -1348,7 +1348,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     }
 
     if (p->Has(volatileKey)) {
-      parameter._volatile = TRI_ObjectToBoolean(p->Get(volatileKey));
+      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(volatileKey));
+    }
+    
+    if (parameter._isVolatile && parameter._waitForSync) {
+      // the combination of waitForSync and isVolatile makes no sense
+      parameter._waitForSync = false;
     }
   }
   else {
@@ -5119,7 +5124,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   if (   key == "toString"
       || key == "toJSON"
       || key == "hasOwnProperty" // this prevents calling the property getter again (i.e. recursion!)
-      || key[0] == '_') { // hide system collections
+      || TRI_IsSystemCollectionName(key.c_str())) { // hide system collections
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -5646,7 +5651,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
   }
 
-  if (key[0] == '_') {
+  if (TRI_IsSystemCollectionName(key.c_str())) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 

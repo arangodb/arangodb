@@ -298,7 +298,6 @@ static int WriteElement (TRI_document_collection_t* document,
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   journal->_written = ((char*) result) + marker->_size;
-  journal->_nWritten++;
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -1906,7 +1905,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // then the shape collection
   waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
-  isVolatile  = parameter->_volatile;
+  isVolatile  = parameter->_isVolatile;
 
   // if the collection has the _volatile flag, the shapes collection is also volatile.
   shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync, isVolatile);

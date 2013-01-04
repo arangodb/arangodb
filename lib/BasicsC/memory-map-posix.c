@@ -57,7 +57,6 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
   // #define MS_SYNC         4               /* synchronous memory sync */
   // Note: under windows all flushes are achieved synchronously
   //
-  // Note: file handle is a pointer to the file descriptor (which is an integer)
   // *mmHandle should always be NULL
   // ...........................................................................
   
@@ -91,13 +90,13 @@ int TRI_FlushMMFile(int fileDescriptor, void** mmHandle, void* startingAddress, 
 }
 
 int TRI_MMFile(void* memoryAddress, 
-           size_t numOfBytesToInitialise, 
-           int memoryProtection, 
-           int flags,
-           int fileDescriptor, 
-           void** mmHandle,
-           int64_t offset,
-           void** result) {
+               size_t numOfBytesToInitialise, 
+               int memoryProtection, 
+               int flags,
+               int fileDescriptor, 
+               void** mmHandle,
+               int64_t offset,
+               void** result) {
            
   off_t offsetRetyped = (off_t)(offset);
   

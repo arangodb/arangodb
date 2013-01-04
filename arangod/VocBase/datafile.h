@@ -234,28 +234,27 @@ typedef struct TRI_datafile_s {
   TRI_voc_size_t _currentSize;   // current size of the datafile
   TRI_voc_size_t _footerSize;    // size of the final footer
 
-  int _lastError;                // last (cirtical) error
-  bool _isSealed;                // true, if footer has been written
-
   char* _data;                   // start of the data array
   char* _next;                   // end of the current data
 
+  // function pointers
   bool (*isPhysical)(const struct TRI_datafile_s* const); // returns true if the datafile is a physical file
   const char* (*getName)(const struct TRI_datafile_s* const); // returns the name of a datafile
+  void (*close)(struct TRI_datafile_s* const); // close the datafile
+  void (*destroy)(struct TRI_datafile_s*); // destroys the datafile
   bool (*sync)(const struct TRI_datafile_s* const, char const*, char const*); // syncs the datafile
+  int (*truncate)(struct TRI_datafile_s* const, const off_t); // truncates the datafile to a specific length
   
+  int _lastError;                // last (cirtical) error
   bool _full;                    // at least one request was rejected because there is not enough room
+  bool _isSealed;                // true, if footer has been written
 
   // .............................................................................
   // access to the following attributes must be protected by a _lock
   // .............................................................................
 
   char* _synced;                 // currently synced upto, not including
-  TRI_voc_size_t _nSynced;       // number of synced markers
-  double _lastSynced;            // timestamp of the last sync
-
   char* _written;                // currently written upto, not including
-  TRI_voc_size_t _nWritten;      // number of markers in file
 }
 TRI_datafile_t;
 
@@ -419,28 +418,50 @@ TRI_df_skip_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
 ///
+/// This either creates a datafile using @ref TRI_CreateAnonymousDatafile or
+/// ref TRI_CreatePhysicalDatafile, based on the first parameter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_datafile_t* TRI_CreateDatafile (char const*, 
+                                    TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new anonymous datafile
+///
+/// You must specify a maximal size for the datafile. The maximal
+/// size must be divisible by the page size. If it is not, then the size is
+/// rounded down. The memory for the datafile is mmapped. The create function
+/// automatically adds a @ref TRI_df_footer_marker_t to the file.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new physical datafile
+///
 /// You must specify a directory. This directory must exist and must be
 /// writable. You must also specify a maximal size for the datafile. The maximal
 /// size must be divisible by the page size. If it is not, then the size is
 /// rounded down.  The datafile is created as sparse file. So there is a chance
 /// that writing to the datafile will fill up your filesystem. This file is then
-/// mapped into the address of the process using mmap. The create functions
+/// mapped into the address of the process using mmap. The create function
 /// automatically adds a @ref TRI_df_footer_marker_t to the file.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateDatafile (char const* directory, TRI_voc_size_t maximalSize);
+TRI_datafile_t* TRI_CreatePhysicalDatafile (char const*, 
+                                            TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyDatafile (TRI_datafile_t* datafile);
+void TRI_DestroyDatafile (TRI_datafile_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and but frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeDatafile (TRI_datafile_t* datafile);
+void TRI_FreeDatafile (TRI_datafile_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

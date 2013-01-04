@@ -923,9 +923,9 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   bool ok;
 
   TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE, 0);
-  // set waitForSync and volatile for shapes collection
+  // set waitForSync and isVolatile for shapes collection
+  parameter._isVolatile  = isVolatile;
   parameter._waitForSync = waitForSync;
-  parameter._volatile  = isVolatile;
 
   collection = TRI_CreateShapeCollection(vocbase, path, &parameter);
 
