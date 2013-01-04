@@ -915,19 +915,19 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
                                    char const* path,
                                    char const* name, 
-                                   const bool waitForSync) {
+                                   const bool waitForSync,
+                                   const bool isVolatile) {
   voc_shaper_t* shaper;
   TRI_shape_collection_t* collection;
   TRI_col_info_t parameter;
   bool ok;
 
   TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE, 0);
-  // override wait for sync for shapes
+  // set waitForSync and volatile for shapes collection
   parameter._waitForSync = waitForSync;
+  parameter._volatile  = isVolatile;
 
-  
   collection = TRI_CreateShapeCollection(vocbase, path, &parameter);
-
 
   if (collection == NULL) {
     return NULL;

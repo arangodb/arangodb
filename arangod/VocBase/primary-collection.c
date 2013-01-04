@@ -205,7 +205,7 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
 
   cm._cid = collection->_info._cid;
 
-  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
+  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
 
   res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
 

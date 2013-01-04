@@ -396,7 +396,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   header = document->_headers->verify(document->_headers, header);
 
   // generate crc
-  TRI_FillCrcKeyMarkerDatafile(&marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
+  TRI_FillCrcKeyMarkerDatafile(journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
 
   // and write marker and blob
   res = WriteElement(document, journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize, *result);
@@ -637,7 +637,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // .............................................................................
 
   // generate crc
-  TRI_FillCrcMarkerDatafile(&marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
+  TRI_FillCrcMarkerDatafile(journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
 
   // and write marker and blob
   // TODO: update 
@@ -762,7 +762,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   }
 
   // generate crc
-  TRI_FillCrcMarkerDatafile(&marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0);
+  TRI_FillCrcMarkerDatafile(journal, &marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0);
 
   // and write marker and blob
   res = WriteElement(document, journal, &marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0, result);
@@ -1877,6 +1877,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
   bool waitForSync;
+  bool isVolatile;
 
   if (cid > 0) {
     TRI_UpdateTickVocBase(cid);
@@ -1905,7 +1906,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // then the shape collection
   waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
-  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync);
+  isVolatile  = parameter->_volatile;
+
+  // if the collection has the _volatile flag, the shapes collection is also volatile.
+  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync, isVolatile);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");
