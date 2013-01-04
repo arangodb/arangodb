@@ -1315,6 +1315,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
     v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
     v8::Handle<v8::String> isSystemKey = v8::String::New("isSystem");
+    v8::Handle<v8::String> volatileKey = v8::String::New("volatile");
     v8::Handle<v8::String> createOptionsKey = v8::String::New("createOptions");
 
     if (p->Has(journalSizeKey)) {
@@ -1344,6 +1345,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 
     if (p->Has(isSystemKey)) {
       parameter._isSystem = TRI_ObjectToBoolean(p->Get(isSystemKey));
+    }
+
+    if (p->Has(volatileKey)) {
+      parameter._volatile = TRI_ObjectToBoolean(p->Get(volatileKey));
     }
   }
   else {
@@ -2895,7 +2900,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._type = TRI_DOC_MARKER_KEY_DOCUMENT;
             newMarker.base._tick = oldMarker->base._tick;
             newMarker.base._size = newMarkerSize + keyBodySize + bodySize;
-            TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
+            TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
             writeResult = write(fdout, &newMarker, sizeof(newMarker));
             (void) writeResult;
@@ -2964,8 +2969,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base.base._size = newMarkerSize + keyBodySize + bodySize;
             newMarker.base.base._type = TRI_DOC_MARKER_KEY_EDGE;
             newMarker.base.base._tick = oldMarker->base.base._tick;
-
-            TRI_FillCrcKeyMarkerDatafile(&newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
+            TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
             writeResult = write(fdout, &newMarker, newMarkerSize);
             (void) writeResult;
@@ -3007,8 +3011,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._size = newMarkerSize + keyBodySize;
             newMarker.base._type = TRI_DOC_MARKER_KEY_DELETION;
             newMarker.base._tick = oldMarker->base._tick;
-
-            TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
+            TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
 
             writeResult = write(fdout, &newMarker, newMarkerSize);
             (void) writeResult;

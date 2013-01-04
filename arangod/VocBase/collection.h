@@ -215,18 +215,19 @@ TRI_col_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_info_s {
-  TRI_col_version_t _version;        // collection version
-  TRI_col_type_e _type;              // collection type
-  TRI_voc_cid_t _cid;                // collection identifier
+  TRI_col_version_t  _version;         // collection version
+  TRI_col_type_e     _type;            // collection type
+  TRI_voc_cid_t      _cid;             // collection identifier
+  struct TRI_json_s* _options;         // optional collection options
+  TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
-  char _name[TRI_COL_PATH_LENGTH];   // name of the collection
-  TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
-  bool _waitForSync;                 // if true, wait for msync
+  char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
 
-  bool _isSystem;                    // if true, this is a system collection
-  bool _deleted;                     // if true, collection has been deleted
-  
-  struct TRI_json_s* _options;       // optional collection options
+  // flags
+  bool               _deleted : 1;     // if true, collection has been deleted
+  bool               _isSystem : 1;    // if true, this is a system collection
+  bool               _volatile : 1;    // if true, collection is memory-only
+  bool               _waitForSync : 1; // if true, wait for msync
 }
 TRI_col_info_t;
 

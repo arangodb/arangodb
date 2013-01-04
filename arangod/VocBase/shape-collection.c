@@ -131,7 +131,7 @@ static bool CreateJournal (TRI_shape_collection_t* collection) {
 
   cm._cid = collection->base._info._cid;
 
-  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
+  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
 
   // on journal creation, always use waitForSync = true
   res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
@@ -336,7 +336,7 @@ TRI_shape_collection_t* TRI_CreateShapeCollection (TRI_vocbase_t* vocbase,
   }
 
   parameter->_type = TRI_COL_TYPE_SHAPE;
-  parameter->_cid = TRI_NewTickVocBase();
+  parameter->_cid  = TRI_NewTickVocBase();
   parameter->_waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
 
   collection = TRI_CreateCollection(vocbase, &shape->base, path, parameter);
@@ -401,12 +401,8 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   TRI_datafile_t* journal;
   int res;
 
-
   // generate a new tick
   marker->_tick = TRI_NewTickVocBase();
-
-  // generate crc
-  TRI_FillCrcMarkerDatafile(marker, markerSize, 0, 0, body, bodySize);
 
   // lock the collection
   TRI_LockMutex(&collection->_lock);
@@ -414,6 +410,7 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
   if (collection->base._state != TRI_COL_STATE_WRITE) {
     if (collection->base._state == TRI_COL_STATE_READ) {
       TRI_UnlockMutex(&collection->_lock);
+
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
@@ -426,8 +423,12 @@ int TRI_WriteShapeCollection (TRI_shape_collection_t* collection,
 
   if (journal == NULL) {
     TRI_UnlockMutex(&collection->_lock);
+
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
+  
+  // generate crc
+  TRI_FillCrcMarkerDatafile(journal, marker, markerSize, 0, 0, body, bodySize);
 
   // and write marker and shape
   res = WriteElement(collection, journal, *result, marker, markerSize, body, bodySize);

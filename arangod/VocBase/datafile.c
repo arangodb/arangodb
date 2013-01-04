@@ -31,11 +31,11 @@
 
 #include "datafile.h"
 
-#include <BasicsC/hashes.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/memory-map.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/files.h>
+#include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/memory-map.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/files.h"
 
 
 // #define DEBUG_DATAFILE 1
@@ -50,6 +50,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the datafile is a physical file (true) or an
+/// anonymous mapped region (false)
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsPhysicalDatafile (const TRI_datafile_t* const datafile) {
+  return datafile->_filename != NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static const char* GetNameDatafile (const TRI_datafile_t* const datafile) {
+  if (datafile->_filename == NULL) {
+    // anonymous regions do not have a filename
+    return "anonymous region";
+  }
+
+  // return name of the physical file
+  return datafile->_filename;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static bool SyncDatafile (const TRI_datafile_t* const datafile, 
+                          char const* begin, 
+                          char const* end) {
+  // TODO: remove
+  void* lol = NULL;
+
+  if (datafile->_filename == NULL) {
+    // anonymous regions do not need to be synced
+    return true;
+  }
+
+  assert(datafile->_fd > 0);
+
+  return TRI_msync(datafile->_fd, &lol, begin, end);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -62,31 +105,45 @@ static void InitDatafile (TRI_datafile_t* datafile,
                           TRI_voc_fid_t tick,
                           char* data) {
 
-  datafile->_state = TRI_DF_STATE_READ;
-  datafile->_fid = tick;
+  // filename is a string for physical datafiles, and NULL for anonymous regions
+  // fd is a positive value for physical datafiles, and -1 for anonymous regions
+  if (datafile->_filename == NULL) {
+    assert(datafile->_fd == -1);
+  }
+  else {
+    assert(datafile->_fd > 0);
+  }
 
-  datafile->_filename = filename;
-  datafile->_fd = fd;
-  datafile->_mmHandle = mmHandle;
+  datafile->_state       = TRI_DF_STATE_READ;
+  datafile->_fid         = tick;
+
+  datafile->_filename    = filename;
+  datafile->_fd          = fd;
+  datafile->_mmHandle    = mmHandle;
 
   datafile->_maximalSize = maximalSize;
   datafile->_currentSize = currentSize;
-  datafile->_footerSize = sizeof(TRI_df_footer_marker_t);
+  datafile->_footerSize  = sizeof(TRI_df_footer_marker_t);
 
-  datafile->_isSealed = false;
-  datafile->_lastError = TRI_ERROR_NO_ERROR;
+  datafile->_isSealed    = false;
+  datafile->_lastError   = TRI_ERROR_NO_ERROR;
 
-  datafile->_full = false;
+  datafile->_full        = false;
 
-  datafile->_data = data;
-  datafile->_next = data + currentSize;
+  datafile->_data        = data;
+  datafile->_next        = data + currentSize;
 
-  datafile->_synced = data;
-  datafile->_nSynced = 0;
-  datafile->_lastSynced = 0;
+  datafile->_synced      = data;
+  datafile->_nSynced     = 0;
+  datafile->_lastSynced  = 0;
 
-  datafile->_written = NULL;
-  datafile->_nWritten = 0;
+  datafile->_written     = NULL;
+  datafile->_nWritten    = 0;
+
+  // initialise function pointers
+  datafile->isPhysical   = &IsPhysicalDatafile;
+  datafile->getName      = &GetNameDatafile;
+  datafile->sync         = &SyncDatafile;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,7 +744,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename, TRI_voc_size_t maximal
 
 
   // create CRC
-  TRI_FillCrcMarkerDatafile(&header.base, sizeof(TRI_df_header_marker_t), 0, 0, 0, 0);
+  TRI_FillCrcMarkerDatafile(datafile, &header.base, sizeof(TRI_df_header_marker_t), 0, 0, 0, 0);
 
   // reserve space and write header to file
   result = TRI_ReserveElementDatafile(datafile, header.base._size, &position);
@@ -783,56 +840,62 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
 /// @brief creates a CRC and writes that into the header
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillCrcMarkerDatafile (TRI_df_marker_t* marker,
+void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
+                                TRI_df_marker_t* marker,
                                 TRI_voc_size_t markerSize,
                                 void const* keyBody,
                                 TRI_voc_size_t keyBodySize,
                                 void const* body,
                                 TRI_voc_size_t bodySize) {
-  TRI_voc_crc_t crc;
-
   marker->_crc = 0;
 
-  crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+  if (datafile->isPhysical(datafile)) {
+    TRI_voc_crc_t crc;
 
-  if (keyBody != NULL && 0 < keyBodySize) {
-    crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
+    crc = TRI_InitialCrc32();
+    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+
+    if (keyBody != NULL && 0 < keyBodySize) {
+      crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
+    }
+
+    if (body != NULL && 0 < bodySize) {
+      crc = TRI_BlockCrc32(crc, body, bodySize);
+    }
+
+    marker->_crc = TRI_FinalCrc32(crc);
   }
-
-  if (body != NULL && 0 < bodySize) {
-    crc = TRI_BlockCrc32(crc, body, bodySize);
-  }
-
-  marker->_crc = TRI_FinalCrc32(crc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillCrcKeyMarkerDatafile (TRI_df_marker_t* marker,
-                                TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
-                                void const* body,
-                                TRI_voc_size_t bodySize) {
-  TRI_voc_crc_t crc;
-
+void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile, 
+                                   TRI_df_marker_t* marker,
+                                   TRI_voc_size_t markerSize,
+                                   void const* keyBody,
+                                   TRI_voc_size_t keyBodySize,
+                                   void const* body,
+                                   TRI_voc_size_t bodySize) {
   marker->_crc = 0;
 
-  crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+  if (datafile->isPhysical(datafile)) {
+    TRI_voc_crc_t crc;
 
-  if (keyBody != NULL && 0 < keyBodySize) {
-    crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
+    crc = TRI_InitialCrc32();
+    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+
+    if (keyBody != NULL && 0 < keyBodySize) {
+      crc = TRI_BlockCrc32(crc, keyBody, keyBodySize);
+    }
+
+    if (body != NULL && 0 < bodySize) {
+      crc = TRI_BlockCrc32(crc, body, bodySize);
+    }
+
+    marker->_crc = TRI_FinalCrc32(crc);
   }
-
-  if (body != NULL && 0 < bodySize) {
-    crc = TRI_BlockCrc32(crc, body, bodySize);
-  }
-
-  marker->_crc = TRI_FinalCrc32(crc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -924,7 +987,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
   if (forceSync) {
     bool ok;
 
-    ok = TRI_msync(datafile->_fd, datafile->_mmHandle, position, ((char*) position) + size);
+    ok = datafile->sync(datafile, position, ((char*) position) + size);
 
     if (! ok) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
@@ -1156,7 +1219,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   footer.base._type = TRI_DF_MARKER_FOOTER;
 
   // create CRC
-  TRI_FillCrcMarkerDatafile(&footer.base, sizeof(TRI_df_footer_marker_t), 0, 0, 0, 0);
+  TRI_FillCrcMarkerDatafile(datafile, &footer.base, sizeof(TRI_df_footer_marker_t), 0, 0, 0, 0);
 
   // reserve space and write footer to file
   datafile->_footerSize = 0;
@@ -1172,9 +1235,10 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   }
 
   // sync file
-  ok = TRI_msync(datafile->_fd, datafile->_mmHandle, datafile->_data, ((char*) datafile->_data) + datafile->_currentSize);
+  ok = datafile->sync(datafile, datafile->_data, ((char*) datafile->_data) + datafile->_currentSize);
 
   if (! ok) {
+    // TODO: remove disastrous call to abort() here!! FIXME
     abort(); 
     datafile->_state = TRI_DF_STATE_WRITE_ERROR;
 
@@ -1213,6 +1277,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     #endif
   
     if (res < 0) {
+      // TODO: remove disastrous call to abort() here!! FIXME
       abort();
       LOG_ERROR("cannot truncate datafile '%s': %s", datafile->_filename, TRI_last_error());
       datafile->_lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
