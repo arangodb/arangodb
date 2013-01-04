@@ -434,7 +434,9 @@ TRI_datafile_t* TRI_CreateDatafile (char const*,
 /// automatically adds a @ref TRI_df_footer_marker_t to the file.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
 TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new physical datafile

@@ -114,6 +114,9 @@
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
+// TODO: add a feature check in configure
+#define TRI_HAVE_ANONYMOUS_MMAP             1
+
 #define TRI_OVERLOAD_FUNCS_SIZE_T           1
 #define TRI_MISSING_MEMRCHR                 1
 
@@ -334,6 +337,9 @@ typedef int socket_t;
 
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
+
+// TODO: add a feature check in configure
+#define TRI_HAVE_ANONYMOUS_MMAP             1
 
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
