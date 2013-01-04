@@ -751,7 +751,12 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 
   // create either an anonymous or a physical datafile
   if (filename == NULL) {
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
     datafile = TRI_CreateAnonymousDatafile(maximalSize);
+#else
+    // system does not support anonymous mmap
+    return NULL;
+#endif
   }
   else {
     datafile = TRI_CreatePhysicalDatafile(filename, maximalSize);
@@ -809,6 +814,8 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
 /// @brief creates a new anonymous datafile
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
+
 TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
   ssize_t res;
@@ -818,6 +825,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
   int fd;
 
   // TODO: find a good workaround for Windows
+  // TODO: make this more portable
 
 #ifdef MAP_ANONYMOUS
   // this is required for "real" anonymous regions
@@ -871,6 +879,8 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
 
   return datafile;
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new physical datafile

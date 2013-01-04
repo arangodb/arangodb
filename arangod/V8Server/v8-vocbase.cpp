@@ -1312,10 +1312,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     }
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
-    v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
-    v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
-    v8::Handle<v8::String> isSystemKey = v8::String::New("isSystem");
-    v8::Handle<v8::String> volatileKey = v8::String::New("isVolatile");
+    v8::Handle<v8::String> isSystemKey      = v8::String::New("isSystem");
+    v8::Handle<v8::String> isVolatileKey    = v8::String::New("isVolatile");
+    v8::Handle<v8::String> journalSizeKey   = v8::String::New("journalSize");
+    v8::Handle<v8::String> waitForSyncKey   = v8::String::New("waitForSync");
     v8::Handle<v8::String> createOptionsKey = v8::String::New("createOptions");
 
     if (p->Has(journalSizeKey)) {
@@ -1347,14 +1347,21 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
       parameter._isSystem = TRI_ObjectToBoolean(p->Get(isSystemKey));
     }
 
-    if (p->Has(volatileKey)) {
-      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(volatileKey));
+    if (p->Has(isVolatileKey)) {
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
+      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(isVolatileKey));
+#else
+      TRI_FreeCollectionInfoOptions(&parameter);
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "volatile collections are not supported on this platform", true)));
+#endif
     }
     
     if (parameter._isVolatile && parameter._waitForSync) {
       // the combination of waitForSync and isVolatile makes no sense
-      parameter._waitForSync = false;
+      TRI_FreeCollectionInfoOptions(&parameter);
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "volatile collections do not support the waitForSync option", true)));
     }
+
   }
   else {
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
