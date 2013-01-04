@@ -697,7 +697,6 @@ static TRI_vocbase_col_t* BearCollectionVocBase (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // .............................................................................
@@ -1735,7 +1734,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t* coll
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (! TRI_IsAllowedCollectionName((*oldName == '_'), newName)) {
+  if (! TRI_IsAllowedCollectionName(TRI_IsSystemCollectionName(oldName), newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 

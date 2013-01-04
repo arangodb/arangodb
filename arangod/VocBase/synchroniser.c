@@ -66,12 +66,10 @@ static int const SYNCHRONISER_INTERVAL = (100 * 1000);
 static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
   TRI_collection_t* base;
   TRI_datafile_t* journal;
-  TRI_voc_size_t nWritten;
   bool ok;
   bool worked;
   char const* synced;
   char* written;
-  double ti;
   size_t i;
   size_t n;
 
@@ -99,21 +97,17 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* doc) {
     synced = journal->_synced;
 
     written = journal->_written;
-    nWritten = journal->_nWritten;
 
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
     if (synced < written) {
       worked = true;
       ok = journal->sync(journal, synced, written);
-      ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
       if (ok) {
         journal->_synced = written;
-        journal->_nSynced = nWritten;
-        journal->_lastSynced = ti;
       }
       else {
         journal->_state = TRI_DF_STATE_WRITE_ERROR;
@@ -212,7 +206,6 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* doc
   bool worked;
   char const* synced;
   char* written;
-  double ti;
   size_t i;
   size_t n;
   
@@ -245,14 +238,11 @@ static bool CheckSyncCompactorDocumentCollection (TRI_document_collection_t* doc
     if (synced < written) {
       worked = true;
       ok = journal->sync(journal, synced, written);
-      ti = TRI_microtime();
 
       TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(doc);
 
       if (ok) {
         journal->_synced = written;
-        // TODO: do we need to update nSynced
-        journal->_lastSynced = ti;
       }
       else {
         journal->_state = TRI_DF_STATE_WRITE_ERROR;
