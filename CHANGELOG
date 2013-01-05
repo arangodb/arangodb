@@ -144,8 +144,12 @@ v1.1.2 (XXXX-XX-XX)
 * reduce memory usage for the case when there are lots of small collections with few 
   documents each
 
+* started with issue #317: Feature Request (from Google Groups): DATE handling
+
 * backported issue #300: Extend arangoImp to Allow importing resultset-like 
   (list of documents) formatted files
+
+* fixed issue #337: "WaitForSync" on new collection does not work on Win/X64
 
 * fixed issue #332: arangoimp --use-ids parameter seems to have no impact
 

@@ -745,6 +745,7 @@ static void LogThread (char const* func,
       if (m + len - 1 > 0) {
         OutputMessage(level, severity, p, (size_t) (m + len), false);
       }
+
       return;
     }
   }

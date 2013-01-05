@@ -1207,14 +1207,14 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 /// @brief deletes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DeleteVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // check the arguments
   if (argv.Length() < 1 || argv.Length() > 3) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                                "usage: delete(<document>, <overwrite>, <waitForSync>)")));
+                                                                "usage: remove(<document>, <overwrite>, <waitForSync>)")));
   }
   
   const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 2);
@@ -4648,7 +4648,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
-  return DeleteVocbaseCol(true, argv);
+  return RemoveVocbaseCol(true, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5450,7 +5450,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
-  return DeleteVocbaseCol(false, argv);
+  return RemoveVocbaseCol(false, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
