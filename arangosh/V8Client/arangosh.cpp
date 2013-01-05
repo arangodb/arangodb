@@ -1315,15 +1315,19 @@ int main (int argc, char* argv[]) {
   context->Global()->Set(v8::String::New("VALGRIND"), v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
 
   // load all init files
-  char const* files[] = {
-    "common/bootstrap/modules.js",
-    "common/bootstrap/monkeypatches.js",
-    "common/bootstrap/print.js",
-    "common/bootstrap/errors.js",
-    "client/client.js"
-  };
+  vector<string> files;
+
+  files.push_back("common/bootstrap/modules.js");
+
+  if (JsLint.empty()) {
+    files.push_back("common/bootstrap/monkeypatches.js");
+  }
+
+  files.push_back("common/bootstrap/print.js");
+  files.push_back("common/bootstrap/errors.js");
+  files.push_back("client/client.js");
   
-  for (size_t i = 0;  i < sizeof(files) / sizeof(files[0]);  ++i) {
+  for (size_t i = 0;  i < files.size();  ++i) {
     bool ok = StartupLoader.loadScript(context, files[i]);
     
     if (ok) {
