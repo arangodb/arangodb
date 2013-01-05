@@ -38,7 +38,6 @@
   var internal = require("internal");
   var console = require("console");
 
-  var ArangoDatabase = internal.ArangoDatabase;
   var ArangoCollection = internal.ArangoCollection;
   var ArangoError = internal.ArangoError;
 
@@ -127,7 +126,7 @@
 /// in a production environment.
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.toArray = function() {
+  ArangoCollection.prototype.toArray = function () {
     return this.ALL(null, null).documents;
   };
 
@@ -143,10 +142,20 @@
 ///
 /// Truncates a collection:
 ///
-/// @verbinclude shell_collection-truncate
+/// @code
+/// arango> col = db.examples;
+/// [ArangoCollection 91022, "examples" (status new born)]
+/// arango> col.save({ "Hallo" : "World" });
+/// { "_id" : "91022/1532814", "_rev" : 1532814 }
+/// arango> col.count();
+/// 1
+/// arango> col.truncate();
+/// arango> col.count();
+/// 0
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.truncate = function() {
+  ArangoCollection.prototype.truncate = function () {
     return internal.db._truncate(this);
   };
 
@@ -159,10 +168,15 @@
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_index-read
+/// @code
+/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// ["93013/0"]
+/// arango> db.example.index("93013/0");
+/// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.index = function(id) {
+  ArangoCollection.prototype.index = function (id) {
     var indexes = this.getIndexes();
     var i;
 
@@ -190,10 +204,97 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief iterators over some elements of a collection
+///
+/// @FUN{@FA{collection}.iterate(@FA{iterator}, @FA{options})}
+///
+/// Iterates over some elements of the collection and apply the function
+/// @FA{iterator} to the elements. The function will be called with the
+/// document as first argument and the current number (starting with 0)
+/// as second argument.
+///
+/// @FA{options} must be an object with the following attributes:
+///
+/// - @LIT{limit} (optional, default none): use at most @LIT{limit} documents.
+///
+/// - @LIT{probability} (optional, default all): a number between @LIT{0} and
+///   @LIT{1}. Documents are chosen with this probability.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// ["93013/0"]
+/// arango> db.example.index("93013/0");
+/// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.iterate = function (iterator, options) {
+    var probability = 1.0;
+    var limit = null;
+    var stmt;
+    var cursor;
+    var pos;
+
+    if (options !== undefined) {
+      if (options.hasOwnProperty("probability")) {
+	probability = options.probability;
+      }
+
+      if (options.hasOwnProperty("limit")) {
+	limit = options.limit;
+      }
+    }
+
+    if (limit === null) {
+      if (probability >= 1.0) {
+	stmt = internal.sprintf("FOR d IN %s RETURN d", this.name());
+      }
+      else {
+	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob RETURN d", this.name());
+      }
+    }
+    else {
+      if (typeof limit !== "number") {
+	error = new ArangoError();
+	error.errorNum = internal.errors.ERROR_ILLEGAL_NUMBER.code;
+	error.errorMessage = String(err);
+
+	throw error;
+      }
+
+      if (probability >= 1.0) {
+	stmt = internal.sprintf("FOR d IN %s LIMIT %d RETURN d", this.name(), limit);
+      }
+      else {
+	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d", this.name(), limit);
+      }
+    }
+
+    stmt = internal.db._createStatement({ query: stmt });
+
+    if (probability < 1.0) {
+      stmt.bind("prob", probability);
+    }
+
+    cursor = stmt.execute();
+    pos = 0;
+
+    while (cursor.hasNext()) {
+      var document = cursor.next();
+
+      iterator(document, pos);
+
+      pos++;
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief strng representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.toString = function(seen, path, names, level) {
+  ArangoCollection.prototype.toString = function (seen, path, names, level) {
     return "[ArangoCollection " + this._id + "]";
   };
 
@@ -214,7 +315,7 @@
 /// @brief prints a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype._PRINT = function() {
+  ArangoCollection.prototype._PRINT = function () {
     var status = "unknown";
     var type = "unknown";
 
