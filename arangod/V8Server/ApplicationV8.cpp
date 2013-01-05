@@ -646,6 +646,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
                                  "common/bootstrap/errors.js",
                                  "server/ahuacatl.js",
                                  "server/server.js",
+                                 "server/ArangoCollection.js",
                                  "server/ArangoStructure.js"
   };
 
