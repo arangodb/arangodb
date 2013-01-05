@@ -75,6 +75,7 @@ Module.prototype.ModuleExistsCache = {};
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.require = function (path) {
+  var internal;
   var content;
   var f;
   var module;
@@ -91,7 +92,8 @@ Module.prototype.require = function (path) {
   }
 
   // locate file and read content
-  raw = this.ModuleCache["/internal"].exports.readFile(path);
+  internal = this.ModuleCache["/internal"].exports;
+  raw = internal.readFile(path);
 
   // test for parse errors first and fail early if a parse error detected
   if (! SYS_PARSE(raw.content, path)) {
@@ -105,7 +107,7 @@ Module.prototype.require = function (path) {
           + raw.content 
           + "\n});";
   
-  f = SYS_EXECUTE(content, undefined, path);
+  f = internal.execute(content, undefined, path);
 
   if (f === undefined) {
     throw "cannot create context function";
@@ -255,35 +257,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       Module "fs"
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleFS
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file-system module
-////////////////////////////////////////////////////////////////////////////////
-
-Module.prototype.ModuleCache["/fs"] = new Module("/fs");
-
-(function () {
-  var fs = Module.prototype.ModuleCache["/fs"].exports;
-
-  fs.exists = FS_EXISTS;
-  fs.isDirectory = FS_IS_DIRECTORY;
-  fs.listTree = FS_LIST_TREE;
-  fs.move = FS_MOVE;
-  fs.remove = FS_REMOVE;
-}());
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
@@ -300,28 +273,65 @@ Module.prototype.ModuleCache["/internal"] = new Module("/internal");
 
 (function () {
   var internal = Module.prototype.ModuleCache["/internal"].exports;
-  var fs = Module.prototype.ModuleCache["/fs"].exports;
 
   // system functions
   internal.execute = SYS_EXECUTE;
-  internal.load = SYS_LOAD;
-  internal.log = SYS_LOG;
-  internal.logLevel = SYS_LOG_LEVEL;
-  internal.output = SYS_OUTPUT;
-  internal.processStat = SYS_PROCESS_STAT;
-  internal.read = SYS_READ;
-  internal.sprintf = SYS_SPRINTF;
-  internal.time = SYS_TIME;
-  internal.sha256 = SYS_SHA256;
-  internal.wait = SYS_WAIT;
+  delete SYS_EXECUTE;
 
+  internal.getline = SYS_GETLINE;
+  delete SYS_GETLINE;
+
+  internal.load = SYS_LOAD;
+  delete SYS_LOAD;
+
+  internal.log = SYS_LOG;
+  delete SYS_LOG;
+
+  internal.logLevel = SYS_LOG_LEVEL;
+  delete SYS_LOG_LEVEL;
+
+  internal.output = SYS_OUTPUT;
+  delete SYS_OUTPUT;
+
+  internal.processStat = SYS_PROCESS_STAT;
+  delete SYS_PROCESS_STAT;
+
+  internal.read = SYS_READ;
+  delete SYS_READ;
+
+  internal.sha256 = SYS_SHA256;
+  delete SYS_SHA256;
+
+  internal.sprintf = SYS_SPRINTF;
+  delete SYS_SPRINTF;
+
+  internal.time = SYS_TIME;
+  delete SYS_TIME;
+
+  internal.wait = SYS_WAIT;
+  delete SYS_WAIT;
+
+  internal.exists = FS_EXISTS;
+  delete FS_EXISTS;
+
+  internal.isDirectory = FS_IS_DIRECTORY;
+  delete FS_IS_DIRECTORY;
+
+  internal.listTree = FS_LIST_TREE;
+  delete FS_LIST_TREE;
+
+  internal.move = FS_MOVE;
+  delete FS_MOVE;
+
+  internal.remove = FS_REMOVE;
+  delete FS_REMOVE;
 
   // password interface
   internal.encodePassword = function (password) {
     var salt;
     var encoded;
 
-    salt = internal.sha256("time:" + SYS_TIME());
+    salt = internal.sha256("time:" + internal.time());
     salt = salt.substr(0,8);
 
     encoded = "$1$" + salt + "$" + internal.sha256(salt + password);
@@ -432,7 +442,7 @@ Module.prototype.ModuleCache["/internal"] = new Module("/internal");
         n = p + "/" + path + ".js";
       }
 
-      if (fs.exists(n)) {
+      if (internal.exists(n)) {
         Module.prototype.ModuleExistsCache[path] = true;
         return { path : n, content : internal.read(n) };
       }
@@ -486,7 +496,7 @@ Module.prototype.ModuleCache["/internal"] = new Module("/internal");
         n = p + "/" + path + ".js";
       }
 
-      if (fs.exists(n)) {
+      if (internal.exists(n)) {
         return internal.load(n);
       }
     }
@@ -524,150 +534,6 @@ Module.prototype.ModuleCache["/internal"] = new Module("/internal");
       m.module = content;
       mc.replace(m, m);
     }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-}());
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  Module "console"
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8ModuleConsole
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief console module
-////////////////////////////////////////////////////////////////////////////////
-
-Module.prototype.ModuleCache["/console"] = new Module("/console");
-
-(function () {
-  var internal = Module.prototype.ModuleCache["/internal"].exports;
-  var console = Module.prototype.ModuleCache["/console"].exports;
-
-  console.getline = SYS_GETLINE;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs debug message
-///
-/// @FUN{console.debug(@FA{format}, @FA{argument1}, ...)}
-///
-/// Formats the arguments according to @FA{format} and logs the result as
-/// debug message.
-///
-/// String substitution patterns, which can be used in @FA{format}.
-///
-/// - @LIT{\%s} string
-/// - @LIT{\%d}, @LIT{\%i} integer
-/// - @LIT{\%f} floating point number
-/// - @LIT{\%o} object hyperlink
-////////////////////////////////////////////////////////////////////////////////
-
-  console.debug = function () {
-    var msg;
-
-    try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    internal.log("debug", msg);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs error message
-///
-/// @FUN{console.error(@FA{format}, @FA{argument1}, ...)}
-///
-/// Formats the arguments according to @FA{format} and logs the result as
-/// error message.
-////////////////////////////////////////////////////////////////////////////////
-
-  console.error = function () {
-    var msg;
-
-    try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    internal.log("error", msg);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs info message
-///
-/// @FUN{console.info(@FA{format}, @FA{argument1}, ...)}
-///
-/// Formats the arguments according to @FA{format} and logs the result as
-/// info message.
-////////////////////////////////////////////////////////////////////////////////
-
-  console.info = function () {
-    var msg;
-
-    try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    internal.log("info", msg);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs log message
-///
-/// @FUN{console.log(@FA{format}, @FA{argument1}, ...)}
-///
-/// Formats the arguments according to @FA{format} and logs the result as
-/// log message.
-////////////////////////////////////////////////////////////////////////////////
-
-  console.log = function () {
-    var msg;
-
-    try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    internal.log("info", msg);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs warn message
-///
-/// @FUN{console.warn(@FA{format}, @FA{argument1}, ...)}
-///
-/// Formats the arguments according to @FA{format} and logs the result as
-/// warn message.
-////////////////////////////////////////////////////////////////////////////////
-
-  console.warn = function () {
-    var msg;
-
-    try {
-      msg = internal.sprintf.apply(internal.sprintf, arguments);
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    internal.log("warn", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////

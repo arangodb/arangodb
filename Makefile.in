@@ -23,7 +23,7 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief JavaScript source code as header
+### @brief JavaScript modules for browser
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -995,8 +995,7 @@ top_srcdir = @top_srcdir@
 ################################################################################
 ### @brief sets up the directories
 ################################################################################
-BUILT_SOURCES = build_posix.h $(JAVASCRIPT_HEADER) \
-	$(JAVASCRIPT_BROWSER) $(am__append_9) \
+BUILT_SOURCES = build_posix.h $(JAVASCRIPT_BROWSER) $(am__append_9) \
 	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangosh.conf $(am__append_14) \
 	Doxygen/.setup-directories @builddir@/.setup-js-directories \
@@ -1144,17 +1143,6 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	-print) $(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print) \
 	$(am__append_8)
-JAVASCRIPT_HEADER = \
-	js/common/bootstrap/js-errors.h \
-	js/common/bootstrap/js-modules.h \
-	js/common/bootstrap/js-monkeypatches.h \
-	js/common/bootstrap/js-print.h \
-	js/client/js-client.h
-
-
-################################################################################
-### @brief JavaScript modules for browser
-################################################################################
 JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/statement-basics.js \
 	html/admin/js/modules/simple-query-basics.js \
@@ -1748,6 +1736,8 @@ WIKI = \
 JAVASCRIPT_JSLINT = \
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/common/bootstrap/module-console.js \
+	@srcdir@/js/common/bootstrap/module-fs.js \
 	@srcdir@/js/server/modules/org/arangodb.js \
 	@srcdir@/js/server/modules/org/arangodb/actions.js \
 	@srcdir@/js/server/ArangoCollection.js \
@@ -5398,8 +5388,7 @@ clean-local:
 
 built-sources: \
 	build_posix.h \
-	@top_srcdir@/js/common/bootstrap/errors.js \
-	$(JAVASCRIPT_HEADER)
+	@top_srcdir@/js/common/bootstrap/errors.js
 
 GTAGS:
 	echo $(GTAGS_FILES) | tr " " "\n" | gtags -i -f -
@@ -5560,8 +5549,6 @@ jslint:
 
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules || mkdir -p html/admin/js/modules
-	@test -d js/common/bootstrap || mkdir -p js/common/bootstrap
-	@test -d js/client || mkdir -p js/client
 	@touch $@
 
 ################################################################################
@@ -5573,15 +5560,6 @@ html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directorie
 
 html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
-
-js/js-%.h: @srcdir@/js/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/client/js-%.h: @srcdir@/js/client/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
 
 @ENABLE_MRUBY_TRUE@@builddir@/.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap

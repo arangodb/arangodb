@@ -62,12 +62,6 @@ using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::arango;
 
-#include "js/common/bootstrap/js-print.h"
-#include "js/common/bootstrap/js-modules.h"
-#include "js/common/bootstrap/js-monkeypatches.h"
-#include "js/common/bootstrap/js-errors.h"
-#include "js/client/js-client.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1300,16 +1294,13 @@ int main (int argc, char* argv[]) {
 
   // load java script from js/bootstrap/*.h files
   if (StartupPath.empty()) {
-    StartupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
-    StartupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
-    StartupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
-    StartupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
-    StartupLoader.defineScript("client/client.js", JS_client_client);
+    LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
-  else {
-    LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
-    StartupLoader.setDirectory(StartupPath);
-  }
+
+  LOGGER_DEBUG << "using JavaScript startup files at '" << StartupPath << "'";
+  StartupLoader.setDirectory(StartupPath);
 
   context->Global()->Set(v8::String::New("ARANGO_QUIET"), v8::Boolean::New(BaseClient.quiet()), v8::ReadOnly);
   context->Global()->Set(v8::String::New("VALGRIND"), v8::Boolean::New((RUNNING_ON_VALGRIND) > 0));
@@ -1318,6 +1309,8 @@ int main (int argc, char* argv[]) {
   vector<string> files;
 
   files.push_back("common/bootstrap/modules.js");
+  files.push_back("common/bootstrap/module-fs.js");
+  files.push_back("common/bootstrap/module-console.js");
 
   if (JsLint.empty()) {
     files.push_back("common/bootstrap/monkeypatches.js");

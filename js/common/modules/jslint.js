@@ -47,7 +47,7 @@ function RunTest (path, options) {
   var content;
 
   try {
-    content = SYS_READ(path);
+    content = internal.read(path);
   }
   catch (err) {
     console.error("cannot load test file '%s'", path);
