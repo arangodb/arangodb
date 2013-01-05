@@ -215,7 +215,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype._PRINT = function() {
-    var status = type = "unknown";
+    var status = "unknown";
+    var type = "unknown";
 
     switch (this.status()) {
       case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;

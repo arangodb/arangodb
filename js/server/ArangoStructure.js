@@ -59,106 +59,9 @@
     this._id = collection._id;
     this._collection = collection;
     this._language = lang;
-  };
+  }
 
   internal.ArangoStructure = ArangoStructure;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of a structure
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.name = function () {
-    return this._collection.name();
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief status of a structure
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.status = function () {
-    return this._collection.status();
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of a structure
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.type = function () {
-    return this._collection.type();
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a document
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.save = function (data, waitForSync) {
-    data = ParseStructureInformation(this._language, this._collection.name(), data);
-
-    return this._collection.save(data, waitForSync);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces a document
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.replace = function (document, data, overwrite, waitForSync) {
-    data = ParseStructureInformation(this._language, this._collection.name(), data);
-
-    return this._collection.save(document, data, overwrite, waitForSync);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.remove = function (document, overwrite, waitForSync) {
-    return this._collection.remove(document, overwrite, waitForSync);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a document
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoStructure.prototype.document = function (handle) {
-    var data;
-
-    data = this._collection.document(handle);
-
-    return FormatStructureInformation(this._language, this._collection.name(), data);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief database accessor
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoDatabase.prototype._structure = function (name, lang) {
-    var collection;
-
-    collection = internal.db._collection(name);
-
-    if (collection === null) {
-      return null;
-    }
-
-    if (lang === undefined || lang === null) {
-      lang = "en";
-    }
-
-    return new ArangoStructure(collection, lang);
-  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -178,7 +81,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoStructure.prototype._PRINT = function () {
-    var status = type = "unknown";
+    var status = "unknown";
+    var type = "unknown";
 
     switch (this.status()) {
       case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
@@ -195,82 +99,69 @@
       case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
     }
 
-    internal.output("[ArangoStructure ",
-                    this._id, 
-                    ", \"", this.name(), "\" (type ", type, ", status ", status, "lang ", this._language, ")]");
+    internal.output("[ArangoStructure ", this._id, ", \"", this.name(), 
+                    "\" (type ", type, ", status ", status, "lang ", 
+                    this._language, ")]");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses and validates the structure information
+/// @brief parses a single attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ParseStructureInformation (lang, name, data) {
-    var info;
-    var key;
-    var validated;
+  function parse (lang, info, value) {
+    var error;
+    var module;
 
-    info = internal.db._collection("_structures").firstExample({ collection: name });
+    try {
+      module = require(info.module);
+    }
+    catch (err) {
+      error = new ArangoError();
+      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      error.errorMessage = String(err);
 
-    if (info === null) {
-      return data;
+      throw error;
     }
 
-    validated = {};
-
-    for (key in data) {
-      if (data.hasOwnProperty(key)) {
-	validated[key] = ParseStructureInformationRecursive(lang, info, key, key, data[key]);
-      }
-    }
-
-    return validated;
+    return module[info['do']](value, info, lang);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses and validates the structure information recursively
+/// @brief validates a single attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ParseStructureInformationRecursive (lang, info, path, key, value) {
-    var k;
-    var result;
+  function validate (lang, info, value) {
+    var error;
+    var module;
 
-    if (info.attributes.hasOwnProperty(path)) {
-      value = ParseAndValidate(lang, info.attributes[path], value);
+    try {
+      module = require(info.module);
+    }
+    catch (err) {
+      error = new ArangoError();
+      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      error.errorMessage = String(err);
+
+      throw error;
     }
 
-    if (value instanceof Array) {
-      return value;
-    }
-    else if (value instanceof Object) {
-      result = {};
-
-      for (k in value) {
-	if (value.hasOwnProperty(k)) {
-	  result[k] = ParseStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
-	}
-      }
-
-      return result;
-    }
-    else {
-      return value;
-    }
+    module[info['do']](value, info, lang);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses and validates a single attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ParseAndValidate (lang, info, value) {
+  function parseAndValidate (lang, info, value) {
     var type;
 
     // parse the input
     if (info.hasOwnProperty("parser")) {
       if (info.parser.hasOwnProperty(lang)) {
-	value = Parse(lang, info.parser[lang], value);
+	value = parse(lang, info.parser[lang], value);
       }
       else if (info.parser.hasOwnProperty('default')) {
-	value = Parse(lang, info.parser['default'], value);
+	value = parse(lang, info.parser['default'], value);
       }
     }
     else if (info.hasOwnProperty("type")) {
@@ -295,10 +186,10 @@
     // validate the input
     if (info.hasOwnProperty("validator")) {
       if (info.validator.hasOwnProperty(lang)) {
-	Validate(lang, info.validator[lang], value);
+	validate(lang, info.validator[lang], value);
       }
       else if (info.validator.hasOwnProperty('default')) {
-	Validate(lang, info.validator['default'], value);
+	validate(lang, info.validator['default'], value);
       }
     }
 
@@ -307,10 +198,67 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a single attribute
+/// @brief parses and validates the structure information recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-  function Parse (lang, info, value) {
+  function parseStructureInformationRecursive (lang, info, path, key, value) {
+    var k;
+    var result;
+
+    if (info.attributes.hasOwnProperty(path)) {
+      value = parseAndValidate(lang, info.attributes[path], value);
+    }
+
+    if (value instanceof Array) {
+      return value;
+    }
+
+    if (value instanceof Object) {
+      result = {};
+
+      for (k in value) {
+	if (value.hasOwnProperty(k)) {
+	  result[k] = parseStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
+	}
+      }
+
+      return result;
+    }
+
+    return value;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses and validates the structure information
+////////////////////////////////////////////////////////////////////////////////
+
+  function parseStructureInformation (lang, name, data) {
+    var info;
+    var key;
+    var validated;
+
+    info = internal.db._collection("_structures").firstExample({ collection: name });
+
+    if (info === null) {
+      return data;
+    }
+
+    validated = {};
+
+    for (key in data) {
+      if (data.hasOwnProperty(key)) {
+	validated[key] = parseStructureInformationRecursive(lang, info, key, key, data[key]);
+      }
+    }
+
+    return validated;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief formats a single attribute
+////////////////////////////////////////////////////////////////////////////////
+
+  function format (lang, info, value) {
     var error;
     var module;
 
@@ -329,32 +277,62 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validates a single attribute
+/// @brief formats a single attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-  function Validate (lang, info, value) {
-    var error;
-    var module;
+  function formatValue (lang, info, value) {
+    var type;
 
-    try {
-      module = require(info.module);
-    }
-    catch (err) {
-      error = new ArangoError();
-      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      error.errorMessage = String(err);
-
-      throw error;
+    // parse the input
+    if (info.hasOwnProperty("formatter")) {
+      if (info.formatter.hasOwnProperty(lang)) {
+	value = format(lang, info.formatter[lang], value);
+      }
+      else if (info.formatter.hasOwnProperty('default')) {
+	value = format(lang, info.formatter['default'], value);
+      }
     }
 
-    module[info['do']](value, info, lang);
+    // and return
+    return value;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief formats the structure information recursively
+////////////////////////////////////////////////////////////////////////////////
+
+  function formatStructureInformationRecursive (lang, info, path, key, value) {
+    var k;
+    var result;
+
+    if (info.attributes.hasOwnProperty(path)) {
+      value = formatValue(lang, info.attributes[path], value);
+    }
+
+    if (value instanceof Array) {
+      return value;
+    }
+
+    if (value instanceof Object) {
+      result = {};
+
+      for (k in value) {
+	if (value.hasOwnProperty(k)) {
+	  result[k] = formatStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
+	}
+      }
+
+      return result;
+    }
+
+    return value;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief formats the structure information
 ////////////////////////////////////////////////////////////////////////////////
 
-  function FormatStructureInformation (lang, name, data) {
+  function formatStructureInformation (lang, name, data) {
     var info;
     var key;
     var formatted;
@@ -369,7 +347,7 @@
 
     for (key in data) {
       if (data.hasOwnProperty(key)) {
-	formatted[key] = FormatStructureInformationRecursive(lang, info, key, key, data[key]);
+	formatted[key] = formatStructureInformationRecursive(lang, info, key, key, data[key]);
       }
     }
 
@@ -377,78 +355,101 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief formats the structure information recursively
+/// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-  function FormatStructureInformationRecursive (lang, info, path, key, value) {
-    var k;
-    var result;
-
-    if (info.attributes.hasOwnProperty(path)) {
-      value = FormatValue(lang, info.attributes[path], value);
-    }
-
-    if (value instanceof Array) {
-      return value;
-    }
-    else if (value instanceof Object) {
-      result = {};
-
-      for (k in value) {
-	if (value.hasOwnProperty(k)) {
-	  result[k] = FormatStructureInformationRecursive(lang, info, path + "." + k, k, value[k]);
-	}
-      }
-
-      return result;
-    }
-    else {
-      return value;
-    }
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief formats a single attribute
+/// @addtogroup V8Shell
+/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-  function FormatValue (lang, info, value) {
-    var type;
-
-    // parse the input
-    if (info.hasOwnProperty("formatter")) {
-      if (info.formatter.hasOwnProperty(lang)) {
-	value = Format(lang, info.formatter[lang], value);
-      }
-      else if (info.formatter.hasOwnProperty('default')) {
-	value = Format(lang, info.formatter['default'], value);
-      }
-    }
-
-    // and return
-    return value;
-  }
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief formats a single attribute
+/// @brief name of a structure
 ////////////////////////////////////////////////////////////////////////////////
 
-  function Format (lang, info, value) {
-    var error;
-    var module;
+  ArangoStructure.prototype.name = function () {
+    return this._collection.name();
+  };
 
-    try {
-      module = require(info.module);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status of a structure
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStructure.prototype.status = function () {
+    return this._collection.status();
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of a structure
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStructure.prototype.type = function () {
+    return this._collection.type();
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves a document
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStructure.prototype.save = function (data, waitForSync) {
+    data = parseStructureInformation(this._language, this._collection.name(), data);
+
+    return this._collection.save(data, waitForSync);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStructure.prototype.replace = function (document, data, overwrite, waitForSync) {
+    data = parseStructureInformation(this._language, this._collection.name(), data);
+
+    return this._collection.save(document, data, overwrite, waitForSync);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes a document
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStructure.prototype.remove = function (document, overwrite, waitForSync) {
+    return this._collection.remove(document, overwrite, waitForSync);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads a document
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoStructure.prototype.document = function (handle) {
+    var data;
+
+    data = this._collection.document(handle);
+
+    return formatStructureInformation(this._language, this._collection.name(), data);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief database accessor
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._structure = function (name, lang) {
+    var collection;
+
+    collection = internal.db._collection(name);
+
+    if (collection === null) {
+      return null;
     }
-    catch (err) {
-      error = new ArangoError();
-      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
-      error.errorMessage = String(err);
 
-      throw error;
+    if (lang === undefined || lang === null) {
+      lang = "en";
     }
 
-    return module[info['do']](value, info, lang);
-  }
+    return new ArangoStructure(collection, lang);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
