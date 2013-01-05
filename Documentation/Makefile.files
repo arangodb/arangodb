@@ -35,6 +35,7 @@ DOXYGEN = \
 	Doxygen/js/common/modules/statement-basics.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
+	Doxygen/js/server/ArangoCollection.c \
 	Doxygen/js/server/server.c
 
 ################################################################################

@@ -273,6 +273,8 @@ Module.prototype.ModuleCache["/fs"] = new Module("/fs");
   var fs = Module.prototype.ModuleCache["/fs"].exports;
 
   fs.exists = FS_EXISTS;
+  fs.isDirectory = FS_IS_DIRECTORY;
+  fs.listTree = FS_LIST_TREE;
   fs.move = FS_MOVE;
   fs.remove = FS_REMOVE;
 }());
