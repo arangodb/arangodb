@@ -4733,7 +4733,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocBase (v8::Arguments const& argv) {
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
 ///
-/// @FA{properties} must be an object, with the following attribues:
+/// @FA{properties} must be an object with the following attributes:
 ///
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
@@ -4794,7 +4794,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocBase (v8::Arguments c
 ///
 /// @FUN{db._createEdgeCollection(@FA{collection-name}, @FA{properties})}
 ///
-/// @FA{properties} must be an object, with the following attribues:
+/// @FA{properties} must be an object with the following attributes:
 ///
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
