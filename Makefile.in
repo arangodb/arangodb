@@ -1653,7 +1653,6 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/bootstrap/print.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/common/modules/simple-query-basics.c \

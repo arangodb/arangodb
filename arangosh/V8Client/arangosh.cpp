@@ -1317,7 +1317,6 @@ int main (int argc, char* argv[]) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 
-  files.push_back("common/bootstrap/print.js");
   files.push_back("common/bootstrap/errors.js");
   files.push_back("client/client.js");
   
