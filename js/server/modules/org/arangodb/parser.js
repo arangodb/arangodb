@@ -8,13 +8,13 @@
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript base module
+/// @brief parser functions
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,23 +31,59 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
+// --SECTION--                                                    number parsers
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Arango
-/// @{
+/// @brief parses a number
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.db = internal.db;
-exports.ArangoCollection = internal.ArangoCollection;
-exports.errors = internal.errors;
+exports.number = function (value, info, lang) {
+  var error;
+  var format;
+  var result;
+
+  if (info.hasOwnProperty('format')) {
+    format = info.format;
+
+    if (format === "%d") {
+      result = parseInt(value);
+    }
+    else if (format === "%f") {
+      result = parseFloat(value);
+    }
+    else if (format === "%x") {
+      result = parseInt(value, 16);
+    }
+    else if (format === "%o") {
+      result = parseInt(value, 8);
+    }
+    else {
+      error = new ArangoError();
+      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      error.errorMessage = "format '" + format + "' not implemented";
+
+      throw error;
+    }
+  }
+  else {
+    result = parseFloat(value);
+  }
+
+  if (result === null || result === undefined || isNaN(result)) {
+    error = new ArangoError();
+    error.errorNum = internal.errors.ERROR_ARANGO_PARSER_FAILED;
+    error.errorMessage = "format '" + format + "' not implemented";
+
+    throw error;
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -59,5 +95,5 @@ exports.errors = internal.errors;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:

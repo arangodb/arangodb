@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions module
@@ -69,8 +69,8 @@ var RoutingCache;
 /// @brief function that's returned for non-implemented actions
 ////////////////////////////////////////////////////////////////////////////////
         
-function notImplementedFunction (triggerRoute, message) {
-  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
+function notImplementedFunction (route, message) {
+  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
 
@@ -85,8 +85,8 @@ function notImplementedFunction (triggerRoute, message) {
 /// @brief function that's returned for actions that produce an error
 ////////////////////////////////////////////////////////////////////////////////
 
-function errorFunction (triggerRoute, message) {
-  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
+function errorFunction (route, message) {
+  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
 
@@ -218,6 +218,7 @@ function lookupCallbackAction (route, action) {
   var name;
   var func;
   var module;
+  var joined;
   var httpMethods = { 
     'get': exports.GET,
     'head': exports.HEAD,
@@ -235,28 +236,35 @@ function lookupCallbackAction (route, action) {
     path = action['do'].split("/");
     name = path.pop();
     func = null;
+    joined = path.join("/");
 
     try {
-      module = require(path.join("/"));
+      module = require(joined);
 
       if (module.hasOwnProperty(name)) {
         func = module[name];
       }
       else {
-        func = notImplementedFunction(route, "Could not find action named '" + name + "' in module '" + path.join("/") + "'");
+        func = notImplementedFunction(route, "could not find action named '" + name + "' in module '" + joined + "'");
       }
     }
     catch (err) {
-      if (! ExistsCache[path.join("/")]) {
-        func = notImplementedFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+      if (! module.exists(joined)) {
+        func = notImplementedFunction(route, 
+				      "an error occurred while loading action named '" + name 
+				        + "' in module '" + joined + "': " + String(err));
       }
       else {
-        func = errorFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+        func = errorFunction(route,
+			     "an error occurred while loading action named '" + name 
+			       + "' in module '" + joined + "': " + String(err));
       }
     }
 
     if (func === null || typeof func !== 'function') {
-      func = errorFunction(route, "Invalid definition for the action named '" + name + "' in module '" + path.join("/") + "'");
+      func = errorFunction(route, 
+			   "invalid definition for the action named '" + name 
+			     + "' in module '" + joined + "'");
     }
 
     return {
@@ -279,16 +287,20 @@ function lookupCallbackAction (route, action) {
             }
 
             if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
-              func = module[m] || 
-                     errorFunction(route, "Invalid definition for " + m + " action in action controller module '" + action.controller + "'");
+              func = module[m]
+		|| errorFunction(route, 
+				 "invalid definition for " + m + " action in action controller module '" 
+				   + action.controller + "'");
 
               return func(req, res, options, next); 
             }
           }
 
           if (module.hasOwnProperty('do')) {
-            func = module['do'] || 
-                   errorFunction(route, "Invalid definition for do action in action controller module '" + action.controller + "'");
+            func = module['do']
+	      || errorFunction(route,
+			       "invalid definition for do action in action controller module '"
+			         + action.controller + "'");
 
             return func(req, res, options, next);
           }
@@ -300,11 +312,15 @@ function lookupCallbackAction (route, action) {
       };
     }
     catch (err) {
-      if (! ExistsCache[action.controller]) {
-        return notImplementedFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+      if (! module.exists(action.controller)) {
+        return notImplementedFunction(route, 
+				      "cannot load/execute action controller module '" 
+				        + action.controller + ": " + String(err));
       }
 
-      return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+      return errorFunction(route, 
+			   "cannot load/execute action controller module '" 
+			     + action.controller + ": " + String(err));
     }
   }
 
@@ -315,6 +331,7 @@ function lookupCallbackAction (route, action) {
       controller: function (req, res, options, next) {
         var module;
         var path;
+	var efunc;
 
         // determine path
         if (req.hasOwnProperty('suffix')) {
@@ -329,11 +346,13 @@ function lookupCallbackAction (route, action) {
           require(path);
         }
         catch (err) {
-          if (! ExistsCache[path]) {
-            return notImplementedFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+	  efunc = errorFunction;
+
+          if (! module.exists(path)) {
+	    efunc = notImplementedFunction;
           }
 
-          return errorFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+          return efunc(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
         }
 
         try {
@@ -344,21 +363,28 @@ function lookupCallbackAction (route, action) {
             }
 
             if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
-              func = module[m] || 
-                     errorFunction(route, "Invalid definition for " + m + " action in prefix controller '" + action.prefixController + "'");
+              func = module[m]
+		|| errorFunction(route,
+				 "Invalid definition for " + m + " action in prefix controller '"
+				   + action.prefixController + "'");
 
               return func(req, res, options, next);
             }
           }
   
           if (module.hasOwnProperty('do')) {
-            func = module['do'] || 
-                   errorFunction(route, "Invalid definition for do action in prefix controller '" + action.prefixController + "'");
+            func = module['do']
+	      || errorFunction(route, 
+			       "Invalid definition for do action in prefix controller '"
+			         + action.prefixController + "'");
+
             return func(req, res, options, next);
           }
         }
         catch (err) {
-          return errorFunction(route, "Cannot load/execute prefix controller '" + action.prefixController + "': " + String(err))(req, res, options, next);
+          return errorFunction(route, 
+			       "Cannot load/execute prefix controller '"
+			         + action.prefixController + "': " + String(err))(req, res, options, next);
         }
 
         next();

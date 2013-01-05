@@ -19,7 +19,7 @@ PROTO = http
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-## unittests target
+### @brief unittests target
 ################################################################################
 
 .PHONY: unittests unittests-brief unittests-verbose
@@ -56,7 +56,7 @@ unittests-verbose:
 	@sleep 1
 
 ################################################################################
-## start the arango server
+### @brief start the arango server
 ################################################################################
 
 PID := $(shell echo $$PPID)
@@ -121,7 +121,7 @@ start-server:
 	@echo
 
 ################################################################################
-## COMMON MAKE-RELATED TESTS
+### @brief COMMON MAKE-RELATED TESTS
 ################################################################################
 
 .PHONY: unittests-make
@@ -130,7 +130,7 @@ unittests-make:
 	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
-## BOOST TESTS
+### @brief BOOST TESTS
 ################################################################################
 
 .PHONY: unittests-boost
@@ -198,7 +198,7 @@ unittests-boost:
 endif
 
 ################################################################################
-## SHELL SERVER TESTS (BASICS)
+### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
 
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
@@ -241,7 +241,7 @@ unittests-shell-server:
 	@echo
 
 ################################################################################
-## SHELL SERVER TESTS (AHUACATL)
+### @brief SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 
 SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
@@ -313,7 +313,7 @@ unittests-shell-server-ahuacatl:
 	@echo
 
 ################################################################################
-## SHELL CLIENT TESTS
+### @brief SHELL CLIENT TESTS
 ################################################################################
 
 SHELL_CLIENT = $(SHELL_COMMON) @top_srcdir@/js/client/tests/client.js
@@ -342,7 +342,7 @@ unittests-shell-client:
 	@echo
 
 ################################################################################
-## HTTP SERVER TESTS
+### @brief HTTP SERVER TESTS
 ################################################################################
 
 .PHONY: unittests-http-server
@@ -368,7 +368,7 @@ unittests-http-server:
 
 
 ################################################################################
-## SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)
+### @brief SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)
 ################################################################################
 
 .PHONY: unittests-ssl-server
@@ -393,7 +393,7 @@ unittests-ssl-server:
 	@echo
 
 ################################################################################
-## IMPORT TESTS
+### @brief IMPORT TESTS
 ################################################################################
 
 .PHONY: unittests-import
@@ -423,7 +423,7 @@ unittests-import:
 	@echo
 
 ################################################################################
-## BITARRAY INDEXES TESTS
+### @brief BITARRAY INDEXES TESTS
 ################################################################################
 
 BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
@@ -448,7 +448,7 @@ unittests-bitarray-index:
 	@echo
 
 ################################################################################
-## ARANGOB TESTS
+### @brief ARANGOB TESTS
 ################################################################################
 
 .PHONY: unittests-arangob
@@ -482,3 +482,12 @@ unittests-arangob:
 	@echo
 
 endif
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                       END-OF-FILE
+## -----------------------------------------------------------------------------
+
+## Local Variables:
+## mode: outline-minor
+## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
+## End:

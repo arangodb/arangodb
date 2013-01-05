@@ -59,6 +59,8 @@
   internal.db = db;
   internal.edges = db;
   internal.ArangoCollection = ArangoCollection;
+  internal.ArangoDatabase = ArangoDatabase;
+  internal.ArangoError = ArangoError;
 
   if (typeof SYS_DEFINE_ACTION === "undefined") {
     internal.defineAction = function() {
