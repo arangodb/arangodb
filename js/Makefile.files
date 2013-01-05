@@ -10,7 +10,9 @@
 
 JAVASCRIPT_JSLINT = \
 	@srcdir@/js/actions/system/api-collection.js \
-	@srcdir@/js/actions/system/api-structure.js 
+	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/server/ArangoCollection.js \
+	@srcdir@/js/server/ArangoStructure.js
 
 ################################################################################
 ### @brief executes jslint
