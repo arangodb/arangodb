@@ -5,19 +5,6 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief JavaScript source code as header
-################################################################################
-
-JAVASCRIPT_HEADER = \
-	js/common/bootstrap/js-errors.h \
-	js/common/bootstrap/js-modules.h \
-	js/common/bootstrap/js-monkeypatches.h \
-	js/common/bootstrap/js-print.h \
-	js/client/js-client.h
-
-BUILT_SOURCES += $(JAVASCRIPT_HEADER)
-
-################################################################################
 ### @brief JavaScript modules for browser
 ################################################################################
 

@@ -643,6 +643,8 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   vector<string> files;
 
   files.push_back("common/bootstrap/modules.js");
+  files.push_back("common/bootstrap/module-fs.js");
+  files.push_back("common/bootstrap/module-console.js");
   files.push_back("common/bootstrap/monkeypatches.js");
   files.push_back("common/bootstrap/print.js");
   files.push_back("common/bootstrap/errors.js");
