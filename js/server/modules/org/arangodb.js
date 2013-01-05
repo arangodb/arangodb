@@ -47,7 +47,6 @@ var internal = require("internal");
 
 exports.db = internal.db;
 exports.ArangoCollection = internal.ArangoCollection;
-exports.errors = internal.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

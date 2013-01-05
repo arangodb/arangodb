@@ -701,9 +701,7 @@ function put_api_collection (req, res) {
     put_api_collection_rename(req, res, collection);
   }
   else {
-    actions.resultNotFound(req,
-			   res,
-			   actions.errors.ERROR_HTTP_NOT_FOUND,
+    actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,
 			   "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
   }
 }
