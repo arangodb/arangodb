@@ -712,7 +712,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a file of any type or directory exists
 ///
-/// @FUN{fs.exists(@FA{filename})}
+/// @FUN{fs.exists(@FA{path})}
 ///
 /// Returns true if a file (of any type) or a directory exists at a given
 /// path. If the file is a broken symbolic link, returns false.
@@ -746,6 +746,72 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
   getline(cin, line);
 
   return scope.Close(v8::String::New(line.c_str(), line.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if path is a directory
+///
+/// @FUN{fs.isDirectory(@FA{path})}
+///
+/// Returns true if the @FA{path} points to a directory.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsDirectory (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: isDirectory(<path>)")));
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<path> must be a string")));
+  }
+
+  // return result
+  return scope.Close(TRI_IsDirectory(*name) ? v8::True() : v8::False());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the directory tree
+///
+/// @FUN{fs.listTree(@FA{path})}
+///
+/// The function returns an array that starts with the given path, and all of
+/// the paths relative to the given path, discovered by a depth first traversal
+/// of every directory in any visited directory, reporting but not traversing
+/// symbolic links to directories. The first path is always @LIT{""}, the path
+/// relative to itself.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1) {
+    return scope.Close(v8::ThrowException(v8::String::New("usage: listTree(<path>)")));
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    return scope.Close(v8::ThrowException(v8::String::New("<path> must be a string")));
+  }
+
+  // constructed listing
+  v8::Handle<v8::Array> result = v8::Array::New();
+  TRI_vector_string_t list = TRI_FullTreeDirectory(*name);
+
+  for (size_t i = 0;  i < list._length;  ++i) {
+    result->Set(i, v8::String::New(list._buffer[i]));
+  }
+
+  TRI_DestroyVectorString(&list);
+
+  // return result
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1666,6 +1732,26 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
   // create the global functions
   // .............................................................................
   
+  context->Global()->Set(v8::String::New("FS_EXISTS"),
+                         v8::FunctionTemplate::New(JS_Exists)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_IS_DIRECTORY"),
+                         v8::FunctionTemplate::New(JS_IsDirectory)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_LIST_TREE"),
+                         v8::FunctionTemplate::New(JS_ListTree)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_MOVE"),
+                         v8::FunctionTemplate::New(JS_Move)->GetFunction(),
+                         v8::ReadOnly);
+
+  context->Global()->Set(v8::String::New("FS_REMOVE"),
+                         v8::FunctionTemplate::New(JS_Remove)->GetFunction(),
+                         v8::ReadOnly);
+
   context->Global()->Set(v8::String::New("SYS_PARSE"),
                          v8::FunctionTemplate::New(JS_Parse)->GetFunction(),
                          v8::ReadOnly);
@@ -1676,10 +1762,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_EXECUTE"),
                          v8::FunctionTemplate::New(JS_Execute)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_EXISTS"),
-                         v8::FunctionTemplate::New(JS_Exists)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_GETLINE"),
@@ -1696,14 +1778,6 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context, string const& path) {
 
   context->Global()->Set(v8::String::New("SYS_LOG_LEVEL"),
                          v8::FunctionTemplate::New(JS_LogLevel)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_MOVE"),
-                         v8::FunctionTemplate::New(JS_Move)->GetFunction(),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("FS_REMOVE"),
-                         v8::FunctionTemplate::New(JS_Remove)->GetFunction(),
                          v8::ReadOnly);
 
   context->Global()->Set(v8::String::New("SYS_OUTPUT"),
