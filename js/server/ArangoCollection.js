@@ -257,9 +257,9 @@
     }
     else {
       if (typeof limit !== "number") {
-	error = new ArangoError();
+	var error = new ArangoError();
 	error.errorNum = internal.errors.ERROR_ILLEGAL_NUMBER.code;
-	error.errorMessage = String(err);
+	error.errorMessage = "expecting a number, got " + String(limit);
 
 	throw error;
       }
@@ -268,7 +268,8 @@
 	stmt = internal.sprintf("FOR d IN %s LIMIT %d RETURN d", this.name(), limit);
       }
       else {
-	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d", this.name(), limit);
+	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d",
+                                this.name(), limit);
       }
     }
 
