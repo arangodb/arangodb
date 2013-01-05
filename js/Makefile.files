@@ -11,8 +11,12 @@
 JAVASCRIPT_JSLINT = \
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/common/bootstrap/errors.js \
+	@srcdir@/js/common/bootstrap/modules.js \
+	@srcdir@/js/common/bootstrap/module-internal.js \
 	@srcdir@/js/common/bootstrap/module-console.js \
 	@srcdir@/js/common/bootstrap/module-fs.js \
+	@srcdir@/js/common/bootstrap/monkeypatches.js \
 	@srcdir@/js/server/modules/org/arangodb.js \
 	@srcdir@/js/server/modules/org/arangodb/actions.js \
 	@srcdir@/js/server/ArangoCollection.js \

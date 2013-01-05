@@ -182,6 +182,7 @@
 //     newcap     true, if constructor names capitalization is ignored
 //     node       true, if Node.js globals should be predefined
 //     nomen      true, if names may have dangling _
+///    nonpropdel true, if delete should be allowed for non-properties
 //     on         true, if HTML event handlers should be allowed
 //     passfail   true, if the scan should stop on first error
 //     plusplus   true, if increment/decrement should be allowed
@@ -274,7 +275,7 @@
     'min-height', 'min-width', missing_a, missing_a_after_b, missing_option,
     missing_property, missing_space_a_b, missing_url, missing_use_strict, mixed,
     mm, mode, move_invocation, move_var, n, name, name_function, nav,
-    nested_comment, newcap, node, noframes, nomen, noscript, not,
+    nested_comment, newcap, node, noframes, nomen, nonpropdel, noscript, not,
     not_a_constructor, not_a_defined, not_a_function, not_a_label, not_a_scope,
     not_greater, nud, number, object, octal_a, ol, on, opacity, open, optgroup,
     option, outer, outline, 'outline-color', 'outline-style', 'outline-width',
@@ -356,6 +357,7 @@ var JSLINT = (function () {
             newcap    : true,
             node      : true,
             nomen     : true,
+	    nonpropdel: true,
             on        : true,
             passfail  : true,
             plusplus  : true,
@@ -3419,8 +3421,10 @@ klass:              do {
     prefix('delete', function () {
         one_space();
         var p = expression(0);
-        if (!p || (p.id !== '.' && p.id !== '[')) {
-            warn('deleted');
+        if (!option.nonpropdel) {
+            if (!p || (p.id !== '.' && p.id !== '[')) {
+                warn('deleted');
+	    }
         }
         this.first = p;
         return this;
