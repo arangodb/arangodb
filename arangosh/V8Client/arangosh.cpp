@@ -1309,6 +1309,7 @@ int main (int argc, char* argv[]) {
   vector<string> files;
 
   files.push_back("common/bootstrap/modules.js");
+  files.push_back("common/bootstrap/module-internal.js");
   files.push_back("common/bootstrap/module-fs.js");
   files.push_back("common/bootstrap/module-console.js");
 
