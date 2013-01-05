@@ -426,9 +426,7 @@ function get_api_collection (req, res) {
     }
 
     else {
-      actions.resultNotFound(req, 
-			     res,
-			     arangodb.errors.ERROR_HTTP_NOT_FOUND.code, 
+      actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND, 
 			     "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
     }
   }
@@ -699,9 +697,7 @@ function put_api_collection (req, res) {
     put_api_collection_rename(req, res, collection);
   }
   else {
-    actions.resultNotFound(req,
-			   res,
-			   arangodb.errors.ERROR_HTTP_NOT_FOUND.code,
+    actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,
 			   "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
   }
 }
