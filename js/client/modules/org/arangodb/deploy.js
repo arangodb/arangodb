@@ -2,13 +2,13 @@
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validator functions
+/// @brief deployment tools
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,102 +25,94 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 number validators
+// --SECTION--                                                         ArangoApp
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoStructure
+/// @addtogroup ArangoDeployment
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief positive number
+/// @brief application
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.positiveNumber = function (value, info, lang) {
-  if (value <= 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be positive";
+function ArangoApp (routing, description) {
+  this._routing = routing;
+  this._description = description;
+}
 
-    throw error;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoDeployment
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mounts a bunch of static pages
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoApp.prototype.mountStaticPages = function (url, collection) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief negative number
+/// @brief creates a new app
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.negativeNumber = function (value, info, lang) {
-  if (0.0 <= value) {
+exports.createApp = function (name) {
+  var routing = arangodb.db._collection("_routing");
+  var doc = routing.firstExample({ application: name });
+
+  if (doc !== null) {
     var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be negative";
+    error.errorNum = arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER;
+    error.errorMessage = "application name must be unique";
 
     throw error;
   }
+
+  doc = routing.save({ application: name,
+		       urlPrefix: "",
+		       routes: [],
+		       middleware: [] });
+
+  return new ArangoApp(routing, doc);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief zero
+/// @brief loads an existing app
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.zeroNumber = function (value, info, lang) {
-  if (value === 0.0) {
+exports.readApp = function (name) {
+  var routing = arangodb.db._collection("_routing");
+  var doc = routing.firstExample({ application: name });
+
+  if (doc === null) {
     var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be zero";
+    error.errorNum = arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    error.errorMessage = "application unknown";
 
     throw error;
   }
-};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief non-positive number
-////////////////////////////////////////////////////////////////////////////////
-
-exports.nonPositiveNumber = function (value, info, lang) {
-  if (0.0 < value) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be non-positive";
-
-    throw error;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief non-negative number
-////////////////////////////////////////////////////////////////////////////////
-
-exports.nonNegativeNumber = function (value, info, lang) {
-  if (value < 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be non-negative";
-
-    throw error;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief zero
-////////////////////////////////////////////////////////////////////////////////
-
-exports.nonZeroNumber = function (value, info, lang) {
-  if (value !== 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be non-zero";
-
-    throw error;
-  }
+  return new ArangoApp(routing, doc);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

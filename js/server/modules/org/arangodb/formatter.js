@@ -29,11 +29,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 number formatters
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStructures
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a number
@@ -55,7 +59,7 @@ exports.number = function (value, info, lang) {
     }
     else {
       error = new arangodb.ArangoError();
-      error.errorNum = actions.ERROR_NOT_IMPLEMENTED;
+      error.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
       error.errorMessage = "format '" + format + "' not implemented";
 
       throw error;

@@ -118,7 +118,7 @@ function buildDocumentFromReq(req) {
 
 function postKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
+    actions.resultBad(req, res, arangodb.ERROR_KEYVALUE_INVALID_KEY);
     return;
   }
 
@@ -130,7 +130,7 @@ function postKeyValue(req, res) {
   }
 
   if (req.requestBody == "") {
-    actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_NO_VALUE, actions.getErrorMessage(actions.ERROR_KEYVALUE_NO_VALUE));
+    actions.resultError(req, res, actions.HTTP_BAD, arangodb.ERROR_KEYVALUE_NO_VALUE, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_NO_VALUE));
     return;
   }
   
@@ -139,7 +139,7 @@ function postKeyValue(req, res) {
   var oldDoc = internal.db._collection(collection).firstExample("$key", doc["$key"]);
         
   if (oldDoc != undefined) {
-    actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_EXISTS, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_EXISTS));
+    actions.resultError(req, res, actions.HTTP_BAD, arangodb.ERROR_KEYVALUE_KEY_EXISTS, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_EXISTS));
   }
   else {
     var id = db[collection].save(doc);    
@@ -161,7 +161,7 @@ function postKeyValue(req, res) {
 
 function putKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
+    actions.resultBad(req, res, arangodb.ERROR_KEYVALUE_INVALID_KEY);
     return;
   }
 
@@ -186,7 +186,7 @@ function putKeyValue(req, res) {
       actions.resultOk(req, res, actions.HTTP_CREATED, result);      
       return;
     }
-    actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+    actions.resultError(req, res, actions.HTTP_NOT_FOUND, arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND));
   }
   else {
     // get _id
@@ -203,7 +203,7 @@ function putKeyValue(req, res) {
       actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"changed" : true});                              
     }
     else {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_CHANGED));
+      actions.resultError(req, res, actions.HTTP_BAD, arangodb.ERROR_KEYVALUE_KEY_NOT_CHANGED, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_CHANGED));
     }
   }
 }
@@ -217,7 +217,7 @@ function putKeyValue(req, res) {
 
 function deleteKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
+    actions.resultBad(req, res, arangodb.ERROR_KEYVALUE_INVALID_KEY);
     return;
   }
 
@@ -237,7 +237,7 @@ function deleteKeyValue(req, res) {
   var doc = internal.db._collection(collection).firstExample("$key", key);
     
   if (doc == undefined) {
-    actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+    actions.resultError(req, res, actions.HTTP_NOT_FOUND, arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND));
   }
   else {
     var id = doc._id;
@@ -245,7 +245,7 @@ function deleteKeyValue(req, res) {
       actions.resultOk(req, res, actions.HTTP_ACCEPTED, {"removed" : true});                              
     }
     else {
-      actions.resultError(req, res, actions.HTTP_BAD, actions.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_REMOVED));
+      actions.resultError(req, res, actions.HTTP_BAD, arangodb.ERROR_KEYVALUE_KEY_NOT_REMOVED, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_REMOVED));
     }
   }
 }
@@ -261,7 +261,7 @@ function deleteKeyValue(req, res) {
 
 function getKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
+    actions.resultBad(req, res, arangodb.ERROR_KEYVALUE_INVALID_KEY);
     return;
   }
 
@@ -281,7 +281,7 @@ function getKeyValue(req, res) {
   var doc = internal.db._collection(collection).firstExample("$key", key); 
         
   if (doc == undefined) {
-    actions.resultError(req, res, actions.HTTP_NOT_FOUND, actions.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(actions.ERROR_KEYVALUE_KEY_NOT_FOUND));
+    actions.resultError(req, res, actions.HTTP_NOT_FOUND, arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND, actions.getErrorMessage(arangodb.ERROR_KEYVALUE_KEY_NOT_FOUND));
   }
   else {
     var headers = {};
@@ -367,7 +367,7 @@ actions.defineHttp({
 
 function searchKeyValue(req, res) {
   if (req.suffix.length < 2) {
-    actions.resultBad(req, res, actions.ERROR_KEYVALUE_INVALID_KEY, actions.getErrorMessage(actions.ERROR_KEYVALUE_INVALID_KEY));
+    actions.resultBad(req, res, arangodb.ERROR_KEYVALUE_INVALID_KEY);
     return;
   }
 

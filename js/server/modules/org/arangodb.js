@@ -43,6 +43,17 @@ exports.db = internal.db;
 exports.ArangoCollection = internal.ArangoCollection;
 exports.ArangoError = internal.ArangoError;
 
+// copy error codes
+(function () {
+  var name;
+
+  for (name in internal.errors) {
+    if (internal.errors.hasOwnProperty(name)) {
+      exports[name] = internal.errors[name].code;
+    }
+  }
+}());
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
