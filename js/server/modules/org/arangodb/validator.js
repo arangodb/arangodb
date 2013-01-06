@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,6 +28,9 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 number validators
 // -----------------------------------------------------------------------------
@@ -44,13 +41,13 @@
 
 exports.positiveNumber = function (value, info, lang) {
   if (value <= 0.0) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_VALIDATION_FAILED.code;
+    var error = new arangodb.ArangoError();
+    error.errorNum = actions.ERROR_ARANGO_VALIDATION_FAILED;
     error.errorMessage = "number must be positive";
 
     throw error;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief negative number
@@ -58,13 +55,13 @@ exports.positiveNumber = function (value, info, lang) {
 
 exports.negativeNumber = function (value, info, lang) {
   if (0.0 <= value) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_VALIDATION_FAILED.code;
+    var error = new arangodb.ArangoError();
+    error.errorNum = actions.ERROR_ARANGO_VALIDATION_FAILED;
     error.errorMessage = "number must be negative";
 
     throw error;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zero
@@ -72,13 +69,13 @@ exports.negativeNumber = function (value, info, lang) {
 
 exports.zeroNumber = function (value, info, lang) {
   if (value === 0.0) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_VALIDATION_FAILED.code;
+    var error = new arangodb.ArangoError();
+    error.errorNum = actions.ERROR_ARANGO_VALIDATION_FAILED;
     error.errorMessage = "number must be zero";
 
     throw error;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief non-positive number
@@ -86,13 +83,13 @@ exports.zeroNumber = function (value, info, lang) {
 
 exports.nonPositiveNumber = function (value, info, lang) {
   if (0.0 < value) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_VALIDATION_FAILED.code;
+    var error = new arangodb.ArangoError();
+    error.errorNum = actions.ERROR_ARANGO_VALIDATION_FAILED;
     error.errorMessage = "number must be non-positive";
 
     throw error;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief non-negative number
@@ -100,13 +97,13 @@ exports.nonPositiveNumber = function (value, info, lang) {
 
 exports.nonNegativeNumber = function (value, info, lang) {
   if (value < 0.0) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_VALIDATION_FAILED.code;
+    var error = new arangodb.ArangoError();
+    error.errorNum = actions.ERROR_ARANGO_VALIDATION_FAILED;
     error.errorMessage = "number must be non-negative";
 
     throw error;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zero
@@ -114,13 +111,13 @@ exports.nonNegativeNumber = function (value, info, lang) {
 
 exports.nonZeroNumber = function (value, info, lang) {
   if (value !== 0.0) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_VALIDATION_FAILED.code;
+    var error = new arangodb.ArangoError();
+    error.errorNum = actions.ERROR_ARANGO_VALIDATION_FAILED;
     error.errorMessage = "number must be non-zero";
 
     throw error;
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -179,6 +179,7 @@
 
   if (typeof PRETTY_PRINT !== "undefined") {
     internal.PRETTY_PRINT = PRETTY_PRINT;
+    delete PRETTY_PRINT;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

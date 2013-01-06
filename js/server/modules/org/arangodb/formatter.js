@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,8 +28,11 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    number parsers
+// --SECTION--                                                 number formatters
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,8 +54,8 @@ exports.number = function (value, info, lang) {
       result = String(value);
     }
     else {
-      error = new ArangoError();
-      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      error = new arangodb.ArangoError();
+      error.errorNum = actions.ERROR_NOT_IMPLEMENTED;
       error.errorMessage = "format '" + format + "' not implemented";
 
       throw error;
@@ -69,7 +66,7 @@ exports.number = function (value, info, lang) {
   }
 
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
