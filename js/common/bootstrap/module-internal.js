@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*global require, module, Module, FS_MOVE, FS_REMOVE, FS_EXISTS, FS_IS_DIRECTORY, FS_LIST_TREE, 
   SYS_EXECUTE, SYS_LOAD, SYS_LOG, SYS_LOG_LEVEL, SYS_OUTPUT, SYS_PROCESS_STAT, SYS_READ,
   SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, SYS_SHA256, SYS_WAIT, SYS_GETLINE,
@@ -48,64 +48,98 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  Module.prototype.ModuleCache["/internal"] = new Module("/internal");
-
   var internal = Module.prototype.ModuleCache["/internal"].exports;
 
   // system functions
-  internal.execute = SYS_EXECUTE;
-  delete SYS_EXECUTE;
+  if (typeof SYS_EXECUTE !== "undefined") {
+    internal.execute = SYS_EXECUTE;
+    delete SYS_EXECUTE;
+  }
 
-  internal.getline = SYS_GETLINE;
-  delete SYS_GETLINE;
+  if (typeof SYS_GETLINE !== "undefined") {
+    internal.getline = SYS_GETLINE;
+    delete SYS_GETLINE;
+  }
 
-  internal.load = SYS_LOAD;
-  delete SYS_LOAD;
+  if (typeof SYS_LOAD !== "undefined") {
+    internal.load = SYS_LOAD;
+    delete SYS_LOAD;
+  }
 
-  internal.log = SYS_LOG;
-  delete SYS_LOG;
+  if (typeof SYS_LOG !== "undefined") {
+    internal.log = SYS_LOG;
+    delete SYS_LOG;
+  }
 
-  internal.logLevel = SYS_LOG_LEVEL;
-  delete SYS_LOG_LEVEL;
+  if (typeof SYS_LOG_LEVEL !== "undefined") {
+    internal.logLevel = SYS_LOG_LEVEL;
+    delete SYS_LOG_LEVEL;
+  }
 
-  internal.output = SYS_OUTPUT;
-  delete SYS_OUTPUT;
+  if (typeof SYS_OUTPUT !== "undefined") {
+    internal.output = SYS_OUTPUT;
+    delete SYS_OUTPUT;
+  }
 
-  internal.parse= SYS_PARSE;
-  delete SYS_PARSE;
+  if (typeof SYS_PARSE !== "undefined") {
+    internal.parse= SYS_PARSE;
+    delete SYS_PARSE;
+  }
 
-  internal.processStat = SYS_PROCESS_STAT;
-  delete SYS_PROCESS_STAT;
+  if (typeof SYS_PROCESS_STAT !== "undefined") {
+    internal.processStat = SYS_PROCESS_STAT;
+    delete SYS_PROCESS_STAT;
+  }
 
-  internal.read = SYS_READ;
-  delete SYS_READ;
+  if (typeof SYS_READ !== "undefined") {
+    internal.read = SYS_READ;
+    delete SYS_READ;
+  }
 
-  internal.sha256 = SYS_SHA256;
-  delete SYS_SHA256;
+  if (typeof SYS_SHA256 !== "undefined") {
+    internal.sha256 = SYS_SHA256;
+    delete SYS_SHA256;
+  }
 
-  internal.sprintf = SYS_SPRINTF;
-  delete SYS_SPRINTF;
+  if (typeof SYS_SPRINTF !== "undefined") {
+    internal.sprintf = SYS_SPRINTF;
+    delete SYS_SPRINTF;
+  }
 
-  internal.time = SYS_TIME;
-  delete SYS_TIME;
+  if (typeof SYS_TIME !== "undefined") {
+    internal.time = SYS_TIME;
+    delete SYS_TIME;
+  }
 
-  internal.wait = SYS_WAIT;
-  delete SYS_WAIT;
+  if (typeof SYS_WAIT !== "undefined") {
+    internal.wait = SYS_WAIT;
+    delete SYS_WAIT;
+  }
 
-  internal.exists = FS_EXISTS;
-  delete FS_EXISTS;
+  if (typeof FS_EXISTS !== "undefined") {
+    internal.exists = FS_EXISTS;
+    delete FS_EXISTS;
+  }
 
-  internal.isDirectory = FS_IS_DIRECTORY;
-  delete FS_IS_DIRECTORY;
+  if (typeof FS_IS_DIRECTORY !== "undefined") {
+    internal.isDirectory = FS_IS_DIRECTORY;
+    delete FS_IS_DIRECTORY;
+  }
 
-  internal.listTree = FS_LIST_TREE;
-  delete FS_LIST_TREE;
+  if (typeof FS_LIST_TREE !== "undefined") {
+    internal.listTree = FS_LIST_TREE;
+    delete FS_LIST_TREE;
+  }
 
-  internal.move = FS_MOVE;
-  delete FS_MOVE;
+  if (typeof FS_MOVE !== "undefined") {
+    internal.move = FS_MOVE;
+    delete FS_MOVE;
+  }
 
-  internal.remove = FS_REMOVE;
-  delete FS_REMOVE;
+  if (typeof FS_REMOVE !== "undefined") {
+    internal.remove = FS_REMOVE;
+    delete FS_REMOVE;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -342,7 +376,7 @@
       }
 
       if (value instanceof Object) {
-        if ('_PRINT' in value) {
+        if (typeof value._PRINT === "function") {
           value._PRINT(seen, path, names, level);
         }
         else if (value instanceof Array) {
@@ -351,7 +385,7 @@
         else if (value.__proto__ === Object.prototype) {
           internal.printObject(value, seen, path, names, level);
         }
-        else if ('toString' in value) {
+	else if (typeof value.toString === "function") {
           internal.output(value.toString());
         }
         else {

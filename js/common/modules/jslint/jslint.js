@@ -187,6 +187,7 @@
 //     passfail   true, if the scan should stop on first error
 //     plusplus   true, if increment/decrement should be allowed
 //     properties true, if all property names must be declared with /*properties*/
+//     proto      true, if __proto__ is allowed
 //     regexp     true, if the . should be allowed in regexp literals
 //     rhino      true, if the Rhino environment globals should be predefined
 //     undef      true, if variables can be declared out of order
@@ -284,7 +285,7 @@
     'page-break-before', param, parameter_a_get_b, parameter_arguments_a,
     parameter_set_a, params, paren, parent, passfail, pc, plusplus, pop,
     position, postscript, pre, predef, print, progress, projection, properties,
-    properties_report, property, prototype, pt, push, px, q, quote, quotes, r,
+    properties_report, property, proto, prototype, pt, push, px, q, quote, quotes, r,
     radix, range, raw, read_only, reason, redefinition_a, regexp, replace,
     report, reserved, reserved_a, rhino, right, rp, rt, ruby, safe, samp,
     scanned_a_b, screen, script, search, second, section, select, shift,
@@ -362,6 +363,7 @@ var JSLINT = (function () {
             passfail  : true,
             plusplus  : true,
             properties: true,
+   	    proto     : true,
             regexp    : true,
             rhino     : true,
             undef     : true,
@@ -1220,8 +1222,12 @@ var JSLINT = (function () {
             )] || syntax['(error)']);
             if (type === '(identifier)') {
                 the_token.identifier = true;
-                if (value === '__iterator__' || value === '__proto__') {
+                if (value === '__iterator__') {
                     stop_at('reserved_a', line, from, value);
+                } else if (value === '__proto__') {
+                    if (!option.proto) {
+                      stop_at('reserved_a', line, from, value);
+		    }
                 } else if (!option.nomen &&
                         (value.charAt(0) === '_' ||
                         value.charAt(value.length - 1) === '_')) {

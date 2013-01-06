@@ -42,8 +42,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  Module.prototype.ModuleCache["/console"] = new Module("/console");
-
   var internal = Module.prototype.ModuleCache["/internal"].exports;
   var console = Module.prototype.ModuleCache["/console"].exports;
 
