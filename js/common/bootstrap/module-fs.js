@@ -42,8 +42,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  Module.prototype.ModuleCache["/fs"] = new Module("/fs");
-
   var internal = Module.prototype.ModuleCache["/internal"].exports;
   var fs = Module.prototype.ModuleCache["/fs"].exports;
 

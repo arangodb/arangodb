@@ -51,6 +51,9 @@ function Module (id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.ModuleCache = {};
+Module.prototype.ModuleCache["/internal"] = new Module("/internal");
+Module.prototype.ModuleCache["/fs"] = new Module("/fs");
+Module.prototype.ModuleCache["/console"] = new Module("/console");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file exists cache
