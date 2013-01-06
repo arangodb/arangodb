@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,6 +40,8 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.db = internal.db;
+exports.ArangoCollection = internal.ArangoCollection;
+exports.ArangoError = internal.ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -1736,6 +1736,7 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/html/admin/js/arangodb/browser.js \
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/client/modules/org/arangodb.js \
 	@srcdir@/js/common/bootstrap/errors.js \
 	@srcdir@/js/common/bootstrap/module-console.js \
 	@srcdir@/js/common/bootstrap/module-fs.js \
@@ -1743,9 +1744,12 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/common/bootstrap/modules.js \
 	@srcdir@/js/common/bootstrap/monkeypatches.js \
 	@srcdir@/js/server/ArangoCollection.js \
+	@srcdir@/js/server/ArangoStructure.js \
 	@srcdir@/js/server/modules/org/arangodb.js \
-	@srcdir@/js/server/modules/org/arangodb/actions.js \
-	@srcdir@/js/server/ArangoStructure.js
+	@srcdir@/js/server/modules/org/arangodb/validator.js \
+	@srcdir@/js/server/modules/org/arangodb/formatter.js \
+	@srcdir@/js/server/modules/org/arangodb/parser.js \
+	@srcdir@/js/server/modules/org/arangodb/actions.js
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 all: $(BUILT_SOURCES)
