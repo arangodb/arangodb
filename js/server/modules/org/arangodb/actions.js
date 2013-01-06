@@ -1,11 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         regexp: true
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true plusplus: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,6 +28,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var internal = require("internal");
 var console = require("console");
 
@@ -819,13 +813,13 @@ function getJsonBody (req, res, code) {
     body = JSON.parse(req.requestBody || "{}") || {};
   }
   catch (err1) {
-    exports.resultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err1);
+    exports.resultBad(req, res, arangodb.ERROR_HTTP_CORRUPTED_JSON, err1);
     return undefined;
   }
 
   if (! body || ! (body instanceof Object)) {
     if (code === undefined) {
-      code = exports.ERROR_HTTP_CORRUPTED_JSON;
+      code = arangodb.ERROR_HTTP_CORRUPTED_JSON;
     }
 
     err = new internal.ArangoError();
@@ -855,6 +849,7 @@ function getJsonBody (req, res, code) {
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
   var i;
+  var msg;
 
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
@@ -866,6 +861,13 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
     errorNum = httpReturnCode;
   }
   
+  if (errorMessage === undefined || errorMessage === null) {
+    msg = getErrorMessage(errorNum);
+  }
+  else {
+    msg = String(errorMessage);
+  }
+
   var result = {};
 
   if (keyvals !== undefined) {
@@ -879,7 +881,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
   result.error        = true;
   result.code         = httpReturnCode;
   result.errorNum     = errorNum;
-  result.errorMessage = errorMessage;
+  result.errorMessage = msg;
   
   res.body = JSON.stringify(result);
 
@@ -1150,13 +1152,6 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
-  if (msg === undefined || msg === null) {
-    msg = getErrorMessage(code);
-  }
-  else {
-    msg = String(msg);
-  }
-
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
@@ -1169,7 +1164,7 @@ function resultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotFound (req, res, code, msg, headers) {
-  resultError(req, res, exports.HTTP_NOT_FOUND, code, String(msg), headers);
+  resultError(req, res, exports.HTTP_NOT_FOUND, code, msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1184,8 +1179,8 @@ function resultNotImplemented (req, res, msg, headers) {
   resultError(req, 
               res,
               exports.HTTP_NOT_IMPLEMENTED,
-              exports.ERROR_NOT_IMPLEMENTED,
-              String(msg),
+              arangodb.ERROR_NOT_IMPLEMENTED,
+              msg,
               headers);
 }
 
@@ -1199,7 +1194,8 @@ function resultNotImplemented (req, res, msg, headers) {
 
 function resultUnsupported (req, res, headers) {
   resultError(req, res,
-              exports.HTTP_METHOD_NOT_ALLOWED, exports.ERROR_HTTP_METHOD_NOT_ALLOWED,
+              exports.HTTP_METHOD_NOT_ALLOWED,
+	      arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
               "Unsupported method",
               headers);  
 }
@@ -1345,13 +1341,13 @@ function resultCursor (req, res, cursor, code, options) {
 function collectionNotFound (req, res, collection, headers) {
   if (collection === undefined) {
     resultError(req, res,
-                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
                 headers);
   }
   else {
     resultError(req, res,
-                exports.HTTP_NOT_FOUND, exports.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
                 "unknown collection '" + collection + "'", headers);
   }
 }
@@ -1367,19 +1363,19 @@ function collectionNotFound (req, res, collection, headers) {
 function indexNotFound (req, res, collection, index, headers) {
   if (collection === undefined) {
     resultError(req, res,
-                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
                 headers);
   }
   else if (index === undefined) {
     resultError(req, res,
-                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
                 "expecting an index identifier",
                 headers);
   }
   else {
     resultError(req, res,
-                exports.HTTP_NOT_FOUND, exports.ERROR_ARANGO_INDEX_NOT_FOUND,
+                exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_INDEX_NOT_FOUND,
                 "unknown index '" + index + "'", headers);
   }
 }
@@ -1399,14 +1395,14 @@ function resultException (req, res, err, headers) {
     var code = exports.HTTP_BAD;
 
     switch (num) {
-      case exports.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
+      case arangodb.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
     }
 
     resultError(req, res, code, num, msg, headers);
   }
   else {
     resultError(req, res,
-                exports.HTTP_SERVER_ERROR, exports.ERROR_HTTP_SERVER_ERROR,
+                exports.HTTP_SERVER_ERROR, arangodb.ERROR_HTTP_SERVER_ERROR,
                 String(err),
                 headers);
   }
@@ -1589,15 +1585,6 @@ exports.HTTP_SERVER_ERROR        = 500;
 exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
-
-// copy error codes
-var name;
-
-for (name in internal.errors) {
-  if (internal.errors.hasOwnProperty(name)) {
-    exports[name] = internal.errors[name].code;
-  }
-}
 
 // load routing
 reloadRouting();
