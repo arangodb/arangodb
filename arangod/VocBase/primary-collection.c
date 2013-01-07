@@ -255,7 +255,6 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
   TRI_datafile_t* journal;
   TRI_collection_t* collection;
   TRI_vector_pointer_t* vector;
-  bool ok;
   int res;
 
   collection = &primary->base;
@@ -292,6 +291,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
     char* dname;
     char* filename;
     char* number;
+    bool ok;
 
     number = TRI_StringUInt32(journal->_fid);
     dname = TRI_Concatenate3String("datafile-", number, ".db");
