@@ -70,6 +70,9 @@ lib/BasicsC/voc-errors.h
 lib/JsonParser/json-parser.c
 lib/V8/v8-json.cpp
 
+cppcheck.log
+cppcheck.tmp
+
 Installation/arangod.conf
 Installation/epm/arangodb.sublist
 nbproject/
