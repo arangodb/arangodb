@@ -263,7 +263,9 @@ function DELETE_api_cursor(req, res) {
     return;
   }
 
-  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
+  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });
+
+  // we want the garbage collection to clean unused cursors immediately
   internal.wait(0.0);
 }
 
