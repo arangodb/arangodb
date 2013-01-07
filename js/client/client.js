@@ -1141,7 +1141,8 @@ function ArangoCollection (database, data) {
 
     var result = { 
       waitForSync : requestResult.waitForSync,
-      journalSize : requestResult.journalSize
+      journalSize : requestResult.journalSize,
+      isVolatile : requestResult.isVolatile
     };
     
     if (requestResult.createOptions != undefined) {
@@ -2166,6 +2167,10 @@ function ArangoDatabase (connection) {
 
       if (properties.hasOwnProperty("isSystem")) {
         body.isSystem = properties.isSystem;
+      }
+      
+      if (properties.hasOwnProperty("isVolatile")) {
+        body.isVolatile = properties.isVolatile;
       }
 
       if (properties.hasOwnProperty("createOptions")) {
