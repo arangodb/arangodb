@@ -262,7 +262,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   }
 
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(options);
-  if (_endpoints.size() == 0 && mode == OperationMode::MODE_SERVER) {
+  if (_endpoints.empty() && mode == OperationMode::MODE_SERVER) {
     LOGGER_FATAL << "no endpoint has been specified, giving up";
     cerr << "no endpoint has been specified, giving up\n";
     LOGGER_INFO << "please use the '--server.endpoint' option";

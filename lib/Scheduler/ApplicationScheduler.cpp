@@ -79,6 +79,7 @@ static SignalTask* localSignalTask;
 
       ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         localSignalTask = this;
+        // TODO: Variable 'result' is assigned a value that is never used
         int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true); 
       }
 

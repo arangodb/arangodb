@@ -1083,7 +1083,6 @@ int TRI_DestroyLockFile (char const* filename) {
 #ifdef _WIN32
 char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirectory) {
   char* result;
-  char* ptr;
   size_t cwdLength;
   size_t fileLength;
   bool ok;
