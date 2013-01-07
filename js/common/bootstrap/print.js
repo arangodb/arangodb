@@ -245,7 +245,9 @@
         sep = ", ";
       }
 
-      internal.output(" ");
+      if (object.length > 1) {
+        internal.output(" ");
+      }
       internal.printIndent(level);
 
       internal.output("]");
@@ -291,7 +293,9 @@
       }
     }
 
-    internal.output(" ");
+    if (sep == ", ") {
+      internal.output(" ");
+    }
     internal.printIndent(level);
 
     internal.output("}");
