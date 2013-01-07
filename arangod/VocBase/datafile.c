@@ -824,16 +824,15 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
   int flags;
   int fd;
 
-  // TODO: find a good workaround for Windows
-  // TODO: make this more portable
-
 #ifdef MAP_ANONYMOUS
   // this is required for "real" anonymous regions
   fd = -1;
   flags = MAP_ANONYMOUS | MAP_SHARED;
 #else
   // ugly workaround if MAP_ANONYMOUS is not available
-  fd = TRI_OPEN("/dev/zero", O_RDONLY);
+  // TODO: make this more portable
+  // TODO: find a good workaround for Windows
+  fd = TRI_OPEN("/dev/zero", O_RDWR);
   if (fd == -1) {
     return NULL;
   }
@@ -846,8 +845,6 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (const TRI_voc_size_t maximalSize) {
  
 #ifndef MAP_ANONYMOUS  
   TRI_CLOSE(fd);
-
-  // ggrrrr...
   fd = -1;
 #endif
   
