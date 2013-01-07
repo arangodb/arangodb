@@ -192,7 +192,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var explain = explainQuery(query);
         assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
+        assertEqual(test.offset + test.limit, explain[0]["expression"]["extra"]["limit"]);
       }
     },
 
@@ -357,7 +357,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var explain = explainQuery(query);
         assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
+        assertEqual(test.offset + test.limit, explain[0]["expression"]["extra"]["limit"]);
       }
     },
 
