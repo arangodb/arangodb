@@ -470,16 +470,32 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     // check if we can apply a scope limit and push it into the for loop
     if (scope->_limit._status == TRI_AQL_LIMIT_USE) {
       // yes!
-      TRI_aql_for_hint_t* hint = (TRI_aql_for_hint_t*) TRI_AQL_NODE_DATA(node);
+      TRI_aql_node_t* expression = TRI_AQL_NODE_MEMBER(node, 1);
 
-      if (hint != NULL) {
-        // we'll now modify the hint for the for loop
-        hint->_limit._offset    = scope->_limit._offset;
-        hint->_limit._limit     = scope->_limit._limit;
-        hint->_limit._status    = TRI_AQL_LIMIT_USE;
-        hint->_limit._hasFilter = scope->_limit._hasFilter;
-      
-        LOG_TRACE("using limit hint for for loop");
+      if (expression->_type == TRI_AQL_NODE_COLLECTION && ! scope->_limit._hasFilter) {
+        // move limit into the COLLECTION node
+        TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(expression);
+
+        if (hint != NULL) {
+          hint->_limit._offset    = scope->_limit._offset;
+          hint->_limit._limit     = scope->_limit._limit;
+          hint->_limit._status    = TRI_AQL_LIMIT_USE;
+          hint->_limit._hasFilter = scope->_limit._hasFilter;
+        }
+      }
+      else {
+        // move limit into the FOR node
+        TRI_aql_for_hint_t* hint = (TRI_aql_for_hint_t*) TRI_AQL_NODE_DATA(node);
+
+        if (hint != NULL) {
+          // we'll now modify the hint for the for loop
+          hint->_limit._offset    = scope->_limit._offset;
+          hint->_limit._limit     = scope->_limit._limit;
+          hint->_limit._status    = TRI_AQL_LIMIT_USE;
+          hint->_limit._hasFilter = scope->_limit._hasFilter;
+
+          LOG_TRACE("using limit hint for for loop");
+        }
       }
       
       // deactive this limit for any further tries

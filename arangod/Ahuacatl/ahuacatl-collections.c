@@ -270,7 +270,7 @@ TRI_json_t* TRI_GetJsonCollectionHintAql (TRI_aql_collection_hint_t* const hint)
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
                          result,
                          "limit", 
-                         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) hint->_limit._limit));
+                         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) hint->_limit._offset + (double) hint->_limit._limit));
   }
 
   return result;
