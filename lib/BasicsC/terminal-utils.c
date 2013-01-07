@@ -46,12 +46,11 @@
 
 int TRI_ColumnsWidth (void) {
   char* e;
-  int c;
-
+  
   e = getenv("COLUMNS");
 
   if (e != 0) {
-    c = TRI_Int32String(e);
+    int c = (int) TRI_Int32String(e);
 
     if (c == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
       return TRI_DEFAULT_COLUMNS;

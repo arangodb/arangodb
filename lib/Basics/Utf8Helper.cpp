@@ -394,8 +394,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   TRI_vector_string_t* words;
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString word;
-  size_t utf8WordLength = 0;
-  char* utf8Word;
 
   if (textLength == 0) {
     // input text is empty
@@ -487,7 +485,9 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
         chunkLength = maximalLength;
       }
       utext.extractBetween(start, start + chunkLength, tempUtf16, 0);      
-      utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, chunkLength, &utf8WordLength);
+
+      size_t utf8WordLength;
+      char* utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16, chunkLength, &utf8WordLength);
       if (utf8Word != 0) {
         TRI_PushBackVectorString(words, utf8Word);
       }

@@ -516,9 +516,6 @@ static void OutputMessage (TRI_log_level_e level,
                            char* message,
                            size_t length,
                            bool copy) {
-  size_t i;
-  
-
   if (! LoggingActive) {
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
@@ -544,6 +541,8 @@ static void OutputMessage (TRI_log_level_e level,
     TRI_UnlockMutex(&LogMessageQueueLock);
   }
   else {
+    size_t i;
+
     TRI_LockSpin(&AppendersLock);
 
     for (i = 0;  i < Appenders._length;  ++i) {

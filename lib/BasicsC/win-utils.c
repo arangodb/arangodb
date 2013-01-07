@@ -112,6 +112,7 @@ void TRI_usleep(unsigned long waitTime) {
   }
 
   // Wait for the timer - but don't wait for ever.
+  // TODO: Variable 'result' is assigned a value that is never used
   result = WaitForSingleObject(hTimer, ((waitTime/1000) + 1)); // wait for a 1 millisecond at least
   
   // todo: go through what the result is e.g. WAIT_OBJECT_0
@@ -152,6 +153,7 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
   } 
+  // TODO: printf format string has 2 parameters but only 1 are given
   printf("oreste:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
   /* end oreste -debug */
   //abort();
