@@ -7,6 +7,7 @@ content-type: application/json
   "name": "UnitTestsCollectionBasics",
   "code": 200,
   "waitForSync": true,
+  "isVolatile": false,
   "id": 73482,
   "journalSize": 33554432,
   "count": 0,

@@ -62,9 +62,10 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   if (showProperties) {
     var properties = collection.properties();
 
-    result.waitForSync = properties.waitForSync;
-    result.journalSize = properties.journalSize;      
+    result.waitForSync   = properties.waitForSync;
+    result.journalSize   = properties.journalSize;      
     result.createOptions = properties.createOptions;
+    result.isVolatile    = properties.isVolatile;
   }
 
   if (showCount) {
@@ -119,11 +120,23 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
-/// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
+/// - @LIT{isSystem} (optional, default is @LIT{false}): If @LIT{true}, create a
 ///   system collection. In this case @FA{collection-name} should start with
 ///   an underscore. End users should normally create non-system collections
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
+///
+/// - @LIT{isVolatile} (optional, default is @LIT{false}): If @LIT{true} then the
+///   collection data is kept in-memory only and not made persistent. Unloading
+///   the collection will cause the collection data to be discarded. Stopping
+///   or re-starting the server will also cause full loss of data in the
+///   collection. Setting this option will make the resulting collection be 
+///   slightly faster than regular collections because ArangoDB does not
+///   enforce any synchronisation to disk and does not calculate any CRC 
+///   checksums for datafiles (as there are no datafiles).
+///
+///   This option should threrefore be used for cache-type collections only, 
+///   and not for data that cannot be re-created otherwise.
 ///
 /// - @LIT{options} (optional) Additional collection options
 ///
@@ -166,6 +179,10 @@ function post_api_collection (req, res) {
   if (body.hasOwnProperty("isSystem")) {
     parameter.isSystem = body.isSystem;
   }
+  
+  if (body.hasOwnProperty("isVolatile")) {
+    parameter.isVolatile = body.isVolatile;
+  }
 
   if (body.hasOwnProperty("_id")) {
     cid = body._id;
@@ -194,6 +211,7 @@ function post_api_collection (req, res) {
     result.id = collection._id;
     result.name = collection.name();
     result.waitForSync = parameter.waitForSync;
+    result.isVolatile = parameter.isVolatile;
     result.status = collection.status();
     result.type = collection.type();
     result.createOptions = collection.createOptions;
@@ -278,13 +296,17 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////
 ///
 /// In addition to the above, the result will always contain the
-/// @LIT{waitForSync} and the @LIT{journalSize} properties. This is
-/// achieved by forcing a load of the underlying collection.
+/// @LIT{waitForSync}, @LIT{journalSize}, and @LIT{isVolatile} properties. 
+/// This is achieved by forcing a load of the underlying collection.
 ///
 /// - @LIT{waitForSync}: If @LIT{true} then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
 /// - @LIT{journalSize}: The maximal size of a journal / datafile.
+///
+/// - @LIT{isVolatile}: If @LIT{true} then the collection data will be
+///   kept in memory only and ArangoDB will not write or sync the data
+///   to disk.
 ///
 /// @REST{GET /_api/collection/@FA{collection-name}/count}
 ////////////////////////////////////////////////////////////////
@@ -584,6 +606,9 @@ function put_api_collection_truncate (req, res, collection) {
 /// - @LIT{type}: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
+///
+/// Note: some other collection properties, such as @LIT{type} or @LIT{isVolatile} 
+/// cannot be changed once the collection is created.
 ///
 /// @EXAMPLES
 ///
