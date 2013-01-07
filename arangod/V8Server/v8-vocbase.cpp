@@ -4414,6 +4414,16 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the indexes
+///
+/// it is the caller's responsibility to acquire and release all required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetIndexesNLVocbaseCol (v8::Arguments const& argv) {
+  return GetIndexesVocbaseCol(argv, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
 ///
 /// @FUN{@FA{collection}.load()}
@@ -6420,6 +6430,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
+  TRI_AddMethodVocbase(rt, "getIndexesNL", JS_GetIndexesNLVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupFulltextIndex", JS_LookupFulltextIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupHashIndex", JS_LookupHashIndexVocbaseCol);
