@@ -1313,13 +1313,11 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
     v8::Handle<v8::String> isSystemKey      = v8::String::New("isSystem");
-    v8::Handle<v8::String> isVolatileKey    = v8::String::New("isVolatile");
-    v8::Handle<v8::String> journalSizeKey   = v8::String::New("journalSize");
-    v8::Handle<v8::String> waitForSyncKey   = v8::String::New("waitForSync");
-    v8::Handle<v8::String> createOptionsKey = v8::String::New("createOptions");
+  
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-    if (p->Has(journalSizeKey)) {
-      double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
+    if (p->Has(v8g->JournalSizeKey)) {
+      double s = TRI_ObjectToDouble(p->Get(v8g->JournalSizeKey));
 
       if (s < TRI_JOURNAL_MINIMAL_SIZE) {
         return scope.Close(v8::ThrowException(
@@ -1333,23 +1331,23 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 
     // get optional options
     TRI_json_t* options = 0;        
-    if (p->Has(createOptionsKey)) {
-      options = TRI_JsonObject(p->Get(createOptionsKey));
+    if (p->Has(v8g->CreateOptionsKey)) {
+      options = TRI_JsonObject(p->Get(v8g->CreateOptionsKey));
     }
 
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, options);
 
-    if (p->Has(waitForSyncKey)) {
-      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
+    if (p->Has(v8g->WaitForSyncKey)) {
+      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
     }
-
+    
     if (p->Has(isSystemKey)) {
       parameter._isSystem = TRI_ObjectToBoolean(p->Get(isSystemKey));
     }
 
-    if (p->Has(isVolatileKey)) {
+    if (p->Has(v8g->IsVolatileKey)) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(isVolatileKey));
+      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(v8g->IsVolatileKey));
 #else
       TRI_FreeCollectionInfoOptions(&parameter);
       return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "volatile collections are not supported on this platform", true)));
@@ -4416,16 +4414,6 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the indexes
-///
-/// it is the caller's responsibility to acquire and release all required locks
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_GetIndexesNLVocbaseCol (v8::Arguments const& argv) {
-  return GetIndexesVocbaseCol(argv, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
 ///
 /// @FUN{@FA{collection}.load()}
@@ -4479,6 +4467,10 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// - @LIT{journalSize} : The size of the journal in bytes.
 ///
+/// - @LIT{isVolatile}: If @LIT{true} then the collection data will be
+///   kept in memory only and ArangoDB will not write or sync the data
+///   to disk.
+///
 /// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
 /// Changes the collection properties. @FA{properties} must be a object with
@@ -4494,6 +4486,9 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// created journals. Also note that you cannot lower the journal size to less
 /// then size of the largest document already stored in the collection.
 ///
+/// Note: some other collection properties, such as @LIT{type} or @LIT{isVolatile} 
+/// cannot be changed once the collection is created.
+///
 /// @EXAMPLES
 ///
 /// Read all properties
@@ -4506,10 +4501,8 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -4563,11 +4556,26 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
           TRI_ReleaseCollection(collection);
           return scope.Close(v8::ThrowException(
-                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                     "<properties>.journalSize too small")));
+                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                   "<properties>.journalSize too small")));
         }
       }
-
+      
+      if (po->Has(v8g->IsVolatileKey)) {
+        if (TRI_ObjectToBoolean(po->Get(v8g->IsVolatileKey)) != base->_info._isVolatile) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "isVolatile option cannot be changed at runtime")));
+        }
+      }
+    
+      if (base->_info._isVolatile && waitForSync) {
+        // the combination of waitForSync and isVolatile makes no sense
+        TRI_ReleaseCollection(collection);
+        return scope.Close(v8::ThrowException(
+                           TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                 "volatile collections do not support the waitForSync option")));
+      }
+    
       // update collection
       TRI_col_info_t newParameter;
 
@@ -4593,6 +4601,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
+    result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
 
     if (base->_info._options) {
       result->Set(v8g->CreateOptionsKey, TRI_ObjectJson(base->_info._options)->ToObject());
@@ -5336,11 +5345,20 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
-/// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
+/// - @LIT{isSystem} (optional, default is @LIT{false}): If @LIT{true}, create a
 ///   system collection. In this case @FA{collection-name} should start with
 ///   an underscore. End users should normally create non-system collections
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
+///
+/// - @LIT{isVolatile} (optional, default is @LIT{false}): If @LIT{true} then the
+///   collection data is kept in-memory only and not made persistent. Unloading
+///   the collection will cause the collection data to be discarded. Stopping
+///   or re-starting the server will also cause full loss of data in the
+///   collection. Setting this option will make the resulting collection be 
+///   slightly faster than regular collections because ArangoDB does not
+///   enforce any synchronisation to disk and does not calculate any CRC 
+///   checksums for datafiles (as there are no datafiles).
 ///
 /// @EXAMPLES
 ///
@@ -6284,9 +6302,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // keys
   // .............................................................................
 
-  v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
-  v8g->CreateOptionsKey = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
+  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(v8::String::New("isVolatile"));
+  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
+  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
+  v8g->CreateOptionsKey  = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
   
   if (v8g->BidirectionalKey.IsEmpty()) {
     v8g->BidirectionalKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_bidirectional"));
@@ -6401,7 +6420,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "ensureUniqueSkiplist", JS_EnsureUniqueSkiplistVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
-  TRI_AddMethodVocbase(rt, "getIndexesNL", JS_GetIndexesNLVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupFulltextIndex", JS_LookupFulltextIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupHashIndex", JS_LookupHashIndexVocbaseCol);

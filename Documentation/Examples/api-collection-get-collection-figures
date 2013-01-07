@@ -26,6 +26,7 @@ location: /_api/collection/73482/figures
     }
   },
   "waitForSync": true,
+  "isVolatile": false,
   "id": 73482,
   "journalSize": 134217728,
   "count": 0,

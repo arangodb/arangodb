@@ -95,8 +95,7 @@
 
     switch (this.type()) {
       case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
-      case ArangoCollection.TYPE_EDGE: type = "edge"; break;
-      case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
+      case ArangoCollection.TYPE_EDGE:     type = "edge"; break;
     }
 
     internal.output("[ArangoStructure ", this._id, ", \"", this.name(), 

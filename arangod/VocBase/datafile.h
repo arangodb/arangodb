@@ -418,7 +418,7 @@ TRI_df_skip_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
 ///
-/// This either creates a datafile using @ref TRI_CreateAnonymousDatafile or
+/// This either creates a datafile using TRI_CreateAnonymousDatafile or
 /// ref TRI_CreatePhysicalDatafile, based on the first parameter
 ////////////////////////////////////////////////////////////////////////////////
 
