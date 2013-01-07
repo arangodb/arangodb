@@ -30,7 +30,7 @@
 #include <VocBase/primary-collection.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
+// --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,10 +39,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of headers per block
+/// @brief minium number of headers per block
 ////////////////////////////////////////////////////////////////////////////////
 
-#define NUMBER_HEADERS_PER_BLOCK (1000)
+#define BLOCK_SIZE_UNIT (128)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -67,6 +71,25 @@ simple_headers_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the size (number of entries) for a block, based on a function
+///
+/// this adaptively increases the number of entries per block until a certain
+/// threshold. the benefit of this is that small collections (with few 
+/// documents) only use little memory whereas bigger collections allocate new
+/// blocks in bigger chunks.
+/// the lowest value for the number of entries in a block is BLOCK_SIZE_UNIT,
+/// the highest value is BLOCK_SIZE_UNIT << 8.
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t GetBlockSize (const size_t blockNumber) {
+  if (blockNumber < 8) {
+    return (size_t) (BLOCK_SIZE_UNIT << blockNumber);
+  }
+
+  return (size_t) (BLOCK_SIZE_UNIT << 8);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clears an header
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -87,8 +110,11 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
   if (headers->_freelist == NULL) {
     char* begin;
     char* ptr;
+    size_t blockSize;
 
-    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, NUMBER_HEADERS_PER_BLOCK * headers->_headerSize, false);
+    blockSize = GetBlockSize(headers->_blocks._length);
+
+    begin = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * headers->_headerSize, false);
 
     // out of memory
     if (begin == NULL) {
@@ -96,7 +122,7 @@ static TRI_doc_mptr_t* RequestSimpleHeaders (TRI_headers_t* h) {
       return NULL;
     }
 
-    ptr = begin + headers->_headerSize * (NUMBER_HEADERS_PER_BLOCK - 1);
+    ptr = begin + headers->_headerSize * (blockSize - 1);
 
     header = NULL;
 
@@ -217,8 +243,9 @@ void TRI_IterateSimpleHeaders (TRI_headers_t* headers,
   size_t i;
 
   for (i = 0;  i < h->_blocks._length;   ++i) {
+    size_t blockSize = GetBlockSize(i);
     TRI_doc_mptr_t* begin = h->_blocks._buffer[i];
-    TRI_doc_mptr_t* end = begin + NUMBER_HEADERS_PER_BLOCK;
+    TRI_doc_mptr_t* end = begin + blockSize;
 
     for (;  begin < end;  ++begin) {
       iterator(begin, data);
