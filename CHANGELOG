@@ -1,6 +1,8 @@
 v1.2.alpha (XXXX-XX-XX)
 -----------------------
 
+* issue #346: adaptively determine NUMBER_HEADERS_PER_BLOCK
+
 * issue #338: arangosh cursor positioning problems
 
 * issue #326: use limit optimisation with filters
