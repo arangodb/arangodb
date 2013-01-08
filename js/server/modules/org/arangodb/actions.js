@@ -190,6 +190,7 @@ function lookupCallbackStatic (content) {
     type = content.contentType || "text/plain";
     body = content.body || "";
     methods = content.methods || [ exports.GET, exports.HEAD ];
+    options = content.options || {};
   }
 
   return {

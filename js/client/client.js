@@ -1720,7 +1720,7 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document in the collection, identified by its id
+/// @brief removes a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.remove = function (id, overwrite) {
@@ -1775,7 +1775,26 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document in the collection, identified by its id
+/// @brief removes documents in the collection, identified by an example
+////////////////////////////////////////////////////////////////////////////////
+
+  // TODO this is not optiomal, there should a HTTP call handling everything on
+  //      the server
+
+  ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+    var documents;
+
+    documents = this.byExample(example);
+
+    while (documents.hasNext()) {
+      var document = documents.next();
+
+      this.remove(document, true, waitForSync);
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.replace = function (id, data, overwrite) { 

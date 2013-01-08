@@ -292,11 +292,50 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief strng representation of a collection
+/// @brief string representation of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.toString = function (seen, path, names, level) {
     return "[ArangoCollection " + this._id + "]";
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes documents matching an example
+///
+/// @FUN{@FA{collection}.removeByExample(@FA{example})}
+///
+/// Removes all document matching an example.
+///
+/// @FUN{@FA{collection}.removeByExample(@FA{document}, @FA{waitForSync})}
+///
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document deletion operation to disk even in case that the
+/// @LIT{waitForSync} flag had been disabled for the entire collection.  Thus,
+/// the @FA{waitForSync} parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the @FA{waitForSync} parameter to
+/// @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
+/// synchronisation for collections that have a default @LIT{waitForSync} value
+/// of @LIT{true}.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangod> db.content.removeByExample({ "domain": "de.celler" })
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+    var documents;
+
+    documents = this.byExample(example);
+
+    while (documents.hasNext()) {
+      var document = documents.next();
+
+      this.remove(document, true, waitForSync);
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
