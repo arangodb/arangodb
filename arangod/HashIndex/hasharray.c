@@ -118,7 +118,8 @@ static void AddNewElement (TRI_hasharray_t* array, void* element) {
 static bool AllocateTable (TRI_hasharray_t* array, size_t numElements) {
   char* table;
 
-  table = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, CACHE_LINE_SIZE + (array->_elementSize * numElements), true);
+  table = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, CACHE_LINE_SIZE + (array->_elementSize * numElements), true);
+
   if (table == NULL) {
     return false;
   }

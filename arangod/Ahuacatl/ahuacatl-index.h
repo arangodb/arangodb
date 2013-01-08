@@ -28,16 +28,16 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_INDEX_H
 #define TRIAGENS_DURHAM_AHUACATL_INDEX_H 1
 
-#include <BasicsC/logging.h> 
-#include <BasicsC/string-buffer.h> 
-#include <BasicsC/vector.h> 
+#include "BasicsC/common.h"
+#include "BasicsC/vector.h"
 
-#include "Ahuacatl/ahuacatl-context.h" 
-#include "VocBase/index.h" 
+#include "VocBase/index.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -49,7 +49,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_index_s {
-  TRI_index_t* _idx;
+  TRI_index_t*          _idx;
   TRI_vector_pointer_t* _fieldAccesses;
 }
 TRI_aql_index_t;
@@ -77,7 +77,7 @@ void TRI_FreeIndexAql (TRI_aql_index_t* const);
 /// @brief determine which index to use for a specific for loop
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const,
+TRI_aql_index_t* TRI_DetermineIndexAql (struct TRI_aql_context_s* const,
                                         const TRI_vector_pointer_t* const,
                                         const char* const,
                                         const TRI_vector_pointer_t*);

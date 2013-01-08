@@ -43,14 +43,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace std;
 
-#include "js/common/bootstrap/js-modules.h"
-#include "js/common/bootstrap/js-monkeypatches.h"
-#include "js/common/bootstrap/js-print.h"
-#include "js/common/bootstrap/js-errors.h"
-#include "js/server/js-ahuacatl.h"
-#include "js/server/js-server.h"
-#include "js/server/js-version-check.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class V8GcThread
 // -----------------------------------------------------------------------------
@@ -180,6 +172,7 @@ ApplicationV8::ApplicationV8 (string const& binaryPath)
     _actionPath(),
     _useActions(true),
     _performUpgrade(false),
+    _skipUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -240,20 +233,38 @@ void ApplicationV8::performUpgrade () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enters an context
+/// @brief skip a database upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::skipUpgrade () {
+  _skipUpgrade = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext () {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  while (_freeContexts.empty()) {
+  while (_freeContexts.empty() && ! _stopping) {
     LOGGER_DEBUG << "waiting for unused V8 context";
     guard.wait();
+  }
+
+  // in case we are in the shutdown phase, do not enter a context!
+  // the context might have been deleted by the shutdown
+  if (_stopping) {
+    return 0;
   }
 
   LOGGER_TRACE << "found unused V8 context";
 
   V8Context* context = _freeContexts.back();
+
+  assert(context != 0);
+  assert(context->_isolate != 0);
+
   _freeContexts.pop_back();
   _busyContexts.insert(context);
 
@@ -510,7 +521,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
 bool ApplicationV8::prepare () {
   LOGGER_DEBUG << "V8 version: " << v8::V8::GetVersion(); 
-  
+
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
@@ -528,18 +539,12 @@ bool ApplicationV8::prepare () {
 
   // set up the startup loader
   if (_startupPath.empty()) {
-    LOGGER_INFO << "using built-in JavaScript startup files";
-
-    _startupLoader.defineScript("common/bootstrap/modules.js", JS_common_bootstrap_modules);
-    _startupLoader.defineScript("common/bootstrap/monkeypatches.js", JS_common_bootstrap_monkeypatches);
-    _startupLoader.defineScript("common/bootstrap/print.js", JS_common_bootstrap_print);
-    _startupLoader.defineScript("common/bootstrap/errors.js", JS_common_bootstrap_errors);
-    _startupLoader.defineScript("server/ahuacatl.js", JS_server_ahuacatl);
-    _startupLoader.defineScript("server/server.js", JS_server_server);
+    LOGGER_FATAL << "no 'javascript.startup-directory' has been supplied, giving up";
+    TRI_FlushLogging();
+    exit(EXIT_FAILURE);
   }
   else {
     LOGGER_INFO << "using JavaScript startup files at '" << _startupPath << "'";
-
     _startupLoader.setDirectory(_startupPath);
   }
 
@@ -557,6 +562,7 @@ bool ApplicationV8::prepare () {
     }
   }
 
+  // add v8 options
   if (_v8Options.size() > 0) {
     LOGGER_INFO << "using V8 options '" << _v8Options << "'";
     v8::V8::SetFlagsFromString(_v8Options.c_str(), _v8Options.size());
@@ -639,7 +645,9 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
                                  "common/bootstrap/print.js",
                                  "common/bootstrap/errors.js",
                                  "server/ahuacatl.js",
-                                 "server/server.js"
+                                 "server/server.js",
+                                 "server/ArangoCollection.js",
+                                 "server/ArangoStructure.js"
   };
 
   LOGGER_TRACE << "initialising V8 context #" << i;
@@ -669,6 +677,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8VocBridge(context->_context, _vocbase, i);
   TRI_InitV8Queries(context->_context);
 
+
   if (_useActions) {
     TRI_InitV8Actions(context->_context, this);
   }
@@ -693,19 +702,14 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   }
 
 
-  if (i == 0) {
+  if (i == 0 && ! _skipUpgrade) {
     LOGGER_DEBUG << "running database version check";
-
-    const string script = _startupLoader.buildScript(JS_server_version_check);
 
     // special check script to be run just once in first thread (not in all)
     v8::HandleScope scope;
-    
-    context->_context->Global()->Set(TRI_V8_SYMBOL("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
-    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context->_context,
-                                                               v8::String::New(script.c_str()),
-                                                               v8::String::New("version-check.js"),
-                                                               false);
+    context->_context->Global()->Set(v8::String::New("UPGRADE"), _performUpgrade ? v8::True() : v8::False());
+
+    v8::Handle<v8::Value> result = _startupLoader.executeGlobalScript(context->_context, "server/version-check.js");
   
     if (! TRI_ObjectToBoolean(result)) {
       if (_performUpgrade) {

@@ -90,6 +90,7 @@ static void* ThreadStarter (void* data) {
   prctl(PR_SET_NAME, d->_name, 0, 0, 0);
 #endif
 
+  // TODO: (error) Possible null pointer dereference: d - otherwise it is redundant to check if d is null at line 96
   d->starter(d->_data);
 
   if (d) {
@@ -140,7 +141,7 @@ void TRI_InitThread (TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_pid_t TRI_CurrentProcessId () {
-  return getpid();
+  return (TRI_pid_t) getpid();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

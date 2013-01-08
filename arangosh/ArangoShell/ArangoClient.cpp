@@ -41,8 +41,8 @@ using namespace triagens::rest;
 using namespace triagens::arango;
         
 double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
-double const ArangoClient::DEFAULT_REQUEST_TIMEOUT = 300.0;
-size_t const ArangoClient::DEFAULT_RETRIES = 2;
+double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
+size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoClient
@@ -148,6 +148,22 @@ char const * ArangoClient::COLOR_BRIGHT = "\x1b[1m";
 char const * ArangoClient::COLOR_RESET = "\x1b[0m";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore sequence used for prompt length calculation (starting point)
+///
+/// This sequence must be used before any non-visible characters in the prompt.
+////////////////////////////////////////////////////////////////////////////////
+        
+char const * ArangoClient::PROMPT_IGNORE_START = "\001";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore sequence used for prompt length calculation (end point)
+///
+/// This sequence must be used behind any non-visible characters in the prompt.
+////////////////////////////////////////////////////////////////////////////////
+
+char const * ArangoClient::PROMPT_IGNORE_END = "\002";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -183,7 +199,11 @@ ArangoClient::ArangoClient ()
     _pager(stdout),
     _usePager(false),
 
+    _logFile(""),
+    _logOptions(false),
+
     _serverOptions(false),
+    _disableAuthentication(false),
     _endpointString(),
     _endpointServer(0),
     _username("root"),
@@ -283,6 +303,18 @@ void ArangoClient::setupPrettyPrint (ProgramOptionsDescription& description) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up the log options
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::setupLog (ProgramOptionsDescription& description) {
+  description
+    ("audit-log", &_logFile, "audit log file to save commands and results to")
+  ;
+
+  _logOptions = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the pager options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -303,6 +335,7 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
   ProgramOptionsDescription clientOptions("CLIENT options");
 
   clientOptions
+    ("server.disable-authentication", &_disableAuthentication, "disable authentication")
     ("server.endpoint", &_endpointString, "endpoint to connect to, use 'none' to start without a server")
     ("server.username", &_username, "username to use when connecting")
     ("server.password", &_password, "password to use when connecting (leave empty for prompt)")
@@ -341,6 +374,7 @@ void ArangoClient::parse (ProgramOptions& options,
   TRI_SetLogLevelLogging(_logLevel.c_str());
   TRI_CreateLogAppenderFile("-");
   TRI_SetLineNumberLogging(false);
+  TRI_SetThreadIdentifierLogging(false);
 
   // parse config file
   string configFile = "";
@@ -389,7 +423,7 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   // check if have a password
-  _hasPassword = options.has("server.password");
+  _hasPassword = options.has("server.password") || options.has("server.disable-authentication");
 
   // set colors
   if (options.has("colors")) {
@@ -453,6 +487,7 @@ void ArangoClient::parse (ProgramOptions& options,
 
     // no password given on command-line
     if (! _hasPassword) {
+      TRI_FlushLogging();
       cout << "Please specify a password: " << flush;
 
       // now prompt for it
@@ -464,6 +499,7 @@ void ArangoClient::parse (ProgramOptions& options,
 #else
       getline(cin, _password);
 #endif
+      cout << "\n";
     }
   }
 }
@@ -504,10 +540,44 @@ void ArangoClient::stopPager () {
 
 void ArangoClient::internalPrint (const char* format, const char* str) {
   if (str) {
-    fprintf(_pager, format, str);    
+    if (*str != '\x1b') {
+      fprintf(_pager, format, str);    
+      log(format, str);
+    }
   }
   else {
-    fprintf(_pager, "%s", format);    
+    if (*format != '\x1b') {
+      // do not print terminal escape sequences to pager
+      fprintf(_pager, "%s", format);    
+      log("%s", format);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief open the log file
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::openLog () {
+  if (! _logFile.empty()) {
+    _log = fopen(_logFile.c_str(), "w");
+    if (_log == 0) {
+      cerr << "Cannot open file '" << _logFile << "' for logging." << endl;
+    }
+    else {
+      cout << "Logging input and output to '" << _logFile << "'." << endl;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief close the log file
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::closeLog () {
+  if (! _logFile.empty() && _log != 0) {
+    fclose(_log);
+    _log = 0;
   }
 }
 
@@ -531,7 +601,30 @@ void ArangoClient::printWelcomeInfo () {
 
 void ArangoClient::printByeBye () {
   if (! _quiet) {
-    cout << "<ctrl-D>\n" << TRI_BYE_MESSAGE << endl;
+    cout << "<ctrl-D>" << endl << TRI_BYE_MESSAGE << endl;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log output
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::log (const char* format, const char* str) {
+  if (_log) {
+    if (*str != '\x1b') {
+      // do not print terminal escape sequences into log
+      fprintf(_log, format, str); 
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush log output
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::flushLog () {
+  if (_log) {
+    fflush(_log);
   }
 }
 
@@ -563,6 +656,14 @@ void ArangoClient::createEndpoint (string const& definition) {
 
 bool ArangoClient::quiet () const {
   return _quiet;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shut up arangosh
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoClient::shutup () {
+  _quiet = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,10 @@
 #ifndef TRIAGENS_BASICS_C_FILES_H
 #define TRIAGENS_BASICS_C_FILES_H 1
 
+#ifdef _WIN32
+ #include "BasicsC/win-utils.h"
+#endif
+
 #include "BasicsC/common.h"
 
 #include "BasicsC/vector.h"
@@ -49,7 +53,7 @@ extern "C" {
 /// @brief sets close-on-exit for a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetCloseOnExecFile (int fd);
+bool TRI_SetCloseOnExecFile (socket_t fd);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file

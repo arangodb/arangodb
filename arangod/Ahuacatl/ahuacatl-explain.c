@@ -26,8 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-explain.h"
+
+#include "BasicsC/json.h"
+#include "BasicsC/string-buffer.h"
+
 #include "Ahuacatl/ahuacatl-collections.h"
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
+#include "Ahuacatl/ahuacatl-node.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 #include "Ahuacatl/ahuacatl-statement-walker.h"
 
@@ -140,7 +146,7 @@ static inline bool AddRow (TRI_aql_explain_t* const explain, TRI_json_t* value) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_json_t* GetRowProtoType (TRI_aql_explain_t* const explain,
-                                           const TRI_aql_node_type_e const type) {
+                                           const TRI_aql_node_type_e type) {
   TRI_json_t* row;
 
   row = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -282,6 +288,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_FOR: {
       TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
       TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
+      TRI_aql_for_hint_t* hint;
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
@@ -289,6 +296,15 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
                            row,
                            "resultVariable", 
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
+     
+      hint = TRI_AQL_NODE_DATA(node); 
+      if (hint != NULL &&
+          hint->_limit._status == TRI_AQL_LIMIT_USE) {
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
+                             row,
+                             "limit", 
+                             TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+      }
       
       AddNodeValue(row, expressionNode);
       AddRow(explain, row);

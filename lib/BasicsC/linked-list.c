@@ -45,7 +45,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
-  return (uint64_t) (intptr_t) key;
+  return (uint64_t) (uintptr_t) key;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,7 @@ uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
 uint64_t HashElement (TRI_associative_pointer_t* array, void const* element) {
   TRI_linked_list_entry_t const* entry = element;
 
-  return (uint64_t) (intptr_t) entry->_data;
+  return (uint64_t) (uintptr_t) entry->_data;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

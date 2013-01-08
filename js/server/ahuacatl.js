@@ -442,8 +442,14 @@ function AHUACATL_DOCUMENT (collection, id) {
 /// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function AHUACATL_GET_DOCUMENTS (collection) {
-  return AHUACATL_COLLECTION(collection).ALL(0, null).documents;
+function AHUACATL_GET_DOCUMENTS (collection, offset, limit) {
+  if (offset == undefined) {
+    offset = 0;
+  }
+  if (limit == undefined) {
+    limit = null;
+  }
+  return AHUACATL_COLLECTION(collection).ALL(offset, limit).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2154,7 +2160,7 @@ function AHUACATL_GRAPH_PATHS () {
     minLength : minLength, 
     maxLength : maxLength, 
     direction : searchDirection,
-    followCycles : followCycles,
+    followCycles : followCycles
   };
 
   // TODO: restrict allEdges to edges with certain _from values etc.
@@ -2187,7 +2193,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
         vertices : vertices, 
         edges : edges,
         source : vertices[0],
-        destination : vertices[vertices.length - 1],
+        destination : vertices[vertices.length - 1]
         });
   }
 

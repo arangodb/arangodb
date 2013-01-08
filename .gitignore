@@ -4,6 +4,7 @@ mr-*.h
 .dirstamp
 *.o
 *.a
+*~
 
 .libev-build-64
 .v8-build-64
@@ -69,7 +70,9 @@ lib/BasicsC/voc-errors.h
 lib/JsonParser/json-parser.c
 lib/V8/v8-json.cpp
 
+cppcheck.log
+cppcheck.tmp
+
 Installation/arangod.conf
 Installation/epm/arangodb.sublist
 nbproject/
-

@@ -42,12 +42,11 @@
   </head>
 
   <body>
-
   <div id="header" class="ui-layout-north">
     <div id="menue" class="ui-layout-north">
 
       <div id="menue-left">
-        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png" alt="ArangoDB Logo"></a>
+        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png" alt="ArangoDB Logo" border="0" /></a>
       </div>
 
       <div id="menue-right">
@@ -71,6 +70,11 @@
   </div>
   
   <div id="centerView" class="ui-layout-center" class="ui-layout-content">
+    <div id="dialog-deleteCollection" title="Really delete collection?" style="display:none;">
+      <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
+      The collection will be permanently deleted and cannot be recovered.</p>
+    </div>
+
     <div id="collectionsView">
       <button class="toolbar enabled" id="createCollection">
         <img src="/_admin/html/media/icons/round_plus_icon16.png" width="16" height="16">
@@ -107,7 +111,7 @@
           <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
           <a>Cancel</a>
         </button>
-        <br></br>
+        <br />
         <table cellpadding="3" cellspacing="0" border="0">
           <tr><td>Name:</td>
           <td>
@@ -148,7 +152,7 @@
           <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
           <a>Save Collection</a>
         </button>
-        <br></br>
+        <br />
           <table cellpadding="3" cellspacing="0" border="0">
             <tr> 
               <td class="first" align="left">Name:</td>
@@ -347,8 +351,8 @@
               <button class="enabled" id="critLogTableID_prev"><img src="/_admin/html/media/icons/rnd_br_prev_icon16.png"></button>
               <button class="enabled" id="critLogTableID_next"><img src="/_admin/html/media/icons/rnd_br_next_icon16.png"></button>
               <button class="enabled" id="critLogTableID_last"><img src="/_admin/html/media/icons/rnd_br_last_icon16.png"></button>
-              <a id="critLogTableID_status">Showing</a>
              </div>
+             <a id="critLogTableID_status">Showing</a>
             </div>
           </div>
         
@@ -432,15 +436,6 @@
         </div>
       </div>
 
-      <div id="configView" style="display: none">
-        <button class="minimal enabled" id="updateConfiguration" style="visibility:hidden">
-          <img src="/_admin/html/media/icons/refresh_icon16.png" width="16" height="16">
-          <a>Update configuration</a>
-        </button>
-        <div id="configContent">
-        </div>
-      </div>
-
       <div id="avocshView" style="display: none">
         <div id="avocshWindow">
         </div>
@@ -453,7 +448,7 @@
               <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
               <input type="radio" name="formatshellJSONyesno" value=false>no</input>
             </form>
-          <a href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br></br>
+          <a href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br />
       </div>
 
       <div id="queryView" style="display: none"> 
@@ -467,61 +462,51 @@
           <a>Input</a>
         </div>
         <form id="queryForm" method="post" onsubmit="return false">
-          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
+          <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br />
           <button class="minimal" id="submitQuery">Execute</button>
           <a style="font-size:0.8em;" id="aqlinfo" href="http://www.arangodb.org/manuals/current/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
-        <br></br>
+        <br />
         </form>   
         <form action="#" id="formatJSONyesno" style="font-size:0.8em;">
           Format JSON? 
-          <input type="radio" name="formatJSONyesno" value=true checked>yes</input>
-          <input type="radio" name="formatJSONyesno" value=false>no</input>
+          <input type="radio" name="formatJSONyesno" value="true" checked>yes</input>
+          <input type="radio" name="formatJSONyesno" value="false">no</input>
         </form>
       </div>
 
+
     </div> 
- 
-    <div id="footerSlideContainer" class="ui-layout-south" class="footer-ui">
-      <div id="footerSlideButton"></div>
-	<div id="footerSlideContent"> 
-          <div id="footerSlideText">
-
-            <div id="footerLeft" style="visibility:hidden"> 
-              <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
-              <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
-              <form class="login-form" id="loginWindow" action="#">
-              <input type="text" name="username" id="usernameField" placeholder="username"> 
-              <input type="password" name="password" id="passwordField" placeholder="password">
-              <button class="minimal enabled" value="log in" id="loginButton">Login</button>
-              </form>
-            
-            </div>
-            
-            <div id="footerCenter">
-              ArangoDB<br></br>
-              <div id="footerCenterContent">
-                <a> Stay in touch: </a><a href="http://twitter.com/arangodb" target="_blank"><img src="/_admin/html/media/icons/twitter.png" width="32" height="32"></a><a href="http://github.com/triAGENS/ArangoDB" target="_blank"><img src="/_admin/html/media/icons/git.png" width="32" height="32"></a><a href="http://arangodb.org" target="_blank"><img src="/_admin/html/media/icons/arangodb32.png" width="32" height="32"></a><a href="http://groups.google.com/group/arangodb" target="_blank"><img src="/_admin/html/media/icons/google.png" width="32" height="32"></a>
-              </div>
-            </div>
-
-            <div id="footerRight">
-            </div>
-
-          </div>
-	</div>
-       </div>
-      </div>
-    
-
-    </div>
-
   </div> 
 
-  <div id="dialog-deleteCollection" title="Really delete collection?">
-    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
-    The collection will be permanently deleted and cannot be recovered.</p>
-  </div>
+  <div id="footerSlideContainer" class="ui-layout-south" class="footer-ui">
+    <div id="footerSlideButton"></div>
+    <div id="footerSlideContent"> 
+      <div id="footerSlideText">
 
+        <div id="footerLeft" style="visibility:hidden"> 
+          <a>Welcome </a><a id="activeUser" class="loggedout">Guest!</a>
+          <button class="minimal enabled" id="movetologinButton">Login</button><button class="minimal" id="logoutButton">Logout</button>
+          <form class="login-form" id="loginWindow" action="#">
+          <input type="text" name="username" id="usernameField" placeholder="username"> 
+          <input type="password" name="password" id="passwordField" placeholder="password">
+          <button class="minimal enabled" value="log in" id="loginButton">Login</button>
+          </form>
+            
+        </div>
+           
+        <div id="footerCenter">
+          ArangoDB<br />
+          <div id="footerCenterContent">
+            <a> Stay in touch: </a><a href="http://twitter.com/arangodb" target="_blank"><img src="/_admin/html/media/icons/twitter.png" width="32" height="32"></a><a href="http://github.com/triAGENS/ArangoDB" target="_blank"><img src="/_admin/html/media/icons/git.png" width="32" height="32"></a><a href="http://arangodb.org" target="_blank"><img src="/_admin/html/media/icons/arangodb32.png" width="32" height="32"></a><a href="http://groups.google.com/group/arangodb" target="_blank"><img src="/_admin/html/media/icons/google.png" width="32" height="32"></a>
+          </div>
+        </div>
+
+        <div id="footerRight">
+        </div>
+
+      </div>
+    </div>
+  </div> 
 
   </body>
 </html>

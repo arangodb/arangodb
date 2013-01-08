@@ -162,14 +162,14 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
             return false;
           }
 
-          res = TRI_PushBackVectorPointer(&ops, (void*) (intptr_t) (offsetsF[0])); // offset is always smaller than 4 GByte
+          res = TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[0])); // offset is always smaller than 4 GByte
 
           if (res != TRI_ERROR_NO_ERROR) {
             TRI_DestroyVectorPointer(&ops);
             return false;
           }
 
-          res = TRI_PushBackVectorPointer(&ops, (void*) (intptr_t) (offsetsF[1])); // offset is always smaller than 4 GByte
+          res = TRI_PushBackVectorPointer(&ops, (void*) (uintptr_t) (offsetsF[1])); // offset is always smaller than 4 GByte
 
           if (res != TRI_ERROR_NO_ERROR) {
             TRI_DestroyVectorPointer(&ops);
@@ -332,8 +332,8 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
         break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
-        b = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
-        e = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
+        b = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
+        e = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
 
         *end = ((char*) *begin) + e;
         *begin = ((char*) *begin) + b;
@@ -341,7 +341,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
         break;
 
       case TRI_SHAPE_AC_OFFSET_VAR:
-        pos = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
+        pos = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
 
         offsetsV = (TRI_shape_size_t*) *begin;
 
@@ -487,8 +487,8 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
         break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
-        b = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
-        e = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
+        b = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
+        e = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
 
         printf("  OP: fixed offset %lu - %lu\n",
                (unsigned long) b,
@@ -496,7 +496,7 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
         break;
 
       case TRI_SHAPE_AC_OFFSET_VAR:
-        pos = (TRI_shape_size_t) (intptr_t) *ops++; // offset is always smaller than 4 GByte
+        pos = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
 
         printf("  OP: variable offset at position %lu\n",
                (unsigned long) pos);

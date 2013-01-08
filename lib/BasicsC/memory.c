@@ -30,6 +30,30 @@
 #include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private defines
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Memory
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief threshold for producing malloc warnings
+/// this is only active if zone debug is enabled. Any malloc operations that
+/// try to alloc more memory than the threshold will be logged so we can check
+/// why so much memory is needed
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_ZONE_DEBUG
+#define MALLOC_WARNING_THRESHOLD (4 * 1024 * 1024)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -139,7 +163,12 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   char* m;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-  m = malloc((size_t) n + sizeof(intptr_t));
+  // warn in the case of very big malloc operations
+  if (n >= MALLOC_WARNING_THRESHOLD) {
+    LOG_WARNING("big malloc action: %llu bytes in %s:%d", (unsigned long long) n, file, line);
+  }
+
+  m = malloc((size_t) n + sizeof(uintptr_t));
 #else
   m = malloc((size_t) n);
 #endif
@@ -169,10 +198,11 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   }
 #ifdef TRI_ENABLE_ZONE_DEBUG
   else if (set) {
-    memset(m, 0, (size_t) n + sizeof(intptr_t));
+    memset(m, 0, (size_t) n + sizeof(uintptr_t));
   }
   else {
-    memset(m, 0xA5, (size_t) n + sizeof(intptr_t));
+    // prefill with 0xA5 (magic value, same as Valgrind will use)
+    memset(m, 0xA5, (size_t) n + sizeof(uintptr_t));
   }
 #else
   else if (set) {
@@ -181,8 +211,9 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-  * (intptr_t*) m = zone->_zid;
-  m += sizeof(intptr_t);
+  * (uintptr_t*) m = zone->_zid;
+  // zone->_zid is a uint32_t but we'll advance sizeof(uintptr_t) bytes for good alignment everywhere
+  m += sizeof(uintptr_t);
 #endif
 
   return m;
@@ -210,17 +241,17 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   p = (char*) m;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-  p -= sizeof(intptr_t);
+  p -= sizeof(uintptr_t);
 
-  if (* (intptr_t*) p != zone->_zid) {
+  if (* (uintptr_t*) p != zone->_zid) {
     printf("MEMORY ZONE: mismatch in TRI_Reallocate(%s,%d), old '%d', new '%d'\n",
            file,
            line,
-           (int) * (intptr_t*) p,
+           (int) * (uintptr_t*) p,
            (int) zone->_zid);
   }
 
-  p = realloc(p, (size_t) n + sizeof(intptr_t));
+  p = realloc(p, (size_t) n + sizeof(uintptr_t));
 #else
   p = realloc(p, (size_t) n);
 #endif
@@ -250,7 +281,8 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   }
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-  p += sizeof(intptr_t);
+  // zone->_zid is a uint32_t but we'll advance sizeof(uintptr_t) bytes for good alignment everywhere
+  p += sizeof(uintptr_t);
 #endif
 
   return p;
@@ -270,13 +302,14 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
   p = (char*) m;
 
 #ifdef TRI_ENABLE_ZONE_DEBUG
-  p -= sizeof(intptr_t);
+  // zone->_zid is a uint32_t but we'll decrease by sizeof(uintptr_t) bytes for good alignment everywhere
+  p -= sizeof(uintptr_t);
 
-  if (* (intptr_t*) p != zone->_zid) {
+  if (* (uintptr_t*) p != zone->_zid) {
     printf("MEMORY ZONE: mismatch in TRI_Free(%s,%d), old '%d', new '%d'\n",
            file,
            line,
-           (int) * (intptr_t*) p,
+           (int) * (uintptr_t*) p,
            (int) zone->_zid);
   }
 #endif

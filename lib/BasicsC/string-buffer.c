@@ -51,7 +51,7 @@ static void AppendChar (TRI_string_buffer_t * self, char chr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static size_t Remaining (TRI_string_buffer_t * self) {
-  return (size_t) (self->_len - (self->_current - self->_buffer));
+  return (size_t) (self->_len - (size_t) (self->_current - self->_buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +59,6 @@ static size_t Remaining (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int Reserve (TRI_string_buffer_t * self, size_t size) {
-  size_t len;
   char* ptr;
 
   if (size < 1) {
@@ -68,6 +67,7 @@ static int Reserve (TRI_string_buffer_t * self, size_t size) {
 
   if (size > Remaining(self)) {
     ptrdiff_t off;
+    size_t len;
 
     off = self->_current - self->_buffer;
     len = (size_t)(1.2 * (self->_len + size));
@@ -256,7 +256,7 @@ char const * TRI_EndStringBuffer (TRI_string_buffer_t const * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_LengthStringBuffer (TRI_string_buffer_t const * self) {
-  return self->_current - self->_buffer;
+  return (size_t) (self->_current - self->_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,9 +379,9 @@ int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) 
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
-  int res;
-
   if (0 < len) {
+    int res;
+
     res = Reserve(self, len);
 
     if (res != TRI_ERROR_NO_ERROR) {

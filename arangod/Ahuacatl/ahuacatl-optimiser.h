@@ -28,23 +28,13 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H
 #define TRIAGENS_DURHAM_AHUACATL_OPTIMISER_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
-
-#include "Ahuacatl/ahuacatl-access-optimiser.h"
-#include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-codegen.h"
-#include "Ahuacatl/ahuacatl-scope.h"
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -59,7 +49,7 @@ extern "C" {
 /// @brief optimise the statement list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_OptimiseAql (TRI_aql_context_t* const); 
+bool TRI_OptimiseAql (struct TRI_aql_context_s* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

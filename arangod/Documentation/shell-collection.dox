@@ -72,6 +72,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellCollection Handling Collections
 ///
+/// @NAVIGATE_ShellCollection
+///
 /// This is an introduction to ArangoDB's interface for collections and how
 /// handle collections from the JavaScript shell @LIT{arangosh}. For other
 /// languages see the corresponding language API.

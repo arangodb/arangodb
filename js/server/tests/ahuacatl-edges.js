@@ -544,7 +544,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testFromToQueryLinkedMulti3 : function () {
       var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Multi1"]._id +"\" && r._to == \"" + docs["Multi2"]._id + "\" && r._to == u._id SORT u.id RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
       assertEqual(0, actual.length);
-    },
+    }
 
   };
 }

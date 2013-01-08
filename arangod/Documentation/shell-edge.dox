@@ -58,6 +58,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShellEdge Handling Edges
 ///
+/// @NAVIGATE_ShellEdge
+///
 /// This is an introduction to ArangoDB's interface for edges and how handle
 /// edges from the JavaScript shell @LIT{arangosh}. For other languages see the
 /// corresponding language API.

@@ -123,7 +123,7 @@ namespace triagens {
               }
             }
             else {
-              setErrorMessage("gesockopt() failed", errno);
+              setErrorMessage("handleRead() failed", errno);
               close();
             }
             break;

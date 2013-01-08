@@ -33,7 +33,7 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                             apple
+// --SECTION--                                                            global
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,12 +51,18 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+#undef TRI_PADDING_32
+#else
+#define TRI_PADDING_32                      1
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                             apple
+// --Section--                                                             apple
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,6 +114,9 @@
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
+// TODO: add a feature check in configure
+#define TRI_HAVE_ANONYMOUS_MMAP             1
+
 #define TRI_OVERLOAD_FUNCS_SIZE_T           1
 #define TRI_MISSING_MEMRCHR                 1
 
@@ -133,20 +142,28 @@
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
+#define TRI_CLOSE_SOCKET                close
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
 #define TRI_GETCWD                      getcwd
+#define TRI_LSEEK                       lseek
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
+#define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
 #define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+#define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 #define TRI_uid_t                       uid_t
 #define TRI_gid_t                       gid_t
+
+typedef int socket_t;
+#define INVALID_SOCKET                  -1
+#define SOCKET_ERROR                    -1
 
 #endif
 
@@ -211,20 +228,28 @@
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
+#define TRI_CLOSE_SOCKET                close
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
+#define TRI_LSEEK                       lseek
 #define TRI_GETCWD                      getcwd
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
+#define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
 #define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+#define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 #define TRI_uid_t                       uid_t
 #define TRI_gid_t                       gid_t
+
+typedef int socket_t;
+#define INVALID_SOCKET                  -1
+#define SOCKET_ERROR                    -1
 
 #endif
 
@@ -313,6 +338,9 @@
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
+// TODO: add a feature check in configure
+#define TRI_HAVE_ANONYMOUS_MMAP             1
+
 #if __WORDSIZE == 64
 #define TRI_SIZEOF_SIZE_T                   8
 #define TRI_ALIGNOF_VOIDP                   8
@@ -323,20 +351,28 @@
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
+#define TRI_CLOSE_SOCKET                close
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
+#define TRI_LSEEK                       lseek
 #define TRI_GETCWD                      getcwd
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
+#define TRI_READ_SOCKET(a,b,c,d)        read((a), (b), (c))
 #define TRI_RMDIR                       rmdir
 #define TRI_SLEEP                       sleep
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+#define TRI_WRITE_SOCKET(a,b,c,d)       write((a), (b), (c))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
 #define TRI_uid_t                       uid_t
 #define TRI_gid_t                       gid_t
+
+typedef int socket_t;
+#define INVALID_SOCKET                  -1
+#define SOCKET_ERROR                    -1
 
 #endif
 
@@ -358,11 +394,22 @@
 #define TRI_DIR_SEPARATOR_CHAR              '\\'
 #define TRI_DIR_SEPARATOR_STR               "\\"
 
+// ..............................................................................
+// This directive below suppresses warnings about using the 'new' more secure CRT 
+// functions.
+// ..............................................................................
 #define _CRT_SECURE_NO_WARNINGS                     1
-#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
+
+// ..............................................................................
+// This directive below provides a manner in which the 'new' more secure functions
+// for example, strcpy is automatically converted to strcpy_s. This is enabled
+// by default. We have disabled it here.
+// ..............................................................................
+//#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
 #include <stdio.h>
 #include <io.h>
+#include <WinSock2.h>
 
 #define TRI_WIN32_CONSOLE                   1
 #define TRI_WIN32_THREAD_LOCAL_STORAGE      1
@@ -423,27 +470,46 @@ extern "C" {
 }
 #endif
 
+
 #ifndef __BOOL_DEFINED
-typedef unsigned int bool;
+//typedef unsigned int bool; - this never ever going to work. Problem is sizeof(bool) in VS C++ is 1 byte and
+// sizeof(bool) in VS C (C compiler) is -- whatever you want. However, when structures are interchanged between
+// C & C++ (as in arango) all hell will break loose.
+typedef unsigned char bool;
 #define true 1
 #define false 0
 #endif
 
+
 #define va_copy(d,s) ((d) = (s))
 
+
+// we do not have owner read and owner write under windows
+// so map these to global read, global write
+// these are used when creating a file
+#define S_IRUSR _S_IREAD
+#define S_IWUSR _S_IWRITE
+#define S_IRGRP _S_IREAD
+#define S_IWGRP _S_IWRITE
 
 #define O_RDONLY                        _O_RDONLY
 #define TRI_CHDIR                       _chdir
 #define TRI_CLOSE                       _close
-#define TRI_CREATE(a,b,c)               _open((a), (b))
+#define TRI_CLOSE_SOCKET                TRI_WIN_closesocket
+/*  #define TRI_CREATE(a,b,c)               _open((a), (b), (c)) */
+#define TRI_CREATE(a,b,c)               TRI_createFile((a), (b), (c))
 #define TRI_GETCWD                      _getcwd
+#define TRI_LSEEK                       _lseek
 #define TRI_MKDIR(a,b)                  _mkdir((a))
-#define TRI_OPEN(a,b)                   _open((a), (b))
+/* #define TRI_OPEN(a,b)                   _open((a), (b)) */
+#define TRI_OPEN(a,b)                   TRI_openFile((a), (b))
 #define TRI_READ                        _read
+#define TRI_READ_SOCKET(a,b,c,d)        recv((a), (b), (c), (d))
 #define TRI_RMDIR                       _rmdir
 #define TRI_SLEEP                       TRI_sleep
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
+#define TRI_WRITE_SOCKET(a,b,c,d)       send((a), (b), (c), (d))
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -467,6 +533,7 @@ typedef unsigned int bool;
 #define alloca                          _alloca
 
 
+typedef SOCKET socket_t;
 
 #endif
 
@@ -483,7 +550,6 @@ typedef unsigned int bool;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef int socket_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////

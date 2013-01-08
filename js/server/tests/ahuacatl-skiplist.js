@@ -1010,7 +1010,7 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults("FOR v1 IN " + skiplist.name() + " FOR v2 IN " + skiplist.name() + " FILTER 1 == v1.a && v1.a == v2.a && 1 == v1.b SORT v1.a, v2.b RETURN [ v1.a, v2.b ]");
 
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }

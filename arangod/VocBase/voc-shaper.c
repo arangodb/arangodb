@@ -404,7 +404,6 @@ static TRI_shape_aid_t FindAttributeName (TRI_shaper_t* shaper, char const* name
   weightedAttribute = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_weight_t), false);
   
   if (weightedAttribute != NULL) {
-    
     weightedAttribute->_aid       = markerResult->_aid;
     weightedAttribute->_weight    = TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT;
     weightedAttribute->_attribute = (char*)(markerResult) + sizeof(TRI_df_attribute_marker_t);
@@ -568,6 +567,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, TRI_shape_t* shape) {
   int res;
   voc_shaper_t* s;
   void* f;
+
 
   s = (voc_shaper_t*) shaper;
   found = TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape);
@@ -915,14 +915,16 @@ static void InitVocShaper (voc_shaper_t* shaper, TRI_shape_collection_t* collect
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
                                    char const* path,
                                    char const* name, 
-                                   const bool waitForSync) {
+                                   const bool waitForSync,
+                                   const bool isVolatile) {
   voc_shaper_t* shaper;
   TRI_shape_collection_t* collection;
   TRI_col_info_t parameter;
   bool ok;
 
   TRI_InitCollectionInfo(vocbase, &parameter, name, TRI_COL_TYPE_SHAPE, SHAPER_DATAFILE_SIZE, 0);
-  // override wait for sync for shapes
+  // set waitForSync and isVolatile for shapes collection
+  parameter._isVolatile  = isVolatile;
   parameter._waitForSync = waitForSync;
 
   collection = TRI_CreateShapeCollection(vocbase, path, &parameter);

@@ -29,6 +29,8 @@
 #include "Ahuacatl/ahuacatl-access-optimiser.h" 
 #include "Ahuacatl/ahuacatl-variable.h"
 
+#include "BasicsC/logging.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -37,14 +39,6 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the next scope id
-////////////////////////////////////////////////////////////////////////////////
-
-static inline size_t NextId (TRI_aql_context_t* const context) {
-  return ++context->_scopeIndex;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current scope
@@ -115,10 +109,17 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  scope->_id = NextId(context);
-  scope->_type = NextType(context, type);
-  scope->_ranges = NULL;
-  scope->_selfContained = true;
+  scope->_type             = NextType(context, type);
+  scope->_ranges           = NULL;
+  scope->_selfContained    = true;
+
+  scope->_limit._offset    = 0;
+  scope->_limit._limit     = INT64_MAX;
+  scope->_limit._status    = TRI_AQL_LIMIT_UNDEFINED;
+  scope->_limit._hasFilter = false;
+  scope->_limit._found     = 0;
+
+  TRI_InitVectorPointer(&scope->_sorts, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_InitAssociativePointer(&scope->_variables, 
                              TRI_UNKNOWN_MEM_ZONE, 
@@ -154,6 +155,14 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
     TRI_FreeAccessesAql(scope->_ranges);
   }
 
+  for (i = 0; i < scope->_sorts._length; ++i) {
+    char* criterion = (char*) TRI_AtVectorPointer(&scope->_sorts, i);
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
+  }
+  
+  TRI_DestroyVectorPointer(&scope->_sorts);
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, scope);
 }
 
@@ -169,6 +178,39 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a hint for an AQL for
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_for_hint_t* TRI_CreateForHintScopeAql (TRI_aql_context_t* const context) {
+  TRI_aql_for_hint_t* hint;
+
+  assert(context);
+
+  hint = (TRI_aql_for_hint_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_for_hint_t), false);
+  if (hint == NULL) {
+    TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    return NULL;
+  }
+
+  // initialise
+  hint->_limit._offset = 0;
+  hint->_limit._limit  = 0;
+  hint->_limit._status = TRI_AQL_LIMIT_UNDEFINED;
+
+  return hint;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free a hint for an AQL for
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeForHintScopeAql (TRI_aql_for_hint_t* const hint) {
+  assert(hint);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, hint);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of a scope type

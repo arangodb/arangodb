@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 shell
 ///
 /// @file
@@ -35,6 +34,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/FileUtils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
@@ -118,6 +118,18 @@ static string StartupModules = "";
 ////////////////////////////////////////////////////////////////////////////////
 
 static string StartupPath = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief javascript files to execute
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> ExecuteScripts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief javascript files to syntax check
+////////////////////////////////////////////////////////////////////////////////
+
+static vector<string> CheckScripts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit file test cases
@@ -416,6 +428,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription javascript("JAVASCRIPT options");
 
   javascript
+    ("javascript.execute", &ExecuteScripts, "execute Javascript code from file")
+    ("javascript.check", &CheckScripts, "syntax check code Javascript code from file")
     ("javascript.modules-path", &StartupModules, "one or more directories separated by cola")
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files; multiple directories can be separated by cola")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
@@ -433,6 +447,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   BaseClient.setupAutoComplete(description);
   BaseClient.setupPrettyPrint(description);
   BaseClient.setupPager(description);
+  BaseClient.setupLog(description);
   BaseClient.setupServer(description);
 
   // and parse the command line and config file
@@ -446,6 +461,16 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   if (StartupModules.empty()) {
     LOGGER_FATAL << "module path not known, please use '--javascript.modules-path'";
     exit(EXIT_FAILURE);
+  }
+  
+  // turn on paging automatically if "pager" option is set
+  if (options.has("pager") && ! options.has("use-pager")) {
+    BaseClient.setUsePager(true);
+  }
+
+  // disable excessive output in non-interactive mode
+  if (! ExecuteScripts.empty() || ! CheckScripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
+    BaseClient.shutup();
   }
 }
     
@@ -818,14 +843,28 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   string goodPrompt;
   string badPrompt;
   
+#ifdef __APPLE__
+  // MacOS uses libedit, which does not support ignoring of non-printable characters in the prompt
+  // using non-printable characters in the prompt will lead to wrong prompt lengths being calculated
+  // we will therefore disable colorful prompts for MacOS.
+  goodPrompt = badPrompt = string("arangosh> ");
+#else
   if (BaseClient.colors()) {
-    goodPrompt = ArangoClient::COLOR_BOLD_GREEN + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
-    badPrompt  = ArangoClient::COLOR_BOLD_RED   + string("arangosh>") + ArangoClient::COLOR_RESET + ' ';
+    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 string("arangosh>") + 
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 ' ';
+
+    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 string("arangosh>") + 
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 ' ';
   }
   else {
     goodPrompt = badPrompt = string("arangosh> ");
   }
-  
+#endif
+   
   cout << endl;
 
   while (true) {
@@ -842,6 +881,8 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     if (*input == '\0') {
       continue;
     }
+    
+    BaseClient.log("arangosh> %s\n", input); 
 
     string i = triagens::basics::StringUtils::trim(input);
 
@@ -854,7 +895,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, input);
       input = TRI_DuplicateString("help()");
     }
-    
+   
     console.addHistory(input);
     
     v8::HandleScope scope;
@@ -869,7 +910,10 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
     if (tryCatch.HasCaught()) {
       // command failed
-      cout << TRI_StringifyV8Exception(&tryCatch);
+      string exception(TRI_StringifyV8Exception(&tryCatch));
+
+      cerr << exception;
+      BaseClient.log("%s", exception.c_str()); 
 
       // this will change the prompt for the next round
       promptError = true;
@@ -877,6 +921,10 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
     BaseClient.stopPager();
     cout << endl;
+
+    BaseClient.log("%s\n", "");
+    // make sure the last command result makes it into the log file
+    BaseClient.flushLog();
   }
 
   console.close();
@@ -911,12 +959,55 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
   if (tryCatch.HasCaught()) {
-    cout << TRI_StringifyV8Exception(&tryCatch);
+    cerr << TRI_StringifyV8Exception(&tryCatch);
     ok = false;
   }
   else {
     ok = TRI_ObjectToBoolean(context->Global()->Get(v8::String::New("SYS_UNIT_TESTS_RESULT")));
   }
+
+  return ok;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the Javascript files
+////////////////////////////////////////////////////////////////////////////////
+
+static bool RunScripts (v8::Handle<v8::Context> context, 
+                        const vector<string>& scripts, 
+                        const bool execute) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+  bool ok;
+
+  ok = true;
+
+  for (size_t i = 0;  i < scripts.size();  ++i) {
+    if (! FileUtils::exists(scripts[i])) {
+      cerr << "error: Javascript file not found: '" << scripts[i].c_str() << "'" << endl;
+      BaseClient.log("error: Javascript file not found: '%s'\n", scripts[i].c_str());
+      ok = false;
+      break;
+    }
+
+    if (execute) {
+      TRI_ExecuteLocalJavaScriptFile(scripts[i].c_str());
+    }
+    else {
+      TRI_ParseJavaScriptFile(scripts[i].c_str());
+    }
+  
+    if (tryCatch.HasCaught()) {
+      string exception(TRI_StringifyV8Exception(&tryCatch));
+
+      cerr << exception << endl;
+      BaseClient.log("%s\n", exception.c_str()); 
+      ok = false;
+      break;
+    }
+  }
+
+  BaseClient.flushLog();
 
   return ok;
 }
@@ -946,7 +1037,7 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
       
   if (tryCatch.HasCaught()) {
-    cout << TRI_StringifyV8Exception(&tryCatch);
+    cerr << TRI_StringifyV8Exception(&tryCatch);
     ok = false;
   }
   else {
@@ -1055,7 +1146,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   ParseProgramOptions(argc, argv);
-  
+
   // .............................................................................
   // set-up client connection
   // .............................................................................
@@ -1064,7 +1155,7 @@ int main (int argc, char* argv[]) {
   bool useServer = (BaseClient.endpointString() != "none");
 
   // if we are in jslint mode, we will not need the server at all
-  if (!JsLint.empty()) {
+  if (! JsLint.empty()) {
     useServer = false;
   }
 
@@ -1277,19 +1368,21 @@ int main (int argc, char* argv[]) {
     bool ok = StartupLoader.loadScript(context, files[i]);
     
     if (ok) {
-      LOGGER_TRACE << "loaded json file '" << files[i] << "'";
+      LOGGER_TRACE << "loaded JavaScript file '" << files[i] << "'";
     }
     else {
-      LOGGER_ERROR << "cannot load json file '" << files[i] << "'";
+      LOGGER_ERROR << "cannot load JavaScript file '" << files[i] << "'";
       exit(EXIT_FAILURE);
     }
   }
+
+  BaseClient.openLog();
 
   // .............................................................................
   // run normal shell
   // .............................................................................
 
-  if (UnitTests.empty() && JsLint.empty()) {
+  if (ExecuteScripts.empty() && CheckScripts.empty() && UnitTests.empty() && JsLint.empty()) {
     RunShell(context, promptError);
   }
 
@@ -1298,15 +1391,21 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   else {
-    bool ok;
-   
-    if (! UnitTests.empty()) {
+    bool ok = false;
+
+    if (! ExecuteScripts.empty()) {
+      // we have scripts to execute or syntax check
+      ok = RunScripts(context, ExecuteScripts, true);
+    }
+    else if (! CheckScripts.empty()) {
+      // we have scripts to syntax check
+      ok = RunScripts(context, CheckScripts, false);
+    }
+    else if (! UnitTests.empty()) {
       // we have unit tests
       ok = RunUnitTests(context);
     }
-    else {
-      assert(! JsLint.empty());
-
+    else if (! JsLint.empty()) {
       // we don't have unittests, but we have files to jslint
       ok = RunJsLint(context);
     }
@@ -1322,6 +1421,8 @@ int main (int argc, char* argv[]) {
 
   context->Exit();
   context.Dispose();
+  
+  BaseClient.closeLog();
 
   // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
   // v8::V8::Dispose();

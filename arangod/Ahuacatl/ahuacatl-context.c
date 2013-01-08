@@ -26,6 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-context.h"
+
+#include "BasicsC/hashes.h"
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
@@ -123,6 +128,14 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 
       if (hint != NULL) {
         TRI_FreeCollectionHintAql(hint);
+      }
+    }
+    else if (node->_type == TRI_AQL_NODE_FOR) {
+      // free attached for hint
+      TRI_aql_for_hint_t* hint = (TRI_aql_for_hint_t*) (TRI_AQL_NODE_DATA(node));
+
+      if (hint != NULL) {
+        TRI_FreeForHintScopeAql(hint);
       }
     }
 

@@ -95,11 +95,14 @@
     if (FS_EXISTS(versionFile)) {
       // VERSION file exists, read its contents
       var versionInfo = SYS_READ(versionFile);
+
       if (versionInfo != '') {
         var versionValues = JSON.parse(versionInfo);
+
         if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
           lastVersion = parseFloat(versionValues.version);
         }
+
         if (versionValues && versionValues.tasks && typeof(versionValues.tasks) === 'object') {
           lastTasks   = versionValues.tasks || { };
         }
@@ -222,9 +225,10 @@
       return createSystemCollection("_routing");
     });
     
-    // create the _routing collection
+    // create the default route in the _routing collection
     addTask("insertDefaultRoute", "insert default route for the admin interface", function () {
       var routing = getCollection("_routing");
+
       if (! routing) {
         return false;
       }
@@ -268,6 +272,24 @@
       return true;
     });
   
+    // set up the collection _structures
+    addTask("setupStructures", "setup _structures collection", function () {
+      return createSystemCollection("_structures", { waitForSync : true });
+    });
+  
+    // create a unique index on collection attribute in _structures
+    addTask("createStructuresIndex", "create index on collection attribute in _structures collection", function () {
+      var structures = getCollection("_structures");
+
+      if (! structures) {
+        return false;
+      }
+
+      structures.ensureUniqueConstraint("collection");
+
+      return true;
+    });
+
     // loop through all tasks and execute them
     console.log("Found " + allTasks.length + " defined task(s), " + activeTasks.length + " task(s) to run");
 

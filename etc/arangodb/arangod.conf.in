@@ -36,7 +36,8 @@ threads = 5
 threads = 3
 
 [javascript]
-action-directory= @PKGDATADIR@/js/actions/system
+startup-directory = @PKGDATADIR@/js
+action-directory = @PKGDATADIR@/js/actions/system
 modules-path = @PKGDATADIR@/js/server/modules;@PKGDATADIR@/js/common/modules
 
 [ruby]

@@ -1,7 +1,7 @@
 First Steps with ArangoDB {#FirstStepsArangoDB}
 ===============================================
 
-@NAVIGATE_FIRST{UserManual,UserManualArangosh}
+@NAVIGATE_FirstStepsArangoDB
 @EMBEDTOC{FirstStepsArangoDBTOC}
 
 What is ArangoDB? {#FirstStepsArangoDBIntro}
@@ -523,7 +523,7 @@ Command-Line Options {#FirstStepsShellStartStopOptions}
 
 Use `--help` to get a list of command-line options:
 
-    > ./arangosh --help
+    unix> ./arangosh --help
     STANDARD options:
       --help                                     help message
       --javascript.modules-path <string>         one or more directories separated by cola (default: "...")

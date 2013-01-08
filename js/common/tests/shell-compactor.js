@@ -120,7 +120,7 @@ function CompactionSuite () {
       assertEqual(n, fig["dead"]["deletion"]);
 
       internal.db._drop(cn);
-    },
+    }
 
   };
 }

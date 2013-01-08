@@ -320,16 +320,14 @@ static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* te
   TRI_log_buffer_t* buf;
   size_t pos;
   size_t cur;
-
-  TRI_LockMutex(&BufferLock);
-
+    
   pos = (size_t) level;
 
   if (pos >= OUTPUT_LOG_LEVELS) {
-    TRI_UnlockMutex(&BufferLock);
     return;
   }
 
+  TRI_LockMutex(&BufferLock);
   BufferCurrent[pos] = (BufferCurrent[pos] + 1) % OUTPUT_BUFFER_SIZE;
   cur = BufferCurrent[pos];
   buf = &BufferOutput[pos][cur];
@@ -347,6 +345,8 @@ static void StoreOutput (TRI_log_level_e level, time_t timestamp, char const* te
 
     memcpy(buf->_text, text, OUTPUT_MAX_LENGTH - 4);
     memcpy(buf->_text + OUTPUT_MAX_LENGTH - 4, " ...", 4);
+    // append the \0 byte, otherwise we have potentially unbounded strings
+    buf->_text[OUTPUT_MAX_LENGTH] = '\0';
   }
   else {
     buf->_text = TRI_DuplicateString2(text, length);
@@ -393,9 +393,11 @@ static int GenerateMessage (char* buffer,
   n = 0;
   TRI_LockSpin(&OutputPrefixLock);
 
+
   if (OutputPrefix && *OutputPrefix) {
     n = snprintf(buffer, size, "%s ", OutputPrefix);
   }
+
 
   TRI_UnlockSpin(&OutputPrefixLock);
 
@@ -495,7 +497,7 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
   // append the message
   // .............................................................................
-
+  
   n = vsnprintf(buffer + m, size - m, fmt, ap);
 
   if (n < 0) {
@@ -514,8 +516,6 @@ static void OutputMessage (TRI_log_level_e level,
                            char* message,
                            size_t length,
                            bool copy) {
-  size_t i;
-
   if (! LoggingActive) {
     if (! copy) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, message);
@@ -541,6 +541,8 @@ static void OutputMessage (TRI_log_level_e level,
     TRI_UnlockMutex(&LogMessageQueueLock);
   }
   else {
+    size_t i;
+
     TRI_LockSpin(&AppendersLock);
 
     for (i = 0;  i < Appenders._length;  ++i) {
@@ -689,9 +691,11 @@ static void LogThread (char const* func,
   // write time in buffer
   len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%SZ ", &tb);
 
+
   va_copy(ap2, ap);
   n = GenerateMessage(buffer + len, sizeof(buffer) - len, func, file, line, level, processId, threadId, fmt, ap2);
   va_end(ap2);
+
 
   if (n == -1) {
     TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, "format string is corrupt");
@@ -709,7 +713,7 @@ static void LogThread (char const* func,
     char* p;
     
     // allocate as much memory as we need
-    p = TRI_Allocate(TRI_CORE_MEM_ZONE, n + len + 1, false);
+    p = TRI_Allocate(TRI_CORE_MEM_ZONE, n + len + 2, false);
 
     if (p == NULL) {
       TRI_Log(func, file, line, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, "log message is too large (%d bytes)", n + len);
@@ -722,7 +726,7 @@ static void LogThread (char const* func,
     }
 
     va_copy(ap2, ap);
-    m = GenerateMessage(p + len, n, func, file, line, level, processId, threadId, fmt, ap2);
+    m = GenerateMessage(p + len, n + 1, func, file, line, level, processId, threadId, fmt, ap2);
     va_end(ap2);
 
     if (m == -1) {
@@ -738,8 +742,9 @@ static void LogThread (char const* func,
     else {
       // finally got a buffer big enough. p is freed in OutputMessage
       if (m + len - 1 > 0) {
-        OutputMessage(level, severity, p, (size_t) (m + len - 1), false);
+        OutputMessage(level, severity, p, (size_t) (m + len), false);
       }
+
       return;
     }
   }
@@ -1064,10 +1069,15 @@ void TRI_Log (char const* func,
               TRI_log_severity_e severity,
               char const* fmt,
               ...) {
+  TRI_pid_t processId;
+  TRI_tid_t threadId;
   va_list ap;
 
+  processId = TRI_CurrentProcessId();
+  threadId = TRI_CurrentThreadId();
+
   va_start(ap, fmt);
-  LogThread(func, file, line, level, severity, TRI_CurrentProcessId(), TRI_CurrentThreadId(), fmt, ap);
+  LogThread(func, file, line, level, severity, processId, threadId, fmt, ap);
   va_end(ap);
 }
 

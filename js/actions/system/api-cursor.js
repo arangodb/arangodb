@@ -123,7 +123,7 @@ var actions = require("org/arangodb/actions");
 
 function POST_api_cursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultNotFound(req, res, internal.errors.ERROR_CURSOR_NOT_FOUND.code, internal.errors.ERROR_CURSOR_NOT_FOUND.message);
     return;
   }
 
@@ -259,11 +259,13 @@ function DELETE_api_cursor(req, res) {
 
   var cursorId = decodeURIComponent(req.suffix[0]);
   if (! DELETE_CURSOR(cursorId)) {
-    actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
+    actions.resultNotFound(req, res, internal.errors.ERROR_CURSOR_NOT_FOUND.code, internal.errors.ERROR_CURSOR_NOT_FOUND.message);
     return;
   }
 
-  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });                
+  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { "id" : cursorId });
+
+  // we want the garbage collection to clean unused cursors immediately
   internal.wait(0.0);
 }
 

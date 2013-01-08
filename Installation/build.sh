@@ -124,7 +124,7 @@ case $TRI_OS_LONG in
     echo "Using configuration for DARWIN"
     CPPFLAGS='-isystem /usr/include -isystem /opt/local/include -Wno-deprecated-declarations'
     LDFLAGS='-L/usr/lib -L/opt/local/lib' # need to use OpenSSL from system
-    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --enable-mruby"
+    OPTIONS="$OPTIONS --enable-all-in-one-libev --enable-all-in-one-v8 --enable-all-in-one-icu --disable-mruby"
     RESULTS="$RESULTS arangoirb"
     if [ "${TRI_MACH}" == "x86_64" ]; then
        X=$(uname -r)

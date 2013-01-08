@@ -331,6 +331,10 @@ function main (argv) {
   while (true) {
     var line = console.getline();
 
+    if (line == "") {
+      break;
+    }
+
     if (line === "*") {
       for (i = 0;  i < collections.length;  ++i) {
         a.push(i);
@@ -341,7 +345,7 @@ function main (argv) {
     else {
       var l = parseInt(line);
 
-      if (l < 0 || l >= collections.length) {
+      if (l < 0 || l >= collections.length || l === null || l === undefined || isNaN(l)) {
         printf("Please select a number between 0 and %d: ", collections.length - 1);
       }
       else {

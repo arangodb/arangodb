@@ -39,17 +39,28 @@ describe ArangoDB do
 	collections = doc.parsed_response['collections']
 	names = doc.parsed_response['names']
 
-        found = 0
-        for n in names do
-          if n[0] == "units" or n[0] == "employees" or n[0] == "locations"
-            found = found + 1
+        # filter out system collections
+        realCollections = [ ]
+
+        collections.each { |collection|
+          if collection['name'].slice(0, 1) != "_"
+            realCollections.push(collection)
+          end
+        }
+
+	realNames = { }
+
+        names.each do |name, collection| 
+          if name.slice(0, 1) != '_'
+            realNames[name] = collection
           end
         end
 
-        found.should eq(3)
+	realCollections.length.should eq(3)
+	realNames.length.should eq(3)
 
-	for collection in collections do
-	  names[collection['name']].should eq(collection)
+	for collection in realCollections do
+	  realNames[collection['name']].should eq(collection)
 	end
       end
     end
@@ -231,6 +242,7 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
+	doc.parsed_response['isVolatile'].should eq(false)
 	doc.parsed_response['journalSize'].should be_kind_of(Integer)
       end
 
@@ -319,12 +331,12 @@ describe ArangoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should be_kind_of(Integer)
 	doc.parsed_response['name'].should eq(@cn)
-	doc.parsed_response['waitForSync'].should == false
+	doc.parsed_response['waitForSync'].should eq(false)
 
 	cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
 
-	doc.parsed_response['waitForSync'].should == false
+	doc.parsed_response['waitForSync'].should eq(false)
 
 	ArangoDB.drop_collection(@cn)
       end
@@ -340,12 +352,34 @@ describe ArangoDB do
 	doc.parsed_response['code'].should eq(200)
 	doc.parsed_response['id'].should be_kind_of(Integer)
 	doc.parsed_response['name'].should eq(@cn)
-	doc.parsed_response['waitForSync'].should == true
+	doc.parsed_response['waitForSync'].should eq(true)
 
 	cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.get(cmd)
 
-	doc.parsed_response['waitForSync'].should == true
+	doc.parsed_response['waitForSync'].should eq(true)
+
+	ArangoDB.drop_collection(@cn)
+      end
+      
+      it "create a collection, volatile" do
+	cmd = api
+	body = "{ \"name\" : \"#{@cn}\", \"isVolatile\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-create-collection-volatile", cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should be_kind_of(Integer)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['waitForSync'].should eq(false)
+	doc.parsed_response['isVolatile'].should eq(true)
+
+	cmd = api + "/" + @cn + "/figures"
+        doc = ArangoDB.get(cmd)
+
+	doc.parsed_response['waitForSync'].should eq(false)
 
 	ArangoDB.drop_collection(@cn)
       end
@@ -723,6 +757,7 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(true)
+	doc.parsed_response['isVolatile'].should eq(false)
 
 	cmd = api + "/" + cn + "/properties"
 	body = "{ \"waitForSync\" : false }"
@@ -736,6 +771,7 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['waitForSync'].should eq(false)
+	doc.parsed_response['isVolatile'].should eq(false)
 
 	ArangoDB.drop_collection(cn)
       end
@@ -762,14 +798,40 @@ describe ArangoDB do
         doc.parsed_response['name'].should eq(cn)
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
+	doc.parsed_response['isVolatile'].should eq(false)
         doc.parsed_response['createOptions']['opt1'].should eq(10)
         doc.parsed_response['createOptions']['opt2'].should eq("val2")
 
         ArangoDB.drop_collection(cn)
       end
       
+      it "create a collection with isVolatile property" do
+        cn = "UnitTestsCollectionBasics"
+        ArangoDB.drop_collection(cn)
+
+        cmd = "/_api/collection"
+        body = "{ \"name\" : \"#{cn}\", \"isVolatile\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-with-volatile", cmd, :body => body)
+
+        doc.code.should eq(200)
+        cid = doc.parsed_response['id']
+
+        cmd = api + "/" + cn + "/properties"
+        doc = ArangoDB.log_get("#{prefix}-with-volatile", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['waitForSync'].should eq(false)
+	doc.parsed_response['isVolatile'].should eq(true)
+
+        ArangoDB.drop_collection(cn)
+      end
+      
       it "create collection with empty createOptions property" do
         cn = "UnitTestsCollectionBasics"
+        ArangoDB.drop_collection(cn)
 
         cmd = "/_api/collection"
         body = "{ \"name\" : \"#{cn}\", \"waitForSync\" : false, \"type\" : 2 }"
@@ -790,6 +852,7 @@ describe ArangoDB do
         doc.parsed_response['name'].should eq(cn)
         doc.parsed_response['status'].should eq(3)
         doc.parsed_response['waitForSync'].should eq(true)
+	doc.parsed_response['isVolatile'].should eq(false)
         doc.parsed_response['createOptions'].should be_nil
 
         ArangoDB.drop_collection(cn)

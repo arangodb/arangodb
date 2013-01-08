@@ -729,7 +729,7 @@ function ahuacatlQuerySimpleTestSuite () {
 
       var actual = getQueryResults("/* for u in [1,2,3] */ return 1");
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }

@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, arango, db, edges, ModuleCache, Module */
+/*global require, arango, db, edges, Module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -129,11 +129,11 @@ function ArangoError (error) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/arangosh"] = new Module("/arangosh");
+Module.prototype.ModuleCache["/arangosh"] = new Module("/arangosh");
 
 (function () {
   var internal = require("internal");
-  var client = ModuleCache["/arangosh"].exports;
+  var client = Module.prototype.ModuleCache["/arangosh"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -694,7 +694,7 @@ function ArangoQueryCursor (database, data) {
 
   SB.ArangoStatement.prototype.parse = function () {
     var body = {
-      "query" : this._query,
+      "query" : this._query
     };
 
     var requestResult = this._database._connection.POST(
@@ -713,7 +713,7 @@ function ArangoQueryCursor (database, data) {
 
   SB.ArangoStatement.prototype.explain = function () {
     var body = {
-      "query" : this._query,
+      "query" : this._query
     };
 
     var requestResult = this._database._connection.POST(
@@ -1141,7 +1141,8 @@ function ArangoCollection (database, data) {
 
     var result = { 
       waitForSync : requestResult.waitForSync,
-      journalSize : requestResult.journalSize
+      journalSize : requestResult.journalSize,
+      isVolatile : requestResult.isVolatile
     };
     
     if (requestResult.createOptions != undefined) {
@@ -2166,6 +2167,10 @@ function ArangoDatabase (connection) {
 
       if (properties.hasOwnProperty("isSystem")) {
         body.isSystem = properties.isSystem;
+      }
+      
+      if (properties.hasOwnProperty("isVolatile")) {
+        body.isVolatile = properties.isVolatile;
       }
 
       if (properties.hasOwnProperty("createOptions")) {

@@ -79,6 +79,7 @@ static SignalTask* localSignalTask;
 
       ControlCTask (ApplicationServer* server) : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
         localSignalTask = this;
+        // TODO: Variable 'result' is assigned a value that is never used
         int result = SetConsoleCtrlHandler( (PHANDLER_ROUTINE)(CtrlHandler), true); 
       }
 
@@ -193,37 +194,83 @@ static SignalTask* localSignalTask;
 
   bool CtrlHandler(DWORD eventType) {
     ControlCTask* ccTask = (ControlCTask*)(localSignalTask);
+    string msg = ccTask->_server->getName() + " [shutting down]";
+    bool shutdown = false;    
+    string shutdownMessage;
+    // .........................................................................
+    // TODO: popup message
+    // .........................................................................
+
 
     switch (eventType) {
-      case CTRL_C_EVENT: 
-      case CTRL_CLOSE_EVENT: 
-      case CTRL_LOGOFF_EVENT: 
+
+      case CTRL_BREAK_EVENT: {
+        //TODO: windows does not appreciate changing the environment in this manner
+        //TRI_SetProcessTitle(msg.c_str()); 
+        shutdown = true;
+        shutdownMessage = "control-break received";
+        break;
+      }
+
+      case CTRL_C_EVENT: {
+        //TODO: windows does not appreciate changing the environment in this manner
+        //TRI_SetProcessTitle(msg.c_str());
+        shutdown = true;
+        shutdownMessage = "control-c received";
+        break;
+      }
+
+      case CTRL_CLOSE_EVENT: {
+        //TODO: windows does not appreciate changing the environment in this manner
+        //TRI_SetProcessTitle(msg.c_str());
+        shutdown = true;
+        shutdownMessage = "window-close received";
+        break;
+      }
+      
+      case CTRL_LOGOFF_EVENT: {
+        //TODO: windows does not appreciate changing the environment in this manner
+        //TRI_SetProcessTitle(msg.c_str());
+        shutdown = true;
+        shutdownMessage = "user-logoff received";
+        break;
+      }
+
       case CTRL_SHUTDOWN_EVENT: {
-        string msg = ccTask->_server->getName() + " [shutting down]";
-
-        TRI_SetProcessTitle(msg.c_str());
-
-        if (ccTask->_seen == 0) {
-          LOGGER_INFO << "control-c received, beginning shut down sequence";
-          ccTask->_server->beginShutdown();
-        }
-        else {
-          LOGGER_INFO << "control-c received, terminating";
-          exit(EXIT_FAILURE);
-        }
-
-        ++ccTask->_seen;
-
-        return true;
+        //TODO: windows does not appreciate changing the environment in this manner
+        //TRI_SetProcessTitle(msg.c_str());
+        shutdown = true;
+        shutdownMessage = "system-shutdown received";
+        break;
       }
 
       default: {
-        return false;
+        shutdown = false;
+        break;
       }
 
+    } // end of switch statement
+
+    if (shutdown == false) {
+      LOGGER_ERROR << "Invalid CTRL HANDLER event received - ignoring event";
+      return true;
     }
 
-    return false;
+
+    if (ccTask->_seen == 0) {
+      LOGGER_INFO << shutdownMessage << ", beginning shut down sequence";
+      ccTask->_server->beginShutdown();
+      ++ccTask->_seen;
+      return true; 
+     }
+
+     // ............................................................................
+     // user is desperate to kill the server!
+     // ............................................................................
+
+     LOGGER_INFO << shutdownMessage << ", terminating";
+     _exit(EXIT_FAILURE); // quick exit for windows
+     return true;
   }
 
 #endif
@@ -357,7 +404,16 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
   // .............................................................................
 
   options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
+#ifdef _WIN32
+    // ...........................................................................
+    // since we are trying to use libev, then only select is available 
+    // no point in allowing this to be configured at this stage. Perhaps if we
+    // eventually write a native libev we can offer something.  
+    // ...........................................................................
+    //("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
+#else
     ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
+#endif
     ("scheduler.report-interval", &_reportIntervall, "scheduler report interval")
     ("server.no-reuse-address", "do not try to reuse address")
 #ifdef TRI_HAVE_GETRLIMIT

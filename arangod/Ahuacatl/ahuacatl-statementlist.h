@@ -28,14 +28,14 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_H
 #define TRIAGENS_DURHAM_AHUACATL_STATEMENTLIST_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/vector.h>
-
-#include "Ahuacatl/ahuacatl-node.h"
+#include "BasicsC/common.h"
+#include "BasicsC/vector.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_node_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -106,13 +106,13 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const);
 /// @brief get the address of the dummy non-op node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_GetDummyNopNodeAql (void);
+struct TRI_aql_node_s* TRI_GetDummyNopNodeAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the address of the dummy return empty node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_GetDummyReturnEmptyNodeAql (void);
+struct TRI_aql_node_s* TRI_GetDummyReturnEmptyNodeAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pull out subqueries in the statement list from the middle to the
@@ -142,7 +142,7 @@ size_t TRI_InvalidateStatementListAql (TRI_aql_statement_list_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const,
-                                 TRI_aql_node_t* const,
+                                 struct TRI_aql_node_s* const,
                                  const size_t); 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +150,7 @@ bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const,
-                                 TRI_aql_node_t* const); 
+                                 struct TRI_aql_node_s* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

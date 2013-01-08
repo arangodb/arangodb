@@ -255,6 +255,8 @@ bool V8LineEditor::open (const bool autoComplete) {
     // issue #289: do not append a space after completion
     rl_completion_append_character = '\0';
 
+    // works only in Readline 4.2+
+#if RL_READLINE_VERSION >= 0x0500
     // enable this to turn on the visual bell - evil! 
     // rl_variable_bind("prefer-visible-bell", "1");
     
@@ -271,7 +273,7 @@ bool V8LineEditor::open (const bool autoComplete) {
     
     // use readlines built-in page-wise completer
     rl_variable_bind("page-completions", "1");
-
+#endif
 
     rl_attempted_completion_function = AttemptedCompletion;
     rl_completer_word_break_characters = WordBreakCharacters;

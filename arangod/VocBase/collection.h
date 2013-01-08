@@ -183,7 +183,7 @@ TRI_col_state_e;
 typedef uint32_t TRI_col_version_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection type
+/// @brief collection enum
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
@@ -198,10 +198,15 @@ TRI_col_type_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_header_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 
-  TRI_col_type_e _type;
-  TRI_voc_cid_t _cid;
+  TRI_col_type_t _type;                 //  4 bytes
+
+#ifdef TRI_PADDING_32
+  char _padding_col_header_marker[4];
+#endif
+
+  TRI_voc_cid_t _cid;                   //  8 bytes
 }
 TRI_col_header_marker_t;
 
@@ -210,18 +215,19 @@ TRI_col_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_col_info_s {
-  TRI_col_version_t _version;        // collection version
-  TRI_col_type_e _type;              // collection type
-  TRI_voc_cid_t _cid;                // collection identifier
+  TRI_col_version_t  _version;         // collection version
+  TRI_col_type_e     _type;            // collection type
+  TRI_voc_cid_t      _cid;             // collection identifier
+  struct TRI_json_s* _options;         // optional collection options
+  TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
-  char _name[TRI_COL_PATH_LENGTH];   // name of the collection
-  TRI_voc_size_t _maximalSize;       // maximal size of memory mapped file
-  bool _waitForSync;                 // if true, wait for msync
+  char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
 
-  bool _isSystem;                    // if true, this is a system collection
-  bool _deleted;                     // if true, collection has been deleted
-  
-  struct TRI_json_s* _options;       // optional collection options
+  // flags
+  bool               _deleted : 1;     // if true, collection has been deleted
+  bool               _isSystem : 1;    // if true, this is a system collection
+  bool               _isVolatile : 1;  // if true, collection is memory-only
+  bool               _waitForSync : 1; // if true, wait for msync
 }
 TRI_col_info_t;
 
@@ -265,24 +271,24 @@ TRI_collection_t;
 /// @brief initializes a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
-                                  TRI_col_info_t* parameter,
-                                  char const* name,
-                                  TRI_col_type_e type,
-                                  TRI_voc_size_t maximalSize,
-                                  struct TRI_json_s* options);
+void TRI_InitCollectionInfo (TRI_vocbase_t*,
+                             TRI_col_info_t*,
+                             char const*,
+                             TRI_col_type_e,
+                             TRI_voc_size_t,
+                             struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t* dst, TRI_col_info_t* src);
+void TRI_CopyCollectionInfo (TRI_col_info_t*, TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter);
+void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
@@ -290,8 +296,8 @@ void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter);
 
 TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t*,
                                         TRI_collection_t*,
-                                        char const* path,
-                                        TRI_col_info_t* parameter);
+                                        char const*,
+                                        TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -324,27 +330,27 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// @brief creates a parameter info block from file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadCollectionInfo (char const* filename, TRI_col_info_t*);
+int TRI_LoadCollectionInfo (char const*, TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const* filename, TRI_col_info_t*);
+int TRI_SaveCollectionInfo (char const*, TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
-                                       TRI_collection_t*, 
-                                       TRI_col_info_t const*);
+                              TRI_collection_t*, 
+                              TRI_col_info_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection (TRI_collection_t* collection, char const* name);
+int TRI_RenameCollection (TRI_collection_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -364,16 +370,16 @@ int TRI_RenameCollection (TRI_collection_t* collection, char const* name);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateCollection (TRI_collection_t*,
-                            bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
-                            void* data);
+                            bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                            void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over all index files of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IterateIndexCollection (TRI_collection_t* collection,
-                                 bool (*iterator)(char const* filename, void*),
-                                 void* data);
+void TRI_IterateIndexCollection (TRI_collection_t*,
+                                 bool (*)(char const* filename, void*),
+                                 void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
@@ -381,7 +387,7 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 
 TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t*,
                                       TRI_collection_t*,
-                                      char const* path);
+                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
@@ -395,13 +401,19 @@ int TRI_CloseCollection (TRI_collection_t*);
 /// Note that the collection must not be loaded
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const* path);
+TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the information
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine whether a collection name is a system collection name
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSystemCollectionName (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

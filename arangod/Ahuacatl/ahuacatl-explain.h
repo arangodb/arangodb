@@ -28,17 +28,14 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_EXPLAIN_H
 #define TRIAGENS_DURHAM_AHUACATL_EXPLAIN_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/json.h>
-#include <BasicsC/vector.h>
-
-#include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-node.h"
-#include "Ahuacatl/ahuacatl-scope.h"
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
+struct TRI_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -52,7 +49,7 @@ extern "C" {
 typedef struct TRI_aql_explain_s {
   size_t _count;
   size_t _level;
-  TRI_json_t* _result;
+  struct TRI_json_s* _result;
 }
 TRI_aql_explain_t;
 
@@ -75,7 +72,7 @@ TRI_aql_explain_t;
 /// note: the caller of this function must free the returned json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const);
+struct TRI_json_s* TRI_ExplainAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

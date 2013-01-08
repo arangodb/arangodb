@@ -154,7 +154,7 @@ function ahuacatlSubqueryTestSuite () {
       var actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3 ] LET s = (FOR j IN [ 1, 2 ] RETURN j) RETURN i * s[1]) RETURN a");
 
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }

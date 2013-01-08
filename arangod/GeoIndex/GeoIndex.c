@@ -2173,7 +2173,7 @@ int RecursivePotValidate (GeoIx * gix, int pot, int * usage)
     GeoPot * gp;
     GeoDetailedPoint gd;
     int pota, potb;
-    int lev, leva, levb;
+    int lev, leva;
     GeoFix maxdist[GeoIndexFIXEDPOINTS];
     GeoPot * gpa, * gpb;
     gp=gix->pots + pot;
@@ -2199,6 +2199,8 @@ int RecursivePotValidate (GeoIx * gix, int pot, int * usage)
     }
     else
     {
+      int levb;
+
         pota=gp->LorLeaf;
         potb=gp->RorPoints;
         gpa=gix->pots+pota;

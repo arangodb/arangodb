@@ -1139,7 +1139,7 @@ function GeoIndexSimpleQueriesSuite() {
 
       assertEqual(1, r.length);
       assertEqual([0, 50], r[0].gloc);
-    },
+    }
 
   };
 }
