@@ -64,10 +64,35 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SelfContainedWriteTransaction (TRI_vocbase_t* const vocbase,
-                                       const string& collectionName,
-                                       const TRI_col_type_e collectionType,
-                                       const bool createCollection) :
-          SingleCollectionWriteTransaction<StandaloneTransaction<C>, 1>(vocbase, collectionName, collectionType, createCollection, "SelfContainedWriteTransaction") { 
+                                       const string& name) :
+          SingleCollectionWriteTransaction<StandaloneTransaction<C>, 1>(vocbase, name) { 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the transaction, using a collection object
+///
+/// A self contained write transaction operates on a single collection and may 
+/// execute at most one write operation
+////////////////////////////////////////////////////////////////////////////////
+
+        SelfContainedWriteTransaction (TRI_vocbase_t* const vocbase,
+                                       const string& name,
+                                       const TRI_col_type_e createType) :
+          SingleCollectionWriteTransaction<StandaloneTransaction<C>, 1>(vocbase, name, createType) { 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the transaction, using a collection object
+///
+/// A self contained write transaction operates on a single collection and may 
+/// execute at most one write operation
+////////////////////////////////////////////////////////////////////////////////
+
+        SelfContainedWriteTransaction (TRI_vocbase_t* const vocbase,
+                                       const string& name,
+                                       const bool create,
+                                       const TRI_col_type_e createType) :
+          SingleCollectionWriteTransaction<StandaloneTransaction<C>, 1>(vocbase, name, create, createType) { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////

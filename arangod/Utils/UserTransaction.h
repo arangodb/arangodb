@@ -61,9 +61,7 @@ namespace triagens {
         UserTransaction (TRI_vocbase_t* const vocbase, 
                          const vector<string>& readCollections, 
                          const vector<string>& writeCollections) : 
-          Transaction<T>(vocbase, "UserTransaction"), 
-          _readCollections(readCollections), 
-          _writeCollections(writeCollections) { 
+          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, readCollections, writeCollections)) { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,98 +69,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~UserTransaction () {
-          if (this->_trx != 0) {
-            if (this->status() == TRI_TRANSACTION_RUNNING) {
-              // auto abort
-              this->abort();
-            }
-          }
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use all collections 
-/// this is a no op, as using is done when trx is started
-////////////////////////////////////////////////////////////////////////////////
-
-        int useCollections () {
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release all collections in use
-/// this is a no op, as releasing is done when trx is finished
-////////////////////////////////////////////////////////////////////////////////
-
-        int releaseCollections () {
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add all collections to the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int addCollections () {
-          int res;
-          size_t i;
-
-          for (i = 0; i < _readCollections.size(); ++i) {
-            res = TRI_AddCollectionTransaction(this->_trx, _readCollections[i].c_str(), TRI_TRANSACTION_READ, 0);
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-          }    
-
-          for (i = 0; i < _writeCollections.size(); ++i) {
-            res = TRI_AddCollectionTransaction(this->_trx, _writeCollections[i].c_str(), TRI_TRANSACTION_WRITE, 0);
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collections that are opened in read mode
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<string> _readCollections;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collections that are opened in write mode
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<string> _writeCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

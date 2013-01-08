@@ -283,7 +283,6 @@ typedef struct TRI_transaction_collection_s {
   struct TRI_vocbase_col_s*            _collection;         // vocbase collection pointer
   TRI_transaction_collection_global_t* _globalInstance;     // pointer to the global instance of the collection in the trx system
   bool                                 _locked;             // lock flag (used for write-transactions)
-  bool                                 _externalLock;       // flag whether collection was locked externally
 }
 TRI_transaction_collection_t;
 
@@ -395,8 +394,7 @@ struct TRI_vocbase_col_s* TRI_CheckCollectionTransaction (TRI_transaction_t* con
 
 int TRI_AddCollectionTransaction (TRI_transaction_t* const,
                                   const char* const, 
-                                  const TRI_transaction_type_e,
-                                  struct TRI_vocbase_col_s*);
+                                  const TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start a transaction
@@ -421,6 +419,13 @@ int TRI_AbortTransaction (TRI_transaction_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FinishTransaction (TRI_transaction_t* const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the pointer to a collection after it has been initialised
+////////////////////////////////////////////////////////////////////////////////
+  
+struct TRI_vocbase_col_s* TRI_GetCollectionTransaction (const TRI_transaction_t* const, 
+                                                        const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
