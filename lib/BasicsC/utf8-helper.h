@@ -31,9 +31,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/vector.h"
 
-#ifdef TRI_HAVE_ICU
 #include "unicode/ustring.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,8 +46,6 @@ extern "C" {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_ICU
-  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,8 +81,6 @@ char * TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
                                    const uint16_t* utf16, 
                                    size_t inLength, 
                                    size_t* outLength);
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf16 strings (implemented in Basic/Utf8Helper.cpp)
