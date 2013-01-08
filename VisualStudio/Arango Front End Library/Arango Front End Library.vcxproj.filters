@@ -191,6 +191,36 @@
     <ClInclude Include="..\..\lib\ResultGenerator\InitialiseGenerator.h">
       <Filter>Result Generator Header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\EndpointServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralAsyncCommTask.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralCommTask.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralListenTask.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralServerDispatcher.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralServerJob.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\GeneralSslServer.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\SpecificCommTask.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\GeneralServer\SslAsyncCommTask.h">
+      <Filter>Http Server Header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\lib\Admin\ApplicationAdminServer.cpp">

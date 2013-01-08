@@ -28,23 +28,20 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_CONTEXT_H
 #define TRIAGENS_DURHAM_AHUACATL_CONTEXT_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/vector.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/json.h>
-
-#include "VocBase/vocbase.h"
-#include "VocBase/collection.h"
+#include "BasicsC/common.h"
+#include "BasicsC/vector.h"
+#include "BasicsC/associative.h"
 
 #include "Ahuacatl/ahuacatl-error.h"
-#include "Ahuacatl/ahuacatl-parser.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_parser_s;
+struct TRI_json_s;
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -60,8 +57,8 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_context_s {
-  TRI_vocbase_t* _vocbase;
-  TRI_aql_parser_t* _parser;
+  struct TRI_vocbase_s* _vocbase;
+  struct TRI_aql_parser_s* _parser;
   TRI_aql_statement_list_t* _statements;
   TRI_aql_error_t _error;
   TRI_vector_pointer_t _collections;
@@ -103,7 +100,7 @@ TRI_aql_context_t;
 /// @brief create and initialize a context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t*, 
+TRI_aql_context_t* TRI_CreateContextAql (struct TRI_vocbase_s*,
                                          const char* const); 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +119,8 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const);
 /// @brief add bind parameters to the query context
 ////////////////////////////////////////////////////////////////////////////////
  
-bool TRI_BindQueryContextAql (TRI_aql_context_t* const, const TRI_json_t* const);
+bool TRI_BindQueryContextAql (TRI_aql_context_t* const, 
+                              const struct TRI_json_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform some AST optimisations

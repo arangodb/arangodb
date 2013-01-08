@@ -113,32 +113,42 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
   TRI_collection_t* collection;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
-  bool ok;
   int res;
   char* filename;
-  char* jname;
-  char* number;
 
   collection = &primary->base;
 
-  // construct a suitable filename
-  number = TRI_StringUInt32(TRI_NewTickVocBase());
-
-  if (compactor) {
-    jname = TRI_Concatenate3String("journal-", number, ".db");
+  if (collection->_info._isVolatile) {
+    // in-memory collection
+    filename = NULL;
   }
   else {
-    jname = TRI_Concatenate3String("compactor-", number, ".db");
+    char* jname;
+    char* number;
+
+    // construct a suitable filename
+    number = TRI_StringUInt32(TRI_NewTickVocBase());
+
+    if (compactor) {
+      jname = TRI_Concatenate3String("journal-", number, ".db");
+    }
+    else {
+      jname = TRI_Concatenate3String("compactor-", number, ".db");
+    }
+
+    filename = TRI_Concatenate2File(collection->_directory, jname);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
   }
-
-  filename = TRI_Concatenate2File(collection->_directory, jname);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
   // create journal file
   journal = TRI_CreateDatafile(filename, collection->_info._maximalSize);
-
+    
+  if (filename != NULL) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  }
+  
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
       collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
@@ -149,49 +159,53 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
       collection->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
-    LOG_ERROR("cannot create new journal in '%s'", filename);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return NULL;
   }
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-  LOG_TRACE("created a new journal '%s'", journal->_filename);
+  LOG_TRACE("created a new primary journal '%s'", journal->getName(journal));
 
-  // and use the correct name
-  number = TRI_StringUInt32(journal->_fid);
 
-  if (compactor) {
-    jname = TRI_Concatenate3String("compactor-", number, ".db");
+  if (journal->isPhysical(journal)) {
+    char* jname;
+    char* number;
+    bool ok;
+
+    // and use the correct name
+    number = TRI_StringUInt32(journal->_fid);
+
+    if (compactor) {
+      jname = TRI_Concatenate3String("compactor-", number, ".db");
+    }
+    else {
+      jname = TRI_Concatenate3String("journal-", number, ".db");
+    }
+
+    filename = TRI_Concatenate2File(collection->_directory, jname);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
+
+    ok = TRI_RenameDatafile(journal, filename);
+
+    if (! ok) {
+      LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
+    }
+    else {
+      LOG_TRACE("renamed journal to '%s'", filename);
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
-  else {
-    jname = TRI_Concatenate3String("journal-", number, ".db");
-  }
 
-  filename = TRI_Concatenate2File(collection->_directory, jname);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
-
-  ok = TRI_RenameDatafile(journal, filename);
-
-  if (! ok) {
-    LOG_WARNING("failed to rename the journal to '%s': %s", filename, TRI_last_error());
-  }
-  else {
-    LOG_TRACE("renamed journal to '%s'", filename);
-  }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   // create a collection header
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
+    LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
+    
     TRI_FreeDatafile(journal);
-
-    LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
 
     return NULL;
   }
@@ -204,15 +218,15 @@ static TRI_datafile_t* CreateJournal (TRI_primary_collection_t* primary, bool co
 
   cm._cid = collection->_info._cid;
 
-  TRI_FillCrcMarkerDatafile(&cm.base, sizeof(cm), 0, 0, 0, 0);
+  TRI_FillCrcMarkerDatafile(journal, &cm.base, sizeof(cm), 0, 0, 0, 0);
 
   res = TRI_WriteElementDatafile(journal, position, &cm.base, sizeof(cm), 0, 0, 0, 0, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
+    LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
+    
     TRI_FreeDatafile(journal);
-
-    LOG_ERROR("cannot create document header in journal '%s': %s", filename, TRI_last_error());
 
     return NULL;
   }
@@ -241,11 +255,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
   TRI_datafile_t* journal;
   TRI_collection_t* collection;
   TRI_vector_pointer_t* vector;
-  bool ok;
   int res;
-  char* dname;
-  char* filename;
-  char* number;
 
   collection = &primary->base;
 
@@ -268,7 +278,7 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
   res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to seal datafile '%s': %s", journal->_filename, TRI_last_error());
+    LOG_ERROR("failed to seal datafile '%s': %s", journal->getName(journal), TRI_last_error());
 
     TRI_RemoveVectorPointer(vector, position);
     TRI_PushBackVectorPointer(&collection->_datafiles, journal);
@@ -276,28 +286,36 @@ static bool CloseJournalPrimaryCollection (TRI_primary_collection_t* primary,
     return false;
   }
 
-  number = TRI_StringUInt32(journal->_fid);
-  dname = TRI_Concatenate3String("datafile-", number, ".db");
-  filename = TRI_Concatenate2File(collection->_directory, dname);
+  if (journal->isPhysical(journal)) {
+    // rename the file
+    char* dname;
+    char* filename;
+    char* number;
+    bool ok;
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+    number = TRI_StringUInt32(journal->_fid);
+    dname = TRI_Concatenate3String("datafile-", number, ".db");
+    filename = TRI_Concatenate2File(collection->_directory, dname);
 
-  ok = TRI_RenameDatafile(journal, filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  if (! ok) {
-    LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->_filename, filename, TRI_last_error());
+    ok = TRI_RenameDatafile(journal, filename);
 
-    TRI_RemoveVectorPointer(vector, position);
-    TRI_PushBackVectorPointer(&collection->_datafiles, journal);
+    if (! ok) {
+      LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->getName(journal), filename, TRI_last_error());
+
+      TRI_RemoveVectorPointer(vector, position);
+      TRI_PushBackVectorPointer(&collection->_datafiles, journal);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      return false;
+    }
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-    return false;
+    LOG_TRACE("closed journal '%s'", journal->getName(journal));
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-  LOG_TRACE("closed journal '%s'", journal->_filename);
 
   TRI_RemoveVectorPointer(vector, position);
   TRI_PushBackVectorPointer(&collection->_datafiles, journal);

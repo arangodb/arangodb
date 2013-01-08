@@ -37,14 +37,23 @@ def genJsFile(errors):
       + "  internal.errors = {\n"
   
   # print individual errors
+  i = 0
   for e in errors:
     name = "\"" + e[0] + "\""
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     out = out\
-        + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }, \n"
+        + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
+ 
+    i = i + 1 
+
+    if i < len(errors):
+      out = out + ", \n"
+    else:
+      out = out + "\n"
+
 
   out = out\
-      + "};\n"\
+      + "  };\n"\
       + "}());\n"\
       + "\n"
 

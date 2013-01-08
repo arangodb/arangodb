@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions module
@@ -69,8 +69,8 @@ var RoutingCache;
 /// @brief function that's returned for non-implemented actions
 ////////////////////////////////////////////////////////////////////////////////
         
-function notImplementedFunction (triggerRoute, message) {
-  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
+function notImplementedFunction (route, message) {
+  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
 
@@ -85,8 +85,8 @@ function notImplementedFunction (triggerRoute, message) {
 /// @brief function that's returned for actions that produce an error
 ////////////////////////////////////////////////////////////////////////////////
 
-function errorFunction (triggerRoute, message) {
-  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
+function errorFunction (route, message) {
+  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
 
@@ -218,6 +218,7 @@ function lookupCallbackAction (route, action) {
   var name;
   var func;
   var module;
+  var joined;
   var httpMethods = { 
     'get': exports.GET,
     'head': exports.HEAD,
@@ -235,28 +236,35 @@ function lookupCallbackAction (route, action) {
     path = action['do'].split("/");
     name = path.pop();
     func = null;
+    joined = path.join("/");
 
     try {
-      module = require(path.join("/"));
+      module = require(joined);
 
       if (module.hasOwnProperty(name)) {
         func = module[name];
       }
       else {
-        func = notImplementedFunction(route, "Could not find action named '" + name + "' in module '" + path.join("/") + "'");
+        func = notImplementedFunction(route, "could not find action named '" + name + "' in module '" + joined + "'");
       }
     }
     catch (err) {
-      if (! ExistsCache[path.join("/")]) {
-        func = notImplementedFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+      if (! module.exists(joined)) {
+        func = notImplementedFunction(route, 
+				      "an error occurred while loading action named '" + name 
+				        + "' in module '" + joined + "': " + String(err));
       }
       else {
-        func = errorFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+        func = errorFunction(route,
+			     "an error occurred while loading action named '" + name 
+			       + "' in module '" + joined + "': " + String(err));
       }
     }
 
     if (func === null || typeof func !== 'function') {
-      func = errorFunction(route, "Invalid definition for the action named '" + name + "' in module '" + path.join("/") + "'");
+      func = errorFunction(route, 
+			   "invalid definition for the action named '" + name 
+			     + "' in module '" + joined + "'");
     }
 
     return {
@@ -279,16 +287,20 @@ function lookupCallbackAction (route, action) {
             }
 
             if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
-              func = module[m] || 
-                     errorFunction(route, "Invalid definition for " + m + " action in action controller module '" + action.controller + "'");
+              func = module[m]
+		|| errorFunction(route, 
+				 "invalid definition for " + m + " action in action controller module '" 
+				   + action.controller + "'");
 
               return func(req, res, options, next); 
             }
           }
 
           if (module.hasOwnProperty('do')) {
-            func = module['do'] || 
-                   errorFunction(route, "Invalid definition for do action in action controller module '" + action.controller + "'");
+            func = module['do']
+	      || errorFunction(route,
+			       "invalid definition for do action in action controller module '"
+			         + action.controller + "'");
 
             return func(req, res, options, next);
           }
@@ -300,11 +312,15 @@ function lookupCallbackAction (route, action) {
       };
     }
     catch (err) {
-      if (! ExistsCache[action.controller]) {
-        return notImplementedFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+      if (! module.exists(action.controller)) {
+        return notImplementedFunction(route, 
+				      "cannot load/execute action controller module '" 
+				        + action.controller + ": " + String(err));
       }
 
-      return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+      return errorFunction(route, 
+			   "cannot load/execute action controller module '" 
+			     + action.controller + ": " + String(err));
     }
   }
 
@@ -315,6 +331,7 @@ function lookupCallbackAction (route, action) {
       controller: function (req, res, options, next) {
         var module;
         var path;
+	var efunc;
 
         // determine path
         if (req.hasOwnProperty('suffix')) {
@@ -329,11 +346,13 @@ function lookupCallbackAction (route, action) {
           require(path);
         }
         catch (err) {
-          if (! ExistsCache[path]) {
-            return notImplementedFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+	  efunc = errorFunction;
+
+          if (! module.exists(path)) {
+	    efunc = notImplementedFunction;
           }
 
-          return errorFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+          return efunc(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
         }
 
         try {
@@ -344,21 +363,28 @@ function lookupCallbackAction (route, action) {
             }
 
             if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
-              func = module[m] || 
-                     errorFunction(route, "Invalid definition for " + m + " action in prefix controller '" + action.prefixController + "'");
+              func = module[m]
+		|| errorFunction(route,
+				 "Invalid definition for " + m + " action in prefix controller '"
+				   + action.prefixController + "'");
 
               return func(req, res, options, next);
             }
           }
   
           if (module.hasOwnProperty('do')) {
-            func = module['do'] || 
-                   errorFunction(route, "Invalid definition for do action in prefix controller '" + action.prefixController + "'");
+            func = module['do']
+	      || errorFunction(route, 
+			       "Invalid definition for do action in prefix controller '"
+			         + action.prefixController + "'");
+
             return func(req, res, options, next);
           }
         }
         catch (err) {
-          return errorFunction(route, "Cannot load/execute prefix controller '" + action.prefixController + "': " + String(err))(req, res, options, next);
+          return errorFunction(route, 
+			       "Cannot load/execute prefix controller '"
+			         + action.prefixController + "': " + String(err))(req, res, options, next);
         }
 
         next();
@@ -805,7 +831,7 @@ function getJsonBody (req, res, code) {
 /// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum},
 ///                          @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
 ///
-/// The functions generates an error response. The response body is an array
+/// The function generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message
 /// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code} containing
 /// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and @LIT{errorMessage}
@@ -1069,7 +1095,7 @@ function badParameter (req, res, name) {
 ///
 /// @FUN{actions.resultOk(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
 ///
-/// The functions defines a response. @FA{code} is the status code to
+/// The function defines a response. @FA{code} is the status code to
 /// return. @FA{result} is the result object, which will be returned as JSON
 /// object in the body. @LIT{headers} is an array of headers to returned.
 /// The function adds the attribute @LIT{error} with value @LIT{false}
@@ -1100,7 +1126,7 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 ///
 /// @FUN{actions.resultBad(@FA{req}, @FA{res}, @FA{error-code}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
@@ -1117,13 +1143,13 @@ function resultBad (req, res, code, msg, headers) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for not found 
 ///
-/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
+/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{code}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultNotFound (req, res, msg, headers) {
-  resultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, String(msg), headers);
+function resultNotFound (req, res, code, msg, headers) {
+  resultError(req, res, exports.HTTP_NOT_FOUND, code, String(msg), headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1131,7 +1157,7 @@ function resultNotFound (req, res, msg, headers) {
 ///
 /// @FUN{actions.resultNotImplemented(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
@@ -1148,7 +1174,7 @@ function resultNotImplemented (req, res, msg, headers) {
 ///
 /// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
@@ -1163,7 +1189,7 @@ function resultUnsupported (req, res, headers) {
 ///
 /// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
@@ -1192,7 +1218,7 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ///
 /// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
@@ -1293,7 +1319,7 @@ function resultCursor (req, res, cursor, code, options) {
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
@@ -1315,7 +1341,7 @@ function collectionNotFound (req, res, collection, headers) {
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
@@ -1343,7 +1369,7 @@ function indexNotFound (req, res, collection, index, headers) {
 ///
 /// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers) {

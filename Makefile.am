@@ -8,7 +8,7 @@
 ### @brief source to build before compile
 ################################################################################
 
-BUILT_SOURCES = build.h
+BUILT_SOURCES = build_posix.h
 
 ################################################################################
 ### @brief man pages to install
@@ -253,8 +253,8 @@ install-data-local:
 ### @brief version number
 ################################################################################
 
-build.h: configure.ac
-	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build.h
+build_posix.h: configure.ac
+	@echo '#define TRIAGENS_VERSION "@PACKAGE_VERSION@"' > build_posix.h
 
 ################################################################################
 ### @brief local modifications
@@ -281,7 +281,7 @@ endif
 ### @brief unit tests
 ################################################################################
 
-include UnitTests/Makefile.files
+include UnitTests/Makefile.unittests
 
 ################################################################################
 ### @brief error code file
@@ -323,7 +323,7 @@ clean-local:
 .PHONY: built-sources
 
 built-sources: \
-	build.h \
+	build_posix.h \
 	@top_srcdir@/js/common/bootstrap/errors.js \
 	$(JAVASCRIPT_HEADER)
 
@@ -374,7 +374,11 @@ if ENABLE_HTML2TEXT
 BUILT_SOURCES += README
 
 README: README.md
-	@MARKDOWN_EXEC@ -o html $< | @HTML2TEXT_EXEC@ -style pretty | fgrep -v _Build_Status_ > $@.tmp
+	fgrep -v "[Build Status]" $< \
+		| @MARKDOWN_EXEC@ \
+		| @HTML2TEXT_EXEC@ -style pretty -nobs \
+		| sed -e 's:&gt;:>:g' \
+		> $@.tmp
 	mv $@.tmp $@
 
 endif

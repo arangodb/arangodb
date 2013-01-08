@@ -8,5 +8,6 @@ content-type: application/json
   "code": 200,
   "id": 56478340,
   "status": 3,
+  "type": 2,
   "error": false
 }

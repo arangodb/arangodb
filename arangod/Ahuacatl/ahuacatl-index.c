@@ -26,6 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-index.h"
+
+#include "BasicsC/logging.h"
+#include "BasicsC/strings.h"
+#include "BasicsC/string-buffer.h"
+
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h" 
 
@@ -60,7 +65,7 @@ static void LogIndexString (const char* const what,
     TRI_AppendStringStringBuffer(buffer, idx->_fields._buffer[i]);
   }
 
-  LOG_DEBUG("%s %s index (%s) for '%s'", 
+  LOG_TRACE("%s %s index (%s) for '%s'", 
             what,
             TRI_TypeNameIndex(idx), 
             buffer->_buffer, 
@@ -285,7 +290,7 @@ void TRI_FreeIndexAql (TRI_aql_index_t* const idx) {
 TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
                                         const TRI_vector_pointer_t* const availableIndexes,
                                         const char* const collectionName,
-                                        const TRI_vector_pointer_t* const candidates) {
+                                        const TRI_vector_pointer_t* candidates) {
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
   size_t i, n; 
@@ -306,7 +311,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     if (! CanUseIndex(idx)) {
       continue; 
     }
-
+      
     LogIndexString("checking", idx, collectionName);
 
     TRI_ClearVectorPointer(&matches);
@@ -330,7 +335,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
       // now loop over all candidates
       for (k = 0; k < candidates->_length; ++k) {
         TRI_aql_field_access_t* candidate = (TRI_aql_field_access_t*) TRI_AtVectorPointer(candidates, k);
-        
+      
         if (candidate->_type == TRI_AQL_ACCESS_IMPOSSIBLE || 
             candidate->_type == TRI_AQL_ACCESS_ALL) {
           // wrong index type, doesn't help us at all

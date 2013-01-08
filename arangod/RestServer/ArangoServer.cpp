@@ -71,10 +71,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "Scheduler/ApplicationScheduler.h"
 
-#ifndef _WIN32
 #include "V8/V8LineEditor.h"
-#endif
-
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -92,11 +89,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
-
-#ifdef TRI_ENABLE_MRUBY
-#include "mr/common/bootstrap/mr-error.h"
-#include "mr/server/mr-server.h"
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -246,15 +238,22 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(string(".arango") + string(1,TRI_DIR_SEPARATOR_CHAR) + string("arangod.conf") );
 
   // .............................................................................
-  // multi-threading scheduler and dispatcher
+  // multi-threading scheduler 
   // .............................................................................
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
   _applicationScheduler->allowMultiScheduler(true);
+  
   _applicationServer->addFeature(_applicationScheduler);
+
+
+  // .............................................................................
+  // dispatcher
+  // .............................................................................
 
   _applicationDispatcher = new ApplicationDispatcher(_applicationScheduler);
   _applicationServer->addFeature(_applicationDispatcher);
+
 
   // .............................................................................
   // V8 engine
@@ -304,9 +303,14 @@ void ArangoServer::buildApplicationServer () {
   // daemon and supervisor mode
   // .............................................................................
 
+
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
     ("upgrade", "perform a database upgrade")
+  ;
+
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("no-upgrade", "skip a database upgrade")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -380,6 +384,7 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
+
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
                                                              _applicationDispatcher,
@@ -396,6 +401,7 @@ void ArangoServer::buildApplicationServer () {
     exit(EXIT_FAILURE);
   }
   
+
 #ifdef TRI_HAVE_ICU  
   // .............................................................................
   // set language of default collator
@@ -415,6 +421,7 @@ void ArangoServer::buildApplicationServer () {
     LOGGER_INFO << "using default language '" << Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() << "'" ;        
   }
 #endif  
+
  
   // .............................................................................
   // disable access to the HTML admin interface
@@ -502,10 +509,11 @@ void ArangoServer::buildApplicationServer () {
     int err = 0;
     string currentDir = FileUtils::currentDirectory(&err);
     char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
+
     if (absoluteFile != 0) {
       _pidFile = string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
-      
+ 
       LOGGER_DEBUG << "using absolute pid file '" << _pidFile << "'";
     }
     else {
@@ -517,6 +525,7 @@ void ArangoServer::buildApplicationServer () {
       exit(EXIT_FAILURE);
     }
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -547,6 +556,11 @@ int ArangoServer::startupServer () {
     _applicationV8->performUpgrade();
   }
 
+  // skip an upgrade even if VERSION is missing
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    _applicationV8->skipUpgrade();
+  }
+
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
   _applicationMR->setConcurrency(_dispatcherThreads);
@@ -572,6 +586,7 @@ int ArangoServer::startupServer () {
   httpOptions._contexts.insert("user");
   httpOptions._contexts.insert("api");
   httpOptions._contexts.insert("admin");
+
 
   // create the server
   _applicationEndpointServer->buildServers();
@@ -602,13 +617,16 @@ int ArangoServer::startupServer () {
   LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
   LOGGER_INFO << "Have Fun!";
 
+
   _applicationServer->wait();
+  
 
   // .............................................................................
   // and cleanup
   // .............................................................................
 
   _applicationServer->stop();
+
   closeDatabase();
 
   return 0;
@@ -645,9 +663,16 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(1);
+
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
   }
+
+  // skip an upgrade even if VERSION is missing
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    _applicationV8->skipUpgrade();
+  }
+
   _applicationV8->disableActions();
 
   ok = _applicationV8->prepare();
@@ -672,7 +697,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
     // run the shell
     if (mode != OperationMode::MODE_SCRIPT) {
-      printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+      printf("ArangoDB JavaScript emergency console [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
     }
     else {
       LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
@@ -762,7 +787,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
         v8::TryCatch tryCatch;
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-          bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+          bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
 
           if (! r) {
             LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
@@ -816,7 +841,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
       // .............................................................................
 
       case OperationMode::MODE_CONSOLE: {
-#ifndef _WIN32      
         V8LineEditor console(context->_context, ".arango");
 
         console.open(true);
@@ -850,7 +874,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
           }
         }
 
-#endif
         break;
       }
 
@@ -873,7 +896,11 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   closeDatabase();
   Random::shutdown();
 
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+  if (!ok) {
+    return EXIT_FAILURE;
+  }
+
+  return EXIT_SUCCESS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -987,7 +1014,7 @@ int ArangoServer::executeRubyConsole () {
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
 
   // create a line editor
-  printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
+  printf("ArangoDB MRuby emergency console [DB version %s]\n", TRIAGENS_VERSION);
 
   MRLineEditor console(context->_mrb, ".arango-mrb");
 
@@ -1055,6 +1082,8 @@ int ArangoServer::executeRubyConsole () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::openDatabase () {
+  TRI_InitialiseVocBase();
+
   _vocbase = TRI_OpenVocBase(_databasePath.c_str());
 
   if (! _vocbase) {
@@ -1081,6 +1110,7 @@ void ArangoServer::closeDatabase () {
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
+  TRI_ShutdownVocBase();
 
   LOGGER_INFO << "ArangoDB has been shut down";
 }

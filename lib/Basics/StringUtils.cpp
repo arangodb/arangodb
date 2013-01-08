@@ -3197,6 +3197,14 @@ namespace triagens {
       // ADDITIONAL STRING UTILITIES
 // -----------------------------------------------------------------------------
 
+      string correctPath(const string& incorrectPath) {
+        #ifdef _WIN32
+          return replace (incorrectPath, "/", "\\");
+        #else
+          return replace (incorrectPath, "\\", "/");
+        #endif
+      }
+
 /// In a list str = "xx,yy,zz ...", entry(n,str,',') returns the nth entry of the list delimited
 /// by ','. E.g entry(2,str,',') = 'yy'
 

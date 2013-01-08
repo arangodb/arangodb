@@ -298,7 +298,6 @@ static int WriteElement (TRI_document_collection_t* document,
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   journal->_written = ((char*) result) + marker->_size;
-  journal->_nWritten++;
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
@@ -396,7 +395,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   header = document->_headers->verify(document->_headers, header);
 
   // generate crc
-  TRI_FillCrcKeyMarkerDatafile(&marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
+  TRI_FillCrcKeyMarkerDatafile(journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
 
   // and write marker and blob
   res = WriteElement(document, journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize, *result);
@@ -637,7 +636,7 @@ static int UpdateDocument (TRI_doc_operation_context_t* context,
   // .............................................................................
 
   // generate crc
-  TRI_FillCrcMarkerDatafile(&marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
+  TRI_FillCrcMarkerDatafile(journal, &marker->base, markerSize, keyBody, keyBodySize, body, bodySize);
 
   // and write marker and blob
   // TODO: update 
@@ -762,7 +761,7 @@ static int DeleteDocument (TRI_doc_operation_context_t* context,
   }
 
   // generate crc
-  TRI_FillCrcMarkerDatafile(&marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0);
+  TRI_FillCrcMarkerDatafile(journal, &marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0);
 
   // and write marker and blob
   res = WriteElement(document, journal, &marker->base, sizeof(TRI_doc_deletion_key_marker_t), keyBody, keyBodySize, 0, 0, result);
@@ -1138,7 +1137,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
 
     keySize += 1;
 
-    keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
     TRI_CopyString(keyBody, (char*) &keyBuffer, keySize);
 
@@ -1190,7 +1189,7 @@ static int CreateShapedJson (TRI_doc_operation_context_t* context,
     
     keySize += 1;
 
-    keyBodySize = ((keySize + fromSize + toSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+    keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + fromSize + toSize);
     keyBody = TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
     TRI_CopyString(keyBody, (char*) &keyBuffer, keySize);      
 
@@ -1483,7 +1482,11 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       TRI_doc_mptr_t* header;
 
       header = collection->_headers->request(collection->_headers);
-      // TODO: header might be NULL and must be checked
+      if (header == NULL) {
+        LOG_ERROR("out of memory");
+        return false;
+      }
+
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
@@ -1877,6 +1880,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
   bool waitForSync;
+  bool isVolatile;
 
   if (cid > 0) {
     TRI_UpdateTickVocBase(cid);
@@ -1905,7 +1909,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // then the shape collection
   waitForSync = (vocbase->_forceSyncShapes || parameter->_waitForSync);
-  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync);
+  isVolatile  = parameter->_isVolatile;
+
+  // if the collection has the _volatile flag, the shapes collection is also volatile.
+  shaper = TRI_CreateVocShaper(vocbase, collection->_directory, "SHAPES", waitForSync, isVolatile);
 
   if (shaper == NULL) {
     LOG_ERROR("cannot create shapes collection");

@@ -271,6 +271,7 @@ void TRI_CleanupVocBase (void* data) {
       // server shutdown
       break;
     }
+    
   }
 
   TRI_DestroyVectorPointer(&collections);

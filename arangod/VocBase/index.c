@@ -3240,7 +3240,7 @@ static int FillLookupSLOperator(TRI_index_operator_t* slOperator, TRI_primary_co
         }
 
         // check and see that entries are non-increasing
-        if (jsonObject->_value._objects._length > maxEntries) {
+        if ((int) jsonObject->_value._objects._length > maxEntries) {
           if (maxEntries > 0) {
             result = -3;
             break;
@@ -4080,7 +4080,7 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   bool ok;
   
   fulltextIndex = (TRI_fulltext_index_t*) idx;
-  doc = (TRI_doc_mptr_t*) ((intptr_t) document);
+  doc = (TRI_doc_mptr_t*) ((uintptr_t) document);
 
   // extract the shape
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, doc->_data);
@@ -4143,13 +4143,11 @@ static int InsertFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   }
 
   if (wordlist->_numWords > 0) {
-    TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
     // TODO: use status codes
-    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc), wordlist)) {
+    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc), wordlist)) {
       LOG_ERROR("adding document to fulltext index failed");
       res = TRI_ERROR_INTERNAL;
     }
-    TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
   }
 
   TRI_FreeWordlistFulltextIndex(wordlist);
@@ -4215,9 +4213,7 @@ static int RemoveFulltextIndex (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
-  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) doc));
-  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4240,17 +4236,14 @@ static int UpdateFulltextIndex (TRI_index_t* idx,
   res = TRI_ERROR_NO_ERROR;
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
-  TRI_WriteLockReadWriteLock(&fulltextIndex->_lock);
-  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc));
+  TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) newDoc));
   
   if (wordlist != NULL && wordlist->_numWords > 0) {
     // TODO: use status codes
-    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((intptr_t) newDoc), wordlist)) {
+    if (! TRI_InsertWordsFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) newDoc), wordlist)) {
       res = TRI_ERROR_INTERNAL;
     }
   }
-
-  TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
 
   TRI_FreeWordlistFulltextIndex(wordlist);
 
@@ -4273,16 +4266,9 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
   fulltextIndex = (TRI_fulltext_index_t*) idx;
   res = TRI_ERROR_NO_ERROR;
 
-  // try to acquire the write lock to clean up
-  // but don't block if the index is busy
-  if (TRI_TryWriteLockReadWriteLock(&fulltextIndex->_lock)) {
-    // check whether we should do a cleanup at all
-    // TODO: fix compaction later
-    if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    TRI_WriteUnlockReadWriteLock(&fulltextIndex->_lock);
+  // check whether we should do a cleanup at all
+  if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   return res;
@@ -4358,7 +4344,6 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* collectio
   
   TRI_InitVectorString(&fulltextIndex->base._fields, TRI_UNKNOWN_MEM_ZONE);
   TRI_PushBackVectorString(&fulltextIndex->base._fields, copy); 
-  TRI_InitReadWriteLock(&fulltextIndex->_lock);
 
   return &fulltextIndex->base;
 }
@@ -4376,12 +4361,9 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
       
-  TRI_DestroyReadWriteLock(&fulltextIndex->_lock);
   TRI_DestroyVectorString(&idx->_fields);
   
   LOG_TRACE("destroying fulltext index");
-
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   TRI_FreeFtsIndex(fulltextIndex->_fulltextIndex);
 }
@@ -5342,7 +5324,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* collectio
   // attempt to create a new bitarray index
   // ...........................................................................
    
-  result = BitarrayIndex_new(&(baIndex->_bitarrayIndex),TRI_UNKNOWN_MEM_ZONE, cardinality, 
+  result = BitarrayIndex_new(&(baIndex->_bitarrayIndex), TRI_UNKNOWN_MEM_ZONE, (size_t) cardinality, 
                              &baIndex->_values, supportUndef, createContext);  
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVector(&baIndex->_paths);

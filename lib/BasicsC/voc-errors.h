@@ -91,6 +91,8 @@ extern "C" {
 /// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
+/// - 1109: @LIT{msync failed}
+///   Will be raised when the system call msync failed.
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -135,12 +137,16 @@ extern "C" {
 ///   status.
 /// - 1218: @LIT{collection type invalid}
 ///   Will be raised when an invalid collection type is used in a request.
-/// - 1219: @LIT{illegal document key}
+/// - 1219: @LIT{validator failed}
+///   Will be raised when the validation of an attribute of a structure failed.
+/// - 1220: @LIT{parser failed}
+///   Will be raised when the parsing of an attribute of a structure failed.
+/// - 1221: @LIT{illegal document key}
 ///   Will be raised when a document key is corrupt.
-/// - 1220: @LIT{unexpected document key}
+/// - 1222: @LIT{unexpected document key}
 ///   Will be raised when a user-defined document key is supplied for
 ///   collections with auto key generation.
-/// - 1221: @LIT{index needs resizing}
+/// - 1223: @LIT{index needs resizing}
 ///   Will be raised when an index is full and should be resized to contain
 ///   more data.
 /// - 1300: @LIT{datafile full}
@@ -722,6 +728,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS              (1108)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1109: ERROR_ARANGO_MSYNC_FAILED
+///
+/// msync failed
+///
+/// Will be raised when the system call msync failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_MSYNC_FAILED                                     (1109)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT
 ///
 /// conflict
@@ -916,17 +932,37 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          (1218)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1219: ERROR_ARANGO_DOCUMENT_KEY_BAD
+/// @brief 1219: ERROR_ARANGO_VALIDATION_FAILED
+///
+/// validator failed
+///
+/// Will be raised when the validation of an attribute of a structure failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_VALIDATION_FAILED                                (1219)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1220: ERROR_ARANGO_PARSER_FAILED
+///
+/// parser failed
+///
+/// Will be raised when the parsing of an attribute of a structure failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_PARSER_FAILED                                    (1220)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1221: ERROR_ARANGO_DOCUMENT_KEY_BAD
 ///
 /// illegal document key
 ///
 /// Will be raised when a document key is corrupt.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD                                 (1219)
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD                                 (1221)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1220: ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED
+/// @brief 1222: ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED
 ///
 /// unexpected document key
 ///
@@ -934,10 +970,10 @@ void TRI_InitialiseErrorMessages (void);
 /// with auto key generation.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED                          (1220)
+#define TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED                          (1222)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1221: ERROR_ARANGO_INDEX_NEEDS_RESIZE
+/// @brief 1223: ERROR_ARANGO_INDEX_NEEDS_RESIZE
 ///
 /// index needs resizing
 ///
@@ -945,7 +981,7 @@ void TRI_InitialiseErrorMessages (void);
 /// data.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE                               (1221)
+#define TRI_ERROR_ARANGO_INDEX_NEEDS_RESIZE                               (1223)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

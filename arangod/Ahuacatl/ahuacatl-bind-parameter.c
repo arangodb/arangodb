@@ -26,6 +26,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-bind-parameter.h"
+
+#include "BasicsC/json.h"
+
+#include "Ahuacatl/ahuacatl-context.h"
+#include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-statement-walker.h"
 
 // -----------------------------------------------------------------------------

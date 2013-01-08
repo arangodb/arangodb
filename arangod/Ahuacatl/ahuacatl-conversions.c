@@ -26,6 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ahuacatl/ahuacatl-conversions.h"
+
+#include "BasicsC/conversions.h"
+#include "BasicsC/json.h"
+#include "BasicsC/string-buffer.h"
+#include "BasicsC/strings.h"
+
+#include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-functions.h"
 #include "Ahuacatl/ahuacatl-node.h"
 
@@ -116,7 +123,7 @@ static bool AppendListValues (TRI_string_buffer_t* const buffer,
       }
     }
 
-    if (!func(buffer, TRI_AQL_NODE_MEMBER(node, i))) {
+    if (! func(buffer, TRI_AQL_NODE_MEMBER(node, i))) {
       return false;
     }
   }
@@ -277,7 +284,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
         assert(nameJson);
         assert(nameJson->_value._string.data);
         name = TRI_RegisterStringAql(context, nameJson->_value._string.data, strlen(nameJson->_value._string.data), false);
-        if (!name) {
+        if (! name) {
           TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
@@ -287,7 +294,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
         assert(valueJson);
 
         valueNode = TRI_JsonNodeAql(context, valueJson);
-        if (!valueNode) {
+        if (! valueNode) {
           TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
           return NULL;
         }
@@ -305,7 +312,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
     }
   }
 
-  if (!node) {
+  if (! node) {
     TRI_SetErrorContextAql(context, TRI_ERROR_OUT_OF_MEMORY, NULL);
   }
 
@@ -377,7 +384,7 @@ bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const buffer,
     case TRI_AQL_NODE_VALUE:
       return TRI_ValueJavascriptAql(buffer, &node->_value, node->_value._type);
     case TRI_AQL_NODE_ARRAY_ELEMENT: 
-      if (!TRI_ValueJavascriptAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
+      if (! TRI_ValueJavascriptAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
         return false;
       }
 
@@ -391,7 +398,7 @@ bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (!AppendListValues(buffer, node, &TRI_NodeJavascriptAql)) {
+      if (! AppendListValues(buffer, node, &TRI_NodeJavascriptAql)) {
         return false;
       }
 
@@ -401,7 +408,7 @@ bool TRI_NodeJavascriptAql (TRI_string_buffer_t* const buffer,
         return false;
       }
       
-      if (!AppendListValues(buffer, node, &TRI_NodeJavascriptAql)) {
+      if (! AppendListValues(buffer, node, &TRI_NodeJavascriptAql)) {
         return false;
       }
      
@@ -462,7 +469,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_NODE_ARRAY_ELEMENT: {
-      if (!TRI_ValueStringAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
+      if (! TRI_ValueStringAql(buffer, &node->_value, TRI_AQL_TYPE_STRING)) {
         return false;
       }
 
@@ -478,7 +485,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (!AppendListValues(buffer, node, &TRI_NodeStringAql)) {
+      if (! AppendListValues(buffer, node, &TRI_NodeStringAql)) {
         return false;
       }
 
@@ -490,7 +497,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
       
-      if (!AppendListValues(buffer, node, &TRI_NodeStringAql)) {
+      if (! AppendListValues(buffer, node, &TRI_NodeStringAql)) {
         return false;
       }
      
@@ -520,7 +527,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     case TRI_AQL_NODE_OPERATOR_BINARY_GT:
     case TRI_AQL_NODE_OPERATOR_BINARY_GE:
     case TRI_AQL_NODE_OPERATOR_BINARY_IN: { 
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
 
@@ -531,7 +538,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_NODE_OPERATOR_TERNARY: {
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
       
@@ -539,7 +546,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
       
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1))) {
         return false;
       }
 
@@ -551,7 +558,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_NODE_ATTRIBUTE_ACCESS: {
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
       
@@ -563,7 +570,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_NODE_INDEXED: {
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
       
@@ -571,7 +578,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
       
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 1))) {
         return false;
       }
       
@@ -589,7 +596,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
         return false;
       }
 
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
 
@@ -616,7 +623,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_NODE_SORT_ELEMENT: {
-      if (!TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
+      if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
       }
 

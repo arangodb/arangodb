@@ -28,21 +28,18 @@
 #ifndef TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H
 #define TRIAGENS_DURHAM_AHUACATL_ACCESS_OPTIMISER_H 1
 
-#include <BasicsC/common.h>
-#include <BasicsC/associative.h>
-#include <BasicsC/hashes.h>
-#include <BasicsC/json-utilities.h>
-#include <BasicsC/logging.h>
-#include <BasicsC/strings.h>
-#include <BasicsC/string-buffer.h>
-#include <BasicsC/vector.h>
+#include "BasicsC/common.h"
+#include "BasicsC/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
-#include "Ahuacatl/ahuacatl-conversions.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct TRI_aql_context_s;
+struct TRI_json_s;
+struct TRI_vector_pointer_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -106,8 +103,8 @@ TRI_aql_reference_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_range_s {
-  TRI_json_t* _value;
-  TRI_aql_range_e _type;
+  struct TRI_json_s* _value;
+  TRI_aql_range_e    _type;
 }
 TRI_aql_range_t;
 
@@ -121,7 +118,7 @@ typedef struct TRI_aql_field_access_s {
   TRI_aql_access_e _type;
 
   union {
-    TRI_json_t* _value;           // used for TRI_AQL_ACCESS_EXACT, TRI_AQL_ACCESS_LIST
+    struct TRI_json_s* _value;    // used for TRI_AQL_ACCESS_EXACT, TRI_AQL_ACCESS_LIST
 
     TRI_aql_range_t _singleRange; // used for TRI_AQL_ACCESS_RANGE_SINGLE
 
@@ -179,21 +176,21 @@ void TRI_DumpAccessAql (const TRI_aql_field_access_t* const);
 /// @brief create an access structure of type impossible
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_field_access_t* TRI_CreateImpossibleAccessAql (TRI_aql_context_t* const);
+TRI_aql_field_access_t* TRI_CreateImpossibleAccessAql (struct TRI_aql_context_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if an attribute access structure vector contains the
 /// impossible range 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContainsImpossibleAql (const TRI_vector_pointer_t* const);
+bool TRI_ContainsImpossibleAql (const struct TRI_vector_pointer_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a vector of accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_CloneAccessesAql (TRI_aql_context_t* const, 
-                                            const TRI_vector_pointer_t* const);
+struct TRI_vector_pointer_s* TRI_CloneAccessesAql (struct TRI_aql_context_s* const, 
+                                                   const struct TRI_vector_pointer_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free access structure with its members and the pointer
@@ -205,7 +202,7 @@ void TRI_FreeAccessAql (TRI_aql_field_access_t* const);
 /// @brief clone an attribute access structure by deep-copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_field_access_t* TRI_CloneAccessAql (TRI_aql_context_t* const,
+TRI_aql_field_access_t* TRI_CloneAccessAql (struct TRI_aql_context_s* const,
                                             TRI_aql_field_access_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,15 +216,15 @@ int TRI_PickAccessAql (const TRI_aql_field_access_t* const,
 /// @brief free all field access structs in a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeAccessesAql (TRI_vector_pointer_t* const);
+void TRI_FreeAccessesAql (struct TRI_vector_pointer_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a field access type to an existing field access vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_AddAccessAql (TRI_aql_context_t* const,
-                                        TRI_vector_pointer_t* const,
-                                        TRI_aql_field_access_t* const);
+struct TRI_vector_pointer_s* TRI_AddAccessAql (struct TRI_aql_context_s* const,
+                                               struct TRI_vector_pointer_s* const,
+                                               TRI_aql_field_access_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the range operator string for a range operator
@@ -245,10 +242,10 @@ const char* TRI_ComparisonOperatorAql (const TRI_aql_node_type_e);
 /// @brief track and optimise attribute accesses for a given node and subnodes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_OptimiseRangesAql (TRI_aql_context_t* const,  
-                                             TRI_aql_node_t*,
-                                             bool*,
-                                             const TRI_vector_pointer_t* const);
+struct TRI_vector_pointer_s* TRI_OptimiseRangesAql (struct TRI_aql_context_s* const,  
+                                                    TRI_aql_node_t*,
+                                                    bool*,
+                                                    const struct TRI_vector_pointer_s* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -7886,7 +7886,7 @@ function ahuacatlRangesTestSuite () {
 
       var actual = getQueryResults("FOR i IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] FILTER i <= 8 || i <= 8 RETURN i");
       assertEqual(expected, actual);
-    },
+    }
 
   };
 }

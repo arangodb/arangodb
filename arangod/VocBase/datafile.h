@@ -28,11 +28,11 @@
 #ifndef TRIAGENS_DURHAM_VOC_BASE_DATAFILE_H
 #define TRIAGENS_DURHAM_VOC_BASE_DATAFILE_H 1
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 
-#include <BasicsC/locks.h>
+#include "BasicsC/locks.h"
 
-#include <VocBase/vocbase.h>
+#include "VocBase/vocbase.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,7 +112,7 @@ extern "C" {
 /// @brief alignment in datafile blocks
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DF_BLOCK_ALIGN      (8)
+#define TRI_DF_BLOCK_ALIGNMENT  (8)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -146,13 +146,13 @@ TRI_df_state_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_DF_MARKER_HEADER    = 1000,
-  TRI_DF_MARKER_FOOTER    = 1001,
-  TRI_DF_MARKER_SKIP      = 1002,  // currently unused
-  TRI_DF_MARKER_ATTRIBUTE = 1003,
-  TRI_DF_MARKER_SHAPE     = 1004,
+  TRI_DF_MARKER_HEADER              = 1000,
+  TRI_DF_MARKER_FOOTER              = 1001,
+  TRI_DF_MARKER_SKIP                = 1002, // currently unused
+  TRI_DF_MARKER_ATTRIBUTE           = 1003,
+  TRI_DF_MARKER_SHAPE               = 1004,
 
-  TRI_COL_MARKER_HEADER = 2000,
+  TRI_COL_MARKER_HEADER             = 2000,
 
   TRI_DOC_MARKER_HEADER             = 3000,
   TRI_DOC_MARKER_DOCUMENT           = 3001,
@@ -226,32 +226,35 @@ typedef struct TRI_datafile_s {
 
   TRI_df_state_e _state;         // state of the datafile (READ or WRITE)
 
-  char* _filename;             // underlying filename
-  int _fd;                     // underlying file descriptor
-  void* _mmHandle;             // underlying memory map object handle (windows only)
+  char* _filename;               // underlying filename
+  int _fd;                       // underlying file descriptor
+  void* _mmHandle;               // underlying memory map object handle (windows only)
 
   TRI_voc_size_t _maximalSize;   // maximale size of the datafile
   TRI_voc_size_t _currentSize;   // current size of the datafile
   TRI_voc_size_t _footerSize;    // size of the final footer
 
-  bool _isSealed;                // true, if footer has been written
-  int _lastError;                // last (cirtical) error
-
-  bool _full;                    // at least one request was rejected because there is not enough room
-
   char* _data;                   // start of the data array
   char* _next;                   // end of the current data
+
+  // function pointers
+  bool (*isPhysical)(const struct TRI_datafile_s* const); // returns true if the datafile is a physical file
+  const char* (*getName)(const struct TRI_datafile_s* const); // returns the name of a datafile
+  void (*close)(struct TRI_datafile_s* const); // close the datafile
+  void (*destroy)(struct TRI_datafile_s*); // destroys the datafile
+  bool (*sync)(const struct TRI_datafile_s* const, char const*, char const*); // syncs the datafile
+  int (*truncate)(struct TRI_datafile_s* const, const off_t); // truncates the datafile to a specific length
+  
+  int _lastError;                // last (cirtical) error
+  bool _full;                    // at least one request was rejected because there is not enough room
+  bool _isSealed;                // true, if footer has been written
 
   // .............................................................................
   // access to the following attributes must be protected by a _lock
   // .............................................................................
 
   char* _synced;                 // currently synced upto, not including
-  TRI_voc_size_t _nSynced;       // number of synced markers
-  double _lastSynced;            // timestamp of the last sync
-
   char* _written;                // currently written upto, not including
-  TRI_voc_size_t _nWritten;      // number of markers in file
 }
 TRI_datafile_t;
 
@@ -302,6 +305,9 @@ typedef struct TRI_df_marker_s {
 
   TRI_voc_tick_t _tick;                 // 8 bytes, will be generated
 
+#ifdef TRI_PADDING_32
+  char _padding_df_marker[4];
+#endif
 }
 TRI_df_marker_t;
 
@@ -336,11 +342,11 @@ TRI_df_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_header_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 
-  TRI_df_version_t _version;
-  TRI_voc_size_t _maximalSize;
-  TRI_voc_tick_t _fid;
+  TRI_df_version_t _version;            //  4 bytes
+  TRI_voc_size_t _maximalSize;          //  4 bytes
+  TRI_voc_tick_t _fid;                  //  8 bytes
 }
 TRI_df_header_marker_t;
 
@@ -371,10 +377,10 @@ TRI_df_header_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_footer_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 
-  TRI_voc_size_t _maximalSize;
-  TRI_voc_size_t _totalSize;
+  TRI_voc_size_t _maximalSize;          //  4 bytes
+  TRI_voc_size_t _totalSize;            //  4 bytes
 }
 TRI_df_footer_marker_t;
 
@@ -383,7 +389,7 @@ TRI_df_footer_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_document_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 }
 TRI_df_document_marker_t;
 
@@ -392,7 +398,7 @@ TRI_df_document_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_skip_marker_s {
-  TRI_df_marker_t base;
+  TRI_df_marker_t base;			// 24 bytes
 }
 TRI_df_skip_marker_t;
 
@@ -412,28 +418,52 @@ TRI_df_skip_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
 ///
+/// This either creates a datafile using TRI_CreateAnonymousDatafile or
+/// ref TRI_CreatePhysicalDatafile, based on the first parameter
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_datafile_t* TRI_CreateDatafile (char const*, 
+                                    TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new anonymous datafile
+///
+/// You must specify a maximal size for the datafile. The maximal
+/// size must be divisible by the page size. If it is not, then the size is
+/// rounded down. The memory for the datafile is mmapped. The create function
+/// automatically adds a @ref TRI_df_footer_marker_t to the file.
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
+TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_size_t);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new physical datafile
+///
 /// You must specify a directory. This directory must exist and must be
 /// writable. You must also specify a maximal size for the datafile. The maximal
 /// size must be divisible by the page size. If it is not, then the size is
 /// rounded down.  The datafile is created as sparse file. So there is a chance
 /// that writing to the datafile will fill up your filesystem. This file is then
-/// mapped into the address of the process using mmap. The create functions
+/// mapped into the address of the process using mmap. The create function
 /// automatically adds a @ref TRI_df_footer_marker_t to the file.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateDatafile (char const* directory, TRI_voc_size_t maximalSize);
+TRI_datafile_t* TRI_CreatePhysicalDatafile (char const*, 
+                                            TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyDatafile (TRI_datafile_t* datafile);
+void TRI_DestroyDatafile (TRI_datafile_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated and but frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeDatafile (TRI_datafile_t* datafile);
+void TRI_FreeDatafile (TRI_datafile_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -449,6 +479,12 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile);
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief aligns in datafile blocks
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_DF_ALIGN_BLOCK(a) ((((a) + TRI_DF_BLOCK_ALIGNMENT - 1) / TRI_DF_BLOCK_ALIGNMENT) * TRI_DF_BLOCK_ALIGNMENT)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a CRC of a marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -458,7 +494,8 @@ bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker);
 /// @brief creates a CRC and writes that into the header
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillCrcMarkerDatafile (TRI_df_marker_t* marker,
+void TRI_FillCrcMarkerDatafile (TRI_datafile_t* datafile,
+                                TRI_df_marker_t* marker,
                                 TRI_voc_size_t markerSize,
                                 void const* keyBody,
                                 TRI_voc_size_t keyBodySize,
@@ -469,12 +506,13 @@ void TRI_FillCrcMarkerDatafile (TRI_df_marker_t* marker,
 /// @brief creates a CRC and writes that into the header
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillCrcKeyMarkerDatafile (TRI_df_marker_t* marker,
-                                TRI_voc_size_t markerSize,
-                                void const* keyBody,
-                                TRI_voc_size_t keyBodySize,
-                                void const* body,
-                                TRI_voc_size_t bodySize);
+void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
+                                   TRI_df_marker_t* marker,
+                                   TRI_voc_size_t markerSize,
+                                   void const* keyBody,
+                                   TRI_voc_size_t keyBodySize,
+                                   void const* body,
+                                   TRI_voc_size_t bodySize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserves room for an element, advances the pointer
@@ -488,7 +526,7 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 /// @brief writes a marker and body to the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteElementDatafile (TRI_datafile_t*,
+int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               TRI_voc_size_t markerSize,

@@ -93,7 +93,7 @@ namespace triagens {
 /// @brief get the counter value
 ////////////////////////////////////////////////////////////////////////////////
 
-        T operator() () {
+        T getValue() {
           MUTEX_LOCKER(this->_mutex);
           return _value;
         }

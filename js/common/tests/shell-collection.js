@@ -289,6 +289,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(false, p.waitForSync);
+      assertEqual(false, p.isVolatile);
 
       internal.db._drop(cn);
     },
@@ -312,6 +313,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(false, p.waitForSync);
+      assertEqual(false, p.isVolatile);
 
       internal.db._drop(cn);
     },
@@ -371,6 +373,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(false, p.waitForSync);
+      assertEqual(false, p.isVolatile);
 
       internal.db._drop(cn);
     },
@@ -394,6 +397,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(true, p.waitForSync);
+      assertEqual(false, p.isVolatile);
 
       if (p.journalSize < 1024 * 1024) {
         fail();
@@ -403,6 +407,28 @@ function CollectionSuite () {
         fail();
       }
 
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creating with properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreatingProperties2 : function () {
+      var cn = "example";
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { isVolatile : true });
+
+      assertTypeOf("number", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
+      assertTypeOf("number", c1.type());
+
+      var p = c1.properties();
+
+      assertEqual(true, p.isVolatile);
       internal.db._drop(cn);
     },
 
@@ -746,10 +772,148 @@ function CollectionSuite () {
       internal.db._drop(cn1);
       internal.db._drop(cn2);
     }
+
   };
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              volatile collections
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: volatile collections
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionVolatileSuite () {
+  var ERRORS = require("internal").errors;
+  var cn = "UnittestsVolatileCollection";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a volatile collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreation1 : function () {
+      var c = internal.db._create(cn, { isVolatile : true, waitForSync : false });
+      assertEqual(cn, c.name());
+      assertEqual(true, c.properties().isVolatile);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a volatile collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreation2 : function () {
+      var c = internal.db._create(cn, { isVolatile : true });
+      assertEqual(cn, c.name());
+      assertEqual(true, c.properties().isVolatile);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create w/ error
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreationError : function () {
+      try {
+        // cannot set isVolatile and waitForSync at the same time
+        var c = internal.db._create(cn, { isVolatile : true, waitForSync : true });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test property change
+////////////////////////////////////////////////////////////////////////////////
+
+    testPropertyChange : function () {
+      var c = internal.db._create(cn, { isVolatile : true, waitForSync : false });
+
+      try {
+        // cannot set isVolatile and waitForSync at the same time
+        c.properties({ waitForSync : true });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load/unload
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoadUnload : function () {
+      var c = internal.db._create(cn, { isVolatile : true });
+      assertEqual(cn, c.name());
+      assertEqual(true, c.properties().isVolatile);
+      c.unload();
+
+      internal.wait(4);
+      assertEqual(true, c.properties().isVolatile);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief data storage
+////////////////////////////////////////////////////////////////////////////////
+
+    testStorage : function () {
+      var c = internal.db._create(cn, { isVolatile : true });
+      assertEqual(true, c.properties().isVolatile);
+
+      c.save({"test": true});
+      assertEqual(1, c.count());
+      c.unload();
+      
+      internal.wait(4);
+      assertEqual(true, c.properties().isVolatile);
+      assertEqual(0, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief data storage
+////////////////////////////////////////////////////////////////////////////////
+
+    testStorageMany : function () {
+      var c = internal.db._create(cn, { isVolatile : true, journalSize: 1024 * 1024 });
+      assertEqual(true, c.properties().isVolatile);
+
+      for (var i = 0; i < 10000; ++i) {
+        c.save({"test": true, "foo" : "bar"});
+      }
+      
+      assertEqual(10000, c.count());
+      
+      c.unload();
+      
+      internal.wait(4);
+      assertEqual(true, c.properties().isVolatile);
+      assertEqual(0, c.count());
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   vocbase methods
 // -----------------------------------------------------------------------------
 
@@ -970,6 +1134,7 @@ function CollectionDbSuite () {
 
 jsunity.run(CollectionSuiteErrorHandling);
 jsunity.run(CollectionSuite);
+jsunity.run(CollectionVolatileSuite);
 jsunity.run(CollectionDbSuite);
 
 return jsunity.done();

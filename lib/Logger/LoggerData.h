@@ -226,6 +226,8 @@ namespace triagens {
       struct Info {
         Info();
 
+        Info(const Info& originalInfo);
+
         static ApplicationName _applicationName;
         static Facility _facility;
         static HostName _hostName;

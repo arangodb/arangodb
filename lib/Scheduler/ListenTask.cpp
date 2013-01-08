@@ -41,6 +41,7 @@
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
+#include "BasicsC/win-utils.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
@@ -93,15 +94,20 @@ bool ListenTask::isBound () const {
 // Task methods
 // -----------------------------------------------------------------------------
 
-void ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   if (! isBound()) {
-    return;
+    return true;
   }
   
   this->scheduler = scheduler;
   this->loop = loop;
   
   readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, listenSocket);
+  
+  if (readWatcher == -1) {
+    return false;
+  }
+  return true;
 }
 
 
@@ -126,7 +132,6 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     
     // accept connection
     socket_t connfd = accept(listenSocket, (sockaddr*) &addr, &len);
-    
     if (connfd == INVALID_SOCKET) {
       ++acceptFailures;
       
@@ -150,7 +155,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     int res = getsockname(connfd, (sockaddr*) &addr_out, &len_out);
 
     if (res != 0) {
-      TRI_CLOSE(connfd);
+      TRI_CLOSE_SOCKET(connfd);
       
       LOGGER_WARNING << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
 
@@ -162,7 +167,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     // disable nagle's algorithm, set to non-blocking and close-on-exec  
     bool result = _endpoint->initIncoming(connfd); 
     if (!result) {
-      TRI_CLOSE(connfd);
+      TRI_CLOSE_SOCKET(connfd);
 
       // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
 

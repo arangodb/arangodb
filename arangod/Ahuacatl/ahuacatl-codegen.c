@@ -25,7 +25,7 @@
 /// @author Copyright 2012, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/logging.h>
+#include "BasicsC/logging.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-codegen.h"
@@ -43,6 +43,12 @@
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate verbose code
+////////////////////////////////////////////////////////////////////////////////
+
+#undef AQL_VERBOSE 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix for register
@@ -416,8 +422,11 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
                         const TRI_aql_codegen_register_t listRegister, 
                         const TRI_aql_codegen_register_t keyRegister, 
                         const TRI_aql_codegen_register_t ownRegister, 
-                        const TRI_aql_codegen_register_t resultRegister) { 
+                        const TRI_aql_codegen_register_t resultRegister,
+                        TRI_aql_for_hint_t* const hint) { 
   TRI_aql_codegen_scope_t* scope;
+  TRI_aql_codegen_register_t offsetRegister;
+  TRI_aql_codegen_register_t limitRegister;
   
   scope = (TRI_aql_codegen_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_scope_t), false);
   if (scope == NULL) {
@@ -425,13 +434,36 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
     return;
   }
 
-  scope->_buffer = buffer;
-  scope->_type = NextScopeType(generator, type);
-  scope->_listRegister = listRegister;
-  scope->_keyRegister = keyRegister;
-  scope->_ownRegister = ownRegister;
+  // use optimisations for offset and limit?
+  offsetRegister = 0;
+  limitRegister  = 0;
+  if (hint != NULL && hint->_limit._status == TRI_AQL_LIMIT_USE) {
+    if (hint->_limit._hasFilter) {
+      // delegate limit handling to following a filter condition
+      if (hint->_limit._offset > 0) {
+        // only use offset if > 0
+        offsetRegister = IncRegister(generator);
+      }
+      // always use limit
+      limitRegister = IncRegister(generator);
+      LOG_TRACE("limit optimisation will be handled by filter condition");
+    }
+    else {
+      // do the limit handling within the for-loop itself
+      LOG_TRACE("limit optimisation will be handled by for-loop");
+    }
+  }
+
+  scope->_buffer         = buffer;
+  scope->_type           = NextScopeType(generator, type);
+  scope->_listRegister   = listRegister;
+  scope->_keyRegister    = keyRegister;
+  scope->_ownRegister    = ownRegister;
+  scope->_offsetRegister = offsetRegister;
+  scope->_limitRegister  = limitRegister;
   scope->_resultRegister = resultRegister;
-  scope->_prefix = NULL;
+  scope->_prefix         = NULL;
+  scope->_hint           = hint; // for-loop hint
 
   // init symbol table
   TRI_InitAssociativePointer(&scope->_variables, 
@@ -444,11 +476,15 @@ static void StartScope (TRI_aql_codegen_js_t* const generator,
   // push the scope on the stack
   TRI_PushBackVectorPointer(&generator->_scopes, (void*) scope);
 
+#if AQL_VERBOSE
   ScopeOutput(generator, "\n/* scope start (");
   ScopeOutput(generator, TRI_TypeNameScopeAql(scope->_type));
   ScopeOutput(generator, ", resultRegister: ");
   ScopeOutputRegister(generator, scope->_resultRegister);
+  ScopeOutput(generator, ", limitRegister: ");
+  ScopeOutputRegister(generator, scope->_limitRegister);
   ScopeOutput(generator, ") */\n");
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,9 +495,11 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_register_t i, n;
   
+#if AQL_VERBOSE
   ScopeOutput(generator, "\n/* scope end (");
   ScopeOutput(generator, TRI_TypeNameScopeAql(scope->_type));
   ScopeOutput(generator, ") */\n");
+#endif
 
   n = generator->_scopes._length;
   assert(n > 0);
@@ -496,7 +534,7 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
   size_t n;
 
   // start a new scope first
-  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0);
+  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL);
   scope = CurrentScope(generator);
 
   ScopeOutput(generator, "function ");
@@ -558,7 +596,7 @@ static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* con
   size_t n;
 
   // start a new scope first
-  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0);
+  StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL);
   scope = CurrentScope(generator);
   scope->_prefix = "g";
 
@@ -673,12 +711,14 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
                       TRI_string_buffer_t* const buffer,
                       const TRI_aql_codegen_register_t sourceRegister,
                       const bool sourceIsList,
-                      const char* const variableName) {
-  TRI_aql_codegen_register_t listRegister = IncRegister(generator);
-  TRI_aql_codegen_register_t keyRegister = IncRegister(generator);
-  TRI_aql_codegen_register_t ownRegister = IncRegister(generator);
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-
+                      const char* const variableName,
+                      TRI_aql_for_hint_t* const hint) {
+  TRI_aql_codegen_register_t listRegister  = IncRegister(generator);
+  TRI_aql_codegen_register_t keyRegister   = IncRegister(generator);
+  TRI_aql_codegen_register_t ownRegister   = IncRegister(generator);
+  TRI_aql_codegen_scope_t* scope           = CurrentScope(generator);
+  TRI_aql_codegen_scope_t* forScope;
+  
   // always start a new scope
   StartScope(generator, 
              buffer, 
@@ -686,8 +726,9 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
              listRegister, 
              keyRegister, 
              ownRegister, 
-             scope->_resultRegister); 
-
+             scope->_resultRegister,
+             hint); 
+  
   if (variableName) {
     EnterSymbol(generator, variableName, ownRegister);
   }
@@ -708,26 +749,88 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
     ScopeOutputRegister(generator, sourceRegister);
     ScopeOutput(generator, ");\n");
   }
+
+  forScope = CurrentScope(generator);
+
+  // limit: offset and limit registers
+  if (forScope->_limitRegister != 0) {
+    if (forScope->_offsetRegister != 0) {
+      // offset register
+      ScopeOutput(generator, "var ");
+      ScopeOutputRegister(generator, forScope->_offsetRegister);
+#if AQL_VERBOSE
+      ScopeOutput(generator, " = 0; /* offset */\n");
+#else
+      ScopeOutput(generator, " = 0;\n");
+#endif
+    }
+  
+    // limit register
+    ScopeOutput(generator, "var ");
+    ScopeOutputRegister(generator, forScope->_limitRegister);
+#if AQL_VERBOSE
+    ScopeOutput(generator, " = 0; /* limit */\n");
+#else
+    ScopeOutput(generator, " = 0;\n");
+#endif
+  }
        
+
   // for (var keyx in listx) 
-  ScopeOutput(generator, "for (var "); 
-  ScopeOutputRegister(generator, keyRegister);
-  ScopeOutput(generator, " = 0; "); 
-  ScopeOutputRegister(generator, keyRegister);
-  ScopeOutput(generator, " < "); 
-  ScopeOutputRegister(generator, listRegister);
-  ScopeOutput(generator, ".length; ++"); 
-  ScopeOutputRegister(generator, keyRegister);
-  ScopeOutput(generator, ") {\n"); 
+  if (forScope->_hint != NULL &&
+      forScope->_hint->_limit._status == TRI_AQL_LIMIT_USE &&
+      ! forScope->_hint->_limit._hasFilter) {
+    // we have a limit the we need to handle in the for loop
+    TRI_aql_codegen_register_t maxRegister = IncRegister(generator);
+
+    ScopeOutput(generator, "var "); 
+    ScopeOutputRegister(generator, maxRegister);
+    ScopeOutput(generator, " = "); 
+    ScopeOutputUInt(generator, (uint64_t) (forScope->_hint->_limit._offset + forScope->_hint->_limit._limit)); 
+    ScopeOutput(generator, ";\n"); 
+    ScopeOutput(generator, "if ("); 
+    ScopeOutputRegister(generator, listRegister);
+    ScopeOutput(generator, ".length < ");
+    ScopeOutputRegister(generator, maxRegister);
+    ScopeOutput(generator, ") {\n"); 
+    ScopeOutputRegister(generator, maxRegister);
+    ScopeOutput(generator, " = ");
+    ScopeOutputRegister(generator, listRegister);
+    ScopeOutput(generator, ".length;\n");
+    ScopeOutput(generator, "}\n");
+
+    ScopeOutput(generator, "for (var "); 
+    ScopeOutputRegister(generator, keyRegister);
+    ScopeOutput(generator, " = "); 
+    ScopeOutputUInt(generator, forScope->_hint->_limit._offset); 
+    ScopeOutput(generator, "; "); 
+    ScopeOutputRegister(generator, keyRegister);
+    ScopeOutput(generator, " < ");
+    ScopeOutputRegister(generator, maxRegister);
+    ScopeOutput(generator, "; ++"); 
+    ScopeOutputRegister(generator, keyRegister);
+    ScopeOutput(generator, ") {\n"); 
+  }
+  else {
+    // regular for loop
+    ScopeOutput(generator, "for (var "); 
+    ScopeOutputRegister(generator, keyRegister);
+    ScopeOutput(generator, " = 0; "); 
+    ScopeOutputRegister(generator, keyRegister);
+    ScopeOutput(generator, " < ");
+    ScopeOutputRegister(generator, listRegister);
+    ScopeOutput(generator, ".length; ++"); 
+    ScopeOutputRegister(generator, keyRegister);
+    ScopeOutput(generator, ") {\n"); 
+  }
 
   // var rx = listx[keyx];
-  scope = CurrentScope(generator);
   ScopeOutput(generator, "var ");
-  ScopeOutputRegister(generator, scope->_ownRegister);
+  ScopeOutputRegister(generator, forScope->_ownRegister);
   ScopeOutput(generator, " = ");
-  ScopeOutputRegister(generator, scope->_listRegister);
+  ScopeOutputRegister(generator, forScope->_listRegister);
   ScopeOutput(generator, "[");
-  ScopeOutputRegister(generator, scope->_keyRegister); 
+  ScopeOutputRegister(generator, forScope->_keyRegister); 
   ScopeOutput(generator, "];\n");
 }
 
@@ -1039,7 +1142,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
                                     const TRI_aql_collection_t* const collection,
                                     const char* const collectionName) {
   size_t i, n;
-  
+
   n = idx->_fieldAccesses->_length;
   assert(n >= 1);
 
@@ -1202,7 +1305,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       }  
     }
     
-    if (i < (n-1)) {
+    if (i < (n - 1)) {
       ScopeOutput(generator, ", ");
     }
     
@@ -1382,14 +1485,30 @@ static void ProcessIndexed (TRI_aql_codegen_js_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for collection access (full table scan)
+/// offset & limit values might be applied here if they were collected by the
+/// optimiser during the optimisation phase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCollectionFull (TRI_aql_codegen_js_t* const generator,
                                    const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
+  TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
   ScopeOutput(generator, "AHUACATL_GET_DOCUMENTS(");
   ProcessNode(generator, nameNode);
+  
+  if (hint != NULL && hint->_limit._status == TRI_AQL_LIMIT_USE) {
+    // use limit values collected during optimisation
+    ScopeOutput(generator, ", ");
+   
+    // offset 
+    ScopeOutputUInt(generator, (uint64_t) hint->_limit._offset); 
+    
+    ScopeOutput(generator, ", ");
+    // now the limit value
+    ScopeOutputUInt(generator, (uint64_t) hint->_limit._limit);
+  }
+  
   ScopeOutput(generator, ")");
 }
 
@@ -1481,10 +1600,10 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
   InitList(generator, resultRegister);
   
   // expand scope
-  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister);
+  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, NULL);
 
   // for
-  StartFor(generator, scope->_buffer, sourceRegister, isList, NULL);
+  StartFor(generator, scope->_buffer, sourceRegister, isList, NULL, NULL);
   EnterSymbol(generator, TRI_AQL_NODE_STRING(nameNode1), CurrentScope(generator)->_ownRegister);
 
   ScopeOutputRegister(generator, resultRegister);
@@ -1749,7 +1868,11 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
   ScopeOutputRegister(generator, resultRegister);
   ScopeOutput(generator, " = ");
   ScopeOutputRegister(generator, subQueryRegister);
+#if AQL_VERBOSE
   ScopeOutput(generator, "; /* subquery */\n");
+#else
+  ScopeOutput(generator, ";\n");
+#endif
     
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister);
 }
@@ -1783,7 +1906,7 @@ static void ProcessScopeStart (TRI_aql_codegen_js_t* const generator,
 
   resultRegister = IncRegister(generator);
   InitList(generator, resultRegister);
-  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister);
+  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, NULL);
   
   // start a dummy for loop for subqueries 
   // TODO: validate if this is necessary
@@ -1791,7 +1914,7 @@ static void ProcessScopeStart (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, "var ");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, " = [ 1 ];\n"); // just one iteration
-  StartFor(generator, &generator->_buffer, sourceRegister, true, NULL);
+  StartFor(generator, &generator->_buffer, sourceRegister, true, NULL, NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1819,8 +1942,12 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
+  TRI_aql_for_hint_t* hint = TRI_AQL_NODE_DATA(node);
   TRI_string_buffer_t* buffer;
-  bool isList = TRI_IsListNodeAql(expressionNode); // TODO: generalize this for collections etc.
+  bool isList;
+  
+  isList = (TRI_IsListNodeAql(expressionNode) || 
+            expressionNode->_type == TRI_AQL_NODE_COLLECTION); 
  
   buffer = scope->_buffer; // inherit buffer from current scope
 
@@ -1829,7 +1956,8 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " = ");
   ProcessNode(generator, expressionNode);
   ScopeOutput(generator, ";\n");
-  StartFor(generator, buffer, sourceRegister, isList, TRI_AQL_NODE_STRING(nameNode));
+
+  StartFor(generator, buffer, sourceRegister, isList, TRI_AQL_NODE_STRING(nameNode), hint);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1875,7 +2003,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   scope->_resultRegister = resultRegister;
   
   InitList(generator, resultRegister);
-  StartFor(generator, scope->_buffer, sourceRegister, true, NULL);
+  StartFor(generator, scope->_buffer, sourceRegister, true, NULL, NULL);
 
   // restore symbols
   RestoreSymbols(generator, &variableNames);
@@ -1945,7 +2073,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   scope = CurrentScope(generator);
   scope->_resultRegister = resultRegister;
   InitList(generator, resultRegister);
-  StartFor(generator, scope->_buffer, groupRegister, true, NULL);
+  StartFor(generator, scope->_buffer, groupRegister, true, NULL, NULL);
   scope = CurrentScope(generator);
 
   // re-enter symbols for collect variables
@@ -2025,7 +2153,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   scope = CurrentScope(generator);
   scope->_resultRegister = resultRegister;
   InitList(generator, resultRegister);
-  StartFor(generator, scope->_buffer, limitRegister, true, NULL);
+  StartFor(generator, scope->_buffer, limitRegister, true, NULL, NULL);
 
   // restore symbols
   RestoreSymbols(generator, &variableNames);
@@ -2069,7 +2197,11 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
   
   // var row = ...;
   ScopeOutputRegister(generator, resultRegister);
+#if AQL_VERBOSE
   ScopeOutput(generator, " = [ ]; /* return empty */\n");
+#else
+  ScopeOutput(generator, " = [ ];\n");
+#endif
   
   generator->_lastResultRegister = resultRegister;
   
@@ -2110,7 +2242,7 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
   
   InitList(generator, resultRegister);
 
-  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister);
+  StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, NULL);
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
 
   lastResultRegister = CurrentScope(generator)->_resultRegister;
@@ -2133,9 +2265,10 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
                            const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   
-  ScopeOutput(generator, "if (!(");
+  ScopeOutput(generator, "if (! (");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ")) {\n");
+
   if (scope->_type == TRI_AQL_SCOPE_MAIN || scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
     // in these scopes, we must not generate a continue statement. this would be illegal
     ScopeOutput(generator, "return [ ];\n");
@@ -2143,7 +2276,30 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
   else {
     ScopeOutput(generator, "continue;\n");
   }
+
   ScopeOutput(generator, "}\n");
+
+#if AQL_VERBOSE  
+    ScopeOutput(generator, "/* found a match */\n");
+#endif
+
+  if (scope->_limitRegister != 0) {
+    assert(scope->_hint != NULL);
+    
+    if (scope->_offsetRegister != 0) {
+      ScopeOutput(generator, "if (++");
+      ScopeOutputRegister(generator, scope->_offsetRegister);
+      ScopeOutput(generator, " <= "); 
+      ScopeOutputUInt(generator, (uint64_t) scope->_hint->_limit._offset);
+      ScopeOutput(generator, ") {\ncontinue;\n}\n");
+    }
+
+    ScopeOutput(generator, "if (");
+    ScopeOutputRegister(generator, scope->_limitRegister);
+    ScopeOutput(generator, "++ >= "); 
+    ScopeOutputUInt(generator, (uint64_t) scope->_hint->_limit._limit);
+    ScopeOutput(generator, ") {\nbreak;\n}\n");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2297,7 +2453,7 @@ static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator) {
   TRI_vector_pointer_t* statements;
   size_t i, n;
 
-  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister);
+  StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, NULL);
   InitList(generator, startRegister);
 
   statements = &generator->_context->_statements->_statements;

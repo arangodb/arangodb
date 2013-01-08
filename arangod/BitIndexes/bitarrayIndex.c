@@ -199,7 +199,7 @@ int BitarrayIndex_new(BitarrayIndex** baIndex,
   
   
   // ...........................................................................  
-  // Sime simple checks
+  // Some simple checks
   // ...........................................................................  
   
   if (baIndex == NULL) {

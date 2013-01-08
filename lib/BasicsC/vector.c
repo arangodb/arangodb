@@ -306,14 +306,13 @@ void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
 
 void TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t position) {
   char* newBuffer;
-  size_t newSize;
   
   // ...........................................................................
   // Check and see if we need to extend the vector
   // ...........................................................................
   
   if (vector->_length >= vector->_capacity || position >= vector->_length) {
-    newSize = (size_t) (1 + (vector->_growthFactor * vector->_capacity));
+    size_t newSize = (size_t) (1 + (vector->_growthFactor * vector->_capacity));
 
     if (position >= newSize) {
       newSize = position + 1;
@@ -517,13 +516,11 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CopyDataVectorPointer (TRI_vector_pointer_t* dst, TRI_vector_pointer_t* src) {
-  int res;
-
   if (src->_length == 0) {
     dst->_length = 0;
   }
   else {
-    res = TRI_ResizeVectorPointer(dst, src->_length);
+    int res = TRI_ResizeVectorPointer(dst, src->_length);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -742,9 +739,9 @@ int TRI_InitVectorString2 (TRI_vector_string_t* vector,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVectorString (TRI_vector_string_t* vector) {
-  size_t i;
-
   if (vector->_buffer != NULL) {
+    size_t i;
+
     for (i = 0;  i < vector->_length;  ++i) {
       if (vector->_buffer[i] != 0) {
         TRI_Free(vector->_memoryZone, vector->_buffer[i]);
@@ -849,9 +846,9 @@ bool TRI_EmptyVectorString (TRI_vector_string_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearVectorString (TRI_vector_string_t* vector) {
-  size_t i;
-
   if (vector->_buffer != NULL) {
+    size_t i;
+
     for (i = 0;  i < vector->_length;  ++i) {
       if (vector->_buffer[i] != 0) {
         TRI_Free(vector->_memoryZone, vector->_buffer[i]);

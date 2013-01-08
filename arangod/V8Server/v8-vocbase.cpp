@@ -1207,14 +1207,14 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
 /// @brief deletes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DeleteVocbaseCol (const bool useCollection,
+static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // check the arguments
   if (argv.Length() < 1 || argv.Length() > 3) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                                "usage: delete(<document>, <overwrite>, <waitForSync>)")));
+                                                                "usage: remove(<document>, <overwrite>, <waitForSync>)")));
   }
   
   const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 2);
@@ -1312,18 +1312,17 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
     }
 
     v8::Handle<v8::Object> p = argv[1]->ToObject();
-    v8::Handle<v8::String> waitForSyncKey = v8::String::New("waitForSync");
-    v8::Handle<v8::String> journalSizeKey = v8::String::New("journalSize");
-    v8::Handle<v8::String> isSystemKey = v8::String::New("isSystem");
-    v8::Handle<v8::String> createOptionsKey = v8::String::New("createOptions");
+    v8::Handle<v8::String> isSystemKey      = v8::String::New("isSystem");
+  
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-    if (p->Has(journalSizeKey)) {
-      double s = TRI_ObjectToDouble(p->Get(journalSizeKey));
+    if (p->Has(v8g->JournalSizeKey)) {
+      double s = TRI_ObjectToDouble(p->Get(v8g->JournalSizeKey));
 
       if (s < TRI_JOURNAL_MINIMAL_SIZE) {
         return scope.Close(v8::ThrowException(
                              TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                   "<properties>.journalSize too small")));
+                                                   "<properties>.journalSize is too small")));
       }
 
       // overwrite journal size with user-specified value
@@ -1332,19 +1331,35 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv, TRI_col_t
 
     // get optional options
     TRI_json_t* options = 0;        
-    if (p->Has(createOptionsKey)) {
-      options = TRI_JsonObject(p->Get(createOptionsKey));
+    if (p->Has(v8g->CreateOptionsKey)) {
+      options = TRI_JsonObject(p->Get(v8g->CreateOptionsKey));
     }
 
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, options);
 
-    if (p->Has(waitForSyncKey)) {
-      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(waitForSyncKey));
+    if (p->Has(v8g->WaitForSyncKey)) {
+      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
     }
-
+    
     if (p->Has(isSystemKey)) {
       parameter._isSystem = TRI_ObjectToBoolean(p->Get(isSystemKey));
     }
+
+    if (p->Has(v8g->IsVolatileKey)) {
+#ifdef TRI_HAVE_ANONYMOUS_MMAP
+      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(v8g->IsVolatileKey));
+#else
+      TRI_FreeCollectionInfoOptions(&parameter);
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ILLEGAL_OPTION, "volatile collections are not supported on this platform", true)));
+#endif
+    }
+    
+    if (parameter._isVolatile && parameter._waitForSync) {
+      // the combination of waitForSync and isVolatile makes no sense
+      TRI_FreeCollectionInfoOptions(&parameter);
+      return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "volatile collections do not support the waitForSync option", true)));
+    }
+
   }
   else {
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
@@ -2839,7 +2854,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
           break;
         }
         
-        off_t paddedSize = ((marker._size + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+        off_t paddedSize = TRI_DF_ALIGN_BLOCK(marker._size);
         
         char payload[paddedSize];
         char* p = (char*) &payload;
@@ -2882,7 +2897,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
             keySize = strlen(didBuffer) + 1;
-            keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             TRI_CopyString(keyBody, didBuffer, keySize);      
 
@@ -2895,7 +2910,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._type = TRI_DOC_MARKER_KEY_DOCUMENT;
             newMarker.base._tick = oldMarker->base._tick;
             newMarker.base._size = newMarkerSize + keyBodySize + bodySize;
-            TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
+            TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
             writeResult = write(fdout, &newMarker, sizeof(newMarker));
             (void) writeResult;
@@ -2942,7 +2957,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             toSize = strlen(toDidBuffer) + 1;
             fromSize = strlen(fromDidBuffer) + 1;
 
-            keyBodySize = ((keySize + toSize + fromSize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;            
+            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + toSize + fromSize);            
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             
             TRI_CopyString(keyBody,                    didBuffer,     keySize);      
@@ -2964,8 +2979,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base.base._size = newMarkerSize + keyBodySize + bodySize;
             newMarker.base.base._type = TRI_DOC_MARKER_KEY_EDGE;
             newMarker.base.base._tick = oldMarker->base.base._tick;
-
-            TRI_FillCrcKeyMarkerDatafile(&newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
+            TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base.base, newMarkerSize, keyBody, keyBodySize, body, bodySize);
 
             writeResult = write(fdout, &newMarker, newMarkerSize);
             (void) writeResult;
@@ -2996,7 +3010,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
             keySize = strlen(didBuffer) + 1;
-            keyBodySize = ((keySize + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;
+            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             TRI_CopyString(keyBody, didBuffer, keySize);      
 
@@ -3007,8 +3021,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._size = newMarkerSize + keyBodySize;
             newMarker.base._type = TRI_DOC_MARKER_KEY_DELETION;
             newMarker.base._tick = oldMarker->base._tick;
-
-            TRI_FillCrcKeyMarkerDatafile(&newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
+            TRI_FillCrcKeyMarkerDatafile(df, &newMarker.base, newMarkerSize, keyBody, keyBodySize, NULL, 0);
 
             writeResult = write(fdout, &newMarker, newMarkerSize);
             (void) writeResult;
@@ -3531,18 +3544,6 @@ static v8::Handle<v8::Value> JS_EnsureCapConstraintVocbaseCol (v8::Arguments con
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
-///
-/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
-///
-/// Creates a bitarray index on all documents using attributes as paths to
-/// the fields. At least one attribute and one set of possible values must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
-///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
-///
-/// @verbinclude fluent14
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool supportUndef) {
@@ -3766,9 +3767,125 @@ static v8::Handle<v8::Value> EnsureBitarray (v8::Arguments const& argv, bool sup
   return scope.Close(theIndex);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on documents using attributes as paths to the
+/// fields (@FA{field1},..., @FA{fieldn}). A value (@FA{value1},...,@FA{valuen})
+/// consists of an array of possible values that the field can take. At least
+/// one field and one set of possible values must be given.
+///
+/// All documents, which do not have *all* of the attribute paths are ignored
+/// (that is, are not part of the bitarray index, they are however stored within
+/// the collection). A document which contains all of the attribute paths yet
+/// has one or more values which are *not* part of the defined range of values
+/// will be rejected and the document will not inserted within the
+/// collection. Note that, if a bitarray index is created subsequent to
+/// any documents inserted in the given collection, then the creation of the
+/// index will fail if one or more documents are rejected (due to
+/// attribute values being outside the designated range).
+///
+/// In case that the index was successfully created, the index identifier is
+/// returned.
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either `0` or `1`. Any document which has the
+/// attribute `x` defined and does not have a value of `0` or `1` will be
+/// rejected and therefore not inserted within the collection. Documents without
+/// the attribute `x` defined will not take part in the index.
+/// 
+/// @code
+/// arango> arangod> db.example.ensureBitarray("x", [0,1]);
+/// { 
+///   "id" : "2755894/3607862", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : true 
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with one field and that
+/// field can have the values of either `0`, `1` or *other* (indicated by
+/// `[]`). Any document which has the attribute `x` defined will take part in
+/// the index. Documents without the attribute `x` defined will not take part in
+/// the index.
+/// 
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1,[]]);
+/// { 
+///   "id" : "2755894/4263222", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1, [ ]]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with two fields. Field `x`
+/// can have the values of either `0` or `1`; while field `y` can have the values
+/// of `2` or `"a"`. A document which does not have *both* attributes `x` and `y`
+/// will not take part within the index.  A document which does have both attributes
+/// `x` and `y` defined must have the values `0` or `1` for attribute `x` and
+/// `2` or `a` for attribute `y`, otherwise the document will not be inserted
+/// within the collection.
+/// 
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
+/// { 
+///   "id" : "2755894/5246262", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1]], ["y", [0, 1]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : false 
+/// }
+/// @endcode
+///
+/// In the example below we create a bitarray index with two fields. Field `x`
+/// can have the values of either `0` or `1`; while field `y` can have the
+/// values of `2`, `"a"` or *other* . A document which does not have *both*
+/// attributes `x` and `y` will not take part within the index.  A document
+/// which does have both attributes `x` and `y` defined must have the values `0`
+/// or `1` for attribute `x` and any value for attribute `y` will be acceptable,
+/// otherwise the document will not be inserted within the collection.
+/// 
+/// @code
+/// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
+/// { 
+///   "id" : "2755894/5770550", 
+///   "unique" : false, 
+///   "type" : "bitarray", 
+///   "fields" : [["x", [0, 1]], ["y", [2, "a", [ ]]]], 
+///   "undefined" : false, 
+///   "isNewlyCreated" : true
+/// }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Value> JS_EnsureBitarrayVocbaseCol (v8::Arguments const& argv) {
   return EnsureBitarray(argv, false);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that a bitarray index exists
+///
+/// @FUN{@FA{collection}.ensureUndefBitarray(@FA{field1}, @FA{value1}, @FA{field2}, @FA{value2},...,@FA{fieldn}, @FA{valuen})}
+///
+/// Creates a bitarray index on all documents using attributes as paths to
+/// the fields. At least one attribute and one set of possible values must be given.
+/// All documents, which do not have the attribute path or
+/// with one or more values that are not suitable, are ignored.
+///
+/// In case that the index was successfully created, the index identifier
+/// is returned.
+///
+/// @verbinclude fluent14
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureUndefBitarrayVocbaseCol (v8::Arguments const& argv) {
   return EnsureBitarray(argv, true);
@@ -4360,6 +4477,10 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// - @LIT{journalSize} : The size of the journal in bytes.
 ///
+/// - @LIT{isVolatile}: If @LIT{true} then the collection data will be
+///   kept in memory only and ArangoDB will not write or sync the data
+///   to disk.
+///
 /// @FUN{@FA{collection}.properties(@FA{properties})}
 ///
 /// Changes the collection properties. @FA{properties} must be a object with
@@ -4375,6 +4496,9 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 /// created journals. Also note that you cannot lower the journal size to less
 /// then size of the largest document already stored in the collection.
 ///
+/// Note: some other collection properties, such as @LIT{type} or @LIT{isVolatile} 
+/// cannot be changed once the collection is created.
+///
 /// @EXAMPLES
 ///
 /// Read all properties
@@ -4387,10 +4511,8 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv) {
-  TRI_v8_global_t* v8g;
   v8::HandleScope scope;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -4444,11 +4566,26 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         if (maximalSize < maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
           TRI_ReleaseCollection(collection);
           return scope.Close(v8::ThrowException(
-                               TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
-                                                     "<properties>.journalSize too small")));
+                             TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                   "<properties>.journalSize too small")));
         }
       }
-
+      
+      if (po->Has(v8g->IsVolatileKey)) {
+        if (TRI_ObjectToBoolean(po->Get(v8g->IsVolatileKey)) != base->_info._isVolatile) {
+          TRI_ReleaseCollection(collection);
+          return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER, "isVolatile option cannot be changed at runtime")));
+        }
+      }
+    
+      if (base->_info._isVolatile && waitForSync) {
+        // the combination of waitForSync and isVolatile makes no sense
+        TRI_ReleaseCollection(collection);
+        return scope.Close(v8::ThrowException(
+                           TRI_CreateErrorObject(TRI_ERROR_BAD_PARAMETER,
+                                                 "volatile collections do not support the waitForSync option")));
+      }
+    
       // update collection
       TRI_col_info_t newParameter;
 
@@ -4474,6 +4611,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
     result->Set(v8g->WaitForSyncKey, waitForSync ? v8::True() : v8::False());
     result->Set(v8g->JournalSizeKey, v8::Number::New(maximalSize));
+    result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
 
     if (base->_info._options) {
       result->Set(v8g->CreateOptionsKey, TRI_ObjectJson(base->_info._options)->ToObject());
@@ -4529,7 +4667,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
-  return DeleteVocbaseCol(true, argv);
+  return RemoveVocbaseCol(true, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5012,7 +5150,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   if (   key == "toString"
       || key == "toJSON"
       || key == "hasOwnProperty" // this prevents calling the property getter again (i.e. recursion!)
-      || key[0] == '_') { // hide system collections
+      || TRI_IsSystemCollectionName(key.c_str())) { // hide system collections
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -5217,11 +5355,20 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
-/// - @LIT{isSystem} (optional, default is @LIT{false}): If true, create a
+/// - @LIT{isSystem} (optional, default is @LIT{false}): If @LIT{true}, create a
 ///   system collection. In this case @FA{collection-name} should start with
 ///   an underscore. End users should normally create non-system collections
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
+///
+/// - @LIT{isVolatile} (optional, default is @LIT{false}): If @LIT{true} then the
+///   collection data is kept in-memory only and not made persistent. Unloading
+///   the collection will cause the collection data to be discarded. Stopping
+///   or re-starting the server will also cause full loss of data in the
+///   collection. Setting this option will make the resulting collection be 
+///   slightly faster than regular collections because ArangoDB does not
+///   enforce any synchronisation to disk and does not calculate any CRC 
+///   checksums for datafiles (as there are no datafiles).
 ///
 /// @EXAMPLES
 ///
@@ -5331,7 +5478,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
-  return DeleteVocbaseCol(false, argv);
+  return RemoveVocbaseCol(false, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5539,7 +5686,7 @@ static v8::Handle<v8::Value> MapGetShapedJson (v8::Local<v8::String> name,
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must not be empty")));
   }
 
-  if (key[0] == '_') {
+  if (TRI_IsSystemCollectionName(key.c_str())) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -6165,9 +6312,10 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // keys
   // .............................................................................
 
-  v8g->JournalSizeKey = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
-  v8g->WaitForSyncKey = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
-  v8g->CreateOptionsKey = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
+  v8g->IsVolatileKey     = v8::Persistent<v8::String>::New(v8::String::New("isVolatile"));
+  v8g->JournalSizeKey    = v8::Persistent<v8::String>::New(v8::String::New("journalSize"));
+  v8g->WaitForSyncKey    = v8::Persistent<v8::String>::New(v8::String::New("waitForSync"));
+  v8g->CreateOptionsKey  = v8::Persistent<v8::String>::New(v8::String::New("createOptions"));
   
   if (v8g->BidirectionalKey.IsEmpty()) {
     v8g->BidirectionalKey = v8::Persistent<v8::String>::New(TRI_V8_SYMBOL("_bidirectional"));

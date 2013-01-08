@@ -242,9 +242,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_PushBackVectorPointer(&all, datafile);
 
         // check the document header
-        ptr = datafile->_data;
-        ptr += ((sizeof(TRI_df_header_marker_t) + TRI_DF_BLOCK_ALIGN - 1) / TRI_DF_BLOCK_ALIGN) * TRI_DF_BLOCK_ALIGN;;
-        cm = (TRI_col_header_marker_t*) ptr;
+        ptr  = datafile->_data;
+        ptr += TRI_DF_ALIGN_BLOCK(sizeof(TRI_df_header_marker_t));
+        cm   = (TRI_col_header_marker_t*) ptr;
 
         if (cm->base._type != TRI_COL_MARKER_HEADER) {
           LOG_ERROR("collection header mismatch in file '%s', expected TRI_COL_MARKER_HEADER, found %lu",
@@ -346,9 +346,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
       else {
         collection->_lastError = datafile->_lastError;
         stop = true;
-
         LOG_ERROR("cannot rename sealed log-file to %s, this should not happen: %s", filename, TRI_last_error());
-
         break;
       }
 
@@ -476,11 +474,11 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
-                                  TRI_col_info_t* parameter,
-                                  char const* name,
-                                  TRI_col_type_e type,
-                                  TRI_voc_size_t maximalSize,
-                                  TRI_json_t* options) {
+                             TRI_col_info_t* parameter,
+                             char const* name,
+                             TRI_col_type_e type,
+                             TRI_voc_size_t maximalSize,
+                             TRI_json_t* options) {
   assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_info_t));
 
@@ -488,15 +486,16 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   parameter->_type = type;
   parameter->_cid = 0;
 
-  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
-  parameter->_waitForSync = vocbase->_defaultWaitForSync;
+  parameter->_deleted = false;  
+  parameter->_isVolatile = false;
+  parameter->_isSystem = false;
   parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
   }
+  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name));
 
-  parameter->_isSystem = false;
-  parameter->_deleted = false;  
+  parameter->_waitForSync = vocbase->_defaultWaitForSync;
   if (options) {
     // parameter->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, options);
     parameter->_options = options;
@@ -518,12 +517,13 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, TRI_col_info_t* src) {
   dst->_type = src->_type;
   dst->_cid = src->_cid;
 
+  dst->_deleted = src->_deleted;  
+  dst->_isSystem = src->_isSystem;
+  dst->_isVolatile = src->_isVolatile;
+  dst->_maximalSize = src->_maximalSize;
   TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
   dst->_waitForSync = src->_waitForSync;
-  dst->_maximalSize = src->_maximalSize;
 
-  dst->_isSystem = src->_isSystem;
-  dst->_deleted = src->_deleted;  
   if (src->_options) {
     dst->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_options);
   }
@@ -677,7 +677,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   InitCollection(vocbase, collection, filename, parameter);
-
+  /* PANAIA: 1) the parameter file if it exists must be removed
+             2) if collection 
+  */
   // return collection
   return collection;
 }
@@ -799,17 +801,22 @@ int TRI_LoadCollectionInfo (char const* path, TRI_col_info_t* parameter) {
         parameter->_maximalSize = value->_value._number;
       }
     }
-    else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_BOOLEAN) {
-      if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
-        parameter->_waitForSync = value->_value._boolean;
-      }
-      else if (TRI_EqualString(key->_value._string.data, "deleted")) {
-        parameter->_deleted = value->_value._boolean;
-      }
-    }
     else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_STRING) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
         TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name));
+
+        parameter->_isSystem = TRI_IsSystemCollectionName(parameter->_name);
+      }
+    }
+    else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_BOOLEAN) {
+      if (TRI_EqualString(key->_value._string.data, "deleted")) {
+        parameter->_deleted = value->_value._boolean;
+      }
+      else if (TRI_EqualString(key->_value._string.data, "isVolatile")) {
+        parameter->_isVolatile = value->_value._boolean;
+      }
+      else if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
+        parameter->_waitForSync = value->_value._boolean;
       }
     }
     else if (key->_type == TRI_JSON_STRING && value->_type == TRI_JSON_ARRAY) {
@@ -851,10 +858,11 @@ int TRI_SaveCollectionInfo (char const* path, TRI_col_info_t* info) {
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "version",     TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_version));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_type)); 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "cid",         TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_cid));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_deleted));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maximalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, info->_name));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_isVolatile));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
   
   if (info->_options) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",     TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, info->_options));
@@ -898,6 +906,15 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
     if (collection->_info._maximalSize < collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD) {
       collection->_info._maximalSize = collection->_maximumMarkerSize + TRI_JOURNAL_OVERHEAD;
     }
+  
+    // the following collection properties are intentionally not updated as updating
+    // them would be very complicated:
+    // - _cid
+    // - _name
+    // - _type
+    // - _isSystem
+    // - _isVolatile
+    // ... probably a few others missing here ...
   }
 
   if (TRI_IS_DOCUMENT_COLLECTION(collection->_info._type)) {
@@ -1135,6 +1152,18 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
   TRI_DestroyVectorString(&info->_compactors);
   TRI_DestroyVectorString(&info->_datafiles);
   TRI_DestroyVectorString(&info->_indexes);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine whether a collection name is a system collection name
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSystemCollectionName (char const* name) {
+  if (name == NULL) {
+    return false;
+  }
+
+  return *name == '_';
 }
 
 ////////////////////////////////////////////////////////////////////////////////

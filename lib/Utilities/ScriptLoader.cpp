@@ -96,12 +96,16 @@ string ScriptLoader::buildScript (const char** script) {
 
   while (true) {
     string tempStr = string(*script);
+
     if (tempStr == "//__end__") {
       break;
     }
+
     scriptString += tempStr + "\n";
+
     ++script;
   }
+
   return scriptString;
 }
 
@@ -114,6 +118,10 @@ void ScriptLoader::defineScript (string const& name, string const& script) {
 
   _scripts[name] = script;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new named script
+////////////////////////////////////////////////////////////////////////////////
 
 void ScriptLoader::defineScript (const string& name, const char** script) {
   string scriptString = buildScript(script);
@@ -128,8 +136,9 @@ void ScriptLoader::defineScript (const string& name, const char** script) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& ScriptLoader::findScript (string const& name) {
-  MUTEX_LOCKER(_lock);
   static string empty = "";
+
+  MUTEX_LOCKER(_lock);
 
   map<string, string>::iterator i = _scripts.find(name);
 
@@ -145,7 +154,7 @@ string const& ScriptLoader::findScript (string const& name) {
       char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename);
 
       if (result == 0 && (i == parts.size() - 1)) {
-        LOGGER_ERROR << "cannot locate file '" << name.c_str() << "': " << TRI_last_error();
+        LOGGER_ERROR << "cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error();
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
@@ -182,8 +191,18 @@ vector<string> ScriptLoader::getDirectoryParts () {
   vector<string> directories;
   
   if (! _directory.empty()) {
-    TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
+    
+    // .........................................................................
+    // for backwards compatibility allow ":" as a delimiter for POSIX like
+    // implementations, otherwise we will only allow ";"
+    // .........................................................................
 
+#ifdef _WIN32
+      TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ";");
+#else
+      TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
+#endif
+ 
     for (size_t i = 0; i < parts._length; i++) {
       string part = StringUtils::trim(parts._buffer[i]);
 

@@ -235,8 +235,11 @@ const std::string Endpoint::getDefaultEndpoint () {
   
 void Endpoint::setTimeout (socket_t s, double timeout) {
   struct timeval tv;
-  tv.tv_sec = (uint64_t) timeout;
-  tv.tv_usec = ((uint64_t) (timeout * 1000000.0)) % 1000000;
+
+  // shut up Valgrind
+  memset(&tv, 0, sizeof(tv));
+  tv.tv_sec = (time_t) timeout;
+  tv.tv_usec = ((suseconds_t) (timeout * 1000000.0)) % 1000000;
 
   // conversion to (const char*) ensures windows does not complain
   setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)(&tv), sizeof(tv)); 

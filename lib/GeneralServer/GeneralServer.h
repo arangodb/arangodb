@@ -190,6 +190,7 @@ namespace triagens {
             LOGGER_TRACE << "trying to bind to endpoint '" << (*i)->getSpecification() << "' for requests";
 
             bool ok = openEndpoint(*i);
+              
             if (ok) {
               LOGGER_DEBUG << "bound to endpoint '" << (*i)->getSpecification() << "'";
             }
@@ -357,11 +358,11 @@ namespace triagens {
             }
 
             static uint32_t hashKey (GeneralHandler* key) {
-              return (uint32_t) (intptr_t) key;
+              return (uint32_t) (uintptr_t) key;
             }
 
             static uint32_t hashElement (handler_task_job_t const& element) {
-              return (uint32_t) (intptr_t) element._handler;
+              return (uint32_t) (uintptr_t) element._handler;
             }
         };
 
@@ -388,11 +389,11 @@ namespace triagens {
             }
 
             static uint32_t hashKey (Task* key) {
-              return (uint32_t) (intptr_t) key;
+              return (uint32_t) (uintptr_t) key;
             }
 
             static uint32_t hashElement (handler_task_job_t const& element) {
-              return (uint32_t) (intptr_t) element._task;
+              return (uint32_t) (uintptr_t) element._task;
             }
         };
 
@@ -418,11 +419,15 @@ namespace triagens {
         bool openEndpoint (Endpoint* endpoint) {
           ListenTask* task = new GeneralListenTask<S> (dynamic_cast<S*> (this), endpoint, true);
 
-          if (! task->isBound()) {
+          // ...................................................................  
+          // For some reason we have failed in our endeavour to bind to the socket - 
+          // this effectively terminates the server
+          // ...................................................................  
+
+          if (! task->isBound()) { 
             deleteTask(task);
             return false;
           }
-
           _scheduler->registerTask(task);
           _listenTasks.push_back(task);
 

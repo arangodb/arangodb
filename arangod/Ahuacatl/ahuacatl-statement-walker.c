@@ -27,6 +27,12 @@
 
 #include "Ahuacatl/ahuacatl-statement-walker.h"
 
+#include "BasicsC/logging.h"
+
+#include "Ahuacatl/ahuacatl-access-optimiser.h"
+#include "Ahuacatl/ahuacatl-scope.h"
+#include "Ahuacatl/ahuacatl-variable.h"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             statement list walker
 // -----------------------------------------------------------------------------
@@ -80,7 +86,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
    
     member = (TRI_aql_node_t*) TRI_AtVectorPointer(&node->_members, i);
 
-    if (!member) {
+    if (! member) {
       continue;
     }
 
@@ -113,7 +119,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
    
     node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, i);
 
-    if (!node) {
+    if (! node) {
       continue;
     }
 
@@ -163,6 +169,58 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
 /// @addtogroup Ahuacatl
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mark the scope so it ignores following offset/limit statement
+/// optimisations.
+/// this is necessary if we find a SORT statement, followed by a LIMIT
+/// statement. we must not optimise that because we would modify results then.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
+  TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+
+  assert(scope);
+  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
+    LOG_TRACE("setting limit status to ignorable");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restrict a offset/limit combination for the top scope to not apply
+/// a limit optimisation on collection access, but to apply it on for loop 
+/// traversal
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_RestrictCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
+  TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+
+  assert(scope);
+  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    scope->_limit._hasFilter = true;
+    LOG_TRACE("setting limit status to use-in-for-loop");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note an offset/limit combination for the top scope
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker,
+                                            const int64_t offset,
+                                            const int64_t limit) { 
+  TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
+
+  assert(scope);
+
+  if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
+    // never overwrite a previously picked up limit
+    scope->_limit._limit   = limit;
+    scope->_limit._offset  = offset;
+    scope->_limit._status  = TRI_AQL_LIMIT_USE;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get current ranges in top scope of statement walker
@@ -283,11 +341,11 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
     return NULL;
   }
 
-  walker->_data = data;
-  walker->_canModify = canModify;
+  walker->_data              = data;
+  walker->_canModify         = canModify;
 
-  walker->visitMember = visitMember;
-  walker->preVisitStatement = preVisitStatement;
+  walker->visitMember        = visitMember;
+  walker->preVisitStatement  = preVisitStatement;
   walker->postVisitStatement = postVisitStatement;
 
   TRI_InitVectorPointer(&walker->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
@@ -303,7 +361,6 @@ void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   assert(walker);
 
   TRI_DestroyVectorPointer(&walker->_currentScopes);
-
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
 }
 
@@ -312,7 +369,7 @@ void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker, 
-                            TRI_aql_statement_list_t* const list) {
+                            TRI_aql_statement_list_t* list) {
   assert(walker);
   assert(list);
 

@@ -355,25 +355,22 @@ sort_direction:
 limit_statement: 
     T_LIMIT signed_number {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, 0), TRI_CreateNodeValueIntAql(context, $2));
-      if (!node) {
+      if (! node) {
         ABORT_OOM
       }
       
-      if (!TRI_AppendStatementListAql(context->_statements, node)) {
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
       
-      if (!TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
     }
   | T_LIMIT signed_number T_COMMA signed_number {
       TRI_aql_node_t* node = TRI_CreateNodeLimitAql(context, TRI_CreateNodeValueIntAql(context, $2), TRI_CreateNodeValueIntAql(context, $4));
-      if (!node) {
+      if (! node) {
         ABORT_OOM
       }
       
-      if (!TRI_AppendStatementListAql(context->_statements, node)) {
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
     }

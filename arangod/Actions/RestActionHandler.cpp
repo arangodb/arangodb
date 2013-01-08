@@ -54,6 +54,8 @@ RestActionHandler::RestActionHandler (HttpRequest* request, action_options_t* da
     _action(0),
     _queue(),
     _allowed(false) {
+
+
   _action = TRI_LookupActionVocBase(request);
 
   // check if the action is allowed
