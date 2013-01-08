@@ -1,5 +1,8 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief example controller
+/// @brief example echo controller
 ///
 /// @file
 ///
@@ -27,17 +30,17 @@
 
 var actions = require("org/arangodb/actions");
 
-exports.head = function (req, res, next, options) {
+exports.head = function (req, res, options, next) {
   res.responseCode = actions.HTTP_OK;
   res.contentType = "application/json; charset=utf-8";
   res.body = "";
-}
+};
 
-exports.do = function (req, res, next, options) {
+exports['do'] = function (req, res, options, next) {
   res.responseCode = actions.HTTP_OK;
   res.contentType = "application/json; charset=utf-8";
   res.body = JSON.stringify( { "request" : req, "options" : options });
-}
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

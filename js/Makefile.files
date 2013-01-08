@@ -23,10 +23,12 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/ArangoCollection.js \
 	@srcdir@/js/server/ArangoStructure.js \
 	@srcdir@/js/server/modules/org/arangodb.js \
-	@srcdir@/js/server/modules/org/arangodb/validator.js \
+	@srcdir@/js/server/modules/org/arangodb/actions.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/echoController.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/staticContentController.js \
 	@srcdir@/js/server/modules/org/arangodb/formatter.js \
 	@srcdir@/js/server/modules/org/arangodb/parser.js \
-	@srcdir@/js/server/modules/org/arangodb/actions.js
+	@srcdir@/js/server/modules/org/arangodb/validator.js
 
 ################################################################################
 ### @brief executes jslint

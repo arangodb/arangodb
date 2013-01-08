@@ -1653,6 +1653,8 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
+	Doxygen/js/common/bootstrap/module-console.c \
+	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/common/modules/simple-query-basics.c \
@@ -1747,10 +1749,12 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/ArangoCollection.js \
 	@srcdir@/js/server/ArangoStructure.js \
 	@srcdir@/js/server/modules/org/arangodb.js \
-	@srcdir@/js/server/modules/org/arangodb/validator.js \
+	@srcdir@/js/server/modules/org/arangodb/actions.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/echoController.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/staticContentController.js \
 	@srcdir@/js/server/modules/org/arangodb/formatter.js \
 	@srcdir@/js/server/modules/org/arangodb/parser.js \
-	@srcdir@/js/server/modules/org/arangodb/actions.js
+	@srcdir@/js/server/modules/org/arangodb/validator.js
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 all: $(BUILT_SOURCES)
