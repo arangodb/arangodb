@@ -32,9 +32,8 @@
 #include "Basics/Common.h"
 #include "BasicsC/vector.h"
 
-#ifdef TRI_HAVE_ICU
 #include "unicode/coll.h"
-#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class WriteLocker
 // -----------------------------------------------------------------------------
@@ -160,11 +159,7 @@ namespace triagens {
                                                    bool lowerCase);
         
       private:
-#ifdef TRI_HAVE_ICU      
         Collator* _coll;
-#else
-        char* _coll;
-#endif        
     };
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

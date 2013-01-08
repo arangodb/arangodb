@@ -28,14 +28,10 @@
 
 #include "Utf8Helper.h"
 
-#ifdef TRI_HAVE_ICU
 #include "unicode/normalizer2.h"
 #include "unicode/ucasemap.h"
 #include "unicode/brkiter.h"
 #include "unicode/ustdio.h"
-#else
-#include "string.h"
-#endif
 
 #include "Logger/Logger.h"
 #include "BasicsC/strings.h"
@@ -71,7 +67,6 @@ Utf8Helper::~Utf8Helper () {
 }
 
 int Utf8Helper::compareUtf8 (const char* left, const char* right) {
-#ifdef TRI_HAVE_ICU  
   if (!_coll) {
     LOGGER_ERROR << "no Collator in Utf8Helper::compareUtf8()!";
     return (strcmp(left, right));
@@ -85,16 +80,11 @@ int Utf8Helper::compareUtf8 (const char* left, const char* right) {
   }
   
   return result;
-#else
-  return (strcmp(left, right));
-#endif
 }
 
 int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {  
-#ifdef TRI_HAVE_ICU 
   if (!_coll) {
     LOGGER_ERROR << "no Collator in Utf8Helper::compareUtf16()!";
-#endif  
     
     if (leftLength == rightLength) {
       return memcmp((const void*)left, (const void*)right, leftLength * 2);
@@ -110,16 +100,12 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
     }
     
     return result;    
-#ifdef TRI_HAVE_ICU 
   }
   
   return _coll->compare((const UChar *)left, leftLength, (const UChar *)right, rightLength);
-#endif  
 }
 
-void Utf8Helper::setCollatorLanguage (const string& lang) {
-#ifdef TRI_HAVE_ICU
-  
+void Utf8Helper::setCollatorLanguage (const string& lang) {  
   UErrorCode status = U_ZERO_ERROR;   
     
   if (_coll) {
@@ -169,11 +155,9 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
   }
 
   _coll = coll;  
-#endif
 }
 
 string Utf8Helper::getCollatorLanguage () {
-#ifdef TRI_HAVE_ICU
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -185,12 +169,10 @@ string Utf8Helper::getCollatorLanguage () {
     }
     return locale.getLanguage();
   }
-#endif
   return "";
 }
 
 string Utf8Helper::getCollatorCountry () {
-#ifdef TRI_HAVE_ICU
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -202,7 +184,6 @@ string Utf8Helper::getCollatorCountry () {
     }
     return locale.getCountry();
   }
-#endif
   return "";
 }
 
@@ -238,7 +219,6 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
     return utf8_dest;
   }
 
-#ifdef TRI_HAVE_ICU  
   uint32_t options = U_FOLD_CASE_DEFAULT;
   UErrorCode status = U_ZERO_ERROR;
   
@@ -285,7 +265,6 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
       return utf8_dest;
     }    
   }
-#endif
 
   utf8_dest = TRI_LowerAsciiStringZ(zone, src);
   if (utf8_dest != 0) {
@@ -326,7 +305,6 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
     return utf8_dest;
   }
 
-#ifdef TRI_HAVE_ICU  
   uint32_t options = U_FOLD_CASE_DEFAULT;
   UErrorCode status = U_ZERO_ERROR;
   
@@ -373,7 +351,6 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
       return utf8_dest;
     }    
   }
-#endif
 
   utf8_dest = TRI_UpperAsciiStringZ(zone, src);
   if (utf8_dest != NULL) {
@@ -406,8 +383,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
     // input text is shorter than required minimum length
     return NULL;
   }
-
-#ifdef TRI_HAVE_ICU  
   
   size_t textUtf16Length = 0;
   UChar* textUtf16 = NULL;
@@ -498,10 +473,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
-
-#else
-  // TODO
-#endif
   
   if (words->_length == 0) {
     // no words found
