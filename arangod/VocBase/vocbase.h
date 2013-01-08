@@ -506,6 +506,16 @@ void TRI_DestroyVocBase (TRI_vocbase_t*);
 TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a collection name by a collection id
+///
+/// the name is fetched under a lock to make this thread-safe. returns NULL if
+/// the collection does not exist
+/// it is the caller's responsibility to free the name returned
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*, const TRI_voc_cid_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -518,22 +528,12 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, char const
 TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a collection by name
+/// @brief finds a collection by name or creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a primary collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an edge collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t*, char const*, bool bear);
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t*, 
+                                                          char const*, 
+                                                          const TRI_col_type_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new (document) collection from parameter set

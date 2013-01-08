@@ -205,7 +205,7 @@ bool RestImportHandler::createByDocumentsLines () {
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create); 
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, create, TRI_COL_TYPE_DOCUMENT); 
   
   // .............................................................................
   // inside write transaction
@@ -350,7 +350,7 @@ bool RestImportHandler::createByDocumentsList () {
   bool create = found ? StringUtils::boolean(valueStr) : false;
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create); 
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, create, TRI_COL_TYPE_DOCUMENT); 
   
   // .............................................................................
   // inside write transaction
@@ -498,7 +498,7 @@ bool RestImportHandler::createByKeyValueList () {
   }        
   
   // find and load collection given by name or identifier
-  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create); 
+  ImportTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, create, TRI_COL_TYPE_DOCUMENT); 
   
   // .............................................................................
   // inside write transaction

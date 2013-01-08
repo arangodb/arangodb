@@ -764,7 +764,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   assert(key);
   
 
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
@@ -849,7 +849,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   assert(key);
 
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "ReplaceVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
@@ -1155,7 +1155,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   }
 
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "UpdateVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
@@ -1256,7 +1256,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   assert(key);
 
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "DeleteVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
@@ -4854,7 +4854,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "SaveVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4960,7 +4960,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "TruncateVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));
@@ -5160,12 +5160,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   // look up the value if it exists
   TRI_vocbase_col_t const* collection;
  
-  if (collectionType == TRI_COL_TYPE_EDGE) {
-    collection = TRI_FindEdgeCollectionByNameVocBase(vocbase, key.c_str(), true);
-  }
-  else {
-    collection = TRI_FindDocumentCollectionByNameVocBase(vocbase, key.c_str(), true);
-  }
+  collection = TRI_FindCollectionByNameOrBearVocBase(vocbase, key.c_str(), (TRI_col_type_t) collectionType);
 
   // if the key is not present return an empty handle as signal
   if (collection == 0) {
@@ -5247,7 +5242,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   else {
     string name = TRI_ObjectToString(val);
 
-    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
+    collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
   }
 
   if (collection == 0) {

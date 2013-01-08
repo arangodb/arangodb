@@ -62,10 +62,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ImportTransaction (TRI_vocbase_t* const vocbase,
-                           const string& collectionName, 
-                           const TRI_col_type_e collectionType, 
-                           const bool createCollection) :
-          SingleCollectionWriteTransaction<T, UINT64_MAX>(vocbase, collectionName, collectionType, createCollection, "ImportTransaction") { 
+                           const string& name, 
+                           const bool create,
+                           const TRI_col_type_e createType) :
+          SingleCollectionWriteTransaction<T, UINT64_MAX>(vocbase, name, create, createType) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
