@@ -640,15 +640,18 @@ void ApplicationV8::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepareV8Instance (const size_t i) {
-  static char const* files[] = { "common/bootstrap/modules.js",
-                                 "common/bootstrap/monkeypatches.js",
-                                 "common/bootstrap/print.js",
-                                 "common/bootstrap/errors.js",
-                                 "server/ahuacatl.js",
-                                 "server/server.js",
-                                 "server/ArangoCollection.js",
-                                 "server/ArangoStructure.js"
-  };
+  vector<string> files;
+
+  files.push_back("common/bootstrap/modules.js");
+  files.push_back("common/bootstrap/module-internal.js");
+  files.push_back("common/bootstrap/module-fs.js");
+  files.push_back("common/bootstrap/module-console.js");
+  files.push_back("common/bootstrap/monkeypatches.js");
+  files.push_back("common/bootstrap/errors.js");
+  files.push_back("server/ahuacatl.js");
+  files.push_back("server/server.js");
+  files.push_back("server/ArangoCollection.js");
+  files.push_back("server/ArangoStructure.js");
 
   LOGGER_TRACE << "initialising V8 context #" << i;
 
@@ -687,7 +690,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8Shell(context->_context);
 
   // load all init files
-  for (size_t j = 0;  j < sizeof(files) / sizeof(files[0]);  ++j) {
+  for (size_t j = 0;  j < files.size();  ++j) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
 
     if (! ok) {

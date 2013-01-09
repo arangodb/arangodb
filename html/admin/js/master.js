@@ -1190,7 +1190,8 @@ var lastFormatQuestion = true;
       command = data;
     }
 
-    var client = "arangosh> " + escapeHTML(data) + "<br>";
+    var internal = require("internal");
+    var client = "arangosh> " + internal.escapeHTML(data) + "<br>";
  
     $('#avocshWindow').append('<b class="avocshClient">' + client + '</b>');
     evaloutput(command);

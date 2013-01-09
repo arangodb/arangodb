@@ -158,7 +158,7 @@ function post_api_collection (req, res) {
   }
 
   if (! body.hasOwnProperty("name")) {
-    actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
+    actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
 		      "name must be non-empty");
     return;
   }
@@ -393,7 +393,7 @@ function get_api_collection (req, res) {
     name = decodeURIComponent(req.suffix[0]);
   }
     
-  var collection = internal.db._collection(name);
+  var collection = arangodb.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -670,7 +670,7 @@ function put_api_collection_rename (req, res, collection) {
   }
 
   if (! body.hasOwnProperty("name")) {
-    actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
+    actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
 		      "name must be non-empty");
     return;
   }
@@ -701,7 +701,7 @@ function put_api_collection (req, res) {
   }
 
   var name = decodeURIComponent(req.suffix[0]);
-  var collection = internal.db._collection(name);
+  var collection = arangodb.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -769,7 +769,7 @@ function delete_api_collection (req, res) {
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
-    var collection = internal.db._collection(name);
+    var collection = arangodb.db._collection(name);
 
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
