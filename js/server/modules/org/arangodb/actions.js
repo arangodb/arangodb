@@ -31,6 +31,7 @@
 var arangodb = require("org/arangodb");
 var internal = require("internal");
 var console = require("console");
+var moduleExists = function(name) { return module.exists; };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -246,7 +247,7 @@ function lookupCallbackAction (route, action) {
       }
     }
     catch (err) {
-      if (! module.exists(joined)) {
+      if (! moduleExists(joined)) {
         func = notImplementedFunction(route, 
 				      "an error occurred while loading action named '" + name 
 				        + "' in module '" + joined + "': " + String(err));
@@ -309,7 +310,7 @@ function lookupCallbackAction (route, action) {
       };
     }
     catch (err1) {
-      if (! module.exists(action.controller)) {
+      if (! moduleExists(action.controller)) {
         return notImplementedFunction(route, 
 				      "cannot load/execute action controller module '" 
 				        + action.controller + ": " + String(err1));
@@ -345,7 +346,7 @@ function lookupCallbackAction (route, action) {
         catch (err) {
 	  efunc = errorFunction;
 
-          if (! module.exists(path)) {
+          if (! moduleExists(path)) {
 	    efunc = notImplementedFunction;
           }
 
