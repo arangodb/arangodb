@@ -2,13 +2,13 @@
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validator functions
+/// @brief deliver static content from collection
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,101 +25,99 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 number validators
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoStructure
+/// @addtogroup ArangoActions
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief positive number
+/// @brief locate content from collection
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.positiveNumber = function (value, info, lang) {
-  if (value <= 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be positive";
+function locateContent (req, options) {
+  var path;
+  var collection;
 
-    throw error;
+  if (! options.hasOwnProperty("contentCollection")) {
+    return null;
   }
+
+  collection = arangodb.db._collection(options.contentCollection);
+
+  if (collection === null) {
+    return null;
+  }
+
+  path = "/" + req.suffix.join("/");
+
+  return collection.firstExample({ 
+    path: path,
+    prefix: options.prefix,
+    application: options.application });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoActions
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate content from collection
+////////////////////////////////////////////////////////////////////////////////
+
+exports.head = function (req, res, options, next) {
+  var content;
+
+  content = locateContent(req, options);
+  
+  if (content === null) {
+    res.responseCode = actions.HTTP_NOT_IMPLEMENTED;
+    res.contentType = "text/plain";
+  }
+  else {
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = content.contentType || "text/html";
+  }
+
+  res.body = "";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief negative number
+/// @brief get request
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.negativeNumber = function (value, info, lang) {
-  if (0.0 <= value) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be negative";
+exports.get = function (req, res, options, next) {
+  var content;
 
-    throw error;
+  content = locateContent(req, options);
+  
+  if (content === null) {
+    res.responseCode = actions.HTTP_NOT_IMPLEMENTED;
+    res.contentType = "text/plain";
+    res.body = "path '" + req.suffix.join("/") + "' not implemented";
   }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief zero
-////////////////////////////////////////////////////////////////////////////////
-
-exports.zeroNumber = function (value, info, lang) {
-  if (value === 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be zero";
-
-    throw error;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief non-positive number
-////////////////////////////////////////////////////////////////////////////////
-
-exports.nonPositiveNumber = function (value, info, lang) {
-  if (0.0 < value) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be non-positive";
-
-    throw error;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief non-negative number
-////////////////////////////////////////////////////////////////////////////////
-
-exports.nonNegativeNumber = function (value, info, lang) {
-  if (value < 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be non-negative";
-
-    throw error;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief zero
-////////////////////////////////////////////////////////////////////////////////
-
-exports.nonZeroNumber = function (value, info, lang) {
-  if (value !== 0.0) {
-    var error = new arangodb.ArangoError();
-    error.errorNum = arangodb.ERROR_ARANGO_VALIDATION_FAILED;
-    error.errorMessage = "number must be non-zero";
-
-    throw error;
+  else {
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = content.contentType || "text/html";
+    res.body = content.content || "";
   }
 };
 
@@ -133,5 +131,5 @@ exports.nonZeroNumber = function (value, info, lang) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
