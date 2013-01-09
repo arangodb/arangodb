@@ -739,5 +739,21 @@ Check the index file
 
     http://localhost:8529/example/static/index.html
 
+Deploying Modules {#UserManualActionsDeployingModules}
+------------------------------------------------------
 
+In general deploying static pages is nice for demos and administrative
+front-ends; but most of the time you will deploy JavaScript functions which will
+compute JSON objects implementing a RESTful interface or something similar.
 
+In order to deploy modules *not* belonging to a particular application
+use
+
+    arangosh> var deploy = require("org/arangodb/deploy");
+
+    arangosh> deploy.uploadModules("org/example", "/tmp/example/modules");
+    imported '/org/example/simple'
+
+This will upload all JavaScript files - which must end in `.js` - into the
+database.  The first argument to `uploadModules` is a prefix used for the module
+path.
