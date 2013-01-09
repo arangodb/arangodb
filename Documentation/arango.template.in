@@ -211,7 +211,7 @@ ALIASES = \
 ALIASES += \
   "CMDOPT{1}=@latexonly\commandlineoption{@endlatexonly@htmlonly<div class=\"commandlineoption\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</div>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
   "CA{1}=@latexonly\commandlineargument{@endlatexonly@htmlonly<span class=\"commandlineargument\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly" \
-  "CO{1}=@latexonly\commandoption{@endlatexon\@htmlonly<span class=\"commandoption\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
+  "CO{1}=@latexonly\commandoption{@endlatexonly\@htmlonly<span class=\"commandoption\">@endhtmlonly@xmlonly XMLMISSING @endxmlonly\1@latexonly}@endlatexonly@htmlonly</span>@endhtmlonly@xmlonly XMLMISSING @endxmlonly"
 
 # rest calls
 ALIASES += \
