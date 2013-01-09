@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, db, edges, ModuleCache, Module,
+/*global require, db, edges, Module,
   ArangoCollection, ArangoDatabase,
   ArangoError, ShapedJson,
   SYS_DEFINE_ACTION */
@@ -57,6 +57,8 @@
   internal.db = db;
   internal.edges = db;
   internal.ArangoCollection = ArangoCollection;
+  internal.ArangoDatabase = ArangoDatabase;
+  internal.ArangoError = ArangoError;
 
   if (typeof SYS_DEFINE_ACTION === "undefined") {
     internal.defineAction = function() {
@@ -416,179 +418,6 @@
     ArangoDatabase.prototype.toString = function(seen, path, names, level) {
       return "[ArangoDatabase \"" + this._path + "\"]";
     };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoCollection
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection is corrupted
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.STATUS_CORRUPTED = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection is new born
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.STATUS_NEW_BORN = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection is unloaded
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.STATUS_UNLOADED = 2;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection is loaded
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.STATUS_LOADED = 3;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection is unloading
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.STATUS_UNLOADING = 4;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection is deleted
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.STATUS_DELETED = 5;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document collection
-////////////////////////////////////////////////////////////////////////////////
-  
-  ArangoCollection.TYPE_DOCUMENT = 2;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.TYPE_EDGE = 3;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attachment collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.TYPE_ATTACHMENT = 4;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts collection into an array
-///
-/// @FUN{@FA{collection}.toArray()}
-///
-/// Converts the collection into an array of documents. Never use this call
-/// in a production environment.
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.prototype.toArray = function() {
-    return this.ALL(null, null).documents;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncates a collection
-///
-/// @FUN{@FA{collection}.truncate()}
-///
-/// Truncates a @FA{collection}, removing all documents but keeping all its
-/// indexes.
-///
-/// @EXAMPLES
-///
-/// Truncates a collection:
-///
-/// @verbinclude shell_collection-truncate
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.prototype.truncate = function() {
-    return internal.db._truncate(this);
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an index of a collection
-///
-/// @FUN{@FA{collection}.index(@FA{index-handle})}
-///
-/// Returns the index with @FA{index-handle} or null if no such index exists.
-///
-/// @EXAMPLES
-///
-/// @verbinclude shell_index-read
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.prototype.index = function(id) {
-    var indexes = this.getIndexes();
-    var i;
-
-    if (typeof id === "string") {
-      var re = /^([0-9]+)\/([0-9]+)/;
-      var pa = re.exec(id);
-
-      if (pa === null) {
-        id = this._id + "/" + id;
-      }
-    }
-    else if (id.hasOwnProperty("id")) {
-      id = id.id;
-    }
-
-    for (i = 0;  i < indexes.length;  ++i) {
-      var index = indexes[i];
-
-      if (index.id === id) {
-        return index;
-      }
-    }
-
-    return null;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.prototype._PRINT = function() {
-    var status = type = "unknown";
-
-    switch (this.status()) {
-      case ArangoCollection.STATUS_NEW_BORN: status = "new born"; break;
-      case ArangoCollection.STATUS_UNLOADED: status = "unloaded"; break;
-      case ArangoCollection.STATUS_UNLOADING: status = "unloading"; break;
-      case ArangoCollection.STATUS_LOADED: status = "loaded"; break;
-      case ArangoCollection.STATUS_CORRUPTED: status = "corrupted"; break;
-      case ArangoCollection.STATUS_DELETED: status = "deleted"; break;
-    }
-
-    switch (this.type()) {
-      case ArangoCollection.TYPE_DOCUMENT: type = "document"; break;
-      case ArangoCollection.TYPE_EDGE: type = "edge"; break;
-      case ArangoCollection.TYPE_ATTACHMENT: type = "attachment"; break;
-    }
-
-    internal.output("[ArangoCollection ",
-                    this._id, 
-                    ", \"", this.name(), "\" (type ", type, ", status ", status, ")]");
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief strng representation of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoCollection.prototype.toString = function(seen, path, names, level) {
-    return "[ArangoCollection " + this._id + "]";
-  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

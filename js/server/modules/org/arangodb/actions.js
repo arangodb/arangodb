@@ -1,11 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
-/*global require, exports */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true plusplus: true */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions module
@@ -34,8 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var internal = require("internal");
 var console = require("console");
+var moduleExists = function(name) { return module.exists; };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -69,8 +65,8 @@ var RoutingCache;
 /// @brief function that's returned for non-implemented actions
 ////////////////////////////////////////////////////////////////////////////////
         
-function notImplementedFunction (triggerRoute, message) {
-  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
+function notImplementedFunction (route, message) {
+  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
 
@@ -85,8 +81,8 @@ function notImplementedFunction (triggerRoute, message) {
 /// @brief function that's returned for actions that produce an error
 ////////////////////////////////////////////////////////////////////////////////
 
-function errorFunction (triggerRoute, message) {
-  message += "\nThis error is triggered by the following route " + JSON.stringify(triggerRoute);
+function errorFunction (route, message) {
+  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
 
   console.error(message);
 
@@ -195,6 +191,7 @@ function lookupCallbackStatic (content) {
     type = content.contentType || "text/plain";
     body = content.body || "";
     methods = content.methods || [ exports.GET, exports.HEAD ];
+    options = content.options || {};
   }
 
   return {
@@ -218,6 +215,7 @@ function lookupCallbackAction (route, action) {
   var name;
   var func;
   var module;
+  var joined;
   var httpMethods = { 
     'get': exports.GET,
     'head': exports.HEAD,
@@ -235,28 +233,36 @@ function lookupCallbackAction (route, action) {
     path = action['do'].split("/");
     name = path.pop();
     func = null;
+    joined = path.join("/");
 
     try {
-      module = require(path.join("/"));
+      module = require(joined);
 
       if (module.hasOwnProperty(name)) {
         func = module[name];
       }
       else {
-        func = notImplementedFunction(route, "Could not find action named '" + name + "' in module '" + path.join("/") + "'");
+        func = notImplementedFunction(route, "could not find action named '"
+                                             + name + "' in module '" + joined + "'");
       }
     }
     catch (err) {
-      if (! ExistsCache[path.join("/")]) {
-        func = notImplementedFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+      if (! moduleExists(joined)) {
+        func = notImplementedFunction(route, 
+				      "an error occurred while loading action named '" + name 
+				        + "' in module '" + joined + "': " + String(err));
       }
       else {
-        func = errorFunction(route, "An error occurred while loading action named '" + name + "' in module '" + path.join("/") + "': " + String(err));
+        func = errorFunction(route,
+			     "an error occurred while loading action named '" + name 
+			       + "' in module '" + joined + "': " + String(err));
       }
     }
 
     if (func === null || typeof func !== 'function') {
-      func = errorFunction(route, "Invalid definition for the action named '" + name + "' in module '" + path.join("/") + "'");
+      func = errorFunction(route, 
+			   "invalid definition for the action named '" + name 
+			     + "' in module '" + joined + "'");
     }
 
     return {
@@ -272,23 +278,27 @@ function lookupCallbackAction (route, action) {
 
       return {
         controller: function (req, res, options, next) {
+          var m;
+
           // enum all HTTP methods
-          for (var m in httpMethods) {
-            if (! httpMethods.hasOwnProperty(m)) {
-              continue;
-            }
+          for (m in httpMethods) {
+            if (httpMethods.hasOwnProperty(m)) {
+              if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
+                func = module[m]
+		  || errorFunction(route, 
+				   "invalid definition for " + m + " action in action controller module '" 
+				     + action.controller + "'");
 
-            if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
-              func = module[m] || 
-                     errorFunction(route, "Invalid definition for " + m + " action in action controller module '" + action.controller + "'");
-
-              return func(req, res, options, next); 
+                return func(req, res, options, next); 
+              }
             }
           }
 
           if (module.hasOwnProperty('do')) {
-            func = module['do'] || 
-                   errorFunction(route, "Invalid definition for do action in action controller module '" + action.controller + "'");
+            func = module['do']
+	      || errorFunction(route,
+			       "invalid definition for do action in action controller module '"
+			         + action.controller + "'");
 
             return func(req, res, options, next);
           }
@@ -299,12 +309,16 @@ function lookupCallbackAction (route, action) {
         methods: action.methods || exports.ALL_METHODS
       };
     }
-    catch (err) {
-      if (! ExistsCache[action.controller]) {
-        return notImplementedFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+    catch (err1) {
+      if (! moduleExists(action.controller)) {
+        return notImplementedFunction(route, 
+				      "cannot load/execute action controller module '" 
+				        + action.controller + ": " + String(err1));
       }
 
-      return errorFunction(route, "cannot load/execute action controller module '" + action.controller + ": " + String(err));
+      return errorFunction(route, 
+			   "cannot load/execute action controller module '" 
+			     + action.controller + ": " + String(err1));
     }
   }
 
@@ -315,6 +329,7 @@ function lookupCallbackAction (route, action) {
       controller: function (req, res, options, next) {
         var module;
         var path;
+	var efunc;
 
         // determine path
         if (req.hasOwnProperty('suffix')) {
@@ -329,36 +344,47 @@ function lookupCallbackAction (route, action) {
           require(path);
         }
         catch (err) {
-          if (! ExistsCache[path]) {
-            return notImplementedFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+	  efunc = errorFunction;
+
+          if (! moduleExists(path)) {
+	    efunc = notImplementedFunction;
           }
 
-          return errorFunction(route, "cannot load prefix controller: " + String(err))(req, res, options, next);
+          return efunc(route, "cannot load prefix controller: " + String(err))(
+                   req, res, options, next);
         }
 
         try {
+          var m;
+
           // enum all HTTP methods
-          for (var m in httpMethods) {
-            if (! httpMethods.hasOwnProperty(m)) {
-              continue;
-            }
+          for (m in httpMethods) {
+            if (httpMethods.hasOwnProperty(m)) {
+              if (req.requestType === httpMethods[m] && module.hasOwnProperty(m)) {
+                func = module[m]
+		  || errorFunction(route,
+				   "Invalid definition for " + m + " action in prefix controller '"
+				     + action.prefixController + "'");
 
-            if (req.requestType == httpMethods[m] && module.hasOwnProperty(m)) {
-              func = module[m] || 
-                     errorFunction(route, "Invalid definition for " + m + " action in prefix controller '" + action.prefixController + "'");
-
-              return func(req, res, options, next);
+                return func(req, res, options, next);
+              }
             }
           }
   
           if (module.hasOwnProperty('do')) {
-            func = module['do'] || 
-                   errorFunction(route, "Invalid definition for do action in prefix controller '" + action.prefixController + "'");
+            func = module['do']
+	      || errorFunction(route, 
+			       "Invalid definition for do action in prefix controller '"
+			         + action.prefixController + "'");
+
             return func(req, res, options, next);
           }
         }
-        catch (err) {
-          return errorFunction(route, "Cannot load/execute prefix controller '" + action.prefixController + "': " + String(err))(req, res, options, next);
+        catch (err2) {
+          return errorFunction(route, 
+			       "Cannot load/execute prefix controller '"
+			         + action.prefixController + "': " + String(err2))(
+                   req, res, options, next);
         }
 
         next();
@@ -428,7 +454,7 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
   var ok;
 
   part = parts[pos];
-  if (part == undefined) {
+  if (part === undefined) {
     // otherwise we'll get an exception below
     part = '';
   }
@@ -532,15 +558,20 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   var cur;
   var i;
   var k;
+  var newUrlParameters;
+  var parameter;
+  var match;
   var result = [];
 
   if (routes.hasOwnProperty('exact')) {
     for (k in routes.exact) {
       if (routes.exact.hasOwnProperty(k)) {
+        newUrlParameters = urlParameters.shallowCopy;
+
         cur = path + "/" + k.replace(/([\.\+\*\?\^\$\(\)\[\]])/g, "\\$1");
         result = result.concat(flattenRouting(routes.exact[k],
                                               cur,
-                                              urlParameters.shallowCopy,
+                                              newUrlParameters,
                                               depth + 1,
                                               false));
       }
@@ -549,14 +580,14 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 
   if (routes.hasOwnProperty('parameters')) {
     for (i = 0;  i < routes.parameters.length;  ++i) {
-      var parameter = routes.parameters[i];
-      var newUrlParameters = urlParameters.shallowCopy;
-      var match;
+      parameter = routes.parameters[i];
+      newUrlParameters = urlParameters.shallowCopy;
 
       if (parameter.hasOwnProperty('constraint')) {
         var constraint = parameter.constraint;
+        var pattern = /\/.*\//;
 
-        if (/\/.*\//.test(constraint)) {
+        if (pattern.test(constraint)) {
           match = "/" + constraint.substr(1, constraint.length - 2);
         }
         else {
@@ -778,19 +809,24 @@ function getErrorMessage (code) {
 
 function getJsonBody (req, res, code) {
   var body;
+  var err;
 
   try {
     body = JSON.parse(req.requestBody || "{}") || {};
   }
-  catch (err) {
-    exports.resultBad(req, res, exports.ERROR_HTTP_CORRUPTED_JSON, err);
+  catch (err1) {
+    exports.resultBad(req, res, arangodb.ERROR_HTTP_CORRUPTED_JSON, err1);
     return undefined;
   }
 
   if (! body || ! (body instanceof Object)) {
     if (code === undefined) {
-      code = exports.ERROR_HTTP_CORRUPTED_JSON;
+      code = arangodb.ERROR_HTTP_CORRUPTED_JSON;
     }
+
+    err = new internal.ArangoError();
+    err.errorNum = code;
+    err.errorMessage = "expecting a valid JSON object as body";
 
     exports.resultBad(req, res, code, err);
     return undefined;
@@ -805,7 +841,7 @@ function getJsonBody (req, res, code) {
 /// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum},
 ///                          @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
 ///
-/// The functions generates an error response. The response body is an array
+/// The function generates an error response. The response body is an array
 /// with an attribute @LIT{errorMessage} containing the error message
 /// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code} containing
 /// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and @LIT{errorMessage}
@@ -815,6 +851,7 @@ function getJsonBody (req, res, code) {
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
   var i;
+  var msg;
 
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
@@ -826,6 +863,13 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
     errorNum = httpReturnCode;
   }
   
+  if (errorMessage === undefined || errorMessage === null) {
+    msg = getErrorMessage(errorNum);
+  }
+  else {
+    msg = String(errorMessage);
+  }
+
   var result = {};
 
   if (keyvals !== undefined) {
@@ -836,10 +880,10 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
     }
   }
 
-  result["error"]        = true;
-  result["code"]         = httpReturnCode;
-  result["errorNum"]     = errorNum;
-  result["errorMessage"] = errorMessage;
+  result.error        = true;
+  result.code         = httpReturnCode;
+  result.errorNum     = errorNum;
+  result.errorMessage = msg;
   
   res.body = JSON.stringify(result);
 
@@ -1066,7 +1110,8 @@ function firstRouting (type, parts) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function badParameter (req, res, name) {
-  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, "invalid value for parameter '" + name + "'");
+  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, 
+              "invalid value for parameter '" + name + "'");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1074,7 +1119,7 @@ function badParameter (req, res, name) {
 ///
 /// @FUN{actions.resultOk(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
 ///
-/// The functions defines a response. @FA{code} is the status code to
+/// The function defines a response. @FA{code} is the status code to
 /// return. @FA{result} is the result object, which will be returned as JSON
 /// object in the body. @LIT{headers} is an array of headers to returned.
 /// The function adds the attribute @LIT{error} with value @LIT{false}
@@ -1105,30 +1150,23 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 ///
 /// @FUN{actions.resultBad(@FA{req}, @FA{res}, @FA{error-code}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
-  if (msg === undefined || msg === null) {
-    msg = getErrorMessage(code);
-  }
-  else {
-    msg = String(msg);
-  }
-
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error for not found 
 ///
-/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
+/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{code}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultNotFound (req, res, msg, headers) {
-  resultError(req, res, exports.HTTP_NOT_FOUND, exports.ERROR_HTTP_NOT_FOUND, String(msg), headers);
+function resultNotFound (req, res, code, msg, headers) {
+  resultError(req, res, exports.HTTP_NOT_FOUND, code, msg, headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1136,15 +1174,15 @@ function resultNotFound (req, res, msg, headers) {
 ///
 /// @FUN{actions.resultNotImplemented(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
   resultError(req, 
               res,
               exports.HTTP_NOT_IMPLEMENTED,
-              exports.ERROR_NOT_IMPLEMENTED,
-              String(msg),
+              arangodb.ERROR_NOT_IMPLEMENTED,
+              msg,
               headers);
 }
 
@@ -1153,12 +1191,13 @@ function resultNotImplemented (req, res, msg, headers) {
 ///
 /// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
   resultError(req, res,
-              exports.HTTP_METHOD_NOT_ALLOWED, exports.ERROR_HTTP_METHOD_NOT_ALLOWED,
+              exports.HTTP_METHOD_NOT_ALLOWED,
+	      arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
               "Unsupported method",
               headers);  
 }
@@ -1168,7 +1207,7 @@ function resultUnsupported (req, res, headers) {
 ///
 /// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, destination, headers) {
@@ -1197,7 +1236,7 @@ function resultPermanentRedirect (req, res, destination, headers) {
 ///
 /// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{destination}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, destination, headers) {
@@ -1279,11 +1318,11 @@ function resultCursor (req, res, cursor, code, options) {
   };
 
   if (cursorId) {
-    result["id"] = cursorId;
+    result.id = cursorId;
   }
     
   if (hasCount) {
-    result["count"] = count;
+    result.count = count;
   }
 
   if (code === undefined) {
@@ -1298,19 +1337,19 @@ function resultCursor (req, res, cursor, code, options) {
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
   if (collection === undefined) {
     resultError(req, res,
-                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
                 headers);
   }
   else {
     resultError(req, res,
-                exports.HTTP_NOT_FOUND, exports.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
                 "unknown collection '" + collection + "'", headers);
   }
 }
@@ -1320,25 +1359,25 @@ function collectionNotFound (req, res, collection, headers) {
 ///
 /// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
   if (collection === undefined) {
     resultError(req, res,
-                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
                 "expecting a collection name or identifier",
                 headers);
   }
   else if (index === undefined) {
     resultError(req, res,
-                exports.HTTP_BAD, exports.ERROR_HTTP_BAD_PARAMETER,
+                exports.HTTP_BAD, arangodb.ERROR_HTTP_BAD_PARAMETER,
                 "expecting an index identifier",
                 headers);
   }
   else {
     resultError(req, res,
-                exports.HTTP_NOT_FOUND, exports.ERROR_ARANGO_INDEX_NOT_FOUND,
+                exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_INDEX_NOT_FOUND,
                 "unknown index '" + index + "'", headers);
   }
 }
@@ -1348,24 +1387,24 @@ function indexNotFound (req, res, collection, index, headers) {
 ///
 /// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers})}
 ///
-/// The functions generates an error response.
+/// The function generates an error response.
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers) {
-  if (err instanceof ArangoError) {
+  if (err instanceof internal.ArangoError) {
     var num = err.errorNum;
     var msg = err.errorMessage;
     var code = exports.HTTP_BAD;
 
     switch (num) {
-      case exports.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
+      case arangodb.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
     }
 
     resultError(req, res, code, num, msg, headers);
   }
   else {
     resultError(req, res,
-                exports.HTTP_SERVER_ERROR, exports.ERROR_HTTP_SERVER_ERROR,
+                exports.HTTP_SERVER_ERROR, arangodb.ERROR_HTTP_SERVER_ERROR,
                 String(err),
                 headers);
   }
@@ -1548,15 +1587,6 @@ exports.HTTP_SERVER_ERROR        = 500;
 exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
-
-// copy error codes
-var name;
-
-for (name in internal.errors) {
-  if (internal.errors.hasOwnProperty(name)) {
-    exports[name] = internal.errors[name].code;
-  }
-}
 
 // load routing
 reloadRouting();

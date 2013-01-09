@@ -52,6 +52,7 @@
     "ERROR_ARANGO_DATAFILE_ALREADY_EXISTS" : { "code" : 1106, "message" : "cannot create/rename datafile because it already exists" }, 
     "ERROR_ARANGO_DATABASE_LOCKED" : { "code" : 1107, "message" : "database is locked" }, 
     "ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS" : { "code" : 1108, "message" : "cannot create/rename collection because directory already exists" }, 
+    "ERROR_ARANGO_MSYNC_FAILED"    : { "code" : 1109, "message" : "msync failed" }, 
     "ERROR_ARANGO_CONFLICT"        : { "code" : 1200, "message" : "conflict" }, 
     "ERROR_ARANGO_WRONG_VOCBASE_PATH" : { "code" : 1201, "message" : "wrong path for database" }, 
     "ERROR_ARANGO_DOCUMENT_NOT_FOUND" : { "code" : 1202, "message" : "document not found" }, 
@@ -71,6 +72,8 @@
     "ERROR_ARANGO_DOCUMENT_TOO_LARGE" : { "code" : 1216, "message" : "document too large" }, 
     "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" }, 
     "ERROR_ARANGO_COLLECTION_TYPE_INVALID" : { "code" : 1218, "message" : "collection type invalid" }, 
+    "ERROR_ARANGO_VALIDATION_FAILED" : { "code" : 1219, "message" : "validator failed" }, 
+    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parser failed" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" }, 
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" }, 
@@ -133,7 +136,7 @@
     "WARNING_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING" : { "code" : 3411, "message" : "bitarray index remove failure - item missing in index" }, 
     "ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE" : { "code" : 3413, "message" : "bitarray index insert failure - document attribute value unsupported in index" }, 
     "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES" : { "code" : 3415, "message" : "bitarray index creation failure - one or more index attributes are duplicated." }, 
-    "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES" : { "code" : 3417, "message" : "bitarray index creation failure - one or more index attribute values are duplicated." }, 
-};
+    "ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES" : { "code" : 3417, "message" : "bitarray index creation failure - one or more index attribute values are duplicated." }
+  };
 }());
 

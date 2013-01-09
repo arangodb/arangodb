@@ -29,6 +29,8 @@ var internal = require("internal");
 
 internal.db._drop("UnitTestsImportJson1");
 internal.db._drop("UnitTestsImportJson2");
+internal.db._drop("UnitTestsImportJson3");
+internal.db._drop("UnitTestsImportJson4");
 internal.db._drop("UnitTestsImportCsv1");
 internal.db._drop("UnitTestsImportCsv2");
 internal.db._drop("UnitTestsImportTsv1");

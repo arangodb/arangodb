@@ -42,7 +42,7 @@
 /// @brief number of headers per block
 ////////////////////////////////////////////////////////////////////////////////
 
-#define NUMBER_HEADERS_PER_BLOCK (1000000)
+#define NUMBER_HEADERS_PER_BLOCK (1000)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types

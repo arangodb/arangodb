@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, arango, db, edges, ModuleCache, Module */
+/*global require, arango, db, edges, Module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -76,6 +76,8 @@ function ArangoError (error) {
 (function () {
   var internal = require("internal");
 
+  internal.ArangoError = ArangoError;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an error
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,11 +131,11 @@ function ArangoError (error) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/arangosh"] = new Module("/arangosh");
+Module.prototype.ModuleCache["/arangosh"] = new Module("/arangosh");
 
 (function () {
   var internal = require("internal");
-  var client = ModuleCache["/arangosh"].exports;
+  var client = Module.prototype.ModuleCache["/arangosh"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -387,17 +389,21 @@ function help () {
   var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief be quiet
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.ARANGO_QUIET = ARANGO_QUIET;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief log function
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.log = function (level, msg) {
     internal.output(level, ": ", msg, "\n");
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the module cache of the server
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.flushServerModules = function () {
+    if (typeof arango !== 'undefined') {
+      arango.POST("/_admin/modules/flush", "");
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -680,7 +686,7 @@ function ArangoQueryCursor (database, data) {
 
   SB.ArangoStatement.prototype.parse = function () {
     var body = {
-      "query" : this._query,
+      "query" : this._query
     };
 
     var requestResult = this._database._connection.POST(
@@ -699,7 +705,7 @@ function ArangoQueryCursor (database, data) {
 
   SB.ArangoStatement.prototype.explain = function () {
     var body = {
-      "query" : this._query,
+      "query" : this._query
     };
 
     var requestResult = this._database._connection.POST(
@@ -1724,7 +1730,7 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document in the collection, identified by its id
+/// @brief removes a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.remove = function (id, overwrite) {
@@ -1779,7 +1785,26 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document in the collection, identified by its id
+/// @brief removes documents in the collection, identified by an example
+////////////////////////////////////////////////////////////////////////////////
+
+  // TODO this is not optiomal, there should a HTTP call handling everything on
+  //      the server
+
+  ArangoCollection.prototype.removeByExample = function (example, waitForSync) {
+    var documents;
+
+    documents = this.byExample(example);
+
+    while (documents.hasNext()) {
+      var document = documents.next();
+
+      this.remove(document, true, waitForSync);
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaces a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype.replace = function (id, data, overwrite) { 

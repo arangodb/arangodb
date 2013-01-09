@@ -11,5 +11,6 @@ content-type: application/json
   "id": 70109828,
   "journalSize": 134217728,
   "status": 3,
+  "type": 2,
   "error": false
 }

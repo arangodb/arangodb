@@ -150,9 +150,9 @@ namespace triagens {
       }
       parser._dataAdd = this;
 
-      char buffer[10240];
+      char buffer[16384];
 
-      while (!_hasError) {
+      while (! _hasError) {
         v8::HandleScope scope;
 
         ssize_t n = read(fd, buffer, sizeof(buffer));
@@ -212,9 +212,10 @@ namespace triagens {
         return false;
       }
 
-      char buffer[10240];
+      char buffer[16384];
+      bool isArray = false;
 
-      while (!_hasError) {
+      while (! _hasError) {
         ssize_t n = read(fd, buffer, sizeof(buffer));
 
         if (n < 0) {
@@ -225,17 +226,28 @@ namespace triagens {
           break;
         }
 
+        if (_outputBuffer.length() == 0) {
+          // detect the import file format (single lines with individual JSON objects
+          // or a JSON array with all documents)
+          const string firstChar = StringUtils::lTrim(string(buffer, n), "\r\n\t\f\b ").substr(0, 1);
+          isArray = (firstChar == "[");
+        }
+
         _outputBuffer.appendText(buffer, n);
 
         if (_outputBuffer.length() > _maxUploadSize) {
+          if (isArray) {
+            _errorMessage = "import file is too big.";
+            return false;
+          }
+ 
           // send all data before last '\n'
-
           const char* first = _outputBuffer.c_str();
           char* pos = (char*) memrchr(first, '\n', _outputBuffer.length());
 
           if (pos != 0) {
             size_t len = pos - first + 1;
-            sendJsonBuffer(first, len);
+            sendJsonBuffer(first, len, isArray);
             _outputBuffer.erase_front(len);
           }
 
@@ -243,7 +255,7 @@ namespace triagens {
       }
 
       if (_outputBuffer.length() > 0) {
-        sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length());
+        sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isArray);
       }
 
       _numberLines = _numberError + _numberOk;
@@ -253,7 +265,7 @@ namespace triagens {
       }      
 
       _outputBuffer.clear();
-      return !_hasError;
+      return ! _hasError;
     }
 
 
@@ -423,13 +435,19 @@ namespace triagens {
       _outputBuffer.clear();
     }
 
-    void ImportHelper::sendJsonBuffer (char const* str, size_t len) {
+    void ImportHelper::sendJsonBuffer (char const* str, size_t len, bool isArray) {
       if (_hasError) {
         return;
       }
       
       map<string, string> headerFields;
-      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
+      SimpleHttpResult* result;
+      if (isArray) {
+        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=array&" + getCollectionUrlPart(), str, len, headerFields);
+      }
+      else {
+        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart(), str, len, headerFields);
+      }
 
       handleResult(result);
     }

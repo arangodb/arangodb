@@ -1,11 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
-/*global module, ModuleCache, $ */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*global $ */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB web browser shell
@@ -14,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2012-2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,7 +25,8 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -57,8 +52,31 @@ function Module (id) {
   this.definition = null;
 }
 
-var ModuleCache = {};
-var module = ModuleCache["/"] = new Module("/");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module cache
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.ModuleCache = {};
+Module.prototype.ModuleCache["/internal"] = new Module("/internal");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoShell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global module
+////////////////////////////////////////////////////////////////////////////////
+
+var module = Module.prototype.ModuleCache["/"] = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -137,6 +155,23 @@ Module.prototype.normalise = function (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a new module definition
+////////////////////////////////////////////////////////////////////////////////
+
+Module.prototype.define = function (path, definition) {
+
+  // first get rid of any ".." and "."
+  path = this.normalise(path);
+
+  // check if you already know the module, return the exports
+  if (! Module.prototype.ModuleCache.hasOwnProperty(path)) {
+    Module.prototype.ModuleCache[path] = new Module(path);
+  }
+
+  Module.prototype.ModuleCache[path].definition = definition;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a definition or creates a new module descriptor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -147,11 +182,11 @@ Module.prototype.require = function (path) {
   path = this.normalise(path);
 
   // check if you already know the module, return the exports
-  if (ModuleCache.hasOwnProperty(path)) {
-    module = ModuleCache[path];
+  if (Module.prototype.ModuleCache.hasOwnProperty(path)) {
+    module = Module.prototype.ModuleCache[path];
   }
   else {
-    module = ModuleCache[path] = new Module(path);
+    module = Module.prototype.ModuleCache[path] = new Module(path);
   }
 
   if (module.definition !== null) {
@@ -163,21 +198,22 @@ Module.prototype.require = function (path) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a new module definition
+/// @brief global require function
 ////////////////////////////////////////////////////////////////////////////////
 
-Module.prototype.define = function (path, definition) {
+function require (path) {
+  return module.require(path);
+}
 
-  // first get rid of any ".." and "."
-  path = this.normalise(path);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global print function
+////////////////////////////////////////////////////////////////////////////////
 
-  // check if you already know the module, return the exports
-  if (! ModuleCache.hasOwnProperty(path)) {
-    ModuleCache[path] = new Module(path);
-  }
+function print () {
+  var internal = require("internal");
 
-  ModuleCache[path].definition = definition;
-};
+  internal.print.apply(internal.print, arguments);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -252,7 +288,7 @@ ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
 /// @brief executes a delete request
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoConnection.prototype.delete = function (url) {
+ArangoConnection.prototype._delete = function (url) {
   var msg = null; 
 
   $.ajax({
@@ -278,8 +314,7 @@ ArangoConnection.prototype.delete = function (url) {
   return msg;  
 };
 
-
-ArangoConnection.prototype.DELETE = ArangoConnection.prototype.delete;
+ArangoConnection.prototype.DELETE = ArangoConnection.prototype._delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a post request
@@ -416,19 +451,36 @@ var arango = new ArangoConnection();
 /// @brief module cache
 ////////////////////////////////////////////////////////////////////////////////
 
-ModuleCache["/internal"] = new Module("/internal");
-
 (function () {
-  var internal = ModuleCache["/internal"].exports;
-
-  internal.start_pager = function() {};
-  internal.stop_pager = function() {};
+  var internal = Module.prototype.ModuleCache["/internal"].exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global output buffer
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.browserOutputBuffer = "";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief escapes HTML
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.escapeHTML = (function() {
+    var MAP = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&#34;',
+      "'": '&#39;',
+      "\n": '<br>',
+      " ": '&nbsp;'
+    };
+
+    var repl = function(c) { return MAP[c]; };
+
+    return function(s) {
+      return s.replace(/[&<>'"\n ]/g, repl); //'
+    };
+  }()); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs text to shell window
@@ -459,7 +511,7 @@ ModuleCache["/internal"] = new Module("/internal");
         text = String(value);
       }
 
-      internal.browserOutputBuffer += escapeHTML(text);
+      internal.browserOutputBuffer += internal.escapeHTML(text);
     }
   };
 
@@ -484,50 +536,8 @@ ModuleCache["/internal"] = new Module("/internal");
 }());
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes HTML
-////////////////////////////////////////////////////////////////////////////////
-
-var escapeHTML = (function() {
-                    var MAP = {
-                      '&': '&amp;',
-                      '<': '&lt;',
-                      '>': '&gt;',
-                      '"': '&#34;',
-                      "'": '&#39;',
-                      "\n": '<br>',
-                      " ": '&nbsp;'
-                    };
-
-                    var repl = function(c) { return MAP[c]; };
-
-                    return function(s) {
-                      return s.replace(/[&<>'"\n ]/g, repl); //'
-                    };
-                  }()); 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global require function
-////////////////////////////////////////////////////////////////////////////////
-
-function require (path) {
-  return module.require(path);
-}
-
-function ARANGO_QUIET (path) {
-  return false; 
-}
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
