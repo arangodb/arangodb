@@ -348,10 +348,13 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
   n = context->_currentScopes._length;
   assert(n > 0);
 
+  printf("oreste:%s:%d:[%d]\n",__FILE__,__LINE__,n);
+
   while (n > 0) {
     TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&context->_currentScopes, --n);
     assert(scope);
 
+  printf("oreste:%s:%d:[%s]\n",__FILE__,__LINE__,name);
     if (TRI_LookupByKeyAssociativePointer(&scope->_variables, (void*) name)) {
       // duplicate variable
       return true;
@@ -375,7 +378,8 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
                               TRI_aql_node_t* const definingNode) {
   TRI_aql_variable_t* variable;
   TRI_aql_scope_t* scope;
-  
+  void* result;
+
   assert(context);
   assert(name);
 
@@ -389,8 +393,10 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   }
 
   scope = CurrentScope(context);
-  assert(! TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
 
+  result = TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false);
+  assert(result != NULL);
+ 
   return true;
 }
 

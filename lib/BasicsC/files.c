@@ -847,6 +847,14 @@ int TRI_VerifyLockFile (char const* filename) {
   }
 
   fd = TRI_OPEN(filename, O_RDONLY);
+  if (fd < 0) {
+    // this method if checking whether or not the database is locked is not suitable with the manner
+    // in which it is coded.
+    // windows assigns ownership of the file to the process for exclusive use
+    // the file exists, yet we can not open it, so being here we can only assume that the
+    // database is locked.
+    return TRI_ERROR_NO_ERROR;
+  }
   n = TRI_READ(fd, buffer, sizeof(buffer));
   TRI_CLOSE(fd);
 
@@ -992,7 +1000,11 @@ int TRI_DestroyLockFile (char const* filename) {
 
   
   fd = TRI_OPEN(filename, O_RDWR);
-
+  
+  if (fd < 0) {
+    return false;
+  }
+ 
   // ..........................................................................
   // TODO: Use windows LockFileEx to determine if file can be locked
   // ..........................................................................
