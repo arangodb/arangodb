@@ -106,7 +106,7 @@ GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
 
 bool GeneralClientConnection::connect () {
   disconnect();
-
+  
   if (_numConnectRetries < _connectRetries + 1) {
     _numConnectRetries++;
   }
@@ -119,6 +119,8 @@ bool GeneralClientConnection::connect () {
   if (!_isConnected) {
     return false;
   }
+
+  _numConnectRetries = 0;
 
   return true;
 }
