@@ -63,6 +63,7 @@ ERROR_ARANGO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot 
 ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
 ERROR_ARANGO_DATABASE_LOCKED,1107,"database is locked","Will be raised when the database is locked by a different process."
 ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
+ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -89,6 +90,8 @@ ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,1215,"cap constraint already defined
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
 ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
 ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
+ERROR_ARANGO_VALIDATION_FAILED,1219,"validator failed","Will be raised when the validation of an attribute of a structure failed."
+ERROR_ARANGO_PARSER_FAILED,1220,"parser failed","Will be raised when the parsing of an attribute of a structure failed."
 
 ################################################################################
 ## ArangoDB storage errors

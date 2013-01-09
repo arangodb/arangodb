@@ -91,6 +91,8 @@ extern "C" {
 /// - 1108: @LIT{cannot create/rename collection because directory already exists}
 ///   Will be raised when the collection cannot be created because a directory
 ///   of the same name already exists.
+/// - 1109: @LIT{msync failed}
+///   Will be raised when the system call msync failed.
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -135,6 +137,10 @@ extern "C" {
 ///   status.
 /// - 1218: @LIT{collection type invalid}
 ///   Will be raised when an invalid collection type is used in a request.
+/// - 1219: @LIT{validator failed}
+///   Will be raised when the validation of an attribute of a structure failed.
+/// - 1220: @LIT{parser failed}
+///   Will be raised when the parsing of an attribute of a structure failed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1500: @LIT{query killed}
@@ -697,6 +703,16 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS              (1108)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1109: ERROR_ARANGO_MSYNC_FAILED
+///
+/// msync failed
+///
+/// Will be raised when the system call msync failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_MSYNC_FAILED                                     (1109)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT
 ///
 /// conflict
@@ -889,6 +905,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID                          (1218)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1219: ERROR_ARANGO_VALIDATION_FAILED
+///
+/// validator failed
+///
+/// Will be raised when the validation of an attribute of a structure failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_VALIDATION_FAILED                                (1219)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1220: ERROR_ARANGO_PARSER_FAILED
+///
+/// parser failed
+///
+/// Will be raised when the parsing of an attribute of a structure failed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_PARSER_FAILED                                    (1220)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL

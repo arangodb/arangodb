@@ -249,7 +249,7 @@ function ahuacatlGeoTestSuite () {
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN([ ], 0, 0, 10)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN({ }, 0, 0, 10)"); } ));
       assertEqual(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, getErrorCode(function() { AHUACATL_RUN("RETURN WITHIN(@name, 0, 0, 10)"); } ));
-    },
+    }
 
   }
 }

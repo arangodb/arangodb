@@ -48,6 +48,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DATAFILE_ALREADY_EXISTS, "cannot create/rename datafile because it already exists");
   REG_ERROR(ERROR_ARANGO_DATABASE_LOCKED, "database is locked");
   REG_ERROR(ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory already exists");
+  REG_ERROR(ERROR_ARANGO_MSYNC_FAILED, "msync failed");
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_WRONG_VOCBASE_PATH, "wrong path for database");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
@@ -67,6 +68,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
+  REG_ERROR(ERROR_ARANGO_VALIDATION_FAILED, "validator failed");
+  REG_ERROR(ERROR_ARANGO_PARSER_FAILED, "parser failed");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");

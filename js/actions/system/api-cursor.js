@@ -26,20 +26,21 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-var actions = require("org/arangodb/actions");
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoAPI
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor and return the first results
@@ -123,7 +124,7 @@ var actions = require("org/arangodb/actions");
 
 function POST_api_cursor(req, res) {
   if (req.suffix.length != 0) {
-    actions.resultNotFound(req, res, actions.ERROR_HTTP_NOT_FOUND);
+    actions.resultNotFound(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
@@ -143,7 +144,7 @@ function POST_api_cursor(req, res) {
                           (json.batchSize == undefined));  
   }
   else {
-    actions.resultBad(req, res, actions.ERROR_QUERY_EMPTY);
+    actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
     return;
   }
    
@@ -196,9 +197,9 @@ function POST_api_cursor(req, res) {
 /// @verbinclude api-cursor-invalid-cursor-identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-function PUT_api_cursor(req, res) {
+function PUT_api_cursor (req, res) {
   if (req.suffix.length != 1) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER);
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -206,7 +207,7 @@ function PUT_api_cursor(req, res) {
   var cursor = CURSOR(cursorId);
 
   if (! (cursor instanceof ArangoCursor)) {
-    actions.resultBad(req, res, actions.ERROR_CURSOR_NOT_FOUND);
+    actions.resultBad(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
     return;
   }
     
@@ -253,13 +254,13 @@ function PUT_api_cursor(req, res) {
 
 function DELETE_api_cursor(req, res) {
   if (req.suffix.length != 1) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER);
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
   var cursorId = decodeURIComponent(req.suffix[0]);
   if (! DELETE_CURSOR(cursorId)) {
-    actions.resultNotFound(req, res, actions.ERROR_CURSOR_NOT_FOUND);
+    actions.resultNotFound(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
     return;
   }
 

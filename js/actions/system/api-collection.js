@@ -1,3 +1,13 @@
+/*jslint indent: 2,
+         nomen: true,
+         maxlen: 100,
+         sloppy: true,
+         vars: true,
+         white: true,
+         plusplus: true,
+         stupid: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief querying and managing collections
 ///
@@ -25,9 +35,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  var actions = require("org/arangodb/actions");
-  var API = "_api/collection";
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
+
+var API = "_api/collection";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -42,36 +53,36 @@
 /// @brief collection representation
 ////////////////////////////////////////////////////////////////////////////////
 
-  function CollectionRepresentation (collection, showProperties, showCount, showFigures) {
-    var result = {};
+function collectionRepresentation (collection, showProperties, showCount, showFigures) {
+  var result = {};
 
-    result.id = collection._id;
-    result.name = collection.name();
+  result.id = collection._id;
+  result.name = collection.name();
 
-    if (showProperties) {
-      var properties = collection.properties();
+  if (showProperties) {
+    var properties = collection.properties();
 
-      result.waitForSync = properties.waitForSync;
-      result.journalSize = properties.journalSize;
-    }
-
-    if (showCount) {
-      result.count = collection.count();
-    }
-
-    if (showFigures) {
-      var figures = collection.figures();
-
-      if (figures) {
-        result.figures = figures;
-      }
-    }
-
-    result.status = collection.status();
-    result.type = collection.type();
-
-    return result;
+    result.waitForSync = properties.waitForSync;
+    result.journalSize = properties.journalSize;
   }
+
+  if (showCount) {
+    result.count = collection.count();
+  }
+
+  if (showFigures) {
+    var figures = collection.figures();
+
+    if (figures) {
+      result.figures = figures;
+    }
+  }
+
+  result.status = collection.status();
+  result.type = collection.type();
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -115,79 +126,79 @@
 ///
 /// - @LIT{type} (optional, default is @LIT{2}): the type of the collection to
 ///   create. The following values for @FA{type} are valid:
-///   - @LIT{2}: document collections
-///   - @LIT{3}: edge collection
+///   - @LIT{2}: document collection
+///   - @LIT{3}: edges collection
 ///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-create-collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  function POST_api_collection (req, res) {
-    var body = actions.getJsonBody(req, res);
+function post_api_collection (req, res) {
+  var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    if (! body.hasOwnProperty("name")) {
-      actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
-                        "name must be non-empty");
-      return;
-    }
-
-    var name = body.name;
-    var parameter = { waitForSync : false };
-    var cid = undefined;
-    var type = ArangoCollection.TYPE_DOCUMENT;
-
-    if (body.hasOwnProperty("waitForSync")) {
-      parameter.waitForSync = body.waitForSync;
-    }
-
-    if (body.hasOwnProperty("journalSize")) {
-      parameter.journalSize = body.journalSize;
-    }
-
-    if (body.hasOwnProperty("isSystem")) {
-      parameter.isSystem = body.isSystem;
-    }
-
-    if (body.hasOwnProperty("_id")) {
-      cid = body._id;
-    }
-
-    if (body.hasOwnProperty("type")) {
-      type = body.type;
-    }
-
-    try {
-      var collection;
-
-      if (type == ArangoCollection.TYPE_EDGE) {
-        collection = internal.db._createEdgeCollection(name, parameter, cid);
-      }
-      else {
-        collection = internal.db._createDocumentCollection(name, parameter, cid);
-      }
-
-      var result = {};
-      var headers = {};
-
-      result.id = collection._id;
-      result.name = collection.name();
-      result.waitForSync = parameter.waitForSync;
-      result.status = collection.status();
-      result.type = collection.type();
-
-      headers.location = "/" + API + "/" + collection._id;
-
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+  if (body === undefined) {
+    return;
   }
+
+  if (! body.hasOwnProperty("name")) {
+    actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
+		      "name must be non-empty");
+    return;
+  }
+
+  var name = body.name;
+  var parameter = { waitForSync : false };
+  var type = arangodb.ArangoCollection.TYPE_DOCUMENT;
+  var cid;
+
+  if (body.hasOwnProperty("waitForSync")) {
+    parameter.waitForSync = body.waitForSync;
+  }
+
+  if (body.hasOwnProperty("journalSize")) {
+    parameter.journalSize = body.journalSize;
+  }
+
+  if (body.hasOwnProperty("isSystem")) {
+    parameter.isSystem = body.isSystem;
+  }
+
+  if (body.hasOwnProperty("_id")) {
+    cid = body._id;
+  }
+
+  if (body.hasOwnProperty("type")) {
+    type = body.type;
+  }
+
+  try {
+    var collection;
+
+    if (type === arangodb.ArangoCollection.TYPE_EDGE) {
+      collection = arangodb.db._createEdgeCollection(name, parameter, cid);
+    }
+    else {
+      collection = arangodb.db._createDocumentCollection(name, parameter, cid);
+    }
+
+    var result = {};
+    var headers = {};
+
+    result.id = collection._id;
+    result.name = collection.name();
+    result.waitForSync = parameter.waitForSync;
+    result.status = collection.status();
+    result.type = collection.type();
+
+    headers.location = "/" + API + "/" + collection._id;
+
+    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
@@ -208,23 +219,24 @@
 /// @verbinclude api-collection-all-collections
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_api_collections (req, res) {
-    var list = [];
-    var names = {};
-    var collections = internal.db._collections();
+function get_api_collections (req, res) {
+  var i;
+  var list = [];
+  var names = {};
+  var collections = arangodb.db._collections();
 
-    for (var i = 0;  i < collections.length;  ++i) {
-      var collection = collections[i];
-      var rep = CollectionRepresentation(collection);
+  for (i = 0;  i < collections.length;  ++i) {
+    var collection = collections[i];
+    var rep = collectionRepresentation(collection);
 
-      list.push(rep);
-      names[rep.name] = rep;
-    }
-
-    var result = { collections : list, names : names };
-
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    list.push(rep);
+    names[rep.name] = rep;
   }
+
+  var result = { collections : list, names : names };
+
+  actions.resultOk(req, res, actions.HTTP_OK, result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a collection
@@ -332,93 +344,97 @@
 /// @verbinclude api-collection-get-collection-figures
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_api_collection (req, res) {
+function get_api_collection (req, res) {
+  var headers;
+  var result;
+  var sub;
+
+  // .............................................................................
+  // /_api/collection
+  // .............................................................................
+
+  if (req.suffix.length === 0) {
+    get_api_collections(req, res);
+    return;
+  }
+
+  var name = decodeURIComponent(req.suffix[0]);
+  var id = parseInt(name,10) || name;
+  var collection = arangodb.db._collection(id);
+
+  if (collection === null) {
+    actions.collectionNotFound(req, res, name);
+    return;
+  }
+
+  // .............................................................................
+  // /_api/collection/<identifier>
+  // .............................................................................
+
+  if (req.suffix.length === 1) {
+    result = collectionRepresentation(collection, false, false, false);
+    headers = { location : "/" + API + "/" + collection._id };
+
+    actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+  }
+
+  else if (req.suffix.length === 2) {
+    sub = decodeURIComponent(req.suffix[1]);
 
     // .............................................................................
-    // /_api/collection
+    // /_api/collection/<identifier>/figures
     // .............................................................................
 
-    if (req.suffix.length === 0) {
-      GET_api_collections(req, res);
-      return;
-    }
-
-    var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = internal.db._collection(id);
-
-    if (collection === null) {
-      actions.collectionNotFound(req, res, name);
-      return;
-    }
-
-    // .............................................................................
-    // /_api/collection/<identifier>
-    // .............................................................................
-
-    if (req.suffix.length === 1) {
-      var result = CollectionRepresentation(collection, false, false, false);
-      var headers = { location : "/" + API + "/" + collection._id };
+    if (sub === "figures") {
+      result = collectionRepresentation(collection, true, true, true);
+      headers = { location : "/" + API + "/" + collection._id + "/figures" };
 
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
 
-    else if (req.suffix.length === 2) {
-      var sub = decodeURIComponent(req.suffix[1]);
+    // .............................................................................
+    // /_api/collection/<identifier>/count
+    // .............................................................................
 
-      // .............................................................................
-      // /_api/collection/<identifier>/figures
-      // .............................................................................
+    else if (sub === "count") {
+      result = collectionRepresentation(collection, true, true, false);
+      headers = { location : "/" + API + "/" + collection._id + "/count" };
 
-      if (sub === "figures") {
-        var result = CollectionRepresentation(collection, true, true, true);
-        var headers = { location : "/" + API + "/" + collection._id + "/figures" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-      }
-
-      // .............................................................................
-      // /_api/collection/<identifier>/count
-      // .............................................................................
-
-      else if (sub === "count") {
-        var result = CollectionRepresentation(collection, true, true, false);
-        var headers = { location : "/" + API + "/" + collection._id + "/count" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-      }
-
-      // .............................................................................
-      // /_api/collection/<identifier>/properties
-      // .............................................................................
-
-      else if (sub === "properties") {
-        var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + collection._id + "/properties" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-      }
-
-      // .............................................................................
-      // /_api/collection/<identifier>/parameter (DEPRECATED)
-      // .............................................................................
-
-      else if (sub === "parameter") {
-        var result = CollectionRepresentation(collection, true, false, false);
-        var headers = { location : "/" + API + "/" + collection._id + "/parameter" };
-
-        actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-      }
-
-      else {
-        actions.resultNotFound(req, res, "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
-      }
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
+
+    // .............................................................................
+    // /_api/collection/<identifier>/properties
+    // .............................................................................
+
+    else if (sub === "properties") {
+      result = collectionRepresentation(collection, true, false, false);
+      headers = { location : "/" + API + "/" + collection._id + "/properties" };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+
+    // .............................................................................
+    // /_api/collection/<identifier>/parameter (DEPRECATED)
+    // .............................................................................
+
+    else if (sub === "parameter") {
+      result = collectionRepresentation(collection, true, false, false);
+      headers = { location : "/" + API + "/" + collection._id + "/parameter" };
+
+      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
+    }
+
     else {
-      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expect GET /" + API + "/<collection-identifer>/<method>");
+      actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND, 
+			     "expecting one of the resources 'count', 'figures', 'properties', 'parameter'");
     }
   }
+  else {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
+		      "expect GET /" + API + "/<collection-identifer>/<method>");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
@@ -427,7 +443,8 @@
 ///
 /// @REST{PUT /_api/collection/@FA{collection-identifier}/load}
 ///
-/// Loads a collection into memory.  On success an object with the following
+/// Loads a collection into memory. On success an object with the following
+/// attributes is returned:
 ///
 /// - @LIT{id}: The identifier of the collection.
 ///
@@ -436,6 +453,10 @@
 /// - @LIT{count}: The number of documents inside the collection.
 ///
 /// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
 ///
 /// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
@@ -448,18 +469,18 @@
 /// @verbinclude api-collection-identifier-load
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_api_collection_load (req, res, collection) {
-    try {
-      collection.load();
+function put_api_collection_load (req, res, collection) {
+  try {
+    collection.load();
 
-      var result = CollectionRepresentation(collection, false, true, false);
+    var result = collectionRepresentation(collection, false, true, false);
 
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
@@ -470,13 +491,18 @@
 ///
 /// Removes a collection from memory. This call does not delete any documents.
 /// You can use the collection afterwards; in which case it will be loaded into
-/// memory, again. On success an object with the following
+/// memory, again. On success an object with the following attributes is
+/// returned:
 ///
 /// - @LIT{id}: The identifier of the collection.
 ///
 /// - @LIT{name}: The name of the collection.
 ///
 /// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
 ///
 /// If the @FA{collection-identifier} is missing, then a @LIT{HTTP 400} is
 /// returned.  If the @FA{collection-identifier} is unknown, then a @LIT{HTTP
@@ -487,18 +513,18 @@
 /// @verbinclude api-collection-identifier-unload
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_api_collection_unload (req, res, collection) {
-    try {
-      collection.unload();
+function put_api_collection_unload (req, res, collection) {
+  try {
+    collection.unload();
 
-      var result = CollectionRepresentation(collection);
+    var result = collectionRepresentation(collection);
 
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
@@ -514,18 +540,18 @@
 /// @verbinclude api-collection-identifier-truncate
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_api_collection_truncate (req, res, collection) {
-    try {
-      collection.truncate();
+function put_api_collection_truncate (req, res, collection) {
+  try {
+    collection.truncate();
 
-      var result = CollectionRepresentation(collection);
+    var result = collectionRepresentation(collection);
 
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, result);
   }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
@@ -548,29 +574,35 @@
 ///
 /// - @LIT{waitForSync}: The new value.
 ///
+/// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
+///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-identifier-properties-sync
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_api_collection_properties (req, res, collection) {
-    var body = actions.getJsonBody(req, res);
+function put_api_collection_properties (req, res, collection) {
+  var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    try {
-      collection.properties(body);
-
-      var result = CollectionRepresentation(collection, true);
-
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+  if (body === undefined) {
+    return;
   }
+
+  try {
+    collection.properties(body);
+
+    var result = collectionRepresentation(collection, true);
+
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
@@ -589,79 +621,86 @@
 ///
 /// - @LIT{name}: The new name of the collection.
 ///
+/// - @LIT{status}: The status of the collection as number.
+///
+/// - @LIT{type}: The collection type. Valid types are:
+///   - 2: document collection
+///   - 3: edges collection
+///
 /// @EXAMPLES
 ///
 /// @verbinclude api-collection-identifier-rename
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_api_collection_rename (req, res, collection) {
-    var body = actions.getJsonBody(req, res);
+function put_api_collection_rename (req, res, collection) {
+  var body = actions.getJsonBody(req, res);
 
-    if (body === undefined) {
-      return;
-    }
-
-    if (! body.hasOwnProperty("name")) {
-      actions.resultBad(req, res, actions.ERROR_ARANGO_ILLEGAL_NAME,
-                        "name must be non-empty");
-      return;
-    }
-
-    var name = body.name;
-
-    try {
-      collection.rename(name);
-
-      var result = CollectionRepresentation(collection);
-
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    }
-    catch (err) {
-      actions.resultException(req, res, err);
-    }
+  if (body === undefined) {
+    return;
   }
+
+  if (! body.hasOwnProperty("name")) {
+    actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
+		      "name must be non-empty");
+    return;
+  }
+
+  var name = body.name;
+
+  try {
+    collection.rename(name);
+
+    var result = collectionRepresentation(collection);
+
+    actions.resultOk(req, res, actions.HTTP_OK, result);
+  }
+  catch (err) {
+    actions.resultException(req, res, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_api_collection (req, res) {
-    if (req.suffix.length != 2) {
-      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expected PUT /" + API + "/<collection-identifer>/<action>");
-      return;
-    }
-
-    var name = decodeURIComponent(req.suffix[0]);
-    var id = parseInt(name) || name;
-    var collection = internal.db._collection(id);
-
-    if (collection === null) {
-      actions.collectionNotFound(req, res, name);
-      return;
-    }
-
-    var sub = decodeURIComponent(req.suffix[1]);
-
-    if (sub === "load") {
-      PUT_api_collection_load(req, res, collection);
-    }
-    else if (sub === "unload") {
-      PUT_api_collection_unload(req, res, collection);
-    }
-    else if (sub === "truncate") {
-      PUT_api_collection_truncate(req, res, collection);
-    }
-    else if (sub === "properties") {
-      PUT_api_collection_properties(req, res, collection);
-    }
-    else if (sub === "rename") {
-      PUT_api_collection_rename(req, res, collection);
-    }
-    else {
-      actions.resultNotFound(req, res, "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
-    }
+function put_api_collection (req, res) {
+  if (req.suffix.length !== 2) {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
+		      "expected PUT /" + API + "/<collection-identifer>/<action>");
+    return;
   }
+
+  var name = decodeURIComponent(req.suffix[0]);
+  var id = parseInt(name,10) || name;
+  var collection = arangodb.db._collection(id);
+
+  if (collection === null) {
+    actions.collectionNotFound(req, res, name);
+    return;
+  }
+
+  var sub = decodeURIComponent(req.suffix[1]);
+
+  if (sub === "load") {
+    put_api_collection_load(req, res, collection);
+  }
+  else if (sub === "unload") {
+    put_api_collection_unload(req, res, collection);
+  }
+  else if (sub === "truncate") {
+    put_api_collection_truncate(req, res, collection);
+  }
+  else if (sub === "properties") {
+    put_api_collection_properties(req, res, collection);
+  }
+  else if (sub === "rename") {
+    put_api_collection_rename(req, res, collection);
+  }
+  else {
+    actions.resultNotFound(req, res, actions.errors.ERROR_HTTP_NOT_FOUND,
+			   "expecting one of the actions 'load', 'unload', 'truncate', 'properties', 'rename'");
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a collection
@@ -696,73 +735,71 @@
 /// @verbinclude api-collection-delete-collection-name
 ////////////////////////////////////////////////////////////////////////////////
 
-  function DELETE_api_collection (req, res) {
-    if (req.suffix.length != 1) {
-      actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
-                        "expected DELETE /" + API + "/<collection-identifer>");
+function delete_api_collection (req, res) {
+  if (req.suffix.length !== 1) {
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
+		      "expected DELETE /" + API + "/<collection-identifer>");
+  }
+  else {
+    var name = decodeURIComponent(req.suffix[0]);
+    var id = parseInt(name,10) || name;
+    var collection = arangodb.db._collection(id);
+
+    if (collection === null) {
+      actions.collectionNotFound(req, res, name);
     }
     else {
-      var name = decodeURIComponent(req.suffix[0]);
-      var id = parseInt(name) || name;
-      var collection = internal.db._collection(id);
+      try {
+	var result = {
+	  id : collection._id
+	};
 
-      if (collection === null) {
-        actions.collectionNotFound(req, res, name);
+	collection.drop();
+
+	actions.resultOk(req, res, actions.HTTP_OK, result);
       }
-      else {
-        try {
-          var result = {
-            id : collection._id
-          };
-
-          collection.drop();
-
-          actions.resultOk(req, res, actions.HTTP_OK, result);
-        }
-        catch (err) {
-          actions.resultException(req, res, err);
-        }
+      catch (err) {
+	actions.resultException(req, res, err);
       }
     }
   }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads or creates a collection
+/// @brief handles a collection request
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : API,
-    context : "api",
+actions.defineHttp({
+  url : API,
+  context : "api",
 
-    callback : function (req, res) {
-      try {
-        if (req.requestType === actions.GET) {
-          GET_api_collection(req, res);
-        }
-        else if (req.requestType === actions.DELETE) {
-          DELETE_api_collection(req, res);
-        }
-        else if (req.requestType === actions.POST) {
-          POST_api_collection(req, res);
-        }
-        else if (req.requestType === actions.PUT) {
-          PUT_api_collection(req, res);
-        }
-        else {
-          actions.resultUnsupported(req, res);
-        }
+  callback : function (req, res) {
+    try {
+      if (req.requestType === actions.GET) {
+	get_api_collection(req, res);
       }
-      catch (err) {
-        actions.resultException(req, res, err);
+      else if (req.requestType === actions.DELETE) {
+	delete_api_collection(req, res);
+      }
+      else if (req.requestType === actions.POST) {
+	post_api_collection(req, res);
+      }
+      else if (req.requestType === actions.PUT) {
+	put_api_collection(req, res);
+      }
+      else {
+	actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-})();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

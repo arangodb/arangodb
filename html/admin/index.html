@@ -27,13 +27,14 @@
       <script type="text/javascript" src="js/jquery.jeditable.js"></script>
       <script type="text/javascript" src="js/jquery.jeditable.autogrow.js"></script>
       <script type="text/javascript" src="js/master.js"></script>
-      <script type="text/javascript" src="js/avocsh1.js"></script>
-      <script type="text/javascript" src="js/print.js"></script>
-      <script type="text/javascript" src="js/errors.js"></script>
+      <script type="text/javascript" src="js/arangodb/browser.js"></script>
+      <script type="text/javascript" src="js/arangodb/errors.js"></script>
+      <script type="text/javascript" src="js/arangodb/module-internal.js"></script>
+      <script type="text/javascript" src="js/arangodb/monkeypatches.js"></script>
       <script type="text/javascript" src="js/modules/simple-query-basics.js"></script>
       <script type="text/javascript" src="js/modules/simple-query.js"></script>
       <script type="text/javascript" src="js/modules/statement-basics.js"></script>
-      <script type="text/javascript" src="js/client.js"></script>
+      <script type="text/javascript" src="js/arangodb/client.js"></script>
     <style>
       a:link {color: #797979; text-decoration: none;}  
       a:visited {color: #797979; text-decoration: none;}
@@ -47,7 +48,7 @@
     <div id="menue" class="ui-layout-north">
 
       <div id="menue-left">
-        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png" alt="ArangoDB Logo"></a>
+        <a href="/_admin/html/index.html"><img src="../html/media/images/ArangoDB_Logo.png" alt="ArangoDB Logo" border="0" /></a>
       </div>
 
       <div id="menue-right">
@@ -107,7 +108,7 @@
           <img src="/_admin/html/media/icons/cancel_icon16.png" width="16" height="16">
           <a>Cancel</a>
         </button>
-        <br></br>
+        <br />
         <table cellpadding="3" cellspacing="0" border="0">
           <tr><td>Name:</td>
           <td>
@@ -149,7 +150,7 @@
           <img src="/_admin/html/media/icons/doc_plus_icon16.png" width="16" height="16">
           <a>Save Collection</a>
         </button>
-        <br></br>
+        <br />
           <table cellpadding="3" cellspacing="0" border="0">
             <tr> 
               <td class="first" align="left">Name:</td>
@@ -434,7 +435,7 @@
               <input type="radio" name="formatshellJSONyesno" value=true checked>yes</input>
               <input type="radio" name="formatshellJSONyesno" value=false>no</input>
             </form>
-          <a href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br></br>
+          <a href="http://www.arangodb.org/manuals/current/UserManualArangosh.html" target="_blank" style="font-size:0.8em">ArangoDB Shell - click for more information</a><br />
       </div>
 
       <div id="queryView" style="display: none"> 
@@ -451,7 +452,7 @@
           <textarea placeholder="Type in your query..." class="editBox" id="queryContent"></textarea><br>
           <button class="minimal" id="submitQuery">Execute</button>
           <a style="font-size:0.8em;" id="aqlinfo" href="http://www.arangodb.org/manuals/current/Aql.html" target="_blank">ArangoDB Query Language - click for more information</a>
-        <br></br>
+        <br />
         </form>   
         <form action="#" id="formatJSONyesno" style="font-size:0.8em;">
           Format JSON? 
@@ -479,7 +480,7 @@
             </div>
             
             <div id="footerCenter">
-              ArangoDB<br></br>
+              ArangoDB<br />
               <div id="footerCenterContent">
                 <a> Stay in touch: </a><a href="http://twitter.com/arangodb" target="_blank"><img src="/_admin/html/media/icons/twitter.png" width="32" height="32"></a><a href="http://github.com/triAGENS/ArangoDB" target="_blank"><img src="/_admin/html/media/icons/git.png" width="32" height="32"></a><a href="http://arangodb.org" target="_blank"><img src="/_admin/html/media/icons/arangodb32.png" width="32" height="32"></a><a href="http://groups.google.com/group/arangodb" target="_blank"><img src="/_admin/html/media/icons/google.png" width="32" height="32"></a>
               </div>

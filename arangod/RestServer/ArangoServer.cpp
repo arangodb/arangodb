@@ -90,11 +90,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
 
-#ifdef TRI_ENABLE_MRUBY
-#include "mr/common/bootstrap/mr-error.h"
-#include "mr/server/mr-server.h"
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -312,6 +307,10 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
     ("upgrade", "perform a database upgrade")
+  ;
+
+  additional[ApplicationServer::OPTIONS_HIDDEN]
+    ("no-upgrade", "skip a database upgrade")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -538,8 +537,8 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // open the database
   // .............................................................................
-  openDatabase();
 
+  openDatabase();
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -556,6 +555,10 @@ int ArangoServer::startupServer () {
     _applicationV8->performUpgrade();
   }
 
+  // skip an upgrade even if VERSION is missing
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    _applicationV8->skipUpgrade();
+  }
 
 #if TRI_ENABLE_MRUBY
   _applicationMR->setVocbase(_vocbase);
@@ -659,9 +662,16 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
   // set-up V8 context
   _applicationV8->setVocbase(_vocbase);
   _applicationV8->setConcurrency(1);
+
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
   }
+
+  // skip an upgrade even if VERSION is missing
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    _applicationV8->skipUpgrade();
+  }
+
   _applicationV8->disableActions();
 
   ok = _applicationV8->prepare();
@@ -686,7 +696,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
 
     // run the shell
     if (mode != OperationMode::MODE_SCRIPT) {
-      printf("ArangoDB JavaScript shell [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
+      printf("ArangoDB JavaScript emergency console [V8 version %s, DB version %s]\n", v8::V8::GetVersion(), TRIAGENS_VERSION);
     }
     else {
       LOGGER_INFO << "V8 version " << v8::V8::GetVersion() << ", DB version " << TRIAGENS_VERSION;
@@ -695,10 +705,6 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
     v8::Local<v8::String> name(v8::String::New("(arango)"));
     v8::Context::Scope contextScope(context->_context);
         
-    context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
-    context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
-    context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
-
     context->_context->Global()->Set(v8::String::New("DATABASEPATH"), v8::String::New(_databasePath.c_str()), v8::ReadOnly);
     context->_context->Global()->Set(v8::String::New("VALGRIND"), _runningOnValgrind ? v8::True() : v8::False(), v8::ReadOnly);
     context->_context->Global()->Set(v8::String::New("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);  
@@ -780,7 +786,7 @@ int ArangoServer::executeConsole (OperationMode::server_operation_mode_e mode) {
         v8::TryCatch tryCatch;
 
         for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-          bool r = TRI_LoadJavaScriptFile(context->_context, _scriptFile[i].c_str());
+          bool r = TRI_ExecuteGlobalJavaScriptFile(_scriptFile[i].c_str());
 
           if (! r) {
             LOGGER_FATAL << "cannot load script '" << _scriptFile[i] << ", giving up";
@@ -1007,7 +1013,7 @@ int ArangoServer::executeRubyConsole () {
   ApplicationMR::MRContext* context = _applicationMR->enterContext();
 
   // create a line editor
-  printf("ArangoDB MRuby shell [DB version %s]\n", TRIAGENS_VERSION);
+  printf("ArangoDB MRuby emergency console [DB version %s]\n", TRIAGENS_VERSION);
 
   MRLineEditor console(context->_mrb, ".arango-mrb");
 
@@ -1075,6 +1081,8 @@ int ArangoServer::executeRubyConsole () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::openDatabase () {
+  TRI_InitialiseVocBase();
+
   _vocbase = TRI_OpenVocBase(_databasePath.c_str());
 
   if (! _vocbase) {
@@ -1101,6 +1109,7 @@ void ArangoServer::closeDatabase () {
   TRI_DestroyVocBase(_vocbase);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, _vocbase);
   _vocbase = 0;
+  TRI_ShutdownVocBase();
 
   LOGGER_INFO << "ArangoDB has been shut down";
 }

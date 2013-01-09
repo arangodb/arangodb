@@ -211,7 +211,7 @@ namespace triagens {
       void addLastField (char const* field, size_t row, size_t column, bool escaped);      
       
       void sendCsvBuffer ();
-      void sendJsonBuffer (char const* str, size_t len);
+      void sendJsonBuffer (char const* str, size_t len, bool isArray);
       void handleResult (httpclient::SimpleHttpResult* result);
             
     private:      

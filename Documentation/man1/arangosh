@@ -13,6 +13,8 @@ online manual, available at http://www.arangodb.org/
 
 The most important startup options are:
 
+OPTION "--audit-log <string>"
+log input and output to audit log file <string> ENDOPTION
 OPTION "--configuration <string>"
 read configuration from file <string> ENDOPTION
 OPTION "--log.level <string>"

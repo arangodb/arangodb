@@ -107,7 +107,7 @@ string const ApplicationServer::OPTIONS_SERVER = "Server Options";
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -143,7 +143,7 @@ ApplicationServer::ApplicationServer (string const& name, string const& title, s
     _randomGenerator(5) {
 }
 #else
-ApplicationServer::ApplicationServer (string const& name, string const& title, string const& version)
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
   : _options(),
     _description(),
     _descriptionFile(),
@@ -475,6 +475,9 @@ bool ApplicationServer::parse (int argc,
 void ApplicationServer::prepare () {
 
   // prepare all features - why reverse?
+
+  // reason: features might depend on each other. by creating them in reverse order and shutting them
+  // down in forward order, we ensure that the features created last are destroyed first, i.e.: LIFO
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 

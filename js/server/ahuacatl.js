@@ -2098,7 +2098,7 @@ function AHUACATL_GRAPH_PATHS () {
     minLength : minLength, 
     maxLength : maxLength, 
     direction : searchDirection,
-    followCycles : followCycles,
+    followCycles : followCycles
   };
 
   // TODO: restrict allEdges to edges with certain _from values etc.
@@ -2131,7 +2131,7 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
         vertices : vertices, 
         edges : edges,
         source : vertices[0],
-        destination : vertices[vertices.length - 1],
+        destination : vertices[vertices.length - 1]
         });
   }
 

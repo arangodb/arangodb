@@ -281,7 +281,7 @@ endif
 ### @brief unit tests
 ################################################################################
 
-include UnitTests/Makefile.files
+include UnitTests/Makefile.unittests
 
 ################################################################################
 ### @brief error code file
@@ -324,8 +324,7 @@ clean-local:
 
 built-sources: \
 	build_posix.h \
-	@top_srcdir@/js/common/bootstrap/errors.js \
-	$(JAVASCRIPT_HEADER)
+	@top_srcdir@/js/common/bootstrap/errors.js
 
 ################################################################################
 ### @brief tags file

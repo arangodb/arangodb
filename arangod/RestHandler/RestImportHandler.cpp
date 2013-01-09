@@ -124,10 +124,15 @@ HttpHandler::status_e RestImportHandler::execute () {
         string documentType = _request->value("type", found);
         
         if (found && documentType == "documents") {
-          res = createByArray();  
+          // lines with individual JSON documents
+          res = createByDocumentsLines();  
+        }
+        else if (found && documentType == "array") {
+          // one JSON array
+          res = createByDocumentsList();  
         }
         else {
-          res = createByList();           
+          res = createByKeyValueList();           
         }      
       }
       break;
@@ -168,7 +173,7 @@ HttpHandler::status_e RestImportHandler::execute () {
 /// If the document was created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createByArray () {
+bool RestImportHandler::createByDocumentsLines () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;
@@ -275,6 +280,124 @@ bool RestImportHandler::createByArray () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents
 ///
+/// @REST{POST /_api/import?type=array&collection=@FA{collection-identifier}}
+///
+/// Creates documents in the collection identified by the
+/// @FA{collection-identifier}.  The JSON representations of the documents must 
+/// be passed as the body of the POST request.
+///
+/// If the document was created successfully, then a @LIT{HTTP 201} is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestImportHandler::createByDocumentsList () {
+  size_t numCreated = 0;
+  size_t numError = 0;
+  size_t numEmpty = 0;
+  const bool forceSync = false;
+  
+  vector<string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?type=array&collection=<identifier>");
+    return false;
+  }
+
+  // extract the collection name
+  bool found;
+  string collection = _request->value("collection", found);
+
+  if (! found || collection.empty()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+    return false;
+  }
+  
+  // shall we create the collection?
+  char const* valueStr = _request->value("createCollection", found);
+  bool create = found ? StringUtils::boolean(valueStr) : false;
+  
+  // shall we reuse document and revision id?
+  valueStr = _request->value("useId", found);
+  bool reuseId = found ? StringUtils::boolean(valueStr) : false;
+
+  char* errmsg = 0;
+  TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), &errmsg);
+  if (documents == 0) {
+    if (errmsg == 0) {
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    "cannot parse json object");
+    }
+    else {
+      generateError(HttpResponse::BAD, 
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    errmsg);
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
+    }
+    return false;
+  }
+
+  if (documents->_type != TRI_JSON_LIST) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON array in the request");
+    return false;
+  }
+
+  // find and load collection given by name or identifier
+  CollectionAccessor ca(_vocbase, collection, TRI_COL_TYPE_DOCUMENT, create);
+  
+  int res = ca.use();
+  if (TRI_ERROR_NO_ERROR != res) {
+    generateCollectionError(collection, res);
+    return false;
+  }
+
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
+  
+  WriteTransaction trx(&ca);
+
+  for (size_t i = 0; i < documents->_value._objects._length; ++i) {
+    TRI_json_t* values = (TRI_json_t*) TRI_AtVector(&documents->_value._objects, i);
+
+    if (values == 0 || values->_type != TRI_JSON_ARRAY) {
+      ++numError;
+    }
+    else {
+      // now save the document
+      TRI_doc_mptr_t const mptr = trx.primary()->createJson(trx.primary(), TRI_DOC_MARKER_DOCUMENT, values, 0, reuseId, false, forceSync);
+      if (mptr._did != 0) {
+        ++numCreated;
+      }
+      else {
+        ++numError;
+      }
+    }
+  }
+
+  trx.end();
+  
+  // .............................................................................
+  // outside write transaction
+  // .............................................................................
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
+
+  // generate result
+  generateDocumentsCreated(numCreated, numError, numEmpty);
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates documents
+///
 /// @REST{POST /_api/import?collection=@FA{collection-identifier}}
 ///
 /// Creates documents in the collection identified by the
@@ -284,7 +407,7 @@ bool RestImportHandler::createByArray () {
 /// If the document was created successfully, then a @LIT{HTTP 201} is returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createByList () {
+bool RestImportHandler::createByKeyValueList () {
   size_t numCreated = 0;
   size_t numError = 0;
   size_t numEmpty = 0;

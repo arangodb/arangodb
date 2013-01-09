@@ -723,7 +723,8 @@ WARN_LOGFILE           =
 INPUT                  = @srcdir@/Documentation/DbaManual \
                          @srcdir@/Documentation/InstallationManual \
                          @srcdir@/Documentation/Manual \
-			 @srcdir@/Documentation/UserManual \
+                         @srcdir@/Documentation/RefManual \
+                         @srcdir@/Documentation/UserManual \
                          @srcdir@/Doxygen/js \
                          @srcdir@/arangod \
                          @srcdir@/lib

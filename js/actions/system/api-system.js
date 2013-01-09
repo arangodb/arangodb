@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
@@ -34,10 +34,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  var actions = require("org/arangodb/actions");
-  var internal = require("internal");
-  var console = require("internal");
+var actions = require("org/arangodb/actions");
+var internal = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  standard routing
@@ -52,102 +51,103 @@
 /// @brief routing function
 ////////////////////////////////////////////////////////////////////////////////
 
-  function Routing (req, res) {
-    var action;
-    var execute;
-    var next;
-    var path = req.suffix.join("/");
+function Routing (req, res) {
+  var action;
+  var execute;
+  var next;
+  var path = req.suffix.join("/");
 
-    action = actions.firstRouting(req.requestType, req.suffix);
+  action = actions.firstRouting(req.requestType, req.suffix);
 
-    execute = function () {
-      if (action.route === undefined) {
-	actions.resultNotImplemented(req, res, "unknown path '" + path + "'");
-	return;
-      }
+  execute = function () {
+    if (action.route === undefined) {
+      actions.resultNotImplemented(req, res, "unknown path '" + path + "'");
+      return;
+    }
 
-      if (action.route.path !== undefined) {
-	req.path = action.route.path;
-      }
-      else {
-	delete req.path;
-      }
+    if (action.route.path !== undefined) {
+      req.path = action.route.path;
+    }
+    else {
+      delete req.path;
+    }
 
-      if (action.prefix !== undefined) {
-	req.prefix = action.prefix;
-      }
-      else {
-	delete req.prefix;
-      }
+    if (action.prefix !== undefined) {
+      req.prefix = action.prefix;
+    }
+    else {
+      delete req.prefix;
+    }
 
-      if (action.suffix !== undefined) {
-	req.suffix = action.suffix;
-      }
-      else {
-	delete req.suffix;
-      }
+    if (action.suffix !== undefined) {
+      req.suffix = action.suffix;
+    }
+    else {
+      delete req.suffix;
+    }
 
-      if (action.urlParameters !== undefined) {
-	req.urlParameters = action.urlParameters;
-      }
-      else {
-	req.urlParameters = {};
-      }
+    if (action.urlParameters !== undefined) {
+      req.urlParameters = action.urlParameters;
+    }
+    else {
+      req.urlParameters = {};
+    }
 
-      var func = action.route.callback.controller;
-      if (func === null || typeof func !== 'function') {
-        func = actions.errorFunction(action.route, 'Invalid callback definition found for route ' + JSON.stringify(action.route));
-      }
+    var func = action.route.callback.controller;
+    if (func === null || typeof func !== 'function') {
+      func = actions.errorFunction(action.route, 'Invalid callback definition found for route ' + JSON.stringify(action.route));
+    }
 
-      try {
-        func(req, res, action.route.callback.options, next);
-      }
-      catch (err) {
-        actions.errorFunction(action.route, 'A runtime error occurred while executing an action: ' + String(err))(req, res, action.route.callback.options, next);
-      }
-    };
+    try {
+      func(req, res, action.route.callback.options, next);
+    }
+    catch (err) {
+      actions.errorFunction(action.route, 'A runtime error occurred while executing an action: ' + String(err))(req, res, action.route.callback.options, next);
+    }
+  };
 
-    next = function () {
-      action = actions.nextRouting(action);
-      execute();
-    };
-
+  next = function () {
+    action = actions.nextRouting(action);
     execute();
+  };
+
+  execute();
+}
+
+actions.defineHttp({
+  url : "",
+  prefix : true,
+  context : "admin",
+  callback : Routing
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the routing information
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/routing/reload",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    console.warn("about to flush the routing cache");
+    actions.resultOk(req, res, actions.HTTP_OK);
   }
-
-  actions.defineHttp({
-    url : "",
-    prefix : true,
-    context : "admin",
-    callback : Routing
-  });
+});
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system status information for the server
+/// @brief returns routing information
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/routing/reload",
-    context : "admin",
-    prefix : false,
-    callback : function (req, res) {
-      internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
-      actions.resultOk(req, res, actions.HTTP_OK);
-    }
-  });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system status information for the server
-////////////////////////////////////////////////////////////////////////////////
-
-  actions.defineHttp({
-    url : "_admin/routing/routes",
-    context : "admin",
-    prefix : false,
-    callback : function (req, res) {
-      actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
-    }
-  });
+actions.defineHttp({
+  url : "_admin/routing/routes",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -163,6 +163,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the modules cache
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/modules/flush",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.executeGlobalContextFunction("require(\"internal\").flushModuleCache()");
+    console.warn("about to flush the modules cache");
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_time
 /// @brief returns the system time
 ///
@@ -174,14 +189,14 @@
 /// current system time as a Unix timestamp with microsecond precision.
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/time",
-    context : "admin",
-    prefix : false,
-    callback : function (req, res) {
-      actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
-    }
-  });
+actions.defineHttp({
+  url : "_admin/time",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { time : internal.time() });
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_echo
@@ -200,16 +215,16 @@
 /// - @LIT{parameters}: list of URL parameters received
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/echo",
-    context : "admin",
-    prefix : true,
-    callback : function (req, res) {
-      res.responseCode = actions.HTTP_OK;
-      res.contentType = "application/json; charset=utf-8";
-      res.body = JSON.stringify(req);
-    }
-  });
+actions.defineHttp({
+  url : "_admin/echo",
+  context : "admin",
+  prefix : true,
+  callback : function (req, res) {
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = "application/json; charset=utf-8";
+    res.body = JSON.stringify(req);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_status
@@ -246,24 +261,24 @@
 ///   made which have required loading a memory page from disk.
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/status",
-    context : "admin",
+actions.defineHttp({
+  url : "_admin/status",
+  context : "admin",
 
-    callback : function (req, res) {
-      var result;
+  callback : function (req, res) {
+    var result;
 
-      try {
-        result = {};
-        result.system = SYS_PROCESS_STAT();
+    try {
+      result = {};
+      result.system = internal.processStat();
 
-        actions.resultOk(req, res, actions.HTTP_OK, result);
-      }
-      catch (err) {
-        actions.resultException(req, res, err);
-      }
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -278,82 +293,80 @@
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-    function GET_admin_session (req, res) {
-      var result;
-      var realm;
+function GET_admin_session (req, res) {
+  var result;
+  var realm;
 
-      if (req.user === null) {
-        realm = "basic realm=\"arangodb\"";
+  if (req.user === null) {
+    realm = "basic realm=\"arangodb\"";
 
-        res.responseCode = actions.HTTP_UNAUTHORIZED;
-        res.headers = { "www-authenticate" : realm };
-      }
-      else {
-        var user = internal.db._collection("_users").firstExample({ user : req.user });
+    res.responseCode = actions.HTTP_UNAUTHORIZED;
+    res.headers = { "www-authenticate" : realm };
+  }
+  else {
+    var user = internal.db._collection("_users").firstExample({ user : req.user });
 
-        if (user === null) {
-          actions.resultNotFound(req, res, "unknown user '" + req.user + "'");
-        }
-        else {
-          result = {
-            user : user.user,
-            permissions : user.permissions || []
-          };
-
-          actions.resultOk(req, res, actions.HTTP_OK, result);
-        }
-      }
+    if (user === null) {
+      actions.resultNotFound(req, res, internal.errors.ERROR_HTTP_NOT_FOUND.code, "unknown user '" + req.user + "'");
     }
+    else {
+      result = {
+	user : user.user,
+	permissions : user.permissions || []
+      };
 
-    function POST_admin_session (req, res) {
-      actions.resultUnsupported(req, res);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
     }
+  }
+}
 
-    function PUT_admin_session (req, res) {
-      actions.resultUnsupported(req, res);
-    }
+function POST_admin_session (req, res) {
+  actions.resultUnsupported(req, res);
+}
 
-    function DELETE_admin_session (req, res) {
-      actions.resultUnsupported(req, res);
-    }
+function PUT_admin_session (req, res) {
+  actions.resultUnsupported(req, res);
+}
+
+function DELETE_admin_session (req, res) {
+  actions.resultUnsupported(req, res);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief session call dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : "_admin/session",
-    context : "admin",
-    prefix : false,
-    callback : function (req, res) {
-      try {
-        if (req.requestType === actions.GET) {
-          GET_admin_session(req, res);
-        }
-        else if (req.requestType === actions.DELETE) {
-          DELETE_admin_session(req, res);
-        }
-        else if (req.requestType === actions.POST) {
-          POST_admin_session(req, res);
-        }
-        else if (req.requestType === actions.PUT) {
-          PUT_admin_session(req, res);
-        }
-        else {
-          actions.resultUnsupported(req, res);
-        }
+actions.defineHttp({
+  url : "_admin/session",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    try {
+      if (req.requestType === actions.GET) {
+	GET_admin_session(req, res);
       }
-      catch (err) {
-        actions.resultException(req, res, err);
+      else if (req.requestType === actions.DELETE) {
+	DELETE_admin_session(req, res);
+      }
+      else if (req.requestType === actions.POST) {
+	POST_admin_session(req, res);
+      }
+      else if (req.requestType === actions.PUT) {
+	PUT_admin_session(req, res);
+      }
+      else {
+	actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-})();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -363,4 +376,3 @@
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
-

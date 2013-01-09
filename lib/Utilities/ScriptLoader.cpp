@@ -96,12 +96,16 @@ string ScriptLoader::buildScript (const char** script) {
 
   while (true) {
     string tempStr = string(*script);
+
     if (tempStr == "//__end__") {
       break;
     }
+
     scriptString += tempStr + "\n";
+
     ++script;
   }
+
   return scriptString;
 }
 
@@ -114,6 +118,10 @@ void ScriptLoader::defineScript (string const& name, string const& script) {
 
   _scripts[name] = script;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a new named script
+////////////////////////////////////////////////////////////////////////////////
 
 void ScriptLoader::defineScript (const string& name, const char** script) {
   string scriptString = buildScript(script);
@@ -128,9 +136,9 @@ void ScriptLoader::defineScript (const string& name, const char** script) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& ScriptLoader::findScript (string const& name) {
-  MUTEX_LOCKER(_lock);
   static string empty = "";
 
+  MUTEX_LOCKER(_lock);
 
   map<string, string>::iterator i = _scripts.find(name);
 
@@ -189,11 +197,11 @@ vector<string> ScriptLoader::getDirectoryParts () {
     // implementations, otherwise we will only allow ";"
     // .........................................................................
 
-    #ifdef _WIN32
+#ifdef _WIN32
       TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ";");
-    #else
+#else
       TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
-    #endif
+#endif
  
     for (size_t i = 0; i < parts._length; i++) {
       string part = StringUtils::trim(parts._buffer[i]);

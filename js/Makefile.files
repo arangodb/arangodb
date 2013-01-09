@@ -5,6 +5,49 @@
 ## -----------------------------------------------------------------------------
 
 ################################################################################
+### @brief files for jslint
+################################################################################
+
+JAVASCRIPT_JSLINT = \
+	@srcdir@/html/admin/js/arangodb/browser.js \
+	@srcdir@/js/actions/system/api-collection.js \
+	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/client/modules/org/arangodb.js \
+	@srcdir@/js/client/modules/org/arangodb/deploy.js \
+	@srcdir@/js/common/bootstrap/errors.js \
+	@srcdir@/js/common/bootstrap/module-console.js \
+	@srcdir@/js/common/bootstrap/module-fs.js \
+	@srcdir@/js/common/bootstrap/module-internal.js \
+	@srcdir@/js/common/bootstrap/modules.js \
+	@srcdir@/js/common/bootstrap/monkeypatches.js \
+	@srcdir@/js/server/ArangoCollection.js \
+	@srcdir@/js/server/ArangoStructure.js \
+	@srcdir@/js/server/modules/org/arangodb.js \
+	@srcdir@/js/server/modules/org/arangodb/actions.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/echoController.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/staticContentController.js \
+	@srcdir@/js/server/modules/org/arangodb/formatter.js \
+	@srcdir@/js/server/modules/org/arangodb/parser.js \
+	@srcdir@/js/server/modules/org/arangodb/validator.js
+
+################################################################################
+### @brief executes jslint
+################################################################################
+
+.PHONY: jslint
+
+jslint:
+	@for file in $(JAVASCRIPT_JSLINT); do \
+		@builddir@/bin/arangosh \
+			-c none \
+			--log.level error \
+			--server.password "" \
+			--javascript.startup-directory @srcdir@/js \
+			--javascript.modules-path "@srcdir@/js/client/modules;@srcdir@/js/common/modules" \
+			--jslint $$file; \
+	done
+
+################################################################################
 ### @brief sets up the directories
 ################################################################################
 
@@ -12,9 +55,6 @@ BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules || mkdir -p html/admin/js/modules
-	@test -d js/common/bootstrap || mkdir -p js/common/bootstrap
-	@test -d js/client || mkdir -p js/client
-	@test -d js/server || mkdir -p js/server
 	@touch $@
 
 ################################################################################
@@ -26,18 +66,6 @@ html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directorie
 
 html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
-
-js/js-%.h: @srcdir@/js/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/client/js-%.h: @srcdir@/js/client/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
 
 ################################################################################
 ### @brief cleanup

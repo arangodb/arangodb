@@ -68,6 +68,38 @@ JSLoader::JSLoader () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a named script in the global context
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Persistent<v8::Context> context,
+                                                     string const& name) {
+  v8::HandleScope scope;
+  v8::TryCatch tryCatch;
+
+  findScript(name);
+
+  map<string, string>::iterator i = _scripts.find(name);
+
+  if (i == _scripts.end()) {
+    // correct the path/name 
+    LOGGER_ERROR << "unknown script '" << StringUtils::correctPath(name) << "'";
+    return scope.Close(v8::Undefined());
+  }
+
+  v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(context,
+                                                             v8::String::New(i->second.c_str()),
+                                                             v8::String::New(name.c_str()),
+                                                             false);
+
+  if (tryCatch.HasCaught()) {
+    TRI_LogV8Exception(&tryCatch);
+    return scope.Close(v8::Undefined());
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -114,7 +146,7 @@ bool JSLoader::loadAllScripts (v8::Persistent<v8::Context> context) {
 
   bool result = true;
   for (size_t i = 0; i < parts.size(); i++) {
-    result &= TRI_LoadJavaScriptDirectory(context, parts.at(i).c_str());
+    result &= TRI_ExecuteGlobalJavaScriptDirectory(parts.at(i).c_str());
   }
 
   return result;
@@ -164,7 +196,7 @@ bool JSLoader::executeAllScripts (v8::Persistent<v8::Context> context) {
     return true;
   }
 
-  ok = TRI_ExecuteJavaScriptDirectory(context, _directory.c_str());
+  ok = TRI_ExecuteLocalJavaScriptDirectory(_directory.c_str());
 
   return ok;
 }

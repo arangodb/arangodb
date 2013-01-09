@@ -210,7 +210,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       var actual = getQueryResults("FOR u1 IN " + cn + " FOR u2 IN " + cn + " FILTER u2.name == u1.name && u1.name == u2.name && u2.name == u1.name && u1._id == u2._id SORT u1.id RETURN { \"name\" : u1.name }", true);
 
       assertEqual(expected, actual);
-    },
+    }
   }
 
 }

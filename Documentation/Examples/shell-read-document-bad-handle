@@ -1,5 +1,0 @@
-arango> db.example.document("12345");
-JavaScript exception in file '(arango)' at 1,12:
-  [ArangoError 10: bad parameter: <document-idenifier> must be a document identifier]
-!db.example.document("12345");
-!           ^

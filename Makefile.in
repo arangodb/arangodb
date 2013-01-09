@@ -23,7 +23,7 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief JavaScript source code as header
+### @brief JavaScript modules for browser
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -78,7 +78,7 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief sets up the directories
+### @brief files for jslint
 ################################################################################
 
 # -*- mode: Makefile; -*-
@@ -196,7 +196,7 @@ DIST_COMMON = README $(am__configure_deps) $(dist_man_MANS) \
 	$(srcdir)/3rdParty/Makefile.all-in-one-v8 \
 	$(srcdir)/Documentation/Makefile.files $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.files $(srcdir)/Makefile.in \
-	$(srcdir)/UnitTests/Makefile.files \
+	$(srcdir)/UnitTests/Makefile.unittests \
 	$(srcdir)/arangod/Makefile.files \
 	$(srcdir)/arangoirb/Makefile.files \
 	$(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files \
@@ -991,8 +991,11 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-BUILT_SOURCES = build_posix.h $(JAVASCRIPT_HEADER) \
-	$(JAVASCRIPT_BROWSER) $(am__append_9) \
+
+################################################################################
+### @brief sets up the directories
+################################################################################
+BUILT_SOURCES = build_posix.h $(JAVASCRIPT_BROWSER) $(am__append_9) \
 	etc/arangodb/arangod.conf etc/arangodb/arangoirb.conf \
 	etc/arangodb/arangosh.conf $(am__append_14) \
 	Doxygen/.setup-directories @builddir@/.setup-js-directories \
@@ -1140,20 +1143,6 @@ nobase_pkgdata_DATA = $(shell find @srcdir@/js/actions -name "*.js" \
 	-print) $(shell find @srcdir@/html -name "*.js" -print) \
 	$(shell find @srcdir@/html -name "*.png" -print) \
 	$(am__append_8)
-JAVASCRIPT_HEADER = \
-	js/common/bootstrap/js-errors.h \
-	js/common/bootstrap/js-modules.h \
-	js/common/bootstrap/js-monkeypatches.h \
-	js/common/bootstrap/js-print.h \
-	js/client/js-client.h \
-	js/server/js-server.h \
-	js/server/js-version-check.h \
-	js/server/js-ahuacatl.h
-
-
-################################################################################
-### @brief JavaScript modules for browser
-################################################################################
 JAVASCRIPT_BROWSER = \
 	html/admin/js/modules/statement-basics.js \
 	html/admin/js/modules/simple-query-basics.js \
@@ -1495,6 +1484,7 @@ PASSWORD =
 PROTO = http
 
 ################################################################################
+### @brief start the arango server
 ################################################################################
 PID := $(shell echo $$PPID)
 PIDFILE := /tmp/arango.$(PID).pid
@@ -1557,6 +1547,7 @@ CLIENT_OPT := \
 
 
 ################################################################################
+### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
@@ -1578,6 +1569,7 @@ SHELL_SERVER = $(SHELL_COMMON) \
 UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 
 ################################################################################
+### @brief SHELL SERVER TESTS (AHUACATL)
 ################################################################################
 SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
@@ -1626,11 +1618,13 @@ UNITTESTS_SERVER_AHUACATL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_
 UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
 
 ################################################################################
+### @brief SHELL CLIENT TESTS
 ################################################################################
 SHELL_CLIENT = $(SHELL_COMMON) @top_srcdir@/js/client/tests/client.js
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 ################################################################################
+### @brief BITARRAY INDEXES TESTS
 ################################################################################
 BITARRAY_COMMON = @top_srcdir@/js/common/tests/shell-bitarray-index.js
 UNITTESTS_SERVER_BITARRAY = $(addprefix --javascript.unit-tests ,$(BITARRAY_COMMON))
@@ -1659,13 +1653,15 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/bootstrap/print.c \
+	Doxygen/js/common/bootstrap/module-console.c \
+	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/common/modules/simple-query-basics.c \
 	Doxygen/js/common/modules/statement-basics.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
+	Doxygen/js/server/ArangoCollection.c \
 	Doxygen/js/server/server.c
 
 
@@ -1738,6 +1734,28 @@ WIKI = \
 	UserManualActions \
 	jsUnity
 
+JAVASCRIPT_JSLINT = \
+	@srcdir@/html/admin/js/arangodb/browser.js \
+	@srcdir@/js/actions/system/api-collection.js \
+	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/client/modules/org/arangodb.js \
+	@srcdir@/js/client/modules/org/arangodb/deploy.js \
+	@srcdir@/js/common/bootstrap/errors.js \
+	@srcdir@/js/common/bootstrap/module-console.js \
+	@srcdir@/js/common/bootstrap/module-fs.js \
+	@srcdir@/js/common/bootstrap/module-internal.js \
+	@srcdir@/js/common/bootstrap/modules.js \
+	@srcdir@/js/common/bootstrap/monkeypatches.js \
+	@srcdir@/js/server/ArangoCollection.js \
+	@srcdir@/js/server/ArangoStructure.js \
+	@srcdir@/js/server/modules/org/arangodb.js \
+	@srcdir@/js/server/modules/org/arangodb/actions.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/echoController.js \
+	@srcdir@/js/server/modules/org/arangodb/actions/staticContentController.js \
+	@srcdir@/js/server/modules/org/arangodb/formatter.js \
+	@srcdir@/js/server/modules/org/arangodb/parser.js \
+	@srcdir@/js/server/modules/org/arangodb/validator.js
+
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -1746,7 +1764,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1769,7 +1787,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.files $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu:
+$(srcdir)/Makefile.files $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/utils/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-icu:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -5071,6 +5089,7 @@ bin/arango-dfdb: utils/arango-dfdb.in
 ################################################################################
 
 ################################################################################
+### @brief unittests target
 ################################################################################
 
 .PHONY: unittests unittests-brief unittests-verbose
@@ -5135,6 +5154,7 @@ start-server:
 	@echo
 
 ################################################################################
+### @brief COMMON MAKE-RELATED TESTS
 ################################################################################
 
 .PHONY: unittests-make
@@ -5143,6 +5163,7 @@ unittests-make:
 	@(ctags --version > /dev/null 2> /dev/null && make tags > /dev/null || test "x$(FORCE)" == "x1") || true
 
 ################################################################################
+### @brief BOOST TESTS
 ################################################################################
 
 .PHONY: unittests-boost
@@ -5227,6 +5248,7 @@ unittests-shell-client:
 	@echo
 
 ################################################################################
+### @brief HTTP SERVER TESTS
 ################################################################################
 
 .PHONY: unittests-http-server
@@ -5251,6 +5273,7 @@ unittests-http-server:
 	@echo
 
 ################################################################################
+### @brief SSL SERVER TESTS (same as HTTP SERVER TESTS but using SSL)
 ################################################################################
 
 .PHONY: unittests-ssl-server
@@ -5275,6 +5298,7 @@ unittests-ssl-server:
 	@echo
 
 ################################################################################
+### @brief IMPORT TESTS
 ################################################################################
 
 .PHONY: unittests-import
@@ -5289,7 +5313,7 @@ unittests-import:
 	@echo
 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
-	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
+	for i in 1 2 3 4; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv --eol "\r\n" || test "x$(FORCE)" == "x1"; done
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"
@@ -5321,6 +5345,7 @@ unittests-bitarray-index:
 	@echo
 
 ################################################################################
+### @brief ARANGOB TESTS
 ################################################################################
 
 .PHONY: unittests-arangob
@@ -5376,8 +5401,7 @@ clean-local:
 
 built-sources: \
 	build_posix.h \
-	@top_srcdir@/js/common/bootstrap/errors.js \
-	$(JAVASCRIPT_HEADER)
+	@top_srcdir@/js/common/bootstrap/errors.js
 
 GTAGS:
 	echo $(GTAGS_FILES) | tr " " "\n" | gtags -i -f -
@@ -5519,11 +5543,25 @@ latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
 man: Doxygen/.setup-directories
 	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; done; done
 
+################################################################################
+### @brief executes jslint
+################################################################################
+
+.PHONY: jslint
+
+jslint:
+	@for file in $(JAVASCRIPT_JSLINT); do \
+		@builddir@/bin/arangosh \
+			-c none \
+			--log.level error \
+			--server.password "" \
+			--javascript.startup-directory @srcdir@/js \
+			--javascript.modules-path "@srcdir@/js/client/modules;@srcdir@/js/common/modules" \
+			--jslint $$file; \
+	done
+
 @builddir@/.setup-js-directories:
 	@test -d html/admin/js/modules || mkdir -p html/admin/js/modules
-	@test -d js/common/bootstrap || mkdir -p js/common/bootstrap
-	@test -d js/client || mkdir -p js/client
-	@test -d js/server || mkdir -p js/server
 	@touch $@
 
 ################################################################################
@@ -5535,18 +5573,6 @@ html/admin/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directorie
 
 html/admin/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"`basename $< .js`\", function(exports, module) {" && cat $< && echo "});") > $@
-
-js/js-%.h: @srcdir@/js/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/client/js-%.h: @srcdir@/js/client/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/common/bootstrap/js-%.h: @srcdir@/js/common/bootstrap/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
-
-js/server/js-%.h: @srcdir@/js/server/%.js .setup-js-directories
-	@top_srcdir@/config/js2c.sh $< > $@
 
 @ENABLE_MRUBY_TRUE@@builddir@/.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
