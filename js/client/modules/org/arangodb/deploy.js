@@ -92,7 +92,11 @@ function guessContentType (filename, content) {
   }
 
   if (extension === "json") {
-    return "application/xml; charset=utf-8";
+    return "application/json; charset=utf-8";
+  }
+
+  if (extension === "js") {
+    return "application/x-javascript; charset=utf-8";
   }
 
   return "text/plain; charset=utf-8";
@@ -102,7 +106,7 @@ function guessContentType (filename, content) {
 /// @brief normalizes a path
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype.normalizePath = function (url) {
+function normalizePath (url) {
   if (url === "") {
     url = "/";
   }
@@ -111,7 +115,7 @@ ArangoApp.prototype.normalizePath = function (url) {
   }
 
   return url;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a routing entry
@@ -131,6 +135,14 @@ ArangoApp.prototype.updateRoute = function (route) {
   }
 
   routes.push(route);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an application
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoApp.prototype._PRINT = function (route) {
+  internal.output('[ArangoApp "', this._name, '" at "', this._description.urlPrefix, '"]');
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,6 +197,8 @@ ArangoApp.prototype.mountStaticContent = function (url, content, contentType) {
   };
 
   this.updateRoute(pages);
+
+  return this;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +216,7 @@ ArangoApp.prototype.mountStaticPages = function (url, collection) {
     name = collection;
   }
 
-  url = this.normalizePath(url);
+  url = normalizePath(url);
 
   pages = {
     type: "StaticPages",
@@ -220,6 +234,79 @@ ArangoApp.prototype.mountStaticPages = function (url, collection) {
   };
 
   this.updateRoute(pages);
+
+  return this;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mounts a simple action
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoApp.prototype.mountAction = function (url, func, methods) {
+  var pages;
+  var name;
+
+  url = normalizePath(url);
+
+  if (methods === undefined) {
+    methods = [ "GET", "HEAD" ];
+  }
+
+  if (! (methods instanceof Array)) {
+    var error = new arangodb.ArangoError();
+    error.errorNum = arangodb.ERROR_BAD_PARAMETER;
+    error.errorMessage = "methods must be a list of HTTP methods, i. e. [\"GET\"]";
+
+    throw error;
+  }
+
+  pages = {
+    type: "Action",
+    key: url,
+    url: { match: url },
+    action: { 
+      'do': func,
+      methods: methods,
+      options: {
+	path: url,
+	application: this._name
+      }
+    }
+  };
+
+  this.updateRoute(pages);
+
+  return this;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the common prefix
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoApp.prototype.setPrefix = function (prefix) {
+  if (prefix !== "" && prefix[prefix.length - 1] === '/') {
+    prefix = prefix.slice(0, prefix.length - 1);
+  }
+
+  if (prefix !== "" && prefix[0] !== '/') {
+    prefix = "/" + prefix;
+  }
+
+  if (prefix === "/") {
+    prefix = "";
+  }
+
+  this._description.urlPrefix = prefix;
+
+  return this;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the common prefix
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoApp.prototype.prefix = function () {
+  return this._description.urlPrefix;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,6 +320,8 @@ ArangoApp.prototype.save = function () {
   this._description = this._routing.document(doc);
 
   internal.reloadRouting();
+
+  return this;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,9 +337,10 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
   var collection;
   var error;
   var name;
+  var re = /.*\/([^\/]*)$/;
 
   routes = this._description.routes;
-  prefix = this.normalizePath(prefix);
+  prefix = normalizePath(prefix);
 
   for (i = 0;  i < routes.length;  ++i) {
     route = routes[i];
@@ -287,6 +377,7 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
     var contentType;
     var file = path + "/" + files[i];
     var subpath = "/" + files[i];
+    var filename;
 
     if (fs.isDirectory(file)) {
       continue;
@@ -298,6 +389,15 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       continue;
     }
 
+    filename = re.exec(files[i]);
+
+    if (filename !== null) {
+      filename = filename[1];
+    }
+    else {
+      filename = files[i];
+    }
+
     contentType = guessContentType(file, content);
 
     collection.save({
@@ -305,11 +405,14 @@ ArangoApp.prototype.uploadStaticPages = function (prefix, path) {
       prefix: prefix,
       path: subpath,
       content: content,
-      contentType: contentType
+      contentType: contentType,
+      filename: filename
     });
 
     internal.print("imported '" + subpath + "' of type '" + contentType + "'");
   }
+
+  return this;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,6 +456,46 @@ exports.readApp = function (name) {
   }
 
   return new ArangoApp(routing, doc);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads a module directory into the database
+////////////////////////////////////////////////////////////////////////////////
+
+exports.uploadModules = function (prefix, path) {
+  var i;
+  var files;
+  var re = /^(.*)\.js$/;
+
+  prefix = normalizePath(prefix);
+  files = fs.listTree(path);
+
+  for (i = 0;  i < files.length;  ++i) {
+    var content;
+    var mpath;
+    var file = path + "/" + files[i];
+  
+    if (fs.isDirectory(file)) {
+      continue;
+    }
+
+    mpath = re.exec(files[i]);
+
+    if (mpath === null) {
+      internal.print("skipping file '" + files[i] + "' of unknown type, expecting .js");
+      continue;
+    }
+    
+    mpath = prefix + "/" + mpath[1];
+
+    internal.defineModule(mpath, file);
+
+    internal.print("imported '" + mpath + "'");
+  }
+
+  internal.flushServerModules();
+  internal.wait(1);
+  internal.reloadRouting();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

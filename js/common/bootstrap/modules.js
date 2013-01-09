@@ -74,6 +74,8 @@ Module.prototype.require = function (path) {
   var raw;
   var sandbox;
 
+  internal = this.ModuleCache["/internal"].exports;
+
   // first get rid of any ".." and "."
   path = this.normalise(path);
 
@@ -83,8 +85,7 @@ Module.prototype.require = function (path) {
   }
 
   // locate file and read content
-  internal = this.ModuleCache["/internal"].exports;
-  raw = internal.readFile(path);
+  raw = internal.loadDatabaseFile(path);
 
   // test for parse errors first and fail early if a parse error detected
   if (! internal.parse(raw.content, path)) {
@@ -111,6 +112,7 @@ Module.prototype.require = function (path) {
       this.ModuleCache["/internal"].exports.print);
   }
   catch (err) {
+    delete this.ModuleCache[path];
     throw "Javascript exception in file '" + path + "': " + err.stack;
   }
 
@@ -122,7 +124,7 @@ Module.prototype.require = function (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Module.prototype.exists = function (path) {
-  return this.ModuleExistsCache[path];
+  return Module.prototype.ModuleExistsCache[path];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,12 +189,16 @@ Module.prototype.unload = function (path) {
   var norm = module.normalise(path);
 
   if (   norm === "/"
-      || norm === "/internal"
       || norm === "/console"
-      || norm === "/fs") {
+      || norm === "/internal"
+      || norm === "/fs"
+      || norm === "/org/arangodb"
+      || norm === "/org/arangodb/actions") {
     return;
   }
 
+   Module.prototype.ModuleCache["/console"].exports.info("UNLOADING %s", path);
+ 
   delete this.ModuleCache[norm];
 };
 

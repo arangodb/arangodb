@@ -503,6 +503,14 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the module cache
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.flushModuleCache = function() {
+    module.unloadAll();
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -581,7 +589,7 @@
 /// @brief reads a file from the module path or the database
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.readFile = function (path) {
+  internal.loadDatabaseFile = function (path) {
     var i;
     var mc;
     var n;
@@ -609,7 +617,7 @@
     if (internal.db !== undefined) {
       mc = internal.db._collection("_modules");
 
-      if (mc !== null && mc.hasOwnProperty("firstExample")) {
+      if (mc !== null && typeof mc.firstExample === "function") {
 	n = mc.firstExample({ path: path });
 
 	if (n !== null) {
@@ -618,7 +626,10 @@
             return { path : "_collection/" + path, content : n.content };
           }
 
-	  require("console").error("found empty content in '%s'", JSON.stringify(n));
+	  if (Module.prototype.ModuleExistsCache.hasOwnProperty("/console")) {
+	    var console = Module.prototype.ModuleExistsCache["/console"];
+	    console.error("found empty content in '%s'", JSON.stringify(n));
+	  }
 	}
       }
     }
@@ -684,11 +695,10 @@
     m = mc.firstExample({ path: path });
 
     if (m === null) {
-      mc.save({ path: path, module: content });
+      mc.save({ path: path, content: content });
     }
     else {
-      m.module = content;
-      mc.replace(m, m);
+      mc.replace(m, { path: path, content: content });
     }
   };
 

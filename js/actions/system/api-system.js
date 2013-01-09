@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, exports */
+/*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
@@ -36,7 +36,7 @@
 
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
-var console = require("internal");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  standard routing
@@ -122,7 +122,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system status information for the server
+/// @brief reloads the routing information
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -131,12 +131,13 @@ actions.defineHttp({
   prefix : false,
   callback : function (req, res) {
     internal.executeGlobalContextFunction("require(\"org/arangodb/actions\").reloadRouting()");
+    console.warn("about to flush the routing cache");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns system status information for the server
+/// @brief returns routing information
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -160,6 +161,21 @@ actions.defineHttp({
 /// @addtogroup ArangoAPI
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the modules cache
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/modules/flush",
+  context : "admin",
+  prefix : false,
+  callback : function (req, res) {
+    internal.executeGlobalContextFunction("require(\"internal\").flushModuleCache()");
+    console.warn("about to flush the modules cache");
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_GET_admin_time

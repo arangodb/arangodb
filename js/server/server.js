@@ -5,7 +5,7 @@
          vars: true,
          white: true,
          plusplus: true */
-/*global require, db, edges, ModuleCache, Module,
+/*global require, db, edges, Module,
   ArangoCollection, ArangoDatabase,
   ArangoError, ShapedJson,
   SYS_DEFINE_ACTION */

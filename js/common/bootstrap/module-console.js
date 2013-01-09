@@ -161,7 +161,7 @@
       msg = err + ": " + arguments;
     }
 
-    internal.log("warn", msg);
+    internal.log("warning", msg);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
