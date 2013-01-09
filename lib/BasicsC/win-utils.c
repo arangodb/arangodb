@@ -105,15 +105,22 @@ void TRI_usleep(unsigned long waitTime) {
     return;
   }
  
+  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    abort();
+  }
   // Set timer to wait for indicated micro seconds.
   if (!SetWaitableTimer(hTimer, &wTime, 0, NULL, NULL, 0)) {
     // no much we can do at this low level
     return;
   }
 
-  // Wait for the timer - but don't wait for ever.
-  result = WaitForSingleObject(hTimer, ((waitTime/1000) + 1)); // wait for a 1 millisecond at least
+  // Wait for the timer 
+  result = WaitForSingleObject(hTimer, INFINITE);
+  if (result != WAIT_OBJECT_0) {
+    abort();
+  }
   
+  CloseHandle(hTimer);
   // todo: go through what the result is e.g. WAIT_OBJECT_0
   return;
 }      
@@ -152,7 +159,7 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
   else {
     wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
   } 
-  printf("oreste:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
+  printf("oreste:win-utils.c:InvalidParameterHandler:LINE = %ud\n",line);
   /* end oreste -debug */
   //abort();
   // TODO: use the wcstombs_s function to convert wchar to char - since all the above
@@ -171,7 +178,8 @@ static void InvalidParameterHandler(const wchar_t* expression, // expression sen
 
 
 int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
-
+  int result = 0;
+ 
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -180,11 +188,10 @@ int finaliseWindows(const TRI_win_finalise_e finaliseWhat, const char* data) {
   switch (finaliseWhat) {
 
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
-      int errorCode;
-      errorCode = WSACleanup();
-      if (errorCode != 0) {
+      result = WSACleanup();     // could this cause error on server termination?
+      if (result != 0) {
         // can not use LOG_ etc here since the logging may have terminated  
-        printf("ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup returned error %d.",errorCode);
+        printf("ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup returned error %d.",result);
         return -1;
       }
       return 0;
