@@ -482,14 +482,15 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   assert(parameter);
   memset(parameter, 0, sizeof(TRI_col_info_t));
 
-  parameter->_version = TRI_COL_VERSION;
-  parameter->_type = type;
-  parameter->_cid = 0;
+  parameter->_version      = TRI_COL_VERSION;
+  parameter->_type         = type;
+  parameter->_cid          = 0;
+  parameter->_rid          = 0;
 
-  parameter->_deleted = false;  
-  parameter->_isVolatile = false;
-  parameter->_isSystem = false;
-  parameter->_maximalSize = (maximalSize / PageSize) * PageSize;
+  parameter->_deleted      = false;  
+  parameter->_isVolatile   = false;
+  parameter->_isSystem     = false;
+  parameter->_maximalSize  = (maximalSize / PageSize) * PageSize;
   if (parameter->_maximalSize == 0 && maximalSize != 0) {
     parameter->_maximalSize = PageSize;
   }
@@ -501,7 +502,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameter->_options = options;
   }
   else {
-    parameter->_options = 0;
+    parameter->_options = NULL;
   }
 }
 
@@ -513,13 +514,14 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, TRI_col_info_t* src) {
   assert(dst);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
-  dst->_version = src->_version;
-  dst->_type = src->_type;
-  dst->_cid = src->_cid;
+  dst->_version     = src->_version;
+  dst->_type        = src->_type;
+  dst->_cid         = src->_cid;
+  dst->_rid         = src->_rid;
 
-  dst->_deleted = src->_deleted;  
-  dst->_isSystem = src->_isSystem;
-  dst->_isVolatile = src->_isVolatile;
+  dst->_deleted     = src->_deleted;  
+  dst->_isSystem    = src->_isSystem;
+  dst->_isVolatile  = src->_isVolatile;
   dst->_maximalSize = src->_maximalSize;
   TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name));
   dst->_waitForSync = src->_waitForSync;
@@ -528,7 +530,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, TRI_col_info_t* src) {
     dst->_options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_options);
   }
   else {
-    dst->_options = 0;
+    dst->_options = NULL;
   }  
 }
 
@@ -539,7 +541,7 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, TRI_col_info_t* src) {
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
   if (parameter->_options) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_options);
-    parameter->_options = 0;
+    parameter->_options = NULL;
   }
 }
 
