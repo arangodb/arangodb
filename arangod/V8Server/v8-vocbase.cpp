@@ -4474,6 +4474,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
+  // TODO: protect this against race conditions (parallel rename operation)
   return scope.Close(v8::String::New(collection->_name));
 }
 
@@ -4982,6 +4983,37 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   return scope.Close(v8::Number::New((int) status));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the revision id of a collection
+/// the revision id is updated when the document data in a collection changes
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_primary_collection_t* primary = collection->_collection;
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+  
+  primary->beginRead(primary);
+  TRI_voc_rid_t rid = primary->base._info._rid;
+  primary->endRead(primary);
+
+  TRI_ReleaseCollection(collection);
+  
+  return scope.Close(v8::Number::New(rid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6268,6 +6300,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
+  // TODO: protect this against race conditions (parallel rename)
   result->Set(v8g->DidKey, DocumentId(collection->_name, document->_key), v8::ReadOnly);
   result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
   result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
@@ -6499,6 +6532,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
   TRI_AddMethodVocbase(rt, "properties", JS_PropertiesVocbaseCol);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
+  TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
