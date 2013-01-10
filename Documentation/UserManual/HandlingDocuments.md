@@ -76,6 +76,9 @@ Collection Methods {#ShellDocumentCollectionMethods}
 @anchor ShellDocumentRead
 @copydetails JS_DocumentVocbaseCol
 
+@anchor ShellDocumentAny
+@copydetails JS_AnyQuery
+
 @CLEARPAGE
 @anchor ShellDocumentCreate
 @copydetails JS_SaveVocbaseCol

@@ -50,7 +50,7 @@ var jsunity = require("jsunity"),
 ////////////////////////////////////////////////////////////////////////////////
 
 function dijkstraSuite() {
-  var Graph = require("graph").Graph,
+  var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -174,7 +174,7 @@ function dijkstraSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function centralitySuite() {
-  var Graph = require("graph").Graph,
+  var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
