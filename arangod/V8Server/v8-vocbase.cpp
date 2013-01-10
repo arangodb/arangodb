@@ -323,7 +323,7 @@ static bool IsDocumentHandle (TRI_vocbase_t* const vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if argument is a document identifier
+/// @brief checks if argument is an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsIndexHandle (v8::Handle<v8::Value> arg, 
