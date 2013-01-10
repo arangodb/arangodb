@@ -348,10 +348,10 @@ function RunTest (path) {
   var content;
   var f;
 
-  content = SYS_READ(path);
+  content = internal.read(path);
 
   content = "(function(jsUnity){jsUnity.attachAssertions();" + content + "})";
-  f = SYS_EXECUTE(content, undefined, path);
+  f = internal.execute(content, undefined, path);
   
   if (f == undefined) {
     throw "cannot create context function";

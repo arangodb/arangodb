@@ -106,7 +106,7 @@ GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
 
 bool GeneralClientConnection::connect () {
   disconnect();
-
+  
   if (_numConnectRetries < _connectRetries + 1) {
     _numConnectRetries++;
   }
@@ -119,6 +119,8 @@ bool GeneralClientConnection::connect () {
   if (!_isConnected) {
     return false;
   }
+
+  _numConnectRetries = 0;
 
   return true;
 }
@@ -142,7 +144,7 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
   *bytesWritten = 0;
 
   if (prepare(timeout, true)) {
-    return write(buffer, length, bytesWritten);
+    return this->write(buffer, length, bytesWritten);
   }
 
   return false;
@@ -154,7 +156,7 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
     
 bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer) {
   if (prepare(timeout, false)) {
-    return read(buffer);
+    return this->read(buffer);
   }
 
   return false;

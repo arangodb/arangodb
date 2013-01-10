@@ -28,7 +28,8 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
 	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/bootstrap/print.c \
+	Doxygen/js/common/bootstrap/module-console.c \
+	Doxygen/js/common/bootstrap/module-fs.c \
 	Doxygen/js/common/modules/graph.c \
 	Doxygen/js/common/modules/jsunity.c \
 	Doxygen/js/common/modules/simple-query-basics.c \
@@ -36,6 +37,7 @@ DOXYGEN = \
 	Doxygen/js/common/modules/users.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
 	Doxygen/js/server/modules/simple-query.c \
+	Doxygen/js/server/ArangoCollection.c \
 	Doxygen/js/server/server.c
 
 ################################################################################

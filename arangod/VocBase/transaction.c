@@ -505,8 +505,7 @@ void TRI_DumpTransactionContext (TRI_transaction_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_transaction_collection_t* CreateCollection (const char* const name, 
-                                                       const TRI_transaction_type_e type,
-                                                       TRI_vocbase_col_t* initialiser) {
+                                                       const TRI_transaction_type_e type) {
   TRI_transaction_collection_t* collection;
 
   collection = (TRI_transaction_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_t), false);
@@ -525,10 +524,9 @@ static TRI_transaction_collection_t* CreateCollection (const char* const name,
 
   // initialise collection properties
   collection->_type           = type;
-  collection->_collection     = initialiser;
+  collection->_collection     = NULL;
   collection->_globalInstance = NULL;
   collection->_locked         = false;
-  collection->_externalLock   = (initialiser != NULL);
 
   // initialise private copy of write transactions list
   InitTransactionList(&collection->_writeTransactions);
@@ -595,10 +593,8 @@ static int AcquireCollectionLocks (TRI_transaction_t* const trx) {
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* collection;
 
-    collection = TRI_AtVectorPointer(&trx->_collections, i);
-    if (! collection->_externalLock) {
-      collection->_collection = TRI_UseCollectionByNameVocBase(trx->_context->_vocbase, collection->_name);
-    }
+    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+    collection->_collection = TRI_UseCollectionByNameVocBase(trx->_context->_vocbase, collection->_name);
 
     if (collection->_collection == NULL) {
       return TRI_errno();
@@ -655,9 +651,7 @@ static int ReleaseCollectionLocks (TRI_transaction_t* const trx) {
     }
 
     // unuse collection
-    if (! collection->_externalLock) {
-      TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, collection->_collection);
-    }
+    TRI_ReleaseCollectionVocBase(trx->_context->_vocbase, collection->_collection);
     
     collection->_collection = NULL;
   }
@@ -1091,8 +1085,7 @@ TRI_vocbase_col_t* TRI_CheckCollectionTransaction (TRI_transaction_t* const trx,
 
 int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
                                   const char* const name,
-                                  const TRI_transaction_type_e type,
-                                  TRI_vocbase_col_t* initialiser) {
+                                  const TRI_transaction_type_e type) {
   TRI_transaction_collection_t* collection;
   size_t i, n;
 
@@ -1116,7 +1109,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
 
     if (res < 0) {
       // collection is not contained in vector
-      collection = CreateCollection(name, type, initialiser);
+      collection = CreateCollection(name, type);
       if (collection == NULL) {
         // out of memory
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -1139,7 +1132,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
   }
   
   // collection was not contained. now insert it
-  collection = CreateCollection(name, type, initialiser);
+  collection = CreateCollection(name, type);
   if (collection == NULL) {
     // out of memory
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1238,6 +1231,30 @@ int TRI_FinishTransaction (TRI_transaction_t* const trx) {
   ReleaseCollectionLocks(trx);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the pointer to a collection after it has been initialised
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_vocbase_col_t* TRI_GetCollectionTransaction (const TRI_transaction_t* const trx, 
+                                                 const char* const name) {
+  size_t i, n;
+
+  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  
+  n = trx->_collections._length;
+  
+  // process collections in forward order
+  for (i = 0; i < n; ++i) {
+    TRI_transaction_collection_t* collection;
+
+    collection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+    if (TRI_EqualString(name, collection->_name)) {
+      return collection->_collection;
+    }
+  }
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

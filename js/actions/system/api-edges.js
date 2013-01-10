@@ -25,8 +25,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-var internal = require("internal");
+
 var API = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,14 +72,14 @@ var API = "/_api/edges";
 
 function GET_edges (req, res) {
   if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<collection-identifer>?vertex=<vertex-handle>&direction=<direction>");
     return;
   }
 
   var name = decodeURIComponent(req.suffix[0]);
   var id = parseInt(name) || name;
-  var collection = internal.db._collection(id);
+  var collection = arangodb.db._collection(id);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -99,7 +100,7 @@ function GET_edges (req, res) {
     e = collection.outEdges(vertex);
   }
   else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
     return;
   }

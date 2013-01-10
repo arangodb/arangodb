@@ -1741,7 +1741,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_t*> docs;
 
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {

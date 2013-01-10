@@ -305,7 +305,7 @@ A Simple Action {#UserManualActionsContentAction}
 
 The simplest dynamic action is:
 
-    { action: { controller: "org/arangodb/actions", do: "echoRequest" } }
+    { action: { do: "org/arangodb/actions/echoRequest" } }
 
 It is not possible to store functions directly in the routing table, but you can
 call functions defined in modules. In the above example the function can be
@@ -324,7 +324,7 @@ For example
 
     arangosh> db._routing.save({ 
     ........>   url: "/hello/echo",
-    ........>   action: { controller: "org/arangodb/actions", do: "echoRequest" } });
+    ........>   action: { do: "org/arangodb/actions/echoRequest" } });
 
 Reload the routing and check
 
@@ -644,4 +644,100 @@ should win in this case:
     ........>     { url: { match: "/*" }, action: { controller: "org/arangodb/actions", do: "logRequest" } }
     ........>   ]
     ........> });
+
+Application Deployment {#UserManualActionsApplicationDeployment}
+================================================================
+
+Using single routes or @ref UserManualActionsAdvancedBundles "bundles" can be
+become a bit messy in large applications. Therefore a deployment tool exists
+inside _arangosh_ to simplify the task. This tool was inspired by the ArangoDB
+deployment tool `https://github.com/kaerus/arangodep` written in node.js by
+kaerus.
+
+An application is a bunch of routes, static pages stored in collections, and
+small scriptlets stored modules.
+
+In order to create an application, chose a suitable name, e. g. reverse domain
+name plus the application name and call `createApp`:
+
+    arangosh> var deploy = require("org/arangodb/deploy");
+    arangosh> var app = deploy.createApp("org.example.simple");
+
+Normally content will either be stored in collections or dynamically
+calculated. But sometimes it is convenient to store the content directly in the
+routing table, e. g. to deliver a version number.
+
+    arangosh> app.mountStaticContent("/version", { 
+    ........>   version: "1.2.3", major: 1, minor: 2, patch: 3 });
+    [ArangoApp "org.example.simple" at ""]
+
+Save the application
+
+    arangosh> app.save();
+    [ArangoApp "org.example.simple" at ""]
+
+and use the browser to check the result
+
+    http://localhost:8529/version
+
+You can also specify the content-type
+
+    arangosh> app.mountStaticContent("/author", 
+    ........>                        "Frank Celler",
+    ........>                        "text/plain").save();
+    [ArangoApp "org.example.simple" at ""]
+
+and check at
+
+    http://localhost:8529/author
+
+If you have more than one application, putting version under `/` might lead to
+conflicts. It is therefore possible to use a common prefix for the application.
+
+    arangosh> app.setPrefix("/example").save();
+    [ArangoApp "org.example.simple" at "/example"]
+
+Now check
+
+    http://localhost:8529/example/version
+    http://localhost:8529/example/author
+
+Deploying Static Pages {#UserManualActionsDeployingStaticPages}
+---------------------------------------------------------------
+
+Most of the time, static html pages and JavaScript content will be delivered by
+your web-server. But sometimes it is convenient to deliver these directly from
+within ArangoDB. For example, to provide a small admin interface for you
+application.
+
+Assume that all data is stored underneath a directory "/tmp/example" and we want
+to store the content in a collection "org_example_simple_content".
+
+First connect the url path to the collection.
+
+    arangosh> app.mountStaticPages("/static", "org_example_simple_content").save();
+    [ArangoApp "org.example.simple" at "/example"]
+
+Next create a file `index.html` at `/tmp/example/index.html".
+
+    <html>
+      <body>
+        Hallo World!
+      </body>
+    </html>
+
+Create the collection and upload this into the collection
+
+    arangosh> require("org/arangodb").db._createDocumentCollection("org_example_simple_content");
+    [ArangoCollection 224910918055, "org_example_simple_content" (type document, status loaded)]
+    
+    arangosh> app.uploadStaticPages("/static", "/tmp/example");
+    imported '/index.html' of type 'text/html; charset=utf-8'
+    [ArangoApp "org.example.simple" at "/example"]
+
+Check the index file
+
+    http://localhost:8529/example/static/index.html
+
+
 

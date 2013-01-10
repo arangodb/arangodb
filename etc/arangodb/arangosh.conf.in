@@ -2,4 +2,5 @@
 endpoint = tcp://localhost:8529
 
 [javascript]
+startup-directory = @PKGDATADIR@/js
 modules-path = @PKGDATADIR@/js/client/modules;@PKGDATADIR@/js/common/modules

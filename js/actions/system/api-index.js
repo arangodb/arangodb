@@ -25,7 +25,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
+
 var API = "_api/index";
 
 // -----------------------------------------------------------------------------
@@ -71,7 +73,7 @@ var API = "_api/index";
 
 function GET_api_indexes (req, res) {
   var name = req.parameters.collection;
-  var collection = internal.db._collection(name);
+  var collection = arangodb.db._collection(name);
   
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -131,7 +133,7 @@ function GET_api_index (req, res) {
 
   else if (req.suffix.length === 2) {
     var name = decodeURIComponent(req.suffix[0]);
-    var collection = internal.db._collection(name);
+    var collection = arangodb.db._collection(name);
     
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
@@ -149,7 +151,7 @@ function GET_api_index (req, res) {
     actions.resultOk(req, res, actions.HTTP_OK, index);
   }
   else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expect GET /" + API + "/<index-handle>");
   }
 }
@@ -183,7 +185,7 @@ function GET_api_index (req, res) {
 
 function POST_api_index_cap (req, res, collection, body) {
   if (! body.hasOwnProperty("size")) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expecting a size");
   }
 
@@ -260,7 +262,7 @@ function POST_api_index_geo (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths: " + fields);
   }
 
@@ -316,7 +318,7 @@ function POST_api_index_geo (req, res, collection, body) {
 
   // something is wrong
   else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
         "fields must be a list of attribute paths of length 1 or 2: " + fields);
     return;
   }
@@ -371,7 +373,7 @@ function POST_api_index_hash (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths: " + fields);
   }
 
@@ -430,7 +432,7 @@ function POST_api_index_skiplist (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths: " + fields);
   }
 
@@ -544,7 +546,7 @@ function POST_api_index_bitarray (req, res, collection, body) {
   var fields = body.fields;
 
   if (! (fields instanceof Array)) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "fields must be a list of attribute paths: " + fields);
   }
 
@@ -618,7 +620,7 @@ function POST_api_index (req, res) {
   }
 
   var name = req.parameters.collection;
-  var collection = internal.db._collection(name);
+  var collection = arangodb.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
@@ -650,7 +652,7 @@ function POST_api_index (req, res) {
     POST_api_index_bitarray(req, res, collection, body);
   }
   else {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "unknown index type '" + body.type + "'");
   }
 }
@@ -671,13 +673,13 @@ function POST_api_index (req, res) {
 
 function DELETE_api_index (req, res) {
   if (req.suffix.length !== 2) {
-    actions.resultBad(req, res, actions.ERROR_HTTP_BAD_PARAMETER,
+    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
                       "expect DELETE /" + API + "/<index-handle>");
     return;
   }
 
   var name = decodeURIComponent(req.suffix[0]);
-  var collection = internal.db._collection(name);
+  var collection = arangodb.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
