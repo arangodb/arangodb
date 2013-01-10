@@ -1644,7 +1644,7 @@ function ArangoCollection (database, data) {
     }
 
     if (rev === null) {
-      requestResult = this._database._connection.GET(this._documenturl(id));
+      requestResult = this._database._connection.GET(this._documenturl(this._name + "/" + id));
     }
     else {
       requestResult = this._database._connection.GET(this._documenturl(id),
