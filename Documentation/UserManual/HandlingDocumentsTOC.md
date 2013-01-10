@@ -7,6 +7,7 @@ TOC {#ShellDocumentTOC}
    - @ref ShellDocumentShell
      - @ref ShellDocumentCollectionMethods
        - @ref ShellDocumentRead "collection.document"
+       - @ref ShellDocumentAny "collection.any"
        - @ref ShellDocumentCreate "collection.save"
        - @ref ShellDocumentReplace "collection.replace"
        - @ref ShellDocumentUpdate "collection.update"

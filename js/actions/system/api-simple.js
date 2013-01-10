@@ -115,6 +115,81 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSA_PUT_api_simple_any
+/// @brief returns a random document of a collection
+///
+/// @RESTHEADER{PUT /_api/simple/any,executes simple query "any"}
+///
+/// @REST{PUT /_api/simple/any}
+///
+/// Returns a random document of a collections. The call expects a JSON object
+/// as body with the following attributes:
+///
+/// - @LIT{collection}: The identifier or name of the collection to query.
+///
+/// Returns a JSON object with the document stored in the attribute
+/// @LIT{document} if the collection contains at least one document. If
+/// the collection is empty, the attrbute contains null.
+///
+/// @EXAMPLES
+///
+/// @code
+/// > curl --data @- -X PUT --dump - http://localhost:8529/_api/simple/any
+/// { "collection" : 222186062247 }
+///
+/// HTTP/1.1 200 OK
+/// content-type: application/json; charset=utf-8
+/// content-length: 114
+/// 
+/// {
+///   "document": {
+///     "_id": "222186062247/223172116903",
+///     "_rev": 223172116903,
+///     "Hallo": "World"
+///   },
+///   "error": false,
+///   "code":200
+/// }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : API + "any",
+  context : "api",
+
+  callback : function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType != actions.PUT) {
+        actions.resultUnsupported(req, res);
+      }
+      else {
+        var name = body.collection;
+        var id = parseInt(name) || name;
+        var collection = internal.db._collection(id);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else {
+          var result = { document: collection.any() };
+
+          actions.resultOk(req, res, actions.HTTP_OK, result);
+        }
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @fn JSA_PUT_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
