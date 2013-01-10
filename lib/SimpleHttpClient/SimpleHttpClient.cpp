@@ -89,7 +89,7 @@ namespace triagens {
 
             if (! _connection->handleWrite(remainingTime, (void*) (_writeBuffer.c_str() + _written), _writeBuffer.length() - _written, &bytesWritten)) {
               setErrorMessage("::send() failed", errno);
-              close();
+              this->close();
             }
             else {
               _written += bytesWritten;
@@ -124,7 +124,7 @@ namespace triagens {
             }
             else {
               setErrorMessage("handleRead() failed", errno);
-              close();
+              this->close();
             }
             break;
           }
@@ -271,7 +271,7 @@ namespace triagens {
 
       if (_state != FINISHED) {
         // close connection to reset all read and write buffers
-        close();
+        this->close();
       }
 
       if (_connection->isConnected()) {
@@ -315,7 +315,7 @@ namespace triagens {
               setErrorMessage("Content-Length > max packet size found", true);
               
               // reset connection 
-              close();
+              this->close();
           
               return false;              
             }
@@ -385,7 +385,7 @@ namespace triagens {
           setErrorMessage("Content-Length > max packet size found!", true);
  
           // reset connection 
-          close();
+          this->close();
           
           return false;
         }
