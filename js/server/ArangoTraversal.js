@@ -42,10 +42,14 @@
 /// @brief traversal constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  function ArangoTraverser (edgeCollection, 
+  function ArangoTraverser (edgeCollection,
+                            visitationStrategy,
+                            order,
+                            uniqueness, 
                             visitor, 
                             filter, 
                             expander) {
+    // check edgeCollection
     if (typeof edgeCollection === "string") {
       edgeCollection = internal.db._collection(edgeCollection);
     }
@@ -54,14 +58,39 @@
         edgeCollection.type() != internal.ArangoCollection.TYPE_EDGE) {
       throw "invalid edgeCollection";
     }
+    
+    this._edgeCollection       = edgeCollection;
 
-    // properties
-    this._edgeCollection     = edgeCollection;
+    // check the visitation strategy    
+    if (visitationStrategy !== ArangoTraverser.BREADTH_FIRST &&
+        visitationStrategy !== ArangoTraverser.DEPTH_FIRST) {
+      throw "invalid visitationStrategy";
+    }
+
+    if (visitationStrategy === ArangoTraverser.BREADTH_FIRST) {
+      this._visitationStrategy = BreadthFirstSearch();
+    }
+    else {
+      this._visitationStrategy = DepthFirstSearch();
+    }
+
+    // check the visitation order
+    if (order !== ArangoTraverser.PRE_ORDER &&
+        order !== ArangoTraverser.POST_ORDER) {
+      throw "invalid order";
+    }
+    this._order                = order;
+    
+    // initialise uniqueness check attributes
+    this._uniqueness           = { 
+      vertices: uniqueness.vertices || ArangoTraverser.UNIQUE_NONE,
+      edges:    uniqueness.edges    || ArangoTraverser.UNIQUE_NONE
+    };
 
     // callbacks
-    this._visitor            = visitor;
-    this._filter             = filter || IncludeAllFilter;
-    this._expander           = expander || OutboundExpander;
+    this._visitor              = visitor;
+    this._filter               = filter || IncludeAllFilter;
+    this._expander             = expander || OutboundExpander;
     
     if (typeof this._visitor !== "function") {
       throw "invalid visitor";
@@ -93,11 +122,7 @@
 /// @brief execute the traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoTraverser.prototype.traverse = function (startVertex, 
-                                                 visitationStrategy, 
-                                                 uniqueness,
-                                                 context, 
-                                                 state) {
+  ArangoTraverser.prototype.traverse = function (startVertex, context) { 
     // check the start vertex
     if (startVertex == undefined) {
       throw "invalid startVertex specified for traversal";
@@ -106,55 +131,11 @@
       startVertex = internal.db._document(startVertex);
     }
 
-    // check the visitation strategy    
-    if (visitationStrategy !== ArangoTraverser.BREADTH_FIRST &&
-        visitationStrategy !== ArangoTraverser.DEPTH_FIRST_PRE &&
-        visitationStrategy !== ArangoTraverser.DEPTH_FIRST_POST) {
-      throw "invalid visitationStrategy";
-    }
-
-    // set user defined context & state
+    // set user defined context
     this._context = context;
-    this._state   = state;
-    
    
-    // initialise the traversal strategy 
-    var levelState = InitLevelState(startVertex, function () {
-      if (visitationStrategy === ArangoTraverser.BREADTH_FIRST) {
-        return BreadthFirstSearch();
-      }
-      else if (visitationStrategy === ArangoTraverser.DEPTH_FIRST_PRE) {
-        return DepthFirstPreSearch();
-      }
-      else {
-        return DepthFirstPostSearch();
-      }
-    }()); 
-    
-    // initialise uniqueness check attributes
-    var uniquenessCheck = { 
-      vertices: uniqueness.vertices || ArangoTraverser.UNIQUE_NONE,
-      edges:    uniqueness.edges || ArangoTraverser.UNIQUE_NONE
-    };
-    
-
-    // now execute the actual traversal...
-    // iterate until we find the end 
-    while (true) {
-      var currentElement = levelState.currentElement();
-      var edge           = currentElement.edge; 
-      var vertex         = currentElement.vertex;
-      
-      if (! ProcessVertex(this, vertex, levelState)) {
-        // stop traversal because PRUNE was returned
-        return;
-      }
-     
-      if (! levelState.next(this, levelState)) {
-        // we're done
-        return; 
-      }
-    }
+    // run the traversal
+    this._visitationStrategy.run(this, startVertex);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,65 +152,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise some internal state for the traversal
+/// @brief apply the uniqueness checks
 ////////////////////////////////////////////////////////////////////////////////
-     
-  function InitLevelState (startVertex, strategy) {
-    return { 
-      level:          0,
-      maxLevel:       0,
-      index:          0,
-      positions:      [ 0 ],
-      stack:          [ [ { edge: null, vertex: startVertex, parentIndex: 0 } ] ],
-      path:           { edges: [ ], vertices: [ startVertex ] },
-      visited:        { edges: { }, vertices: { } },
 
-      next:           function (traverser) {
-        return strategy.next(traverser, this);
-      },
-      
-      currentElement: function () {
-        return strategy.currentElement(this);
-      },
-
-      elementAt:      function (searchLevel, searchIndex) {
-        return this.stack[searchLevel][searchIndex];
-      },
-      
-      numElements:    function () {
-        return this.stack[this.level].length;
-      },
-
-      canDescend:     function () {
-        if (this.level >= this.maxLevel) {
-          return false;
-        }
-        return (this.stack[this.level + 1].length > 0);
-      },
-
-      isUniqueVertex: function (checkMode, vertex) {
-        return this.isUnique(checkMode, this.visited.vertices, vertex._id);
-      },
-      
-      isUniqueEdge: function (checkMode, edge) {
-        return this.isUnique(checkMode, this.visited.edges, edge._id);
-      },
-
-      isUnique: function (checkMode, elementsSeen, element) {
-        if (checkMode === ArangoTraverser.UNIQUE_NONE) {
-          return true;
-        }
-
-        var seen = elementsSeen[element] || false;
-        if (! seen) {
-          // now mark the element as being visited
-          elementsSeen[element] = true;
-        }
-
-        return ! seen;
+  function CheckUniqueness (uniqueness, visited, vertex, edge) {
+    if (uniqueness.vertices !== ArangoTraverser.UNIQUE_NONE) {
+      if (visited.vertices[vertex._id] === true) {
+        return false;
       }
+    
+      visited.vertices[vertex._id] = true;
+    }
+          
+    if (edge != null && uniqueness.edges !== ArangoTraverser.UNIQUE_NONE) {
+      if (visited.edges[edge._id] === true) {
+        return false;
+      }
+      
+      visited.edges[edge._id] = true;
+    }
 
-    };
+    return true;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,87 +181,77 @@
 
   function BreadthFirstSearch () {
     return {
-      // TODO: ADD UNIQUENESS CHECK HERE
-      next: function (traverser, levelState) {
-        var currentElement  = levelState.elementAt(levelState.level, levelState.index);
-        traverser._visitor(traverser, currentElement.vertex, levelState.path);
+      run: function (traverser, startVertex) {
+        var toVisit = [ { edge: null, vertex: startVertex, parentIndex: -1 } ];
+        var visited = { edges: { }, vertices: { } };
 
-        if (++levelState.index >= levelState.numElements()) {
-          levelState.index = 0;
-          if (++levelState.level > levelState.maxLevel) {
-            // we're done
-            return false;
-          }
-        }
+        var index = 0;
 
-        return true;
-      },
+        while (index >= 0 && index < toVisit.length) {
+          var current = toVisit[index];
+          var vertex  = current.vertex;
+          var edge    = current.edge;
 
-      currentElement : function (levelState) {
-        var path            = levelState.path;
-        var currentElement  = levelState.elementAt(levelState.level, levelState.index);
-        var element         = currentElement;
-
-        for (var i = levelState.level; i > 0; --i) {
-          path.edges[i - 1] = element.edge;
-          path.vertices[i]  = element.vertex;
-
-          element           = levelState.elementAt(i - 1, element.parentIndex);
-        }
-
-        return currentElement;
-      }
-    };
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief implementation details for depth-first strategy
-////////////////////////////////////////////////////////////////////////////////
-
-  function DepthFirstPreSearch () {
-    return {
-      next: function (traverser, levelState) {
-        var position = levelState.positions[levelState.level];
-        var currentElement  = levelState.elementAt(levelState.level, position);
-
-        traverser._visitor(traverser, currentElement.vertex, levelState.path);
-
-        if (levelState.canDescend()) {
-          ++levelState.level;
-        }
-        else {
-          while (++levelState.positions[levelState.level] >= levelState.numElements()) {
-
-            levelState.positions[levelState.level] = 0;
-            delete levelState.stack[levelState.level];
+          if (current.visit == null) {
+            current.visit = false;
             
-            levelState.path.vertices.pop();
-            levelState.path.edges.pop();
+            // first apply uniqueness check
+            if (! CheckUniqueness(traverser._uniqueness, visited, vertex, edge)) {
+              index++;
+              continue;
+            }
 
-            if (levelState.level <= 1) {
-              // we're done
-              return false;
+            var path = { edges: [ ], vertices: [ ] };
+            var pathItem = current;
+            while (true) {
+              if (pathItem.edge != null) {
+                path.edges.unshift(pathItem.edge);
+              }
+              path.vertices.unshift(pathItem.vertex);
+              var idx = pathItem.parentIndex;
+              if (idx < 0) {
+                break;
+              }
+              pathItem = toVisit[idx];
+            }
+
+            var filterResult = traverser._filter(traverser, vertex, path);
+            if (traverser._order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
+              // preorder
+              traverser._visitor(traverser, vertex, path);
+            }
+            else {
+              // postorder
+              current.visit = filterResult.visit || false;
+            }
+
+            if (filterResult.expand) {
+              var connected = traverser._expander(traverser, vertex, path);
+              if (connected.length > 0) {
+                for (var i = 0; i < connected.length; ++i) {
+                  connected[i].parentIndex = index;
+                  toVisit.push(connected[i]);
+                }
+              }
+              if (traverser._order === ArangoTraverser.POST_ORDER) {
+                index = toVisit.length - 1;
+              }
+            }
+          }
+          else {
+            if (traverser._order === ArangoTraverser.POST_ORDER) {
+              index--;
+            }
+            else {
+              index++;
             }
             
-            levelState.level--;
-            // TODO: make this a function
-            levelState.maxLevel--;
+            if (traverser._order === ArangoTraverser.POST_ORDER && current.visit) {
+              traverser._visitor(traverser, vertex, path);
+            }
           }
+
         }
-         
-        var currentElement = levelState.stack[levelState.level][levelState.positions[levelState.level]];
-          
-        levelState.path.edges[levelState.level - 1] = currentElement.edge;
-        levelState.path.vertices[levelState.level]  = currentElement.vertex;
-
-        return true;     
-      },
-      
-      currentElement : function (levelState) {
-        var position = levelState.positions[levelState.level];
-        var currentElement  = levelState.elementAt(levelState.level, position);
-
-        return currentElement;
       }
 
     };
@@ -328,96 +261,69 @@
 /// @brief implementation details for depth-first strategy
 ////////////////////////////////////////////////////////////////////////////////
 
-  function DepthFirstPostSearch () {
+  function DepthFirstSearch () {
     return {
-      next: function (traverser, levelState) {
 
-          var currentElement = levelState.stack[levelState.level][levelState.positions[levelState.level]];
-          console.log("level " + levelState.level + ", ele: " + currentElement.vertex._id);
+      run: function (traverser, startVertex) {
+        var toVisit = [ { edge: null, vertex: startVertex, visit: null } ];
+        var path    = { edges: [ ], vertices: [ ] };
+        var visited = { edges: { }, vertices: { } };
 
+        while (toVisit.length > 0) {
+          var current = toVisit[toVisit.length - 1];
+          var vertex  = current.vertex;
+          var edge    = current.edge;
 
-        while (levelState.canDescend()) {
-          ++levelState.level;
+          if (current.visit == null) {
+            current.visit = false;
 
-          var currentElement = levelState.stack[levelState.level][levelState.positions[levelState.level]];
-        console.log("desc, up is " + currentElement.vertex._id);
-          levelState.path.edges[levelState.level - 1] = currentElement.edge;
-          levelState.path.vertices[levelState.level]  = currentElement.vertex;
-        }
-          
-        while (++levelState.positions[levelState.level] >= levelState.numElements()) {
-        console.log("undesc");
-          levelState.positions[levelState.level] = 0;
-          delete levelState.stack[levelState.level];
+            // first apply uniqueness check
+            if (! CheckUniqueness(traverser._uniqueness, visited, vertex, edge)) {
+              toVisit.pop();
+              continue;
+            }
 
-          if (levelState.level == 0) {
-            // we're done
-            return false;
+            if (edge) {
+              path.edges.push(edge);
+            }
+            path.vertices.push(vertex);
+
+            var filterResult = traverser._filter(traverser, vertex, path);
+            if (traverser._order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
+              // preorder
+              traverser._visitor(traverser, vertex, path);
+            }
+            else {
+              // postorder
+              current.visit = filterResult.visit || false;
+            }
+
+            if (filterResult.expand) {
+              var connected = traverser._expander(traverser, vertex, path);
+              if (connected.length > 0) {
+                for (var i = connected.length - 1; i >= 0; --i) {
+                  connected[i].visit = null;
+                  toVisit.push(connected[i]);
+                }
+              }
+            }
+          }
+          else {
+            toVisit.pop();
+            if (traverser._order === ArangoTraverser.POST_ORDER && current.visit) {
+              traverser._visitor(traverser, vertex, path);
+            }
+            if (path.edges.length > 0) {
+              path.edges.pop();
+            }
+            path.vertices.pop();
           }
 
-          levelState.level--;
-          // TODO: make this a function
-          levelState.maxLevel--;
-//          break;
-
         }
-        
-        var currentElement = levelState.stack[levelState.level][levelState.positions[levelState.level]];
-          levelState.path.edges[levelState.level - 1] = currentElement.edge;
-          levelState.path.vertices[levelState.level]  = currentElement.vertex;
-              
-        traverser._visitor(traverser, currentElement.vertex, levelState.path);
-
-        return true;     
-      },
-      
-      currentElement : function (levelState) {
-        var position = levelState.positions[levelState.level];
-        var currentElement  = levelState.elementAt(levelState.level, position);
-
-        return currentElement;
       }
-
+    
     };
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback function that is executed for each vertex found
-///
-/// this function is applying the filter criteria and calls the visitor 
-/// function for the vertex if it should be included in the traversal.
-/// it will then also fetch the connected edges for the vertex.
-////////////////////////////////////////////////////////////////////////////////
-
-  function ProcessVertex (traverser, vertex, levelState) {
-    // check filter condition for vertex
-    var filterResult = traverser._filter(traverser, vertex, levelState.path);
-
-    if (filterResult === ArangoTraverser.INCLUDE_AND_CONTINUE || 
-        filterResult === ArangoTraverser.INCLUDE_AND_PRUNE) {
-      
-      // get connected edges for vertex
-      traverser._expander(traverser, vertex, levelState.path).forEach(function (connection) {
-        var nextLevel = levelState.level + 1;
-
-        if (levelState.stack[nextLevel] == undefined) {
-          levelState.stack[nextLevel] = [ ];
-          levelState.positions[nextLevel] = 0;
-        }
-
-        if (levelState.stack[nextLevel].length == 0) {
-          ++levelState.maxLevel;
-        }
-        connection.parentIndex = levelState.index;
-        levelState.stack[nextLevel].push(connection); 
-      });
-
-    }
-
-    // return true only if we should continue
-    return (filterResult === ArangoTraverser.INCLUDE_AND_CONTINUE || 
-            filterResult === ArangoTraverser.EXCLUDE_AND_CONTINUE);
-  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default filter function (if none specified)
@@ -426,7 +332,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   function IncludeAllFilter (traverser, vertex, path) {
-    return ArangoTraverser.INCLUDE_AND_CONTINUE;
+    return {
+      visit:  true,
+      expand: true
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,18 +382,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pre-order visits
-////////////////////////////////////////////////////////////////////////////////
-  
-  ArangoTraverser.VISIT_PREORDER       = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief post-order visits
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoTraverser.VISIT_POSTORDER      = 1;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief element may be revisited
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -506,44 +403,25 @@
 /// @brief visitation strategy breadth first
 ////////////////////////////////////////////////////////////////////////////////
   
-  ArangoTraverser.UNIQUE_NONE          = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitation strategy breadth first
-////////////////////////////////////////////////////////////////////////////////
-  
   ArangoTraverser.BREADTH_FIRST        = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitation strategy depth first
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoTraverser.DEPTH_FIRST_PRE          = 1;
-  ArangoTraverser.DEPTH_FIRST_POST         = 2;
+  ArangoTraverser.DEPTH_FIRST          = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief include this node in the result and continue the traversal
+/// @brief pre-order traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoTraverser.INCLUDE_AND_CONTINUE = 0;
+  ArangoTraverser.PRE_ORDER            = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief include this node in the result, but don’t continue the traversal
+/// @brief post-order traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoTraverser.INCLUDE_AND_PRUNE    = 1;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exclude this node from the result, but continue the traversal
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoTraverser.EXCLUDE_AND_CONTIUE  = 2;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exclude this node from the result and don’t continue the traversal
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoTraverser.EXCLUDE_AND_PRUNE    = 3;
+  ArangoTraverser.POST_ORDER           = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -564,8 +442,8 @@
 
   }
 
+
   var context = { someContext : true };
-  var state   = { someState   : { } };
 
   var visitor = function (traverser, vertex, path) {
     var result = path.edges.length + " ";
@@ -576,19 +454,21 @@
     console.log(result);
   };
 
-  var uniqueness = { vertices : ArangoTraverser.UNIQUE_GLOBAL, edges : ArangoTraverser.UNIQUE_NONE };
+  var uniqueness = { vertices : ArangoTraverser.UNIQUE_NONE, edges : ArangoTraverser.UNIQUE_NONE };
 
   db.tusers.load();
   db.trelations.load();
-
-  var traverser = new ArangoTraverser("trelations", visitor);
-  traverser.traverse("tusers/claudius", ArangoTraverser.DEPTH_FIRST_PRE, uniqueness, context, state);
+  var traverser = new ArangoTraverser("trelations", ArangoTraverser.DEPTH_FIRST, ArangoTraverser.PRE_ORDER, uniqueness, visitor);
+  traverser.traverse("tusers/claudius", context);
   console.log("------------");
-  var traverser = new ArangoTraverser("trelations", visitor);
-  traverser.traverse("tusers/claudius", ArangoTraverser.DEPTH_FIRST_POST, uniqueness, context, state);
+  var traverser = new ArangoTraverser("trelations", ArangoTraverser.DEPTH_FIRST, ArangoTraverser.POST_ORDER, uniqueness, visitor);
+  traverser.traverse("tusers/claudius", context);
   console.log("------------");
-  var traverser = new ArangoTraverser("trelations", visitor);
-  traverser.traverse("tusers/claudius", ArangoTraverser.BREADTH_FIRST, uniqueness, context, state);
+  var traverser = new ArangoTraverser("trelations", ArangoTraverser.BREADTH_FIRST, ArangoTraverser.PRE_ORDER, uniqueness, visitor);
+  traverser.traverse("tusers/claudius", context);
+  console.log("------------");
+  var traverser = new ArangoTraverser("trelations", ArangoTraverser.BREADTH_FIRST, ArangoTraverser.POST_ORDER, uniqueness, visitor);
+  traverser.traverse("tusers/claudius", context);
 
 }());
 
