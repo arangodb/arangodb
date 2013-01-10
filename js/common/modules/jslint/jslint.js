@@ -182,10 +182,12 @@
 //     newcap     true, if constructor names capitalization is ignored
 //     node       true, if Node.js globals should be predefined
 //     nomen      true, if names may have dangling _
+///    nonpropdel true, if delete should be allowed for non-properties
 //     on         true, if HTML event handlers should be allowed
 //     passfail   true, if the scan should stop on first error
 //     plusplus   true, if increment/decrement should be allowed
 //     properties true, if all property names must be declared with /*properties*/
+//     proto      true, if __proto__ is allowed
 //     regexp     true, if the . should be allowed in regexp literals
 //     rhino      true, if the Rhino environment globals should be predefined
 //     undef      true, if variables can be declared out of order
@@ -274,7 +276,7 @@
     'min-height', 'min-width', missing_a, missing_a_after_b, missing_option,
     missing_property, missing_space_a_b, missing_url, missing_use_strict, mixed,
     mm, mode, move_invocation, move_var, n, name, name_function, nav,
-    nested_comment, newcap, node, noframes, nomen, noscript, not,
+    nested_comment, newcap, node, noframes, nomen, nonpropdel, noscript, not,
     not_a_constructor, not_a_defined, not_a_function, not_a_label, not_a_scope,
     not_greater, nud, number, object, octal_a, ol, on, opacity, open, optgroup,
     option, outer, outline, 'outline-color', 'outline-style', 'outline-width',
@@ -283,7 +285,7 @@
     'page-break-before', param, parameter_a_get_b, parameter_arguments_a,
     parameter_set_a, params, paren, parent, passfail, pc, plusplus, pop,
     position, postscript, pre, predef, print, progress, projection, properties,
-    properties_report, property, prototype, pt, push, px, q, quote, quotes, r,
+    properties_report, property, proto, prototype, pt, push, px, q, quote, quotes, r,
     radix, range, raw, read_only, reason, redefinition_a, regexp, replace,
     report, reserved, reserved_a, rhino, right, rp, rt, ruby, safe, samp,
     scanned_a_b, screen, script, search, second, section, select, shift,
@@ -356,10 +358,12 @@ var JSLINT = (function () {
             newcap    : true,
             node      : true,
             nomen     : true,
+	    nonpropdel: true,
             on        : true,
             passfail  : true,
             plusplus  : true,
             properties: true,
+   	    proto     : true,
             regexp    : true,
             rhino     : true,
             undef     : true,
@@ -1218,8 +1222,12 @@ var JSLINT = (function () {
             )] || syntax['(error)']);
             if (type === '(identifier)') {
                 the_token.identifier = true;
-                if (value === '__iterator__' || value === '__proto__') {
+                if (value === '__iterator__') {
                     stop_at('reserved_a', line, from, value);
+                } else if (value === '__proto__') {
+                    if (!option.proto) {
+                      stop_at('reserved_a', line, from, value);
+		    }
                 } else if (!option.nomen &&
                         (value.charAt(0) === '_' ||
                         value.charAt(value.length - 1) === '_')) {
@@ -3419,8 +3427,10 @@ klass:              do {
     prefix('delete', function () {
         one_space();
         var p = expression(0);
-        if (!p || (p.id !== '.' && p.id !== '[')) {
-            warn('deleted');
+        if (!option.nonpropdel) {
+            if (!p || (p.id !== '.' && p.id !== '[')) {
+                warn('deleted');
+	    }
         }
         this.first = p;
         return this;

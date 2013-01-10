@@ -1,14 +1,14 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global Module */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript base module
+/// @brief module "js"
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,33 +25,31 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
+// --SECTION--                                                       Module "fs"
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Arango
+/// @addtogroup V8ModuleFS
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.db = internal.db;
-exports.ArangoCollection = internal.ArangoCollection;
-exports.ArangoError = internal.ArangoError;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief file-system module
+////////////////////////////////////////////////////////////////////////////////
 
-// copy error codes
 (function () {
-  var name;
+  var internal = Module.prototype.ModuleCache["/internal"].exports;
+  var fs = Module.prototype.ModuleCache["/fs"].exports;
 
-  for (name in internal.errors) {
-    if (internal.errors.hasOwnProperty(name)) {
-      exports[name] = internal.errors[name].code;
-    }
-  }
+  fs.exists = internal.exists;
+  fs.isDirectory = internal.isDirectory;
+  fs.listTree = internal.listTree;
+  fs.move = internal.move;
+  fs.remove = internal.remove;
 }());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,5 +62,5 @@ exports.ArangoError = internal.ArangoError;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
