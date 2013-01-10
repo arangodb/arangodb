@@ -1,6 +1,10 @@
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* added any query
+
+* added deployment tool
+
 * small fix for logging of long messages: the last character of log messages longer
   than 256 bytes was not logged.
 
