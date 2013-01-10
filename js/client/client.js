@@ -2713,7 +2713,7 @@ function ArangoDatabase (connection) {
     }
   }
   catch (err) {
-    internal.print(String(err));
+    internal.print("Caught startup error: ", String(err));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
