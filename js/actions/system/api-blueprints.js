@@ -26,9 +26,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  var actions = require("org/arangodb/actions");
-  var graph = require("graph");
+var arangodb = require("org/arangodb");
+var actions = require("org/arangodb/actions");
+var graph = require("graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -43,13 +43,13 @@
 /// @brief url prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-  var BLUEPRINTS_URL = "_api/blueprints";
+var BLUEPRINTS_URL = "_api/blueprints";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context
 ////////////////////////////////////////////////////////////////////////////////
 
-  var BLUEPRINTS_CONTEXT = "api";
+var BLUEPRINTS_CONTEXT = "api";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -68,74 +68,74 @@
 /// @brief get graph by request parameter (throws exception)
 ////////////////////////////////////////////////////////////////////////////////
 
-  function blueprints_graph_by_request_parameter (req) {
-    var name = req.parameters['graph'];    
+function blueprints_graph_by_request_parameter (req) {
+  var name = req.parameters['graph'];    
 
-    if (name == undefined) {
-      throw "missing graph name";
-    }
-
-    return new graph.Graph(name);
+  if (name == undefined) {
+    throw "missing graph name";
   }
+
+  return new graph.Graph(name);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph by request parameter (throws exception)
 ////////////////////////////////////////////////////////////////////////////////
 
-  function blueprints_graph_by_request (req) {
-    var id = req.suffix[0];
+function blueprints_graph_by_request (req) {
+  var id = req.suffix[0];
 
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-      
-    var g = new graph.Graph(id);
-      
-    if (g._properties == null) {
-      throw "no graph found for: " + id;
-    }
-    
-    return g;
+  if (req.suffix.length > 1) {
+    id += "/" + req.suffix[1];
   }
+
+  var g = new graph.Graph(id);
+
+  if (g._properties == null) {
+    throw "no graph found for: " + id;
+  }
+
+  return g;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vertex by request (throws exception)
 ////////////////////////////////////////////////////////////////////////////////
 
-  function blueprints_vertex_by_request (graph, req) {
-    var id = req.suffix[0];
+function blueprints_vertex_by_request (graph, req) {
+  var id = req.suffix[0];
 
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-
-    var vertex = graph.getVertex(id);
-
-    if (vertex == undefined || vertex._properties == undefined) {
-      throw "no vertex found for: " + id;
-    }
-    
-    return vertex;
+  if (req.suffix.length > 1) {
+    id += "/" + req.suffix[1];
   }
+
+  var vertex = graph.getVertex(id);
+
+  if (vertex == undefined || vertex._properties == undefined) {
+    throw "no vertex found for: " + id;
+  }
+
+  return vertex;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge by request (throws exception)
 ////////////////////////////////////////////////////////////////////////////////
 
-  function blueprints_edge_by_request (graph, req) {
-    var id = req.suffix[0];
-    if (req.suffix.length > 1) {
-      id += "/" + req.suffix[1];
-    }
-
-    var edge = graph.getEdge(id);
-
-    if (edge == undefined || edge._properties == undefined) {
-      throw "no edge found for: " + id;
-    }
-    
-    return edge;
+function blueprints_edge_by_request (graph, req) {
+  var id = req.suffix[0];
+  if (req.suffix.length > 1) {
+    id += "/" + req.suffix[1];
   }
+
+  var edge = graph.getEdge(id);
+
+  if (edge == undefined || edge._properties == undefined) {
+    throw "no edge found for: " + id;
+  }
+
+  return edge;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,30 +176,30 @@
 /// @verbinclude api-blueprints-create-graph
 ////////////////////////////////////////////////////////////////////////////////
 
-  function POST_blueprints_graph (req, res) {
-    try {    
-      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
-      
-      if (json === undefined) {
-        return;
-      }
-      
-      var name = json['name'];
-      var vertices = json['verticesName'];
-      var edges = json['edgesName'];
-      
-      var g = new graph.Graph(name, vertices, edges);
-      
-      if (g._properties == null) {
-        throw "no properties of graph found";
-      }
-      
-      actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
+function POST_blueprints_graph (req, res) {
+  try {    
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH);
+
+    if (json === undefined) {
+      return;
     }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, err);
+
+    var name = json['name'];
+    var vertices = json['verticesName'];
+    var edges = json['edgesName'];
+
+    var g = new graph.Graph(name, vertices, edges);
+
+    if (g._properties == null) {
+      throw "no properties of graph found";
     }
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
   }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_GRAPH, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get blueprint graph properties
@@ -224,21 +224,21 @@
 /// @verbinclude api-blueprints-get-graph-by-id
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_blueprints_graph (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
-      return;
-    }
-    
-    try {    
-      var g = blueprints_graph_by_request(req);
-      
-      actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
-    }
+function GET_blueprints_graph (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
+    return;
   }
+
+  try {    
+    var g = blueprints_graph_by_request(req);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "graph" : g._properties} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a blueprint graph
@@ -254,56 +254,56 @@
 /// @verbinclude api-blueprints-delete-graph
 ////////////////////////////////////////////////////////////////////////////////
 
-  function DELETE_blueprints_graph (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
-      return;
-    }
-    
-    try {    
-      var g = blueprints_graph_by_request(req);
-      
-      g.drop();
-      
-      actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_GRAPH, err);
-    }
+function DELETE_blueprints_graph (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, "graph not found");
+    return;
   }
+
+  try {    
+    var g = blueprints_graph_by_request(req);
+
+    g.drop();
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : BLUEPRINTS_URL + "/graph",
-    context : BLUEPRINTS_CONTEXT,
+actions.defineHttp({
+  url : BLUEPRINTS_URL + "/graph",
+  context : BLUEPRINTS_CONTEXT,
 
-    callback : function (req, res) {
-      try {
-        switch (req.requestType) {
-          case (actions.POST) :
-            POST_blueprints_graph(req, res); 
-            break;
+  callback : function (req, res) {
+    try {
+      switch (req.requestType) {
+	case (actions.POST) :
+	  POST_blueprints_graph(req, res); 
+	  break;
 
-          case (actions.GET) :
-            GET_blueprints_graph(req, res); 
-            break;
+	case (actions.GET) :
+	  GET_blueprints_graph(req, res); 
+	  break;
 
-          case (actions.DELETE) :
-            DELETE_blueprints_graph(req, res); 
-            break;
+	case (actions.DELETE) :
+	  DELETE_blueprints_graph(req, res); 
+	  break;
 
-          default:
-            actions.resultUnsupported(req, res);
-        }
-      }
-      catch (err) {
-        actions.resultException(req, res, err);
+	default:
+	  actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -342,28 +342,28 @@
 /// @verbinclude api-blueprints-create-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function POST_blueprints_vertex (req, res) {
-    try {
-      var g = blueprints_graph_by_request_parameter(req);
-      var json = actions.getJsonBody(req, res);
-      var id = undefined;
+function POST_blueprints_vertex (req, res) {
+  try {
+    var g = blueprints_graph_by_request_parameter(req);
+    var json = actions.getJsonBody(req, res);
+    var id = undefined;
 
-      if (json) {
-        id = json["$id"];
-      }
-
-      var v = g.addVertex(id, json);      
-
-      if (v == undefined || v._properties == undefined) {
-        throw "could not create vertex";
-      }
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties } );
+    if (json) {
+      id = json["$id"];
     }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
+
+    var v = g.addVertex(id, json);      
+
+    if (v == undefined || v._properties == undefined) {
+      throw "could not create vertex";
     }
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties } );
   }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_VERTEX, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vertex properties
@@ -386,22 +386,22 @@
 /// @verbinclude api-blueprints-get-vertex-by-id
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_blueprints_vertex (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-      return;
-    }
-
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var v = blueprints_vertex_by_request(g, req);
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-    }
+function GET_blueprints_vertex (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+    return;
   }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var v = blueprints_vertex_by_request(g, req);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
@@ -417,24 +417,24 @@
 /// @verbinclude api-blueprints-delete-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function DELETE_blueprints_vertex (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-      return;
-    }
-
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var v = blueprints_vertex_by_request(g, req);
-
-      g.removeVertex(v);
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-    }
+function DELETE_blueprints_vertex (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+    return;
   }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var v = blueprints_vertex_by_request(g, req);
+
+    g.removeVertex(v);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
@@ -461,71 +461,71 @@
 /// @verbinclude api-blueprints-change-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_blueprints_vertex (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "vertex not found");
+function PUT_blueprints_vertex (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, "vertex not found");
+    return;
+  }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var v = blueprints_vertex_by_request(g, req);
+
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
+
+    if (json === undefined) {
       return;
     }
 
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var v = blueprints_vertex_by_request(g, req);
+    var shallow = json.shallowCopy;
+    shallow.$id = v._properties.$id;
 
-      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
+    var id2 = g._vertices.replace(v._properties, shallow);
+    var result = g._vertices.document(id2);
 
-      if (json === undefined) {
-        return;
-      }
-
-      var shallow = json.shallowCopy;
-      shallow.$id = v._properties.$id;
-
-      var id2 = g._vertices.replace(v._properties, shallow);
-      var result = g._vertices.document(id2);
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : result} );
   }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : BLUEPRINTS_URL + "/vertex",
-    context : BLUEPRINTS_CONTEXT,
+actions.defineHttp({
+  url : BLUEPRINTS_URL + "/vertex",
+  context : BLUEPRINTS_CONTEXT,
 
-    callback : function (req, res) {
-      try {
-        switch (req.requestType) {
-          case (actions.POST) :
-            POST_blueprints_vertex(req, res); 
-            break;
+  callback : function (req, res) {
+    try {
+      switch (req.requestType) {
+	case (actions.POST) :
+	  POST_blueprints_vertex(req, res); 
+	  break;
 
-          case (actions.DELETE) :
-            DELETE_blueprints_vertex(req, res); 
-            break;
+	case (actions.DELETE) :
+	  DELETE_blueprints_vertex(req, res); 
+	  break;
 
-          case (actions.GET) :
-            GET_blueprints_vertex(req, res); 
-            break;
+	case (actions.GET) :
+	  GET_blueprints_vertex(req, res); 
+	  break;
 
-          case (actions.PUT) :
-            PUT_blueprints_vertex(req, res); 
-            break;
+	case (actions.PUT) :
+	  PUT_blueprints_vertex(req, res); 
+	  break;
 
-          default:
-            actions.resultUnsupported(req, res);
-        }
-      }
-      catch (err) {
-        actions.resultException(req, res, err);
+	default:
+	  actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -586,119 +586,119 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-  function POST_blueprints_vertices (req, res) {
-    if (req.suffix.length != 0) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-      return;
-    }    
+function POST_blueprints_vertices (req, res) {
+  if (req.suffix.length != 0) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+    return;
+  }    
 
-    var json = actions.getJsonBody(req, res);
+  var json = actions.getJsonBody(req, res);
 
-    if (json === undefined) {
-      json = {};
-    }
-    
-    
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var selectEdge = "";
-      var vertexFilter = "";
-      var edgeFilter = "";
-      var bindVars = {"@vertexColl" : g._properties.verticesName };          
-
-      if (json.vertex != undefined) {
-        // get neighbors
-        var v = g.getVertex(json.vertex);
-        
-        if (v == undefined || v._properties == undefined) {
-          actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-          return;          
-        }
-        selectEdge = "FOR e IN @@edgeColl";
-
-        // get inbound neighbors
-        if (json.direction == "in") {
-          edgeFilter = " FILTER e._to == @id";
-          vertexFilter = " FILTER e._from == v._id";
-        }
-        // get outbound neighbors
-        else if (json.direction == "out") {
-          edgeFilter = " FILTER e._from == @id";
-          vertexFilter = " FILTER e._to == v._id";
-        }
-        // get all neighbors
-        else {          
-          vertexFilter = " FILTER ((e._from == @id && e._to == v._id) || (e._to == @id && e._from == v._id))";
-        }
-
-        bindVars["@edgeColl"] = g._properties.edgesName;
-        bindVars["id"] = v._id;
-                  
-        // filter edge labels
-        if (json.labels != undefined && json.labels instanceof Array) {
-          if (edgeFilter == "") { edgeFilter = " FILTER"; } else { edgeFilter += " &&";}
-          edgeFilter += ' e["$label"] IN @labels';
-          bindVars["labels"] = json.labels;
-        }
-
-      }
-
-      // filter key/value pairs labels
-      if (json.key != undefined) {
-        // get all with key=value
-        if (vertexFilter == "") { vertexFilter = " FILTER"; } else { vertexFilter += " &&";}
-        vertexFilter += " v[@key] == @value";        
-        bindVars["key"] = json.key;
-        bindVars["value"] = json.value;
-      }
-
-      // build aql query
-      var query = selectEdge + edgeFilter + " FOR v IN @@vertexColl" + vertexFilter + " RETURN v";
-
-      var cursor = AHUACATL_RUN(query, 
-                            bindVars, 
-                            (json.count != undefined ? json.count : false),
-                            json.batchSize, 
-                            (json.batchSize == undefined));  
-
-      // error occurred
-      if (cursor instanceof ArangoError) {
-        actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
-        return;
-      }
-      
-      // this might dispose or persist the cursor
-      actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-    }
+  if (json === undefined) {
+    json = {};
   }
+
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var selectEdge = "";
+    var vertexFilter = "";
+    var edgeFilter = "";
+    var bindVars = {"@vertexColl" : g._properties.verticesName };          
+
+    if (json.vertex != undefined) {
+      // get neighbors
+      var v = g.getVertex(json.vertex);
+
+      if (v == undefined || v._properties == undefined) {
+	actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+	return;          
+      }
+      selectEdge = "FOR e IN @@edgeColl";
+
+      // get inbound neighbors
+      if (json.direction == "in") {
+	edgeFilter = " FILTER e._to == @id";
+	vertexFilter = " FILTER e._from == v._id";
+      }
+      // get outbound neighbors
+      else if (json.direction == "out") {
+	edgeFilter = " FILTER e._from == @id";
+	vertexFilter = " FILTER e._to == v._id";
+      }
+      // get all neighbors
+      else {          
+	vertexFilter = " FILTER ((e._from == @id && e._to == v._id) || (e._to == @id && e._from == v._id))";
+      }
+
+      bindVars["@edgeColl"] = g._properties.edgesName;
+      bindVars["id"] = v._id;
+
+      // filter edge labels
+      if (json.labels != undefined && json.labels instanceof Array) {
+	if (edgeFilter == "") { edgeFilter = " FILTER"; } else { edgeFilter += " &&";}
+	edgeFilter += ' e["$label"] IN @labels';
+	bindVars["labels"] = json.labels;
+      }
+
+    }
+
+    // filter key/value pairs labels
+    if (json.key != undefined) {
+      // get all with key=value
+      if (vertexFilter == "") { vertexFilter = " FILTER"; } else { vertexFilter += " &&";}
+      vertexFilter += " v[@key] == @value";        
+      bindVars["key"] = json.key;
+      bindVars["value"] = json.value;
+    }
+
+    // build aql query
+    var query = selectEdge + edgeFilter + " FOR v IN @@vertexColl" + vertexFilter + " RETURN v";
+
+    var cursor = AHUACATL_RUN(query, 
+			  bindVars, 
+			  (json.count != undefined ? json.count : false),
+			  json.batchSize, 
+			  (json.batchSize == undefined));  
+
+    // error occurred
+    if (cursor instanceof ArangoError) {
+      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+      return;
+    }
+
+    // this might dispose or persist the cursor
+    actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : BLUEPRINTS_URL + "/vertices",
-    context : BLUEPRINTS_CONTEXT,
+actions.defineHttp({
+  url : BLUEPRINTS_URL + "/vertices",
+  context : BLUEPRINTS_CONTEXT,
 
-    callback : function (req, res) {
-      try {
-        switch (req.requestType) {
-          case (actions.POST) :
-            POST_blueprints_vertices(req, res); 
-            break;
+  callback : function (req, res) {
+    try {
+      switch (req.requestType) {
+	case (actions.POST) :
+	  POST_blueprints_vertices(req, res); 
+	  break;
 
-          default:
-            actions.resultUnsupported(req, res);
-        }
-      }
-      catch (err) {
-        actions.resultException(req, res, err);
+	default:
+	  actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -740,32 +740,32 @@
 /// @verbinclude api-blueprints-create-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-  function POST_blueprints_edge (req, res) {
-    try {
-      var g = blueprints_graph_by_request_parameter(req);
-      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
+function POST_blueprints_edge (req, res) {
+  try {
+    var g = blueprints_graph_by_request_parameter(req);
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
 
-      if (json === undefined) {
-        return;
-      }
-
-      var id = json["$id"];    
-      var out = g.getVertex(json["_from"]);
-      var ine = g.getVertex(json["_to"]);
-      var label = json["$label"];    
-
-      var e = g.addEdge(out, ine, id, label, json);      
-
-      if (e == undefined || e._properties == undefined) {
-        throw "could not create edge";
-      }
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
+    if (json === undefined) {
+      return;
     }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
+
+    var id = json["$id"];    
+    var out = g.getVertex(json["_from"]);
+    var ine = g.getVertex(json["_to"]);
+    var label = json["$label"];    
+
+    var e = g.addEdge(out, ine, id, label, json);      
+
+    if (e == undefined || e._properties == undefined) {
+      throw "could not create edge";
     }
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties } );
   }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge properties
@@ -782,22 +782,22 @@
 /// @verbinclude api-blueprints-get-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-  function GET_blueprints_edge (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
-      return;
-    }
-
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var e = blueprints_edge_by_request(g, req);
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
-    }
+function GET_blueprints_edge (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_EDGE, "edge not found");
+    return;
   }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var e = blueprints_edge_by_request(g, req);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_EDGE, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an edge
@@ -813,24 +813,24 @@
 /// @verbinclude api-blueprints-delete-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-  function DELETE_blueprints_edge (req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, "edge not found");
-      return;
-    }
-
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var e = blueprints_edge_by_request(g, req);
-
-      g.removeEdge(e);
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_EDGE, err);
-    }
+function DELETE_blueprints_edge (req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_EDGE, "edge not found");
+    return;
   }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var e = blueprints_edge_by_request(g, req);
+
+    g.removeEdge(e);
+
+    actions.resultOk(req, res, actions.HTTP_OK, { "deleted" : true} );
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_EDGE, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
@@ -853,72 +853,72 @@
 /// @verbinclude api-blueprints-change-edge
 ////////////////////////////////////////////////////////////////////////////////
 
-  function PUT_blueprints_edge(req, res) {
-    if (req.suffix.length < 1) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "edge not found");
+function PUT_blueprints_edge(req, res) {
+  if (req.suffix.length < 1) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "edge not found");
+    return;
+  }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var e = blueprints_edge_by_request(g, req);
+
+    var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
+
+    if (json === undefined) {
       return;
     }
 
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var e = blueprints_edge_by_request(g, req);
+    var shallow = json.shallowCopy;
+    shallow.$id = e._properties.$id;
+    shallow.$label = e._properties.$label;
 
-      var json = actions.getJsonBody(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
+    var id2 = g._edges.replace(e._properties, shallow);
+    var result = g._edges.document(id2);
 
-      if (json === undefined) {
-        return;
-      }
-
-      var shallow = json.shallowCopy;
-      shallow.$id = e._properties.$id;
-      shallow.$label = e._properties.$label;
-
-      var id2 = g._edges.replace(e._properties, shallow);
-      var result = g._edges.document(id2);
-
-      actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
-    }
+    actions.resultOk(req, res, actions.HTTP_OK, { "edge" : result} );
   }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : BLUEPRINTS_URL + "/edge",
-    context : BLUEPRINTS_CONTEXT,
+actions.defineHttp({
+  url : BLUEPRINTS_URL + "/edge",
+  context : BLUEPRINTS_CONTEXT,
 
-    callback : function (req, res) {
-      try {
-        switch (req.requestType) {
-          case (actions.POST) :
-            POST_blueprints_edge(req, res); 
-            break;
+  callback : function (req, res) {
+    try {
+      switch (req.requestType) {
+	case (actions.POST) :
+	  POST_blueprints_edge(req, res); 
+	  break;
 
-          case (actions.GET) :
-            GET_blueprints_edge(req, res); 
-            break;
+	case (actions.GET) :
+	  GET_blueprints_edge(req, res); 
+	  break;
 
-          case (actions.DELETE) :
-            DELETE_blueprints_edge(req, res); 
-            break;
+	case (actions.DELETE) :
+	  DELETE_blueprints_edge(req, res); 
+	  break;
 
-          case (actions.PUT) :
-            PUT_blueprints_edge(req, res); 
-            break;
- 
-          default:
-            actions.resultUnsupported(req, res);
-        }
-      }
-      catch (err) {
-        actions.resultException(req, res, err);
+	case (actions.PUT) :
+	  PUT_blueprints_edge(req, res); 
+	  break;
+
+	default:
+	  actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -973,111 +973,109 @@
 /// @verbinclude api-blueprints-get-in-edges-by-vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-  function POST_blueprints_edges (req, res) {
-    if (req.suffix.length != 0) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "edges not found");
-      return;
-    }    
+function POST_blueprints_edges (req, res) {
+  if (req.suffix.length != 0) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, "edges not found");
+    return;
+  }    
 
-    var json = actions.getJsonBody(req, res);
+  var json = actions.getJsonBody(req, res);
 
-    if (json === undefined) {
-      json = {};
-    }
-        
-    try {    
-      var g = blueprints_graph_by_request_parameter(req);
-      var filter = "";
-      var bindVars = {"@edgeColl" : g._properties.edgesName};
-
-      if (json.vertex != undefined) {
-        // get edges of a vertex
-        var v = g.getVertex(json.vertex);
-        
-        if (v == undefined || v._properties == undefined) {
-          actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
-          return;          
-        }
-
-        if (json.direction == "in") {
-          filter = " FILTER e._to == @id ";
-        }
-        else if (json.direction == "out") {
-          filter = " FILTER e._from == @id ";
-        }
-        else {
-          filter = " FILTER (e._from == @id || e._to == @id)";
-        }
-
-        bindVars["id"] = v._id;
-      }
-
-      if (json.key != undefined) {
-        // get all with key=value
-        if (filter == "") {filter = " FILTER";} else {filter += " &&";}
-        filter += " e[@key] == @value";
-        bindVars["key"] = json.key;
-        bindVars["value"] = json.value;
-      }
-
-      if (json.labels != undefined && json.labels instanceof Array) {
-        // get all with $lable=value
-        if (filter == "") {filter = " FILTER";} else {filter += " &&";}
-        filter += ' e["$label"] IN @labels';
-        bindVars["labels"] = json.labels;
-      }
-
-      var query = "FOR e IN @@edgeColl" + filter + " RETURN e";
-
-      var cursor = AHUACATL_RUN(query, 
-                            bindVars, 
-                            (json.count != undefined ? json.count : false),
-                            json.batchSize, 
-                            (json.batchSize == undefined));  
-
-      // error occurred
-      if (cursor instanceof ArangoError) {
-        actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
-        return;
-      }
-      
-      // this might dispose or persist the cursor
-      actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
-    }
-    catch (err) {
-      actions.resultBad(req, res, actions.ERROR_GRAPH_INVALID_VERTEX, err);
-    }
+  if (json === undefined) {
+    json = {};
   }
+
+  try {    
+    var g = blueprints_graph_by_request_parameter(req);
+    var filter = "";
+    var bindVars = {"@edgeColl" : g._properties.edgesName};
+
+    if (json.vertex != undefined) {
+      // get edges of a vertex
+      var v = g.getVertex(json.vertex);
+
+      if (v == undefined || v._properties == undefined) {
+	actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, "vertex not found");
+	return;          
+      }
+
+      if (json.direction == "in") {
+	filter = " FILTER e._to == @id ";
+      }
+      else if (json.direction == "out") {
+	filter = " FILTER e._from == @id ";
+      }
+      else {
+	filter = " FILTER (e._from == @id || e._to == @id)";
+      }
+
+      bindVars["id"] = v._id;
+    }
+
+    if (json.key != undefined) {
+      // get all with key=value
+      if (filter == "") {filter = " FILTER";} else {filter += " &&";}
+      filter += " e[@key] == @value";
+      bindVars["key"] = json.key;
+      bindVars["value"] = json.value;
+    }
+
+    if (json.labels != undefined && json.labels instanceof Array) {
+      // get all with $lable=value
+      if (filter == "") {filter = " FILTER";} else {filter += " &&";}
+      filter += ' e["$label"] IN @labels';
+      bindVars["labels"] = json.labels;
+    }
+
+    var query = "FOR e IN @@edgeColl" + filter + " RETURN e";
+
+    var cursor = AHUACATL_RUN(query, 
+			  bindVars, 
+			  (json.count != undefined ? json.count : false),
+			  json.batchSize, 
+			  (json.batchSize == undefined));  
+
+    // error occurred
+    if (cursor instanceof ArangoError) {
+      actions.resultBad(req, res, cursor.errorNum, cursor.errorMessage);
+      return;
+    }
+
+    // this might dispose or persist the cursor
+    actions.resultCursor(req, res, cursor, actions.HTTP_CREATED, { countRequested: json.count ? true : false });      
+  }
+  catch (err) {
+    actions.resultBad(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
+  }
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions gateway 
 ////////////////////////////////////////////////////////////////////////////////
 
-  actions.defineHttp({
-    url : BLUEPRINTS_URL + "/edges",
-    context : BLUEPRINTS_CONTEXT,
+actions.defineHttp({
+  url : BLUEPRINTS_URL + "/edges",
+  context : BLUEPRINTS_CONTEXT,
 
-    callback : function (req, res) {
-      try {
-        switch (req.requestType) {
-          case (actions.POST) :
-            POST_blueprints_edges(req, res); 
-            break;
+  callback : function (req, res) {
+    try {
+      switch (req.requestType) {
+	case (actions.POST) :
+	  POST_blueprints_edges(req, res); 
+	  break;
 
-          default:
-            actions.resultUnsupported(req, res);
-        }
-      }
-      catch (err) {
-        actions.resultException(req, res, err);
+	default:
+	  actions.resultUnsupported(req, res);
       }
     }
-  });
+    catch (err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-})();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

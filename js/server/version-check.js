@@ -92,9 +92,9 @@
     }
 
 
-    if (FS_EXISTS(versionFile)) {
+    if (internal.exists(versionFile)) {
       // VERSION file exists, read its contents
-      var versionInfo = SYS_READ(versionFile);
+      var versionInfo = internal.read(versionFile);
 
       if (versionInfo != '') {
         var versionValues = JSON.parse(versionInfo);
@@ -342,13 +342,13 @@
   
   var currentVersion = parseFloat(currentServerVersion[1]);
   
-  if (! FS_EXISTS(versionFile)) {
+  if (! internal.exists(versionFile)) {
     console.info("No version information file found in database directory.");
     return runUpgrade(currentVersion);
   }
 
    // VERSION file exists, read its contents
-  var versionInfo = SYS_READ(versionFile);
+  var versionInfo = internal.read(versionFile);
   if (versionInfo != '') {
     var versionValues = JSON.parse(versionInfo);
     if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {

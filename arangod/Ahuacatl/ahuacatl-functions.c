@@ -374,6 +374,7 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
     len = strlen(lookFor);
   }
   else {
+    // "any" will not be optimised
     lookFor = NULL;
     len = 0;
   }
@@ -394,6 +395,110 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
     // attach the modified fieldaccess to the collection
     hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(vertexCollection));
     hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
+  }
+
+  if (args->_members._length <= 4 && 
+      TRI_EqualString(name, ".edges.LENGTH()")) {
+    // length restriction, can only be applied if length parameters are not already set
+    TRI_aql_node_t* argNode;
+    TRI_json_t* value;
+    double minValue = 0.0;
+    double maxValue = 0.0;
+    bool useMin = false;
+    bool useMax = false;
+
+    if (fieldAccess->_type == TRI_AQL_ACCESS_EXACT) {
+      value = fieldAccess->_value._value;
+
+      if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+        // LENGTH(p.edges) == const
+        minValue = maxValue = value->_value._number;
+        useMin = useMax = true;
+      }
+    }
+    else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
+      value = fieldAccess->_value._singleRange._value;
+
+      if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+        // LENGTH(p.edges) operator const
+        if (fieldAccess->_value._singleRange._type == TRI_AQL_RANGE_LOWER_INCLUDED) {
+          minValue = value->_value._number;
+          useMin = true;
+        }
+        else if (fieldAccess->_value._singleRange._type == TRI_AQL_RANGE_UPPER_INCLUDED) {
+          maxValue = value->_value._number;
+          useMax = true;
+        }
+        else if (fieldAccess->_value._singleRange._type == TRI_AQL_RANGE_LOWER_EXCLUDED) {
+          if ((double) ((int) value->_value._number) == value->_value._number) {
+            minValue = value->_value._number + 1.0;
+            useMin = true;
+          }
+        }
+        else if (fieldAccess->_value._singleRange._type == TRI_AQL_RANGE_UPPER_EXCLUDED) {
+          if ((double) ((int) value->_value._number) == value->_value._number) {
+            maxValue = value->_value._number - 1.0;
+            useMax = true;
+          }
+        }
+      }
+    }
+    else if (fieldAccess->_type == TRI_AQL_ACCESS_RANGE_DOUBLE) {
+      // LENGTH(p.edges) > const && LENGTH(p.edges) < const
+      value = fieldAccess->_value._between._lower._value;
+
+      if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+        if (fieldAccess->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED) {
+          minValue = value->_value._number;
+          useMin = true;
+        }
+        else if (fieldAccess->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED) {
+          if ((double) ((int) value->_value._number) == value->_value._number) {
+            minValue = value->_value._number + 1.0;
+            useMin = true;
+          }
+        }
+      }
+
+      value = fieldAccess->_value._between._upper._value;
+
+      if (value != NULL && value->_type == TRI_JSON_NUMBER) {
+        if (fieldAccess->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED) {
+          maxValue = value->_value._number;
+          useMax = true;
+        }
+        else if (fieldAccess->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED) {
+          if ((double) ((int) value->_value._number) == value->_value._number) {
+            maxValue = value->_value._number - 1.0;
+            useMax = true;
+          }
+        }
+      }
+    }
+
+    if (useMin || useMax) {
+      // minLength and maxLength are parameters 5 & 6
+      // add as many null value nodes as are missing
+      while (args->_members._length < 4) {
+        argNode = TRI_CreateNodeValueNullAql(context);
+        if (argNode) {
+          TRI_PushBackVectorPointer(&args->_members, (void*) argNode);
+        }
+      }
+
+      // add min and max values to the function call argument list
+      argNode = TRI_CreateNodeValueIntAql(context, useMin ? (int64_t) minValue : (int64_t) 0);
+      if (argNode) {
+        // min value node
+        TRI_PushBackVectorPointer(&args->_members, (void*) argNode);
+
+        argNode = TRI_CreateNodeValueIntAql(context, useMax ? (int64_t) maxValue : (int64_t) (1024 * 1024));
+        if (argNode) {
+          // max value node
+          TRI_PushBackVectorPointer(&args->_members, (void*) argNode);
+        }
+      }
+    }
   }
 }
 
