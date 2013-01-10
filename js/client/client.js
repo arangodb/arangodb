@@ -1536,6 +1536,19 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a random element from the collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.any = function () {
+    var requestResult = this._database._connection.PUT("/_api/simple/any",
+      JSON.stringify({collection: this._id}));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2660,7 +2673,7 @@ function ArangoDatabase (connection) {
     }
   }
   catch (err) {
-    internal.print(String(err));
+    internal.print("Caught startup error: ", String(err));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
