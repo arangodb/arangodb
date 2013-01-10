@@ -2125,15 +2125,14 @@ function AHUACATL_GEO_WITHIN () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_GRAPH_PATHS () {
-  var vertices = arguments[0];
+  var vertices       = arguments[0];
   var edgeCollection = arguments[1];
-  var direction = arguments[2] != undefined ? arguments[2] : "outbound";
-  var followCycles = arguments[3] ? arguments[3] : false;
-
-  var minLength = 0;
-  var maxLength = 10;
+  var direction      = arguments[2] || "outbound";
+  var followCycles   = arguments[3] || false;
+  var minLength      = arguments[4] || 0;
+  var maxLength      = arguments[5] != undefined ? arguments[5] : 10;
   var searchDirection;
-
+  
   AHUACATL_LIST(vertices);
 
   // validate arguments
@@ -2145,7 +2144,6 @@ function AHUACATL_GRAPH_PATHS () {
   }
   else if (direction == "any") {
     searchDirection = 3;
-    maxLength = 3;
   }
   else {
     AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
