@@ -815,7 +815,6 @@ static int ManifestCollectionVocBase (TRI_vocbase_t* vocbase, TRI_vocbase_col_t*
 
 static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, 
                                                        char const* name, 
-                                                       bool bear, 
                                                        TRI_col_type_e type) {
   union { void const* v; TRI_vocbase_col_t* c; } found;
 
@@ -827,14 +826,8 @@ static TRI_vocbase_col_t* FindCollectionByNameVocBase (TRI_vocbase_t* vocbase,
     return found.c;
   }
 
-  if (! bear) {
-    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return NULL;
-  }
-
   return BearCollectionVocBase(vocbase, name, type);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads an existing (document) collection
@@ -1373,6 +1366,32 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a collection name by a collection id
+///
+/// the name is fetched under a lock to make this thread-safe. returns NULL if
+/// the collection does not exist
+/// it is the caller's responsibility to free the name returned
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase, 
+                                        const TRI_voc_cid_t id) {
+  union { void const* v; TRI_vocbase_col_t* c; } found;
+  char* name;
+
+  TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  found.v = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id);
+  if (found.v == NULL) {
+    name = NULL;
+  }
+  else {
+    name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found.c->_name);
+  }
+  TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  return name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1401,27 +1420,13 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, TRI_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a collection by name
+/// @brief finds a collection by name, optionally creates it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_FindCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
-  return TRI_FindDocumentCollectionByNameVocBase(vocbase, name, bear);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a primary collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_FindDocumentCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
-  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_DOCUMENT);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an edge collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_col_t* TRI_FindEdgeCollectionByNameVocBase (TRI_vocbase_t* vocbase, char const* name, bool bear) {
-  return FindCollectionByNameVocBase(vocbase, name, bear, TRI_COL_TYPE_EDGE);
+TRI_vocbase_col_t* TRI_FindCollectionByNameOrBearVocBase (TRI_vocbase_t* vocbase, 
+                                                          char const* name, 
+                                                          const TRI_col_type_t type) {
+  return FindCollectionByNameVocBase(vocbase, name, (TRI_col_type_e) type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

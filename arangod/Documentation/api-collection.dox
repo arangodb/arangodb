@@ -119,37 +119,37 @@
 ///////////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpCollectionCreate
-/// @copydetails JSF_POST_api_collection
+/// @copydetails JSF_post_api_collection
 ///
 /// @anchor HttpCollectionDelete
-/// @copydetails JSF_DELETE_api_collection
+/// @copydetails JSF_delete_api_collection
 ///
 /// @anchor HttpCollectionTruncate
-/// @copydetails JSF_PUT_api_collection_truncate
+/// @copydetails JSF_put_api_collection_truncate
 ///
 /// @subsection HttpCollectionReading Getting Information about a Collection
 ////////////////////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpCollectionRead
-/// @copydetails JSF_GET_api_collection
+/// @copydetails JSF_get_api_collection
 ///
 /// @anchor HttpCollectionReadAll
-/// @copydetails JSF_GET_api_collections
+/// @copydetails JSF_get_api_collections
 ///
 /// @subsection HttpCollectionChanging Modifying a Collection
 /////////////////////////////////////////////////////////////
 ///
 /// @anchor HttpCollectionLoad
-/// @copydetails JSF_PUT_api_collection_load
+/// @copydetails JSF_put_api_collection_load
 ///
 /// @anchor HttpCollectionUnload
-/// @copydetails JSF_PUT_api_collection_unload
+/// @copydetails JSF_put_api_collection_unload
 ///
 /// @anchor HttpCollectionProperties
-/// @copydetails JSF_PUT_api_collection_properties
+/// @copydetails JSF_put_api_collection_properties
 ///
 /// @anchor HttpCollectionRename
-/// @copydetails JSF_PUT_api_collection_rename
+/// @copydetails JSF_put_api_collection_rename
 ////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:

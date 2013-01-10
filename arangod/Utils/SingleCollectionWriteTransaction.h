@@ -70,11 +70,33 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          const string& collectionName, 
-                                          const TRI_col_type_e collectionType, 
-                                          const bool createCollection, 
-                                          const string& trxName) :
-          SingleCollectionTransaction<T>(vocbase, collectionName, collectionType, createCollection, trxName, TRI_TRANSACTION_WRITE),
+                                          const string& name) :
+          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
+          _numWrites(0), 
+          _synchronous(false) {
+
+          if (N == 1) {
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+          }
+        }
+        
+        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          const string& name,
+                                          const TRI_col_type_e createType) :
+          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE, createType),
+          _numWrites(0), 
+          _synchronous(false) {
+
+          if (N == 1) {
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+          }
+        }
+        
+        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
+                                          const string& name,
+                                          const bool create,
+                                          const TRI_col_type_e createType) :
+          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE, create, createType),
           _numWrites(0), 
           _synchronous(false) {
 

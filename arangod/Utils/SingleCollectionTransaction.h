@@ -71,16 +71,29 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const string& collectionName,
-                                     const TRI_col_type_e collectionType,
-                                     const bool createCollection, 
-                                     const string& trxName,
-                                     const TRI_transaction_type_e type) :
-          Transaction<T>(vocbase, trxName), 
-          _collectionName(collectionName),
-          _collectionType(collectionType),
-          _createCollection(createCollection),
-          _type(type),
+                                     const string& name,
+                                     const TRI_transaction_type_e accessType) :
+          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType)),
+          _name(name),
+          _collection(0) {
+        }
+        
+        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
+                                     const string& name,
+                                     const TRI_transaction_type_e accessType,
+                                     const TRI_col_type_e createType) :
+          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType, createType)),
+          _name(name),
+          _collection(0) {
+        }
+        
+        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
+                                     const string& name,
+                                     const TRI_transaction_type_e accessType,
+                                     const bool create,
+                                     const TRI_col_type_e createType) :
+          Transaction<T>(vocbase, new TransactionCollectionsList(vocbase, name, accessType, create, createType)),
+          _name(name),
           _collection(0) {
         }
 
@@ -89,103 +102,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~SingleCollectionTransaction () {
-          if (! this->isEmbedded()) {
-            if (this->_trx != 0) {
-              if (this->status() == TRI_TRANSACTION_RUNNING) {
-                // auto abort
-                this->abort();
-              }
-            }
-
-            releaseCollection();
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       virtual protected functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use the underlying collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int useCollections () {
-          if (_collection != 0) {
-            // we already used this collectino, nothing to do
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (_collectionName.empty()) {
-            // name is empty. cannot open the collection
-            return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-          }
-
-          // open or create the collection
-          if (isdigit(_collectionName[0])) {
-            TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(_collectionName);
-
-            _collection = TRI_LookupCollectionByIdVocBase(this->_vocbase, id);
-          }
-          else {
-            if (_collectionType == TRI_COL_TYPE_DOCUMENT) {
-              _collection = TRI_FindDocumentCollectionByNameVocBase(this->_vocbase, _collectionName.c_str(), _createCollection);
-            }
-            else if (_collectionType == TRI_COL_TYPE_EDGE) {
-              _collection = TRI_FindEdgeCollectionByNameVocBase(this->_vocbase, _collectionName.c_str(), _createCollection);
-            }
-          }
- 
-          if (_collection == 0) {
-            // collection not found
-            return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-          }
-
-          int res = TRI_UseCollectionVocBase(this->_vocbase, const_cast<TRI_vocbase_col_s*>(_collection));
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            _collection = 0;
-
-            return res;
-          }
-
-          LOGGER_TRACE << "using collection " << _collectionName;
-          assert(_collection->_collection != 0);
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add all collections to the transaction (only one)
-////////////////////////////////////////////////////////////////////////////////
-
-        int addCollections () {
-          if (this->isEmbedded()) {
-            assert(_collection == 0);
-
-            _collection = TRI_CheckCollectionTransaction(this->_trx, _collectionName.c_str(), type());
-            if (_collection == 0) {
-              return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-            }
-
-            return TRI_ERROR_NO_ERROR;
-          }
-          else {
-            assert(_collection != 0);
-
-            int res = TRI_AddCollectionTransaction(this->_trx, _collectionName.c_str(), type(), _collection);
-            return res;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,8 +123,8 @@ namespace triagens {
 /// @brief return the name of the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline string collectionName () {
-          return _collectionName;
+        const string collectionName () const {
+          return _name;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,6 +132,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_primary_collection_t* primaryCollection () {
+          if (_collection == 0) {
+            const vector<TransactionCollection*> collections = this->_collections->getCollections();
+            _collection = TRI_GetCollectionTransaction(this->_trx, collections[0]->getName().c_str());
+          }
+
+          assert(_collection != 0);
           assert(_collection->_collection != 0);
           return _collection->_collection;
         }
@@ -240,7 +162,11 @@ namespace triagens {
 /// @brief get the underlying collection's id
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_voc_cid_t cid () const {
+        inline TRI_voc_cid_t cid () {
+          if (_collection == 0) {
+            _collection = TRI_GetCollectionTransaction(this->_trx, this->collectionName().c_str());
+          }
+
           assert(_collection != 0);
           return _collection->_cid;
         }
@@ -283,43 +209,6 @@ namespace triagens {
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release the underlying collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int releaseCollection () {
-          // unuse underlying collection
-          if (_collection != 0) {
-            TRI_ReleaseCollectionVocBase(this->_vocbase, _collection);
-            _collection = 0;
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the transaction type
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_type_e type () const {
-          return _type;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -332,28 +221,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the collection that is worked on
+/// @brief name of the collection used
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string _collectionName;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the type of the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        const TRI_col_type_e _collectionType;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to create the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        const bool _createCollection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction type (READ | WRITE)
-////////////////////////////////////////////////////////////////////////////////
-
-        const TRI_transaction_type_e _type;
+        string _name;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data structure for the single collection used

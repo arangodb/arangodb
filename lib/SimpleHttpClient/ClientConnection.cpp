@@ -223,8 +223,13 @@ bool ClientConnection::read (StringBuffer& stringBuffer) {
 
     int lenRead = ::read(_socket, buffer, READBUFFER_SIZE - 1);
 
-    if (lenRead <= 0) {
-      // error: stop reading
+    if (lenRead == -1) {
+      // error occurred
+      return false;
+    }
+
+    if (lenRead == 0) {
+      // nothing more to read
       break;
     }
 

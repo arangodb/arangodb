@@ -159,6 +159,58 @@ static void InitialiseLockFiles (void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lists the directory tree
+////////////////////////////////////////////////////////////////////////////////
+
+static void ListTreeRecursively (char const* full,
+                                 char const* path, 
+                                 TRI_vector_string_t* result) {
+  size_t i;
+  size_t j;
+  TRI_vector_string_t dirs = TRI_FilesDirectory(full);
+
+  for (j = 0;  j < 2;  ++j) {
+    for (i = 0;  i < dirs._length;  ++i) {
+      char const* filename = dirs._buffer[i];
+      char* newfull = TRI_Concatenate2File(full, filename);
+      char* newpath;
+
+      if (*path) {
+        newpath = TRI_Concatenate2File(path, filename);
+      }
+      else {
+        newpath = TRI_DuplicateString(filename);
+      }
+
+      if (j == 0) {
+        if (TRI_IsDirectory(newfull)) {
+          TRI_PushBackVectorString(result, newpath);
+
+          if (! TRI_IsSymbolicLink(newfull)) {
+            ListTreeRecursively(newfull, newpath, result);
+          }
+        }
+        else {
+          TRI_FreeString(TRI_CORE_MEM_ZONE, newpath);
+        }
+      }
+      else {
+        if (! TRI_IsDirectory(newfull)) {
+          TRI_PushBackVectorString(result, newpath);
+        }
+        else {
+          TRI_FreeString(TRI_CORE_MEM_ZONE, newpath);
+        }
+      }
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, newfull);
+    }
+  }
+
+  TRI_DestroyVectorString(&dirs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,6 +283,19 @@ bool TRI_IsDirectory (char const* path) {
   res = stat(path, &stbuf);
 
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if path is a symbolic link
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSymbolicLink (char const* path) {
+  struct stat stbuf;
+  int res;
+
+  res = lstat(path, &stbuf);
+
+  return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -516,6 +581,21 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lists the directory tree including files and directories
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
+  TRI_vector_string_t result;
+
+  TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
+  
+  TRI_PushBackVectorString(&result, TRI_DuplicateString(""));
+  ListTreeRecursively(path, "", &result);
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file

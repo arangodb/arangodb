@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         vars: true,
-         white: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,9 +28,16 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var arangodb = require("org/arangodb");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    number parsers
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup ArangoStructures
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a number
@@ -51,7 +52,7 @@ exports.number = function (value, info, lang) {
     format = info.format;
 
     if (format === "%d") {
-      result = parseInt(value);
+      result = parseInt(value, 10);
     }
     else if (format === "%f") {
       result = parseFloat(value);
@@ -63,8 +64,8 @@ exports.number = function (value, info, lang) {
       result = parseInt(value, 8);
     }
     else {
-      error = new ArangoError();
-      error.errorNum = internal.errors.ERROR_NOT_IMPLEMENTED.code;
+      error = new arangodb.ArangoError();
+      error.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
       error.errorMessage = "format '" + format + "' not implemented";
 
       throw error;
@@ -75,15 +76,15 @@ exports.number = function (value, info, lang) {
   }
 
   if (result === null || result === undefined || isNaN(result)) {
-    error = new ArangoError();
-    error.errorNum = internal.errors.ERROR_ARANGO_PARSER_FAILED;
+    error = new arangodb.ArangoError();
+    error.errorNum = arangodb.ERROR_ARANGO_PARSER_FAILED;
     error.errorMessage = "format '" + format + "' not implemented";
 
     throw error;
   }
 
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

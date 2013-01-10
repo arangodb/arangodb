@@ -764,7 +764,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (const bool useCollection,
   assert(key);
   
 
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type);
+  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot fetch document", true)));
@@ -849,7 +849,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
   assert(key);
 
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "ReplaceVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot replace document", true)));
@@ -903,11 +903,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (const bool useCollection,
 /// above. The optional @FA{waitForSync} parameter can be used to force 
 /// synchronisation of the document creation operation to disk even in case
 /// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
 /// of just specific operations. To use this, set the @FA{waitForSync} parameter
 /// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
 /// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -984,11 +984,11 @@ static v8::Handle<v8::Value> SaveVocbaseCol (SingleCollectionWriteTransaction<Em
 /// The optional @FA{waitForSync} parameter can be used to force 
 /// synchronisation of the document creation operation to disk even in case
 /// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
 /// of just specific operations. To use this, set the @FA{waitForSync} parameter
 /// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
 /// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -1155,7 +1155,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (const bool useCollection,
   }
 
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "UpdateVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot update document", true)));
@@ -1256,7 +1256,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (const bool useCollection,
   assert(key);
 
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "DeleteVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot delete document", true)));
@@ -3311,10 +3311,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 /// An error is thrown if there @LIT{_rev} does not longer match the current
 /// revision of the document.
 ///
-/// An error is thrown if the document does not exist.
-///
-/// The document must be part of the @FA{collection}; otherwise, an error
-/// is thrown.
+/// An error is also thrown if the document does not exist.
 ///
 /// @FUN{@FA{collection}.document(@FA{document-handle})}
 ///
@@ -3325,15 +3322,30 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ///
 /// Returns the document for a document-handle:
 ///
-/// @TINYEXAMPLE{shell-read-document,read document from a collection}
+/// @code
+/// arango> db.example.document("1432124/2873916");
+/// { "_id" : "1432124/2873916", "_rev" : 2873916, "Hallo" : "World" }
+/// @endcode
 ///
 /// An error is raised if the document is unknown:
 ///
-/// @TINYEXAMPLE{shell-read-document-not-found,unknown handle}
+/// @code
+/// arango> db.example.document("1432124/123456");
+/// JavaScript exception in file '(arango)' at 1,12:
+///   [ArangoError 1202: document not found: document not found]
+/// !db.example.document("1432124/123456");
+/// !           ^
+/// @endcode
 ///
 /// An error is raised if the handle is invalid:
 ///
-/// @TINYEXAMPLE{shell-read-document-bad-handle,invalid handle}
+/// @code
+/// arango> db.example.document("12345");
+/// JavaScript exception in file '(arango)' at 1,12:
+///   [ArangoError 10: bad parameter: <document-identifier> must be a document identifier]
+/// !db.example.document("12345");
+/// !           ^
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
@@ -4462,6 +4474,7 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(v8::String::New("illegal collection pointer")));
   }
 
+  // TODO: protect this against race conditions (parallel rename operation)
   return scope.Close(v8::String::New(collection->_name));
 }
 
@@ -4624,29 +4637,29 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document
+/// @brief removes a document
 ///
 /// @FUN{@FA{collection}.remove(@FA{document})}
 ///
-/// Deletes a document. If there is revision mismatch, then an error is thrown.
+/// Removes a document. If there is revision mismatch, then an error is thrown.
 ///
 /// @FUN{@FA{collection}.remove(@FA{document}, true)}
 ///
-/// Deletes a document. If there is revision mismatch, then mismatch
-/// is ignored and document is deleted. The function returns
-/// @LIT{true} if the document existed and was deleted. It returns
-/// @LIT{false}, if the document was already deleted.
+/// Removes a document. If there is revision mismatch, then mismatch is ignored
+/// and document is deleted. The function returns @LIT{true} if the document
+/// existed and was deleted. It returns @LIT{false}, if the document was already
+/// deleted.
 ///
 /// @FUN{@FA{collection}.remove(@FA{document}, true, @FA{waitForSync})}
 ///
-/// The optional @FA{waitForSync} parameter can be used to force 
-/// synchronisation of the document deletion operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document deletion operation to disk even in case that the
+/// @LIT{waitForSync} flag had been disabled for the entire collection.  Thus,
+/// the @FA{waitForSync} parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the @FA{waitForSync} parameter to
+/// @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -4657,13 +4670,39 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @EXAMPLES
 ///
-/// Delete a document:
+/// Remove a document:
 ///
-/// @TINYEXAMPLE{shell_remove-document,delete a document}
+/// @code
+/// arango> a1 = db.example.save({ a : 1 });
+/// { "_id" : "116308/3449537", "_rev" : 3449537 }
+/// arango> db.example.document(a1);
+/// { "_id" : "116308/3449537", "_rev" : 3449537, "a" : 1 }
+/// arango> db.example.remove(a1);
+/// true
+/// arango> db.example.document(a1);
+/// JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
+/// !db.example.document(a1);
+/// !           ^
+/// @endcode
 ///
-/// Delete a document with a conflict:
+/// Remove a document with a conflict:
 ///
-/// @TINYEXAMPLE{shell_remove-document-conflict,delete a document}
+/// @code
+/// arango> a1 = db.example.save({ a : 1 });
+/// { "_id" : "116308/3857139", "_rev" : 3857139 }
+/// arango> a2 = db.example.replace(a1, { a : 2 });
+/// { "_id" : "116308/3857139", "_rev" : 3922675, "_oldRev" : 3857139 }
+/// arango> db.example.remove(a1);
+/// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
+/// !db.example.remove(a1);
+/// !                 ^
+/// arango> db.example.remove(a1, true);
+/// true
+/// arango> db.example.document(a1);
+/// JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
+/// !db.example.document(a1);
+/// !           ^
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
@@ -4743,11 +4782,11 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// The optional @FA{waitForSync} parameter can be used to force 
 /// synchronisation of the document replacement operation to disk even in case
 /// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
 /// of just specific operations. To use this, set the @FA{waitForSync} parameter
 /// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
 /// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -4789,11 +4828,11 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 /// The optional @FA{waitForSync} parameter can be used to force 
 /// synchronisation of the document update operation to disk even in case
 /// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
 /// of just specific operations. To use this, set the @FA{waitForSync} parameter
 /// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
 /// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -4854,7 +4893,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "SaveVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(col->_vocbase, col->_name);
   
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4947,6 +4986,37 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the revision id of a collection
+/// the revision id is updated when the document data in a collection changes
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
+
+  if (collection == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  TRI_primary_collection_t* primary = collection->_collection;
+
+  if (! TRI_IS_DOCUMENT_COLLECTION(collection->_type)) {
+    TRI_ReleaseCollection(collection);
+    return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL, "unknown collection type")));
+  }
+  
+  primary->beginRead(primary);
+  TRI_voc_rid_t rid = primary->base._info._rid;
+  primary->endRead(primary);
+
+  TRI_ReleaseCollection(collection);
+  
+  return scope.Close(v8::Number::New(rid));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4960,7 +5030,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(TRI_ERROR_INTERNAL)));
   }
   
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, col->_name, (TRI_col_type_e) col->_type, false, "TruncateVocbase");
+  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(col->_vocbase, col->_name);
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::ThrowException(TRI_CreateErrorObject(res, "cannot truncate collection", true)));
@@ -5160,12 +5230,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> name,
   // look up the value if it exists
   TRI_vocbase_col_t const* collection;
  
-  if (collectionType == TRI_COL_TYPE_EDGE) {
-    collection = TRI_FindEdgeCollectionByNameVocBase(vocbase, key.c_str(), true);
-  }
-  else {
-    collection = TRI_FindDocumentCollectionByNameVocBase(vocbase, key.c_str(), true);
-  }
+  collection = TRI_FindCollectionByNameOrBearVocBase(vocbase, key.c_str(), (TRI_col_type_t) collectionType);
 
   // if the key is not present return an empty handle as signal
   if (collection == 0) {
@@ -5247,7 +5312,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   else {
     string name = TRI_ObjectToString(val);
 
-    collection = TRI_FindCollectionByNameVocBase(vocbase, name.c_str(), false);
+    collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
   }
 
   if (collection == 0) {
@@ -5345,7 +5410,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///
 /// @FUN{db._create(@FA{collection-name}, @FA{properties})}
 ///
-/// @FA{properties} must be an object, with the following attribues:
+/// @FA{properties} must be an object with the following attributes:
 ///
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
@@ -5415,7 +5480,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 ///
 /// @FUN{db._createEdgeCollection(@FA{collection-name}, @FA{properties})}
 ///
-/// @FA{properties} must be an object, with the following attribues:
+/// @FA{properties} must be an object with the following attributes:
 ///
 /// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
 ///   a document will only return after the data was synced to disk.
@@ -5435,46 +5500,72 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document
+/// @brief removes a document
 ///
 /// @FUN{@FA{db}._remove(@FA{document})}
 ///
-/// Deletes a document. If there is revision mismatch, then an error is thrown.
+/// Removes a document. If there is revision mismatch, then an error is thrown.
 ///
 /// @FUN{@FA{db}._remove(@FA{document}, true)}
 ///
-/// Deletes a document. If there is revision mismatch, then mismatch
-/// is ignored and document is deleted. The function returns
-/// @LIT{true} if the document existed and was deleted. It returns
-/// @LIT{false}, if the document was already deleted.
+/// Removes a document. If there is revision mismatch, then mismatch is ignored
+/// and document is deleted. The function returns @LIT{true} if the document
+/// existed and was deleted. It returns @LIT{false}, if the document was already
+/// deleted.
 ///
 /// @FUN{@FA{db}._remove(@FA{document}, true, @FA{waitForSync})}
 ///
-/// The optional @FA{waitForSync} parameter can be used to force 
-/// synchronisation of the document deletion operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// The optional @FA{waitForSync} parameter can be used to force synchronisation
+/// of the document deletion operation to disk even in case that the
+/// @LIT{waitForSync} flag had been disabled for the entire collection.  Thus,
+/// the @FA{waitForSync} parameter can be used to force synchronisation of just
+/// specific operations. To use this, set the @FA{waitForSync} parameter to
+/// @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
+/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
 /// @FUN{@FA{db}._remove(@FA{document-handle}, @FA{data})}
 ///
-/// As before. Instead of document a @FA{document-handle} can be passed as
-/// first argument.
+/// As before. Instead of document a @FA{document-handle} can be passed as first
+/// argument.
 ///
 /// @EXAMPLES
 ///
-/// Delete a document:
+/// Remove a document:
 ///
-/// @TINYEXAMPLE{shell_remove-document-db,delete a document}
+/// @code
+/// arango> a1 = db.example.save({ a : 1 });
+/// { "_id" : "116308/4214943", "_rev" : 4214943 }
+/// arango> db._remove(a1);
+/// true
+/// arango> db._remove(a1);
+/// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: cannot remove document]
+/// !db._remove(a1);
+/// !   ^
+/// arango> db._remove(a1, true);
+/// false
+/// @endcode
 ///
-/// Delete a document with a conflict:
+/// Remove a document with a conflict:
 ///
-/// @TINYEXAMPLE{shell_remove-document-conflict-db,delete a document}
+/// @code
+/// arango> a1 = db.example.save({ a : 1 });
+/// { "_id" : "116308/4042634", "_rev" : 4042634 }
+/// arango> a2 = db._replace(a1, { a : 2 });
+/// { "_id" : "116308/4042634", "_rev" : 4108170, "_oldRev" : 4042634 }
+/// arango> db._delete(a1);
+/// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1200: conflict: cannot delete document]
+/// !db._delete(a1);
+/// !   ^
+/// arango> db._delete(a1, true);
+/// true
+/// arango> db._document(a1);
+/// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: document not found]
+/// !db._document(a1);
+/// !   ^
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
@@ -5534,11 +5625,11 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 /// The optional @FA{waitForSync} parameter can be used to force 
 /// synchronisation of the document replacement operation to disk even in case
 /// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
 /// of just specific operations. To use this, set the @FA{waitForSync} parameter
 /// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
 /// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -5576,11 +5667,11 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 /// The optional @FA{waitForSync} parameter can be used to force 
 /// synchronisation of the document update operation to disk even in case
 /// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} URL parameter can be used to force synchronisation
+/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
 /// of just specific operations. To use this, set the @FA{waitForSync} parameter
 /// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to 
 /// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is 
-/// applied. The @FA{waitForSync} URL parameter cannot be used to disable
+/// applied. The @FA{waitForSync} parameter cannot be used to disable
 /// synchronisation for collections that have a default @LIT{waitForSync} value
 /// of @LIT{true}.
 ///
@@ -6209,6 +6300,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (TRI_vocbase_col_t const* collection,
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
 
+  // TODO: protect this against race conditions (parallel rename)
   result->Set(v8g->DidKey, DocumentId(collection->_name, document->_key), v8::ReadOnly);
   result->Set(v8g->RevKey, v8::Number::New(rid), v8::ReadOnly);
   result->Set(v8g->KeyKey, v8::String::New(document->_key), v8::ReadOnly);
@@ -6440,6 +6532,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
   TRI_AddMethodVocbase(rt, "properties", JS_PropertiesVocbaseCol);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
+  TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
   TRI_AddMethodVocbase(rt, "setAttribute", JS_SetAttributeVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);

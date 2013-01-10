@@ -953,7 +953,7 @@ mrb_value MR_ArangoDatabase_Collection (mrb_state* mrb, mrb_value self) {
   // looking at "mruby.h" I assume that is the way to unwrap the pointer
   rdata = (struct RData*) mrb_object(self);
   vocbase = (TRI_vocbase_t*) rdata->data;
-  collection = TRI_FindCollectionByNameVocBase(vocbase, name, false);
+  collection = TRI_LookupCollectionByNameVocBase(vocbase, name);
 
   if (collection == NULL) {
     printf("unknown collection (TODO raise error)\n");

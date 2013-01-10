@@ -280,7 +280,7 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection, getCollectionType(), create); 
+  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection, create, getCollectionType()); 
   
   // .............................................................................
   // inside write transaction
@@ -402,7 +402,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   string key = suffix[1];
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, getCollectionType()); 
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection);
   
   // .............................................................................
   // inside read transaction
@@ -486,7 +486,7 @@ bool RestDocumentHandler::readAllDocuments () {
   string collection = _request->value("collection", found);
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection, getCollectionType()); 
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, collection);
   
   vector<string> ids;
   
@@ -757,7 +757,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_doc_update_policy_e policy = extractUpdatePolicy();
 
   // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection, getCollectionType(), false); 
+  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
   
   TRI_doc_mptr_t* document = 0;
   TRI_voc_rid_t rid = 0;
@@ -918,7 +918,7 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // find and load collection given by name or identifier
-  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection, getCollectionType(), false); 
+  SelfContainedWriteTransaction<RestTransactionContext> trx(_vocbase, collection); 
   TRI_voc_rid_t rid = 0;
   
   // .............................................................................

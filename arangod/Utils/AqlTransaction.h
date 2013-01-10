@@ -64,7 +64,7 @@ namespace triagens {
           if (_trx != 0) {
             if (_trx->_status == TRI_TRANSACTION_RUNNING) {
               // auto abort
-              abort();
+              this->abort();
             }
 
             TRI_FreeTransaction(_trx);

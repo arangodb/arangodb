@@ -58,7 +58,7 @@ describe ArangoDB do
         # create collection with one document
 	@cid = ArangoDB.create_collection(cn)
 	
-        cmd = "/_api/document?collection=#{@cid}"
+        cmd = "/_api/document?collection=#{cn}"
 	body = "{ \"Hello\" : \"World\" }"
 	doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
 

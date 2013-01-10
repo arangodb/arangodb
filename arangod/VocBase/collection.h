@@ -218,10 +218,11 @@ typedef struct TRI_col_info_s {
   TRI_col_version_t  _version;         // collection version
   TRI_col_type_e     _type;            // collection type
   TRI_voc_cid_t      _cid;             // collection identifier
-  struct TRI_json_s* _options;         // optional collection options
+  TRI_voc_rid_t      _rid;             // last revision id
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
+  struct TRI_json_s* _options;         // optional collection options
 
   // flags
   bool               _deleted : 1;     // if true, collection has been deleted
@@ -250,7 +251,7 @@ typedef struct TRI_collection_s {
   TRI_vector_pointer_t _datafiles;   // all datafiles
   TRI_vector_pointer_t _journals;    // all journals
   TRI_vector_pointer_t _compactors;  // all compactor files
-  TRI_vector_string_t _indexFiles;   // all index filenames
+  TRI_vector_string_t  _indexFiles;  // all index filenames
 }
 TRI_collection_t;
 
