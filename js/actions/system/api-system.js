@@ -102,7 +102,9 @@ function Routing (req, res) {
       func(req, res, action.route.callback.options, next);
     }
     catch (err) {
-      actions.errorFunction(action.route, 'A runtime error occurred while executing an action: ' + String(err))(req, res, action.route.callback.options, next);
+      var msg = 'A runtime error occurred while executing an action: ' + String(err) + " " + String(err.stack);
+
+      actions.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
     }
   };
 

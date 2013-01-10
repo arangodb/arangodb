@@ -12,6 +12,7 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/html/admin/js/arangodb/browser.js \
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/actions/system/api-system.js \
 	@srcdir@/js/client/modules/org/arangodb.js \
 	@srcdir@/js/client/modules/org/arangodb/deploy.js \
 	@srcdir@/js/common/bootstrap/errors.js \
