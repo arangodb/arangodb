@@ -49,6 +49,20 @@ var traversal = require("org/arangodb/graph/traversal");
 function GraphTraversalSuite() {
   var vertices;
   var edges;
+      
+  var getContext = function () {
+    return {
+      visited: [ ],
+      paths: [ ],
+      visit: {
+        "vertices/Antarctica" : false,
+        "vertices/IE": false
+      },
+      expand: {
+        "vertices/Africa": false
+      }
+    }; 
+  };
 
   var visitor = function (traverser, vertex, path) {
     var context = traverser._context;
@@ -93,8 +107,8 @@ function GraphTraversalSuite() {
       edges    = { };
   
       [ "World", "Nothing",
-        "Europe", "Asia", "America", "Australia", "Antarctica", "Blackhole",
-        "DE", "FR", "GB", "CN", "JP", "TW", "US", "MX", "AU", 
+        "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
+        "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA",
         "London", "Paris", "Lyon", "Cologne", "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney" 
       ].forEach(function (item) {
         var key = item;
@@ -127,9 +141,11 @@ function GraphTraversalSuite() {
       connect("World", "America");
       connect("World", "Australia");
       connect("World", "Antarctica");
+      connect("World", "Africa");
       connect("Europe", "DE"); 
       connect("Europe", "FR"); 
       connect("Europe", "GB"); 
+      connect("Europe", "IE"); 
       connect("Asia", "CN"); 
       connect("Asia", "JP"); 
       connect("Asia", "TW"); 
@@ -164,14 +180,7 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica": false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
@@ -188,7 +197,8 @@ function GraphTraversalSuite() {
         "vertices/US",
         "vertices/MX",
         "vertices/Australia",
-        "vertices/AU"
+        "vertices/AU",
+        "vertices/Africa",
       ];
 
       assertEqual(expectedVisits, context.visited);
@@ -207,7 +217,8 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/America", "vertices/US" ],
         [ "vertices/World", "vertices/America", "vertices/MX" ],
         [ "vertices/World", "vertices/Australia" ],
-        [ "vertices/World", "vertices/Australia", "vertices/AU" ]
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Africa" ]
       ];
       
       assertEqual(expectedPaths, context.paths);
@@ -232,18 +243,12 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica": false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
         "vertices/World",
+        "vertices/Africa",
         "vertices/Australia",
         "vertices/AU",
         "vertices/America",
@@ -263,6 +268,7 @@ function GraphTraversalSuite() {
       
       var expectedPaths = [
         [ "vertices/World" ],
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/America" ],
@@ -300,14 +306,7 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica" : false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
@@ -324,6 +323,7 @@ function GraphTraversalSuite() {
         "vertices/America",
         "vertices/AU",
         "vertices/Australia",
+        "vertices/Africa",
         "vertices/World"
       ];
 
@@ -343,6 +343,7 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/America" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World" ]
       ];
       
@@ -368,17 +369,11 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica" : false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
+        "vertices/Africa",
         "vertices/AU",
         "vertices/Australia",
         "vertices/MX",
@@ -398,6 +393,7 @@ function GraphTraversalSuite() {
       assertEqual(expectedVisits, context.visited);
       
       var expectedPaths = [
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/America", "vertices/MX" ],
@@ -436,14 +432,7 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica" : false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
@@ -452,6 +441,7 @@ function GraphTraversalSuite() {
         "vertices/Asia",
         "vertices/America",
         "vertices/Australia",
+        "vertices/Africa",
         "vertices/DE",
         "vertices/FR",
         "vertices/GB",
@@ -471,6 +461,7 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/Asia" ],
         [ "vertices/World", "vertices/America" ],
         [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Europe", "vertices/DE" ],
         [ "vertices/World", "vertices/Europe", "vertices/FR" ],
         [ "vertices/World", "vertices/Europe", "vertices/GB" ],
@@ -504,18 +495,12 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica" : false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
         "vertices/World",
+        "vertices/Africa",
         "vertices/Australia",
         "vertices/America",
         "vertices/Asia",
@@ -535,6 +520,7 @@ function GraphTraversalSuite() {
       
       var expectedPaths = [
         [ "vertices/World" ],
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/America" ],
         [ "vertices/World", "vertices/Asia" ],
@@ -572,14 +558,7 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica" : false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
@@ -596,6 +575,7 @@ function GraphTraversalSuite() {
         "vertices/Asia",
         "vertices/America",
         "vertices/Australia",
+        "vertices/Africa",
         "vertices/World"
       ];
 
@@ -615,6 +595,7 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/Asia" ],
         [ "vertices/World", "vertices/America" ],
         [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World" ]
       ];
       
@@ -640,14 +621,7 @@ function GraphTraversalSuite() {
       };
       
       var traverser = new traversal.Traverser("edges", properties);
-      var context = {
-        visited: [ ],
-        paths: [ ],
-        visit: {
-          "vertices/Antarctica" : false
-        }
-      }; 
-  
+      var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
@@ -660,6 +634,7 @@ function GraphTraversalSuite() {
         "vertices/GB",
         "vertices/FR",
         "vertices/DE",
+        "vertices/Africa",
         "vertices/Australia",
         "vertices/America",
         "vertices/Asia",
@@ -679,6 +654,7 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/Europe", "vertices/GB" ],
         [ "vertices/World", "vertices/Europe", "vertices/FR" ],
         [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/America" ],
         [ "vertices/World", "vertices/Asia" ],
