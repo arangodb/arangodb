@@ -50,24 +50,15 @@ function GraphTraversalSuite() {
   var vertices;
   var edges;
 
-  var stringifyPath = function (path) {
-    var result = "[";
-    for (var i = 0; i < path.edges.length; ++i) {
-      if (i > 0) {
-        result += ", ";
-      }
-      result += path.edges[i]._key;
-    }
-
-    result += " ]";
-    return result;
-  }
-
   var visitor = function (traverser, vertex, path) {
     var context = traverser._context;
 
     context.visited.push(vertex._id);
-    context.paths.push(stringifyPath(path));
+    var paths = [ ];
+    path.vertices.forEach (function (vertex) {
+      paths.push(vertex._id);
+    });
+    context.paths.push(paths);
   };
 
   var filter = function (traverser, vertex, path) {
@@ -201,6 +192,26 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+
+      var expectedPaths = [
+        [ "vertices/World" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
