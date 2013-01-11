@@ -211,7 +211,6 @@ function GraphTraversalSuite() {
       ];
       
       assertEqual(expectedPaths, context.paths);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +260,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -310,6 +328,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,6 +396,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,6 +464,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,6 +532,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,6 +600,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,6 +668,25 @@ function GraphTraversalSuite() {
       ];
 
       assertEqual(expectedVisits, context.visited);
+      
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World" ]
+      ];
+      
+      assertEqual(expectedPaths, context.paths);
     }
 
   };
