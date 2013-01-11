@@ -108,7 +108,7 @@ function GraphTraversalSuite() {
   
       [ "World", "Nothing",
         "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
-        "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA",
+        "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA", "AN",
         "London", "Paris", "Lyon", "Cologne", "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney" 
       ].forEach(function (item) {
         var key = item;
@@ -140,8 +140,8 @@ function GraphTraversalSuite() {
       connect("World", "Asia");
       connect("World", "America");
       connect("World", "Australia");
-      connect("World", "Antarctica");
       connect("World", "Africa");
+      connect("World", "Antarctica");
       connect("Europe", "DE"); 
       connect("Europe", "FR"); 
       connect("Europe", "GB"); 
@@ -152,6 +152,7 @@ function GraphTraversalSuite() {
       connect("America", "US"); 
       connect("America", "MX"); 
       connect("Australia", "AU"); 
+      connect("Antarctica", "AN"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +200,7 @@ function GraphTraversalSuite() {
         "vertices/Australia",
         "vertices/AU",
         "vertices/Africa",
+        "vertices/AN",
       ];
 
       assertEqual(expectedVisits, context.visited);
@@ -218,7 +220,8 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/America", "vertices/MX" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
-        [ "vertices/World", "vertices/Africa" ]
+        [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
       
       assertEqual(expectedPaths, context.paths);
@@ -248,6 +251,7 @@ function GraphTraversalSuite() {
 
       var expectedVisits = [
         "vertices/World",
+        "vertices/AN",
         "vertices/Africa",
         "vertices/Australia",
         "vertices/AU",
@@ -268,6 +272,7 @@ function GraphTraversalSuite() {
       
       var expectedPaths = [
         [ "vertices/World" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
@@ -324,6 +329,7 @@ function GraphTraversalSuite() {
         "vertices/AU",
         "vertices/Australia",
         "vertices/Africa",
+        "vertices/AN",
         "vertices/World"
       ];
 
@@ -344,6 +350,7 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World" ]
       ];
       
@@ -373,6 +380,7 @@ function GraphTraversalSuite() {
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
+        "vertices/AN",
         "vertices/Africa",
         "vertices/AU",
         "vertices/Australia",
@@ -393,6 +401,7 @@ function GraphTraversalSuite() {
       assertEqual(expectedVisits, context.visited);
       
       var expectedPaths = [
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/Australia" ],
@@ -450,7 +459,8 @@ function GraphTraversalSuite() {
         "vertices/TW",
         "vertices/US",
         "vertices/MX",
-        "vertices/AU"
+        "vertices/AU",
+        "vertices/AN"
       ];
 
       assertEqual(expectedVisits, context.visited);
@@ -470,7 +480,8 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/Asia", "vertices/TW" ],
         [ "vertices/World", "vertices/America", "vertices/US" ],
         [ "vertices/World", "vertices/America", "vertices/MX" ],
-        [ "vertices/World", "vertices/Australia", "vertices/AU" ]
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
       
       assertEqual(expectedPaths, context.paths);
@@ -505,6 +516,7 @@ function GraphTraversalSuite() {
         "vertices/America",
         "vertices/Asia",
         "vertices/Europe",
+        "vertices/AN",
         "vertices/AU",
         "vertices/MX",
         "vertices/US",
@@ -520,6 +532,7 @@ function GraphTraversalSuite() {
       
       var expectedPaths = [
         [ "vertices/World" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/America" ],
