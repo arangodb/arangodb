@@ -269,13 +269,14 @@ function BreadthFirstSearch () {
                 toVisit.push(connected[i]);
               }
             }
-            if (traverser._order === ArangoTraverser.POST_ORDER) {
-              if (index < toVisit.length - 1) {
-                index += step;
-              }
-              else {
-                step = -1;
-              }
+          }
+            
+          if (traverser._order === ArangoTraverser.POST_ORDER) {
+            if (index < toVisit.length - 1) {
+              index += step;
+            }
+            else {
+              step = -1;
             }
           }
         }
