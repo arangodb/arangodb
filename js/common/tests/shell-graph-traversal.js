@@ -70,6 +70,15 @@ function GraphTraversalSuite() {
     context.paths.push(stringifyPath(path));
   };
 
+  var filter = function (traverser, vertex, path) {
+    var context = traverser._context;
+
+    return {
+      visit: ((context.visit && context.visit[vertex._id] != undefined) ? context.visit[vertex._id] : true),
+      expand: ((context.expand && context.expand[vertex._id] != undefined) ? context.expand[vertex._id] : true)
+    };
+  };
+
   var expander = function (traverser, vertex, path) {
     var result = [ ];
     
@@ -80,7 +89,6 @@ function GraphTraversalSuite() {
       }
     }
     return result;
-
   }
 
   return {
@@ -94,7 +102,7 @@ function GraphTraversalSuite() {
       edges    = { };
   
       [ "World", "Nothing",
-        "Europe", "Asia", "America", "Australia", "Blackhole",
+        "Europe", "Asia", "America", "Australia", "Antarctica", "Blackhole",
         "DE", "FR", "GB", "CN", "JP", "TW", "US", "MX", "AU", 
         "London", "Paris", "Lyon", "Cologne", "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney" 
       ].forEach(function (item) {
@@ -127,6 +135,7 @@ function GraphTraversalSuite() {
       connect("World", "Asia");
       connect("World", "America");
       connect("World", "Australia");
+      connect("World", "Antarctica");
       connect("Europe", "DE"); 
       connect("Europe", "FR"); 
       connect("Europe", "GB"); 
@@ -159,14 +168,17 @@ function GraphTraversalSuite() {
           edges: traversal.Traverser.UNIQUE_NONE
         }, 
         visitor: visitor,
-        // filter: filter,
+        filter: filter,
         expander: expander
       };
       
       var traverser = new traversal.Traverser("edges", properties);
       var context = {
         visited: [ ],
-        paths: [ ]
+        paths: [ ],
+        visit: {
+          "vertices/Antarctica": false
+        }
       }; 
   
       traverser.traverse(vertices["vertices/World"], context);
@@ -186,6 +198,153 @@ function GraphTraversalSuite() {
         "vertices/MX",
         "vertices/Australia",
         "vertices/AU"
+      ];
+
+      assertEqual(expectedVisits, context.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test depth-first post-order forward visitation
+////////////////////////////////////////////////////////////////////////////////
+
+    testDepthFirstPostOrderForward : function () {
+      var properties = { 
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        visitOrder: traversal.Traverser.POST_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_NONE,
+          edges: traversal.Traverser.UNIQUE_NONE
+        }, 
+        visitor: visitor,
+        filter: filter,
+        expander: expander
+      };
+      
+      var traverser = new traversal.Traverser("edges", properties);
+      var context = {
+        visited: [ ],
+        paths: [ ],
+        visit: {
+          "vertices/Antarctica" : false
+        }
+      }; 
+  
+      traverser.traverse(vertices["vertices/World"], context);
+
+      var expectedVisits = [
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/Europe",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/Asia",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/America",
+        "vertices/AU",
+        "vertices/Australia",
+        "vertices/World"
+      ];
+
+      assertEqual(expectedVisits, context.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test breadth-first pre-order forward visitation
+////////////////////////////////////////////////////////////////////////////////
+
+    testBreadthFirstPreOrderForward : function () {
+      var properties = { 
+        strategy: traversal.Traverser.BREADTH_FIRST,
+        visitOrder: traversal.Traverser.PRE_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_NONE,
+          edges: traversal.Traverser.UNIQUE_NONE
+        }, 
+        visitor: visitor,
+        filter: filter,
+        expander: expander
+      };
+      
+      var traverser = new traversal.Traverser("edges", properties);
+      var context = {
+        visited: [ ],
+        paths: [ ],
+        visit: {
+          "vertices/Antarctica" : false
+        }
+      }; 
+  
+      traverser.traverse(vertices["vertices/World"], context);
+
+      var expectedVisits = [
+        "vertices/World",
+        "vertices/Europe",
+        "vertices/Asia",
+        "vertices/America",
+        "vertices/Australia",
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/AU"
+      ];
+
+      assertEqual(expectedVisits, context.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test breadth-first post-order forward visitation
+////////////////////////////////////////////////////////////////////////////////
+
+    testBreadthFirstPostOrderForward : function () {
+      var properties = { 
+        strategy: traversal.Traverser.BREADTH_FIRST,
+        visitOrder: traversal.Traverser.POST_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_NONE,
+          edges: traversal.Traverser.UNIQUE_NONE
+        }, 
+        visitor: visitor,
+        filter: filter,
+        expander: expander
+      };
+      
+      var traverser = new traversal.Traverser("edges", properties);
+      var context = {
+        visited: [ ],
+        paths: [ ],
+        visit: {
+          "vertices/Antarctica" : false
+        }
+      }; 
+  
+      traverser.traverse(vertices["vertices/World"], context);
+
+      var expectedVisits = [
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/AU",
+        "vertices/Europe",
+        "vertices/Asia",
+        "vertices/America",
+        "vertices/Australia",
+        "vertices/World"
       ];
 
       assertEqual(expectedVisits, context.visited);
