@@ -1829,7 +1829,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
     TRI_doc_mptr_t document = * (TRI_doc_mptr_t*) beg[pos];
 
-    if (document._did != 0) {
+    if (document._data != 0) {
       TRI_barrier_t* barrier;
 
       barrier = TRI_CreateBarrierElement(&primary->_barrierList);
