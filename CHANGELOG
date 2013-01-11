@@ -139,6 +139,8 @@ v1.2.alpha (XXXX-XX-XX)
 v1.1.2 (XXXX-XX-XX)
 -------------------
 
+* fixed randomly hanging connections in arangosh on MacOS
+
 * added any query
 
 * added deployment tool
