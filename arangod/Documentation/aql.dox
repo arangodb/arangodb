@@ -932,6 +932,53 @@
 /// Note: these functions require the collection @FA{collection} to have at least one geo index.
 /// If no geo index can be found, calling this function will fail with an error.
 ///
+/// @subsubsection AqlFunctionsFulltext Fulltext functions
+///
+/// AQL offers the following functions to filter data based on fulltext indexes:
+///
+/// - @FN{FULLTEXT(@FA{collection}\, @FA{attribute}\, @FA{query})}: 
+///   returns all documents from collection @FA{collection} for which the attribute @FA{attribute}
+///   matches the fulltext query @FA{query}.
+///   @FA{query} is a comma-separated list of sought words (or prefixes of sought words). To 
+///   distinguish between prefix searches and complete-match searches, each word can optionally be
+///   prefixed with either the @LIT{prefix:} or @LIT{complete:} qualifier. Different qualifiers can
+///   be mixed in the same query. Not specifying a qualifier for a search word will implicitly
+///   execute a complete-match search for the given word:
+///
+///   - @LIT{FULLTEXT(emails\, "body"\, "banana")} will look for the word @LIT{banana} in the 
+///     attribute @LIT{body} of the collection @LIT{collection}.
+///   - @LIT{FULLTEXT(emails\, "body"\, "banana\,orange")} will look for boths the words 
+///     @LIT{banana} and @LIT{orange} in the mentioned attribute. Only those documents will be
+///     returned that contain both words.
+///   - @LIT{FULLTEXT(emails\, "body"\, "prefix:head")} will look for documents that contain any
+///     words starting with the prefix @LIT{head}.
+///   - @LIT{FULLTEXT(emails\, "body"\, "prefix:head,complete:aspirin")} will look for all 
+///     documents that contain a word starting with the prefix @LIT{head} and that also contain 
+///     the (complete) word @LIT{aspirin}. Note: specifying @LIT{complete} is optional here.
+///   - @LIT{FULLTEXT(emails\, "body"\, "prefix:cent,prefix:subst")} will look for all documents 
+///     that contain a word starting with the prefix @LIT{cent} and that also contain a word
+///     starting with the prefix @LIT{subst}.
+/// 
+///   If multiple search words (or prefixes) are given, then by default the results will 
+///   AND-combined, meaning only the logical intersection of all searches will be returned. 
+///   It is also possible to combine partial results with a logical OR, and with a logical NOT:
+///
+///   - @LIT{FULLTEXT(emails\, "body"\, "+this,+text,+document")} will return all documents that 
+///     contain all the mentioned words. Note: specifying the @LIT{+} symbols is optional here.
+///   - @LIT{FULLTEXT(emails\, "body"\, "banana,|apple")} will return all documents that contain
+///     either (or both) words @LIT{banana} or @LIT{apple}.
+///   - @LIT{FULLTEXT(emails\, "body"\, "banana,-apple")} will return all documents that contain
+///     the word @LIT{banana} but do not contain the word @LIT{apple}.
+///   - @LIT{FULLTEXT(emails\, "body"\, "banana,pear,-cranberry")} will return all documents that 
+///     contain both the words @LIT{banana} and @LIT{pear} but do not contain the word 
+///     @LIT{cranberry}.
+///   No precedence of logical operators will be honored in a fulltext query. The query will simply
+///   be evaluated from left to right.
+///   
+/// Note: the @LIT{FULLTEXT} function requires the collection @FA{collection} to have a fulltext
+/// index on @LIT{attribute}. If no fulltext index is available, this function will fail with an 
+/// error.
+///
 /// @subsubsection AqlFunctionsGraph Graph functions
 ///
 /// AQL has the following functions to traverse graphs:

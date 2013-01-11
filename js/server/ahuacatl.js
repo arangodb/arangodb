@@ -66,6 +66,23 @@ function AHUACATL_THROW (error, data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find a fulltext index for a certain attribute & collection
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_INDEX_FULLTEXT (collection, attribute) {
+  var indexes = collection.getIndexesNL();
+
+  for (var i = 0; i < indexes.length; ++i) {
+    var index = indexes[i];
+    if (index.type === "fulltext" && index.fields && index.fields[0] === attribute) {
+      return index.id;
+    }
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find an index of a certain type for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2105,6 +2122,37 @@ function AHUACATL_GEO_WITHIN () {
   }
 
   return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                fulltext functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Ahuacatl
+/// @{
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return documents that match a fulltext query
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_FULLTEXT () {
+  var collection = arguments[0];
+  var attribute  = arguments[1];
+  var query = arguments[2];
+
+  var idx = AHUACATL_INDEX_FULLTEXT(AHUACATL_COLLECTION(collection), attribute);
+  if (idx == null) {
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+  }
+
+  var result = AHUACATL_COLLECTION(collection).FULLTEXT(idx, query);
+  return result.documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

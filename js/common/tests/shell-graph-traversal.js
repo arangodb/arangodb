@@ -532,12 +532,12 @@ function GraphTraversalSuite() {
       
       var expectedPaths = [
         [ "vertices/World" ],
-        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Australia" ],
         [ "vertices/World", "vertices/America" ],
         [ "vertices/World", "vertices/Asia" ],
         [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/America", "vertices/MX" ],
         [ "vertices/World", "vertices/America", "vertices/US" ],
@@ -584,6 +584,7 @@ function GraphTraversalSuite() {
         "vertices/US",
         "vertices/MX",
         "vertices/AU",
+        "vertices/AN",
         "vertices/Europe",
         "vertices/Asia",
         "vertices/America",
@@ -604,6 +605,7 @@ function GraphTraversalSuite() {
         [ "vertices/World", "vertices/America", "vertices/US" ],
         [ "vertices/World", "vertices/America", "vertices/MX" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Europe" ],
         [ "vertices/World", "vertices/Asia" ],
         [ "vertices/World", "vertices/America" ],
@@ -638,6 +640,7 @@ function GraphTraversalSuite() {
       traverser.traverse(vertices["vertices/World"], context);
 
       var expectedVisits = [
+        "vertices/AN",
         "vertices/AU",
         "vertices/MX",
         "vertices/US",
@@ -658,6 +661,7 @@ function GraphTraversalSuite() {
       assertEqual(expectedVisits, context.visited);
       
       var expectedPaths = [
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/America", "vertices/MX" ],
         [ "vertices/World", "vertices/America", "vertices/US" ],
