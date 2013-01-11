@@ -598,6 +598,9 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);
   REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s", NULL);
 
+  // fulltext functions
+  REGISTER_FUNCTION("FULLTEXT", "FULLTEXT", false, false, "h,s,s", NULL);
+
   // graph functions
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
   
