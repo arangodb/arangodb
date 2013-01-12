@@ -959,7 +959,7 @@
 ///     that contain a word starting with the prefix @LIT{cent} and that also contain a word
 ///     starting with the prefix @LIT{subst}.
 /// 
-///   If multiple search words (or prefixes) are given, then by default the results will 
+///   If multiple search words (or prefixes) are given, then by default the results will be 
 ///   AND-combined, meaning only the logical intersection of all searches will be returned. 
 ///   It is also possible to combine partial results with a logical OR, and with a logical NOT:
 ///
