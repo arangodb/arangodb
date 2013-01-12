@@ -1648,10 +1648,17 @@ function ArangoCollection (database, data) {
 
     if (limit === null) {
       if (probability >= 1.0) {
-	stmt = internal.sprintf("FOR d IN %s RETURN d", this.name());
+	cursor = this.all();
       }
       else {
 	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob RETURN d", this.name());
+	stmt = internal.db._createStatement({ query: stmt });
+
+	if (probability < 1.0) {
+	  stmt.bind("prob", probability);
+	}
+
+	cursor = stmt.execute();
       }
     }
     else {
@@ -1664,21 +1671,21 @@ function ArangoCollection (database, data) {
       }
 
       if (probability >= 1.0) {
-	stmt = internal.sprintf("FOR d IN %s LIMIT %d RETURN d", this.name(), limit);
+	  cursor = this.all().limit(limit);
       }
       else {
 	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d",
                                 this.name(), limit);
+	stmt = internal.db._createStatement({ query: stmt });
+
+	if (probability < 1.0) {
+	  stmt.bind("prob", probability);
+	}
+
+	cursor = stmt.execute();
       }
     }
 
-    stmt = internal.db._createStatement({ query: stmt, batchSize: 100 });
-
-    if (probability < 1.0) {
-      stmt.bind("prob", probability);
-    }
-
-    cursor = stmt.execute();
     pos = 0;
 
     while (cursor.hasNext()) {
