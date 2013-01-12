@@ -50,7 +50,7 @@ namespace triagens {
     // -----------------------------------------------------------------------------
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, double requestTimeout, bool warn) :
-      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(64 * 1024 * 1024) {
+      SimpleClient(connection, requestTimeout, warn), _result(0), _maxPacketSize(128 * 1024 * 1024) {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -316,6 +316,7 @@ namespace triagens {
               
               // reset connection 
               this->close();
+              _state = DEAD;
           
               return false;              
             }
