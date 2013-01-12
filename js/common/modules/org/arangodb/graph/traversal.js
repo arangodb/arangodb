@@ -134,6 +134,49 @@ ArangoTraverser.prototype.traverse = function (result, startVertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a filter result
+////////////////////////////////////////////////////////////////////////////////
+
+function ParseFilterResult (args) {
+  var result = {
+    visit: true,
+    expand: true
+  };
+
+  function processArgument (arg) {
+    if (arg == undefined || arg == null) {
+      return;
+    } 
+
+    if (typeof(arg) === 'string') {
+      if (arg === ArangoTraverser.EXCLUDE) {
+        result.visit = false;
+        return;
+      }
+      else if (arg === ArangoTraverser.PRUNE) {
+        result.expand = false;
+        return;
+      }
+      else if (arg === '') {
+        return;
+      }
+    }
+    else if (Array.isArray(arg)) {
+      for (var i = 0; i < arg.length; ++i) {
+        processArgument(arg[i]);
+      }
+      return;
+    }
+
+    throw "invalid filter result";
+  }
+
+  processArgument(args);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the uniqueness checks
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,8 +281,7 @@ function BreadthFirstSearch () {
           }
 
           var path = this.createPath(toVisit, index);
-          var filterResult = config.filter(config, vertex, path);
-
+          var filterResult = ParseFilterResult(config.filter(config, vertex, path));
           if (config.order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder
             config.visitor(config, result, vertex, path);
@@ -319,7 +361,7 @@ function DepthFirstSearch () {
           }
           path.vertices.push(vertex);
 
-          var filterResult = config.filter(config, vertex, path);
+          var filterResult = ParseFilterResult(config.filter(config, vertex, path));
           if (config.order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder visit
             config.visitor(config, result, vertex, path);
@@ -447,10 +489,7 @@ function TrackingVisitor (config, result, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VisitAllFilter () {
-  return {
-    visit:  true,
-    expand: true
-  };
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -519,6 +558,18 @@ ArangoTraverser.FORWARD              = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTraverser.BACKWARD             = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prune "constant"
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.PRUNE                = 'prune';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exclude "constant"
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.EXCLUDE              = 'exclude';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
