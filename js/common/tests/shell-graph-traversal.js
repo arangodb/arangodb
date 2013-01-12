@@ -694,6 +694,205 @@ function GraphTreeTraversalSuite() {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        collection graph traversal
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: collection-based graph traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionTraversalSuite() {
+  var vn = "UnitTestsVertices";
+  var en = "UnitTestsEdges";
+
+  var vertexCollection;
+  var edgeCollection;
+      
+  var visitor = function () {
+    return {
+      invoke: function (traverser, context, vertex, path) {
+        context.visited.push(vertex._id);
+        var paths = [ ];
+        path.vertices.forEach (function (vertex) {
+          paths.push(vertex._id);
+        });
+        context.paths.push(paths);
+      }
+    };
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D", "E", "F", "G", "H", "I" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B" ], [ "B", "C" ], [ "C", "D" ], [ "A", "D" ], [ "D", "E" ], [ "D", "F" ], [ "B", "G" ], [ "B", "I" ], [ "G", "H" ], [ "I", "H"] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateFull : function () {
+      var properties = { 
+        edgeCollection: internal.db._collection(en),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        visitOrder: traversal.Traverser.PRE_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_NONE,
+          edges: traversal.Traverser.UNIQUE_NONE
+        }, 
+        visitor: visitor,
+        filter: traversal.Traverser.InvokeAllFilter,
+        expander: traversal.Traverser.CollectionOutboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+      };
+      
+      var traverser = new traversal.Traverser(properties);
+      var context = { 
+        visited: [ ],
+        paths: [ ]
+      };
+      traverser.traverse(vertexCollection.document(vn + "/A"), context);
+
+      var expectedVisits = [
+        vn + "/A", 
+        vn + "/B", 
+        vn + "/C", 
+        vn + "/D", 
+        vn + "/E", 
+        vn + "/F", 
+        vn + "/G", 
+        vn + "/H", 
+        vn + "/I", 
+        vn + "/H", 
+        vn + "/D", 
+        vn + "/E", 
+        vn + "/F" 
+      ];
+
+      assertEqual(expectedVisits, context.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateUniqueVertices : function () {
+      var properties = { 
+        edgeCollection: internal.db._collection(en),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        visitOrder: traversal.Traverser.PRE_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        }, 
+        visitor: visitor,
+        filter: traversal.Traverser.InvokeAllFilter,
+        expander: traversal.Traverser.CollectionOutboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+      };
+      
+      var traverser = new traversal.Traverser(properties);
+      var context = { 
+        visited: [ ],
+        paths: [ ]
+      };
+      traverser.traverse(vertexCollection.document(vn + "/A"), context);
+
+      var expectedVisits = [
+        vn + "/A", 
+        vn + "/B", 
+        vn + "/C", 
+        vn + "/D", 
+        vn + "/E", 
+        vn + "/F", 
+        vn + "/G", 
+        vn + "/H", 
+        vn + "/I" 
+      ];
+
+      assertEqual(expectedVisits, context.visited);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateUniqueEdges : function () {
+      var properties = { 
+        edgeCollection: internal.db._collection(en),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        visitOrder: traversal.Traverser.PRE_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_NONE,
+          edges: traversal.Traverser.UNIQUE_GLOBAL
+        }, 
+        visitor: visitor,
+        filter: traversal.Traverser.InvokeAllFilter,
+        expander: traversal.Traverser.CollectionOutboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+      };
+      
+      var traverser = new traversal.Traverser(properties);
+      var context = { 
+        visited: [ ],
+        paths: [ ]
+      };
+      traverser.traverse(vertexCollection.document(vn + "/A"), context);
+
+      var expectedVisits = [
+        vn + "/A", 
+        vn + "/B", 
+        vn + "/C", 
+        vn + "/D", 
+        vn + "/E", 
+        vn + "/F", 
+        vn + "/G", 
+        vn + "/H", 
+        vn + "/I", 
+        vn + "/H", 
+        vn + "/D" 
+      ];
+
+      assertEqual(expectedVisits, context.visited);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
@@ -702,6 +901,7 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(GraphTreeTraversalSuite);
+jsunity.run(CollectionTraversalSuite);
 
 return jsunity.done();
 
