@@ -53,10 +53,14 @@ function GraphTreeTraversalSuite () {
   var visitor = traversal.TrackingVisitor;
 
   var filter = function (config, vertex, path) {
-    return {
-      visit: ((config.visit && config.visit[vertex._id] != undefined) ? config.visit[vertex._id] : true),
-      expand: ((config.expand && config.expand[vertex._id] != undefined) ? config.expand[vertex._id] : true)
-    };
+    var r = [ ];
+    if (config.noVisit && config.noVisit[vertex._id]) {
+      r.push(traversal.Traverser.EXCLUDE);
+    }
+    if (config.noExpand && config.noExpand[vertex._id]) {
+      r.push(traversal.Traverser.PRUNE);
+    }
+    return r;
   };
 
   var expander = function (config, vertex, path) {
@@ -106,12 +110,12 @@ function GraphTreeTraversalSuite () {
       filter: filter,
       expander: expander,
 
-      visit: {
-        "vertices/Antarctica" : false,
-        "vertices/IE": false
+      noVisit: {
+        "vertices/Antarctica" : true,
+        "vertices/IE": true
       },
-      expand: {
-        "vertices/Africa": false
+      noExpand: {
+        "vertices/Africa": true
       }
     };
   };
