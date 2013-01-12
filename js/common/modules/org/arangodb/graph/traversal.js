@@ -45,8 +45,8 @@ function ArangoTraverser (properties) {
     throw "invalid properties";
   }
 
-  this._order = properties.visitOrder    || ArangoTraverser.PRE_ORDER;
-  this._itemOrder = properties.itemOrder || ArangoTraverser.FORWARD;
+  this._order     = properties.visitOrder || ArangoTraverser.PRE_ORDER;
+  this._itemOrder = properties.itemOrder  || ArangoTraverser.FORWARD;
 
   // check the visitation strategy    
   if (properties.strategy !== ArangoTraverser.BREADTH_FIRST &&
@@ -62,6 +62,8 @@ function ArangoTraverser (properties) {
   };
 
   // callbacks
+  // -------------------------------------------------
+
   // visitor
   this._visitor = properties.visitor(properties).invoke;
 
@@ -114,9 +116,28 @@ ArangoTraverser.prototype.traverse = function (startVertex, context) {
   else {
     strategy = DepthFirstSearch;
   }
-
-  strategy().run(this, context, startVertex);
+ 
+  try { 
+    strategy().run(this, context, startVertex);
+    return {
+      aborted: false
+    };
+  }
+  catch (err) {
+    return { 
+      aborted: true,
+      abortValue: err
+    };             
+  }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mark a traversal as aborted
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.prototype.abort = function (data) {
+  throw data;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -236,8 +257,8 @@ function BreadthFirstSearch () {
           }
 
           var path = this.createPath(toVisit, index);
-
           var filterResult = traverser._filter(traverser, context, vertex, path);
+
           if (traverser._order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder
             traverser._visitor(traverser, context, vertex, path);
@@ -318,7 +339,6 @@ function DepthFirstSearch () {
           }
           path.vertices.push(vertex);
 
-          
           var filterResult = traverser._filter(traverser, context, vertex, path);
           if (traverser._order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder visit
@@ -405,7 +425,7 @@ function CollectionInboundExpander (properties) {
       }
 
       inEdges.forEach(function (edge) {
-        var vertex = internal.db._document(edge._to);
+        var vertex = internal.db._document(edge._from);
         connections.push({ edge: edge, vertex: vertex });    
       });
       
