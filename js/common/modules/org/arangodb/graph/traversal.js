@@ -372,8 +372,13 @@ function CollectionOutboundExpander (properties) {
 
     invoke: function (traverser, context, vertex, path) {
       var connections = [ ];
+      var outEdges = properties.edgeCollection.outEdges(vertex._id);
+      
+      if (outEdges.length > 1 && properties.sort) {
+        outEdges.sort(properties.sort);
+      }
 
-      this._edgeCollection.outEdges(vertex._id).forEach(function (edge) {
+      outEdges.forEach(function (edge) {
         var vertex = internal.db._document(edge._to);
         connections.push({ edge: edge, vertex: vertex });    
       });
@@ -393,12 +398,17 @@ function CollectionInboundExpander (properties) {
 
     invoke: function (traverser, context, vertex, path) {
       var connections = [ ];
+      var inEdges = properties.edgeCollection.inEdges(vertex._id);
+      
+      if (inEdges.length > 1 && properties.sort) {
+        inEdges.sort(properties.sort);
+      }
 
-      this._edgeCollection.inEdges(vertex._id).forEach(function (edge) {
-        var vertex = internal.db._document(edge._from);
+      inEdges.forEach(function (edge) {
+        var vertex = internal.db._document(edge._to);
         connections.push({ edge: edge, vertex: vertex });    
       });
-
+      
       return connections;
     }
   };
