@@ -46,60 +46,72 @@ var traversal = require("org/arangodb/graph/traversal");
 /// @brief test: Graph tree traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphTreeTraversalSuite() {
+function GraphTreeTraversalSuite () {
   var vertices;
   var edges;
       
-  var getContext = function () {
+  var visitor = traversal.TrackingVisitor;
+
+  var filter = function (config, vertex, path) {
     return {
-      visited: [ ],
-      paths: [ ],
+      visit: ((config.visit && config.visit[vertex._id] != undefined) ? config.visit[vertex._id] : true),
+      expand: ((config.expand && config.expand[vertex._id] != undefined) ? config.expand[vertex._id] : true)
+    };
+  };
+
+  var expander = function (config, vertex, path) {
+    var r = [ ];
+    
+    var edgesList = edges[vertex._id];
+    if (edgesList != undefined) {
+      for (i = 0; i < edgesList.length; ++i) {
+        r.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
+      }
+    }
+    return r;
+  };
+
+  var getIds = function (data) {
+    var r = [ ];
+    data.forEach(function (item) {
+      r.push(item._id);
+    });
+    return r;
+  };
+  
+  var getVisitedPaths = function (data) {
+    var r = [ ];
+    data.forEach(function (item) {
+      r.push(getIds(item.vertices));
+    });
+    return r;
+  };
+  
+  var getResult = function () {
+    return {
+      visited: {
+        vertices: [ ],
+        paths: [ ]
+      }
+    }; 
+  };
+
+  var getConfig = function () {
+    return {
+      uniqueness: {
+        vertices: traversal.Traverser.UNIQUE_NONE,
+        edges: traversal.Traverser.UNIQUE_NONE
+      }, 
+      visitor: visitor,
+      filter: filter,
+      expander: expander,
+
       visit: {
         "vertices/Antarctica" : false,
         "vertices/IE": false
       },
       expand: {
         "vertices/Africa": false
-      }
-    }; 
-  };
-
-  var visitor = function () {
-    return {
-      invoke: function (traverser, context, vertex, path) {
-        context.visited.push(vertex._id);
-        var paths = [ ];
-        path.vertices.forEach (function (vertex) {
-          paths.push(vertex._id);
-        });
-        context.paths.push(paths);
-      }
-    };
-  };
-
-  var filter = function () {
-    return {
-      invoke: function (traverser, context, vertex, path) {
-        return {
-          visit: ((context.visit && context.visit[vertex._id] != undefined) ? context.visit[vertex._id] : true),
-          expand: ((context.expand && context.expand[vertex._id] != undefined) ? context.expand[vertex._id] : true)
-        };
-      }
-    };
-  };
-
-  var expander = function () {
-    return {
-      invoke: function (traverser, context, vertex, path) {
-        var result = [ ];
-    
-        var edgesList = edges[vertex._id];
-        if (edgesList != undefined) {
-          for (i = 0; i < edgesList.length; ++i) {
-            result.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
-          }
-        }
-        return result;
       }
     };
   };
@@ -175,23 +187,15 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDepthFirstPreOrderForward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.DEPTH_FIRST;
+      config.order = traversal.Traverser.PRE_ORDER;
+      config.itemOrder = traversal.Traverser.FORWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
-
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
       var expectedVisits = [
         "vertices/World",
         "vertices/Europe",
@@ -211,7 +215,7 @@ function GraphTreeTraversalSuite() {
         "vertices/AN",
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
 
       var expectedPaths = [
         [ "vertices/World" ],
@@ -232,7 +236,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,22 +244,14 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDepthFirstPreOrderBackward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.BACKWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.DEPTH_FIRST;
+      config.order = traversal.Traverser.PRE_ORDER;
+      config.itemOrder = traversal.Traverser.BACKWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/World",
@@ -276,7 +272,7 @@ function GraphTreeTraversalSuite() {
         "vertices/DE"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World" ],
@@ -297,7 +293,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World", "vertices/Europe", "vertices/DE" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,22 +301,14 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDepthFirstPostOrderForward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.POST_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.DEPTH_FIRST;
+      config.order = traversal.Traverser.POST_ORDER;
+      config.itemOrder = traversal.Traverser.FORWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/DE",
@@ -341,7 +329,7 @@ function GraphTreeTraversalSuite() {
         "vertices/World"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World", "vertices/Europe", "vertices/DE" ],
@@ -362,7 +350,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,22 +358,14 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDepthFirstPostOrderBackward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.POST_ORDER,
-        itemOrder: traversal.Traverser.BACKWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.DEPTH_FIRST;
+      config.order = traversal.Traverser.POST_ORDER;
+      config.itemOrder = traversal.Traverser.BACKWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/AN",
@@ -406,7 +386,7 @@ function GraphTreeTraversalSuite() {
         "vertices/World"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
@@ -427,7 +407,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,22 +415,14 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBreadthFirstPreOrderForward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.BREADTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.BREADTH_FIRST;
+      config.order = traversal.Traverser.PRE_ORDER;
+      config.itemOrder = traversal.Traverser.FORWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/World",
@@ -471,7 +443,7 @@ function GraphTreeTraversalSuite() {
         "vertices/AN"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World" ],
@@ -492,7 +464,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,23 +472,15 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBreadthFirstPreOrderBackward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.BREADTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.BACKWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.BREADTH_FIRST;
+      config.order = traversal.Traverser.PRE_ORDER;
+      config.itemOrder = traversal.Traverser.BACKWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
-
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
       var expectedVisits = [
         "vertices/World",
         "vertices/Africa",
@@ -536,7 +500,7 @@ function GraphTreeTraversalSuite() {
         "vertices/DE"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World" ],
@@ -557,7 +521,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World", "vertices/Europe", "vertices/DE" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,22 +529,14 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBreadthFirstPostOrderForward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.BREADTH_FIRST,
-        visitOrder: traversal.Traverser.POST_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.BREADTH_FIRST;
+      config.order = traversal.Traverser.POST_ORDER;
+      config.itemOrder = traversal.Traverser.FORWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/DE",
@@ -601,7 +557,7 @@ function GraphTreeTraversalSuite() {
         "vertices/World"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World", "vertices/Europe", "vertices/DE" ],
@@ -622,7 +578,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,22 +586,14 @@ function GraphTreeTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBreadthFirstPostOrderBackward : function () {
-      var properties = { 
-        strategy: traversal.Traverser.BREADTH_FIRST,
-        visitOrder: traversal.Traverser.POST_ORDER,
-        itemOrder: traversal.Traverser.BACKWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: filter,
-        expander: expander
-      };
+      var config = getConfig();
+      config.strategy = traversal.Traverser.BREADTH_FIRST;
+      config.order = traversal.Traverser.POST_ORDER;
+      config.itemOrder = traversal.Traverser.BACKWARD;
       
-      var traverser = new traversal.Traverser(properties);
-      var context = getContext();
-      traverser.traverse(vertices["vertices/World"], context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/AN",
@@ -666,7 +614,7 @@ function GraphTreeTraversalSuite() {
         "vertices/World"
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
       
       var expectedPaths = [
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
@@ -687,7 +635,7 @@ function GraphTreeTraversalSuite() {
         [ "vertices/World" ]
       ];
       
-      assertEqual(expectedPaths, context.paths);
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     }
 
   };
@@ -701,24 +649,28 @@ function GraphTreeTraversalSuite() {
 /// @brief test: collection-based graph traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function CollectionTraversalSuite() {
+function CollectionTraversalSuite () {
   var vn = "UnitTestsVertices";
   var en = "UnitTestsEdges";
 
   var vertexCollection;
   var edgeCollection;
-      
-  var visitor = function () {
+  
+  var getResult = function () {
     return {
-      invoke: function (traverser, context, vertex, path) {
-        context.visited.push(vertex._id);
-        var paths = [ ];
-        path.vertices.forEach (function (vertex) {
-          paths.push(vertex._id);
-        });
-        context.paths.push(paths);
+      visited: {
+        vertices: [ ],
+        paths: [ ]
       }
-    };
+    }; 
+  };
+  
+  var getIds = function (data) {
+    var r = [ ];
+    data.forEach(function (item) {
+      r.push(item._id);
+    });
+    return r;
   };
 
   return {
@@ -759,30 +711,30 @@ function CollectionTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOutboundExpander : function () {
-      var properties = {
+      var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1 },
         edgeCollection: edgeCollection
       }; 
 
-      var expander = traversal.CollectionOutboundExpander(properties);
+      var expander = traversal.CollectionOutboundExpander;
       var connected;
       
       connected = [ ];
-      expander.invoke(null, null, vertexCollection.document(vn + "/A")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/A")).forEach(function(item) {
         connected.push(item.vertex._key);
       }); 
 
       assertEqual([ "B", "D" ], connected);
       
       connected = [ ];
-      expander.invoke(null, null, vertexCollection.document(vn + "/D")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/D")).forEach(function(item) {
         connected.push(item.vertex._key);
       }); 
 
       assertEqual([ "E", "F" ], connected);
       
       connected = [ ];
-      expander.invoke(null, null, vertexCollection.document(vn + "/H")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/H")).forEach(function(item) {
         connected.push(item.vertex._key);
       }); 
 
@@ -794,30 +746,30 @@ function CollectionTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInboundExpander : function () {
-      var properties = {
+      var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1 },
         edgeCollection: edgeCollection
       }; 
 
-      var expander = traversal.CollectionInboundExpander(properties);
+      var expander = traversal.CollectionInboundExpander;
       var connected;
       
       connected = [ ];
-      expander.invoke(null, null, vertexCollection.document(vn + "/D")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/D")).forEach(function(item) {
         connected.push(item.vertex._key);
       }); 
 
       assertEqual([ "A", "C" ], connected);
       
       connected = [ ];
-      expander.invoke(null, null, vertexCollection.document(vn + "/H")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/H")).forEach(function(item) {
         connected.push(item.vertex._key);
       }); 
 
       assertEqual([ "G", "I" ], connected);
       
       connected = [ ];
-      expander.invoke(null, null, vertexCollection.document(vn + "/A")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/A")).forEach(function(item) {
         connected.push(item.vertex._key);
       }); 
 
@@ -829,28 +781,20 @@ function CollectionTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateFullOutbound : function () {
-      var properties = { 
+      var config = { 
         edgeCollection: internal.db._collection(en),
         strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
+        order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: traversal.InvokeAllFilter,
+        filter: traversal.VisitAllFilter,
         expander: traversal.CollectionOutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
       
-      var traverser = new traversal.Traverser(properties);
-      var context = { 
-        visited: [ ],
-        paths: [ ]
-      };
-      traverser.traverse(vertexCollection.document(vn + "/A"), context);
+      var traverser = new traversal.Traverser(config);
+      var result = getResult();
+      traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
         vn + "/A", 
@@ -868,7 +812,7 @@ function CollectionTraversalSuite() {
         vn + "/F" 
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -876,28 +820,20 @@ function CollectionTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateInbound : function () {
-      var properties = { 
+      var config = { 
         edgeCollection: internal.db._collection(en),
         strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
+        order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: traversal.InvokeAllFilter,
+        filter: traversal.VisitAllFilter,
         expander: traversal.CollectionInboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
-      
-      var traverser = new traversal.Traverser(properties);
-      var context = { 
-        visited: [ ],
-        paths: [ ]
-      };
-      traverser.traverse(vertexCollection.document(vn + "/F"), context);
+     
+      var result = getResult(); 
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertexCollection.document(vn + "/F"));
 
       var expectedVisits = [
         vn + "/F", 
@@ -908,7 +844,7 @@ function CollectionTraversalSuite() {
         vn + "/A" 
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,28 +852,24 @@ function CollectionTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniqueVertices : function () {
-      var properties = { 
+      var config = { 
         edgeCollection: internal.db._collection(en),
         strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
+        order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
         uniqueness: {
           vertices: traversal.Traverser.UNIQUE_GLOBAL,
           edges: traversal.Traverser.UNIQUE_NONE
         }, 
-        visitor: visitor,
-        filter: traversal.InvokeAllFilter,
+        filter: traversal.VisitAllFilter,
         expander: traversal.CollectionOutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
       
-      var traverser = new traversal.Traverser(properties);
-      var context = { 
-        visited: [ ],
-        paths: [ ]
-      };
-      traverser.traverse(vertexCollection.document(vn + "/A"), context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
         vn + "/A", 
@@ -951,7 +883,7 @@ function CollectionTraversalSuite() {
         vn + "/I" 
       ];
 
-      assertEqual(expectedVisits, context.visited);
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -959,28 +891,24 @@ function CollectionTraversalSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniqueEdges : function () {
-      var properties = { 
+      var config = { 
         edgeCollection: internal.db._collection(en),
         strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
+        order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
         uniqueness: {
           vertices: traversal.Traverser.UNIQUE_NONE,
           edges: traversal.Traverser.UNIQUE_GLOBAL
         }, 
-        visitor: visitor,
-        filter: traversal.InvokeAllFilter,
+        filter: traversal.VisitAllFilter,
         expander: traversal.CollectionOutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
       
-      var traverser = new traversal.Traverser(properties);
-      var context = { 
-        visited: [ ],
-        paths: [ ]
-      };
-      traverser.traverse(vertexCollection.document(vn + "/A"), context);
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
         vn + "/A", 
@@ -996,58 +924,8 @@ function CollectionTraversalSuite() {
         vn + "/D" 
       ];
 
-      assertEqual(expectedVisits, context.visited);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test abort
-////////////////////////////////////////////////////////////////////////////////
-
-    testAbort : function () {
-      var properties = { 
-        edgeCollection: internal.db._collection(en),
-        strategy: traversal.Traverser.DEPTH_FIRST,
-        visitOrder: traversal.Traverser.PRE_ORDER,
-        itemOrder: traversal.Traverser.FORWARD,
-        uniqueness: {
-          vertices: traversal.Traverser.UNIQUE_NONE,
-          edges: traversal.Traverser.UNIQUE_NONE
-        }, 
-        visitor: visitor,
-        filter: function () {
-          return {
-            invoke: function (traverser, context, vertex, path) {
-              if (vertex._key == "E") {
-                traverser.abort();
-              }
-              return {
-                visit: true,
-                expand: true
-              };
-            }
-          };
-        },
-        expander: traversal.CollectionOutboundExpander,
-
-        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
-      };
-      
-      var traverser = new traversal.Traverser(properties);
-      var context = { 
-        visited: [ ],
-        paths: [ ]
-      };
-      traverser.traverse(vertexCollection.document(vn + "/A"), context);
-
-      var expectedVisits = [
-        vn + "/A", 
-        vn + "/B", 
-        vn + "/C", 
-        vn + "/D" 
-      ];
-
-      assertEqual(expectedVisits, context.visited);
-    },
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    }
 
   };
 }
