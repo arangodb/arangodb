@@ -43,10 +43,10 @@ var traversal = require("org/arangodb/graph/traversal");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Graph Traversal
+/// @brief test: Graph tree traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function GraphTraversalSuite() {
+function GraphTreeTraversalSuite() {
   var vertices;
   var edges;
       
@@ -64,37 +64,45 @@ function GraphTraversalSuite() {
     }; 
   };
 
-  var visitor = function (traverser, vertex, path) {
-    var context = traverser._context;
-
-    context.visited.push(vertex._id);
-    var paths = [ ];
-    path.vertices.forEach (function (vertex) {
-      paths.push(vertex._id);
-    });
-    context.paths.push(paths);
-  };
-
-  var filter = function (traverser, vertex, path) {
-    var context = traverser._context;
-
+  var visitor = function () {
     return {
-      visit: ((context.visit && context.visit[vertex._id] != undefined) ? context.visit[vertex._id] : true),
-      expand: ((context.expand && context.expand[vertex._id] != undefined) ? context.expand[vertex._id] : true)
+      invoke: function (traverser, context, vertex, path) {
+        context.visited.push(vertex._id);
+        var paths = [ ];
+        path.vertices.forEach (function (vertex) {
+          paths.push(vertex._id);
+        });
+        context.paths.push(paths);
+      }
     };
   };
 
-  var expander = function (traverser, vertex, path) {
-    var result = [ ];
-    
-    var edgesList = edges[vertex._id];
-    if (edgesList != undefined) {
-      for (i = 0; i < edgesList.length; ++i) {
-        result.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
+  var filter = function () {
+    return {
+      invoke: function (traverser, context, vertex, path) {
+        return {
+          visit: ((context.visit && context.visit[vertex._id] != undefined) ? context.visit[vertex._id] : true),
+          expand: ((context.expand && context.expand[vertex._id] != undefined) ? context.expand[vertex._id] : true)
+        };
       }
-    }
-    return result;
-  }
+    };
+  };
+
+  var expander = function () {
+    return {
+      invoke: function (traverser, context, vertex, path) {
+        var result = [ ];
+    
+        var edgesList = edges[vertex._id];
+        if (edgesList != undefined) {
+          for (i = 0; i < edgesList.length; ++i) {
+            result.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
+          }
+        }
+        return result;
+      }
+    };
+  };
 
   return {
 
@@ -180,7 +188,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -245,7 +253,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -310,7 +318,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -375,7 +383,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -440,7 +448,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -505,7 +513,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -570,7 +578,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -635,7 +643,7 @@ function GraphTraversalSuite() {
         expander: expander
       };
       
-      var traverser = new traversal.Traverser("edges", properties);
+      var traverser = new traversal.Traverser(properties);
       var context = getContext();
       traverser.traverse(vertices["vertices/World"], context);
 
@@ -693,7 +701,7 @@ function GraphTraversalSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(GraphTraversalSuite);
+jsunity.run(GraphTreeTraversalSuite);
 
 return jsunity.done();
 

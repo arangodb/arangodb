@@ -40,19 +40,12 @@ var internal = require("internal");
 /// @brief traversal constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-function ArangoTraverser (edgeCollection, properties) {
-  // check edgeCollection
-  if (edgeCollection == undefined || edgeCollection == null) {
-    throw "invalid edgeCollection";
-  }
-
-  this._edgeCollection = edgeCollection;
-  
+function ArangoTraverser (properties) {
   if (typeof properties !== "object") {
     throw "invalid properties";
   }
 
-  this._order = properties.visitOrder || ArangoTraverser.PRE_ORDER;
+  this._order = properties.visitOrder    || ArangoTraverser.PRE_ORDER;
   this._itemOrder = properties.itemOrder || ArangoTraverser.FORWARD;
 
   // check the visitation strategy    
@@ -70,17 +63,12 @@ function ArangoTraverser (edgeCollection, properties) {
 
   // callbacks
   // visitor
-  this._visitor = properties.visitor;
+  this._visitor = properties.visitor(properties).invoke;
 
   // filter
-  this._filter  = properties.filter || function () {
-    return {
-      visit:  true,
-      expand: true
-    };
-  };
+  this._filter = (properties.filter || VisitAllFilter)(properties).invoke;
 
-  this._expander = properties.expander || OutboundExpander;
+  this._expander = (properties.expander || CollectionOutboundExpander)(properties).invoke;
 
   if (typeof this._visitor !== "function") {
     throw "invalid visitor";
@@ -118,9 +106,6 @@ ArangoTraverser.prototype.traverse = function (startVertex, context) {
     throw "invalid startVertex specified for traversal";
   }
 
-  // set user defined context
-  this._context = context;
-
   // run the traversal
   var strategy;
   if (this._strategy === ArangoTraverser.BREADTH_FIRST) {
@@ -130,7 +115,7 @@ ArangoTraverser.prototype.traverse = function (startVertex, context) {
     strategy = DepthFirstSearch;
   }
 
-  strategy().run(this, startVertex);
+  strategy().run(this, context, startVertex);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,12 +166,14 @@ function CheckReverse (traverser) {
       return true;
     }
   }
-  else if (traverser._order === ArangoTraverser.PRE_ORDER) {
+  else if (traverser._order  === ArangoTraverser.PRE_ORDER) {
     // pre order
-    if (traverser._itemOrder === ArangoTraverser.BACKWARD && traverser._strategy === ArangoTraverser.BREADTH_FIRST) {
+    if (traverser._itemOrder === ArangoTraverser.BACKWARD && 
+        traverser._strategy  === ArangoTraverser.BREADTH_FIRST) {
       return true;
     }
-    if (traverser._itemOrder === ArangoTraverser.FORWARD && traverser._strategy === ArangoTraverser.DEPTH_FIRST) {
+    if (traverser._itemOrder === ArangoTraverser.FORWARD && 
+        traverser._strategy  === ArangoTraverser.DEPTH_FIRST) {
       return true;
     }
   }
@@ -220,7 +207,7 @@ function BreadthFirstSearch () {
       return path;
     },
 
-    run: function (traverser, startVertex) {
+    run: function (traverser, context, startVertex) {
       var toVisit = [ { edge: null, vertex: startVertex, parentIndex: -1 } ];
       var visited = { edges: { }, vertices: { } };
 
@@ -250,10 +237,10 @@ function BreadthFirstSearch () {
 
           var path = this.createPath(toVisit, index);
 
-          var filterResult = traverser._filter(traverser, vertex, path);
+          var filterResult = traverser._filter(traverser, context, vertex, path);
           if (traverser._order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder
-            traverser._visitor(traverser, vertex, path);
+            traverser._visitor(traverser, context, vertex, path);
           }
           else {
             // postorder
@@ -261,7 +248,7 @@ function BreadthFirstSearch () {
           }
 
           if (filterResult.expand) {
-            var connected = traverser._expander(traverser, vertex, path);
+            var connected = traverser._expander(traverser, context, vertex, path);
             if (connected.length > 0) {
               reverse && connected.reverse();
               for (var i = 0; i < connected.length; ++i) {
@@ -283,7 +270,7 @@ function BreadthFirstSearch () {
         else {
           if (traverser._order === ArangoTraverser.POST_ORDER && current.visit) {
             var path = this.createPath(toVisit, index);
-            traverser._visitor(traverser, vertex, path);
+            traverser._visitor(traverser, context, vertex, path);
           }
           index += step;
           
@@ -302,7 +289,7 @@ function BreadthFirstSearch () {
 function DepthFirstSearch () {
   return {
 
-    run: function (traverser, startVertex) {
+    run: function (traverser, context, startVertex) {
       var toVisit = [ { edge: null, vertex: startVertex, visit: null } ];
       var path    = { edges: [ ], vertices: [ ] };
       var visited = { edges: { }, vertices: { } };
@@ -332,10 +319,10 @@ function DepthFirstSearch () {
           path.vertices.push(vertex);
 
           
-          var filterResult = traverser._filter(traverser, vertex, path);
+          var filterResult = traverser._filter(traverser, context, vertex, path);
           if (traverser._order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder visit
-            traverser._visitor(traverser, vertex, path);
+            traverser._visitor(traverser, context, vertex, path);
           }
           else {
             // postorder. mark the element visitation flag because we'll got to check it later
@@ -344,7 +331,7 @@ function DepthFirstSearch () {
 
           // expand the element's children?
           if (filterResult.expand) {
-            var connected = traverser._expander(traverser, vertex, path);
+            var connected = traverser._expander(traverser, context, vertex, path);
             if (connected.length > 0) {
               reverse && connected.reverse();
               for (var i = 0; i < connected.length; ++i) {
@@ -358,7 +345,7 @@ function DepthFirstSearch () {
           // we have already seen this element
           if (traverser._order === ArangoTraverser.POST_ORDER && current.visit) {
             // postorder visitation
-            traverser._visitor(traverser, vertex, path);
+            traverser._visitor(traverser, context, vertex, path);
           }
 
           // pop the element from the stack
@@ -379,31 +366,60 @@ function DepthFirstSearch () {
 /// @brief default outbound expander function
 ////////////////////////////////////////////////////////////////////////////////
 
-function OutboundExpander (traverser, vertex, path) {
-  var connections = [ ];
+function CollectionOutboundExpander (properties) {
+  return {
+    properties: properties,
 
-  this._edgeCollection.outEdges(vertex._id).forEach(function (edge) {
-    var vertex = internal.db._document(edge._to);
-    connections.push({ edge: edge, vertex: vertex });    
-  });
+    invoke: function (traverser, context, vertex, path) {
+      var connections = [ ];
 
-  return connections;
-};
+      this._edgeCollection.outEdges(vertex._id).forEach(function (edge) {
+        var vertex = internal.db._document(edge._to);
+        connections.push({ edge: edge, vertex: vertex });    
+      });
+
+      return connections;
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default inbound expander function 
 ////////////////////////////////////////////////////////////////////////////////
 
-function InboundExpander (traverser, vertex, path) {
-  var connections = [ ];
+function CollectionInboundExpander (properties) {
+  return {
+    properties: properties,
 
-  this._edgeCollection.inEdges(vertex._id).forEach(function (edge) {
-    var vertex = internal.db._document(edge._from);
-    connections.push({ edge: edge, vertex: vertex });    
-  });
+    invoke: function (traverser, context, vertex, path) {
+      var connections = [ ];
 
-  return connections;
+      this._edgeCollection.inEdges(vertex._id).forEach(function (edge) {
+        var vertex = internal.db._document(edge._from);
+        connections.push({ edge: edge, vertex: vertex });    
+      });
+
+      return connections;
+    }
+  };
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default filter to visit & expand all vertices
+////////////////////////////////////////////////////////////////////////////////
+
+function VisitAllFilter (properties) {
+  return {
+    properties: properties,
+    
+    invoke: function (traverser, context, vertex, path) {
+      return {
+        visit:  true,
+        expand: true
+      };
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -485,10 +501,11 @@ ArangoTraverser.BACKWARD             = 1;
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Traverser        = ArangoTraverser;
-exports.OutboundExpander = OutboundExpander;
-exports.InboundExpander  = InboundExpander;
-  
+exports.Traverser                  = ArangoTraverser;
+exports.CollectionOutboundExpander = CollectionOutboundExpander;
+exports.CollectionInboundExpander  = CollectionInboundExpander;
+exports.VisitAllFilter             = VisitAllFilter;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
