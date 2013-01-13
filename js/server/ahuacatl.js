@@ -2363,6 +2363,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
     }),
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
+    maxDepth: params.maxDepth,
     filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : VisitAllFilter,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
