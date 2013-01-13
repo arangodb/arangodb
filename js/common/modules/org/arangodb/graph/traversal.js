@@ -467,6 +467,31 @@ function CollectionInboundExpander (config, vertex, path) {
   return connections;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default "any" expander function 
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionAnyExpander (config, vertex, path) {
+  var connections = [ ];
+  var edges = config.edgeCollection.edges(vertex._id);
+      
+  if (edges.length > 1 && config.sort) {
+    edges.sort(config.sort);
+  }
+
+  edges.forEach(function (edge) {
+    try {
+      var vertex = internal.db._document(edge._from);
+      connections.push({ edge: edge, vertex: vertex });    
+    }
+    catch (e) {
+      // continue even in the face of non-existing documents
+    }
+  });
+      
+  return connections;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 /// @brief default expander that expands all edges labeled with one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -664,6 +689,7 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 exports.Traverser                  = ArangoTraverser;
 exports.CollectionOutboundExpander = CollectionOutboundExpander;
 exports.CollectionInboundExpander  = CollectionInboundExpander;
+exports.CollectionAnyExpander      = CollectionAnyExpander;
 exports.VisitAllFilter             = VisitAllFilter;
 exports.TrackingVisitor            = TrackingVisitor;
 exports.MinDepthFilter             = MinDepthFilter;
