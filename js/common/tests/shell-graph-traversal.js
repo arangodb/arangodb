@@ -129,11 +129,11 @@ function GraphTreeTraversalSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      var worldVertices = { };
-      var worldInEdges  = { };
-      var worldOutEdges = { };
-  
+    setUpSourceWorld : function () {
+      var vertices = { };
+      var inEdges  = { };
+      var outEdges = { };
+      
       [ "World", "Nothing",
         "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
         "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA", "AN",
@@ -145,52 +145,108 @@ function GraphTreeTraversalSuite () {
           _key : key,
           name : item
         };
-        worldVertices[vertex._id] = vertex;
+        vertices[vertex._id] = vertex;
       });
-
-      var connect = function (from, to, inlist, outlist) {
+    
+      var connect = function (from, to) {
         var key = from + "x" + to;
         var edge = {
           _id : "edges/" + key,
           _key : key, 
           _from : "vertices/" + from,
           _to : "vertices/" + to,
-          what : from + "->" + to
+          what : from + "->" + to,
+          label: label
         };
-
-        if (outlist[edge._from] == undefined) {
-          outlist[edge._from] = [ ];
+    
+        if (outEdges[edge._from] == undefined) {
+          outEdges[edge._from] = [ ];
         }
-        outlist[edge._from].push(edge);
-        if (inlist[edge._to] == undefined) {
-          inlist[edge._to] = [ ];
+        outEdges[edge._from].push(edge);
+        if (inEdges[edge._to] == undefined) {
+          inEdges[edge._to] = [ ];
         }
-        inlist[edge._to].push(edge);
+        inEdges[edge._to].push(edge);
       };
-
-      connect("World", "Europe", worldInEdges, worldOutEdges);
-      connect("World", "Asia", worldInEdges, worldOutEdges);
-      connect("World", "America", worldInEdges, worldOutEdges);
-      connect("World", "Australia", worldInEdges, worldOutEdges);
-      connect("World", "Africa", worldInEdges, worldOutEdges);
-      connect("World", "Antarctica", worldInEdges, worldOutEdges);
-      connect("Europe", "DE", worldInEdges, worldOutEdges); 
-      connect("Europe", "FR", worldInEdges, worldOutEdges); 
-      connect("Europe", "GB", worldInEdges, worldOutEdges); 
-      connect("Europe", "IE", worldInEdges, worldOutEdges); 
-      connect("Asia", "CN", worldInEdges, worldOutEdges); 
-      connect("Asia", "JP", worldInEdges, worldOutEdges); 
-      connect("Asia", "TW", worldInEdges, worldOutEdges); 
-      connect("America", "US", worldInEdges, worldOutEdges); 
-      connect("America", "MX", worldInEdges, worldOutEdges); 
-      connect("Australia", "AU", worldInEdges, worldOutEdges); 
-      connect("Antarctica", "AN", worldInEdges, worldOutEdges);
-      
-      
+    
+      connect("World", "Europe");
+      connect("World", "Asia");
+      connect("World", "America");
+      connect("World", "Australia");
+      connect("World", "Africa");
+      connect("World", "Antarctica");
+      connect("Europe", "DE"); 
+      connect("Europe", "FR"); 
+      connect("Europe", "GB"); 
+      connect("Europe", "IE"); 
+      connect("Asia", "CN"); 
+      connect("Asia", "JP"); 
+      connect("Asia", "TW"); 
+      connect("America", "US"); 
+      connect("America", "MX"); 
+      connect("Australia", "AU"); 
+      connect("Antarctica", "AN");
+       
       datasourceWorld = {
-        inEdges: worldInEdges,
-        outEdges: worldOutEdges,
-        vertices: worldVertices,
+        inEdges: inEdges,
+        outEdges: outEdges,
+        vertices: vertices,
+    
+        getAllEdges: function (vertexId) {
+          return this.inEdges[vertexId].concat(outEdges[vertex_id]);
+        },
+    
+        getInEdges: function (vertexId) {
+          return this.inEdges[vertexId];
+        },
+    
+        getOutEdges: function (vertexId) {
+          return this.outEdges[vertexId];
+        }
+      };
+    },
+
+    setUp : function () {
+      setUpSourceWorld();
+      
+      
+      var peopleVertices = { };
+      var peopleInEdges  = { };
+      var peopleOutEdges = { };
+      
+      ["Alice",
+      "Bob",
+      "Charly",
+      "Diana",
+      "Eric",
+      "Frank"].forEach( function (person){
+        var key = person;
+        var vertex = {
+          _id : "vertices/" + key,
+          _key : key,
+          name : person
+        };
+        vertices[vertex._id] = vertex;
+      });
+      
+      connect("Alice", "Bob", peopleInEdges, peopleOutEdges, "likes");
+      connect("Bob", "Alice", peopleInEdges, peopleOutEdges, "likes");
+      connect("Alice", "Diana", peopleInEdges, peopleOutEdges, "hates");
+      connect("Diana", "Alice", peopleInEdges, peopleOutEdges, "hates");
+      connect("Alice", "Eric", peopleInEdges, peopleOutEdges, "hates");
+      connect("Eric", "Alice", peopleInEdges, peopleOutEdges, "hates");
+      connect("Bob", "Charly", peopleInEdges, peopleOutEdges, "likes");
+      connect("Charly", "Diana", peopleInEdges, peopleOutEdges, "hates");
+      connect("Diana", "Charly", peopleInEdges, peopleOutEdges, "hates");
+      connect("Diana", "Alice", peopleInEdges, peopleOutEdges, "likes");
+      connect("Diana", "Eric", peopleInEdges, peopleOutEdges, "likes");
+      connect("Alice", "Frank", peopleInEdges, peopleOutEdges, "l");
+      connect("Frank", "Bob", peopleInEdges, peopleOutEdges, "likes");
+      
+      datasourcePeople = {
+        inEdges: peopleInEdges,
+        outEdges: peopleOutEdges,
+        vertices: peopleVertices,
         
         getAllEdges: function (vertexId) {
           return this.inEdges[vertexId].concat(outEdges[vertex_id]);
@@ -204,6 +260,7 @@ function GraphTreeTraversalSuite () {
           return this.outEdges[vertexId];
         }
       };
+      
     },
 
 ////////////////////////////////////////////////////////////////////////////////
