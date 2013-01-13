@@ -2364,6 +2364,18 @@ function AHUACATL_GRAPH_TRAVERSE () {
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
     filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : VisitAllFilter,
+    uniqueness: {
+      vertices: validate(params.uniqueness && params.uniqueness.vertices, {
+        'none': traversal.Traverser.UNIQUE_NONE,
+        'global': traversal.Traverser.UNIQUE_GLOBAL,
+        'path': traversal.Traverser.UNIQUE_PATH
+      }),
+      edges: validate(params.uniqueness && params.uniqueness.edges, {
+        'none': traversal.Traverser.UNIQUE_NONE,
+        'global': traversal.Traverser.UNIQUE_GLOBAL,
+        'path': traversal.Traverser.UNIQUE_PATH
+      }),
+    },
     expander: validate(direction, {
       'outbound': traversal.CollectionOutboundExpander,
       'inbound': traversal.CollectionInboundExpander,
