@@ -531,7 +531,7 @@ function CollectionAnyExpander (config, vertex, path) {
 /// @brief default expander that expands all edges labeled with one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-var ExpandEdgesWithLabels = function (config, vertex, path) {
+function ExpandEdgesWithLabels (config, vertex, path) {
   var result = [ ];
   if (!Array.isArray(config.labels)) {
     config.labels = [config.labels];
