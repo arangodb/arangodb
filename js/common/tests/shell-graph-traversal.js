@@ -980,16 +980,6 @@ function GraphTreeTraversalSuite () {
         if (vertex.name && vertex.name === config.prune2) return "prune";
       };
       
-      var combinationWrapper = function(config, vertex, path) {
-        return traversal.CombineFilters([
-            excluder1, 
-            pruner1,
-            excluder2,
-            pruner2,
-            excluder3
-          ],
-          config, vertex, path);
-      };
       var config = {
         expander: expander,
         filter: [
