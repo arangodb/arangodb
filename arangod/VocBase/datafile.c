@@ -678,10 +678,10 @@ static TRI_datafile_t* OpenDatafile (char const* filename, bool ignoreErrors) {
 
   // check the maximal size
   if (size > header._maximalSize) {
-    LOG_WARNING("datafile '%s' has size '%u', but maximal size is '%u'",
-                filename,
-                (unsigned int) size,
-                (unsigned int) header._maximalSize);
+    LOG_DEBUG("datafile '%s' has size '%u', but maximal size is '%u'",
+              filename,
+              (unsigned int) size,
+              (unsigned int) header._maximalSize);
   }
 
   // map datafile into memory
