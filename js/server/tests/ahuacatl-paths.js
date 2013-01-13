@@ -339,7 +339,8 @@ function ahuacatlQueryTraverseTestSuite () {
         strategy: "depthfirst",
         order: "preorder",
         itemOrder: "forward",
-        maxDepth: 2
+        maxDepth: 2,
+        _sort: true
       };
 
       var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
@@ -358,12 +359,31 @@ function ahuacatlQueryTraverseTestSuite () {
         itemOrder: "forward",
         uniqueness: {
           vertices: "global" 
-        }
+        },
+        _sort: true
       };
 
       var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "D" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstAny : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 2,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "A", "C", "D", "A", "C", "C", "B", "A", "D" ], actual);
     }
 
   };
