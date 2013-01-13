@@ -1,8 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
 /*global require, WeakDictionary, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +100,7 @@ findOrCreateEdgeCollectionByName = function (name) {
 /// @brief constructs a new edge object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Edge(graph, id) {
+function Edge (graph, id) {
   var properties = graph._edges.document(id);
 
   this._graph = graph;
