@@ -467,6 +467,26 @@ function CollectionInboundExpander (config, vertex, path) {
   return connections;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+/// @brief default expander that expands all edges labeled with one label in config.labels 
+///////////////////////////////////////////////////////////////////////////////////////////
+
+var ExpandEdgesWithLabels = function (config, vertex, path) {
+  var result = [ ];
+  if (!Array.isArray(config.labels)) {
+    config.labels = [config.labels];
+  }
+  var edgesList = edges[vertex._id];
+  if (edgesList != undefined) {
+    for (i = 0; i < edgesList.length; ++i) {
+      if (!!~config.labels.indexOf(edgesList[i].label)) {
+        result.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
+      }
+    }
+  }
+  return result;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default visitor that just tracks every visit
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,6 +668,7 @@ exports.VisitAllFilter             = VisitAllFilter;
 exports.TrackingVisitor            = TrackingVisitor;
 exports.MinDepthFilter             = MinDepthFilter;
 exports.MaxDepthFilter             = MaxDepthFilter;
+exports.ExpandEdgesWithLabels      = ExpandEdgesWithLabels;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
