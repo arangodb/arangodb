@@ -84,10 +84,6 @@ ArangoStatement.prototype.bind = function (key, value) {
     this._bindVars = key;
   }
   else if (typeof(key) === "string") {
-    if (this._bindVars[key] !== undefined) {
-      throw "redeclaration of bind parameter";
-    }
-
     this._bindVars[key] = value;
   }
   else if (typeof(key) === "number") {
@@ -95,10 +91,6 @@ ArangoStatement.prototype.bind = function (key, value) {
 
     if (strKey !== String(key)) {
       throw "invalid bind parameter declaration";
-    }
-
-    if (this._bindVars[strKey] !== undefined) {
-      throw "redeclaration of bind parameter";
     }
 
     this._bindVars[strKey] = value;
