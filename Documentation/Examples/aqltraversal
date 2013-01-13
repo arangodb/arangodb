@@ -1,0 +1,8 @@
+TRAVERSE(friends, friendrelations, "friends/john", "outbound", {
+  strategy: "depthfirst",
+  order: "postorder",
+  itemOrder: "backward",
+  maxDepth: 6,
+  trackPaths: true
+})
+
