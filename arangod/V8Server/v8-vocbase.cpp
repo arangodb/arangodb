@@ -2895,7 +2895,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             memset(&newMarker, 0, newMarkerSize); 
 
-            sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
+            sprintf(didBuffer,"%llu", (unsigned long long) oldMarker->_did);
             keySize = strlen(didBuffer) + 1;
             keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
@@ -2949,9 +2949,9 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             memset(&newMarker, 0, newMarkerSize); 
 
-            sprintf(didBuffer,"%d", (unsigned int) oldMarker->base._did);
-            sprintf(toDidBuffer,"%d", (unsigned int) oldMarker->_toDid);
-            sprintf(fromDidBuffer,"%d", (unsigned int) oldMarker->_fromDid);
+            sprintf(didBuffer,"%llu", (unsigned long long) oldMarker->base._did);
+            sprintf(toDidBuffer,"%llu", (unsigned long long) oldMarker->_toDid);
+            sprintf(fromDidBuffer,"%llu", (unsigned long long) oldMarker->_fromDid);
             
             keySize = strlen(didBuffer) + 1;
             toSize = strlen(toDidBuffer) + 1;
@@ -3008,7 +3008,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
 
             memset(&newMarker, 0, newMarkerSize); 
 
-            sprintf(didBuffer,"%d", (unsigned int) oldMarker->_did);
+            sprintf(didBuffer,"%llu", (unsigned long long) oldMarker->_did);
             keySize = strlen(didBuffer) + 1;
             keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
