@@ -2308,9 +2308,11 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_TRAVERSE_VISITOR (config, result, vertex, path) {
-  result.vertices.push(AHUACATL_CLONE(vertex));
   if (config.trackPaths) {
-    result.paths.push(AHUACATL_CLONE(path));
+    result.push(AHUACATL_CLONE({ vertex: vertex, path: path }));
+  }
+  else {
+    result.push(AHUACATL_CLONE({ vertex: vertex }));
   }
 }
 
@@ -2319,7 +2321,7 @@ function AHUACATL_TRAVERSE_VISITOR (config, result, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function AHUACATL_TRAVERSE_FILTER (config, vertex, path) {
-  if (config.maxDepth != null && config.maxDepth != undefined && path.edges.length > config.maxDepth) {
+  if (config.maxDepth != null && config.maxDepth != undefined && path.edges.length >= config.maxDepth) {
     return "prune";
   }
   return "";
@@ -2371,7 +2373,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
       'backward': traversal.Traverser.BACKWARD
     }),
     maxDepth: params.maxDepth,
-    trackPaths: params.returnPaths || false,
+    trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
     filter: AHUACATL_TRAVERSE_FILTER, 
     expander: validate(direction, {
@@ -2380,17 +2382,11 @@ function AHUACATL_GRAPH_TRAVERSE () {
     })
   };
 
-  var result = {
-    vertices: [ ]
-  };
-  if (config.trackPaths) {
-    result.paths = [ ];
-  }
-
+  var result = [ ];
   var traverser = new traversal.Traverser(config);
   traverser.traverse(result, vertexCollection.document(startVertex));
 
-  return [ result ];
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
