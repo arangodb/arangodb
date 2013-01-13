@@ -245,6 +245,18 @@ function CheckReverse (config) {
 
 function BreadthFirstSearch () {
   return {
+    getPathItems: function (items) {
+      var visited = { };
+      var ignore = items.length - 1;
+      
+      items.forEach(function (item, i) {
+        if (i != ignore) {
+          visited[item._id] = true;
+        }
+      });
+
+      return visited;
+    },
 
     createPath: function (items, idx) {
       var path = { edges: [ ], vertices: [ ] };
@@ -282,7 +294,16 @@ function BreadthFirstSearch () {
         if (current.visit == null) {
           current.visit = false;
           
+          var path = this.createPath(toVisit, index);
+          
           // first apply uniqueness check
+          if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
+            visited.vertices = this.getPathItems(path.vertices);
+          }
+          if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
+            visited.edges = this.getPathItems(path.edges);
+          }
+
           if (! CheckUniqueness(config.uniqueness, visited, vertex, edge)) {
             if (index < toVisit.length - 1) {
               index += step;
@@ -293,7 +314,6 @@ function BreadthFirstSearch () {
             continue;
           }
 
-          var path = this.createPath(toVisit, index);
           var filterResult = ParseFilterResult(config.filter(config, vertex, path));
           if (config.order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder
@@ -345,6 +365,14 @@ function BreadthFirstSearch () {
 
 function DepthFirstSearch () {
   return {
+    getPathItems: function (items) {
+      var visited = { };
+      items.forEach(function (item) {
+        visited[item._id] = true;
+      });
+      return visited;
+    },
+
     run: function (config, result, startVertex) {
       var toVisit = [ { edge: null, vertex: startVertex, visit: null } ];
       var path    = { edges: [ ], vertices: [ ] };
@@ -362,6 +390,13 @@ function DepthFirstSearch () {
           current.visit = false;
 
           // first apply uniqueness check
+          if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
+            visited.vertices = this.getPathItems(path.vertices);
+          }
+          if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
+            visited.edges = this.getPathItems(path.edges);
+          }
+
           if (! CheckUniqueness(config.uniqueness, visited, vertex, edge)) {
             // skip element if not unique
             toVisit.pop();
@@ -563,6 +598,7 @@ function VisitAllFilter () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default filter to visit & expand all vertices up to a given depth
 ////////////////////////////////////////////////////////////////////////////////
+
 function MaxDepthFilter (config, vertex, path) {
   if (path.vertices.length > config.maxDepth) {
     return "prune";
@@ -572,16 +608,17 @@ function MaxDepthFilter (config, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default filter to exclude all vertices up to a given depth
 ////////////////////////////////////////////////////////////////////////////////
+
 function MinDepthFilter (config, vertex, path) {
   if (path.vertices.length <= config.minDepth) {
     return "exclude";
   }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief combine an array of filters
 ////////////////////////////////////////////////////////////////////////////////
+
 function CombineFilters (filters, config, vertex, path) {
   var result = [];
   filters.forEach( function (f) {
