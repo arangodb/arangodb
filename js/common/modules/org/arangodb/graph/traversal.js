@@ -72,7 +72,20 @@ function ArangoTraverser (config) {
   if (typeof config.visitor !== "function") {
     throw "invalid visitor";
   }
-
+  
+  if (Array.isArray(config.filter)) {
+    config.filter.forEach( function (f) {
+      if (typeof f !== "function") {
+        throw "invalid filter";
+      }
+    });
+    var innerFilters = config.filter.slice()
+    var combinedFilter = function(config, vertex, path) {
+      return CombineFilters(innerFilters, config, vertex, path);
+    };
+    config.filter = combinedFilter;
+  }
+  
   if (typeof config.filter !== "function") {
     throw "invalid filter";
   }
@@ -493,6 +506,40 @@ function VisitAllFilter () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief default filter to visit & expand all vertices up to a given depth
+////////////////////////////////////////////////////////////////////////////////
+function MaxDepthFilter (config, vertex, path) {
+  if (path.vertices.length > config.maxDepth) {
+    return "prune";
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default filter to exclude all vertices up to a given depth
+////////////////////////////////////////////////////////////////////////////////
+function MinDepthFilter (config, vertex, path) {
+  if (path.vertices.length <= config.minDepth) {
+    return "exclude";
+  }
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief combine an array of filters
+////////////////////////////////////////////////////////////////////////////////
+function CombineFilters (filters, config, vertex, path) {
+  var result = [];
+  filters.forEach( function (f) {
+    var tmp = f(config, vertex, path);
+    if (!Array.isArray(tmp)) {
+      tmp = [tmp];
+    }
+    result = result.concat(tmp);
+  });
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -589,6 +636,8 @@ exports.CollectionOutboundExpander = CollectionOutboundExpander;
 exports.CollectionInboundExpander  = CollectionInboundExpander;
 exports.VisitAllFilter             = VisitAllFilter;
 exports.TrackingVisitor            = TrackingVisitor;
+exports.MinDepthFilter             = MinDepthFilter;
+exports.MaxDepthFilter             = MaxDepthFilter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

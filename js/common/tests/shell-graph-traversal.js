@@ -640,8 +640,435 @@ function GraphTreeTraversalSuite () {
       ];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
-    }
+    },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test minimal depth filter with depth 0
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testMinDepthFilterWithDepth0 : function () {
+      var config = {
+        expander: expander,
+        filter: traversal.MinDepthFilter,
+        minDepth: 0
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/World",
+        "vertices/Europe",
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/IE",
+        "vertices/Asia",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/America",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/Australia",
+        "vertices/AU",
+        "vertices/Africa",
+        "vertices/Antarctica",
+        "vertices/AN",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World"],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/IE" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica"],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test minimal depth filter with depth 1
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testMinDepthFilterWithDepth1 : function () {
+      var config = {
+        expander: expander,
+        filter: traversal.MinDepthFilter,
+        minDepth: 1
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/Europe",
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/IE",
+        "vertices/Asia",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/America",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/Australia",
+        "vertices/AU",
+        "vertices/Africa",
+        "vertices/Antarctica",
+        "vertices/AN",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/IE" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica"],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
+      ];
+      
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+
+    },
+    
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test minimal depth filter with depth 2
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testMinDepthFilterWithDepth2 : function () {
+      var config = {
+        expander: expander,
+        filter: traversal.MinDepthFilter,
+        minDepth: 2
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/IE",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/AU",
+        "vertices/AN",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/IE" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test maximal depth filter with depth 0
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testMaxDepthFilterWithDepth0 : function () {
+      var config = {
+        expander: expander,
+        filter: traversal.MaxDepthFilter,
+        maxDepth: 0
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/World",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World"]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test maximal depth filter with depth 1
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testMaxDepthFilterWithDepth1 : function () {
+      var config = {
+        expander: expander,
+        filter: traversal.MaxDepthFilter,
+        maxDepth: 1
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/World",
+        "vertices/Europe",
+        "vertices/Asia",
+        "vertices/America",
+        "vertices/Australia",
+        "vertices/Africa",
+        "vertices/Antarctica",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World"],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica"]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test maximal depth filter with depth 2
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testMaxDepthFilterWithDepth2 : function () {
+      var config = {
+        expander: expander,
+        filter: traversal.MaxDepthFilter,
+        maxDepth: 2
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/World",
+        "vertices/Europe",
+        "vertices/DE",
+        "vertices/FR",
+        "vertices/GB",
+        "vertices/IE",
+        "vertices/Asia",
+        "vertices/CN",
+        "vertices/JP",
+        "vertices/TW",
+        "vertices/America",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/Australia",
+        "vertices/AU",
+        "vertices/Africa",
+        "vertices/Antarctica",
+        "vertices/AN",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World"],
+        [ "vertices/World", "vertices/Europe" ],
+        [ "vertices/World", "vertices/Europe", "vertices/DE" ],
+        [ "vertices/World", "vertices/Europe", "vertices/FR" ],
+        [ "vertices/World", "vertices/Europe", "vertices/GB" ],
+        [ "vertices/World", "vertices/Europe", "vertices/IE" ],
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/Asia", "vertices/CN" ],
+        [ "vertices/World", "vertices/Asia", "vertices/JP" ],
+        [ "vertices/World", "vertices/Asia", "vertices/TW" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Australia", "vertices/AU" ],
+        [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica"],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+
+    },
+
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                    combineFilters
+    // -----------------------------------------------------------------------------
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test combination of filters
+    ////////////////////////////////////////////////////////////////////////////////
+  
+    testCombineFilters : function () {
+      
+      var excluder1 = function(config, vertex, path) {
+        if (vertex.name && vertex.name === config.exclude1) return "exclude";
+      };
+      
+      var excluder2 = function(config, vertex, path) {
+        if (vertex.name && vertex.name === config.exclude2) return "exclude";
+      };
+      
+      var excluder3 = function(config, vertex, path) {
+        if (vertex.name && vertex.name === config.exclude3) return "exclude";
+      };
+      
+      var pruner1 = function(config, vertex, path) {
+        if (vertex.name && vertex.name === config.prune1) return "prune";
+      };
+      
+      var pruner2 = function(config, vertex, path) {
+        if (vertex.name && vertex.name === config.prune2) return "prune";
+      };
+      
+      var combinationWrapper = function(config, vertex, path) {
+        return traversal.CombineFilters([
+            excluder1, 
+            pruner1,
+            excluder2,
+            pruner2,
+            excluder3
+          ],
+          config, vertex, path);
+      };
+      var config = {
+        expander: expander,
+        filter: [
+          excluder1, 
+          pruner1,
+          excluder2,
+          pruner2,
+          excluder3
+        ],
+        exclude1: "Europe",
+        exclude2: "AU",
+        exclude3: "World",
+        prune1: "Asia",
+        prune2: "Europe"
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [
+        "vertices/Asia",
+        "vertices/America",
+        "vertices/US",
+        "vertices/MX",
+        "vertices/Australia",
+        "vertices/Africa",
+        "vertices/Antarctica",
+        "vertices/AN",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/World", "vertices/Asia" ],
+        [ "vertices/World", "vertices/America" ],
+        [ "vertices/World", "vertices/America", "vertices/US" ],
+        [ "vertices/World", "vertices/America", "vertices/MX" ],
+        [ "vertices/World", "vertices/Australia" ],
+        [ "vertices/World", "vertices/Africa" ],
+        [ "vertices/World", "vertices/Antarctica"],
+        [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+    },
+    
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test if exclude or prune can be overridden in combined filters
+    ////////////////////////////////////////////////////////////////////////////////
+  
+    testOverrideExcludeAndPruneOfCombinedFilters : function () {
+      
+      var excludeAndPrune = function(config, vertex, path) {
+        if (vertex.name && vertex.name === config.excludeAndPrune) return ["prune", "exclude"];
+      };
+      
+      var config = {
+        expander: expander,
+        filter: [
+          excludeAndPrune,
+          traversal.VisitAllFilter
+        ],
+        excludeAndPrune: "World"
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertices["vertices/World"]);
+      
+      var expectedVisits = [];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+    }
   };
 }
 
@@ -930,9 +1357,9 @@ function CollectionTraversalSuite () {
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     }
-
   };
 }
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
