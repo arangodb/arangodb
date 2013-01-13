@@ -466,8 +466,8 @@ function CollectionOutboundExpander (config, vertex, path) {
 
   outEdges.forEach(function (edge) {
     try {
-      var vertex = internal.db._document(edge._to);
-      connections.push({ edge: edge, vertex: vertex });    
+      var v = internal.db._document(edge._to);
+      connections.push({ edge: edge, vertex: v });    
     }
     catch (e) {
       // continue even in the face of non-existing documents
@@ -491,8 +491,8 @@ function CollectionInboundExpander (config, vertex, path) {
 
   inEdges.forEach(function (edge) {
     try {
-      var vertex = internal.db._document(edge._from);
-      connections.push({ edge: edge, vertex: vertex });    
+      var v = internal.db._document(edge._from);
+      connections.push({ edge: edge, vertex: v });    
     }
     catch (e) {
       // continue even in the face of non-existing documents
@@ -516,8 +516,8 @@ function CollectionAnyExpander (config, vertex, path) {
 
   edges.forEach(function (edge) {
     try {
-      var vertex = internal.db._document(edge._from);
-      connections.push({ edge: edge, vertex: vertex });    
+      var v = internal.db._document(edge._from === vertex._id ? edge._to : edge._from);
+      connections.push({ edge: edge, vertex: v });    
     }
     catch (e) {
       // continue even in the face of non-existing documents
