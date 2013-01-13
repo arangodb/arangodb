@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var traversal = require("org/arangodb/graph/traversal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
@@ -2209,8 +2210,6 @@ function AHUACATL_GRAPH_PATHS () {
     followCycles : followCycles
   };
 
-  // TODO: restrict allEdges to edges with certain _from values etc.
-
   var result = [ ];
   var n = vertices.length;
   for (var i = 0; i < n; ++i) {
@@ -2302,6 +2301,96 @@ function AHUACATL_GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, ve
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TRAVERSE_VISITOR (config, result, vertex, path) {
+  result.vertices.push(AHUACATL_CLONE(vertex));
+  if (config.trackPaths) {
+    result.paths.push(AHUACATL_CLONE(path));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief filter callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_TRAVERSE_FILTER (config, vertex, path) {
+  if (config.maxDepth != null && config.maxDepth != undefined && path.edges.length > config.maxDepth) {
+    return "prune";
+  }
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function AHUACATL_GRAPH_TRAVERSE () {
+  var vertexCollection = AHUACATL_COLLECTION(arguments[0]);
+  var edgeCollection   = AHUACATL_COLLECTION(arguments[1]);
+  var startVertex      = arguments[2];
+  var direction        = arguments[3];
+  var params           = arguments[4];
+
+  function validate (value, map) {
+    if (value == null || value == undefined) {
+      // use first key from map
+      for (var m in map) {
+        if (map.hasOwnProperty(m)) {
+          value = m;
+          break;
+        }
+      }
+    }
+    if (typeof value === 'string') {
+      value = value.toLowerCase().replace(/-/, "");
+      if (map[value] != null) {
+        return map[value];
+      }
+    }
+
+    AHUACATL_THROW(internal.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSE");
+  }
+
+  var config = {
+    edgeCollection: edgeCollection,
+    strategy: validate(params.strategy, {
+      'depthfirst': traversal.Traverser.DEPTH_FIRST,
+      'breadthfirst': traversal.Traverser.BREADTH_FIRST
+    }),
+    order: validate(params.order, {
+      'preorder': traversal.Traverser.PRE_ORDER,
+      'postorder': traversal.Traverser.POST_ORDER
+    }),
+    itemOrder: validate(params.itemOrder, {
+      'forward': traversal.Traverser.FORWARD,
+      'backward': traversal.Traverser.BACKWARD
+    }),
+    maxDepth: params.maxDepth,
+    trackPaths: params.returnPaths || false,
+    visitor: AHUACATL_TRAVERSE_VISITOR,
+    filter: AHUACATL_TRAVERSE_FILTER, 
+    expander: validate(direction, {
+      'outbound': traversal.CollectionOutboundExpander,
+      'inbound': traversal.CollectionInboundExpander
+    })
+  };
+
+  var result = {
+    vertices: [ ]
+  };
+  if (config.trackPaths) {
+    result.paths = [ ];
+  }
+
+  var traverser = new traversal.Traverser(config);
+  traverser.traverse(result, vertexCollection.document(startVertex));
+
+  return [ result ];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
