@@ -217,7 +217,7 @@ static int RevisionKey (TRI_key_generator_t* const generator,
       current += TRI_StringUInt64InPlace(revision, current);
     }
     else {
-      char numBuffer[22];
+      char numBuffer[22]; // a uint64 cannot be longer than this 
       size_t length;
 
       length = TRI_StringUInt64InPlace(revision, (char*) &numBuffer);
