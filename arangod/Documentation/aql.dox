@@ -997,14 +997,43 @@
 ///
 ///   The result of the function is a list of paths. Paths of length 0 will also be returned. Each 
 ///   path is a document consisting of the following attributes:
-///   - @FA{vertices}: list of vertices visited along the path
-///   - @FA{edges}: list of edges visited along the path (might be empty)
-///   - @FA{source}: start vertex of path
-///   - @FA{destination}: destination vertex of path
+///   - @LIT{vertices}: list of vertices visited along the path
+///   - @LIT{edges}: list of edges visited along the path (might be empty)
+///   - @LIT{source}: start vertex of path
+///   - @LIT{destination}: destination vertex of path
 ///
 /// Example calls:
 ///
 /// @verbinclude aqlpaths
+///
+/// - @FN{TRAVERSE(@FA{vertexcollection}\, @FA{edgecollection}\, @FA{startVertex}\, @FA{direction}\, @FA{options})}: 
+///   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
+///   starting at the vertex identified by id @FA{startVertex}. Vertex connectivity is
+///   specified by the @FA{direction} parameter:
+///   - @LIT{outbound}: vertices are connected in @LIT{_from} to @LIT{_to} order
+///   - @LIT{inbound}: vertices are connected in @LIT{_to} to @LIT{_from} order
+///
+///   Additional options for the traversal can be provided via the @FA{options} document:
+///   - @LIT{strategy}: defines the traversal strategy. Possible values are @LIT{depthfirst} 
+///     and @LIT{breadthfirst}. Defaults to @LIT{depthfirst}
+///   - @LIT{order}: defines the traversal order: Possible values are @LIT{preorder} and
+///     @LIT{postorder}. Defaults to @LIT{preorder}
+///   - @LIT{itemOrder}: Defines the level item order. Can be @LIT{forward} or 
+///     @LIT{backward}. Defaults to @LIT{forward}
+///   - @LIT{maxDepth}: Maximum traversal depth. Defaults to unbounded
+///   - @LIT{trackPaths}: if @LIT{true}, the paths encountered during the traversal will
+///     also be returned along with each traversed vertex. If @LIT{false}, only the 
+///     encountered vertices will be returned.
+///
+///   The result of the function is a list of traversed points. Each point is a document
+///   consisting of the following properties:
+///   - @LIT{vertex}: the vertex at the traversal point
+///   - @LIT{path}: The path history for the traversal point. The path is a document with the
+///     properties @LIT{vertices} and @LIT{edges}, which are both lists.
+///
+/// Example calls:
+///
+/// @verbinclude aqltraversal
 ///
 /// @subsubsection AqlFunctionsControl Control flow functions
 ///

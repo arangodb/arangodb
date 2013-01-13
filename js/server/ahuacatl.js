@@ -2378,7 +2378,8 @@ function AHUACATL_GRAPH_TRAVERSE () {
     filter: AHUACATL_TRAVERSE_FILTER, 
     expander: validate(direction, {
       'outbound': traversal.CollectionOutboundExpander,
-      'inbound': traversal.CollectionInboundExpander
+      'inbound': traversal.CollectionInboundExpander,
+      'any': traversal.CollectionAnyExpander
     })
   };
 
