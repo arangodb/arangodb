@@ -601,7 +601,7 @@ function VisitAllFilter () {
 
 function MaxDepthFilter (config, vertex, path) {
   if (path.vertices.length > config.maxDepth) {
-    return "prune";
+    return ArangoTraverser.PRUNE;
   }
 };
 
@@ -611,7 +611,7 @@ function MaxDepthFilter (config, vertex, path) {
 
 function MinDepthFilter (config, vertex, path) {
   if (path.vertices.length <= config.minDepth) {
-    return "exclude";
+    return ArangoTraverser.EXCLUDE;
   }
 };
 
