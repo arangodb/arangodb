@@ -47,8 +47,10 @@ var traversal = require("org/arangodb/graph/traversal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphTreeTraversalSuite () {
-  var vertices;
-  var edges;
+  //var vertices;
+  //var edges;
+  var datasourceWorld;
+  
       
   var visitor = traversal.TrackingVisitor;
 
@@ -66,10 +68,10 @@ function GraphTreeTraversalSuite () {
   var expander = function (config, vertex, path) {
     var r = [ ];
     
-    var edgesList = edges[vertex._id];
+    var edgesList = config.datasource.getOutEdges(vertex._id);
     if (edgesList != undefined) {
       for (i = 0; i < edgesList.length; ++i) {
-        r.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
+        r.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
       }
     }
     return r;
@@ -109,6 +111,7 @@ function GraphTreeTraversalSuite () {
       visitor: visitor,
       filter: filter,
       expander: expander,
+      datasource: datasourceWorld,
 
       noVisit: {
         "vertices/Antarctica" : true,
@@ -127,8 +130,9 @@ function GraphTreeTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      vertices = { };
-      edges    = { };
+      var worldVertices = { };
+      var worldInEdges  = { };
+      var worldOutEdges = { };
   
       [ "World", "Nothing",
         "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
@@ -141,10 +145,10 @@ function GraphTreeTraversalSuite () {
           _key : key,
           name : item
         };
-        vertices[vertex._id] = vertex;
+        worldVertices[vertex._id] = vertex;
       });
 
-      var connect = function (from, to) {
+      var connect = function (from, to, inlist, outlist) {
         var key = from + "x" + to;
         var edge = {
           _id : "edges/" + key,
@@ -154,29 +158,52 @@ function GraphTreeTraversalSuite () {
           what : from + "->" + to
         };
 
-        if (edges[edge._from] == undefined) {
-          edges[edge._from] = [ ];
+        if (outlist[edge._from] == undefined) {
+          outlist[edge._from] = [ ];
         }
-        edges[edge._from].push(edge);
+        outlist[edge._from].push(edge);
+        if (inlist[edge._to] == undefined) {
+          inlist[edge._to] = [ ];
+        }
+        inlist[edge._to].push(edge);
       };
 
-      connect("World", "Europe");
-      connect("World", "Asia");
-      connect("World", "America");
-      connect("World", "Australia");
-      connect("World", "Africa");
-      connect("World", "Antarctica");
-      connect("Europe", "DE"); 
-      connect("Europe", "FR"); 
-      connect("Europe", "GB"); 
-      connect("Europe", "IE"); 
-      connect("Asia", "CN"); 
-      connect("Asia", "JP"); 
-      connect("Asia", "TW"); 
-      connect("America", "US"); 
-      connect("America", "MX"); 
-      connect("Australia", "AU"); 
-      connect("Antarctica", "AN"); 
+      connect("World", "Europe", worldInEdges, worldOutEdges);
+      connect("World", "Asia", worldInEdges, worldOutEdges);
+      connect("World", "America", worldInEdges, worldOutEdges);
+      connect("World", "Australia", worldInEdges, worldOutEdges);
+      connect("World", "Africa", worldInEdges, worldOutEdges);
+      connect("World", "Antarctica", worldInEdges, worldOutEdges);
+      connect("Europe", "DE", worldInEdges, worldOutEdges); 
+      connect("Europe", "FR", worldInEdges, worldOutEdges); 
+      connect("Europe", "GB", worldInEdges, worldOutEdges); 
+      connect("Europe", "IE", worldInEdges, worldOutEdges); 
+      connect("Asia", "CN", worldInEdges, worldOutEdges); 
+      connect("Asia", "JP", worldInEdges, worldOutEdges); 
+      connect("Asia", "TW", worldInEdges, worldOutEdges); 
+      connect("America", "US", worldInEdges, worldOutEdges); 
+      connect("America", "MX", worldInEdges, worldOutEdges); 
+      connect("Australia", "AU", worldInEdges, worldOutEdges); 
+      connect("Antarctica", "AN", worldInEdges, worldOutEdges);
+      
+      
+      datasourceWorld = {
+        inEdges: worldInEdges,
+        outEdges: worldOutEdges,
+        vertices: worldVertices,
+        
+        getAllEdges: function (vertexId) {
+          return this.inEdges[vertexId].concat(outEdges[vertex_id]);
+        },
+    
+        getInEdges: function (vertexId) {
+          return this.inEdges[vertexId];
+        },
+    
+        getOutEdges: function (vertexId) {
+          return this.outEdges[vertexId];
+        }
+      };
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +225,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/World",
@@ -255,7 +282,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/World",
@@ -312,7 +339,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/DE",
@@ -369,7 +396,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/AN",
@@ -426,7 +453,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/World",
@@ -483,7 +510,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/World",
@@ -540,7 +567,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/DE",
@@ -597,7 +624,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
 
       var expectedVisits = [
         "vertices/AN",
@@ -648,6 +675,7 @@ function GraphTreeTraversalSuite () {
 
     testMinDepthFilterWithDepth0 : function () {
       var config = {
+        datasource: datasourceWorld,
         expander: expander,
         filter: traversal.MinDepthFilter,
         minDepth: 0
@@ -655,7 +683,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/World",
@@ -711,6 +739,7 @@ function GraphTreeTraversalSuite () {
 
     testMinDepthFilterWithDepth1 : function () {
       var config = {
+        datasource: datasourceWorld,
         expander: expander,
         filter: traversal.MinDepthFilter,
         minDepth: 1
@@ -718,7 +747,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/Europe",
@@ -774,6 +803,7 @@ function GraphTreeTraversalSuite () {
 
     testMinDepthFilterWithDepth2 : function () {
       var config = {
+        datasource: datasourceWorld,
         expander: expander,
         filter: traversal.MinDepthFilter,
         minDepth: 2
@@ -781,7 +811,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/DE",
@@ -823,6 +853,7 @@ function GraphTreeTraversalSuite () {
 
     testMaxDepthFilterWithDepth0 : function () {
       var config = {
+        datasource: datasourceWorld,
         expander: expander,
         filter: traversal.MaxDepthFilter,
         maxDepth: 0
@@ -830,7 +861,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/World",
@@ -852,6 +883,7 @@ function GraphTreeTraversalSuite () {
 
     testMaxDepthFilterWithDepth1 : function () {
       var config = {
+        datasource: datasourceWorld,
         expander: expander,
         filter: traversal.MaxDepthFilter,
         maxDepth: 1
@@ -859,7 +891,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/World",
@@ -893,6 +925,7 @@ function GraphTreeTraversalSuite () {
 
     testMaxDepthFilterWithDepth2 : function () {
       var config = {
+        datasource: datasourceWorld,
         expander: expander,
         filter: traversal.MaxDepthFilter,
         maxDepth: 2
@@ -900,7 +933,7 @@ function GraphTreeTraversalSuite () {
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/World",
@@ -993,12 +1026,13 @@ function GraphTreeTraversalSuite () {
         exclude2: "AU",
         exclude3: "World",
         prune1: "Asia",
-        prune2: "Europe"
+        prune2: "Europe",
+        datasource: datasourceWorld
       };
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [
         "vertices/Asia",
@@ -1044,12 +1078,13 @@ function GraphTreeTraversalSuite () {
           excludeAndPrune,
           traversal.VisitAllFilter
         ],
-        excludeAndPrune: "World"
+        excludeAndPrune: "World",
+        datasource: datasourceWorld
       };
       
       var result = getResult();
       var traverser = new traversal.Traverser(config);
-      traverser.traverse(result, vertices["vertices/World"]);
+      traverser.traverse(result, config.datasource.vertices["vertices/World"]);
       
       var expectedVisits = [];
 
@@ -1058,6 +1093,13 @@ function GraphTreeTraversalSuite () {
       var expectedPaths = [];
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+    },
+    
+    testFollowEdgesWithLabels : function () {
+      var config = {
+        expander: traversal.ExpandEdgesWithLabels,
+        edgeLabels: ["likes", "hates"]
+      }
     }
   };
 }
