@@ -2384,6 +2384,10 @@ function AHUACATL_GRAPH_TRAVERSE () {
     })
   };
 
+  if (params._sort) {
+    config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
+  }
+
   var result = [ ];
   var traverser = new traversal.Traverser(config);
   traverser.traverse(result, vertexCollection.document(startVertex));
