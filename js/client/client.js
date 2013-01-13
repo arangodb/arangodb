@@ -1103,6 +1103,11 @@ function ArangoCollection (database, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoCollection.prototype._documenturl = function (id) {
+    var s = id.split("/");
+
+    if (s.length == 1) {
+      return this._database._documenturl(this.name() + "/" + id, this.name()); 
+    }
     return this._database._documenturl(id, this.name()); 
   };
 
@@ -1723,7 +1728,7 @@ function ArangoCollection (database, data) {
     }
 
     if (rev === null) {
-      requestResult = this._database._connection.GET(this._documenturl(this._name + "/" + id));
+      requestResult = this._database._connection.GET(this._documenturl(id));
     }
     else {
       requestResult = this._database._connection.GET(this._documenturl(id),
