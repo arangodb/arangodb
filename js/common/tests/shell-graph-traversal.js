@@ -1371,7 +1371,7 @@ function CollectionTraversalSuite () {
 /// @brief test iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIterateUniqueVertices : function () {
+    testIterateUniqueGlobalVertices : function () {
       var config = { 
         edgeCollection: internal.db._collection(en),
         strategy: traversal.Traverser.DEPTH_FIRST,
@@ -1401,6 +1401,49 @@ function CollectionTraversalSuite () {
         vn + "/G", 
         vn + "/H", 
         vn + "/I" 
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateUniquePathVertices : function () {
+      var config = { 
+        edgeCollection: internal.db._collection(en),
+        strategy: traversal.Traverser.DEPTH_FIRST,
+        order: traversal.Traverser.PRE_ORDER,
+        itemOrder: traversal.Traverser.FORWARD,
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_PATH,
+          edges: traversal.Traverser.UNIQUE_NONE
+        }, 
+        filter: traversal.VisitAllFilter,
+        expander: traversal.CollectionOutboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1 }
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      traverser.traverse(result, vertexCollection.document(vn + "/A"));
+
+      var expectedVisits = [
+        vn + "/A", 
+        vn + "/B", 
+        vn + "/C", 
+        vn + "/D", 
+        vn + "/E", 
+        vn + "/F", 
+        vn + "/G", 
+        vn + "/H", 
+        vn + "/I", 
+        vn + "/H",
+        vn + "/D",
+        vn + "/E",
+        vn + "/F"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));

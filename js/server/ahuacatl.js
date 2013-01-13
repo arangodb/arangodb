@@ -2317,17 +2317,6 @@ function AHUACATL_TRAVERSE_VISITOR (config, result, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief filter callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function AHUACATL_TRAVERSE_FILTER (config, vertex, path) {
-  if (config.maxDepth != null && config.maxDepth != undefined && path.edges.length >= config.maxDepth) {
-    return "prune";
-  }
-  return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2372,15 +2361,32 @@ function AHUACATL_GRAPH_TRAVERSE () {
       'forward': traversal.Traverser.FORWARD,
       'backward': traversal.Traverser.BACKWARD
     }),
-    maxDepth: params.maxDepth,
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
-    filter: AHUACATL_TRAVERSE_FILTER, 
+    maxDepth: params.maxDepth,
+    filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : traversal.VisitAllFilter,
+    uniqueness: {
+      vertices: validate(params.uniqueness && params.uniqueness.vertices, {
+        'none': traversal.Traverser.UNIQUE_NONE,
+        'global': traversal.Traverser.UNIQUE_GLOBAL,
+        'path': traversal.Traverser.UNIQUE_PATH
+      }),
+      edges: validate(params.uniqueness && params.uniqueness.edges, {
+        'none': traversal.Traverser.UNIQUE_NONE,
+        'global': traversal.Traverser.UNIQUE_GLOBAL,
+        'path': traversal.Traverser.UNIQUE_PATH
+      }),
+    },
     expander: validate(direction, {
       'outbound': traversal.CollectionOutboundExpander,
-      'inbound': traversal.CollectionInboundExpander
+      'inbound': traversal.CollectionInboundExpander,
+      'any': traversal.CollectionAnyExpander
     })
   };
+
+  if (params._sort) {
+    config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
+  }
 
   var result = [ ];
   var traverser = new traversal.Traverser(config);
