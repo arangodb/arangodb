@@ -91,7 +91,6 @@ int ftruncate (int, long);
 int getpagesize (void);
 
 
-
 int TRI_WIN_closesocket (SOCKET); 
 
 // .............................................................................

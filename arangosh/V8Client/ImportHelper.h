@@ -52,6 +52,10 @@
 #include "BasicsC/csv.h"
 #include "Basics/StringBuffer.h"
 
+#ifdef _WIN32
+#include "BasicsC/win-utils.h"
+#endif
+
 namespace triagens {
   namespace httpclient {
     class SimpleHttpClient;
@@ -87,7 +91,7 @@ namespace triagens {
       /// @brief constructor
       ////////////////////////////////////////////////////////////////////////////////
 
-      ImportHelper (httpclient::SimpleHttpClient* client, size_t maxUploadSize);
+      ImportHelper (httpclient::SimpleHttpClient* client, uint64_t maxUploadSize);
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief destructor
@@ -216,7 +220,7 @@ namespace triagens {
             
     private:      
       httpclient::SimpleHttpClient* _client;
-      size_t _maxUploadSize;
+      uint64_t _maxUploadSize;
       
       string _separator;
       string _quote;

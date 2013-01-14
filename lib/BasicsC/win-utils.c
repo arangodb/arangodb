@@ -259,8 +259,6 @@ int initialiseWindows(const TRI_win_initialise_e initialiseWhat, const char* dat
 
   return -1;
 
-
-
 }
 
 

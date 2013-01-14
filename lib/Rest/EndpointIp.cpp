@@ -210,6 +210,75 @@ socket_t EndpointIp::connectSocket (const struct addrinfo* aip, double connectTi
 /// @brief connect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+
+socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
+  struct addrinfo* result = 0;
+  struct addrinfo* aip;
+  struct addrinfo hints;
+  int error;
+  
+  LOGGER_DEBUG << "connecting to ip endpoint " << _specification;
+  
+  assert(_socket == 0);
+  assert(!_connected);
+  
+  memset(&hints, 0, sizeof (struct addrinfo));
+  hints.ai_family = getDomain(); // Allow IPv4 or IPv6
+  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_ALL;
+  hints.ai_socktype = SOCK_STREAM;
+  
+  string portString = StringUtils::itoa(_port);
+  
+  error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
+  
+  if (error != 0) {
+    int lastError = WSAGetLastError();
+
+    if (error == WSANOTINITIALISED) {
+      // can not call WSAGetLastError - since the socket layer hasn't been initialised yet!
+      lastError = error;
+    }
+    else {      
+      lastError = WSAGetLastError();
+    }
+
+    switch (lastError) {
+      case WSANOTINITIALISED: {
+        LOGGER_ERROR << "getaddrinfo for host: " << _host.c_str() << " => WSAStartup was not called or not called successfully.";
+        break;  
+      }
+      default: {
+        LOGGER_ERROR << "getaddrinfo for host: " << _host.c_str() << " => " << gai_strerror(error);
+        break;  
+      } 
+    }
+ 
+    if (result != 0) { 
+      freeaddrinfo(result);
+    }
+
+    return 0;
+  }
+
+  socket_t listenSocket = 0;
+  
+  // Try all returned addresses until one works
+  for (aip = result; aip != NULL; aip = aip->ai_next) {
+    // try to bind the address info pointer
+    listenSocket = connectSocket(aip, connectTimeout, requestTimeout);
+    if (listenSocket != 0) {
+      // OK
+      break;
+    }
+  }
+  
+  freeaddrinfo(result);
+  
+  return listenSocket;
+}
+
+#else
 socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
   struct addrinfo* result = 0;
   struct addrinfo* aip;
@@ -256,6 +325,7 @@ socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
   
   return listenSocket;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an IPv4 socket endpoint
