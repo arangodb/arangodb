@@ -1,4 +1,5 @@
 var Frank,
+  baseMiddleware,
   _ = require("underscore"),
   internal = {};
 
@@ -48,32 +49,44 @@ _.extend(Frank.prototype, {
     newRoute.handler = handler;
 
     this.routingInfo.routes.push(newRoute);
-  },
-
-  /*
-  setPublic: function () {
-    // Can we put 404 etc. and assets here?
-    var staticPagesHandler = {
-      type: "StaticPages",
-      key: "/static",
-      url: {
-        match: "/static/ *"
-      },
-      action: {
-        controller: "org/arangodb/actions/staticContentController",
-        methods: [
-          "GET",
-          "HEAD"
-        ],
-        options: {
-          application: "org.example.simple",
-          contentCollection: "org_example_simple_content",
-          prefix: "/static"
-        }
-      }
-    };
   }
-  */
 });
 
+baseMiddleware = function (request, response, options, next) {
+  var responseFunctions;
+
+  responseFunctions = {
+    status: function (code) {
+      this.responseCode = code;
+    },
+
+    set: function (key, value) {
+      var attributes = {};
+      if (_.isUndefined(value)) {
+        attributes = key;
+      } else {
+        attributes[key] = value;
+      }
+
+      _.each(attributes, function (value, key) {
+        key = key.toLowerCase();
+        this.headers = this.headers || {};
+        this.headers[key] = value;
+
+        if (key === "content-type") {
+          this.contentType = value;
+        }
+      }, this);
+    },
+
+    json: function (obj) {
+      this.contentType = "application/json";
+      this.body = JSON.stringify(obj);
+    }
+  };
+
+  response = _.extend(response, responseFunctions);
+};
+
 exports.Frank = Frank;
+exports.baseMiddleware = baseMiddleware;
