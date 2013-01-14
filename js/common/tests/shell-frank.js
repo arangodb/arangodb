@@ -19,6 +19,33 @@ function CreateFrankSpec () {
 
       assertEqual(routingInfo.routes.length, 0);
       assertEqual(routingInfo.urlPrefix, "/frankentest");
+    },
+
+    testCreationWithTemplateCollectionIfCollectionDoesntExist: function () {
+      var app, routingInfo, templateCollection;
+
+      db._drop("frankentest");
+      app = new Frank({templateCollection: "frankentest"});
+      routingInfo = app.routingInfo;
+      templateCollection = db._collection("frankentest");
+
+      assertEqual(routingInfo.routes.length, 0);
+      assertNotNull(templateCollection);
+      assertEqual(routingInfo.templateCollection, templateCollection);
+    },
+
+    testCreationWithTemplateCollectionIfCollectionDoesExist: function () {
+      var app, routingInfo, templateCollection;
+
+      db._drop("frankentest");
+      db._create("frankentest");
+      app = new Frank({templateCollection: "frankentest"});
+      routingInfo = app.routingInfo;
+      templateCollection = db._collection("frankentest");
+
+      assertEqual(routingInfo.routes.length, 0);
+      assertNotNull(templateCollection);
+      assertEqual(routingInfo.templateCollection, templateCollection);
     }
   };
 }
@@ -136,12 +163,12 @@ function SetRoutesFrankSpec () {
   };
 }
 
-function BaseMiddlewareSpec () {
+function BaseMiddlewareWithoutTemplateSpec () {
   var baseMiddleware, request, response, options, next;
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/frank").baseMiddleware;
+      baseMiddleware = new require("org/arangodb/frank").BaseMiddleware();
       request = {};
       response = {};
       options = {};
@@ -186,12 +213,88 @@ function BaseMiddlewareSpec () {
 
       assertEqual(response.body, JSON.stringify(rawObject));
       assertEqual(response.contentType, "application/json");
+    },
+
+    testTemplateFunctionAddedToResponse: function () {
+      var error;
+
+      baseMiddleware(request, response, options, next);
+
+      try {
+        response.render("simple/path", { username: "moonglum" });
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, "No template collection has been provided when creating a new Frank");
     }
   };
 }
 
+function BaseMiddlewareWithTemplateSpec () {
+  var BaseMiddleware, request, response, options, next;
+
+  return {
+    setUp: function () {
+      request = {};
+      response = {};
+      options = {};
+      next = function () {};
+      BaseMiddleware = new require("org/arangodb/frank").BaseMiddleware;
+    },
+
+    testRenderingATemplate: function () {
+      var myCollection, middleware;
+
+      internal.db._drop("templateTest");
+      myCollection = internal.db._create("templateTest");
+
+      myCollection.save({
+        path: "simple/path",
+        content: "hallo <%= username %>",
+        contentType: "text/plain",
+        templateLanguage: "underscore"
+      });
+
+      middleware = new BaseMiddleware(myCollection);
+      middleware(request, response, options, next);
+
+      response.render("simple/path", { username: "moonglum" });
+      assertEqual(response.body, "hallo moonglum");
+      assertEqual(response.contentType, "text/plain");
+    },
+
+    testRenderingATemplateWithAnUnknownTemplateEngine: function () {
+      var myCollection, error, middleware;
+
+      internal.db._drop("templateTest");
+      myCollection = internal.db._create("templateTest");
+
+      myCollection.save({
+        path: "simple/path",
+        content: "hallo <%= username %>",
+        contentType: "text/plain",
+        templateLanguage: "pirateEngine"
+      });
+
+      middleware = new BaseMiddleware(myCollection);
+      middleware(request, response, options, next);
+
+      try {
+        response.render("simple/path", { username: "moonglum" });
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, "Unknown template language 'pirateEngine'");
+    }
+  };
+}
+
+
 jsunity.run(CreateFrankSpec);
 jsunity.run(SetRoutesFrankSpec);
-jsunity.run(BaseMiddlewareSpec);
+jsunity.run(BaseMiddlewareWithoutTemplateSpec);
+jsunity.run(BaseMiddlewareWithTemplateSpec);
 
 return jsunity.done();
