@@ -200,7 +200,7 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::write (void* buffer, size_t length, size_t* bytesWritten) {
+bool SslClientConnection::writeClientConnection (void* buffer, size_t length, size_t* bytesWritten) {
   *bytesWritten = 0;
 
   if (_ssl == 0) {
@@ -234,7 +234,7 @@ bool SslClientConnection::write (void* buffer, size_t length, size_t* bytesWritt
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
     
-bool SslClientConnection::read (StringBuffer& stringBuffer) {
+bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   if (_ssl == 0) {
     return false;
   }

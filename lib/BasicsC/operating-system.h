@@ -529,6 +529,10 @@ typedef unsigned char bool;
 
 typedef SOCKET socket_t;
 
+#define STDIN_FILENO  0;
+#define STDOUT_FILENO 1;
+#define STDERR_FILENO 2;
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

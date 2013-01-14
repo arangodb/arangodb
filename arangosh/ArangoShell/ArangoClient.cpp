@@ -490,6 +490,16 @@ void ArangoClient::parse (ProgramOptions& options,
 /// @brief starts pager
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+
+void ArangoClient::startPager () {
+  // not supported
+  if (!_usePager || _usePager) {
+    return;
+  }
+}
+
+#else
 void ArangoClient::startPager () {
   if (! _usePager || _outputPager == "" || _outputPager == "stdout" || _outputPager == "-") {
     _pager = stdout;
@@ -504,10 +514,21 @@ void ArangoClient::startPager () {
     _usePager = false;
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops pager
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+
+void ArangoClient::stopPager () {
+  // not supported
+  if (!_usePager || _usePager) {
+    return;
+  }
+}
+
+#else
 
 void ArangoClient::stopPager () {
   if (_pager != stdout) {
@@ -515,6 +536,8 @@ void ArangoClient::stopPager () {
     _pager = stdout;
   }
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print to pager

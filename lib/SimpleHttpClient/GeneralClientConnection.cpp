@@ -142,7 +142,7 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
   *bytesWritten = 0;
 
   if (prepare(timeout, true)) {
-    return write(buffer, length, bytesWritten);
+    return writeClientConnection(buffer, length, bytesWritten);
   }
 
   return false;
@@ -154,7 +154,7 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
     
 bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer) {
   if (prepare(timeout, false)) {
-    return read(buffer);
+    return readClientConnection(buffer);
   }
 
   return false;

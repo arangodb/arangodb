@@ -102,7 +102,7 @@ static TRI_read_write_lock_t FileNamesLock;
 
 static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
   int idx = -1;
-  size_t i;
+  int i;
 
   TRI_ReadLockReadWriteLock(&FileNamesLock);
 
@@ -270,6 +270,12 @@ bool TRI_IsDirectory (char const* path) {
 /// @brief checks if path is a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+bool TRI_IsSymbolicLink (char const* path) {
+  // todo : check if a file is a symbolic link - without opening the file
+  return false;
+}
+#else
 bool TRI_IsSymbolicLink (char const* path) {
   struct stat stbuf;
   int res;
@@ -278,6 +284,7 @@ bool TRI_IsSymbolicLink (char const* path) {
 
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if file exists

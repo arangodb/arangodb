@@ -11,7 +11,7 @@
     <LocalDebuggerDebuggerType>Auto</LocalDebuggerDebuggerType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>--log.level debug --server.endpoint tcp://127.0.0.1:9000 --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-authentication true --server.disable-admin-interface true  --javascript.action-directory "Z:\local2\arango\dev\js\actions\system"  --javascript.modules-path "Z:\local2\arango\dev\js\server\modules;Z:\local2\arango\dev\js\common\modules" --server.threads 16 --scheduler.threads 16</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--log.level info --database.directory "c:\local2\learning\c++\vc++\data2"  --server.disable-admin-interface true  --javascript.action-directory "$(SolutionDir)..\js\actions\system"  --javascript.modules-path "$(SolutionDir)..\js\server\modules;$(SolutionDir)..\js\common\modules" --server.threads 1 --scheduler.threads 1 --server.endpoint tcp://127.0.0.1:9000 --server.disable-authentication true</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerWorkingDirectory>$(TargetDir)</LocalDebuggerWorkingDirectory>
