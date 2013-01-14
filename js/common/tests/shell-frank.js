@@ -102,14 +102,66 @@ function SetRoutesFrankSpec () {
       assertEqual(routes[0].handler, myFunc);
     }
 
-    //app.get('/', function() {
-      // erb "index" <- from templates collection?
-      // not really erb... underscore_template is much too long
-    //});
+  };
+}
+
+function BaseMiddlewareSpec () {
+  var baseMiddleware, request, response, options, next;
+
+  return {
+    setUp: function () {
+      baseMiddleware = require("org/arangodb/frank").baseMiddleware;
+      request = {};
+      response = {};
+      options = {};
+      next = function () {};
+    },
+
+    testStatusFunctionAddedToResponse: function () {
+      baseMiddleware(request, response, options, next);
+
+      response.status(200);
+      assertEqual(response.responseCode, 200);
+    },
+
+    testSetFunctionAddedToResponse: function () {
+      baseMiddleware(request, response, options, next);
+
+      response.set("Content-Length", "123");
+      assertEqual(response.headers["content-length"], "123");
+
+      response.set("Content-Type", "text/plain");
+      assertEqual(response.contentType, "text/plain");
+    },
+
+    testSetFunctionTakingAnObjectAddedToResponse: function () {
+      baseMiddleware(request, response, options, next);
+
+      response.set({
+        "Content-Length": "123",
+        "Content-Type": "text/plain"
+      });
+
+      assertEqual(response.headers["content-length"], "123");
+      assertEqual(response.contentType, "text/plain");
+    },
+
+    testJsonFunctionAddedToResponse: function () {
+      var rawObject = {test: "123"};
+
+      baseMiddleware(request, response, options, next);
+
+      response.json(rawObject);
+
+      assertEqual(response.body, JSON.stringify(rawObject));
+      assertEqual(response.contentType, "application/json");
+    },
+
   };
 }
 
 jsunity.run(CreateFrankSpec);
 jsunity.run(SetRoutesFrankSpec);
+jsunity.run(BaseMiddlewareSpec);
 
 return jsunity.done();
