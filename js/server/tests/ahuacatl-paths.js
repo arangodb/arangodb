@@ -334,7 +334,7 @@ function ahuacatlQueryTraverseTestSuite () {
 /// @brief test max-depth filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTraversalDepthFirstMax : function () {
+    testTraversalDepthFirstMax1 : function () {
       var config = {
         strategy: "depthfirst",
         order: "preorder",
@@ -346,6 +346,24 @@ function ahuacatlQueryTraverseTestSuite () {
       var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "D", "C" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstMax2 : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 3,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "A", "D", "C", "A" ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,6 +384,26 @@ function ahuacatlQueryTraverseTestSuite () {
       var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
 
       assertEqual([ "A", "B", "C", "D" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstUniquePath : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "path" 
+        },
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "D", "C" ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
