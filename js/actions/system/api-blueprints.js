@@ -28,7 +28,7 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-var graph = require("graph");
+var graph = require("org/arangodb/graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
