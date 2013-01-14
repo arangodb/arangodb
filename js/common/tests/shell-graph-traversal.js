@@ -1065,6 +1065,52 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
 
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test filter by given key value pairs
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testIncludeMatchingAttributesFilter : function () {
+      
+      // Can be removed as soon as all expanders user datasource
+      var anyExp = function (config, vertex, path) {
+        var result = [ ];
+    
+        var edgesList = config.datasource.getAllEdges(vertex._id);
+        if (edgesList != undefined) {
+          for (i = 0; i < edgesList.length; ++i) {
+            result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+          }
+        }
+        return result;
+      };
+      
+      var config = {
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        },  
+        matchingAttributes: [{"name": "Alice"}, {"name": "Frank"}, {"name": "Diana", "key": "FAIL"}, {"_id": "vertices/Bob"}],
+        visitor: visitor,
+        expander: anyExp,
+        filter: traversal.IncludeMatchingAttributesFilter,
+        datasource: datasourcePeople
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      
+      traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
+      
+      var expectedVisits = [
+        "vertices/Alice",
+        "vertices/Bob",
+        "vertices/Frank"
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+    
 
     // -----------------------------------------------------------------------------
     // --SECTION--                                                    combineFilters
@@ -1177,7 +1223,7 @@ function GraphTreeTraversalSuite () {
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
     
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test if all edges with one label are followed

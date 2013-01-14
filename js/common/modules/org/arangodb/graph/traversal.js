@@ -663,6 +663,34 @@ function MinDepthFilter (config, vertex, path) {
   }
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default filter to include all vertices matching one of the given attribute sets
+////////////////////////////////////////////////////////////////////////////////
+function IncludeMatchingAttributesFilter (config, vertex, path) {
+  if (!Array.isArray(config.matchingAttributes)) {
+    config.matchingAttributes = [config.matchingAttributes];
+  }
+  var include = false
+  config.matchingAttributes.forEach( function(example) {
+    var count = 0;
+    Object.keys(example).forEach( function (key) {
+      if (vertex[key] && vertex[key] === example[key]) {
+        count++;
+      }
+    });
+    if (count > 0 && count === Object.keys(example).length) {
+      include = true;
+      return;
+    }
+  });
+  if (!include) {
+    return "exclude";
+  } else {
+    return;
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief combine an array of filters
 ////////////////////////////////////////////////////////////////////////////////
@@ -771,17 +799,18 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Traverser                  = ArangoTraverser;
-exports.CollectionOutboundExpander = CollectionOutboundExpander;
-exports.CollectionInboundExpander  = CollectionInboundExpander;
-exports.CollectionAnyExpander      = CollectionAnyExpander;
-exports.VisitAllFilter             = VisitAllFilter;
-exports.TrackingVisitor            = TrackingVisitor;
-exports.MinDepthFilter             = MinDepthFilter;
-exports.MaxDepthFilter             = MaxDepthFilter;
-exports.ExpandEdgesWithLabels      = ExpandEdgesWithLabels;
-exports.ExpandInEdgesWithLabels    = ExpandInEdgesWithLabels;
-exports.ExpandOutEdgesWithLabels   = ExpandOutEdgesWithLabels;
+exports.Traverser                       = ArangoTraverser;
+exports.CollectionOutboundExpander      = CollectionOutboundExpander;
+exports.CollectionInboundExpander       = CollectionInboundExpander;
+exports.CollectionAnyExpander           = CollectionAnyExpander;
+exports.VisitAllFilter                  = VisitAllFilter;
+exports.IncludeMatchingAttributesFilter = IncludeMatchingAttributesFilter;
+exports.TrackingVisitor                 = TrackingVisitor;
+exports.MinDepthFilter                  = MinDepthFilter;
+exports.MaxDepthFilter                  = MaxDepthFilter;
+exports.ExpandEdgesWithLabels           = ExpandEdgesWithLabels;
+exports.ExpandInEdgesWithLabels         = ExpandInEdgesWithLabels;
+exports.ExpandOutEdgesWithLabels        = ExpandOutEdgesWithLabels;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
