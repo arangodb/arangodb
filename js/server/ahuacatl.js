@@ -2364,7 +2364,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
     trackPaths: params.paths || false,
     visitor: AHUACATL_TRAVERSE_VISITOR,
     maxDepth: params.maxDepth,
-    filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : VisitAllFilter,
+    filter: params.maxDepth != undefined ? traversal.MaxDepthFilter : traversal.VisitAllFilter,
     uniqueness: {
       vertices: validate(params.uniqueness && params.uniqueness.vertices, {
         'none': traversal.Traverser.UNIQUE_NONE,
@@ -2383,6 +2383,10 @@ function AHUACATL_GRAPH_TRAVERSE () {
       'any': traversal.CollectionAnyExpander
     })
   };
+
+  if (params._sort) {
+    config.sort = function (l, r) { return l._key < r._key ? -1 : 1 };
+  }
 
   var result = [ ];
   var traverser = new traversal.Traverser(config);
