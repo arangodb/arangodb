@@ -528,24 +528,72 @@ function CollectionAnyExpander (config, vertex, path) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief default expander that expands all edges labeled with one label in config.labels 
+/// @brief default expander that expands all outbound edges labeled with one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-var ExpandEdgesWithLabels = function (config, vertex, path) {
+function ExpandOutEdgesWithLabels (config, vertex, path) {
   var result = [ ];
   if (!Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
-  var edgesList = edges[vertex._id];
+  var edgesList = config.datasource.getOutEdges(vertex._id);
   if (edgesList != undefined) {
     for (i = 0; i < edgesList.length; ++i) {
       if (!!~config.labels.indexOf(edgesList[i].label)) {
-        result.push({ edge: edgesList[i], vertex: vertices[edgesList[i]._to] });
+        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
       }
     }
   }
   return result;
-};
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+/// @brief default expander that expands all inbound edges labeled with one label in config.labels 
+///////////////////////////////////////////////////////////////////////////////////////////
+  
+function ExpandInEdgesWithLabels (config, vertex, path) {
+  var result = [ ];
+  if (!Array.isArray(config.labels)) {
+    config.labels = [config.labels];
+  }
+  var edgesList = config.datasource.getInEdges(vertex._id);
+  if (edgesList != undefined) {
+    for (i = 0; i < edgesList.length; ++i) {
+      if (!!~config.labels.indexOf(edgesList[i].label)) {
+        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._from] });
+      }
+    }
+  }
+  return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+/// @brief default expander that expands all edges labeled with one label in config.labels 
+///////////////////////////////////////////////////////////////////////////////////////////  
+  
+function ExpandEdgesWithLabels (config, vertex, path) {
+  var result = [ ];
+  if (!Array.isArray(config.labels)) {
+    config.labels = [config.labels];
+  }
+  var edgesList = config.datasource.getInEdges(vertex._id);
+  if (edgesList != undefined) {
+    for (i = 0; i < edgesList.length; ++i) {
+      if (!!~config.labels.indexOf(edgesList[i].label)) {
+        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._from] });
+      }
+    }
+  }
+  edgesList = config.datasource.getOutEdges(vertex._id);
+  if (edgesList != undefined) {
+    for (i = 0; i < edgesList.length; ++i) {
+      if (!!~config.labels.indexOf(edgesList[i].label)) {
+        result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+      }
+    }
+  }
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default visitor that just tracks every visit
@@ -732,6 +780,8 @@ exports.TrackingVisitor            = TrackingVisitor;
 exports.MinDepthFilter             = MinDepthFilter;
 exports.MaxDepthFilter             = MaxDepthFilter;
 exports.ExpandEdgesWithLabels      = ExpandEdgesWithLabels;
+exports.ExpandInEdgesWithLabels    = ExpandInEdgesWithLabels;
+exports.ExpandOutEdgesWithLabels   = ExpandOutEdgesWithLabels;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
