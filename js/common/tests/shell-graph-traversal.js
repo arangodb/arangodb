@@ -50,7 +50,162 @@ function GraphTreeTraversalSuite () {
   //var vertices;
   //var edges;
   var datasourceWorld;
+  var datasourcePeople;
+   
+  var setUpSourceWorld = function () {
+    var vertices = { };
+    var inEdges  = { };
+    var outEdges = { };
+      
+    [ "World", "Nothing",
+      "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
+      "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA", "AN",
+      "London", "Paris", "Lyon", "Cologne", "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney" 
+    ].forEach(function (item) {
+      var key = item;
+      var vertex = {
+        _id : "vertices/" + key,
+        _key : key,
+        name : item
+      };
+      vertices[vertex._id] = vertex;
+    });
+    
+    var connect = function (from, to) {
+      var key = from + "x" + to;
+      var edge = {
+        _id : "edges/" + key,
+        _key : key, 
+        _from : "vertices/" + from,
+        _to : "vertices/" + to,
+        what : from + "->" + to,
+      };
+    
+      if (outEdges[edge._from] == undefined) {
+        outEdges[edge._from] = [ ];
+      }
+      outEdges[edge._from].push(edge);
+      if (inEdges[edge._to] == undefined) {
+        inEdges[edge._to] = [ ];
+      }
+      inEdges[edge._to].push(edge);
+    };
+    
+    connect("World", "Europe");
+    connect("World", "Asia");
+    connect("World", "America");
+    connect("World", "Australia");
+    connect("World", "Africa");
+    connect("World", "Antarctica");
+    connect("Europe", "DE"); 
+    connect("Europe", "FR"); 
+    connect("Europe", "GB"); 
+    connect("Europe", "IE"); 
+    connect("Asia", "CN"); 
+    connect("Asia", "JP"); 
+    connect("Asia", "TW"); 
+    connect("America", "US"); 
+    connect("America", "MX"); 
+    connect("Australia", "AU"); 
+    connect("Antarctica", "AN");
+       
+    datasourceWorld = {
+      inEdges: inEdges,
+      outEdges: outEdges,
+      vertices: vertices,
+    
+      getAllEdges: function (vertexId) {
+        return this.inEdges[vertexId].concat(outEdges[vertex_id]);
+      },
+    
+      getInEdges: function (vertexId) {
+        return this.inEdges[vertexId];
+      },
+    
+      getOutEdges: function (vertexId) {
+        return this.outEdges[vertexId];
+      }
+    };
+  };
+    
+  var setUpSourcePeople = function () {
+    var vertices = { };
+    var inEdges = { };
+    var outEdges = { };
   
+    ["Alice",
+    "Bob",
+    "Charly",
+    "Diana",
+    "Eric",
+    "Frank"].forEach( function (person){
+      var key = person;
+      var vertex = {
+        _id : "vertices/" + key,
+        _key : key,
+        name : person
+      };
+      vertices[vertex._id] = vertex;
+    });
+      
+    var connect = function (from, to, label) {
+      var key = from + "x" + to;
+      var edge = {
+        _id : "edges/" + key,
+        _key : key, 
+        _from : "vertices/" + from,
+        _to : "vertices/" + to,
+        what : from + "->" + to,
+        label : label
+      };
+
+      if (outEdges[edge._from] == undefined) {
+        outEdges[edge._from] = [ ];
+      }
+      if (inEdges[edge._to] == undefined) {
+        inEdges[edge._to] = [ ];
+      }
+      outEdges[edge._from].push(edge);
+      inEdges[edge._to].push(edge);
+    
+    };
+  
+    var connectBoth = function (first, second, label) {
+      connect(first, second, label);
+      connect(second, first, label);
+    };
+  
+    connectBoth("Alice", "Bob", "likes");
+    connect("Alice", "Diana", "hates");
+    connectBoth("Alice", "Eric", "hates");
+    connect("Bob", "Charly", "likes");
+    connectBoth("Charly", "Diana", "hates");
+    connect("Diana", "Alice", "likes");
+    connect("Diana", "Eric", "likes");
+    connect("Alice", "Frank", "l");
+    connect("Frank", "Bob", "likes");
+  
+    // SetUp Data source
+  
+    datasourcePeople = {
+      inEdges: inEdges,
+      outEdges: outEdges,
+      vertices: vertices,
+    
+      getAllEdges: function (vertex_id) {
+        return inEdges[vertex_id].concat(outEdges[vertex_id]);
+      },
+    
+      getInEdges: function (vertex_id) {
+        return inEdges[vertex_id];
+      },
+    
+      getOutEdges: function (vertex_id) {
+        return outEdges[vertex_id]
+      }
+    };
+  };
+   
       
   var visitor = traversal.TrackingVisitor;
 
@@ -130,80 +285,8 @@ function GraphTreeTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var worldVertices = { };
-      var worldInEdges  = { };
-      var worldOutEdges = { };
-  
-      [ "World", "Nothing",
-        "Europe", "Asia", "America", "Australia", "Antarctica", "Africa", "Blackhole",
-        "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US", "MX", "AU", "EG", "ZA", "AN",
-        "London", "Paris", "Lyon", "Cologne", "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney" 
-      ].forEach(function (item) {
-        var key = item;
-        var vertex = {
-          _id : "vertices/" + key,
-          _key : key,
-          name : item
-        };
-        worldVertices[vertex._id] = vertex;
-      });
-
-      var connect = function (from, to, inlist, outlist) {
-        var key = from + "x" + to;
-        var edge = {
-          _id : "edges/" + key,
-          _key : key, 
-          _from : "vertices/" + from,
-          _to : "vertices/" + to,
-          what : from + "->" + to
-        };
-
-        if (outlist[edge._from] == undefined) {
-          outlist[edge._from] = [ ];
-        }
-        outlist[edge._from].push(edge);
-        if (inlist[edge._to] == undefined) {
-          inlist[edge._to] = [ ];
-        }
-        inlist[edge._to].push(edge);
-      };
-
-      connect("World", "Europe", worldInEdges, worldOutEdges);
-      connect("World", "Asia", worldInEdges, worldOutEdges);
-      connect("World", "America", worldInEdges, worldOutEdges);
-      connect("World", "Australia", worldInEdges, worldOutEdges);
-      connect("World", "Africa", worldInEdges, worldOutEdges);
-      connect("World", "Antarctica", worldInEdges, worldOutEdges);
-      connect("Europe", "DE", worldInEdges, worldOutEdges); 
-      connect("Europe", "FR", worldInEdges, worldOutEdges); 
-      connect("Europe", "GB", worldInEdges, worldOutEdges); 
-      connect("Europe", "IE", worldInEdges, worldOutEdges); 
-      connect("Asia", "CN", worldInEdges, worldOutEdges); 
-      connect("Asia", "JP", worldInEdges, worldOutEdges); 
-      connect("Asia", "TW", worldInEdges, worldOutEdges); 
-      connect("America", "US", worldInEdges, worldOutEdges); 
-      connect("America", "MX", worldInEdges, worldOutEdges); 
-      connect("Australia", "AU", worldInEdges, worldOutEdges); 
-      connect("Antarctica", "AN", worldInEdges, worldOutEdges);
-      
-      
-      datasourceWorld = {
-        inEdges: worldInEdges,
-        outEdges: worldOutEdges,
-        vertices: worldVertices,
-        
-        getAllEdges: function (vertexId) {
-          return this.inEdges[vertexId].concat(outEdges[vertex_id]);
-        },
-    
-        getInEdges: function (vertexId) {
-          return this.inEdges[vertexId];
-        },
-    
-        getOutEdges: function (vertexId) {
-          return this.outEdges[vertexId];
-        }
-      };
+      setUpSourceWorld();
+      setUpSourcePeople();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -982,6 +1065,52 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
 
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test filter by given key value pairs
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testIncludeMatchingAttributesFilter : function () {
+      
+      // Can be removed as soon as all expanders user datasource
+      var anyExp = function (config, vertex, path) {
+        var result = [ ];
+    
+        var edgesList = config.datasource.getAllEdges(vertex._id);
+        if (edgesList != undefined) {
+          for (i = 0; i < edgesList.length; ++i) {
+            result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+          }
+        }
+        return result;
+      };
+      
+      var config = {
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        },  
+        matchingAttributes: [{"name": "Alice"}, {"name": "Frank"}, {"name": "Diana", "key": "FAIL"}, {"_id": "vertices/Bob"}],
+        visitor: visitor,
+        expander: anyExp,
+        filter: traversal.IncludeMatchingAttributesFilter,
+        datasource: datasourcePeople
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      
+      traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
+      
+      var expectedVisits = [
+        "vertices/Alice",
+        "vertices/Bob",
+        "vertices/Frank"
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+    
 
     // -----------------------------------------------------------------------------
     // --SECTION--                                                    combineFilters
@@ -1094,12 +1223,128 @@ function GraphTreeTraversalSuite () {
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
+
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test if all edges with one label are followed
+    ////////////////////////////////////////////////////////////////////////////////
     
     testFollowEdgesWithLabels : function () {
       var config = {
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        },  
+        labels: "likes",
+        visitor: visitor,
         expander: traversal.ExpandEdgesWithLabels,
-        edgeLabels: ["likes", "hates"]
-      }
+        datasource: datasourcePeople
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      
+      traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
+      
+      var expectedVisits = [
+        "vertices/Alice",
+        "vertices/Bob",
+        "vertices/Frank",
+        "vertices/Charly",
+        "vertices/Diana",
+        "vertices/Eric",
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/Alice"],
+        [ "vertices/Alice", "vertices/Bob" ],
+        [ "vertices/Alice", "vertices/Bob", "vertices/Frank" ],
+        [ "vertices/Alice", "vertices/Bob", "vertices/Charly" ],
+        [ "vertices/Alice", "vertices/Diana" ],
+        [ "vertices/Alice", "vertices/Diana", "vertices/Eric" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test if all and only inbound edges with one label are followed
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testFollowInEdgesWithLabels : function () {
+      var config = {
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        },  
+        labels: "likes",
+        visitor: visitor,
+        expander: traversal.ExpandInEdgesWithLabels,
+        datasource: datasourcePeople
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
+      
+      var expectedVisits = [
+        "vertices/Alice",
+        "vertices/Bob",
+        "vertices/Frank",
+        "vertices/Diana"
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/Alice"],
+        [ "vertices/Alice", "vertices/Bob" ],
+        [ "vertices/Alice", "vertices/Bob", "vertices/Frank" ],
+        [ "vertices/Alice", "vertices/Diana" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test if all and only outbound edges with one label are followed
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testFollowOutEdgesWithLabels : function () {
+      var config = {
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        },  
+        labels: "likes",
+        visitor: visitor,
+        expander: traversal.ExpandOutEdgesWithLabels,
+        datasource: datasourcePeople
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+
+      traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
+      
+      var expectedVisits = [
+        "vertices/Alice",
+        "vertices/Bob",
+        "vertices/Charly"
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+
+      var expectedPaths = [
+        [ "vertices/Alice"],
+        [ "vertices/Alice", "vertices/Bob" ],
+        [ "vertices/Alice", "vertices/Bob", "vertices/Charly" ]
+      ];
+      
+      assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     }
   };
 }

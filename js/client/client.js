@@ -2250,7 +2250,7 @@ function ArangoDatabase (connection) {
       return this[name];
     }
   
-    return undefined;
+    return null;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
