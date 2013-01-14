@@ -18,6 +18,7 @@ TOC {#UserManualActionsTOC}
     - @ref UserManualActionsContentAction
     - @ref UserManualActionsContentController
     - @ref UserManualActionsContentPrefix
+    - @ref UserManualActionsFunctionAction
   - @ref UserManualActionsReqRes
   - @ref UserManualActionsModify
   - @ref UserManualActionsHandlers
