@@ -115,7 +115,7 @@ function GraphTreeTraversalSuite () {
       vertices: vertices,
     
       getAllEdges: function (vertexId) {
-        return this.inEdges[vertexId].concat(outEdges[vertex_id]);
+        return this.inEdges[vertexId].concat(outEdges[vertexId]);
       },
     
       getInEdges: function (vertexId) {
@@ -1421,7 +1421,7 @@ function CollectionTraversalSuite () {
     testOutboundExpander : function () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1 },
-        edgeCollection: edgeCollection
+        datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
       var expander = traversal.CollectionOutboundExpander;
@@ -1456,7 +1456,7 @@ function CollectionTraversalSuite () {
     testInboundExpander : function () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1 },
-        edgeCollection: edgeCollection
+        datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
       var expander = traversal.CollectionInboundExpander;
@@ -1490,7 +1490,7 @@ function CollectionTraversalSuite () {
 
     testIterateFullOutbound : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1529,7 +1529,7 @@ function CollectionTraversalSuite () {
 
     testIterateInbound : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1561,7 +1561,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueGlobalVertices : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1600,7 +1600,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniquePathVertices : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1643,7 +1643,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueEdges : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
