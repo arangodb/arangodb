@@ -69,9 +69,23 @@ function CollectionDocumentSuiteErrorHandling () {
 /// @brief bad handle
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandle : function () {
+    testErrorHandlingBadHandleDatabase : function () {
       try {
-        collection.document("  123456");
+        internal.db._document("123456");
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bad handle
+////////////////////////////////////////////////////////////////////////////////
+
+    testErrorHandlingBadHandleCollection : function () {
+      try {
+        collection.document("");
         fail();
       }
       catch (err) {
@@ -85,7 +99,7 @@ function CollectionDocumentSuiteErrorHandling () {
 
     testErrorHandlingBadHandleReplace : function () {
       try {
-        collection.replace("123456  ", {});
+        internal.db._replace("123456  ", {});
         fail();
       }
       catch (err) {
