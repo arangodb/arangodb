@@ -51,6 +51,38 @@ function SetRoutesFrankSpec () {
       assertEqual(routes[0].url.constraint, constraint);
     },
 
+    testSetMethodToGet: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.get('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["get"]);
+    },
+
+    testSetMethodToPost: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.post('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["post"]);
+    },
+
+    testSetMethodToPut: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.put('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["put"]);
+    },
+
+    testSetMethodToDelete: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.delete('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["delete"]);
+    },
+
     testRefuseRoutesWithRoutesThatAreNumbers: function () {
       var myFunc = function () {},
         routes = app.routingInfo.routes,
@@ -101,7 +133,6 @@ function SetRoutesFrankSpec () {
       assertEqual(routes.length, 1);
       assertEqual(routes[0].handler, myFunc);
     }
-
   };
 }
 
@@ -155,8 +186,7 @@ function BaseMiddlewareSpec () {
 
       assertEqual(response.body, JSON.stringify(rawObject));
       assertEqual(response.contentType, "application/json");
-    },
-
+    }
   };
 }
 

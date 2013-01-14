@@ -3,7 +3,7 @@ var Frank,
   _ = require("underscore"),
   internal = {};
 
-internal.createUrlObject = function (url, constraint) {
+internal.createUrlObject = function (url, constraint, method) {
   var urlObject = {};
 
   if(!_.isString(url)) {
@@ -11,6 +11,7 @@ internal.createUrlObject = function (url, constraint) {
   }
 
   urlObject.match = url;
+  urlObject.methods = [method];
 
   if (!_.isNull(constraint)) {
     urlObject.constraint = constraint;
@@ -32,24 +33,38 @@ Frank = function (options) {
 };
 
 _.extend(Frank.prototype, {
+  handleRequest: function (method, route, argument1, argument2) {
+      var newRoute = {}, options, handler;
+
+      if (_.isUndefined(argument2)) {
+        handler = argument1;
+        options = {};
+      } else  {
+        options = argument1;
+        handler = argument2;
+      }
+
+      newRoute.url = internal.createUrlObject(route, options.constraint, method);
+      newRoute.handler = handler;
+
+      this.routingInfo.routes.push(newRoute);
+  },
+
   get: function (route, argument1, argument2) {
-    var newRoute = {}, options, handler;
+    this.handleRequest("get", route, argument1, argument2);
+  },
 
-    if (arguments.length === 2) {
-      handler = argument1;
-      options = {};
-    } else if (arguments.length === 3) {
-      options = argument1;
-      handler = argument2;
-    } else {
-      raise("ArgumentError: Give two or three arguments");
-    }
+  post: function (route, argument1, argument2) {
+    this.handleRequest("post", route, argument1, argument2);
+  },
 
-    newRoute.url = internal.createUrlObject(route, options.constraint);
-    newRoute.handler = handler;
+  put: function (route, argument1, argument2) {
+    this.handleRequest("put", route, argument1, argument2);
+  },
 
-    this.routingInfo.routes.push(newRoute);
-  }
+  delete: function (route, argument1, argument2) {
+    this.handleRequest("delete", route, argument1, argument2);
+  },
 });
 
 baseMiddleware = function (request, response, options, next) {
