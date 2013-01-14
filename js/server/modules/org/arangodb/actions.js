@@ -216,6 +216,8 @@ function lookupCallbackAction (route, action) {
   var func;
   var module;
   var joined;
+  var defn;
+  var env;
   var httpMethods = { 
     'get': exports.GET,
     'head': exports.HEAD,
@@ -225,9 +227,49 @@ function lookupCallbackAction (route, action) {
     'patch': exports.PATCH
   };
 
+  // .............................................................................
+  // short-cut for prefix controller
+  // .............................................................................
+
   if (typeof action === 'string') {
     return lookupCallbackAction(route, { prefixController: action });
   }
+
+  // .............................................................................
+  // function
+  // .............................................................................
+
+  if (action.hasOwnProperty('function')) {
+    defn = "func = " + action['function'];
+    env = {};
+
+    try {
+      internal.execute(defn, env, route);
+
+      if (env.hasOwnProperty("func")) {
+	func = env.func;
+      }
+      else {
+        func = notImplementedFunction(route,
+				      "could not define function '" + action['function']);
+      }
+    }
+    catch (err) {
+      func = errorFunction(route,
+			   "an error occurred while loading function '" 
+  			     + action['function'] + "': " + String(err));
+    }
+
+    return {
+      controller: func,
+      options: action.options || {},
+      methods: action.methods || exports.ALL_METHODS
+    };
+  }
+
+  // .............................................................................
+  // function from module
+  // .............................................................................
 
   if (action.hasOwnProperty('do')) {
     path = action['do'].split("/");
@@ -271,6 +313,10 @@ function lookupCallbackAction (route, action) {
       methods: action.methods || exports.ALL_METHODS
     };
   }
+
+  // .............................................................................
+  // controller module
+  // .............................................................................
 
   if (action.hasOwnProperty('controller')) {
     try {
@@ -321,6 +367,10 @@ function lookupCallbackAction (route, action) {
 			     + action.controller + ": " + String(err1));
     }
   }
+
+  // .............................................................................
+  // prefix controller
+  // .............................................................................
 
   if (action.hasOwnProperty('prefixController')) {
     var prefixController = action.prefixController;
