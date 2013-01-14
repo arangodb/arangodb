@@ -115,7 +115,7 @@ function GraphTreeTraversalSuite () {
       vertices: vertices,
     
       getAllEdges: function (vertexId) {
-        return this.inEdges[vertexId].concat(outEdges[vertex_id]);
+        return this.inEdges[vertexId].concat(outEdges[vertexId]);
       },
     
       getInEdges: function (vertexId) {
@@ -1065,6 +1065,52 @@ function GraphTreeTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
 
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test filter by given key value pairs
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testIncludeMatchingAttributesFilter : function () {
+      
+      // Can be removed as soon as all expanders user datasource
+      var anyExp = function (config, vertex, path) {
+        var result = [ ];
+    
+        var edgesList = config.datasource.getAllEdges(vertex._id);
+        if (edgesList != undefined) {
+          for (i = 0; i < edgesList.length; ++i) {
+            result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+          }
+        }
+        return result;
+      };
+      
+      var config = {
+        uniqueness: {
+          vertices: traversal.Traverser.UNIQUE_GLOBAL,
+          edges: traversal.Traverser.UNIQUE_NONE
+        },  
+        matchingAttributes: [{"name": "Alice"}, {"name": "Frank"}, {"name": "Diana", "key": "FAIL"}, {"_id": "vertices/Bob"}],
+        visitor: visitor,
+        expander: anyExp,
+        filter: traversal.IncludeMatchingAttributesFilter,
+        datasource: datasourcePeople
+      };
+      
+      var result = getResult();
+      var traverser = new traversal.Traverser(config);
+      
+      traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
+      
+      var expectedVisits = [
+        "vertices/Alice",
+        "vertices/Bob",
+        "vertices/Frank"
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+    
 
     // -----------------------------------------------------------------------------
     // --SECTION--                                                    combineFilters
@@ -1177,7 +1223,7 @@ function GraphTreeTraversalSuite () {
       
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
     
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test if all edges with one label are followed
@@ -1375,7 +1421,7 @@ function CollectionTraversalSuite () {
     testOutboundExpander : function () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1 },
-        edgeCollection: edgeCollection
+        datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
       var expander = traversal.CollectionOutboundExpander;
@@ -1410,7 +1456,7 @@ function CollectionTraversalSuite () {
     testInboundExpander : function () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1 },
-        edgeCollection: edgeCollection
+        datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
       var expander = traversal.CollectionInboundExpander;
@@ -1444,7 +1490,7 @@ function CollectionTraversalSuite () {
 
     testIterateFullOutbound : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1483,7 +1529,7 @@ function CollectionTraversalSuite () {
 
     testIterateInbound : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1515,7 +1561,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueGlobalVertices : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1554,7 +1600,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniquePathVertices : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
@@ -1597,7 +1643,7 @@ function CollectionTraversalSuite () {
 
     testIterateUniqueEdges : function () {
       var config = { 
-        edgeCollection: internal.db._collection(en),
+        datasource: traversal.CollectionDatasourceFactory(internal.db._collection(en)),
         strategy: traversal.Traverser.DEPTH_FIRST,
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
