@@ -558,13 +558,13 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   // allocate all edge headers and return early if memory allocation fails
 
   // IN
-  entryIn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
+  entryIn = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), false);
   if (entryIn == NULL) {
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   // OUT
-  entryOut = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), true);
+  entryOut = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_edge_header_t), false);
   if (entryOut == NULL) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, entryIn);
 
