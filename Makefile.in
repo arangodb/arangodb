@@ -1652,11 +1652,11 @@ DOXYGEN = \
 	Doxygen/js/actions/system/api-query.c \
 	Doxygen/js/actions/system/api-simple.c \
 	Doxygen/js/actions/system/api-system.c \
-	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/bootstrap/module-console.c \
 	Doxygen/js/common/bootstrap/module-fs.c \
-	Doxygen/js/common/modules/graph.c \
+	Doxygen/js/common/bootstrap/modules.c \
 	Doxygen/js/common/modules/jsunity.c \
+	Doxygen/js/common/modules/org/arangodb/graph.c \
 	Doxygen/js/common/modules/simple-query-basics.c \
 	Doxygen/js/common/modules/statement-basics.c \
 	Doxygen/js/server/modules/org/arangodb/actions.c \
@@ -1738,6 +1738,7 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/html/admin/js/arangodb/browser.js \
 	@srcdir@/js/actions/system/api-collection.js \
 	@srcdir@/js/actions/system/api-structure.js \
+	@srcdir@/js/actions/system/api-system.js \
 	@srcdir@/js/client/modules/org/arangodb.js \
 	@srcdir@/js/client/modules/org/arangodb/deploy.js \
 	@srcdir@/js/common/bootstrap/errors.js \
@@ -5417,7 +5418,7 @@ Doxygen/.setup-directories:
 	@test -d Doxygen/website/images || mkdir -p Doxygen/website/images
 	@test -d Doxygen/js/actions/system || mkdir -p Doxygen/js/actions/system
 	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
-	@test -d Doxygen/js/common/modules || mkdir -p Doxygen/js/common/modules
+	@test -d Doxygen/js/common/modules/org/arangodb || mkdir -p Doxygen/js/common/modules/org/arangodb
 	@test -d Doxygen/js/server/modules/org/arangodb || mkdir -p Doxygen/js/server/modules/org/arangodb
 	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
 	@test -d Doxygen/latex/images || mkdir -p Doxygen/latex/images

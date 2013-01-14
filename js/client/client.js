@@ -1538,6 +1538,19 @@ function ArangoCollection (database, data) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a random element from the collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.any = function () {
+    var requestResult = this._database._connection.PUT("/_api/simple/any",
+      JSON.stringify({collection: this._id}));
+
+    client.checkRequestResult(requestResult);
+
+    return requestResult;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1610,6 +1623,78 @@ function ArangoCollection (database, data) {
     this._name = requestResult['name'];
     this._status = requestResult['status'];
     this._type = requestResult['type'];
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterators over some elements of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoCollection.prototype.iterate = function (iterator, options) {
+    var probability = 1.0;
+    var limit = null;
+    var stmt;
+    var cursor;
+    var pos;
+
+    if (options !== undefined) {
+      if (options.hasOwnProperty("probability")) {
+	probability = options.probability;
+      }
+
+      if (options.hasOwnProperty("limit")) {
+	limit = options.limit;
+      }
+    }
+
+    if (limit === null) {
+      if (probability >= 1.0) {
+	cursor = this.all();
+      }
+      else {
+	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob RETURN d", this.name());
+	stmt = internal.db._createStatement({ query: stmt });
+
+	if (probability < 1.0) {
+	  stmt.bind("prob", probability);
+	}
+
+	cursor = stmt.execute();
+      }
+    }
+    else {
+      if (typeof limit !== "number") {
+	var error = new ArangoError();
+	error.errorNum = internal.errors.ERROR_ILLEGAL_NUMBER.code;
+	error.errorMessage = "expecting a number, got " + String(limit);
+
+	throw error;
+      }
+
+      if (probability >= 1.0) {
+	  cursor = this.all().limit(limit);
+      }
+      else {
+	stmt = internal.sprintf("FOR d IN %s FILTER rand() >= @prob LIMIT %d RETURN d",
+                                this.name(), limit);
+	stmt = internal.db._createStatement({ query: stmt });
+
+	if (probability < 1.0) {
+	  stmt.bind("prob", probability);
+	}
+
+	cursor = stmt.execute();
+      }
+    }
+
+    pos = 0;
+
+    while (cursor.hasNext()) {
+      var document = cursor.next();
+
+      iterator(document, pos);
+
+      pos++;
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2700,7 +2785,7 @@ function ArangoDatabase (connection) {
     }
   }
   catch (err) {
-    internal.print(String(err));
+    internal.print("Caught startup error: ", String(err));
   }
 
 ////////////////////////////////////////////////////////////////////////////////

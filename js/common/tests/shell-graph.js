@@ -55,7 +55,7 @@ function GraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreation : function () {
-      var Graph = require("graph").Graph,
+      var Graph = require("org/arangodb/graph").Graph,
         graph_name = "UnitTestsCollectionGraph",
         vertex = "UnitTestsCollectionVertex",
         edge = "UnitTestsCollectionEdge",
@@ -75,7 +75,7 @@ function GraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFindGraph : function () {
-      var Graph = require("graph").Graph,
+      var Graph = require("org/arangodb/graph").Graph,
         graph_name = "UnitTestsCollectionGraph",
         vertex = "UnitTestsCollectionVertex",
         edge = "UnitTestsCollectionEdge",
@@ -99,7 +99,7 @@ function GraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphBasicsSuite() {
-  var Graph = require("graph").Graph,
+  var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -313,7 +313,7 @@ function GraphBasicsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VertexSuite() {
-  var Graph = require("graph").Graph,
+  var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -444,7 +444,7 @@ function VertexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EdgeSuite() {
-  var Graph = require("graph").Graph,
+  var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",

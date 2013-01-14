@@ -25,11 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
-
 #include "v8-query.h"
 
 #include "BasicsC/logging.h"
+#include "BasicsC/random.h"
 #include "HashIndex/hashindex.h"
 #include "SkipLists/skiplistIndex.h"
 #include "V8/v8-conv.h"
@@ -1618,6 +1617,76 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction, v8::Arg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a random element from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> AnyQuery (v8::Arguments const& argv, bool lock) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_document_collection_t* sim;
+
+  if (lock) {
+    sim = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+  }
+  else {
+    sim = TRI_ExtractSimpleCollection(argv, collection, &err);
+  }
+
+  if (sim == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  v8::Handle<v8::Value> result;
+  TRI_primary_collection_t* primary = collection->_collection;
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+  
+  if (lock) {
+    primary->beginRead(primary);
+  }
+
+  result = v8::Null();
+
+  if (primary->_primaryIndex._nrUsed != 0) {
+    size_t total = primary->_primaryIndex._nrAlloc;
+    size_t pos = TRI_UInt32Random() % total;
+    void** beg = primary->_primaryIndex._table;
+
+    while (beg[pos] == 0) {
+      pos = (pos + 1) % total;
+    }
+
+    TRI_doc_mptr_t document = * (TRI_doc_mptr_t*) beg[pos];
+
+    if (document._did != 0) {
+      TRI_barrier_t* barrier;
+
+      barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+      result = TRI_WrapShapedJson(collection, &document, barrier);
+    }
+  }
+
+  if (lock) {
+    primary->endRead(primary);
+  }
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  if (lock) {
+    TRI_ReleaseCollection(collection);
+  }
+  
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1801,6 +1870,36 @@ static v8::Handle<v8::Value> JS_AllNLQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result = AllQuery(sim, collection, argv);
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects any element, acquiring all required locks
+///
+/// @FUN{@FA{collection}.any()}
+///
+/// The @FN{any} method returns a random document from the collection.  It returns
+/// @LIT{null} if the collection is empty.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangosh> db.example.any()
+/// { "_id" : "222186062247/222716379559", "_rev" : 222716379559, "Hallo" : "World" }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
+  return AnyQuery(argv, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects all elements, without acquiring any locks
+///
+/// It is the callers responsibility to acquire and free the required locks
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AnyNLQuery (v8::Arguments const& argv) {
+  return AnyQuery(argv, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2502,6 +2601,8 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   // the _NL functions are the same as their unsuffixed counterparts, just without any locking 
   v8::Handle<v8::String> AllFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL"));
   v8::Handle<v8::String> AllNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("ALL_NL"));
+  v8::Handle<v8::String> AnyFuncName = v8::Persistent<v8::String>::New(v8::String::New("any"));
+  v8::Handle<v8::String> AnyNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("ANY_NL"));
   v8::Handle<v8::String> ByConditionBitarrayFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_BITARRAY"));
   v8::Handle<v8::String> ByConditionBitarrayNLFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_BITARRAY_NL"));
   v8::Handle<v8::String> ByConditionSkiplistFuncName = v8::Persistent<v8::String>::New(v8::String::New("BY_CONDITION_SKIPLIST"));
@@ -2529,6 +2630,8 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
 
   rt->Set(AllFuncName, v8::FunctionTemplate::New(JS_AllQuery));
   rt->Set(AllNLFuncName, v8::FunctionTemplate::New(JS_AllNLQuery), v8::DontEnum);
+  rt->Set(AnyFuncName, v8::FunctionTemplate::New(JS_AnyQuery));
+  rt->Set(AnyNLFuncName, v8::FunctionTemplate::New(JS_AnyNLQuery), v8::DontEnum);
   rt->Set(ByConditionBitarrayFuncName, v8::FunctionTemplate::New(JS_ByConditionBitarray));
   rt->Set(ByConditionBitarrayNLFuncName, v8::FunctionTemplate::New(JS_ByConditionNLBitarray), v8::DontEnum);
   rt->Set(ByConditionSkiplistFuncName, v8::FunctionTemplate::New(JS_ByConditionSkiplist));

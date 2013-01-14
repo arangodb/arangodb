@@ -39,7 +39,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function main(args) {
-  var Graph = require("graph").Graph,
+  var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",

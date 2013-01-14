@@ -1396,6 +1396,14 @@ function resultException (req, res, err, headers) {
     var msg = err.errorMessage;
     var code = exports.HTTP_BAD;
 
+    if (num === 0) {
+      num = arangodb.ERROR_INTERNAL;
+    }
+
+    if (msg === "") {
+      msg = String(err) + " " + String(err.stack);
+    }
+
     switch (num) {
       case arangodb.ERROR_INTERNAL: code = exports.HTTP_SERVER_ERROR; break;
     }

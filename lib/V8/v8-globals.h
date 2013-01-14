@@ -28,14 +28,9 @@
 #ifndef TRIAGENS_V8_V8_GLOBALS_H
 #define TRIAGENS_V8_V8_GLOBALS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include <regex.h>
-
-#include <map>
-#include <set>
-#include <string>
-#include <vector>
 
 #include <v8.h>
 
