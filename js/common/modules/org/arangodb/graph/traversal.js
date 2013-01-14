@@ -51,7 +51,8 @@ function ArangoTraverser (config) {
     },
     visitor: TrackingVisitor,
     filter: VisitAllFilter,
-    expander: CollectionOutboundExpander
+    expander: CollectionOutboundExpander,
+    datasource: null
   };
 
   if (typeof config !== "object") {
@@ -92,6 +93,10 @@ function ArangoTraverser (config) {
 
   if (typeof config.expander !== "function") {
     throw "invalid expander";
+  }
+
+  if (typeof config.datasource !== "object") {
+    throw "invalid datasource";
   }
 
   this.config = config;
@@ -458,7 +463,7 @@ function DepthFirstSearch () {
 
 function CollectionOutboundExpander (config, vertex, path) {
   var connections = [ ];
-  var outEdges = config.edgeCollection.outEdges(vertex._id);
+  var outEdges = config.datasource.getOutEdges(vertex._id);
       
   if (outEdges.length > 1 && config.sort) {
     outEdges.sort(config.sort);
@@ -466,7 +471,7 @@ function CollectionOutboundExpander (config, vertex, path) {
 
   outEdges.forEach(function (edge) {
     try {
-      var v = internal.db._document(edge._to);
+      var v = config.datasource.getVertex(edge._to);
       connections.push({ edge: edge, vertex: v });    
     }
     catch (e) {
@@ -483,7 +488,7 @@ function CollectionOutboundExpander (config, vertex, path) {
 
 function CollectionInboundExpander (config, vertex, path) {
   var connections = [ ];
-  var inEdges = config.edgeCollection.inEdges(vertex._id);
+  var inEdges = config.datasource.getInEdges(vertex._id);
       
   if (inEdges.length > 1 && config.sort) {
     inEdges.sort(config.sort);
@@ -491,7 +496,7 @@ function CollectionInboundExpander (config, vertex, path) {
 
   inEdges.forEach(function (edge) {
     try {
-      var v = internal.db._document(edge._from);
+      var v = config.datasource.getVertex(edge._from);
       connections.push({ edge: edge, vertex: v });    
     }
     catch (e) {
@@ -508,7 +513,7 @@ function CollectionInboundExpander (config, vertex, path) {
 
 function CollectionAnyExpander (config, vertex, path) {
   var connections = [ ];
-  var edges = config.edgeCollection.edges(vertex._id);
+  var edges = config.datasource.getAllEdges(vertex._id);
       
   if (edges.length > 1 && config.sort) {
     edges.sort(config.sort);
@@ -516,7 +521,7 @@ function CollectionAnyExpander (config, vertex, path) {
 
   edges.forEach(function (edge) {
     try {
-      var v = internal.db._document(edge._from === vertex._id ? edge._to : edge._from);
+      var v = config.datasource.getVertex(edge._from === vertex._id ? edge._to : edge._from);
       connections.push({ edge: edge, vertex: v });    
     }
     catch (e) {
@@ -526,6 +531,32 @@ function CollectionAnyExpander (config, vertex, path) {
       
   return connections;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default ArangoCollection datasource
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionDatasourceFactory (edgeCollection) {
+  return {
+    edgeCollection: edgeCollection,
+
+    getAllEdges: function (vertexId) {
+      return this.edgeCollection.edges(vertexId);
+    },
+    
+    getInEdges: function (vertexId) {
+      return this.edgeCollection.inEdges(vertexId);
+    },
+    
+    getOutEdges: function (vertexId) {
+      return this.edgeCollection.outEdges(vertexId);
+    },
+
+    getVertex: function (vertexId) {
+      return internal.db._document(vertexId);
+    }
+  };
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 /// @brief default expander that expands all outbound edges labeled with one label in config.labels 
@@ -651,7 +682,7 @@ function MaxDepthFilter (config, vertex, path) {
   if (path.vertices.length > config.maxDepth) {
     return ArangoTraverser.PRUNE;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default filter to exclude all vertices up to a given depth
@@ -660,6 +691,35 @@ function MaxDepthFilter (config, vertex, path) {
 function MinDepthFilter (config, vertex, path) {
   if (path.vertices.length <= config.minDepth) {
     return ArangoTraverser.EXCLUDE;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default filter to include all vertices matching one of the given 
+/// attribute sets
+////////////////////////////////////////////////////////////////////////////////
+
+function IncludeMatchingAttributesFilter (config, vertex, path) {
+  if (! Array.isArray(config.matchingAttributes)) {
+    config.matchingAttributes = [config.matchingAttributes];
+  }
+  var include = false
+  config.matchingAttributes.forEach( function(example) {
+    var count = 0;
+    Object.keys(example).forEach( function (key) {
+      if (vertex[key] && vertex[key] === example[key]) {
+        count++;
+      }
+    });
+    if (count > 0 && count === Object.keys(example).length) {
+      include = true;
+      return;
+    }
+  });
+  if (!include) {
+    return "exclude";
+  } else {
+    return;
   }
 };
 
@@ -771,17 +831,19 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Traverser                  = ArangoTraverser;
-exports.CollectionOutboundExpander = CollectionOutboundExpander;
-exports.CollectionInboundExpander  = CollectionInboundExpander;
-exports.CollectionAnyExpander      = CollectionAnyExpander;
-exports.VisitAllFilter             = VisitAllFilter;
-exports.TrackingVisitor            = TrackingVisitor;
-exports.MinDepthFilter             = MinDepthFilter;
-exports.MaxDepthFilter             = MaxDepthFilter;
-exports.ExpandEdgesWithLabels      = ExpandEdgesWithLabels;
-exports.ExpandInEdgesWithLabels    = ExpandInEdgesWithLabels;
-exports.ExpandOutEdgesWithLabels   = ExpandOutEdgesWithLabels;
+exports.Traverser                       = ArangoTraverser;
+exports.CollectionOutboundExpander      = CollectionOutboundExpander;
+exports.CollectionInboundExpander       = CollectionInboundExpander;
+exports.CollectionAnyExpander           = CollectionAnyExpander;
+exports.CollectionDatasourceFactory     = CollectionDatasourceFactory;
+exports.VisitAllFilter                  = VisitAllFilter;
+exports.IncludeMatchingAttributesFilter = IncludeMatchingAttributesFilter;
+exports.TrackingVisitor                 = TrackingVisitor;
+exports.MinDepthFilter                  = MinDepthFilter;
+exports.MaxDepthFilter                  = MaxDepthFilter;
+exports.ExpandEdgesWithLabels           = ExpandEdgesWithLabels;
+exports.ExpandInEdgesWithLabels         = ExpandInEdgesWithLabels;
+exports.ExpandOutEdgesWithLabels        = ExpandOutEdgesWithLabels;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

@@ -6074,8 +6074,8 @@ v8::Handle<v8::Value> TRI_ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
     // only a document id without collection name was passed
     if (collection == 0) {
       // we do not know the collection
-      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                               "collection of <document-handle> is unknown"));
+      return scope.Close(TRI_CreateErrorObject(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+                                               "<document-handle> must be a document-handle"));
     }
 
     // we use the current collection
