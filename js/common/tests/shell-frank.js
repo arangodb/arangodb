@@ -77,6 +77,14 @@ function SetRoutesFrankSpec () {
       assertEqual(routes.length, 1);
       assertEqual(routes[0].url.constraint, constraint);
     },
+    
+    testSetMethodToHead: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.head('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["head"]);
+    },
 
     testSetMethodToGet: function () {
       var myFunc = function () {},
@@ -100,6 +108,14 @@ function SetRoutesFrankSpec () {
 
       app.put('/simple/route', myFunc);
       assertEqual(routes[0].url.methods, ["put"]);
+    },
+
+    testSetMethodToPatch: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.patch('/simple/route', myFunc);
+      assertEqual(routes[0].url.methods, ["patch"]);
     },
 
     testSetMethodToDelete: function () {

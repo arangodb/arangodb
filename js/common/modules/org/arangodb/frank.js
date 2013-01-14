@@ -58,6 +58,10 @@ _.extend(Frank.prototype, {
 
       this.routingInfo.routes.push(newRoute);
   },
+  
+  head: function (route, argument1, argument2) {
+    this.handleRequest("head", route, argument1, argument2);
+  },
 
   get: function (route, argument1, argument2) {
     this.handleRequest("get", route, argument1, argument2);
@@ -69,6 +73,10 @@ _.extend(Frank.prototype, {
 
   put: function (route, argument1, argument2) {
     this.handleRequest("put", route, argument1, argument2);
+  },
+  
+  patch: function (route, argument1, argument2) {
+    this.handleRequest("patch", route, argument1, argument2);
   },
 
   delete: function (route, argument1, argument2) {
