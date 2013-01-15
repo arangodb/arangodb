@@ -29,6 +29,7 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>Windows7.1SDK</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -83,12 +84,16 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <OmitFramePointers>
+      </OmitFramePointers>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -101,12 +106,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_DEBUG;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -121,9 +128,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -140,9 +148,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;_WIN64;FD_SETSIZE=1024;_WIN32;WIN32;_LIB;READLINE_STATIC=1;HAVE_STRING_H=1;_CRT_SECURE_NO_WARNINGS=1;HAVE_STDLIB_H=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\3rdParty\VisualStudio\readline</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

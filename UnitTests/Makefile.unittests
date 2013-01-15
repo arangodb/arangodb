@@ -151,8 +151,8 @@ unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 
 noinst_PROGRAMS += UnitTests/basics_suite UnitTests/geo_suite
 
-UnitTests_basics_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_srcdir@/lib
-UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
+UnitTests_basics_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_srcdir@/lib @ICU_CPPFLAGS@
+UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework @ICU_LDFLAGS@
 UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_basics_suite_SOURCES = \

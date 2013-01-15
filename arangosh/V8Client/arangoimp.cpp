@@ -187,6 +187,33 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
+
+  int ret = EXIT_SUCCESS;
+
+#ifdef _WIN32
+
+  // ...........................................................................
+  // Call this function to do various initialistions for windows only
+  // ...........................................................................
+  
+  // ...........................................................................
+  // Uncomment this to call this for extended debug information.
+  // If you familiar with valgrind ... then this is not like that, however
+  // you do get some similar functionality.
+  // ...........................................................................
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
+
+  ret = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  if (ret != 0) {
+    _exit(1);
+  }
+  ret = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  if (ret != 0) {
+    _exit(1);
+  }
+
+#endif
+
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
 
@@ -339,7 +366,18 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  return EXIT_SUCCESS;
+#ifdef _WIN32
+
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // ...........................................................................
+
+  ret = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  
+#endif  
+
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

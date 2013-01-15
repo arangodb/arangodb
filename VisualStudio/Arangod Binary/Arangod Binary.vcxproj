@@ -69,28 +69,28 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <TargetName>arangod32</TargetName>
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>arangod32d</TargetName>
     <OutDir>c:\local2\learning\c++\vc++\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
-    <TargetName>arangod64</TargetName>
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>arangod64d</TargetName>
     <OutDir>c:\local2\learning\c++\vc++\</OutDir>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Debug;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>arangod</TargetName>
+    <TargetName>arangod32</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib32;$(SolutionDir)Release;$(SSolutionDir)..\3rdParty\VisualStudio\openssl\x86\lib\static;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\learning\c++\vc++</OutDir>
+    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>arangod</TargetName>
+    <TargetName>arangod64</TargetName>
     <LibraryPath>$(SolutionDir)..\3rdParty\VisualStudio\V8\lib64;$(SolutionDir)x64\Release;$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\lib\static;$(LibraryPath)</LibraryPath>
-    <OutDir>c:\local2\learning\c++\vc++</OutDir>
+    <OutDir>c:\local2\learning\c++\vc++\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -98,12 +98,16 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>FD_SETSIZE=1024;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;FD_SETSIZE=1024;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;$(SolutionDir)..\arangod;$(SolutionDir)..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <OmitFramePointers>
+      </OmitFramePointers>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,12 +124,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;_WIN64;FD_SETSIZE=1024;WIN32;_DEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,7 +150,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FD_SETSIZE=1024;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;FD_SETSIZE=1024;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x86\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>Default</CompileAs>
@@ -153,6 +159,8 @@
       <StructMemberAlignment>Default</StructMemberAlignment>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -172,14 +180,16 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_WIN64;FD_SETSIZE=1024;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\mygetopt;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS=1;TRI_MISSING_MEMRCHR=1;_WIN64;FD_SETSIZE=1024;WIN32;NDEBUG;_CONSOLE;_WIN32;YY_NO_UNISTD_H;USE_READLINE_STATIC=1;USE_REGEX_STATIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\lib;$(SolutionDir)..;%(AdditionalIncludeDirectories);$(SolutionDir)..\3rdParty\VisualStudio\openssl\x64\include;$(SolutionDir)..\3rdParty\VisualStudio\mygetopt;$(SolutionDir)..\3rdParty\VisualStudio\regex\src;$(SolutionDir)..\3rdParty\VisualStudio\readline;..\..\3rdParty\VisualStudio\getopt_mb_uni_vc10\src;..\..\3rdParty\VisualStudio\regex-2.7\src;..\..\3rdParty\VisualStudio\readline;..\..\arangod;..\..\3rdParty\VisualStudio\V8\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>Default</CompileAs>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <StructMemberAlignment>Default</StructMemberAlignment>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -89,7 +89,6 @@ int main (int argc, char* argv[]) {
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
-  // TODO: find the memory deallocation/allocation error
   // ...........................................................................
 
   res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
