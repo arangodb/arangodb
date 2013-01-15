@@ -200,11 +200,11 @@ Edge.prototype.getOutVertex = function () {
 /// @EXAMPLES
 ///
 /// @code
-/// arango> v1 = g.addVertex(1);
-/// Vertex(1)
+/// arango> v1 = g.addVertex("1");
+/// Vertex("1")
 ///
-/// arango> v2 = g.addVertex(2);
-/// Vertex(2)
+/// arango> v2 = g.addVertex("2");
+/// Vertex("2")
 ///
 /// arango> e = g.addEdge(v1, v2, "1->2", "knows");
 /// Edge("1->2")
@@ -1133,18 +1133,14 @@ function Graph(name, vertices, edges) {
   if (vertices === undefined && edges === undefined) {
     // Find an existing graph
 
-    graphProperties = gdb.firstExample('_key', name);
+    try {
+      graphProperties = gdb.document(name);
+    } catch (e) {
+      throw "no graph named '" + name + "' found";
+    }
 
     if (graphProperties === null) {
-      try {
-        graphProperties = gdb.document(name);
-      } catch (e) {
-        throw "no graph named '" + name + "' found";
-      }
-
-      if (graphProperties === null) {
-        throw "no graph named '" + name + "' found";
-      }
+      throw "no graph named '" + name + "' found";
     }
 
     vertices = internal.db._collection(graphProperties.vertices);
@@ -1168,7 +1164,11 @@ function Graph(name, vertices, edges) {
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
 
-    graphProperties = gdb.firstExample('_key', name);
+    try {
+      graphProperties = gdb.document(name);
+    } catch (e) {
+      graphProperties = null;
+    }
 
     // Graph doesn't exist yet
     if (graphProperties === null) {
@@ -1181,11 +1181,19 @@ function Graph(name, vertices, edges) {
         );
 
       if (graphProperties === null) {
-        graphPropertiesId = gdb.save({ 'vertices' : vertices._id,
+        
+         // check if edge is used in a graph
+        graphProperties = gdb.firstExample('edges', edges._id);
+
+        if (graphProperties === null) {      
+          graphPropertiesId = gdb.save({ 'vertices' : vertices._id,
                        'edges' : edges._id,
                        '_key' : name });
 
-        graphProperties = gdb.document(graphPropertiesId);
+          graphProperties = gdb.document(graphPropertiesId);
+        } else {
+          throw "edge collection already used";
+        }         
       } else {
         throw "found graph but has different <name>";
       }
@@ -1834,7 +1842,7 @@ Graph.prototype._PRINT = function (seen, path, names) {
   seen = path = names = null;
 
   output = "Graph(\"";
-  output += this._properties.name;
+  output += this._properties._key;
   output += "\")";
   internal.output(output);
 };
