@@ -48,7 +48,7 @@ findOrCreateCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.db._create(name);
-  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_DOCUMENT) {
+  } else if (! (col instanceof internal.ArangoCollection) || col.type() != internal.ArangoCollection.TYPE_DOCUMENT) {
     throw "<" + name + "> must be a document collection";
   }
 
@@ -68,7 +68,7 @@ findOrCreateEdgeCollectionByName = function (name) {
 
   if (col === null) {
     col = internal.db._createEdgeCollection(name);
-  } else if (!(col instanceof ArangoCollection) || col.type() != ArangoCollection.TYPE_EDGE) {
+  } else if (!(col instanceof internal.ArangoCollection) || col.type() != internal.ArangoCollection.TYPE_EDGE) {
     throw "<" + name + "> must be an edge collection";
   }
 

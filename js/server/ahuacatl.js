@@ -2378,9 +2378,9 @@ function AHUACATL_GRAPH_TRAVERSE () {
       }),
     },
     expander: validate(direction, {
-      'outbound': traversal.CollectionOutboundExpander,
-      'inbound': traversal.CollectionInboundExpander,
-      'any': traversal.CollectionAnyExpander
+      'outbound': traversal.OutboundExpander,
+      'inbound': traversal.InboundExpander,
+      'any': traversal.AnyExpander
     })
   };
 
