@@ -15,7 +15,7 @@ describe ArangoDB do
 
   def truncate_collection (prefix, name)
     cmd = "/_api/collection/#{name}/truncate"
-    ArangoDB.log_put("#{prefix}", cmd)
+    ArangoDB.put(cmd)
   end
 
   def create_graph (prefix, name, vertices, edges) 
@@ -27,32 +27,32 @@ describe ArangoDB do
 
   def create_vertex (prefix, graphName, body) 
     cmd = "/_api/graph/#{graphName}/vertex"
-    doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+    doc = ArangoDB.post(cmd, :body => body)
     return doc
   end
 
   def create_simple_vertex (prefix, graphName, name) 
     cmd = "/_api/graph/#{graphName}/vertex"
    	body = "{\"_key\" : \"#{name}\"}"
-    doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+    doc = ArangoDB.post(cmd, :body => body)
     return doc
   end
 
   def create_edge (prefix, graphName, body) 
     cmd = "/_api/graph/#{graphName}/edge"
-    doc = ArangoDB.log_post("#{prefix}", cmd, :body => body)
+    doc = ArangoDB.post(cmd, :body => body)
     return doc
   end
 
   def get_vertex (prefix, graphName, name) 
     cmd = "/_api/graph/#{graphName}/vertex/#{name}"
-    doc = ArangoDB.log_get("#{prefix}", cmd)
+    doc = ArangoDB.get(cmd)
     return doc
   end
 
   def get_edge (prefix, graphName, name) 
     cmd = "/_api/graph/#{graphName}/edge/#{name}"
-    doc = ArangoDB.log_get("#{prefix}", cmd)
+    doc = ArangoDB.get(cmd)
     return doc
   end
 
@@ -62,8 +62,6 @@ describe ArangoDB do
 
     context "checks graph requests" do
       before do
-        #ArangoDB.create_collection( edge_collection , 0, 3)
-        #ArangoDB.create_collection( vertex_collection , 0, 2)
         truncate_collection(prefix, "_graphs")
       end
 
@@ -92,18 +90,37 @@ describe ArangoDB do
 
       it "checks create graph with wrong edges collection" do
         ArangoDB.create_collection( edge_collection , 0, 2)
-        doc = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+        doc = create_graph( prefix, "wrong_edge_collection", vertex_collection, edge_collection )
 
       	doc.code.should eq(400)
       	doc.parsed_response['error'].should eq(true)
 	      doc.parsed_response['code'].should eq(400)
       end
 
-      it "checks (re)create graph" do
-        doc1 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+      it "checks create graph with same edges collection" do
+        doc = create_graph( prefix, "with_same_edge_colection1", vertex_collection, edge_collection )
+      	doc.code.should eq(201)
+
+        doc = create_graph( prefix, "with_same_edge_colection2", "vertex33", edge_collection )
+
+      	doc.code.should eq(400)
+      	doc.parsed_response['error'].should eq(true)
+	      doc.parsed_response['code'].should eq(400)
+      end
+
+      it "checks (re)create graph same name" do
+        doc1 = create_graph( prefix, "recreate", vertex_collection, edge_collection )
       	doc1.code.should eq(201)
 
-        doc2 = create_graph( prefix, graph_name, vertex_collection, edge_collection )
+        doc2 = create_graph( prefix, "recreate", vertex_collection, edge_collection )
+      	doc2.code.should eq(201)
+      end
+
+      it "checks (re)create graph different name" do
+        doc1 = create_graph( prefix, "recreate_1", vertex_collection, edge_collection )
+      	doc1.code.should eq(201)
+
+        doc2 = create_graph( prefix, "recreate_2", vertex_collection, edge_collection )
       	doc2.code.should eq(400)
       	doc2.parsed_response['error'].should eq(true)
       end
