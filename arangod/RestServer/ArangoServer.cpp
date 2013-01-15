@@ -311,6 +311,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("no-upgrade", "skip a database upgrade")
+    ("show-markers", "show offset and sizes of markers")
   ;
 
 #ifdef TRI_ENABLE_MRUBY
@@ -609,6 +610,22 @@ int ArangoServer::startupServer () {
   TRI_InitialiseStatistics();
   
   // .............................................................................
+  // show markers
+  // .............................................................................
+
+  if (_applicationServer->programOptions().has("show-markers")) {
+    LOGGER_INFO << "sizeof(TRI_df_marker_t): " << sizeof(TRI_df_marker_t);
+    LOGGER_INFO << "sizeof(TRI_df_header_marker_t): " << sizeof(TRI_df_header_marker_t);
+    LOGGER_INFO << "sizeof(TRI_df_footer_marker_t): " << sizeof(TRI_df_footer_marker_t);
+    LOGGER_INFO << "sizeof(TRI_df_document_marker_t): " << sizeof(TRI_df_document_marker_t);
+    LOGGER_INFO << "sizeof(TRI_df_skip_marker_t): " << sizeof(TRI_df_skip_marker_t);
+    LOGGER_INFO << "sizeof(TRI_doc_document_key_marker_s): " << sizeof(TRI_doc_document_key_marker_s);
+    LOGGER_INFO << "sizeof(TRI_doc_edge_key_marker_s): " << sizeof(TRI_doc_edge_key_marker_s);
+    LOGGER_INFO << "sizeof(TRI_doc_deletion_key_marker_s): " << sizeof(TRI_doc_deletion_key_marker_s);
+  }
+
+
+  // .............................................................................
   // start the main event loop
   // .............................................................................
 
@@ -616,7 +633,6 @@ int ArangoServer::startupServer () {
 
   LOGGER_INFO << "ArangoDB (version " << TRIAGENS_VERSION << ") is ready for business";
   LOGGER_INFO << "Have Fun!";
-
 
   _applicationServer->wait();
   

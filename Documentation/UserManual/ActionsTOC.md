@@ -18,6 +18,7 @@ TOC {#UserManualActionsTOC}
     - @ref UserManualActionsContentAction
     - @ref UserManualActionsContentController
     - @ref UserManualActionsContentPrefix
+    - @ref UserManualActionsFunctionAction
   - @ref UserManualActionsReqRes
   - @ref UserManualActionsModify
   - @ref UserManualActionsHandlers
@@ -27,3 +28,4 @@ TOC {#UserManualActionsTOC}
     - @ref UserManualActionsAdvancedMiddleware
   - @ref UserManualActionsApplicationDeployment
     - @ref UserManualActionsDeployingStaticPages
+    - @ref UserManualActionsDeployingModules

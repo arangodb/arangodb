@@ -274,10 +274,165 @@ function ahuacatlQueryPathsTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryTraverseTestSuite () {
+  var vn = "UnitTestsTraverseVertices";
+  var en = "UnitTestsTraverseEdges";
+
+  var vertices;
+  var edges;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a given query
+////////////////////////////////////////////////////////////////////////////////
+
+  function executeQuery (query, params) {
+    var cursor = AHUACATL_RUN(query, params);
+    if (cursor instanceof ArangoError) {
+      print(query, cursor.errorMessage);
+    }
+    assertFalse(cursor instanceof ArangoError);
+    return cursor;
+  }
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+      db._drop(en);
+
+      vertexCollection = db._create(vn);
+      edgeCollection = db._createEdgeCollection(en);
+
+      [ "A", "B", "C", "D" ].forEach(function (item) {
+        vertexCollection.save({ _key: item, name: item });
+      });
+
+      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
+        var l = item[0];
+        var r = item[1];
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+      db._drop(en);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstMax1 : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 2,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "D", "C" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstMax2 : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 3,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "A", "D", "C", "A" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstUniqueGlobal : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "global" 
+        },
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "D" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstUniquePath : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        uniqueness: {
+          vertices: "path" 
+        },
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "C", "D", "C" ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max-depth filtering
+////////////////////////////////////////////////////////////////////////////////
+
+    testTraversalDepthFirstAny : function () {
+      var config = {
+        strategy: "depthfirst",
+        order: "preorder",
+        itemOrder: "forward",
+        maxDepth: 2,
+        _sort: true
+      };
+
+      var actual = executeQuery("FOR p IN TRAVERSE(@@v, @@e, '" + vn + "/A', 'any', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }).getRows(); 
+
+      assertEqual([ "A", "B", "A", "C", "D", "A", "C", "C", "B", "A", "D" ], actual);
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryPathsTestSuite);
+jsunity.run(ahuacatlQueryTraverseTestSuite);
 
 return jsunity.done();
 

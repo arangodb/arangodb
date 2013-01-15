@@ -307,9 +307,9 @@ The simplest dynamic action is:
 
     { action: { do: "org/arangodb/actions/echoRequest" } }
 
-It is not possible to store functions directly in the routing table, but you can
-call functions defined in modules. In the above example the function can be
-accessed from JavaScript as:
+It is not advisable to store functions directly in the routing table. It is
+better to call functions defined in modules. In the above example the function
+can be accessed from JavaScript as:
 
     require("org/arangodb/actions").echoRequest
 
@@ -405,6 +405,17 @@ The definition
     { action: "org/arangodb/actions" }
 
 is a short-cut for a prefix controller definition.
+
+Function Action {#UserManualActionsFunctionAction}
+--------------------------------------------------
+
+You can also store a function directly in the routing table.
+
+For example
+
+    arangosh> db._routing.save({ 
+    ........>   url: "/hello/echo",
+    ........>   action: { function: "function(req,res) {res.statusCode=200; res.body='Hallo'}" } });
 
 Requests and Responses {#UserManualActionsReqRes}
 =================================================
@@ -739,5 +750,21 @@ Check the index file
 
     http://localhost:8529/example/static/index.html
 
+Deploying Modules {#UserManualActionsDeployingModules}
+------------------------------------------------------
 
+In general deploying static pages is nice for demos and administrative
+front-ends; but most of the time you will deploy JavaScript functions which will
+compute JSON objects implementing a RESTful interface or something similar.
 
+In order to deploy modules *not* belonging to a particular application
+use
+
+    arangosh> var deploy = require("org/arangodb/deploy");
+
+    arangosh> deploy.uploadModules("org/example", "/tmp/example/modules");
+    imported '/org/example/simple'
+
+This will upload all JavaScript files - which must end in `.js` - into the
+database.  The first argument to `uploadModules` is a prefix used for the module
+path.

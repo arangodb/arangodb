@@ -25,11 +25,10 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
-
 #include "v8-query.h"
 
 #include "BasicsC/logging.h"
+#include "BasicsC/random.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
@@ -1774,6 +1773,82 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects any element, acquiring all required locks
+///
+/// @FUN{@FA{collection}.any()}
+///
+/// The @FN{any} method returns a random document from the collection.  It returns
+/// @LIT{null} if the collection is empty.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arangosh> db.example.any()
+/// { "_id" : "222186062247/222716379559", "_rev" : 222716379559, "Hallo" : "World" }
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract and use the simple collection
+  v8::Handle<v8::Object> err;
+  TRI_vocbase_col_t const* collection;
+  TRI_document_collection_t* document;
+
+  document = TRI_ExtractAndUseSimpleCollection(argv, collection, &err);
+
+
+  if (document == 0) {
+    return scope.Close(v8::ThrowException(err));
+  }
+
+  v8::Handle<v8::Value> result;
+
+  // .............................................................................
+  // inside a read transaction
+  // .............................................................................
+  
+  TRI_primary_collection_t* primary = &document->base;
+  TRI_doc_operation_context_t context;
+
+  TRI_InitReadContextPrimaryCollection(&context, primary);
+
+  primary->beginRead(primary);
+
+  result = v8::Null();
+
+  if (primary->_primaryIndex._nrUsed != 0) {
+    size_t total = primary->_primaryIndex._nrAlloc;
+    size_t pos = TRI_UInt32Random() % total;
+    void** beg = primary->_primaryIndex._table;
+
+    while (beg[pos] == 0) {
+      pos = (pos + 1) % total;
+    }
+
+    TRI_doc_mptr_t document = * (TRI_doc_mptr_t*) beg[pos];
+
+    if (document._data != 0) {
+      TRI_barrier_t* barrier;
+
+      barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+      result = TRI_WrapShapedJson(collection, &document, barrier);
+    }
+  }
+
+  primary->endRead(primary);
+
+  // .............................................................................
+  // outside a write transaction
+  // .............................................................................
+
+  TRI_ReleaseCollection(collection);
+  
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects elements by example (not using any index)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2514,6 +2589,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   rt = v8g->VocbaseColTempl;
   
   TRI_AddMethodVocbase(rt, "ALL", JS_AllQuery);
+  TRI_AddMethodVocbase(rt, "any", JS_AnyQuery);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_BITARRAY", JS_ByConditionBitarray);
   TRI_AddMethodVocbase(rt, "BY_CONDITION_SKIPLIST", JS_ByConditionSkiplist);
   TRI_AddMethodVocbase(rt, "BY_EXAMPLE", JS_ByExampleQuery);

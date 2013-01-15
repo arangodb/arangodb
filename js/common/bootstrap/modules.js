@@ -197,8 +197,6 @@ Module.prototype.unload = function (path) {
     return;
   }
 
-   Module.prototype.ModuleCache["/console"].exports.info("UNLOADING %s", path);
- 
   delete this.ModuleCache[norm];
 };
 
