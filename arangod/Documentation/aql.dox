@@ -1010,8 +1010,10 @@
 ///   traverses the graph described by @FA{vertexcollection} and @FA{edgecollection}, 
 ///   starting at the vertex identified by id @FA{startVertex}. Vertex connectivity is
 ///   specified by the @FA{direction} parameter:
-///   - @LIT{outbound}: vertices are connected in @LIT{_from} to @LIT{_to} order
-///   - @LIT{inbound}: vertices are connected in @LIT{_to} to @LIT{_from} order
+///   - @LIT{"outbound"}: vertices are connected in @LIT{_from} to @LIT{_to} order
+///   - @LIT{"inbound"}: vertices are connected in @LIT{_to} to @LIT{_from} order
+///   - @LIT{"any"}: vertices are connected in both @LIT{_to} to @LIT{_from} and in 
+///     @LIT{_from} to @LIT{_to} order
 ///
 ///   Additional options for the traversal can be provided via the @FA{options} document:
 ///   - @LIT{strategy}: defines the traversal strategy. Possible values are @LIT{depthfirst} 
@@ -1024,7 +1026,7 @@
 ///   - @LIT{trackPaths}: if @LIT{true}, the paths encountered during the traversal will
 ///     also be returned along with each traversed vertex. If @LIT{false}, only the 
 ///     encountered vertices will be returned.
-///   - @LIT[uniqueness}: an optional document with the following properties:
+///   - @LIT{uniqueness}: an optional document with the following properties:
 ///     - @LIT{vertices}: 
 ///       - @LIT{none}: no vertex uniqueness is enforced
 ///       - @LIT{global}: a vertex may be visited at most once
