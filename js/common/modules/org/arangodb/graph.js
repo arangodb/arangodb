@@ -1175,19 +1175,19 @@ function Graph(name, vertices, edges) {
 
       // check if know that graph
       graphProperties = gdb.firstExample('vertices',
-        vertices._id,
+        vertices.name(),
         'edges',
-        edges._id
+        edges.name()
         );
 
       if (graphProperties === null) {
         
          // check if edge is used in a graph
-        graphProperties = gdb.firstExample('edges', edges._id);
+        graphProperties = gdb.firstExample('edges', edges.name());
 
         if (graphProperties === null) {      
-          graphPropertiesId = gdb.save({ 'vertices' : vertices._id,
-                       'edges' : edges._id,
+          graphPropertiesId = gdb.save({ 'vertices' : vertices.name(),
+                       'edges' : edges.name(),
                        '_key' : name });
 
           graphProperties = gdb.document(graphPropertiesId);
@@ -1198,11 +1198,11 @@ function Graph(name, vertices, edges) {
         throw "found graph but has different <name>";
       }
     } else {
-      if (graphProperties.vertices !== vertices._id) {
+      if (graphProperties.vertices !== vertices.name()) {
         throw "found graph but has different <vertices>";
       }
 
-      if (graphProperties.edges !== edges._id) {
+      if (graphProperties.edges !== edges.name()) {
         throw "found graph but has different <edges>";
       }
     }

@@ -65,6 +65,7 @@ WIKI = \
 	HttpBlueprints \
 	HttpCollection \
 	HttpCursor \
+	HttpGraph \
 	HttpImport \
 	HttpIndex \
 	HttpInterface \
