@@ -5706,6 +5706,20 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the server version string
+///
+/// @FUN{@FA{db}._version()}
+///
+/// Returns the server version string.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_VersionVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  return scope.Close(v8::String::New(TRIAGENS_VERSION));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6466,6 +6480,7 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "_remove", JS_RemoveVocbase);
   TRI_AddMethodVocbase(rt, "_replace", JS_ReplaceVocbase);
   TRI_AddMethodVocbase(rt, "_update", JS_UpdateVocbase);
+  TRI_AddMethodVocbase(rt, "_version", JS_VersionVocbase);
 
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
@@ -6618,7 +6633,6 @@ TRI_v8_global_t* TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 #endif
                          v8::ReadOnly);
   
-  context->Global()->Set(TRI_V8_SYMBOL("VERSION"), v8::String::New(TRIAGENS_VERSION), v8::ReadOnly);
   context->Global()->Set(TRI_V8_SYMBOL("DATABASEPATH"), v8::String::New(vocbase->_path), v8::ReadOnly);
   
   // .............................................................................

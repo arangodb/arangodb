@@ -205,6 +205,7 @@ endif
 
 SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
+               @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
                @top_srcdir@/js/common/tests/shell-compactor.js \
                @top_srcdir@/js/common/tests/shell-graph-traversal.js \
