@@ -155,16 +155,6 @@
 /// Once all cursor results have been dumped or iterated, the cursor is empty. To iterate
 /// through the results again, the query needs to be re-executed.
 ///
-/// Please also note that when using bind parameters, you must not re-declare an existing
-/// bind parameter because this will be considered an error:
-/// @code
-/// arangosh> stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
-/// [object ArangoStatement]
-/// arangosh> stmt.bind("one", 1);
-/// arangosh> stmt.bind("one", 1);
-/// JavaScript exception in file 'client/client.js' at 771,9: redeclaration of bind parameter
-/// @endcode
-///
 /// @section AqlQueryResults Query results
 ///
 /// @subsection AqlQueryResultsSet Result sets
