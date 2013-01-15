@@ -63,7 +63,7 @@ function GraphCreationSuite() {
 
       graph = new Graph(graph_name, vertex, edge);
 
-      assertEqual(graph_name, graph._properties.name);
+      assertEqual(graph_name, graph._properties._key);
       assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
       assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
 
@@ -178,7 +178,6 @@ function GraphBasicsSuite() {
 
     testCreateVertex : function () {
       var v = graph.addVertex("name1", { age : 23 });
-
       assertEqual("name1", v.getId());
       assertEqual(23, v.getProperty("age"));
     },
@@ -227,7 +226,7 @@ function GraphBasicsSuite() {
 
       edge = graph.addEdge(v1, v2);
 
-      assertEqual(null, edge.getId());
+      assertEqual(edge._properties._key, edge.getId());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,8 +519,8 @@ function EdgeSuite() {
       v2 = graph.addVertex();
       edge = graph.addEdge(v1, v2);
 
-      assertEqual(v1.getId(), edge.getInVertex().getId());
-      assertEqual(v2.getId(), edge.getOutVertex().getId());
+      assertEqual(v1.getId(), edge.getOutVertex().getId());
+      assertEqual(v2.getId(), edge.getInVertex().getId());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
