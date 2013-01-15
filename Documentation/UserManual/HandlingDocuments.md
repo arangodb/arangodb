@@ -40,8 +40,6 @@ has been created. The `_rev` value is maintained by ArangoDB autonomously.
 
 @copydoc GlossaryDocumentHandle
 
-@copydoc GlossaryDocumentIdentifier
-
 @copydoc GlossaryDocumentRevision
 
 @copydoc GlossaryDocumentEtag
