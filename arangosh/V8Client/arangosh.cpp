@@ -42,6 +42,7 @@
 #include "BasicsC/csv.h"
 #include "BasicsC/files.h"
 #include "BasicsC/init.h"
+#include "BasicsC/shell-colors.h"
 #include "BasicsC/strings.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
@@ -844,14 +845,14 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   goodPrompt = badPrompt = string("arangosh> ");
 #else
   if (BaseClient.colors()) {
-    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
+    goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) + 
                  string("arangosh>") + 
-                 string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
                  ' ';
 
-    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) + 
+    badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) + 
                  string("arangosh>") + 
-                 string(ArangoClient::PROMPT_IGNORE_START) + string(ArangoClient::COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
+                 string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END) + 
                  ' ';
   }
   else {
@@ -1041,73 +1042,6 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
   return ok;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adding colors for output
-////////////////////////////////////////////////////////////////////////////////
-
-static void AddColors (v8::Handle<v8::Context> context) {  
-  context->Global()->Set(v8::String::New("COLOR_RED"),
-                         v8::String::New(ArangoClient::COLOR_RED),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BOLD_RED"),
-                         v8::String::New(ArangoClient::COLOR_BOLD_RED),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_GREEN"),
-                         v8::String::New(ArangoClient::COLOR_GREEN),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BOLD_GREEN"),
-                         v8::String::New(ArangoClient::COLOR_BOLD_GREEN),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BLUE"),
-                         v8::String::New(ArangoClient::COLOR_BLUE),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BOLD_BLUE"),
-                         v8::String::New(ArangoClient::COLOR_BOLD_BLUE),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_YELLOW"),
-                         v8::String::New(ArangoClient::COLOR_YELLOW),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BOLD_YELLOW"),
-                         v8::String::New(ArangoClient::COLOR_BOLD_YELLOW),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_WHITE"),
-                         v8::String::New(ArangoClient::COLOR_WHITE),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BOLD_WHITE"),
-                         v8::String::New(ArangoClient::COLOR_BOLD_WHITE),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BLACK"),
-                         v8::String::New(ArangoClient::COLOR_BLACK),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BOLD_BLACK"),
-                         v8::String::New(ArangoClient::COLOR_BOLD_BLACK),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BLINK"),
-                         v8::String::New(ArangoClient::COLOR_BLINK),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_BRIGHT"),
-                         v8::String::New(ArangoClient::COLOR_BRIGHT),
-                         v8::ReadOnly);
-
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT_RESET"),
-                         v8::String::New(ArangoClient::COLOR_RESET),
-                         v8::ReadOnly);    
-
-  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::Boolean::New(BaseClient.colors()));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -1182,6 +1116,12 @@ int main (int argc, char* argv[]) {
   }
 
   context->Enter();
+  
+  // set pretty print default: (used in print.js)
+  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
+  // add colors for print.js
+  context->Global()->Set(v8::String::New("COLOR_OUTPUT"), v8::Boolean::New(BaseClient.colors()));
+
 
   // add function SYS_OUTPUT to use pager
   context->Global()->Set(v8::String::New("SYS_OUTPUT"),
@@ -1189,14 +1129,7 @@ int main (int argc, char* argv[]) {
                          v8::ReadOnly);
   
   TRI_InitV8Utils(context, StartupModules);
-  
   TRI_InitV8Shell(context);
-
-  // set pretty print default: (used in print.js)
-  context->Global()->Set(v8::String::New("PRETTY_PRINT"), v8::Boolean::New(BaseClient.prettyPrint()));
-  
-  // add colors for print.js
-  AddColors(context);
 
   // reset the prompt error flag (will determine prompt colors)
   bool promptError = false;  
@@ -1271,9 +1204,9 @@ int main (int argc, char* argv[]) {
 
   // http://www.network-science.de/ascii/   Font: ogre
   if (! BaseClient.quiet()) {
-    char const* g = ArangoClient::COLOR_GREEN;
-    char const* r = ArangoClient::COLOR_RED;
-    char const* z = ArangoClient::COLOR_RESET;
+    char const* g = TRI_SHELL_COLOR_GREEN;
+    char const* r = TRI_SHELL_COLOR_RED;
+    char const* z = TRI_SHELL_COLOR_RESET;
 
     if (! BaseClient.colors()) {
       g = "";

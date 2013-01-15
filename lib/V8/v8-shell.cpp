@@ -30,6 +30,7 @@
 #include "BasicsC/conversions.h"
 #include "BasicsC/csv.h"
 #include "BasicsC/logging.h"
+#include "BasicsC/shell-colors.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/strings.h"
 #include "ShapedJson/shaped-json.h"
@@ -337,6 +338,70 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
 
   TRI_AddGlobalFunctionVocbase(context, "processCsvFile", JS_ProcessCsvFile);
   TRI_AddGlobalFunctionVocbase(context, "processJsonFile", JS_ProcessJsonFile);
+
+  v8::Handle<v8::Object> colors = v8::Object::New();
+
+  colors->Set(v8::String::New("COLOR_RED"),
+              v8::String::New(TRI_SHELL_COLOR_RED),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_RED"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_RED),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_GREEN"),
+              v8::String::New(TRI_SHELL_COLOR_GREEN),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_GREEN"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_GREEN),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BLUE"),
+              v8::String::New(TRI_SHELL_COLOR_BLUE),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_BLUE"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_BLUE),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_YELLOW"),
+              v8::String::New(TRI_SHELL_COLOR_YELLOW),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_YELLOW"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_YELLOW),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_WHITE"),
+              v8::String::New(TRI_SHELL_COLOR_WHITE),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_WHITE"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_WHITE),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BLACK"),
+              v8::String::New(TRI_SHELL_COLOR_BLACK),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BOLD_BLACK"),
+              v8::String::New(TRI_SHELL_COLOR_BOLD_BLACK),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BLINK"),
+              v8::String::New(TRI_SHELL_COLOR_BLINK),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_BRIGHT"),
+              v8::String::New(TRI_SHELL_COLOR_BRIGHT),
+              v8::ReadOnly);
+
+  colors->Set(v8::String::New("COLOR_RESET"),
+              v8::String::New(TRI_SHELL_COLOR_RESET),
+              v8::ReadOnly);    
+  
+  context->Global()->Set(v8::String::New("COLORS"), colors, v8::ReadOnly);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
