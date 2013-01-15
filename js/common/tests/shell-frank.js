@@ -77,7 +77,7 @@ function SetRoutesFrankSpec () {
       assertEqual(routes.length, 1);
       assertEqual(routes[0].url.constraint, constraint);
     },
-    
+
     testSetMethodToHead: function () {
       var myFunc = function () {},
         routes = app.routingInfo.routes;
@@ -243,6 +243,18 @@ function BaseMiddlewareWithoutTemplateSpec () {
       }
 
       assertEqual(error, "No template collection has been provided when creating a new Frank");
+    },
+
+    testMiddlewareCallsTheAction: function () {
+      var actionWasCalled = false;
+
+      next = function () {
+        actionWasCalled = true;
+      };
+
+      baseMiddleware(request, response, options, next);
+
+      assertTrue(actionWasCalled);
     }
   };
 }
@@ -303,10 +315,27 @@ function BaseMiddlewareWithTemplateSpec () {
       }
 
       assertEqual(error, "Unknown template language 'pirateEngine'");
+    },
+
+    testRenderingATemplateWithAnNotExistingTemplate: function () {
+      var myCollection, error, middleware;
+
+      internal.db._drop("templateTest");
+      myCollection = internal.db._create("templateTest");
+
+      middleware = new BaseMiddleware(myCollection);
+      middleware(request, response, options, next);
+
+      try {
+        response.render("simple/path", { username: "moonglum" });
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, "Template 'simple/path' does not exist");
     }
   };
 }
-
 
 jsunity.run(CreateFrankSpec);
 jsunity.run(SetRoutesFrankSpec);
