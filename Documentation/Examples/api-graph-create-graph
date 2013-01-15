@@ -1,5 +1,5 @@
 > curl --data @- -X POST --dump - http://localhost:8529/_api/graph
-{"_name" : "graph1", "vertices" : "v", "edges" : "e"}
+{"_key" : "graph1", "vertices" : "v", "edges" : "e"}
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -9,8 +9,8 @@ content-type: application/json; charset=utf-8
     "_id": "_graphs/graph1",
     "_rev": 11767958,
     "_key": "graph1",
-    "vertices": 9670806,
-    "edges": 10588310
+    "vertices": "v",
+    "edges": "e"
   },
   "error": false,
   "code": 200
