@@ -1,8 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 100,
-         sloppy: true,
-         plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
 /*global require, WeakDictionary, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +100,7 @@ findOrCreateEdgeCollectionByName = function (name) {
 /// @brief constructs a new edge object
 ////////////////////////////////////////////////////////////////////////////////
 
-function Edge(graph, id) {
+function Edge (graph, id) {
   var properties = graph._edges.document(id);
 
   this._graph = graph;
@@ -192,6 +188,42 @@ Edge.prototype.getLabel = function () {
 
 Edge.prototype.getOutVertex = function () {
   return this._graph.constructVertex(this._properties._from);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the other vertex
+///
+/// @FUN{@FA{edge}.getPeerVertex(@FA{vertex})}
+///
+/// Returns the peer vertex of the @FA{edge} and the @FA{vertex}.
+///
+/// @EXAMPLES
+///
+/// @code
+/// arango> v1 = g.addVertex(1);
+/// Vertex(1)
+///
+/// arango> v2 = g.addVertex(2);
+/// Vertex(2)
+///
+/// arango> e = g.addEdge(v1, v2, "1->2", "knows");
+/// Edge("1->2")
+///
+/// arango> e.getPeerVertex(v1);
+/// Vertex(2)
+/// @endcode
+////////////////////////////////////////////////////////////////////////////////
+
+Edge.prototype.getPeerVertex = function (vertex) {
+  if (vertex._id == this._properties._to) {
+    return this._graph.constructVertex(this._properties._from);
+  }
+
+  if (vertex._id == this._properties._from) {
+    return this._graph.constructVertex(this._properties._to);
+  }
+
+  return null;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

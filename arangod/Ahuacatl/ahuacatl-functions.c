@@ -328,6 +328,49 @@ static bool EqualName (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if we have a matching restriction we can use to optimise
+/// a PATHS query
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CheckPathRestriction (TRI_aql_field_access_t* fieldAccess, 
+                                  TRI_aql_context_t* const context,
+                                  TRI_aql_node_t* vertexCollection,
+                                  const char* lookFor, 
+                                  char* name,
+                                  const size_t n) {
+  size_t len;
+
+  assert(fieldAccess);
+  assert(lookFor);
+  
+  len = strlen(lookFor);
+  if (len == 0) {
+    return false;
+  }
+
+  if (n > fieldAccess->_variableNameLength + len && 
+      memcmp((void*) lookFor, (void*) name, len) == 0) {
+    // we'll now patch the collection hint
+    TRI_aql_collection_hint_t* hint;
+
+    // field name is collection.source.XXX, e.g. users.source._id
+    LOG_DEBUG("optimising PATHS() field access %s", fieldAccess->_fullName);
+ 
+    // we can now modify this fieldaccess in place to collection.XXX, e.g. users._id
+    // copy trailing \0 byte as well
+    memmove(name, name + len - 1, n - fieldAccess->_variableNameLength - len + 2);
+    
+    // attach the modified fieldaccess to the collection
+    hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(vertexCollection));
+    hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
+
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise callback function for PATHS() AQL function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -340,8 +383,6 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   TRI_aql_node_t* direction;
   char* directionValue;
   char* name;
-  const char* lookFor;
-  size_t len;
   size_t n;
   
   args = TRI_AQL_NODE_MEMBER(fcallNode, 0);
@@ -366,37 +407,17 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
 
   // try to optimise the vertex collection access
   if (TRI_EqualString(directionValue, "outbound")) {
-    lookFor = ".source.";
-    len = strlen(lookFor);
+    CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
   }
   else if (TRI_EqualString(directionValue, "inbound")) {
-    lookFor = ".destination.";
-    len = strlen(lookFor);
+    CheckPathRestriction(fieldAccess, context, vertexCollection, ".destination.", name, n);
   }
-  else {
-    // "any" will not be optimised
-    lookFor = NULL;
-    len = 0;
+  else if (TRI_EqualString(directionValue, "any")) {
+    CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
+    CheckPathRestriction(fieldAccess, context, vertexCollection, ".destination.", name, n);
   }
 
-  if (len > 0 && 
-      n > fieldAccess->_variableNameLength + len && 
-      memcmp((void*) lookFor, (void*) name, len) == 0) {
-    // we'll now patch the collection hint
-    TRI_aql_collection_hint_t* hint;
-
-    // field name is collection.source.XXX, e.g. users.source._id
-    LOG_DEBUG("optimising PATHS() field access %s", fieldAccess->_fullName);
- 
-    // we can now modify this fieldaccess in place to collection.XXX, e.g. users._id
-    // copy trailing \0 byte as well
-    memmove(name, name + len - 1, n - fieldAccess->_variableNameLength - len + 2);
-    
-    // attach the modified fieldaccess to the collection
-    hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(vertexCollection));
-    hint->_ranges = TRI_AddAccessAql(context, hint->_ranges, fieldAccess);
-  }
-
+  // check if we have a filter on LENGTH(edges)
   if (args->_members._length <= 4 && 
       TRI_EqualString(name, ".edges.LENGTH()")) {
     // length restriction, can only be applied if length parameters are not already set
@@ -598,8 +619,12 @@ TRI_associative_pointer_t* TRI_InitialiseFunctionsAql (void) {
   REGISTER_FUNCTION("NEAR", "GEO_NEAR", false, false, "h,n,n,n|s", NULL);
   REGISTER_FUNCTION("WITHIN", "GEO_WITHIN", false, false, "h,n,n,n|s", NULL);
 
+  // fulltext functions
+  REGISTER_FUNCTION("FULLTEXT", "FULLTEXT", false, false, "h,s,s", NULL);
+
   // graph functions
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
+  REGISTER_FUNCTION("TRAVERSE", "GRAPH_TRAVERSE", false, false, "h,h,s,s,a", NULL);
   
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!

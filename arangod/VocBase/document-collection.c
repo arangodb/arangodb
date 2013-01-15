@@ -344,8 +344,7 @@ static void CreateHeader (TRI_primary_collection_t* c,
                           TRI_datafile_t* datafile,
                           TRI_df_marker_t const* m,
                           size_t markerSize,
-                          TRI_doc_mptr_t* header,
-                          void const* additional) {
+                          TRI_doc_mptr_t* header) {
   TRI_doc_document_key_marker_t const* marker;
 
   marker = (TRI_doc_document_key_marker_t const*) m;
@@ -426,7 +425,7 @@ static int CreateDocument (TRI_doc_operation_context_t* context,
   // .............................................................................
 
   // fill the header
-  CreateHeader(primary, journal, *result, markerSize, header, 0);
+  CreateHeader(primary, journal, *result, markerSize, header);
 
   // update the datafile info
   dfi = TRI_FindDatafileInfoPrimaryCollection(primary, journal->_fid);
@@ -1507,7 +1506,7 @@ static bool OpenIterator (TRI_df_marker_t const* marker, void* data, TRI_datafil
       header = collection->_headers->verify(collection->_headers, header);
 
       // fill the header
-      CreateHeader(primary, datafile, marker, markerSize, header, 0);
+      CreateHeader(primary, datafile, marker, markerSize, header);
 
       // update the datafile info
       dfi = TRI_FindDatafileInfoPrimaryCollection(primary, datafile->_fid);

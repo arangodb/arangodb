@@ -86,6 +86,7 @@
 ///       <li>@ref JSModuleGraphEdgeGetInVertex "Edge.getInVertex"</li>
 ///       <li>@ref JSModuleGraphEdgeGetLabel "Edge.getLabel"</li>
 ///       <li>@ref JSModuleGraphEdgeGetOutVertex "Edge.getOutVertex"</li>
+///       <li>@ref JSModuleGraphEdgeGetPeerVertex "Edge.getPeerVertex"</li>
 ///       <li>@ref JSModuleGraphEdgeGetProperty "Edge.getProperty"</li>
 ///       <li>@ref JSModuleGraphEdgeGetPropertyKeys "Edge.getPropertyKeys"</li>
 ///       <li>@ref JSModuleGraphEdgeProperties "Edge.properties"</li>
@@ -204,6 +205,10 @@
 ///
 /// @anchor JSModuleGraphEdgeGetOutVertex
 /// @copydetails JSF_Edge_prototype_getOutVertex
+/// <hr>
+///
+/// @anchor JSModuleGraphEdgeGetPeerVertex
+/// @copydetails JSF_Edge_prototype_getPeerVertex
 /// <hr>
 ///
 /// @anchor JSModuleGraphEdgeGetProperty
