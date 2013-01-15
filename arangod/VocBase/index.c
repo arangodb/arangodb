@@ -548,6 +548,7 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   TRI_doc_edge_key_marker_t const* edge;
   bool isReflexive;
   bool isBidirectional;
+
   TRI_multi_pointer_t* edgesIndex = &(((TRI_edge_index_t*) idx)->_edges);
 
   edge = doc->_data;
@@ -575,7 +576,7 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   entryIn->_flags = TRI_FlagsEdge(TRI_EDGE_IN, isReflexive, isBidirectional);
   entryIn->_cid = edge->_toCid;
   entryIn->_key = ((char*) edge) + edge->_offsetToKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, true);
+  TRI_InsertElementMultiPointer(edgesIndex, entryIn, true, false);
 
   // second slot: OUT
   entryOut = entries + 1;
@@ -583,7 +584,7 @@ static int InsertEdge (TRI_index_t* idx, TRI_doc_mptr_t const* doc) {
   entryOut->_flags = TRI_FlagsEdge(TRI_EDGE_OUT, isReflexive, isBidirectional);
   entryOut->_cid = edge->_fromCid;
   entryOut->_key = ((char*) edge) + edge->_offsetFromKey;
-  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, true);
+  TRI_InsertElementMultiPointer(edgesIndex, entryOut, true, false);
 
   return TRI_ERROR_NO_ERROR;
 }
