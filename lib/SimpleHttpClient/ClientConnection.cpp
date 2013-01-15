@@ -186,7 +186,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::write (void* buffer, size_t length, size_t* bytesWritten) {
+bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_t* bytesWritten) {
   if (!checkSocket()) {
     return false;
   }
@@ -196,7 +196,7 @@ bool ClientConnection::write (void* buffer, size_t length, size_t* bytesWritten)
   int status = ::send(_socket, buffer, length, 0);
 #elif defined(_WIN32)
   // MSG_NOSIGNAL not supported on windows platform
-  int status = ::send(_socket, (const char*)(buffer), (int)(length), 0);
+  int status = TRI_WRITE_SOCKET(_socket, (const char*)(buffer), (int)(length), 0);
 #else
   int status = ::send(_socket, buffer, length, MSG_NOSIGNAL);
 #endif
@@ -211,7 +211,7 @@ bool ClientConnection::write (void* buffer, size_t length, size_t* bytesWritten)
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
     
-bool ClientConnection::read (StringBuffer& stringBuffer) {
+bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   if (!checkSocket()) {
     return false;
   }
@@ -221,7 +221,7 @@ bool ClientConnection::read (StringBuffer& stringBuffer) {
   do {
     char buffer[READBUFFER_SIZE];
 
-    int lenRead = ::read(_socket, buffer, READBUFFER_SIZE - 1);
+    int lenRead = TRI_READ_SOCKET(_socket, buffer, READBUFFER_SIZE - 1,0);
 
     if (lenRead == -1) {
       // error occurred

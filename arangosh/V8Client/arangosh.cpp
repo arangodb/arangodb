@@ -1061,11 +1061,37 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
+
+  int ret = EXIT_SUCCESS;
+
+#ifdef _WIN32
+
+  // ...........................................................................
+  // Call this function to do various initialistions for windows only
+  // ...........................................................................
+  
+  // ...........................................................................
+  // Uncomment this to call this for extended debug information.
+  // If you familiar with valgrind ... then this is not like that, however
+  // you do get some similar functionality.
+  // ...........................................................................
+  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0); 
+
+  ret = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  if (ret != 0) {
+    _exit(1);
+  }
+  ret = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  if (ret != 0) {
+    _exit(1);
+  }
+
+#endif
+
   TRIAGENS_C_INITIALISE(argc, argv);
   TRIAGENS_REST_INITIALISE(argc, argv);
   
   TRI_InitialiseLogging(false);
-  int ret = EXIT_SUCCESS;
 
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 
@@ -1088,12 +1114,14 @@ int main (int argc, char* argv[]) {
   }
 
   if (useServer) {
+
     BaseClient.createEndpoint();
 
     if (BaseClient.endpointServer() == 0) {
       cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
       exit(EXIT_FAILURE);
     }
+
 
     ClientConnection = CreateConnection();
   }
@@ -1203,7 +1231,69 @@ int main (int argc, char* argv[]) {
   // .............................................................................  
 
   // http://www.network-science.de/ascii/   Font: ogre
+
   if (! BaseClient.quiet()) {
+
+#ifdef _WIN32
+
+  // .............................................................................
+  // Quick hack for windows
+  // .............................................................................
+
+
+    if (BaseClient.colors()) {
+      int greenColour   = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+      int redColour     = FOREGROUND_RED | FOREGROUND_INTENSITY;
+      int defaultColour = 0;
+      CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+      bool ok;
+
+      ok = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo);
+      if (ok) {
+        defaultColour = csbiInfo.wAttributes;
+      }
+
+      SetConsoleOutputCP(65001);
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
+      printf("                                  ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
+      printf("     _     ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
+      printf("\n");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
+      printf("  __ _ _ __ __ _ _ __   __ _  ___ ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
+      printf(" ___| |__  ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
+      printf("\n");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
+      printf(" / _` | '__/ _` | '_ \\ / _` |/ _ \\");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
+      printf("/ __| '_ \\ ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
+      printf("\n");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
+      printf("| (_| | | | (_| | | | | (_| | (_) ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
+      printf("\\__ \\ | | |");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
+      printf("\n");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
+      printf(" \\__,_|_|  \\__,_|_| |_|\\__, |\\___/");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
+      printf("|___/_| |_|");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
+      printf("\n");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), greenColour);
+      printf("                       |___/      ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), redColour);
+      printf("           ");
+      SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), defaultColour);
+      printf("\n");
+
+    }
+  
+#else
     char const* g = TRI_SHELL_COLOR_GREEN;
     char const* r = TRI_SHELL_COLOR_RED;
     char const* z = TRI_SHELL_COLOR_RESET;
@@ -1222,6 +1312,7 @@ int main (int argc, char* argv[]) {
     printf("%s| (_| | | | (_| | | | | (_| | (_) %s\\__ \\ | | |%s\n", g, r, z);
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|___/_| |_|%s\n", g, r, z);
     printf("%s                       |___/      %s           %s\n", g, r, z);
+#endif
 
     cout << endl << "Welcome to arangosh " << TRIAGENS_VERSION << ". Copyright (c) 2012 triAGENS GmbH" << endl;
 
@@ -1308,6 +1399,7 @@ int main (int argc, char* argv[]) {
 
   BaseClient.openLog();
 
+
   // .............................................................................
   // run normal shell
   // .............................................................................
@@ -1358,6 +1450,17 @@ int main (int argc, char* argv[]) {
   // v8::V8::Dispose();
 
   TRIAGENS_REST_SHUTDOWN;
+
+#ifdef _WIN32
+
+  // ...........................................................................
+  // TODO: need a terminate function for windows to be called and cleanup
+  // any windows specific stuff.
+  // ...........................................................................
+
+  ret = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  
+#endif  
 
   return ret;
 }
