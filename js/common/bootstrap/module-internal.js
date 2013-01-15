@@ -405,7 +405,7 @@
     }
     else {
       var i;
-      var sep = "";
+      var sep = " ";
 
       internal.output(internal.colors.COLOR_PUNCTUATION);
       internal.output("[");
