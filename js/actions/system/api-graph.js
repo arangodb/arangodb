@@ -230,7 +230,7 @@
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude api-blueprints-delete-graph
+/// @verbinclude api-graph-delete-graph
 ////////////////////////////////////////////////////////////////////////////////
 
   function DELETE_graph_graph (req, res) {
@@ -505,7 +505,7 @@
 ///
 /// Select all vertices
 ///
-///
+/// @verbinclude api-graph-get-vertices
 ////////////////////////////////////////////////////////////////////////////////
 
   function POST_graph_all_vertices (req, res, g) {
@@ -832,6 +832,7 @@
 ///
 /// Select all edges
 ///
+/// @verbinclude api-graph-get-edges
 ////////////////////////////////////////////////////////////////////////////////
 
   function POST_graph_all_edges (req, res, g) {
@@ -911,6 +912,7 @@
 ///
 /// Select all edges
 ///
+/// @verbinclude api-graph-get-vertex-edges
 ////////////////////////////////////////////////////////////////////////////////
 
   function POST_graph_vertex_edges (req, res, g) {
