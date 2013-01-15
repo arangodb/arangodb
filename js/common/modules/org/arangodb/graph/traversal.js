@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var graph = require("org/arangodb/graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -51,7 +52,7 @@ function ArangoTraverser (config) {
     },
     visitor: TrackingVisitor,
     filter: VisitAllFilter,
-    expander: CollectionOutboundExpander,
+    expander: OutboundExpander,
     datasource: null
   };
 
@@ -461,7 +462,7 @@ function DepthFirstSearch () {
 /// @brief default outbound expander function
 ////////////////////////////////////////////////////////////////////////////////
 
-function CollectionOutboundExpander (config, vertex, path) {
+function OutboundExpander (config, vertex, path) {
   var connections = [ ];
   var outEdges = config.datasource.getOutEdges(vertex._id);
       
@@ -486,7 +487,7 @@ function CollectionOutboundExpander (config, vertex, path) {
 /// @brief default inbound expander function 
 ////////////////////////////////////////////////////////////////////////////////
 
-function CollectionInboundExpander (config, vertex, path) {
+function InboundExpander (config, vertex, path) {
   var connections = [ ];
   var inEdges = config.datasource.getInEdges(vertex._id);
       
@@ -511,7 +512,7 @@ function CollectionInboundExpander (config, vertex, path) {
 /// @brief default "any" expander function 
 ////////////////////////////////////////////////////////////////////////////////
 
-function CollectionAnyExpander (config, vertex, path) {
+function AnyExpander (config, vertex, path) {
   var connections = [ ];
   var edges = config.datasource.getAllEdges(vertex._id);
       
@@ -534,6 +535,9 @@ function CollectionAnyExpander (config, vertex, path) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default ArangoCollection datasource
+///
+/// this is a factory function that creates a datasource that operates on the
+/// specified edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionDatasourceFactory (edgeCollection) {
@@ -558,13 +562,65 @@ function CollectionDatasourceFactory (edgeCollection) {
   };
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default Graph datasource
+///
+/// this is a datasource that operates on the specified graph
+////////////////////////////////////////////////////////////////////////////////
+
+function GraphDatasourceFactory (name) {
+  return {
+    graph: new graph.Graph(name),
+
+    getAllEdges: function (vertexId) {
+      var r = [ ];
+      var that = this;
+      this.graph.getVertex(vertexId).getEdges().forEach(function (edge) {
+        var vertexIn = edge.getInVertex();
+        var vertexOut = edge.getOutVertex();
+        r.push({ _id: edge._id, _to: vertexIn._id.split("/")[1], _from: vertexOut._id.split("/")[1] });
+      });
+
+      return r;
+    },
+    
+    getInEdges: function (vertexId) {
+      var r = [ ];
+      var that = this;
+      this.graph.getVertex(vertexId).getInEdges().forEach(function (edge) {
+        var vertexIn = edge.getInVertex();
+        var vertexOut = edge.getOutVertex();
+        r.push({ _id: edge._id, _to: vertexIn._id.split("/")[1], _from: vertexOut._id.split("/")[1] });
+      });
+
+      return r;
+    },
+    
+    getOutEdges: function (vertexId) {
+      var r = [ ];
+      var that = this;
+      this.graph.getVertex(vertexId).getOutEdges().forEach(function (edge) {
+        var vertexIn = edge.getInVertex();
+        var vertexOut = edge.getOutVertex();
+        r.push({ _id: edge._id, _to: vertexIn._id.split("/")[1], _from: vertexOut._id.split("/")[1] });
+      });
+
+      return r;
+    },
+
+    getVertex: function (vertexId) {
+      return this.graph.getVertex(vertexId);
+    }
+  };
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 /// @brief default expander that expands all outbound edges labeled with one label in config.labels 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 function ExpandOutEdgesWithLabels (config, vertex, path) {
   var result = [ ];
-  if (!Array.isArray(config.labels)) {
+  if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
   var edgesList = config.datasource.getOutEdges(vertex._id);
@@ -604,7 +660,7 @@ function ExpandInEdgesWithLabels (config, vertex, path) {
   
 function ExpandEdgesWithLabels (config, vertex, path) {
   var result = [ ];
-  if (!Array.isArray(config.labels)) {
+  if (! Array.isArray(config.labels)) {
     config.labels = [config.labels];
   }
   var edgesList = config.datasource.getInEdges(vertex._id);
@@ -649,7 +705,7 @@ function TrackingVisitor (config, result, vertex, path) {
     else if (obj instanceof Object) {
       var copy = {};
       for (var attr in obj) {
-        if (obj.hasOwnProperty(attr)) {
+        if (obj.hasOwnProperty && obj.hasOwnProperty(attr)) {
           copy[attr] = clone(obj[attr]);
         }
       }
@@ -832,10 +888,11 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.Traverser                       = ArangoTraverser;
-exports.CollectionOutboundExpander      = CollectionOutboundExpander;
-exports.CollectionInboundExpander       = CollectionInboundExpander;
-exports.CollectionAnyExpander           = CollectionAnyExpander;
+exports.OutboundExpander                = OutboundExpander;
+exports.InboundExpander                 = InboundExpander;
+exports.AnyExpander                     = AnyExpander;
 exports.CollectionDatasourceFactory     = CollectionDatasourceFactory;
+exports.GraphDatasourceFactory          = GraphDatasourceFactory;
 exports.VisitAllFilter                  = VisitAllFilter;
 exports.IncludeMatchingAttributesFilter = IncludeMatchingAttributesFilter;
 exports.TrackingVisitor                 = TrackingVisitor;

@@ -1424,7 +1424,7 @@ function CollectionTraversalSuite () {
         datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
-      var expander = traversal.CollectionOutboundExpander;
+      var expander = traversal.OutboundExpander;
       var connected;
       
       connected = [ ];
@@ -1459,7 +1459,7 @@ function CollectionTraversalSuite () {
         datasource: traversal.CollectionDatasourceFactory(edgeCollection)
       }; 
 
-      var expander = traversal.CollectionInboundExpander;
+      var expander = traversal.InboundExpander;
       var connected;
       
       connected = [ ];
@@ -1495,7 +1495,7 @@ function CollectionTraversalSuite () {
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1534,7 +1534,7 @@ function CollectionTraversalSuite () {
         order: traversal.Traverser.PRE_ORDER,
         itemOrder: traversal.Traverser.FORWARD,
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionInboundExpander,
+        expander: traversal.InboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1570,7 +1570,7 @@ function CollectionTraversalSuite () {
           edges: traversal.Traverser.UNIQUE_NONE
         }, 
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1609,7 +1609,7 @@ function CollectionTraversalSuite () {
           edges: traversal.Traverser.UNIQUE_NONE
         }, 
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
@@ -1652,7 +1652,7 @@ function CollectionTraversalSuite () {
           edges: traversal.Traverser.UNIQUE_GLOBAL
         }, 
         filter: traversal.VisitAllFilter,
-        expander: traversal.CollectionOutboundExpander,
+        expander: traversal.OutboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1 }
       };
