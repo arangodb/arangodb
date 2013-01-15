@@ -272,7 +272,7 @@ void Scheduler::unregisterTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOGGER_WARNING << "unregisterTask called for a unknown task " << task << " (" << task->getName() << ")";
+      LOGGER_WARNING << "unregisterTask called for an unknown task " << task << " (" << task->getName() << ")";
 
       return;
     }
@@ -306,7 +306,7 @@ void Scheduler::destroyTask (Task* task) {
     map<Task*, SchedulerThread*>::iterator i = task2thread.find(task);
 
     if (i == task2thread.end()) {
-      LOGGER_WARNING << "destroyTask called for a unknown task " << task << " (" << task->getName() << ")";
+      LOGGER_WARNING << "destroyTask called for an unknown task " << task << " (" << task->getName() << ")";
 
       return;
     }
@@ -323,7 +323,7 @@ void Scheduler::destroyTask (Task* task) {
       task2thread.erase(i);
     }
   }
-
+  
   thread->destroyTask(task);
 }
 

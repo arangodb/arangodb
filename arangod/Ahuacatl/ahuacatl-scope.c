@@ -417,7 +417,8 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
                               TRI_aql_node_t* const definingNode) {
   TRI_aql_variable_t* variable;
   TRI_aql_scope_t* scope;
-  
+  void* result;
+
   assert(context);
   assert(name);
 
@@ -431,8 +432,10 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   }
 
   scope = CurrentScope(context);
-  assert(! TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false));
 
+  result = TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false);
+  assert(result == NULL);
+ 
   return true;
 }
 

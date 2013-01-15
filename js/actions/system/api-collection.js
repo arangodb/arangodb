@@ -269,7 +269,7 @@ function get_api_collections (req, res) {
 /// @REST{GET /_api/collection/@FA{collection-name}}
 //////////////////////////////////////////////////////////
 ///
-/// The result is an objects describing the collection with the following
+/// The result is an object describing the collection with the following
 /// attributes:
 ///
 /// - @LIT{id}: The identifier of the collection.
@@ -467,14 +467,24 @@ function get_api_collection (req, res) {
 ///
 /// @REST{PUT /_api/collection/@FA{collection-name}/load}
 ///
-/// Loads a collection into memory. On success an object with the following
-/// attributes is returned:
+/// Loads a collection into memory. Returns the collection on success.
+///
+/// The request might optionally contain the following attribute:
+///
+/// - @LIT{count}: If set, this controls whether the return value should include
+///   the number of documents in the collection. Setting @LIT{count} to 
+///   @LIT{false} may speed up loading a collection. The default value for 
+///   @LIT{count} is @LIT{true}.
+///
+/// On success an object with the following attributes is returned:
 ///
 /// - @LIT{id}: The identifier of the collection.
 ///
 /// - @LIT{name}: The name of the collection.
 ///
-/// - @LIT{count}: The number of documents inside the collection.
+/// - @LIT{count}: The number of documents inside the collection. This is only
+///   returned if the @LIT{count} input parameters is set to @LIT{true} or has
+///   not been specified.
 ///
 /// - @LIT{status}: The status of the collection as number.
 ///
@@ -495,7 +505,13 @@ function put_api_collection_load (req, res, collection) {
   try {
     collection.load();
 
-    var result = collectionRepresentation(collection, false, true, false);
+    var showCount = true;
+    var body = actions.getJsonBody(req, res);
+    if (body && body.hasOwnProperty("count")) {
+      showCount = body.count;
+    }
+
+    var result = collectionRepresentation(collection, false, showCount, false);
 
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }

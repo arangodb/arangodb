@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief common messages shared by all binaries
+/// @brief test the database interface
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,40 +21,49 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_MESSAGES_H
-#define TRIAGENS_BASICS_C_MESSAGES_H 1
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+var jsunity = require("jsunity");
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
+// --SECTION--                                                  database methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup messages
-/// @{
+/// @brief test suite: error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_BYE_MESSAGE "Auf Wiedersehen! Bye Bye! Arrivederci! Na shledanou! Au revoir! ¡Hasta luego! Εις το επανιδείν! Adjö! До свидания! さようなら"
+function DatabaseSuite () {
+  return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief test the version information
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __cplusplus
+    testVersion : function () {
+      assertEqual("1.2.alpha", internal.db._version());
+    }
+
+  };
 }
-#endif
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              main
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
+
+jsunity.run(DatabaseSuite);
+
+return jsunity.done();
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+

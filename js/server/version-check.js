@@ -109,7 +109,7 @@
       }
     }
     
-    console.log("Starting upgrade from version " + (lastVersion || "unknown") + " to " + VERSION);
+    console.log("Starting upgrade from version " + (lastVersion || "unknown") + " to " + internal.db._version());
 
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
@@ -333,10 +333,10 @@
 
 
   var lastVersion = null;
-  var currentServerVersion = VERSION.match(/^(\d+\.\d+).*$/);
+  var currentServerVersion = internal.db._version().match(/^(\d+\.\d+).*$/);
   if (! currentServerVersion) {
     // server version is invalid for some reason
-    console.error("Unexpected ArangoDB server version: " + VERSION);
+    console.error("Unexpected ArangoDB server version: " + internal.db._version());
     return false;
   }
   

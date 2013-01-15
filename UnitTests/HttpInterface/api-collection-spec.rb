@@ -422,7 +422,6 @@ describe ArangoDB do
 ## load a collection
 ################################################################################
 
-	ArangoDB.drop_collection(@cn)
     context "loading:" do
       before do
 	@cn = "UnitTestsCollectionBasics"
@@ -443,6 +442,7 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(0)
 
 	ArangoDB.drop_collection(@cn)
       end
@@ -462,6 +462,59 @@ describe ArangoDB do
 	doc.parsed_response['name'].should eq(@cn)
 	doc.parsed_response['status'].should eq(3)
 	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(0)
+
+	ArangoDB.drop_collection(@cn)
+      end
+
+      it "load a collection by name with explicit count" do
+	ArangoDB.drop_collection(@cn)
+	cid = ArangoDB.create_collection(@cn)
+
+	cmd = "/_api/document?collection=#{@cn}"
+	body = "{ \"Hallo\" : \"World\" }"
+
+	for i in ( 1 .. 10 )
+	  doc = ArangoDB.post(cmd, :body => body)
+	end
+
+	cmd = api + "/" + @cn + "/load"
+	body = "{ \"count\" : true }"
+        doc = ArangoDB.log_put("#{prefix}-name-load", cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['count'].should be_kind_of(Integer)
+	doc.parsed_response['count'].should eq(10)
+
+	ArangoDB.drop_collection(@cn)
+      end
+
+      it "load a collection by name without count" do
+	ArangoDB.drop_collection(@cn)
+	cid = ArangoDB.create_collection(@cn)
+	
+	cmd = "/_api/document?collection=#{@cn}"
+	body = "{ \"Hallo\" : \"World\" }"
+	doc = ArangoDB.post(cmd, :body => body)
+
+	cmd = api + "/" + @cn + "/load"
+	body = "{ \"count\" : false }"
+        doc = ArangoDB.log_put("#{prefix}-name-load", cmd, :body => body)
+
+	doc.code.should eq(200)
+	doc.headers['content-type'].should eq("application/json; charset=utf-8")
+	doc.parsed_response['error'].should eq(false)
+	doc.parsed_response['code'].should eq(200)
+	doc.parsed_response['id'].should eq(cid)
+	doc.parsed_response['name'].should eq(@cn)
+	doc.parsed_response['status'].should eq(3)
+	doc.parsed_response['count'].should be_nil
 
 	ArangoDB.drop_collection(@cn)
       end
