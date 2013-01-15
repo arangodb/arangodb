@@ -185,69 +185,42 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief color constants
 ////////////////////////////////////////////////////////////////////////////////
+  
+  internal.COLORS = { };
 
+  if (typeof COLORS !== "undefined") {
+    internal.COLORS = COLORS;
+    delete COLORS;
+  }
+  else {
+    [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW', 'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_BLACK', 'COLOR_BOLD_BLACK', 'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
+      internal.COLORS[color] = '';
+    });
+  }
+
+  internal.COLORS.COLOR_PUNCTUATION = internal.COLORS.COLOR_RESET;
+  internal.COLORS.COLOR_STRING = internal.COLORS.COLOR_WHITE;
+  internal.COLORS.COLOR_NUMBER = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_INDEX = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_TRUE = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_FALSE = internal.COLORS.COLOR_BOLD_WHITE;
+  internal.COLORS.COLOR_NULL = internal.COLORS.COLOR_BOLD_WHITE;
+
+  internal.NOCOLORS = { };
+  for (var i in internal.COLORS) {
+    if (internal.COLORS.hasOwnProperty(i)) {
+      internal.NOCOLORS[i] = '';
+    }
+  }
+ 
   internal.COLOR_OUTPUT = false;
-  internal.COLOR_OUTPUT_DEFAULT = "";
-  internal.COLOR_OUTPUT_RESET = "";
-  internal.COLOR_BRIGHT = "";
 
   if (typeof COLOR_OUTPUT !== "undefined") {
     internal.COLOR_OUTPUT = COLOR_OUTPUT;
     delete COLOR_OUTPUT;
   }
 
-  if (typeof COLOR_OUTPUT_RESET !== "undefined") {
-    internal.COLOR_OUTPUT_RESET = COLOR_OUTPUT_RESET;
-    delete COLOR_OUTPUT_RESET;
-  }
-
-  if (typeof COLOR_BRIGHT !== "undefined") {
-    internal.COLOR_BRIGHT = COLOR_BRIGHT;
-    delete COLOR_BRIGHT;
-  }
-
-  if (internal.COLOR_OUTPUT) {
-    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;
-
-    internal.COLOR_BLACK = COLOR_BLACK;
-    delete COLOR_BLACK;
-
-    internal.COLOR_BOLD_BLACK = COLOR_BOLD_BLACK;
-    delete COLOR_BOLD_BLACK;
-
-    internal.COLOR_BLINK = COLOR_BLINK;
-    delete COLOR_BLINK;
-
-    internal.COLOR_BLUE = COLOR_BLUE;
-    delete COLOR_BLUE;
-
-    internal.COLOR_BOLD_BLUE = COLOR_BOLD_BLUE;
-    delete COLOR_BOLD_BLUE;
-
-    internal.COLOR_GREEN = COLOR_GREEN;
-    delete COLOR_GREEN;
-
-    internal.COLOR_BOLD_GREEN = COLOR_BOLD_GREEN;
-    delete COLOR_BOLD_GREEN;
-
-    internal.COLOR_RED = COLOR_RED;
-    delete COLOR_RED;
-
-    internal.COLOR_BOLD_RED = COLOR_BOLD_RED;
-    delete COLOR_BOLD_RED;
-
-    internal.COLOR_WHITE = COLOR_WHITE;
-    delete COLOR_WHITE;
-
-    internal.COLOR_BOLD_WHITE = COLOR_BOLD_WHITE;
-    delete COLOR_BOLD_WHITE;
-
-    internal.COLOR_YELLOW = COLOR_YELLOW;
-    delete COLOR_YELLOW;
-
-    internal.COLOR_BOLD_YELLOW = COLOR_BOLD_YELLOW;
-    delete COLOR_BOLD_YELLOW;
-  }
+  internal.colors = (internal.COLOR_OUTPUT ? internal.COLORS : internal.NOCOLORS);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -291,12 +264,7 @@
         internal.printRecursive(arguments[i], [], "~", [], 0);
       }
     }
-
-    if (internal.COLOR_OUTPUT) {
-      internal.output(internal.COLOR_OUTPUT_DEFAULT);
-      internal.output(internal.COLOR_OUTPUT_RESET);
-    }
-
+    
     internal.output("\n");
   };
 
@@ -399,7 +367,24 @@
       }
       else {
         if (typeof(value) === "string") {
+          internal.output(internal.colors.COLOR_STRING);
           internal.output(internal.quoteJsonString(value));
+          internal.output(internal.colors.COLOR_RESET);
+        }
+        else if (typeof(value) === "boolean") {
+          internal.output(value ? internal.colors.COLOR_TRUE : internal.colors.COLOR_FALSE);
+          internal.output(String(value));
+          internal.output(internal.colors.COLOR_RESET);
+        }
+        else if (typeof(value) === "number") {
+          internal.output(internal.colors.COLOR_NUMBER);
+          internal.output(String(value));
+          internal.output(internal.colors.COLOR_RESET);
+        }
+        else if (value == null) {
+          internal.output(internal.colors.COLOR_NULL);
+          internal.output(String(value));
+          internal.output(internal.colors.COLOR_RESET);
         }
         else {
           internal.output(String(value));
@@ -414,18 +399,24 @@
 
   internal.printArray = function (object, seen, path, names, level) {
     if (object.length === 0) {
+      internal.output(internal.colors.COLOR_PUNCTUATION);
       internal.output("[ ]");
+      internal.output(internal.colors.COLOR_RESET);
     }
     else {
       var i;
-      var sep = "";
+      var sep = " ";
 
+      internal.output(internal.colors.COLOR_PUNCTUATION);
       internal.output("[");
+      internal.output(internal.colors.COLOR_RESET);
 
       var newLevel = level + 1;
 
       for (i = 0;  i < object.length;  i++) {
+        internal.output(internal.colors.COLOR_PUNCTUATION);
         internal.output(sep);
+        internal.output(internal.colors.COLOR_RESET);
 
         internal.printIndent(newLevel);
 
@@ -443,7 +434,9 @@
 
       internal.printIndent(level);
 
+      internal.output(internal.colors.COLOR_PUNCTUATION);
       internal.output("]");
+      internal.output(internal.colors.COLOR_RESET);
     }
   };
 
@@ -455,7 +448,9 @@
     var sep = " ";
     var k;
 
+    internal.output(internal.colors.COLOR_PUNCTUATION);
     internal.output("{");
+    internal.output(internal.colors.COLOR_RESET);
 
     var newLevel = level + 1;
 
@@ -463,19 +458,16 @@
       if (object.hasOwnProperty(k)) {
         var val = object[k];
 
+        internal.output(internal.colors.COLOR_PUNCTUATION);
         internal.output(sep);
+        internal.output(internal.colors.COLOR_RESET);
 
         internal.printIndent(newLevel);
 
-        if (internal.COLOR_OUTPUT) {
-          internal.output(internal.COLOR_OUTPUT_DEFAULT);
-          internal.output(internal.quoteJsonString(k));
-          internal.output(internal.COLOR_OUTPUT_RESET);
-          internal.output(" : ");
-        }
-        else {
-          internal.output(internal.quoteJsonString(k), " : ");
-        }
+        internal.output(internal.colors.COLOR_INDEX);
+        internal.output(internal.quoteJsonString(k));
+        internal.output(internal.colors.COLOR_RESET);
+        internal.output(" : ");
 
         internal.printRecursive(val,
                                 seen,
@@ -492,7 +484,9 @@
 
     internal.printIndent(level);
 
+    internal.output(internal.colors.COLOR_PUNCTUATION);
     internal.output("}");
+    internal.output(internal.colors.COLOR_RESET);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -572,6 +566,75 @@
     internal.stop_pager = SYS_STOP_PAGER;
     delete SYS_STOP_PAGER;
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start pretty printing
+////////////////////////////////////////////////////////////////////////////////
+ 
+  internal.startPrettyPrint = function (silent) {
+    if (! internal.PRETTY_PRINT && ! silent) {
+      internal.print("using pretty printing");
+    }
+    internal.PRETTY_PRINT = true;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.stopPrettyPrint = function (silent) {
+    if (internal.PRETTY_PRINT && ! silent) {
+      internal.print("disabled pretty printing");
+    }
+    internal.PRETTY_PRINT = false;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start color printing
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.startColorPrint = function (silent) {
+    if (! internal.COLOR_OUTPUT && ! silent) {
+      internal.print("starting color printing"); 
+    }
+    internal.colors = internal.COLORS;
+    internal.COLOR_OUTPUT = true;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop color printing
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.stopColorPrint = function (silent) {
+    if (internal.COLOR_OUTPUT && ! silent) {
+      internal.print("disabled color printing");
+    }
+    internal.COLOR_OUTPUT = false;
+    internal.colors = internal.NOCOLORS;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug print function
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.dump = function () { 
+    var oldPretty = internal.PRETTY_PRINT; 
+    var oldColor = internal.COLOR_OUTPUT; 
+
+    internal.startPrettyPrint(true); 
+    internal.startColorPrint(true); 
+
+    for (var i = 0; i < arguments.length; ++i) {
+      internal.print(arguments[i]); 
+    }
+
+    if (! oldPretty) { 
+      internal.stopPrettyPrint(true); 
+    } 
+    if (! oldColor) { 
+      internal.stopColorPrint(true); 
+    } 
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encode password using SHA256

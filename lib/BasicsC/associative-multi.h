@@ -297,7 +297,10 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, void const* element
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*, void* element, bool overwrite);
+void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t*, 
+                                     void*,
+                                     const bool,
+                                     const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array

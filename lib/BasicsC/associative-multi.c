@@ -46,7 +46,7 @@
 /// @brief initial number of elements of a container
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INITIAL_SIZE (10)
+#define INITIAL_SIZE (64)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -772,7 +772,10 @@ void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, void const* e
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, void* element, bool overwrite) {
+void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, 
+                                     void* element, 
+                                     const bool overwrite, 
+                                     const bool checkEquality) {
   uint64_t hash;
   uint64_t i;
   void* old;
@@ -792,7 +795,12 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array, void* element, 
 #endif
 
   // search the table
-  while (array->_table[i] != NULL && ! array->isEqualElementElement(array, element, array->_table[i])) {
+
+  // if the checkEquality flag is not set, we do not check for element equality
+  // we use this flag to speed up initial insertion into the index, i.e. when the
+  // index is built for a collection and we know for sure no duplicate elements 
+  // will be inserted
+  while (array->_table[i] != NULL && (checkEquality && ! array->isEqualElementElement(array, element, array->_table[i]))) {
     i = (i + 1) % array->_nrAlloc;
 #ifdef TRI_INTERNAL_STATS
     array->_nrProbesA++;
