@@ -159,6 +159,37 @@ ArangoApp.prototype._PRINT = function (route) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mounts one function directly
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoApp.prototype.mountStaticFunction = function (url, func, methods) {
+  if (url === "") {
+    url = "/";
+  }
+  else if (url[0] !== '/') {
+    url = "/" + url;
+  }
+
+  if (methods === undefined) {
+    methods = [ "GET", "HEAD" ];
+  }
+
+  pages = {
+    type: "StaticFunction",
+    key: url,
+    url: { match: url },
+    action: {
+      'function': String(func),
+      methods: methods,
+    }
+  };
+
+  this.updateRoute(pages);
+
+  return this;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief mounts one page directly
 ////////////////////////////////////////////////////////////////////////////////
 

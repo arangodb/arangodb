@@ -307,9 +307,9 @@ The simplest dynamic action is:
 
     { action: { do: "org/arangodb/actions/echoRequest" } }
 
-It is not possible to store functions directly in the routing table, but you can
-call functions defined in modules. In the above example the function can be
-accessed from JavaScript as:
+It is not advisable to store functions directly in the routing table. It is
+better to call functions defined in modules. In the above example the function
+can be accessed from JavaScript as:
 
     require("org/arangodb/actions").echoRequest
 
@@ -405,6 +405,17 @@ The definition
     { action: "org/arangodb/actions" }
 
 is a short-cut for a prefix controller definition.
+
+Function Action {#UserManualActionsFunctionAction}
+--------------------------------------------------
+
+You can also store a function directly in the routing table.
+
+For example
+
+    arangosh> db._routing.save({ 
+    ........>   url: "/hello/echo",
+    ........>   action: { function: "function(req,res) {res.statusCode=200; res.body='Hallo'}" } });
 
 Requests and Responses {#UserManualActionsReqRes}
 =================================================

@@ -219,6 +219,7 @@ SHELL_COMMON = @top_srcdir@/js/common/tests/shell-document.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js
 
 SHELL_SERVER = $(SHELL_COMMON) \
+               @top_srcdir@/js/common/tests/shell-frank.js \
                @top_srcdir@/js/common/tests/shell-graph.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js

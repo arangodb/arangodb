@@ -98,9 +98,9 @@ function neighborSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetAllNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
+      var v1 = graph.addVertex("1"),
+        v2 = graph.addVertex("2"),
+        v3 = graph.addVertex("3"),
         result_array = [];
 
       graph.addEdge(v1, v2);
@@ -108,15 +108,15 @@ function neighborSuite() {
 
       result_array = v1.getNeighbors({ direction: 'both' });
 
-      assertEqual(result_array.length, 2);
-      assertEqual(result_array[0].id, 2);
-      assertEqual(result_array[1].id, 3);
+      assertEqual(result_array.length, "2");
+      assertEqual(result_array[0].id, "2");
+      assertEqual(result_array[1].id, "3");
     },
 
     testGetOutboundNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
+      var v1 = graph.addVertex("1"),
+        v2 = graph.addVertex("2"),
+        v3 = graph.addVertex("3"),
         result_array = [];
 
       graph.addEdge(v1, v2);
@@ -124,14 +124,14 @@ function neighborSuite() {
 
       result_array = v1.getNeighbors({ direction: 'outbound' });
 
-      assertEqual(result_array.length, 1);
-      assertEqual(result_array[0].id, 2);
+      assertEqual(result_array.length, "1");
+      assertEqual(result_array[0].id, "2");
     },
 
     testGetInboundNeighbors : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
+      var v1 = graph.addVertex("1"),
+        v2 = graph.addVertex("2"),
+        v3 = graph.addVertex("3"),
         result_array = [];
 
       graph.addEdge(v1, v2);
@@ -139,14 +139,14 @@ function neighborSuite() {
 
       result_array = v1.getNeighbors({ direction: 'inbound' });
 
-      assertEqual(result_array.length, 1);
-      assertEqual(result_array[0].id, 3);
+      assertEqual(result_array.length, "1");
+      assertEqual(result_array[0].id, "3");
     },
 
     testGetNeighborsWithPathLabel : function () {
-      var v1 = graph.addVertex(1),
-        v2 = graph.addVertex(2),
-        v3 = graph.addVertex(3),
+      var v1 = graph.addVertex("1"),
+        v2 = graph.addVertex("2"),
+        v3 = graph.addVertex("3"),
         result_array = [];
 
       graph.addEdge(v1, v2, 8, 'a');
@@ -154,8 +154,8 @@ function neighborSuite() {
 
       result_array = v1.getNeighbors({ direction: 'both', labels: ['a', 'c'] });
 
-      assertEqual(result_array.length, 1);
-      assertEqual(result_array[0].id, 2);
+      assertEqual(result_array.length, "1");
+      assertEqual(result_array[0].id, "2");
     }
   };
 }

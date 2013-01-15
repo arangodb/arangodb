@@ -364,7 +364,7 @@ While the `byExample` works very well for simple queries where you
 and `or` conditions. Therefore, ArangoDB also supports a full-blown
 query language.
 
-    arangosh> db._query('FOR user IN example FILTER user.name == "Musterfrau" return user').toArray()
+    arangosh> db._query('FOR user IN example FILTER user.name == "Musterfrau" RETURN user').toArray()
     [
       { 
 	_id : "4538791/6308263", 
@@ -376,7 +376,7 @@ query language.
 
 Search for all persons over 30.
 
-    arangosh> db._query('FOR user IN example FILTER user.age > 30" return user').toArray()
+    arangosh> db._query('FOR user IN example FILTER user.age > 30 RETURN user').toArray()
     [
       { 
 	_id : "4538791/6308263", 

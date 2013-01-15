@@ -87,14 +87,7 @@ function ArangoError (error) {
   ArangoError.prototype.toString = function() {
     var result = "";
 
-    if (internal.COLOR_OUTPUT) {
-      result = internal.COLOR_BRIGHT + "Error: " + internal.COLOR_OUTPUT_RESET;
-    }
-    else  {
-      result = "Error: ";
-    }
-
-    result += "[" + this.code + ":" + this.errorNum + "] " + this.errorMessage;
+    result = "Error: [" + this.code + ":" + this.errorNum + "] " + this.errorMessage;
 
     return result;
   };
@@ -274,12 +267,7 @@ function print_plain (data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function start_pretty_print () {
-  var internal = require("internal");
-
-  if (! internal.PRETTY_PRINT) {
-    internal.print("using pretty printing");
-    internal.PRETTY_PRINT = true;
-  }
+  require("internal").startPrettyPrint();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,12 +275,7 @@ function start_pretty_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function stop_pretty_print () {
-  var internal = require("internal");
-
-  if (internal.PRETTY_PRINT) {
-    internal.PRETTY_PRINT = false;
-    internal.print("disabled pretty printing");
-  }
+  require("internal").stopPrettyPrint();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,22 +303,7 @@ function stop_pager () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function start_color_print (color) {
-  var internal = require("internal");
-
-  if (typeof(color) === "string") {
-    internal.COLOR_OUTPUT_DEFAULT = color;
-  }
-  else {
-    internal.COLOR_OUTPUT_DEFAULT = internal.COLOR_BRIGHT;
-  }
-
-  internal.COLOR_OUTPUT = true;
-
-  internal.print("start "
-                 + internal.COLOR_OUTPUT_DEFAULT
-                 + "color" 
-                 + internal.COLOR_OUTPUT_RESET
-                 + " printing");
+  require("internal").startColorPrint();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,10 +311,7 @@ function start_color_print (color) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function stop_color_print () {
-  var internal = require("internal");
-
-  internal.print("disabled color printing");
-  internal.COLOR_OUTPUT = false;
+  require("internal").stopColorPrint();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

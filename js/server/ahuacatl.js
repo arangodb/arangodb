@@ -2348,7 +2348,7 @@ function AHUACATL_GRAPH_TRAVERSE () {
   }
 
   var config = {
-    edgeCollection: edgeCollection,
+    datasource: traversal.CollectionDatasourceFactory(edgeCollection),
     strategy: validate(params.strategy, {
       'depthfirst': traversal.Traverser.DEPTH_FIRST,
       'breadthfirst': traversal.Traverser.BREADTH_FIRST
