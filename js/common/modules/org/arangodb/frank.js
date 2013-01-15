@@ -1,12 +1,15 @@
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, plusplus: true */
+/*global _, require, db, exports */
+
 var Frank,
-  baseMiddleware,
+  BaseMiddleware,
   _ = require("underscore"),
   internal = {};
 
 internal.createUrlObject = function (url, constraint, method) {
   var urlObject = {};
 
-  if(!_.isString(url)) {
+  if (!_.isString(url)) {
     throw "URL has to be a String";
   }
 
@@ -37,28 +40,29 @@ Frank = function (options) {
   }
 
   if (_.isString(templateCollection)) {
-    this.routingInfo.templateCollection = db._collection(templateCollection) || db._create(templateCollection);
+    this.routingInfo.templateCollection = db._collection(templateCollection) ||
+      db._create(templateCollection);
   }
 };
 
 _.extend(Frank.prototype, {
   handleRequest: function (method, route, argument1, argument2) {
-      var newRoute = {}, options, handler;
+    var newRoute = {}, options, handler;
 
-      if (_.isUndefined(argument2)) {
-        handler = argument1;
-        options = {};
-      } else  {
-        options = argument1;
-        handler = argument2;
-      }
+    if (_.isUndefined(argument2)) {
+      handler = argument1;
+      options = {};
+    } else {
+      options = argument1;
+      handler = argument2;
+    }
 
-      newRoute.url = internal.createUrlObject(route, options.constraint, method);
-      newRoute.handler = handler;
+    newRoute.url = internal.createUrlObject(route, options.constraint, method);
+    newRoute.handler = handler;
 
-      this.routingInfo.routes.push(newRoute);
+    this.routingInfo.routes.push(newRoute);
   },
-  
+
   head: function (route, argument1, argument2) {
     this.handleRequest("head", route, argument1, argument2);
   },
@@ -74,14 +78,14 @@ _.extend(Frank.prototype, {
   put: function (route, argument1, argument2) {
     this.handleRequest("put", route, argument1, argument2);
   },
-  
+
   patch: function (route, argument1, argument2) {
     this.handleRequest("patch", route, argument1, argument2);
   },
 
   delete: function (route, argument1, argument2) {
     this.handleRequest("delete", route, argument1, argument2);
-  },
+  }
 });
 
 
@@ -125,7 +129,11 @@ BaseMiddleware = function (templateCollection) {
           throw "No template collection has been provided when creating a new Frank";
         }
 
-        template = templateCollection.firstExample({path: "simple/path"});
+        template = templateCollection.firstExample({path: templatePath });
+
+        if (_.isNull(template)) {
+          throw "Template '" + templatePath + "' does not exist";
+        }
 
         if (template.templateLanguage !== "underscore") {
           throw "Unknown template language '" + template.templateLanguage + "'";
@@ -137,6 +145,8 @@ BaseMiddleware = function (templateCollection) {
     };
 
     response = _.extend(response, responseFunctions);
+
+    next();
   };
 
   return middleware;
