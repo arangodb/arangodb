@@ -175,8 +175,18 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
     readFds = &fdset;
   }
 
-  if (select(_socket + 1, readFds, writeFds, NULL, &tv) > 0) {
+  int res = select(_socket + 1, readFds, writeFds, NULL, &tv);
+  if (res > 0) {
     return true;
+  }
+
+  if (res == 0) {
+    if (isWrite) {
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
+    }
+    else {
+      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
+    }
   }
 
   return false;
@@ -187,7 +197,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_t* bytesWritten) {
-  if (!checkSocket()) {
+  if (! checkSocket()) {
     return false;
   }
 
@@ -212,7 +222,7 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 ////////////////////////////////////////////////////////////////////////////////
     
 bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
-  if (!checkSocket()) {
+  if (! checkSocket()) {
     return false;
   }
   
@@ -221,7 +231,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
   do {
     char buffer[READBUFFER_SIZE];
 
-    int lenRead = TRI_READ_SOCKET(_socket, buffer, READBUFFER_SIZE - 1,0);
+    int lenRead = TRI_READ_SOCKET(_socket, buffer, READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred

@@ -89,7 +89,7 @@ namespace triagens {
 
             TRI_set_errno(TRI_ERROR_NO_ERROR);
             if (! _connection->handleWrite(remainingTime, (void*) (_writeBuffer.c_str() + _written), _writeBuffer.length() - _written, &bytesWritten)) {
-              setErrorMessage("Couldn't send data to server", errno);
+              setErrorMessage(TRI_last_error(), false);
               this->close();
             }
             else {
@@ -125,7 +125,7 @@ namespace triagens {
               }
             }
             else {
-              setErrorMessage("Couldn't read data from server", errno);
+              setErrorMessage(TRI_last_error(), false);
               this->close();
             }
             break;
