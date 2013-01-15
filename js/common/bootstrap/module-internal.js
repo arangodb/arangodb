@@ -405,7 +405,7 @@
     }
     else {
       var i;
-      var sep = "";
+      var sep = " ";
 
       internal.output(internal.colors.COLOR_PUNCTUATION);
       internal.output("[");
@@ -571,46 +571,69 @@
 /// @brief start pretty printing
 ////////////////////////////////////////////////////////////////////////////////
  
-  internal.startPrettyPrint = function () {
-    if (! internal.PRETTY_PRINT) {
-      internal.PRETTY_PRINT = true;
+  internal.startPrettyPrint = function (silent) {
+    if (! internal.PRETTY_PRINT && ! silent) {
       internal.print("using pretty printing");
     }
+    internal.PRETTY_PRINT = true;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stopPrettyPrint = function () {
-    if (internal.PRETTY_PRINT) {
-      internal.PRETTY_PRINT = false;
+  internal.stopPrettyPrint = function (silent) {
+    if (internal.PRETTY_PRINT && ! silent) {
       internal.print("disabled pretty printing");
     }
+    internal.PRETTY_PRINT = false;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start color printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.startColorPrint = function () {
-    internal.colors = internal.COLORS;
-    if (! internal.COLOR_OUTPUT) {
-      internal.COLOR_OUTPUT = true;
+  internal.startColorPrint = function (silent) {
+    if (! internal.COLOR_OUTPUT && ! silent) {
       internal.print("starting color printing"); 
     }
+    internal.colors = internal.COLORS;
+    internal.COLOR_OUTPUT = true;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop color printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.stopColorPrint = function () {
-    if (internal.COLOR_OUTPUT) {
+  internal.stopColorPrint = function (silent) {
+    if (internal.COLOR_OUTPUT && ! silent) {
       internal.print("disabled color printing");
     }
     internal.COLOR_OUTPUT = false;
     internal.colors = internal.NOCOLORS;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug print function
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.dump = function () { 
+    var oldPretty = internal.PRETTY_PRINT; 
+    var oldColor = internal.COLOR_OUTPUT; 
+
+    internal.startPrettyPrint(true); 
+    internal.startColorPrint(true); 
+
+    for (var i = 0; i < arguments.length; ++i) {
+      internal.print(arguments[i]); 
+    }
+
+    if (! oldPretty) { 
+      internal.stopPrettyPrint(true); 
+    } 
+    if (! oldColor) { 
+      internal.stopColorPrint(true); 
+    } 
   };
 
 ////////////////////////////////////////////////////////////////////////////////

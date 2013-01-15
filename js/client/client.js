@@ -1528,8 +1528,14 @@ function ArangoCollection (database, data) {
 /// @brief loads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoCollection.prototype.load = function () {
-    var requestResult = this._database._connection.PUT(this._baseurl("load"), "");
+  ArangoCollection.prototype.load = function (count) {
+    var data = { count: true };
+    // return the number of documents? this might slow down loading
+    if (count != undefined) {
+      data.count = count; 
+    }
+
+    var requestResult = this._database._connection.PUT(this._baseurl("load"), JSON.stringify(data));
 
     client.checkRequestResult(requestResult);
 
@@ -2368,6 +2374,18 @@ function ArangoDatabase (connection) {
 
     return true;
   };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the database version
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoDatabase.prototype._version = function () {
+    var requestResult = this._connection.GET("/_api/version");
+    
+    client.checkRequestResult(requestResult);
+
+    return requestResult.version;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

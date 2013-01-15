@@ -59,7 +59,7 @@ namespace triagens {
     /// constructor and destructor
     ////////////////////////////////////////////////////////////////////////////////
 
-    ImportHelper::ImportHelper (httpclient::SimpleHttpClient* _client, size_t maxUploadSize)
+    ImportHelper::ImportHelper (httpclient::SimpleHttpClient* _client, uint64_t maxUploadSize)
     : _client(_client),
       _maxUploadSize(maxUploadSize),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
@@ -106,7 +106,7 @@ namespace triagens {
         fd = STDIN_FILENO;
       }
       else {
-        fd = open(fileName.c_str(), O_RDONLY);        
+        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);        
       }      
 
       if (fd < 0) {
@@ -154,7 +154,7 @@ namespace triagens {
       while (! _hasError) {
         v8::HandleScope scope;
 
-        ssize_t n = read(fd, buffer, sizeof(buffer));
+        ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
         if (n < 0) {
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
@@ -179,7 +179,7 @@ namespace triagens {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, eol);
 
       if (fileName != "-") {
-        close(fd);
+        TRI_CLOSE(fd);
       }      
 
       _outputBuffer.clear();
@@ -203,7 +203,7 @@ namespace triagens {
         fd = STDIN_FILENO;
       }
       else {
-        fd = open(fileName.c_str(), O_RDONLY);        
+        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);        
       }      
 
       if (fd < 0) {
@@ -215,7 +215,7 @@ namespace triagens {
       bool isArray = false;
 
       while (! _hasError) {
-        ssize_t n = read(fd, buffer, sizeof(buffer));
+        ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
         if (n < 0) {
           _errorMessage = TRI_LAST_ERROR_STR;
@@ -260,7 +260,7 @@ namespace triagens {
       _numberLines = _numberError + _numberOk;
       
       if (fileName != "-") {
-        close(fd);
+        TRI_CLOSE(fd);
       }      
 
       _outputBuffer.clear();
