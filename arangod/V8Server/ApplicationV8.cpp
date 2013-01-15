@@ -656,6 +656,11 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   LOGGER_TRACE << "initialising V8 context #" << i;
 
   V8Context* context = _contexts[i] = new V8Context();
+  if (context == 0) {
+    LOGGER_FATAL << "cannot initialize V8 engine";
+
+    return false;
+  }
 
   // enter a new isolate
   context->_id = i;
