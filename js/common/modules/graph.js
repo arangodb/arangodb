@@ -143,7 +143,7 @@ function Edge(graph, id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getId = function () {
-  return this._properties.$id;
+  return this._properties._key;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,6 @@ Edge.prototype.setProperty = function (name, value) {
   // Could potentially change the weight of edges
   this._graph.emptyCachedPredecessors();
 
-  shallow.$id = this._properties.$id;
   shallow.$label = this._properties.$label;
   shallow[name] = value;
 
@@ -295,11 +294,11 @@ Edge.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Edge]");
-  } else if (this._properties.$id !== undefined) {
-    if (typeof this._properties.$id === "string") {
-      internal.output("Edge(\"", this._properties.$id, "\")");
+  } else if (this._properties._key !== undefined) {
+    if (typeof this._properties._key === "string") {
+      internal.output("Edge(\"", this._properties._key, "\")");
     } else {
-      internal.output("Edge(", this._properties.$id, ")");
+      internal.output("Edge(", this._properties._key, ")");
     }
   } else {
     internal.output("Edge(<", this._id, ">)");
@@ -448,7 +447,7 @@ Vertex.prototype.edges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getId = function () {
-  return this._properties.$id;
+  return this._properties._key;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,7 +604,6 @@ Vertex.prototype.setProperty = function (name, value) {
   var shallow = this._properties.shallowCopy,
     id;
 
-  shallow.$id = this._properties.$id;
   shallow[name] = value;
 
   // TODO use "update" if this becomes available
@@ -1040,11 +1038,11 @@ Vertex.prototype._PRINT = function (seen, path, names) {
 
   if (!this._id) {
     internal.output("[deleted Vertex]");
-  } else if (this._properties.$id !== undefined) {
-    if (typeof this._properties.$id === "string") {
-      internal.output("Vertex(\"", this._properties.$id, "\")");
+  } else if (this._properties._key !== undefined) {
+    if (typeof this._properties._key === "string") {
+      internal.output("Vertex(\"", this._properties._key, "\")");
     } else {
-      internal.output("Vertex(", this._properties.$id, ")");
+      internal.output("Vertex(", this._properties._key, ")");
     }
   } else {
     internal.output("Vertex(<", this._id, ">)");
@@ -1103,7 +1101,7 @@ function Graph(name, vertices, edges) {
   if (vertices === undefined && edges === undefined) {
     // Find an existing graph
 
-    graphProperties = gdb.firstExample('name', name);
+    graphProperties = gdb.firstExample('_key', name);
 
     if (graphProperties === null) {
       try {
@@ -1138,11 +1136,7 @@ function Graph(name, vertices, edges) {
     vertices = findOrCreateCollectionByName(vertices);
     edges = findOrCreateEdgeCollectionByName(edges);
 
-    // Currently buggy?
-    edges.ensureUniqueConstraint("$id");
-    vertices.ensureUniqueConstraint("$id");
-
-    graphProperties = gdb.firstExample('name', name);
+    graphProperties = gdb.firstExample('_key', name);
 
     // Graph doesn't exist yet
     if (graphProperties === null) {
@@ -1156,10 +1150,8 @@ function Graph(name, vertices, edges) {
 
       if (graphProperties === null) {
         graphPropertiesId = gdb.save({ 'vertices' : vertices._id,
-                       'verticesName' : vertices.name(),
                        'edges' : edges._id,
-                       'edgesName' : edges.name(),
-                       'name' : name });
+                       '_key' : name });
 
         graphProperties = gdb.document(graphPropertiesId);
       } else {
@@ -1273,7 +1265,10 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data) {
     shallow = data.shallowCopy || {};
   }
 
-  shallow.$id = id || null;
+  if (id !== undefined) {
+    shallow._key = id;
+  }
+
   shallow.$label = label || null;
 
   ref = this._edges.save(out_vertex._id, in_vertex._id, shallow);
@@ -1316,7 +1311,9 @@ Graph.prototype.addVertex = function (id, data) {
     shallow = data.shallowCopy || {};
   }
 
-  shallow.$id = id || null;
+  if (id !== undefined) {
+    shallow._key = id;
+  }
 
   ref = this._vertices.save(shallow);
 
@@ -1339,7 +1336,11 @@ Graph.prototype.getVertex = function (id) {
   var ref,
     vertex;
 
-  ref = this._vertices.firstExample('$id', id);
+  try {
+    ref = this._vertices.document(id);
+  } catch (e) {
+    ref = null;
+  }
 
   if (ref !== null) {
     vertex = this.constructVertex(ref._id);
@@ -1429,7 +1430,11 @@ Graph.prototype.getEdge = function (id) {
   var ref,
     edge;
 
-  ref = this._edges.firstExample('$id', id);
+  try {
+    ref = this._edges.document(id);
+  } catch (e) {
+    ref = null;
+  }
 
   if (ref !== null) {
     edge = this.constructEdge(ref._id);
