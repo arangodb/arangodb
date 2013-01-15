@@ -614,6 +614,29 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief debug print function
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.dump = function () { 
+    var oldPretty = internal.PRETTY_PRINT; 
+    var oldColor = internal.COLOR_OUTPUT; 
+
+    internal.startPrettyPrint(true); 
+    internal.startColorPrint(true); 
+
+    for (var i = 0; i < arguments.length; ++i) {
+      internal.print(arguments[i]); 
+    }
+
+    if (! oldPretty) { 
+      internal.stopPrettyPrint(true); 
+    } 
+    if (! oldColor) { 
+      internal.stopColorPrint(true); 
+    } 
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief encode password using SHA256
 ////////////////////////////////////////////////////////////////////////////////
 
