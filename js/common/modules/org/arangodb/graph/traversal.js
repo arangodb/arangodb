@@ -784,14 +784,15 @@ function IncludeMatchingAttributesFilter (config, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CombineFilters (filters, config, vertex, path) {
-  var result = [];
+  var result = [ ];
   filters.forEach( function (f) {
     var tmp = f(config, vertex, path);
-    if (!Array.isArray(tmp)) {
-      tmp = [tmp];
+    if (! Array.isArray(tmp)) {
+      tmp = [ tmp ];
     }
     result = result.concat(tmp);
   });
+
   return result;
 }
 
